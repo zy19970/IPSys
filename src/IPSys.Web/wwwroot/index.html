@@ -12,16 +12,17 @@
     <div class="auth-brand"><span class="logo">IP</span><span><strong>IPSys</strong><small>知识产权与资料管理系统</small></span></div>
     <div class="auth-panel">
       <div class="eyebrow">LOCAL DATABASE · SQLCIPHER</div>
-      <h1>欢迎使用 IPSys</h1>
+      <h1>打开已有资料库</h1>
       <p class="subtle">打开本机加密资料库，进入统一资料管理工作台。</p>
-      <div class="switch"><button id="newMode" type="button" class="chosen">新建资料库</button><button id="oldMode" type="button">打开已有库</button></div>
+      
       <form id="openForm">
-        <div id="dbPathWrap" class="form-field"><label for="dbPath">数据库完整路径</label><input id="dbPath" required placeholder="D:\IPSys-test\test.db"><small>首次创建前请确保目标文件夹已经存在。</small></div>
+        <div id="dbPathWrap" class="form-field"><label for="dbPath">数据库完整路径</label><input id="dbPath" required placeholder="D:\IPSys-test\test.db"><small id="dbPathHint">选择已存在的加密资料库文件。</small></div>
         <p id="resumeHint" class="hint" hidden>WinForms 已保持该库打开。输入当前数据库密码即可恢复会话。</p>
         <div class="form-field"><label for="password">数据库密码</label><input id="password" type="password" required autocomplete="off" placeholder="请输入密码"></div>
-        <div class="form-field" id="confirmWrap"><label for="confirm">确认密码</label><input id="confirm" type="password" autocomplete="off" placeholder="再次输入密码"></div>
-        <button id="submitOpen" class="btn primary full" type="submit">创建并进入</button>
+        <div class="form-field" id="confirmWrap" hidden><label for="confirm">确认密码</label><input id="confirm" type="password" autocomplete="off" placeholder="再次输入密码"></div>
+        <button id="submitOpen" class="btn primary full" type="submit">解锁并进入</button>
       </form>
+      <div id="modeActions" class="auth-mode-actions"><button id="newMode" type="button" class="auth-mode-link">＋ 新建资料库</button><button id="oldMode" type="button" class="auth-mode-link" hidden>← 返回打开资料库</button></div>
       <div class="auth-tip">所有资料仅保存在你选择的本地加密数据库。首次测试请使用非敏感文件。</div>
     </div>
   </section>

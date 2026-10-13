@@ -4,7 +4,7 @@ const el=id=>document.getElementById(id);
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let token=sessionStorage.getItem('ip-token')||'';
 let dbName=sessionStorage.getItem('ip-db')||'';
-let space=null,creating=true,resuming=false,localFileTaskActive=false;
+let space=null,creating=false,resuming=false,localFileTaskActive=false;
 let page='dashboard',detail=null,archiveGroup=null,liveRows=[],filterName='',filterKind='全部类型',filterState='全部状态',selected=new Set();
 const companyNav=[['dashboard','工作台','▦'],['ip','知识产权','◇'],['researchProject','科研项目','▤'],['horizontalProject','横向项目','▥'],['contract','全部合同','▧'],['certificate','企业资质','▣'],['general','综合资料','▥']];
 // Personal archives are grouped by evidence type, not by the company management menu.
@@ -97,9 +97,17 @@ function screen(unlocked){
   el('unlocked').hidden=!unlocked||!space;
   if(unlocked){el('dbNameChoice').textContent=dbName;if(space){el('sidebarDbName').textContent=dbName;refresh();}}
 }
-function mode(value){creating=value;el('newMode').classList.toggle('chosen',value);el('oldMode').classList.toggle('chosen',!value);el('confirmWrap').hidden=!value;el('submitOpen').textContent=value?'创建并进入':'解锁并进入';}
+function mode(value){
+  creating=value;
+  el('newMode').hidden=value;
+  el('oldMode').hidden=!value;
+  el('confirmWrap').hidden=!value;
+  el('dbPathHint').textContent=value?'首次创建前请确保目标文件夹已经存在。':'选择已存在的加密资料库文件。';
+  el('submitOpen').textContent=value?'创建并进入':'解锁并进入';
+}
 function recoveryMode(active){
   resuming=active;el('dbPathWrap').hidden=active;el('resumeHint').hidden=!active;el('dbPath').required=!active;
+  el('modeActions').hidden=active;
   el('newMode').disabled=active;el('oldMode').disabled=active;
   if(active){mode(false);el('submitOpen').textContent='验证密码并恢复会话';}
 }
@@ -418,7 +426,7 @@ el('exitCancelTask').onclick=()=>sendExit('cancel');
 el('exitFinishTask').onclick=()=>sendExit('wait');
 el('exitStay').onclick=()=>el('exitDialog').close();
 (async()=>{
- mode(true);
+ mode(false);
  try{const status=await(await api('/api/status')).json();el('dbPath').value=status.suggestion;
   let valid=false;
   if(status.unlocked&&token){try{await api('/api/check');valid=true;}catch{valid=false;}}

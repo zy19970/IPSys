@@ -121,4 +121,55 @@ assert.ok(snapshots.companyCertificateLedger.includes('data-mock-id="1"')&&snaps
 assert.ok(snapshots.personalAcademic.includes('data-archive-category="学术兼职"'),'Academic category card must open table, not single detail');
 assert.ok(!snapshots.personalAcademic.includes('data-mock-id='),'Category cards must not link directly to record details');
 assert.ok(js.includes('archiveGroup=null')&&js.includes('data-archive-back="cards"')&&js.includes('data-archive-back="table"'),'Three-level navigation must preserve back destinations');
+
+// Opening an existing encrypted vault is the default; creating one is a secondary action.
+assert.ok(html.includes('id="newMode" type="button" class="auth-mode-link"'),'One secondary create database control is required');
+assert.ok(html.includes('id="oldMode" type="button" class="auth-mode-link" hidden'),'Back to login should be hidden initially');
+assert.ok(html.includes('id="confirmWrap" hidden'),'Password confirmation must be hidden in the default login view');
+assert.ok(html.includes('id="submitOpen" class="btn primary full" type="submit">解锁并进入'),'Main submit must unlock existing vault by default');
+assert.ok(!html.includes('class="switch"'),'Login must not show creation as an equal primary tab');
+assert.ok(js.includes('let space=null,creating=false'),'Authentication must initially use existing-vault mode');
+assert.ok(js.includes("(async()=>{\n mode(false);"),'Startup mode must be existing-vault login');
+const authFields={};
+for(const id of ['newMode','oldMode','confirmWrap','dbPathHint','submitOpen','dbPathWrap','resumeHint','dbPath','modeActions'])
+ authFields[id]={hidden:false,disabled:false,required:true,textContent:''};
+const authStart=js.indexOf('function mode(value){');
+const authEnd=js.indexOf("el('newMode').onclick=",authStart);
+assert.ok(authStart>=0&&authEnd>authStart,'Authentication mode functions must be found');
+const authVm=vm.createContext({document:{getElementById:id=>authFields[id]}});
+vm.runInContext('let creating=false,resuming=false;function el(id){return document.getElementById(id);}\n'+js.slice(authStart,authEnd)+`
+ mode(false);
+ globalThis.__login={create:creating,newHidden:el('newMode').hidden,returnHidden:el('oldMode').hidden,
+   confirmHidden:el('confirmWrap').hidden,submit:el('submitOpen').textContent};
+ mode(true);
+ globalThis.__create={create:creating,newHidden:el('newMode').hidden,returnHidden:el('oldMode').hidden,
+   confirmHidden:el('confirmWrap').hidden,submit:el('submitOpen').textContent};
+ mode(false);
+ recoveryMode(true);
+ globalThis.__resume={create:creating,actionsHidden:el('modeActions').hidden,
+   pathHidden:el('dbPathWrap').hidden,submit:el('submitOpen').textContent};
+ recoveryMode(false);
+ globalThis.__resumeFinished={actionsHidden:el('modeActions').hidden,pathRequired:el('dbPath').required};
+`,authVm);
+assert.equal(authVm.__login.create,false);
+assert.equal(authVm.__login.newHidden,false);
+assert.equal(authVm.__login.returnHidden,true);
+assert.equal(authVm.__login.confirmHidden,true);
+assert.equal(authVm.__login.submit,'解锁并进入');
+assert.equal(authVm.__create.create,true);
+assert.equal(authVm.__create.newHidden,true);
+assert.equal(authVm.__create.returnHidden,false);
+assert.equal(authVm.__create.confirmHidden,false);
+assert.equal(authVm.__create.submit,'创建并进入');
+assert.equal(authVm.__resume.create,false);
+assert.equal(authVm.__resume.actionsHidden,true);
+assert.equal(authVm.__resume.pathHidden,true);
+assert.equal(authVm.__resume.submit,'验证密码并恢复会话');
+assert.equal(authVm.__resumeFinished.actionsHidden,false);
+assert.equal(authVm.__resumeFinished.pathRequired,true);
+// A small ledger should not contain a fixed-height blank area below its records.
+assert.ok(css.includes('max-height:calc(100vh - 355px);min-height:0'),'Ledger should size to content instead of 260px minimum');
+assert.ok(css.includes('min-width:100%;font-size:15px;line-height:1.5'),'Ledger body text must be larger');
+assert.ok(css.includes('text-align:left;font-size:13px;font-weight:650'),'Ledger headings must be readable');
+assert.ok(css.includes('.auth-mode-actions{display:flex'),'Secondary new-vault button must be styled');
 console.log('MAIN UI SMOKE PASS: navigation, workspace choice, live API contract, mock markers, CSP-compatible markup');
