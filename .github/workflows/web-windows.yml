@@ -1,4 +1,4 @@
-name: IPSys minimal web Windows test
+name: IPSys Windows build and smoke
 
 on:
   push:

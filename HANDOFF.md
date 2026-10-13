@@ -2,6 +2,8 @@
 
 > 用途：供用户切换 ChatGPT 会话后直接接续 IPSys 开发，不再重复需求访谈或重新摸索已解决的技术问题。
 >
+> **后续维护说明（2026-10-13）**：本交接主体记录最初交接时的技术快照，后续已将唯一运行工程统一为 `src/IPSys.Web`，并删除不被其引用的历史控制台 `src/IPSys.M1`、专用 CI 和测试说明；历史实验与其 CI 成功证据仍可从既有提交及 Actions 运行历史追溯。当前功能及验收状态以最新 `main`、`DEVELOPMENT_PLAN.md`、`WEB_TESTING.md` 为准。
+>
 > 仓库：https://github.com/zy19970/IPSys ，工作分支：main。
 >
 > 本交接依据的最新代码提交：97088de53b81c783a0c16a40e0dc38ac2fbc8942。交接文件提交后 main 将产生更新的 SHA，属于正常情况。
@@ -32,7 +34,6 @@
 | [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md) | 唯一开发主计划，M0–M7 的目标、进入条件、交付物；尚未定具体工期 |
 | [FREEZE_AUDIT.md](./FREEZE_AUDIT.md) | 需求覆盖冲突 C01–C11、关键技术验证门槛 T01–T09，含安全和异常验收原则 |
 | [WEB_TESTING.md](./WEB_TESTING.md) | 当前 WinForms + 网页最小原型的 VS、EXE、数据库、附件及会话恢复实机测试指南 |
-| [M1_TESTING.md](./M1_TESTING.md) | 早期 C# 命令行 SQLCipher 分块实验的测试说明；不是当前 GUI 主程序 |
 | [README.md](./README.md) | 根目录统一入口；部分描述为历史阶段快照，以最新 CI 与此交接确认的代码状态为准 |
 | [DESIGN.md](./DESIGN.md) | 历史探索草案，存在已撤销的业务设想，不能直接据此实现；M2 时整体重构 |
 | **HANDOFF.md** | 本文件，供新的会话快速承接，不是新的正式需求或计划文件 |
@@ -172,16 +173,11 @@ IPSys/
 ├── DEVELOPMENT_PLAN.md
 ├── FREEZE_AUDIT.md
 ├── DESIGN.md                      # 历史草案，实施前需重构
-├── M1_TESTING.md
 ├── WEB_TESTING.md
 ├── HANDOFF.md                     # 本交接文件
 ├── .github/workflows/
-│   ├── m1-windows.yml            # 命令行 SQLCipher 原型构建/冒烟
 │   └── web-windows.yml           # WinForms+网页 Debug/Release 构建/HTTP 测试
 └── src/
-    ├── IPSys.M1/
-    │   ├── IPSys.M1.csproj
-    │   └── Program.cs            # 早期命令行加密文件分块原型
     └── IPSys.Web/
         ├── IPSys.Web.csproj      # 当前主工程，WinForms+ASP.NET Core+SQLCipher
         ├── Program.cs            # 本地 HTTP API、Vault、Smoke、内嵌资源
@@ -192,14 +188,14 @@ IPSys/
             └── app.js            # JS 源码，编译进 EXE
 ~~~
 
-目前没有 .sln 文件。**Visual Studio 2022 可以直接打开 src/IPSys.Web/IPSys.Web.csproj**，不要误打开命令行实验工程 IPSys.M1。用户主要在 Windows VS 中自己编译与拉取测试。
+目前没有 .sln 文件。**Visual Studio 2022 直接打开 `src/IPSys.Web/IPSys.Web.csproj`**；它是唯一保留的运行工程。用户主要在 Windows VS 中自己编译与拉取测试。
 
 ## 七、真实测试证据与版本脉络
 
 | 时间顺序 / Commit | 改动结果 | 自动/人工证据 |
 | --- | --- | --- |
 | 82ed749d | M0 的 R1–R3 默认字典获确认，R4 已按 CNY 0.00 定义 | 数据字典文档 |
-| 03b04cdc / ba7f2c44 | SQLCipher CLI 文件分块与 Windows 冒烟构建 | [CLI 工作流](https://github.com/zy19970/IPSys/actions/workflows/m1-windows.yml) |
+| 03b04cdc / ba7f2c44 | 历史 SQLCipher CLI 文件分块与 Windows 冒烟构建（实验工程已移除，代码在 Git 历史中） | [当时的成功运行记录](https://github.com/zy19970/IPSys/actions/runs/38372112267) |
 | 5699bd25 | 最小 ASP.NET Core 网页原型、HTTP SQLCipher 记录/附件 | [CI 38374672235](https://github.com/zy19970/IPSys/actions/runs/38374672235) |
 | bcbdb58b / 62791c31 | 从自动打开网页改为 WinForms 启动器；首次编译问题已修复 | [CI 38378877601](https://github.com/zy19970/IPSys/actions/runs/38378877601) |
 | 1380abfc | 处理 VS F5 后网页 HTTP 404 缺失资源 | [CI 38380987068](https://github.com/zy19970/IPSys/actions/runs/38380987068) |
