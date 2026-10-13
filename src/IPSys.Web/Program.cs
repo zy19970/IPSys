@@ -124,7 +124,12 @@ app.MapPost("/api/lock", async (HttpContext ctx, Vault v) =>
 {
     if (!v.Allowed(ctx)) return Results.Unauthorized();
     await v.Gate.WaitAsync();
-    try { v.Close(); return Results.Ok(new { ok = true }); }
+    try
+    {
+        if (!v.Allowed(ctx)) return Results.Unauthorized();
+        v.Close();
+        return Results.Ok(new { ok = true });
+    }
     finally { v.Gate.Release(); }
 });
 
@@ -135,6 +140,8 @@ app.MapGet("/api/records/{workspace}", async (HttpContext ctx, Vault v, string w
     await v.Gate.WaitAsync();
     try
     {
+        // The token may have expired while this request waited for the database gate.
+        if (!v.Allowed(ctx)) return Results.Unauthorized();
         var rows = new List<RecordView>();
         using var cmd = v.Db.CreateCommand();
         cmd.CommandText = """
@@ -169,6 +176,7 @@ app.MapPost("/api/records/{workspace}", async (HttpContext ctx, Vault v, string 
     await v.Gate.WaitAsync();
     try
     {
+        if (!v.Allowed(ctx)) return Results.Unauthorized();
         using var cmd = v.Db.CreateCommand();
         cmd.CommandText = "INSERT INTO records(workspace,title) VALUES($w,$n); SELECT last_insert_rowid();";
         cmd.Parameters.AddWithValue("$w", workspace);
@@ -194,6 +202,7 @@ app.MapPost("/api/records/{workspace}/{id:long}/files", async (HttpContext ctx, 
     if (!await v.Gate.WaitAsync(0)) return Fail("另一项数据库操作正在执行，请稍后重试。", 409);
     try
     {
+        if (!v.Allowed(ctx)) return Results.Unauthorized();
         using (var exists = v.Db.CreateCommand())
         {
             exists.CommandText = "SELECT count(*) FROM records WHERE id=$id AND workspace=$w;";
@@ -281,48 +290,53 @@ app.MapPost("/api/records/{workspace}/{id:long}/files", async (HttpContext ctx, 
     finally { v.Gate.Release(); }
 });
 
+// Keep authentication, file lookup and the complete download under one gate.
+// Returning Results.Stream before acquiring the stream's gate allowed a concurrent
+// /api/lock + /api/open to swap databases between authorization and the first byte.
 app.MapGet("/api/files/{workspace}/{id:long}", async (HttpContext ctx, Vault v, string workspace, long id) =>
 {
-    if (!v.Allowed(ctx)) return Results.Unauthorized();
-    if (!Vault.WorkspaceValid(workspace)) return Fail("无效工作区。");
-    await v.Gate.WaitAsync();
+    if (!v.Allowed(ctx)) { ctx.Response.StatusCode = 401; return; }
+    if (!Vault.WorkspaceValid(workspace))
+    {
+        ctx.Response.StatusCode = 400;
+        await ctx.Response.WriteAsJsonAsync(new { error = "无效工作区。" });
+        return;
+    }
+    await v.Gate.WaitAsync(ctx.RequestAborted);
     try
     {
+        if (!v.Allowed(ctx)) { ctx.Response.StatusCode = 401; return; }
         string name;
-        using (var cmd = v.Db.CreateCommand())
+        using (var lookup = v.Db.CreateCommand())
         {
-            cmd.CommandText = """
+            lookup.CommandText = """
                 SELECT a.filename FROM attachments a JOIN records r ON a.record_id=r.id
                 WHERE a.id=$id AND a.state='ready' AND r.workspace=$w;
                 """;
-            cmd.Parameters.AddWithValue("$id", id);
-            cmd.Parameters.AddWithValue("$w", workspace);
-            name = cmd.ExecuteScalar() as string ?? "";
+            lookup.Parameters.AddWithValue("$id", id);
+            lookup.Parameters.AddWithValue("$w", workspace);
+            name = lookup.ExecuteScalar() as string ?? "";
         }
-        if (name.Length == 0) return Results.NotFound();
-        return Results.Stream(async output =>
+        if (name.Length == 0) { ctx.Response.StatusCode = 404; return; }
+
+        ctx.Response.ContentType = "application/octet-stream";
+        ctx.Response.Headers.ContentDisposition =
+            "attachment; filename*=UTF-8''" + Uri.EscapeDataString(name);
+        using var cmd = v.Db.CreateCommand();
+        cmd.CommandText = """
+            SELECT c.bytes FROM chunks c
+            JOIN attachments a ON a.id=c.attachment_id
+            JOIN records r ON a.record_id=r.id
+            WHERE a.id=$id AND a.state='ready' AND r.workspace=$w ORDER BY c.idx;
+            """;
+        cmd.Parameters.AddWithValue("$id", id);
+        cmd.Parameters.AddWithValue("$w", workspace);
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
         {
-            await v.Gate.WaitAsync();
-            try
-            {
-                using var cmd = v.Db.CreateCommand();
-                cmd.CommandText = """
-                    SELECT c.bytes FROM chunks c
-                    JOIN attachments a ON a.id=c.attachment_id
-                    JOIN records r ON a.record_id=r.id
-                    WHERE a.id=$id AND a.state='ready' AND r.workspace=$w ORDER BY c.idx;
-                    """;
-                cmd.Parameters.AddWithValue("$id", id);
-                cmd.Parameters.AddWithValue("$w", workspace);
-                using var reader = cmd.ExecuteReader();
-                while (reader.Read())
-                {
-                    var bytes = (byte[])reader.GetValue(0);
-                    await output.WriteAsync(bytes, ctx.RequestAborted);
-                }
-            }
-            finally { v.Gate.Release(); }
-        }, "application/octet-stream", name);
+            byte[] bytes = (byte[])reader.GetValue(0);
+            await ctx.Response.Body.WriteAsync(bytes, ctx.RequestAborted);
+        }
     }
     finally { v.Gate.Release(); }
 });
@@ -333,6 +347,7 @@ app.MapGet("/api/check", async (HttpContext ctx, Vault v) =>
     await v.Gate.WaitAsync();
     try
     {
+        if (!v.Allowed(ctx)) return Results.Unauthorized();
         using var cmd = v.Db.CreateCommand();
         cmd.CommandText = "PRAGMA integrity_check;";
         string result = Convert.ToString(cmd.ExecuteScalar()) ?? "";
@@ -347,7 +362,11 @@ app.MapPost("/api/exit", async (HttpContext ctx, Vault v, IHostApplicationLifeti
 {
     if (v.Unlocked && !v.Allowed(ctx)) return Results.Unauthorized();
     await v.Gate.WaitAsync();
-    try { v.Close(); }
+    try
+    {
+        if (v.Unlocked && !v.Allowed(ctx)) return Results.Unauthorized();
+        v.Close();
+    }
     finally { v.Gate.Release(); }
     _ = Task.Run(async () => { await Task.Delay(350); life.StopApplication(); });
     return Results.Json(new { ok = true });
@@ -581,6 +600,15 @@ static class WebSmoke
             again.EnsureSuccessStatusCode();
             string newToken = (await again.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("token").GetString()!;
             client.DefaultRequestHeaders.Add("X-IPSys-Token", newToken);
+            // A prior browser tab must not touch the newly opened database.
+            using var staleTab = new HttpClient { BaseAddress = new Uri(address) };
+            staleTab.DefaultRequestHeaders.Add("X-IPSys-Token", token);
+            if ((await staleTab.GetAsync("/api/records/company")).StatusCode != HttpStatusCode.Unauthorized ||
+                (await staleTab.GetAsync($"/api/files/company/{fileId}")).StatusCode != HttpStatusCode.Unauthorized ||
+                (await staleTab.GetAsync("/api/check")).StatusCode != HttpStatusCode.Unauthorized ||
+                (await staleTab.PostAsync("/api/lock", null)).StatusCode != HttpStatusCode.Unauthorized)
+                throw new IOException("旧标签令牌不得访问或关闭新会话的数据库。");
+            (await client.GetAsync("/api/check")).EnsureSuccessStatusCode();
             using var finalLock = await client.PostAsync("/api/lock", null);
             finalLock.EnsureSuccessStatusCode();
         }
