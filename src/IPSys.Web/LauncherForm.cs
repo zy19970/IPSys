@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Threading;
 using System.Windows.Forms;
 using Microsoft.Win32;
+using Microsoft.Extensions.Hosting;
 
 namespace IPSys.Web;
 
@@ -14,10 +15,16 @@ internal sealed class LauncherForm : Form
 {
     private readonly string _address;
     private readonly Label _status;
+    private readonly Vault _vault;
+    private readonly IHostApplicationLifetime _lifetime;
+    private readonly CancellationToken _stopping;
 
-    internal LauncherForm(string address)
+    internal LauncherForm(string address, Vault vault, IHostApplicationLifetime lifetime, CancellationToken stopping)
     {
         _address = address;
+        _vault = vault;
+        _lifetime = lifetime;
+        _stopping = stopping;
         Text = "IPSys · 本地管理系统";
         StartPosition = FormStartPosition.CenterScreen;
         FormBorderStyle = FormBorderStyle.FixedSingle;
@@ -91,6 +98,75 @@ internal sealed class LauncherForm : Form
         AcceptButton = launch;
     }
 
+    protected override void OnFormClosing(FormClosingEventArgs e)
+    {
+        // A second click on X must not bypass a previously scheduled safe exit.
+        if (_vault.ExitRequested && !_stopping.IsCancellationRequested)
+        {
+            e.Cancel = true;
+            base.OnFormClosing(e);
+            return;
+        }
+        if (e.CloseReason == CloseReason.UserClosing &&
+            !_stopping.IsCancellationRequested)
+        {
+            e.Cancel = true;
+            string? choice = _vault.FileTaskActive ? ShowFileTaskExitChoices() : "normal";
+            if (choice != null)
+            {
+                if (_vault.TryScheduleExit(choice, _lifetime, out string error))
+                    _status.Text = "● 正在安全退出并关闭数据库…";
+                else
+                    MessageBox.Show(this, error, "无法退出", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+        base.OnFormClosing(e);
+    }
+
+    private string? ShowFileTaskExitChoices()
+    {
+        using var dialog = new Form
+        {
+            Text = "文件任务进行中",
+            StartPosition = FormStartPosition.CenterParent,
+            FormBorderStyle = FormBorderStyle.FixedDialog,
+            MaximizeBox = false,
+            MinimizeBox = false,
+            ShowInTaskbar = false,
+            ClientSize = new Size(465, 165),
+            Font = Font
+        };
+        dialog.Controls.Add(new Label
+        {
+            Text = "正在上传文件。请选择退出处理方式：",
+            Location = new Point(20, 22),
+            Size = new Size(420, 45)
+        });
+        var cancelTask = new Button
+        {
+            Text = "取消任务并退出", DialogResult = DialogResult.Yes,
+            Location = new Point(16, 90), Size = new Size(142, 42)
+        };
+        var wait = new Button
+        {
+            Text = "任务完成后退出", DialogResult = DialogResult.No,
+            Location = new Point(163, 90), Size = new Size(142, 42)
+        };
+        var stay = new Button
+        {
+            Text = "暂不退出", DialogResult = DialogResult.Cancel,
+            Location = new Point(310, 90), Size = new Size(142, 42)
+        };
+        dialog.Controls.AddRange(new Control[] { cancelTask, wait, stay });
+        dialog.CancelButton = stay;
+        return dialog.ShowDialog(this) switch
+        {
+            DialogResult.Yes => "cancel",
+            DialogResult.No => "wait",
+            _ => null
+        };
+    }
+
     private void OpenBrowser()
     {
         try
@@ -129,7 +205,8 @@ internal static class LauncherHost
     /// Run WinForms on its own STA thread. The ASP.NET host uses the async main thread.
     /// ApplicationStopping (including the web page's Safe Exit button) closes the form.
     /// </summary>
-    internal static Task WaitForExitAsync(string address, CancellationToken stopping)
+    internal static Task WaitForExitAsync(string address, CancellationToken stopping,
+        Vault vault, IHostApplicationLifetime lifetime)
     {
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var thread = new Thread(() =>
@@ -138,7 +215,7 @@ internal static class LauncherHost
             {
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
-                using var form = new LauncherForm(address);
+                using var form = new LauncherForm(address, vault, lifetime, stopping);
                 using var callback = stopping.Register(() =>
                 {
                     try

@@ -64,9 +64,11 @@ app.MapGet("/api/status", (Vault v) => Results.Json(new
 
 app.MapPost("/api/open", async (OpenInput input, Vault v) =>
 {
+    if (v.ExitRequested) return Fail("程序正在安全退出。", 409);
     await v.Gate.WaitAsync();
     try
     {
+        if (v.ExitRequested) return Fail("程序正在安全退出。", 409);
         if (v.Unlocked) return Fail("请先关闭当前数据库。", 409);
         string path = input.Path?.Trim() ?? "";
         if (!Path.IsPathFullyQualified(path)) return Fail("请输入数据库的绝对路径。");
@@ -102,6 +104,7 @@ app.MapPost("/api/resume", async (ResumeInput input, Vault v) =>
     await v.Gate.WaitAsync();
     try
     {
+        if (v.ExitRequested) return Fail("程序正在安全退出。", 409);
         if (!v.Unlocked) return Fail("当前没有已打开的数据库，请正常打开数据库。", 409);
         if (!v.PasswordMatches(input.Password))
             return Fail("数据库密码错误，无法恢复会话。", 403);
@@ -123,10 +126,12 @@ app.MapPost("/api/resume", async (ResumeInput input, Vault v) =>
 app.MapPost("/api/lock", async (HttpContext ctx, Vault v) =>
 {
     if (!v.Allowed(ctx)) return Results.Unauthorized();
+    if (v.FileTaskActive || v.ExitRequested) return Fail("文件任务执行中或程序正在退出，不能关闭数据库。", 409);
     await v.Gate.WaitAsync();
     try
     {
         if (!v.Allowed(ctx)) return Results.Unauthorized();
+        if (v.FileTaskActive || v.ExitRequested) return Fail("文件任务执行中或程序正在退出，不能关闭数据库。", 409);
         v.Close();
         return Results.Ok(new { ok = true });
     }
@@ -173,10 +178,12 @@ app.MapPost("/api/records/{workspace}", async (HttpContext ctx, Vault v, string 
     if (!Vault.WorkspaceValid(workspace)) return Fail("无效工作区。");
     if (string.IsNullOrWhiteSpace(input.Title)) return Fail("名称不能为空。");
     if (input.Title.Length > 300) return Fail("名称不能超过 300 字。");
+    if (v.FileTaskActive || v.ExitRequested) return Fail("文件任务执行中，暂不能修改资料。", 409);
     await v.Gate.WaitAsync();
     try
     {
         if (!v.Allowed(ctx)) return Results.Unauthorized();
+        if (v.FileTaskActive || v.ExitRequested) return Fail("文件任务执行中，暂不能修改资料。", 409);
         using var cmd = v.Db.CreateCommand();
         cmd.CommandText = "INSERT INTO records(workspace,title) VALUES($w,$n); SELECT last_insert_rowid();";
         cmd.Parameters.AddWithValue("$w", workspace);
@@ -199,10 +206,16 @@ app.MapPost("/api/records/{workspace}/{id:long}/files", async (HttpContext ctx, 
     if (string.IsNullOrWhiteSpace(name) || name != Path.GetFileName(name) ||
         name is "." or ".." || name.Contains('\\') || name.Contains('/') || name.Length > 240)
         return Fail("文件名无效。");
-    if (!await v.Gate.WaitAsync(0)) return Fail("另一项数据库操作正在执行，请稍后重试。", 409);
+    if (!v.TryBeginFileTask(ctx, out var taskCancellation))
+        return Fail("当前有文件任务正在执行，或程序正在安全退出。", 409);
     try
     {
-        if (!v.Allowed(ctx)) return Results.Unauthorized();
+        using var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(ctx.RequestAborted, taskCancellation);
+        if (!await v.Gate.WaitAsync(0))
+            return Fail("另一项数据库操作正在执行，请稍后重试。", 409);
+        try
+        {
+            if (!v.Allowed(ctx)) return Results.Unauthorized();
         using (var exists = v.Db.CreateCommand())
         {
             exists.CommandText = "SELECT count(*) FROM records WHERE id=$id AND workspace=$w;";
@@ -235,7 +248,7 @@ app.MapPost("/api/records/{workspace}/{id:long}/files", async (HttpContext ctx, 
             try
             {
                 int read;
-                while ((read = await ctx.Request.Body.ReadAsync(buffer, ctx.RequestAborted)) > 0)
+                while ((read = await ctx.Request.Body.ReadAsync(buffer, linkedCancellation.Token)) > 0)
                 {
                     using var cmd = v.Db.CreateCommand();
                     cmd.Transaction = tx;
@@ -256,6 +269,7 @@ app.MapPost("/api/records/{workspace}/{id:long}/files", async (HttpContext ctx, 
                 tx.Commit();
             }
             finally { tx.Dispose(); }
+            linkedCancellation.Token.ThrowIfCancellationRequested();
             if (size != length.Value) throw new IOException("上传不完整。");
             string digest = Convert.ToHexString(hash.GetHashAndReset());
             using var update = v.Db.CreateCommand();
@@ -286,8 +300,10 @@ app.MapPost("/api/records/{workspace}/{id:long}/files", async (HttpContext ctx, 
             throw;
         }
     }
-    catch (Exception e) { return Fail("上传失败：" + e.Message); }
-    finally { v.Gate.Release(); }
+        catch (Exception e) { return Fail("上传失败：" + e.Message); }
+        finally { v.Gate.Release(); }
+    }
+    finally { v.CompleteFileTask(); }
 });
 
 // Keep authentication, file lookup and the complete download under one gate.
@@ -358,18 +374,24 @@ app.MapGet("/api/check", async (HttpContext ctx, Vault v) =>
     finally { v.Gate.Release(); }
 });
 
+// The web page and WinForms launcher share one exit coordinator.
+app.MapGet("/api/task", (HttpContext ctx, Vault v) =>
+{
+    if (!v.Allowed(ctx)) return (IResult)Results.Unauthorized();
+    return Results.Json(new { active = v.FileTaskActive, exiting = v.ExitRequested });
+});
+
 app.MapPost("/api/exit", async (HttpContext ctx, Vault v, IHostApplicationLifetime life) =>
 {
     if (v.Unlocked && !v.Allowed(ctx)) return Results.Unauthorized();
-    await v.Gate.WaitAsync();
-    try
-    {
-        if (v.Unlocked && !v.Allowed(ctx)) return Results.Unauthorized();
-        v.Close();
-    }
-    finally { v.Gate.Release(); }
-    _ = Task.Run(async () => { await Task.Delay(350); life.StopApplication(); });
-    return Results.Json(new { ok = true });
+    ExitInput? input = ctx.Request.ContentLength > 0
+        ? await ctx.Request.ReadFromJsonAsync<ExitInput>() : null;
+    string choice = input?.Choice ?? "normal";
+    if (choice is not ("normal" or "cancel" or "wait" or "stay"))
+        return Fail("无效的退出选项。");
+    if (!v.TryScheduleExit(choice, life, out string error, ctx))
+        return Fail(error, 409);
+    return Results.Json(new { ok = true, exiting = choice != "stay" });
 });
 
 await app.StartAsync();
@@ -394,7 +416,8 @@ else
     // The browser is opened only when the user presses the launcher button.
     try
     {
-        await LauncherHost.WaitForExitAsync(address, app.Lifetime.ApplicationStopping);
+        await LauncherHost.WaitForExitAsync(address, app.Lifetime.ApplicationStopping,
+            app.Services.GetRequiredService<Vault>(), app.Lifetime);
     }
     finally
     {
@@ -409,6 +432,7 @@ static IResult Fail(string message, int status = 400) =>
 
 record OpenInput(string? Path, string? Password, bool Create);
 record ResumeInput(string? Password);
+record ExitInput(string? Choice);
 record TitleInput(string? Title);
 record FileView(long Id, string Name, long Size, string Sha256);
 record RecordView(long Id, string Title, List<FileView> Files);
@@ -416,6 +440,94 @@ record RecordView(long Id, string Title, List<FileView> Files);
 sealed class Vault : IDisposable
 {
     public SemaphoreSlim Gate { get; } = new(1, 1);
+    private readonly object _taskSync = new();
+    private TaskCompletionSource<bool>? _fileTaskCompletion;
+    private CancellationTokenSource? _fileTaskCancellation;
+    private bool _exitRequested;
+    public bool FileTaskActive { get { lock (_taskSync) return _fileTaskCompletion != null; } }
+    public bool ExitRequested { get { lock (_taskSync) return _exitRequested; } }
+    public bool TryBeginFileTask(HttpContext context, out CancellationToken cancellation)
+    {
+        lock (_taskSync)
+        {
+            if (!Allowed(context) || _fileTaskCompletion != null || _exitRequested)
+            {
+                cancellation = default;
+                return false;
+            }
+            _fileTaskCancellation = new CancellationTokenSource();
+            _fileTaskCompletion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            cancellation = _fileTaskCancellation.Token;
+            return true;
+        }
+    }
+    public void CompleteFileTask()
+    {
+        TaskCompletionSource<bool>? completion;
+        CancellationTokenSource? cancellation;
+        lock (_taskSync)
+        {
+            completion = _fileTaskCompletion;
+            cancellation = _fileTaskCancellation;
+            _fileTaskCompletion = null;
+            _fileTaskCancellation = null;
+        }
+        completion?.TrySetResult(true);
+        cancellation?.Dispose();
+    }
+    public bool TryScheduleExit(string choice, IHostApplicationLifetime life, out string error,
+        HttpContext? context = null)
+    {
+        Task pending;
+        lock (_taskSync)
+        {
+            // Authentication must be rechecked atomically with exit scheduling:
+            // the old tab cannot terminate a newly opened database.
+            if (context != null && _db != null && !Allowed(context))
+            {
+                error = "会话已经失效，不能退出当前数据库。";
+                return false;
+            }
+            if (choice == "stay")
+            {
+                error = "";
+                return true;
+            }
+            if (_exitRequested)
+            {
+                error = "程序已进入安全退出流程。";
+                return false;
+            }
+            if (_fileTaskCompletion != null && choice is not ("cancel" or "wait"))
+            {
+                error = "有文件任务正在执行，请选择取消任务并退出、任务完成后退出或暂不退出。";
+                return false;
+            }
+            _exitRequested = true;
+            pending = _fileTaskCompletion?.Task ?? Task.CompletedTask;
+            if (choice == "cancel") _fileTaskCancellation?.Cancel();
+            error = "";
+        }
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                // Let the browser receive the response before shutting down the host.
+                await Task.Delay(200);
+                await pending;
+                await Gate.WaitAsync();
+                try { Close(); }
+                finally { Gate.Release(); }
+                life.StopApplication();
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine("安全退出失败：" + ex.Message);
+                lock (_taskSync) _exitRequested = false;
+            }
+        });
+        return true;
+    }
     private SqliteConnection? _db;
     private string? _token;
     public bool Unlocked => _db != null;
@@ -451,21 +563,43 @@ sealed class Vault : IDisposable
     }
     public bool Allowed(HttpContext context)
     {
-        if (_db == null || _token == null) return false;
-        string header = context.Request.Headers["X-IPSys-Token"].ToString();
-        return header.Length == _token.Length &&
-               CryptographicOperations.FixedTimeEquals(
-                   Encoding.ASCII.GetBytes(header), Encoding.ASCII.GetBytes(_token));
+        lock (_taskSync)
+        {
+            if (_db == null || _token == null) return false;
+            string header = context.Request.Headers["X-IPSys-Token"].ToString();
+            return header.Length == _token.Length &&
+                   CryptographicOperations.FixedTimeEquals(
+                       Encoding.ASCII.GetBytes(header), Encoding.ASCII.GetBytes(_token));
+        }
     }
     public string SetOpen(SqliteConnection db, string path)
     {
-        if (_db != null) throw new InvalidOperationException("已经打开另一数据库。");
-        _db = db; Path = path;
-        _token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
-        return _token;
+        lock (_taskSync)
+        {
+            if (_db != null) throw new InvalidOperationException("已经打开另一数据库。");
+            _db = db; Path = path;
+            _token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+            return _token;
+        }
     }
-    public void Close() { _db?.Dispose(); _db = null; _token = null; Path = ""; }
-    public void Dispose() { Close(); Gate.Dispose(); }
+    public void Close()
+    {
+        lock (_taskSync)
+        {
+            // Keep the existing connection state if disposal fails so the caller
+            // can report a close failure rather than silently treating it as safe.
+            _db?.Dispose();
+            _db = null;
+            _token = null;
+            Path = "";
+        }
+    }
+    public void Dispose()
+    {
+        Close();
+        _fileTaskCancellation?.Dispose();
+        Gate.Dispose();
+    }
     public static bool WorkspaceValid(string work) => work is "company" or "personal";
     public static SqliteConnection Connect(string path, string password, bool create)
     {
@@ -611,8 +745,70 @@ static class WebSmoke
             (await client.GetAsync("/api/check")).EnsureSuccessStatusCode();
             using var finalLock = await client.PostAsync("/api/lock", null);
             finalLock.EnsureSuccessStatusCode();
+
+            // A paused HTTP upload exercises Q153 without relying on GUI timing.
+            var lastOpen = await client.PostAsJsonAsync("/api/open", new OpenInput(dbPath, password, false));
+            lastOpen.EnsureSuccessStatusCode();
+            string lastToken = (await lastOpen.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
+                .GetProperty("token").GetString()!;
+            client.DefaultRequestHeaders.Remove("X-IPSys-Token");
+            client.DefaultRequestHeaders.Add("X-IPSys-Token", lastToken);
+            using var paused = new PausedUploadContent();
+            using var slowRequest = new HttpRequestMessage(HttpMethod.Post,
+                $"/api/records/company/{id}/files") { Content = paused };
+            slowRequest.Headers.Add("X-File-Name", Uri.EscapeDataString("paused.bin"));
+            Task<HttpResponseMessage> runningUpload = client.SendAsync(slowRequest);
+            await paused.FirstChunkSent.WaitAsync(TimeSpan.FromSeconds(10));
+            bool active = false;
+            for (int i = 0; i < 80; ++i)
+            {
+                var taskState = await client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/task");
+                active = taskState.GetProperty("active").GetBoolean();
+                if (active) break;
+                await Task.Delay(50);
+            }
+            if (!active) throw new IOException("慢速上传未被标识为进行中的文件任务。");
+            var missingChoice = await client.PostAsJsonAsync("/api/exit", new ExitInput("normal"));
+            if (missingChoice.StatusCode != HttpStatusCode.Conflict)
+                throw new IOException("上传进行中不应绕过退出三选项。");
+            var stay = await client.PostAsJsonAsync("/api/exit", new ExitInput("stay"));
+            stay.EnsureSuccessStatusCode();
+            var prematureLock = await client.PostAsync("/api/lock", null);
+            if (prematureLock.StatusCode != HttpStatusCode.Conflict)
+                throw new IOException("上传期间不得直接关库。");
+            var cancel = await client.PostAsJsonAsync("/api/exit", new ExitInput("cancel"));
+            cancel.EnsureSuccessStatusCode();
+            paused.Release();
+            try { using var cancelledResponse = await runningUpload.WaitAsync(TimeSpan.FromSeconds(10)); }
+            catch (HttpRequestException) { /* Cancellation may close an in-flight request. */ }
         }
         finally { try { Directory.Delete(dir, true); } catch { } }
+    }
+}
+
+// HTTP body sends a first chunk then pauses, permitting reproducible exit tests.
+sealed class PausedUploadContent : HttpContent
+{
+    private readonly TaskCompletionSource<bool> _first = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource<bool> _release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public Task FirstChunkSent => _first.Task;
+    public void Release() => _release.TrySetResult(true);
+    public PausedUploadContent()
+    {
+        Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+    }
+    protected override bool TryComputeLength(out long length) { length = 8192; return true; }
+    protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context) =>
+        SendBodyAsync(stream, CancellationToken.None);
+    protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context,
+        CancellationToken cancellationToken) => SendBodyAsync(stream, cancellationToken);
+    private async Task SendBodyAsync(Stream stream, CancellationToken cancellation)
+    {
+        await stream.WriteAsync(new byte[4096], cancellation);
+        await stream.FlushAsync(cancellation);
+        _first.TrySetResult(true);
+        await _release.Task.WaitAsync(cancellation);
+        await stream.WriteAsync(new byte[4096], cancellation);
     }
 }
 

@@ -2,6 +2,10 @@ const el=(id)=>document.getElementById(id);
 let token=sessionStorage.getItem("ip-token")||"";
 let dbName=sessionStorage.getItem("ip-db")||"";
 let space="company",creating=true,resuming=false;
+let localFileTaskActive=false;
+window.addEventListener("beforeunload",ev=>{
+  if(localFileTaskActive){ev.preventDefault();ev.returnValue="";}
+});
 function notice(text,bad=false){const e=el("toast");e.textContent=text;e.className=bad?"visible bad":"visible";clearTimeout(notice.timer);notice.timer=setTimeout(()=>e.className="",4200);}
 async function api(path,opts={}){
   const headers=new Headers(opts.headers||{});
@@ -68,10 +72,12 @@ async function refresh(){
 async function upload(id,file){
  if(file.size>64*1024*1024){notice("首轮网页版单文件不超过 64 MiB",true);return;}
  notice("正在写入加密数据库，请等待上传完成…");
+ localFileTaskActive=true;
  try{const data=await(await api("/api/records/"+space+"/"+id+"/files",
    {method:"POST",headers:{"Content-Type":"application/octet-stream","X-File-Name":encodeURIComponent(file.name)},body:file})).json();
    notice("上传成功，SHA-256 "+data.sha256.slice(0,16)+"…");await refresh();
  }catch(e){notice(e.message,true);}
+ finally{localFileTaskActive=false;}
 }
 async function download(item){
  try{const res=await api("/api/files/"+space+"/"+item.id);const blob=await res.blob();
@@ -101,12 +107,37 @@ el("closeDb").onclick=async()=>{
  try{await api("/api/lock",{method:"POST"});token="";dbName="";sessionStorage.clear();recoveryMode(false);mode(false);screen(false);notice("已安全关闭数据库");}
  catch(e){notice(e.message,true);}
 };
+async function sendExit(choice){
+  el("exitDialog").close();
+  if(choice==="stay")return;
+  try{
+    const response=await(await api("/api/exit",{method:"POST",json:{choice}})).json();
+    if(response.exiting){
+      el("exit").disabled=true;
+      sessionStorage.clear();
+      notice(choice==="wait"?"文件任务结束后将安全退出。":
+        choice==="cancel"?"正在取消文件任务并安全退出…":"正在安全退出…");
+    }
+  }catch(e){
+    if(choice==="normal"&&e.message.includes("文件任务"))el("exitDialog").showModal();
+    else notice(e.message,true);
+  }
+}
 el("exit").onclick=async()=>{
- if(!confirm("安全退出本地服务并关闭数据库？"))return;
- try{if(token)await api("/api/exit",{method:"POST"});sessionStorage.clear();
-   document.body.replaceChildren(node("div","empty","IPSys 已退出，可以关闭此页面。"));
- }catch(e){notice(e.message,true);}
+  try{
+    let active=false;
+    if(token){
+      const s=await(await api("/api/task")).json();
+      active=s.active;
+      if(s.exiting){notice("程序已进入安全退出流程。");return;}
+    }
+    if(active){el("exitDialog").showModal();return;}
+    if(confirm("安全退出本地服务并关闭数据库？"))await sendExit("normal");
+  }catch(e){notice(e.message,true);}
 };
+el("exitCancelTask").onclick=()=>sendExit("cancel");
+el("exitFinishTask").onclick=()=>sendExit("wait");
+el("exitStay").onclick=()=>el("exitDialog").close();
 (async()=>{
  mode(true);
  try{
