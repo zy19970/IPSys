@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IPSys · 网页验证版</title><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head>
+<body>
+<header><div class="brand"><span class="logo">IP</span><div><strong>IPSys</strong><small>离线资料管理 · 最小网页验证版</small></div></div><span class="status">本地运行 / SQLCipher</span><button id="exit" class="sub">安全退出</button></header>
+<div class="layout"><aside><p class="label">工作空间</p><button data-space="company" class="side active">▦ 公司档案</button><button data-space="personal" class="side">♙ 个人档案</button><div class="notice">当前仅支持综合资料的创建与附件原件上传、下载。<hr>测试版：请勿导入正式敏感材料。</div></aside>
+<main>
+<section id="locked" class="auth">
+<div class="eyebrow">STEP 01 · DATABASE</div><h1>打开本地资料库</h1><p>使用真实加密的 SQLite 数据库。新建测试库或打开本验证版数据库。</p>
+<div class="panel">
+<div class="switch"><button type="button" id="newMode" class="chosen">新建测试库</button><button type="button" id="oldMode">打开已有库</button></div>
+<form id="openForm"><label for="dbPath">数据库完整路径</label><input id="dbPath" type="text" required placeholder="D:\IPSys-test\test.db"><small>请预先建立所在文件夹；不会覆盖已有数据库。</small>
+<label for="password">数据库密码</label><input id="password" type="password" required autocomplete="off" placeholder="输入密码">
+<div id="confirmWrap"><label for="confirm">再次确认密码</label><input id="confirm" type="password" autocomplete="off" placeholder="再次输入密码"></div>
+<button id="submitOpen" class="primary full">创建并进入</button></form></div>
+<p class="hint">密码仅用于本地加密库解锁。本原型不具备完整的备份、版本历史或 SSD 故障恢复能力。</p>
+</section>
+<section id="unlocked" hidden>
+<div class="heading"><div><div class="eyebrow" id="workspaceName">公司工作区</div><h1>综合资料</h1><p>先建立记录，再将文件归档到该记录中。</p></div><button class="sub" id="closeDb">关闭数据库</button></div>
+<div class="metrics"><div><span>资料记录</span><strong id="recordCount">0</strong><small>条</small></div><div><span>已归档附件</span><strong id="fileCount">0</strong><small>份</small></div><div class="long"><span>当前数据库</span><strong id="dbName">—</strong><small>SQLCipher 加密</small></div></div>
+<div class="row"><h2>资料列表</h2><button class="primary" id="addRecord">＋ 新建资料</button></div>
+<div id="records"></div><div class="foot"><button class="sub" id="checkDb">检查数据库完整性</button><span id="checkResult"></span></div>
+</section>
+</main></div>
+<dialog id="modal"><form id="newRecordForm" method="dialog"><h2>新建综合资料</h2><p>只需要填写名称</p><label for="title">资料名称</label><input id="title" maxlength="300" required placeholder="例如：测试文件归档">
+<div class="actions"><button type="button" class="sub" id="cancelRecord">取消</button><button class="primary" id="saveRecord">创建记录</button></div></form></dialog>
+<div id="toast" role="status" aria-live="polite"></div>
+</body></html>

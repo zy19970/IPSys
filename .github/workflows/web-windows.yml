@@ -1,0 +1,34 @@
+name: IPSys minimal web Windows test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/IPSys.Web/**"
+      - ".github/workflows/web-windows.yml"
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - name: Publish Windows x64 portable web app
+        shell: pwsh
+        run: dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/IPSys-Web-win-x64
+      - name: Verify browser JavaScript syntax
+        shell: pwsh
+        run: node --check src/IPSys.Web/wwwroot/app.js
+      - name: Verify SQLCipher and local HTTP roundtrip
+        shell: pwsh
+        run: .\artifacts\IPSys-Web-win-x64\IPSys.Web.exe --smoke
+      - name: Upload Windows executable and static assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: IPSys-Web-win-x64
+          path: artifacts/IPSys-Web-win-x64/
+          if-no-files-found: error
