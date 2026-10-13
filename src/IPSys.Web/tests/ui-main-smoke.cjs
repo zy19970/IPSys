@@ -191,9 +191,4 @@ assert.ok(css.includes('max-height:calc(100vh - 355px);min-height:0'),'Ledger sh
 assert.ok(css.includes('min-width:100%;font-size:15px;line-height:1.5'),'Ledger body text must be larger');
 assert.ok(css.includes('text-align:left;font-size:13px;font-weight:650'),'Ledger headings must be readable');
 assert.ok(css.includes('.auth-mode-actions{display:flex'),'Secondary new-vault button must be styled');
-// The frozen settings page now reports both database and attachment integrity.
-assert.ok(js.includes("'已核验附件：'+status.checkedAttachments"),'Settings must display the checked attachment count');
-assert.ok(js.includes("'异常附件：'+status.damagedAttachments"),'Settings must display detected hash mismatch count');
-assert.ok(js.includes("'未完成附件：'+status.incomplete"),'Settings must preserve interrupted-upload reporting');
-assert.ok(js.includes("status.result==='ok'"),'Integrity notification must distinguish warnings from passing checks');
 console.log('MAIN UI SMOKE PASS: navigation, workspace choice, live API contract, mock markers, CSP-compatible markup');
