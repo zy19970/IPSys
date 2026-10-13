@@ -289,7 +289,9 @@ static class BusinessFileEndpoints
             string filename;
             try{filename=Uri.UnescapeDataString(ctx.Request.Headers["X-File-Name"].ToString());}
             catch{return Fail("无效的附件文件名。");}
-            string category=ctx.Request.Headers["X-Material-Category"].ToString();
+            string category;
+            try{category=Uri.UnescapeDataString(ctx.Request.Headers["X-Material-Category"].ToString());}
+            catch{return Fail("附件材料类别无效。");}
             if(kind=="ip"&&category=="")category="其他材料";
             var bad=BusinessFileStore.CheckName(filename)??BusinessFileStore.CheckCategory(kind,category);
             if(bad!=null)return Fail(bad);

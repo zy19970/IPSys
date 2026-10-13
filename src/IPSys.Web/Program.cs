@@ -1192,7 +1192,7 @@ static class WebSmoke
         body.Headers.ContentType=new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         using var request=new HttpRequestMessage(HttpMethod.Post,path){Content=body};
         request.Headers.Add("X-File-Name",Uri.EscapeDataString(name));
-        if(category.Length>0)request.Headers.Add("X-Material-Category",category);
+        if(category.Length>0)request.Headers.Add("X-Material-Category",Uri.EscapeDataString(category));
         using var response=await client.SendAsync(request);
         response.EnsureSuccessStatusCode();
         var json=(await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>());

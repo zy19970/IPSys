@@ -431,7 +431,7 @@ async function uploadBusinessAttachment(file,meta){
   const response=await api(url,{method:'POST',headers:{
    'Content-Type':'application/octet-stream',
    'X-File-Name':encodeURIComponent(file.name),
-   'X-Material-Category':meta.category||''
+   'X-Material-Category':encodeURIComponent(meta.category||'')
   },body:file});
   const saved=await response.json();
   await refresh();
