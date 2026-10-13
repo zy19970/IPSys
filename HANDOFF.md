@@ -24,6 +24,7 @@
 8. **维护开发计划要收敛**。README 负责入口，REQUIREMENTS 负责冻结业务，M0 字典负责字段，DEVELOPMENT_PLAN 负责阶段，FREEZE_AUDIT 负责技术风险；DESIGN.md 是旧稿，M2 前必须重构。本交接文件只用于更换会话时恢复上下文。
 9. 新会话首先应获取 GitHub 最新 main 和完整提交历史，遵循 https://github.com/zy19970/AIGT-templates/ 的 AGENTS.md、AI_RULES/GIT_OPERATIONS.md，再开展新修改。
 10. 用户更希望 AI **直接修改 GitHub 代码、自动编译、推送 main，自己在 VS 拉取测试并反馈截图**，不希望停留在方案讨论。
+11. **GitHub 写入能力与跨会话检查约定（用户 2026-10-13 再次明确）**：用户已配置 ChatGPT ↔ GitHub 连接，默认希望 AI 根据 AIGT-templates 规则直接在 `zy19970/IPSys` 的 `main` 提交和推送可逆修改。新会话执行前必须先发现并实际检查已连接的 GitHub 工具、仓库读写能力与当前 main，而不是凭印象声称“无法访问/无法推送”。若连接状态或权限在未来发生变化，应报告本次实际的检查结果，不虚构成功或失败。
 
 ## 二、文档导航与优先级
 
