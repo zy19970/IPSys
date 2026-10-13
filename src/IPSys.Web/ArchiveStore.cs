@@ -145,6 +145,8 @@ static class ArchiveStore
             if(cmd.ExecuteScalar() is long n)newId=n;
         }
         if(!newId.HasValue)return null;
+        BusinessFileStore.CloneLinks(db,tx,workspace,"archive",id,section,
+            targetWorkspace,"archive",newId.Value,targetSection);
         if(move)
         {
             using var cmd=db.CreateCommand();

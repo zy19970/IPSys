@@ -5,7 +5,7 @@ const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<
 let token=sessionStorage.getItem('ip-token')||'';
 let dbName=sessionStorage.getItem('ip-db')||'';
 let space=null,creating=false,resuming=false,localFileTaskActive=false;
-let page='dashboard',detail=null,archiveGroup=null,editingId=null,projectEditingId=null,projectRows=[],ipEditingId=null,ipRows=[],contractEditingId=null,contractProjectId=null,contractRows=[],archiveRows={certificate:[],achievement:[],academic:[]},archiveEditingId=null,archiveTransferId=null,archiveTransferMode=null,liveRows=[],filterName='',filterKind='全部类型',filterState='全部状态',selected=new Set();
+let page='dashboard',detail=null,archiveGroup=null,editingId=null,projectEditingId=null,projectRows=[],ipEditingId=null,ipRows=[],contractEditingId=null,contractProjectId=null,contractRows=[],businessFileRows=[],pendingBusinessUpload=null,archiveRows={certificate:[],achievement:[],academic:[]},archiveEditingId=null,archiveTransferId=null,archiveTransferMode=null,liveRows=[],filterName='',filterKind='全部类型',filterState='全部状态',selected=new Set();
 const companyNav=[['dashboard','工作台','▦'],['ip','知识产权','◇'],['researchProject','科研项目','▤'],['horizontalProject','横向项目','▥'],['contract','全部合同','▧'],['certificate','企业资质','▣'],['general','综合资料','▥']];
 // Personal archives are grouped by evidence type, not by the company management menu.
 const personalNav=[['dashboard','个人工作台','▦'],['certificate','身份与资质','▣'],['ip','知识产权与著作','◇'],['researchProject','科研与合作项目','▤'],['achievement','成果与奖励','★'],['academic','学术与社会活动','▥'],['general','其他资料','▧']];
@@ -128,7 +128,7 @@ el('openForm').onsubmit=async event=>{
 };
 function selectSpace(next){
   if(!token)return;
-  space=next;page='dashboard';detail=null;archiveGroup=null;projectRows=[];ipRows=[];contractRows=[];archiveRows={certificate:[],achievement:[],academic:[]};filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();
+  space=next;page='dashboard';detail=null;archiveGroup=null;projectRows=[];ipRows=[];contractRows=[];businessFileRows=[];archiveRows={certificate:[],achievement:[],academic:[]};filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();
   el('globalSearch').value='';el('sidebarDbName').textContent=dbName;
   el('chooseWorkspace').hidden=true;el('unlocked').hidden=false;
   refresh();
@@ -140,15 +140,16 @@ async function refresh(){
   if(!token||!space)return;
   const requestedSpace=space;
   try{const archiveSections=space==='personal'?['certificate','achievement','academic']:['certificate','achievement'];
-  const [rows,projects,ips,contracts,...archiveResults]=await Promise.all([
+  const [rows,projects,ips,contracts,files,...archiveResults]=await Promise.all([
     api('/api/records/'+space).then(r=>r.json()),
     api('/api/projects/'+space).then(r=>r.json()),
     api('/api/ip/'+space).then(r=>r.json()),
     api('/api/contracts/'+space).then(r=>r.json()),
+    api('/api/business-files/'+space).then(r=>r.json()),
     ...archiveSections.map(section=>api('/api/archives/'+space+'/'+section).then(r=>r.json()))
   ]);
     if(requestedSpace!==space||!token)return;
-    liveRows=rows;projectRows=projects;ipRows=ips;contractRows=contracts;
+    liveRows=rows;projectRows=projects;ipRows=ips;contractRows=contracts;businessFileRows=files;
     archiveRows={certificate:[],achievement:[],academic:[]};
     archiveSections.forEach((section,i)=>archiveRows[section]=archiveResults[i]);render();
   }catch(error){notice(error.message,true);}
@@ -257,7 +258,7 @@ function ipList(){
  '<td>'+escapeHtml(v.status||'—')+'</td>'+
  '<td>'+escapeHtml(v.rightHolders||'—')+'</td>'+
  '<td>'+escapeHtml(v.applicationDate||v.registrationDate||'—')+'</td>'+
- '<td>0</td></tr>';}).join(''):'<tr><td colspan="7" class="empty">暂无知识产权记录，点击新建。</td></tr>')+
+ '<td>'+businessFileCount('ip',r.id)+'</td></tr>';}).join(''):'<tr><td colspan="7" class="empty">暂无知识产权记录，点击新建。</td></tr>')+
  '</tbody></table></div><div class="tablefoot">共 '+rows.length+' 条记录 · 数据保存在当前 SQLCipher 库</div></section>';
 }
 function ipDetail(){
@@ -272,7 +273,7 @@ function ipDetail(){
   '<button class="btn" data-action="ipMove">转移工作区</button>'+
   '<button class="btn" data-action="ipDelete">删除</button>')+
  section('基本信息','<div class="infogrid">'+fields+'</div>')+
- section('知识产权附件','<p class="hint">附件归属与版本管理下一阶段接入。</p>');
+ section('知识产权附件',businessAttachmentList('ip',row.id));
 }
 function ipUpdateStatus(chosen=''){
  const type=el('ip-ipType').value;
@@ -350,7 +351,7 @@ function contractDetail(){
  contractFieldLabels.map(([field,label])=>infoRow(label,
    field==='amount'?(c.amount?contractMoney(c.amount):''):c[field])).join('')+
  '</div>')+
- section('合同附件','<p class="hint">合同原件附件将在后续附件功能阶段接入。</p>');
+ section('合同附件',businessAttachmentList('contract',c.id));
 }
 function showContractForm(projectId,id=null){
  const parent=projectRows.find(p=>p.id===projectId);
@@ -389,9 +390,66 @@ function projectList(k){
  '<td><button class="link" data-project-id="'+p.id+'">'+escapeHtml(p.name)+'</button></td>'+
  '<td>'+escapeHtml(p.projectType)+'</td><td>'+escapeHtml(p.projectNo||'—')+'</td>'+
  '<td>'+escapeHtml(p.startDate||'—')+'</td>'+
- '<td>0</td></tr>').join(''):
+ '<td>'+businessFileCount('project',p.id)+'</td></tr>').join(''):
  '<tr><td colspan="5" class="empty">暂无项目，点击右上角新建项目。</td></tr>')+
  '</tbody></table></div><div class="tablefoot">共 '+visible.length+' 条记录 · 数据保存在当前 SQLCipher 库</div></section>';
+}
+
+function businessFiles(kind,ownerId,section=''){
+ return businessFileRows.filter(f=>f.kind===kind&&f.ownerId===ownerId&&
+  (kind!=='archive'||f.section===section));
+}
+function businessFileCount(kind,ownerId,section=''){
+ return businessFiles(kind,ownerId,section).length;
+}
+function businessAttachmentList(kind,ownerId,section=''){
+ const files=businessFiles(kind,ownerId,section);
+ const category=kind==='ip'?'<label for="businessMaterialCategory">附件材料类别</label>'+
+ '<select id="businessMaterialCategory">'+
+ ['申请材料','通知文件','证书文件','其他材料'].map(x=>'<option>'+x+'</option>').join('')+
+ '</select>':'';
+ return '<div class="tabletools"><b>原件附件 '+files.length+' 份</b><div class="actions">'+category+
+ '<button class="btn primary" data-action="businessUpload">＋ 上传原件</button></div></div>'+
+ '<p class="hint">文件直接保存在当前加密数据库中，同名附件保留历史版本。单文件上限 64 MiB。</p>'+
+ (files.length?files.map(f=>'<div class="fileline">'+
+ '<span class="fileicon">'+escapeHtml(f.name.split('.').pop().slice(0,4).toUpperCase())+'</span>'+
+ '<span class="filedesc"><strong>'+escapeHtml(f.name)+'</strong>'+
+ '<small>v'+f.version+(f.category?' · '+escapeHtml(f.category):'')+
+ ' · '+fmtSize(f.size)+' · SHA-256 '+escapeHtml(f.sha256.slice(0,12))+'…</small></span>'+
+ '<button class="btn btn-sm" data-business-download="'+f.id+'">下载</button>'+
+ '<button class="btn btn-sm" data-business-delete="'+f.id+'">移除</button></div>').join(''):
+ '<p class="hint">暂无附件，可选择原始文件上传。</p>');
+}
+async function uploadBusinessAttachment(file,meta){
+ if(file.size>64*1024*1024)return notice('单文件不得超过 64 MiB。',true);
+ if(localFileTaskActive)return notice('当前已有文件任务，请等待完成。',true);
+ const workspace=space;
+ localFileTaskActive=true;notice('正在将原件写入加密数据库…');
+ try{
+  const url='/api/business-files/'+workspace+'/'+meta.kind+'/'+meta.ownerId+
+   (meta.kind==='archive'?'?section='+encodeURIComponent(meta.section):'');
+  const response=await api(url,{method:'POST',headers:{
+   'Content-Type':'application/octet-stream',
+   'X-File-Name':encodeURIComponent(file.name),
+   'X-Material-Category':meta.category||''
+  },body:file});
+  const saved=await response.json();
+  await refresh();
+  notice('附件已归档（v'+saved.version+'），SHA-256 '+saved.sha256.slice(0,16)+'…');
+ }catch(e){notice(e.message,true);}
+ finally{localFileTaskActive=false;}
+}
+async function downloadBusinessAttachment(fileId){
+ try{
+  const file=businessFileRows.find(f=>f.id===fileId);if(!file)return;
+  const response=await api('/api/business-files/'+space+'/download/'+fileId);
+  const blob=await response.blob();
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=file.name;
+  document.body.append(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
+  notice('开始下载原件：'+file.name);
+ }catch(e){notice(e.message,true);}
 }
 function projectDetail(){
  const p=projectRows.find(x=>x.id===detail.id);
@@ -409,7 +467,7 @@ function projectDetail(){
  infoRow('结束日期',p.endDate)+infoRow('辅助分类',p.category)+
  infoRow('标签',p.tags)+infoRow('备注',p.remarks)+'</div>')+
  section('所属合同',projectContracts(p.id))+
- section('项目自身附件','<p class="hint">项目附件归属与附件版本管理下一阶段接入。</p>');
+ section('项目自身附件',businessAttachmentList('project',p.id));
 }
 function showProjectForm(id=null){
  projectEditingId=id;
@@ -526,7 +584,7 @@ function realArchiveTable(k,category){
  '<div class="tablewrap archive-tablewrap"><table class="data"><thead><tr><th>序号</th><th>资料名称</th><th>资料类别</th><th>附件数量</th><th>操作</th></tr></thead><tbody>'+
  (rows.length?rows.map((r,i)=>'<tr><td>'+(i+1)+'</td><td>'+
  '<button class="link" data-archive-id="'+r.id+'">'+escapeHtml(r.name)+'</button></td>'+
- '<td>'+escapeHtml(r.category||'未分类')+'</td><td>0 份</td><td><button class="btn btn-sm" data-archive-id="'+r.id+'">查看详情</button></td></tr>').join(''):
+ '<td>'+escapeHtml(r.category||'未分类')+'</td><td>'+businessFileCount('archive',r.id,k)+' 份</td><td><button class="btn btn-sm" data-archive-id="'+r.id+'">查看详情</button></td></tr>').join(''):
  '<tr><td colspan="5" class="empty">此类别暂无记录，点击右上角新建。</td></tr>')+
  '</tbody></table></div><div class="tablefoot">当前类别共 '+all.length+' 条真实记录</div></section>';
 }
@@ -543,7 +601,7 @@ function realArchiveDetail(){
   '<button class="btn" data-action="archiveDelete">删除</button>')+
  section('基本信息','<div class="infogrid">'+infoRow('资料名称',record.name)+
  infoRow('类别',record.category)+infoRow('备注',record.remarks)+infoRow('标签',record.tags)+'</div>')+
- section('附件资料','<p class="hint">此记录的附件归属将在下一阶段接入。</p>');
+ section('附件资料',businessAttachmentList('archive',record.id,page));
 }
 function showArchiveForm(id=null){
  const record=id===null?null:(archiveRows[page]||[]).find(r=>r.id===id);
@@ -700,6 +758,19 @@ el('content').addEventListener('click',async ev=>{
   detail={kind:'archive',id:Number(target.dataset.archiveId)};render();
   el('content').scrollTo(0,0);return;
  }
+ if(target.dataset.businessDownload){
+  await downloadBusinessAttachment(Number(target.dataset.businessDownload));return;
+ }
+ if(target.dataset.businessDelete){
+  const fileId=Number(target.dataset.businessDelete);
+  const f=businessFileRows.find(x=>x.id===fileId);
+  if(!f||!confirm('从这条业务记录中移除“'+f.name+'”（v'+f.version+'）？可在回收站完善后恢复。'))return;
+  try{
+   await api('/api/business-files/'+space+'/'+fileId,{method:'DELETE'});
+   await refresh();notice('已从此记录移除附件（未物理删除原件）。');
+  }catch(e){notice(e.message,true);}
+  return;
+ }
  if(target.dataset.mockId){openMockRecord(page,Number(target.dataset.mockId));return;}
  if(target.dataset.contractBackProject){
   const p=projectRows.find(r=>r.id===Number(target.dataset.contractBackProject));
@@ -715,6 +786,18 @@ el('content').addEventListener('click',async ev=>{
  if(target.dataset.searchDetail){const [k,id]=target.dataset.searchDetail.split(':');openMockRecord(k,Number(id));return;}
  if(target.dataset.download){const r=liveRows.find(r=>r.id===detail?.id);const file=r?.files.find(f=>f.id===Number(target.dataset.download));if(file)await download(file);return;}
  switch(target.dataset.action){
+  case 'businessUpload':{
+   if(!detail||!['project','ip','contract','archive'].includes(detail.kind))break;
+   const owner=detail.kind==='archive'?(archiveRows[page]||[]).find(x=>x.id===detail.id):null;
+   if(detail.kind==='archive'&&!owner)break;
+   pendingBusinessUpload={
+    kind:detail.kind,ownerId:detail.id,
+    section:detail.kind==='archive'?page:'',
+    category:detail.kind==='ip'?(el('businessMaterialCategory')?.value||'其他材料'):''
+   };
+   const chooser=el('businessFileInput');chooser.value='';chooser.click();
+   break;
+  }
   case 'archiveAdd':showArchiveForm();break;
   case 'archiveEdit':showArchiveForm(detail?.id);break;
   case 'archiveCopy':showArchiveTransfer(false);break;
@@ -738,9 +821,7 @@ el('content').addEventListener('click',async ev=>{
    const c=contractRows.find(row=>row.id===detail?.id);if(!c)break;
    if(!confirm('在“'+c.projectName+'”项目下复制合同“'+c.name+'”？'))break;
    try{
-    const input=Object.fromEntries(contractFieldLabels.map(([key])=>[key,c[key]]));
-    const response=await api('/api/projects/'+space+'/'+c.projectId+'/contracts',
-      {method:'POST',json:input});
+    const response=await api('/api/contracts/'+space+'/'+c.id+'/copy',{method:'POST'});
     const newId=(await response.json()).id;
     const projectReturn=detail.returnProject;
     await refresh();
@@ -823,6 +904,12 @@ el('content').addEventListener('click',async ev=>{
   default:notice('当前仅展示界面设计，尚未接入该业务功能');
  }
 });
+el('businessFileInput').onchange=async event=>{
+ const input=event.target;
+ const file=input.files?.[0],meta=pendingBusinessUpload;
+ pendingBusinessUpload=null;input.value='';
+ if(file&&meta)await uploadBusinessAttachment(file,meta);
+};
 el('content').addEventListener('change',async ev=>{
  if(ev.target.id==='uploadInput'){
   const files=ev.target.files;if(files?.length&&detail?.kind==='general')await upload(detail.id,files[0]);ev.target.value='';
@@ -960,7 +1047,7 @@ el('newRecordForm').onsubmit=async ev=>{
 };
 async function closeDb(){
  if(!confirm('关闭当前数据库？再次打开时需要输入数据库密码。'))return;
- try{await api('/api/lock',{method:'POST'});token='';dbName='';space=null;liveRows=[];projectRows=[];ipRows=[];contractRows=[];archiveRows={certificate:[],achievement:[],academic:[]};sessionStorage.clear();recoveryMode(false);mode(false);screen(false);notice('已安全关闭数据库');}catch(e){notice(e.message,true);}
+ try{await api('/api/lock',{method:'POST'});token='';dbName='';space=null;liveRows=[];projectRows=[];ipRows=[];contractRows=[];businessFileRows=[];archiveRows={certificate:[],achievement:[],academic:[]};sessionStorage.clear();recoveryMode(false);mode(false);screen(false);notice('已安全关闭数据库');}catch(e){notice(e.message,true);}
 }
 el('closeDbFromChoice').onclick=closeDb;
 async function sendExit(choice){

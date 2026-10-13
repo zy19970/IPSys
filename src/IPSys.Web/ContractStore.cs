@@ -144,23 +144,74 @@ static class ContractStore
     }
     // In the SAME transaction as creation of the destination project.
     // The copied child never points back to the source workspace or source project.
-    public static void CopyChildren(SqliteConnection db, SqliteTransaction transaction,
-        string sourceWorkspace, long sourceId, string targetWorkspace, long targetId)
+    public static long? Duplicate(SqliteConnection db,string workspace,long id)
     {
-        using var cmd = db.CreateCommand();
-        cmd.Transaction = transaction;
-        cmd.CommandText = """
-            INSERT INTO business_contracts(project_id,workspace,name,contract_no,sign_date,
-                amount,signing_parties,category,remarks,tags)
-            SELECT $targetId,$targetWorkspace,name,contract_no,sign_date,
-                amount,signing_parties,category,remarks,tags
-            FROM business_contracts
-            WHERE project_id=$sourceId AND workspace=$sourceWorkspace AND deleted=0;
-            """;
-        cmd.Parameters.AddWithValue("$targetId", targetId);
-        cmd.Parameters.AddWithValue("$targetWorkspace", targetWorkspace);
-        cmd.Parameters.AddWithValue("$sourceId", sourceId);
-        cmd.Parameters.AddWithValue("$sourceWorkspace", sourceWorkspace);
-        cmd.ExecuteNonQuery();
+        using var tx=db.BeginTransaction();
+        long? duplicated=null;
+        using(var cmd=db.CreateCommand())
+        {
+            cmd.Transaction=tx;
+            cmd.CommandText="""
+                INSERT INTO business_contracts(project_id,workspace,name,contract_no,
+                  sign_date,amount,signing_parties,category,remarks,tags)
+                SELECT c.project_id,c.workspace,c.name,c.contract_no,c.sign_date,
+                  c.amount,c.signing_parties,c.category,c.remarks,c.tags
+                FROM business_contracts c
+                JOIN business_projects p ON p.id=c.project_id AND p.workspace=c.workspace
+                WHERE c.id=$id AND c.workspace=$w AND c.deleted=0 AND p.deleted=0;
+                SELECT CASE WHEN changes()=1 THEN last_insert_rowid() ELSE NULL END;
+                """;
+            cmd.Parameters.AddWithValue("$id",id);cmd.Parameters.AddWithValue("$w",workspace);
+            if(cmd.ExecuteScalar() is long copied)duplicated=copied;
+        }
+        if(!duplicated.HasValue)return null;
+        BusinessFileStore.CloneLinks(db,tx,workspace,"contract",id,"",
+            workspace,"contract",duplicated.Value,"");
+        tx.Commit();
+        return duplicated;
     }
+
+    // Copy each contract separately, retaining its original attachment references.
+    public static void CopyChildren(SqliteConnection db,SqliteTransaction tx,
+        string sourceWorkspace,long sourceId,string targetWorkspace,long targetId)
+    {
+        var originals=new List<long>();
+        using(var cmd=db.CreateCommand())
+        {
+            cmd.Transaction=tx;
+            cmd.CommandText="""
+                SELECT id FROM business_contracts
+                WHERE project_id=$project AND workspace=$workspace AND deleted=0 ORDER BY id;
+                """;
+            cmd.Parameters.AddWithValue("$project",sourceId);
+            cmd.Parameters.AddWithValue("$workspace",sourceWorkspace);
+            using var reader=cmd.ExecuteReader();
+            while(reader.Read())originals.Add(reader.GetInt64(0));
+        }
+        foreach(long oldId in originals)
+        {
+            long newId;
+            using(var cmd=db.CreateCommand())
+            {
+                cmd.Transaction=tx;
+                cmd.CommandText="""
+                    INSERT INTO business_contracts(project_id,workspace,name,contract_no,
+                      sign_date,amount,signing_parties,category,remarks,tags)
+                    SELECT $project,$workspace,name,contract_no,sign_date,amount,
+                      signing_parties,category,remarks,tags
+                    FROM business_contracts
+                    WHERE id=$old AND workspace=$oldWorkspace AND deleted=0;
+                    SELECT last_insert_rowid();
+                    """;
+                cmd.Parameters.AddWithValue("$project",targetId);
+                cmd.Parameters.AddWithValue("$workspace",targetWorkspace);
+                cmd.Parameters.AddWithValue("$old",oldId);
+                cmd.Parameters.AddWithValue("$oldWorkspace",sourceWorkspace);
+                newId=(long)cmd.ExecuteScalar()!;
+            }
+            BusinessFileStore.CloneLinks(db,tx,sourceWorkspace,"contract",oldId,"",
+                targetWorkspace,"contract",newId,"");
+        }
+    }
+
 }

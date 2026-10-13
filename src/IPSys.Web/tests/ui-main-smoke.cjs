@@ -206,7 +206,7 @@ assert.ok(js.includes("projectRows=projects;ipRows=ips;contractRows=contracts;")
 const projectCtx=vm.createContext({sessionStorage:{getItem:()=>null}});
 const projector=js.slice(js.indexOf('function projectViewRows('),js.indexOf('function archiveCard(',js.indexOf('function projectViewRows(')));
 vm.runInContext(preamble+
- '\nfunction heading(t){return t;}\nfunction infoRow(n,v){return n+v;}\nfunction section(n,v){return n+v;}\n'+projector+
+ '\nfunction heading(t){return t;}\nfunction infoRow(n,v){return n+v;}\nfunction section(n,v){return n+v;}\nfunction businessFileCount(){return 0;}\n'+projector+
  "\nspace='company';projectRows=[{id:12,name:'真实项目',projectType:'科研项目',projectNo:'X-1',startDate:'2026-01-02',projectStatus:'进行中',leader:'负责人甲'}];globalThis.__project=projectList('researchProject');",projectCtx);
 assert.ok(projectCtx.__project.includes('data-project-id="12"'),'Real project ledger must open persisted IDs');
 assert.ok(!projectCtx.__project.includes('负责人甲'),'Project leader must not appear in the ledger');
@@ -226,8 +226,8 @@ const intellectualCode=js.slice(js.indexOf('const ipStatusByType='),js.indexOf('
 assert.ok(intellectualCode.length>0);
 const ipCtx=vm.createContext({sessionStorage:{getItem:()=>null}});
 vm.runInContext(preamble+
- '\nfunction heading(t){return t;}\nfunction infoRow(n,v){return n+v;}\nfunction section(n,v){return n+v;}\n'+intellectualCode+
- "\nspace='company';ipRows=[{id:32,data:{name:'真实专利',ipType:'发明专利',applicationNo:'CN-42',status:'已申请',rightHolders:'权利人甲',applicationDate:'2026-02-01'}}];globalThis.__ip=ipList();globalThis.__types=Object.keys(ipStatusByType);",ipCtx);
+ '\nfunction heading(t){return t;}\nfunction infoRow(n,v){return n+v;}\nfunction section(n,v){return n+v;}\nfunction businessFileCount(){return 0;}\n'+intellectualCode+
+ "\nspace='company';businessFileRows=[];ipRows=[{id:32,data:{name:'真实专利',ipType:'发明专利',applicationNo:'CN-42',status:'已申请',rightHolders:'权利人甲',applicationDate:'2026-02-01'}}];globalThis.__ip=ipList();globalThis.__types=Object.keys(ipStatusByType);",ipCtx);
 assert.ok(ipCtx.__ip.includes('data-ip-id="32"'),'Real IP rows must link to stored IDs');
 assert.ok(!ipCtx.__ip.includes('仅演示'),'Real IP ledger must not use mock labels');
 assert.equal(ipCtx.__types.length,7,'Exactly seven M0 IP types must be selectable');
@@ -278,6 +278,7 @@ vm.runInContext(preamble+'\n'+js.slice(archiveFirst,archiveLast)+
  "\nfunction heading(name,subtitle,actions){return '<h1>'+name+'</h1>'+(actions||'');}"+
  "\nfunction infoRow(k,v){return k+':'+v;}"+
  "\nfunction section(name,content){return name+content;}"+
+ "\nfunction businessFileCount(){return 0;}"+
  "\nspace='personal';page='academic';filterName='';filterKind='全部类型';"+
  "archiveRows={certificate:[],achievement:[],academic:["+
  "{id:21,name:'第一次兼职',category:'学术兼职',remarks:'',tags:''},"+
@@ -303,4 +304,19 @@ assert.ok(!realArchiveCtx.__realCards.includes('界面示例'),
  'Real archive pages must not be labelled as demonstration data');
 assert.ok(realArchiveCtx.__possibleTargets.some(x=>x.workspace==='company'&&x.kind==='company_certificate'),
  'Company and personal certificates must remain different logical kinds');
+
+// B05 real business file links are scoped to stored records, not demo attachments.
+assert.ok(html.includes('id="businessFileInput"'),'Business original file picker missing');
+assert.ok(js.includes("api('/api/business-files/'+space).then(r=>r.json())"),
+ 'Business attachment metadata must be loaded by workspace');
+assert.ok(js.includes("businessFileRows=files"),'Real attachment rows must be bound from SQLCipher');
+for(const text of ["businessAttachmentList('project',p.id)","businessAttachmentList('ip',row.id)",
+ "businessAttachmentList('contract',c.id)","businessAttachmentList('archive',record.id,page)"])
+ assert.ok(js.includes(text),'Business detail is missing its actual attachment list: '+text);
+for(const action of ['businessUpload','businessDownload','businessDelete'])
+ assert.ok(js.includes(action),'Required business attachment operation missing: '+action);
+assert.ok(js.includes("'/api/contracts/'+space+'/'+c.id+'/copy'"),
+ 'Duplicating contracts must clone persisted file references with the contract');
+assert.ok(js.includes("businessFileCount('archive',r.id,k)"),
+ 'Archive detail ledger must show actual attachment counts');
 console.log('MAIN UI SMOKE PASS: navigation, workspace choice, live API contract, mock markers, CSP-compatible markup');

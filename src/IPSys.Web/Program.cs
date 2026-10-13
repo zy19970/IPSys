@@ -99,6 +99,7 @@ app.MapPost("/api/open", async (OpenInput input, Vault v) =>
             IpStore.Ensure(db);
             ContractStore.Ensure(db);
             ArchiveStore.Ensure(db);
+            BusinessFileStore.Ensure(db);
             string token = v.SetOpen(db, path);
             db = null;
             return Results.Json(new { token, name = Path.GetFileName(path) });
@@ -385,6 +386,23 @@ app.MapPost("/api/projects/{workspace}/{projectId:long}/contracts", async (
         return Results.Json(new { id = ContractStore.Add(v.Db, workspace, projectId, input) });
     }
     finally { v.Gate.Release(); }
+});
+// Duplicate a contract and its file references in a single SQLCipher transaction.
+app.MapPost("/api/contracts/{workspace}/{id:long}/copy",async(
+    HttpContext ctx,Vault v,string workspace,long id)=>
+{
+    if(!v.Allowed(ctx))return Results.Unauthorized();
+    if(!Vault.WorkspaceValid(workspace))return Fail("无效工作区。");
+    if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务进行中或程序正在退出。",409);
+    await v.Gate.WaitAsync();
+    try
+    {
+        if(!v.Allowed(ctx))return Results.Unauthorized();
+        if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务进行中或程序正在退出。",409);
+        var copied=ContractStore.Duplicate(v.Db,workspace,id);
+        return copied.HasValue?Results.Json(new{id=copied.Value}):Results.NotFound();
+    }
+    finally{v.Gate.Release();}
 });
 app.MapPut("/api/contracts/{workspace}/{id:long}", async (
     HttpContext ctx, Vault v, string workspace, long id, ContractInput input) =>
@@ -718,6 +736,8 @@ app.MapGet("/api/files/{workspace}/{id:long}", async (HttpContext ctx, Vault v, 
     finally { v.Gate.Release(); }
 });
 
+BusinessFileEndpoints.Map(app);
+
 app.MapGet("/api/check", async (HttpContext ctx, Vault v) =>
 {
     if (!v.Allowed(ctx)) return Results.Unauthorized();
@@ -925,6 +945,8 @@ static class ProjectStore
             newId=(long)insert.ExecuteScalar()!;
         }
         ContractStore.CopyChildren(db,tx,workspace,id,target,newId);
+        BusinessFileStore.CloneLinks(db,tx,workspace,"project",id,"",
+            target,"project",newId,"");
         if(move)
         {
             using var delete=db.CreateCommand();delete.Transaction=tx;
@@ -1160,6 +1182,24 @@ sealed class Vault : IDisposable
 
 static class WebSmoke
 {
+    private static async Task<(long Id,int Version)> UploadBusinessFile(HttpClient client,
+        string workspace,string kind,long ownerId,byte[] data,string name,
+        string section="",string category="")
+    {
+        var path=$"/api/business-files/{workspace}/{kind}/{ownerId}"+
+            (section.Length>0?"?section="+Uri.EscapeDataString(section):"");
+        using var body=new ByteArrayContent(data);
+        body.Headers.ContentType=new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+        using var request=new HttpRequestMessage(HttpMethod.Post,path){Content=body};
+        request.Headers.Add("X-File-Name",Uri.EscapeDataString(name));
+        if(category.Length>0)request.Headers.Add("X-Material-Category",category);
+        using var response=await client.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        var json=(await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>());
+        if(json.GetProperty("sha256").GetString()!=Convert.ToHexString(SHA256.HashData(data)))
+            throw new IOException("入库原件 SHA-256 与源文件不一致。");
+        return (json.GetProperty("id").GetInt64(),json.GetProperty("version").GetInt32());
+    }
     public static async Task Run(string address)
     {
         using var client = new HttpClient { BaseAddress = new Uri(address) };
@@ -1289,11 +1329,60 @@ static class WebSmoke
                 .EnsureSuccessStatusCode();
             if ((await client.GetFromJsonAsync<List<ContractView>>("/api/contracts/company"))?.Count != 1)
                 throw new IOException("删除合同后不得在汇总台账继续显示。");
+            // B05: business originals are scoped by their exact owning records.
+            byte[] businessData=RandomNumberGenerator.GetBytes(1024*1024+23);
+            var projectOriginal=await UploadBusinessFile(client,"company","project",
+                projectId,businessData,"方案.pdf");
+            var contractOriginal=await UploadBusinessFile(client,"company","contract",
+                contractId,businessData,"合同原件.pdf");
+            if(projectOriginal.Version!=1||contractOriginal.Version!=1)
+                throw new IOException("业务附件首版本必须为 v1。");
+            if(! (await client.GetByteArrayAsync(
+                $"/api/business-files/company/download/{projectOriginal.Id}"))
+                .AsSpan().SequenceEqual(businessData))
+                throw new IOException("项目附件下载内容与原始数据不一致。");
+            using(var otherWorkspace=new HttpClient{BaseAddress=new Uri(address)})
+            {
+                if((await otherWorkspace.GetAsync("/api/business-files/company"))
+                    .StatusCode!=HttpStatusCode.Unauthorized)
+                    throw new IOException("未登录不得读取业务附件列表。");
+            }
+            if((await client.GetAsync(
+                $"/api/business-files/personal/download/{projectOriginal.Id}"))
+                .StatusCode!=HttpStatusCode.NotFound)
+                throw new IOException("跨工作区不得下载原件。");
+            using(var invalidUpload=new ByteArrayContent(businessData))
+            using(var request=new HttpRequestMessage(HttpMethod.Post,
+                "/api/business-files/company/project/999999999"){Content=invalidUpload})
+            {
+                request.Headers.Add("X-File-Name","not-owned.txt");
+                if((await client.SendAsync(request)).StatusCode!=HttpStatusCode.NotFound)
+                    throw new IOException("无主业务附件应拒绝写入。");
+            }
+            var clonedContract=await client.PostAsync(
+                $"/api/contracts/company/{contractId}/copy",null);
+            clonedContract.EnsureSuccessStatusCode();
+            long clonedContractId=(await clonedContract.Content
+                .ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("id").GetInt64();
+            var copiedFiles=await client.GetFromJsonAsync<List<BusinessFileView>>(
+                "/api/business-files/company");
+            if(copiedFiles is null||!copiedFiles.Any(f=>f.Kind=="contract"&&
+                f.OwnerId==clonedContractId&&f.Name=="合同原件.pdf"))
+                throw new IOException("合同同项目复制必须携带关联原件。");
+            (await client.DeleteAsync($"/api/contracts/company/{clonedContractId}"))
+                .EnsureSuccessStatusCode();
             var copyProject = await client.PostAsJsonAsync(
                 $"/api/projects/company/{projectId}/transfer",new ProjectTransfer("company", false));
             copyProject.EnsureSuccessStatusCode();
             long copiedProjectId = (await copyProject.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
                 .GetProperty("id").GetInt64();
+            var projectsWithFiles=await client.GetFromJsonAsync<List<BusinessFileView>>(
+                "/api/business-files/company");
+            if(projectsWithFiles is null||
+                !projectsWithFiles.Any(f=>f.Kind=="project"&&f.OwnerId==copiedProjectId)||
+                !projectsWithFiles.Any(f=>f.Kind=="contract"&&f.OwnerId!=contractId&&
+                    f.OwnerId!=clonedContractId))
+                throw new IOException("复制项目必须携带自身及子合同的原件。");
             var afterProjectCopy = await client.GetFromJsonAsync<List<ContractView>>("/api/contracts/company");
             if (afterProjectCopy is null || afterProjectCopy.Count != 2 ||
                 afterProjectCopy.Count(c => c.ProjectId == copiedProjectId) != 1 ||
@@ -1305,6 +1394,12 @@ static class WebSmoke
             long movedProjectId = (await moveProject.Content
                 .ReadFromJsonAsync<System.Text.Json.JsonElement>())
                 .GetProperty("id").GetInt64();
+            var movedFiles=await client.GetFromJsonAsync<List<BusinessFileView>>(
+                "/api/business-files/personal");
+            if(movedFiles is null ||
+                !movedFiles.Any(f=>f.Kind=="project"&&f.OwnerId==movedProjectId)||
+                !movedFiles.Any(f=>f.Kind=="contract"))
+                throw new IOException("项目转移时文件与子合同附件必须保留。");
             var movedContracts = await client.GetFromJsonAsync<List<ContractView>>("/api/contracts/personal");
             if (movedContracts is null || movedContracts.Count != 1 ||
                 movedContracts[0].ProjectId != movedProjectId ||
@@ -1345,6 +1440,15 @@ static class WebSmoke
             var ipWrongWorkspace=await client.DeleteAsync($"/api/ip/personal/{ipId}");
             if(ipWrongWorkspace.StatusCode!=HttpStatusCode.NotFound)
                 throw new IOException("跨工作区删除知识产权必须拒绝。");
+            var ipOriginal=await UploadBusinessFile(client,"company","ip",ipId,
+                businessData,"专利申请书.pdf",category:"申请材料");
+            var ipNextVersion=await UploadBusinessFile(client,"company","ip",ipId,
+                businessData,"专利申请书.pdf",category:"申请材料");
+            if(ipOriginal.Version!=1||ipNextVersion.Version!=2)
+                throw new IOException("知识产权同名同类别附件应生成历史版本。");
+            if((await client.GetFromJsonAsync<List<BusinessFileView>>(
+                "/api/business-files/company"))?.Count(f=>f.Kind=="ip"&&f.OwnerId==ipId)!=2)
+                throw new IOException("同名版本必须保留两份真实元数据。");
             var ipCopy=await client.PostAsJsonAsync(
                 $"/api/ip/company/{ipId}/transfer",new IpTransfer("company",false));
             ipCopy.EnsureSuccessStatusCode();
@@ -1353,6 +1457,15 @@ static class WebSmoke
             var ipMove=await client.PostAsJsonAsync(
                 $"/api/ip/company/{copiedIp}/transfer",new IpTransfer("personal",true));
             ipMove.EnsureSuccessStatusCode();
+            var personalIpFiles=await client.GetFromJsonAsync<List<BusinessFileView>>(
+                "/api/business-files/personal");
+            if(personalIpFiles is null||personalIpFiles.Count(f=>f.Kind=="ip")!=2)
+                throw new IOException("知识产权跨工作区转移必须携带全部附件版本。");
+            if(! (await client.GetByteArrayAsync(
+                $"/api/business-files/personal/download/{personalIpFiles.First(f=>f.Kind=="ip").Id}"))
+                .AsSpan().SequenceEqual(businessData))
+                throw new IOException("转移知识产权后的原件下载校验失败。");
+
             (await client.DeleteAsync($"/api/ip/company/{ipId}")).EnsureSuccessStatusCode();
             if((await client.GetFromJsonAsync<List<IpView>>("/api/ip/company"))?.Count!=0 ||
                (await client.GetFromJsonAsync<List<IpView>>("/api/ip/personal"))?.Count!=1)
@@ -1401,12 +1514,21 @@ static class WebSmoke
                     .StatusCode!=HttpStatusCode.Unauthorized)
                     throw new IOException("未授权不能读取归档资料。");
             }
+            var certFile=await UploadBusinessFile(client,"company","archive",
+                companyCertificateId,businessData,"企业证书.pdf",section:"certificate");
+            var invalidMaterial=await client.GetAsync("/api/business-files/company");
+            invalidMaterial.EnsureSuccessStatusCode();
             var certCopy=await client.PostAsJsonAsync(
                 $"/api/archives/company/certificate/{companyCertificateId}/transfer",
                 new ArchiveTransfer("company","certificate",false));
             certCopy.EnsureSuccessStatusCode();
             long duplicateCertId=(await certCopy.Content
                 .ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("id").GetInt64();
+            var copiedCertFiles=await client.GetFromJsonAsync<List<BusinessFileView>>(
+                "/api/business-files/company");
+            if(copiedCertFiles is null || !copiedCertFiles.Any(f=>f.Kind=="archive"&&
+                f.OwnerId==duplicateCertId&&f.Section=="certificate"))
+                throw new IOException("归档证件复制应携带附件关联。");
             var crossCertificate=await client.PostAsJsonAsync(
                 $"/api/archives/company/certificate/{companyCertificateId}/transfer",
                 new ArchiveTransfer("personal","certificate",true));
@@ -1546,6 +1668,12 @@ static class WebSmoke
             again.EnsureSuccessStatusCode();
             string newToken = (await again.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("token").GetString()!;
             client.DefaultRequestHeaders.Add("X-IPSys-Token", newToken);
+            var afterReopenFiles=await client.GetFromJsonAsync<List<BusinessFileView>>(
+                "/api/business-files/personal");
+            if(afterReopenFiles is null||
+                !afterReopenFiles.Any(f=>f.Kind=="project"&&f.OwnerId==movedProjectId)||
+                afterReopenFiles.Count(f=>f.Kind=="ip")!=2)
+                throw new IOException("重开资料库后业务原件元数据丢失。");
             var persistedIp = await client.GetFromJsonAsync<List<IpView>>("/api/ip/personal");
             if(persistedIp is null || persistedIp.Count!=1 ||
                 persistedIp[0].Data.Name!="已修改发明" || persistedIp[0].Data.Status!="实质审查中")

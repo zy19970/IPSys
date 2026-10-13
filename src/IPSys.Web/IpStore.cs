@@ -140,6 +140,8 @@ static class IpStore
             if(value is long n)copied=n;
         }
         if(!copied.HasValue)return null;
+        BusinessFileStore.CloneLinks(db,transaction,workspace,"ip",id,"",
+            target,"ip",copied.Value,"");
         if(move)
         {
             using var remove=db.CreateCommand();remove.Transaction=transaction;
