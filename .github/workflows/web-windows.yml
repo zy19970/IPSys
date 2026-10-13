@@ -25,7 +25,15 @@ jobs:
         run: node --check src/IPSys.Web/wwwroot/app.js
       - name: Verify SQLCipher and local HTTP roundtrip
         shell: pwsh
-        run: .\artifacts\IPSys-Web-win-x64\IPSys.Web.exe --smoke
+        run: |
+          $report = Join-Path $env:RUNNER_TEMP 'ipsys-web-smoke.txt'
+          $env:IPSYS_SMOKE_REPORT = $report
+          $exe = (Resolve-Path '.\artifacts\IPSys-Web-win-x64\IPSys.Web.exe').Path
+          $proc = Start-Process -FilePath $exe -ArgumentList '--smoke' -PassThru -Wait
+          if ($proc.ExitCode -ne 0) { throw "WinExe smoke failed (exit $($proc.ExitCode))" }
+          if (-not (Test-Path $report)) { throw "Smoke completion report missing" }
+          if ((Get-Content $report -Raw) -notmatch 'WEB SMOKE PASS') { throw "Smoke assertions incomplete" }
+          Write-Host "WEB SMOKE PASS (WinExe process finished; report verified)"
       - name: Upload Windows executable and static assets
         uses: actions/upload-artifact@v4
         with:

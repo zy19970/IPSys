@@ -7,6 +7,7 @@ using System.Text;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.Data.Sqlite;
+using IPSys.Web;
 
 SQLitePCL.Batteries_V2.Init();
 var smoke = args.Contains("--smoke");
@@ -329,6 +330,9 @@ if (smoke)
     try
     {
         await WebSmoke.Run(address);
+        string? smokeReport = Environment.GetEnvironmentVariable("IPSYS_SMOKE_REPORT");
+        if (!string.IsNullOrWhiteSpace(smokeReport))
+            File.WriteAllText(smokeReport, "WEB SMOKE PASS", Encoding.UTF8);
         Console.WriteLine("WEB SMOKE PASS");
     }
     finally { await app.StopAsync(); }
