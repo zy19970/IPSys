@@ -99,6 +99,18 @@ for(const section of ['personalIdentity','personalAchievement','personalAcademic
  assert.match(snapshots[section],/class="archivecard/,'Missing card: '+section);
  assert.ok(!snapshots[section].includes('<table'),'Tables are not allowed in archive sections: '+section);
 }
+// Only the project ledger loses status/leader. Their values remain on the detail page.
+const projectColumnLabels=JSON.parse(vm.runInContext("JSON.stringify(columns('researchProject').map(x=>x[1]))",cardsCtx));
+const horizontalColumnLabels=JSON.parse(vm.runInContext("JSON.stringify(columns('horizontalProject').map(x=>x[1]))",cardsCtx));
+const patentColumnLabels=JSON.parse(vm.runInContext("JSON.stringify(columns('ip').map(x=>x[1]))",cardsCtx));
+for(const labels of [projectColumnLabels,horizontalColumnLabels]){
+ assert.deepEqual(labels,['项目名称','项目类别','项目编号','开始日期','附件']);
+ assert.ok(!labels.includes('负责人')&&!labels.includes('项目状态'),'Project ledger must omit detail-only fields');
+}
+assert.ok(patentColumnLabels.includes('状态')&&patentColumnLabels.includes('当前权利人'),'Patent ledger columns must remain unchanged');
+const detailSource=js.slice(js.indexOf('function mockDetail(){'),js.indexOf('function ',js.indexOf('function mockDetail(){')+11));
+assert.ok(detailSource.includes("infoRow('负责人',r.leader)"),'Project leader must remain visible on its detail page');
+assert.ok(detailSource.includes("infoRow('项目状态',r.status)"),'Project status must remain visible on its detail page');
 for(const section of ['personalPatent','companyPatent']){
  assert.ok(snapshots[section].includes('<table'),'IP ledger must remain a table: '+section);
 }

@@ -197,7 +197,7 @@ function realDetail(){
 }
 function columns(k){
  if(k==='ip')return [['name','名称'],['type','知识产权类型'],['code','申请/登记号'],['status','状态'],['owner','当前权利人'],['date','申请/登记日期'],['files','附件']];
- if(isProject(k))return [['name','项目名称'],['type','项目类别'],['code','项目编号'],['status','项目状态'],['leader','负责人'],['date','开始日期'],['files','附件']];
+ if(isProject(k))return [['name','项目名称'],['type','项目类别'],['code','项目编号'],['date','开始日期'],['files','附件']];
  if(k==='contract')return [['name','合同名称'],['project','所属项目'],['code','合同编号'],['date','签订日期'],['amount','合同金额（元）'],['files','附件']];
  return [['name','名称'],['type','类别'],['files','附件']];
 }
