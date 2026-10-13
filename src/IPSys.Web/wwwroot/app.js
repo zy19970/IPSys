@@ -388,7 +388,15 @@ el('content').addEventListener('click',async ev=>{
   case 'upload':el('uploadInput')?.click();break;
   case 'filter':filterName=el('filterSearch')?.value.trim()||'';filterKind=el('filterKind')?.value||'全部类型';filterState=el('filterState')?.value||'全部状态';selected.clear();render();break;
   case 'clearFilter':filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();render();break;
-  case 'check':try{const status=await(await api('/api/check')).json();const out=el('checkResult');if(out)out.textContent='完整性：'+status.result+'；未完成附件：'+status.incomplete;notice(status.result==='ok'?'数据库完整性检查通过':'数据库检查异常',status.result!=='ok');}catch(e){notice(e.message,true);}break;
+  case 'check':try{
+   notice('正在核验数据库结构及各附件的 SHA-256，请等待完成…');
+   const status=await(await api('/api/check')).json();
+   const out=el('checkResult');
+   if(out)out.textContent='数据库结构：'+status.structure+'；已核验附件：'+status.checkedAttachments+
+    '；异常附件：'+status.damagedAttachments+'；未完成附件：'+status.incomplete+
+    (status.problems?.length?'；'+status.problems.join('；'):'');
+   notice(status.result==='ok'?'资料库及附件校验通过':'发现数据库或附件异常，请先保存现状并检查，不会自动修复',status.result!=='ok');
+  }catch(e){notice(e.message,true);}break;
   case 'lock':await closeDb();break;
   case 'demoContract':notice('合同新增功能尚未开发，本页仅为布局演示');break;
   default:notice('当前仅展示界面设计，尚未接入该业务功能');

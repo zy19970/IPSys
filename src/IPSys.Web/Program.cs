@@ -399,20 +399,41 @@ app.MapGet("/api/files/{workspace}/{id:long}", async (HttpContext ctx, Vault v, 
     finally { v.Gate.Release(); }
 });
 
+// Manual diagnostic only: neither VACUUM nor repair is performed. Checking
+// each stored attachment hash detects silent byte corruption that SQLite's
+// own page/structure integrity check cannot detect.
 app.MapGet("/api/check", async (HttpContext ctx, Vault v) =>
 {
     if (!v.Allowed(ctx)) return Results.Unauthorized();
-    await v.Gate.WaitAsync();
+    if (v.FileTaskActive || v.ExitRequested)
+        return Fail("文件任务执行中或程序正在退出，请稍后检查资料库。", 409);
+    await v.Gate.WaitAsync(ctx.RequestAborted);
     try
     {
         if (!v.Allowed(ctx)) return Results.Unauthorized();
+        if (v.FileTaskActive || v.ExitRequested)
+            return Fail("文件任务执行中或程序正在退出，请稍后检查资料库。", 409);
         using var cmd = v.Db.CreateCommand();
         cmd.CommandText = "PRAGMA integrity_check;";
-        string result = Convert.ToString(cmd.ExecuteScalar()) ?? "";
+        string structure = Convert.ToString(cmd.ExecuteScalar()) ?? "";
         cmd.CommandText = "SELECT count(*) FROM attachments WHERE state='writing';";
         long incomplete = (long)cmd.ExecuteScalar()!;
-        return Results.Json(new { result, incomplete });
+        var files = AttachmentVerifier.Verify(v.Db, ctx.RequestAborted);
+        string result = structure == "ok" && incomplete == 0 && files.Damaged == 0
+            ? "ok" : "warning";
+        return Results.Json(new
+        {
+            result, structure, incomplete,
+            checkedAttachments = files.Checked,
+            damagedAttachments = files.Damaged,
+            problems = files.Problems
+        });
     }
+    catch (OperationCanceledException) when (ctx.RequestAborted.IsCancellationRequested)
+    {
+        return Results.StatusCode(499);
+    }
+    catch (Exception e) { return Fail("资料库检查失败：" + e.Message, 500); }
     finally { v.Gate.Release(); }
 });
 
@@ -492,6 +513,75 @@ record ExitInput(string? Choice);
 record TitleInput(string? Title);
 record FileView(long Id, string Name, long Size, string Sha256);
 record RecordView(long Id, string Title, List<FileView> Files);
+
+record AttachmentVerification(long Checked, long Damaged, List<string> Problems);
+
+// Streams through existing database chunks, never loading an entire attachment.
+// This verifier does not alter records, attachments, or their history.
+static class AttachmentVerifier
+{
+    public static AttachmentVerification Verify(SqliteConnection db, CancellationToken cancellation)
+    {
+        var metadata = new List<(long Id, long Expected, long? Size, string? Sha256)>();
+        using (var cmd = db.CreateCommand())
+        {
+            cmd.CommandText = """
+                SELECT id,expected_size,size,sha256 FROM attachments
+                WHERE state='ready' ORDER BY id;
+                """;
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                cancellation.ThrowIfCancellationRequested();
+                metadata.Add((
+                    reader.GetInt64(0), reader.GetInt64(1),
+                    reader.IsDBNull(2) ? null : reader.GetInt64(2),
+                    reader.IsDBNull(3) ? null : reader.GetString(3)));
+            }
+        }
+        long damaged = 0;
+        var problems = new List<string>();
+        foreach (var item in metadata)
+        {
+            cancellation.ThrowIfCancellationRequested();
+            bool valid = item.Expected >= 0 && item.Size is >= 0 &&
+                         item.Size == item.Expected && item.Sha256 is { Length: 64 };
+            long actualSize = 0;
+            long expectedIndex = 0;
+            using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+            using (var cmd = db.CreateCommand())
+            {
+                cmd.CommandText =
+                    "SELECT idx,bytes FROM chunks WHERE attachment_id=$id ORDER BY idx;";
+                cmd.Parameters.AddWithValue("$id", item.Id);
+                using var reader = cmd.ExecuteReader();
+                while (reader.Read())
+                {
+                    cancellation.ThrowIfCancellationRequested();
+                    long index = reader.GetInt64(0);
+                    if (index != expectedIndex++) valid = false;
+                    byte[] bytes = reader.GetFieldValue<byte[]>(1);
+                    if (actualSize > long.MaxValue - bytes.LongLength)
+                        valid = false;
+                    else
+                        actualSize += bytes.LongLength;
+                    hash.AppendData(bytes);
+                }
+            }
+            if (item.Size != actualSize || item.Expected != actualSize) valid = false;
+            string digest = Convert.ToHexString(hash.GetHashAndReset());
+            if (!string.Equals(digest, item.Sha256, StringComparison.OrdinalIgnoreCase))
+                valid = false;
+            if (!valid)
+            {
+                damaged++;
+                if (problems.Count < 5)
+                    problems.Add("附件 ID " + item.Id + "：分块、长度或 SHA-256 不一致");
+            }
+        }
+        return new AttachmentVerification(metadata.Count, damaged, problems);
+    }
+}
 
 sealed class Vault : IDisposable
 {
@@ -806,6 +896,12 @@ static class WebSmoke
                 throw new IOException("修改资料名称后附件原件内容发生变化。");
             var check = await client.GetAsync("/api/check");
             check.EnsureSuccessStatusCode();
+            var beforeBackup = await check.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+            if (beforeBackup.GetProperty("result").GetString() != "ok" ||
+                beforeBackup.GetProperty("structure").GetString() != "ok" ||
+                beforeBackup.GetProperty("checkedAttachments").GetInt64() != 1 ||
+                beforeBackup.GetProperty("damagedAttachments").GetInt64() != 0)
+                throw new IOException("完整性检查未能验证已入库的真实附件。");
             // Simulate closing the browser tab: a second browser has NO session token.
             using var newTab = new HttpClient { BaseAddress = new Uri(address) };
             var badResume = await newTab.PostAsJsonAsync("/api/resume", new ResumeInput("wrong"));
@@ -859,6 +955,70 @@ static class WebSmoke
             using var finalLock = await client.PostAsync("/api/lock", null);
             finalLock.EnsureSuccessStatusCode();
 
+            // M1 manual-backup prototype: copy the encrypted database only after
+            // the owner connection has been closed. No in-app backup is created.
+            string copyFolder = System.IO.Path.Combine(dir, "manual-copy");
+            Directory.CreateDirectory(copyFolder);
+            string copiedPath = System.IO.Path.Combine(copyFolder, "copied.db");
+            var rawHeader = new byte[16];
+            using (var dbFile = File.OpenRead(dbPath))
+            {
+                if (await dbFile.ReadAsync(rawHeader) != rawHeader.Length)
+                    throw new IOException("被复制的数据库文件不完整。");
+            }
+            if (rawHeader.AsSpan().SequenceEqual(Encoding.ASCII.GetBytes("SQLite format 3\0")))
+                throw new IOException("手工备份源文件没有加密，禁止使用明文副本。");
+            File.Copy(dbPath, copiedPath);
+            client.DefaultRequestHeaders.Remove("X-IPSys-Token");
+            var copiedWrongPassword = await client.PostAsJsonAsync(
+                "/api/open", new OpenInput(copiedPath, "wrong", false));
+            if (copiedWrongPassword.IsSuccessStatusCode)
+                throw new IOException("手工复制的数据库副本不应接受错误密码。");
+            var copiedOpen = await client.PostAsJsonAsync(
+                "/api/open", new OpenInput(copiedPath, password, false));
+            copiedOpen.EnsureSuccessStatusCode();
+            string copiedToken = (await copiedOpen.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
+                .GetProperty("token").GetString()!;
+            client.DefaultRequestHeaders.Add("X-IPSys-Token", copiedToken);
+            var copiedRows = await client.GetFromJsonAsync<List<RecordView>>("/api/records/company");
+            if (copiedRows is null || copiedRows.Count != 1 ||
+                copiedRows[0].Title != "测试资料（已修改）" ||
+                copiedRows[0].Files.Count != 1)
+                throw new IOException("复制后重新打开的加密数据库缺少记录或附件。");
+            var copiedCheck = await client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/check");
+            if (copiedCheck.GetProperty("result").GetString() != "ok" ||
+                copiedCheck.GetProperty("checkedAttachments").GetInt64() != 1)
+                throw new IOException("手工复制的数据库附件校验未通过。");
+            byte[] copiedDownload = await client.GetByteArrayAsync($"/api/files/company/{fileId}");
+            if (!copiedDownload.AsSpan().SequenceEqual(data))
+                throw new IOException("手工复制的数据库附件内容与源文件不一致。");
+            (await client.PostAsync("/api/lock", null)).EnsureSuccessStatusCode();
+            client.DefaultRequestHeaders.Remove("X-IPSys-Token");
+
+            // Corrupt ONLY the disposable copy using a valid SQLCipher session.
+            // SQLite's structural check remains ok, but the SHA-256 must fail.
+            using (var damagedDb = Vault.Connect(copiedPath, password, false))
+            using (var damage = damagedDb.CreateCommand())
+            {
+                damage.CommandText = "UPDATE chunks SET bytes=X'00' WHERE attachment_id=$id AND idx=0;";
+                damage.Parameters.AddWithValue("$id", fileId);
+                if (damage.ExecuteNonQuery() != 1)
+                    throw new IOException("无法构造测试副本的附件损坏场景。");
+            }
+            var corruptOpen = await client.PostAsJsonAsync(
+                "/api/open", new OpenInput(copiedPath, password, false));
+            corruptOpen.EnsureSuccessStatusCode();
+            string corruptToken = (await corruptOpen.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
+                .GetProperty("token").GetString()!;
+            client.DefaultRequestHeaders.Add("X-IPSys-Token", corruptToken);
+            var corruptCheck = await client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/check");
+            if (corruptCheck.GetProperty("structure").GetString() != "ok" ||
+                corruptCheck.GetProperty("result").GetString() == "ok" ||
+                corruptCheck.GetProperty("damagedAttachments").GetInt64() != 1)
+                throw new IOException("测试副本附件损坏未被 SHA-256 检查发现。");
+            (await client.PostAsync("/api/lock", null)).EnsureSuccessStatusCode();
+            client.DefaultRequestHeaders.Remove("X-IPSys-Token");
+
             // A paused HTTP upload exercises Q153 without relying on GUI timing.
             var lastOpen = await client.PostAsJsonAsync("/api/open", new OpenInput(dbPath, password, false));
             lastOpen.EnsureSuccessStatusCode();
@@ -866,6 +1026,10 @@ static class WebSmoke
                 .GetProperty("token").GetString()!;
             client.DefaultRequestHeaders.Remove("X-IPSys-Token");
             client.DefaultRequestHeaders.Add("X-IPSys-Token", lastToken);
+            var originalAfterCorruptTest = await client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/check");
+            if (originalAfterCorruptTest.GetProperty("result").GetString() != "ok" ||
+                originalAfterCorruptTest.GetProperty("damagedAttachments").GetInt64() != 0)
+                throw new IOException("损坏测试不应影响原始资料库。");
             using var paused = new PausedUploadContent();
             using var slowRequest = new HttpRequestMessage(HttpMethod.Post,
                 $"/api/records/company/{id}/files") { Content = paused };
