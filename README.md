@@ -9,7 +9,7 @@ IPSys 是面向 **Windows 10/11 x64** 的离线便携式单用户资料管理系
 ## 最快开始测试 WinForms 启动器与网页
 
 1. 打开 [WinForms 启动器 Windows 构建](https://github.com/zy19970/IPSys/actions/runs/38378877601)，在 **Artifacts** 下载 `IPSys-Web-win-x64`。
-2. 完整解压后双击 `IPSys.Web.exe`，会显示 **WinForms 启动器**；点击“打开浏览器管理界面”才会打开网页。关闭浏览器标签不会退出软件，点击 WinForms 的“退出程序”或窗口 X 才会关闭本地服务。
+2. 解压后双击 `IPSys.Web.exe`，会显示 **WinForms 启动器**；点击“打开浏览器管理界面”才会打开网页。**网页 HTML/CSS/JS 已直接编译进 EXE，不再复制或依赖运行目录里的 `wwwroot`**。关闭浏览器标签不会退出软件，点击 WinForms 的“退出程序”或窗口 X 才会关闭本地服务。
 3. 输入新测试库路径、密码，新建“综合资料”，上传无敏感文件，再下载验证；切换公司/个人检查隔离；完成后安全退出。
 4. 请阅读 [WEB_TESTING.md](./WEB_TESTING.md) 的细节和原型限制。本次是可以操作的**最小业务网页**，不是完整 IPSys V1.0。
 

@@ -17,15 +17,14 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
-      - name: Verify Visual Studio Debug build and static files
+      - name: Verify Visual Studio Debug embedded web assets
         shell: pwsh
         run: |
           dotnet build src/IPSys.Web/IPSys.Web.csproj -c Debug
           if ($LASTEXITCODE -ne 0) { throw "Debug compilation failed" }
           $debugFolder = Join-Path $PWD 'src/IPSys.Web/bin/Debug/net8.0-windows'
-          foreach ($name in @('index.html', 'app.js', 'style.css')) {
-            $file = Join-Path $debugFolder "wwwroot/$name"
-            if (-not (Test-Path $file)) { throw "Debug output missing required static file: $file" }
+          if (Test-Path (Join-Path $debugFolder 'wwwroot')) {
+            throw 'Debug build still contains external wwwroot'
           }
           $report = Join-Path $env:RUNNER_TEMP 'ipsys-debug-smoke.txt'
           $env:IPSYS_SMOKE_REPORT = $report
@@ -34,16 +33,15 @@ jobs:
           if ($proc.ExitCode -ne 0) { throw "Debug executable smoke failed (exit $($proc.ExitCode))" }
           if (-not (Test-Path $report)) { throw "Debug smoke report missing" }
           if ((Get-Content $report -Raw) -notmatch 'WEB SMOKE PASS') { throw "Debug smoke assertions incomplete" }
-          Write-Host 'Visual Studio Debug static assets and HTTP smoke: PASS'
+          Write-Host 'Visual Studio Debug embedded HTML CSS JS and HTTP smoke: PASS'
       - name: Publish Windows x64 portable web app
         shell: pwsh
         run: dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/IPSys-Web-win-x64
-      - name: Verify published static assets
+      - name: Verify published EXE has no external wwwroot
         shell: pwsh
         run: |
-          foreach ($name in @('index.html', 'app.js', 'style.css')) {
-            $file = Join-Path $PWD "artifacts/IPSys-Web-win-x64/wwwroot/$name"
-            if (-not (Test-Path $file)) { throw "Publish output missing required static file: $file" }
+          if (Test-Path 'artifacts/IPSys-Web-win-x64/wwwroot') {
+            throw 'Release build still contains external wwwroot'
           }
       - name: Verify browser JavaScript syntax
         shell: pwsh
@@ -59,7 +57,7 @@ jobs:
           if (-not (Test-Path $report)) { throw "Smoke completion report missing" }
           if ((Get-Content $report -Raw) -notmatch 'WEB SMOKE PASS') { throw "Smoke assertions incomplete" }
           Write-Host "WEB SMOKE PASS (WinExe process finished; report verified)"
-      - name: Upload Windows executable and static assets
+      - name: Upload Windows executable with embedded web assets
         uses: actions/upload-artifact@v4
         with:
           name: IPSys-Web-win-x64

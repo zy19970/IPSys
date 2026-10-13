@@ -4,7 +4,7 @@
 
 ## 1. 下载与启动
 
-打开 [WinForms Windows 构建工作流](https://github.com/zy19970/IPSys/actions/workflows/web-windows.yml)，选最新的**成功**运行，在底部 **Artifacts** 下载 `IPSys-Web-win-x64`。完整解压（包括 `wwwroot` 和 DLL），双击 `IPSys.Web.exe`。
+打开 [WinForms Windows 构建工作流](https://github.com/zy19970/IPSys/actions/workflows/web-windows.yml)，选最新的**成功**运行，在底部 **Artifacts** 下载 `IPSys-Web-win-x64`。解压后双击 `IPSys.Web.exe`。HTML、CSS、JavaScript 已内嵌 EXE，运行时**不需要 `wwwroot` 文件夹**；发布包若带有其它依赖文件，请勿随意删除。
 
 弹出 **“IPSys · 本地管理系统” WinForms 窗口**，本地服务随窗口启动，**此时不会自动打开网页**。点击 **“打开浏览器管理界面”**，才会打开 Edge/Chrome。若浏览器无法自动启动，窗口会显示 localhost 地址，供你手动访问。
 
@@ -22,11 +22,11 @@
 
 ## 3. Visual Studio 2022 调试
 
-打开 `src/IPSys.Web/IPSys.Web.csproj`，选择 Debug 并按 F5。现在工程会自动将 `wwwroot/index.html`、`app.js`、`style.css` 复制到与 EXE 同级的 `wwwroot` 文件夹，不再要求手动拷贝网页文件。
+打开 `src/IPSys.Web/IPSys.Web.csproj`，选择 Debug 并按 F5。工程通过 `EmbeddedResource` 将 `wwwroot/index.html`、`app.js`、`style.css` **直接编译进 EXE**，VS Debug 运行不再复制网页资源目录。修改前端文件后重新编译即可更新 EXE 内的页面。
 
-普通 Debug 编译输出通常在 `src/IPSys.Web/bin/Debug/net8.0-windows/`。如本地网页返回 HTTP 404，请先关闭旧 WinForms 程序，拉取 main 最新代码，在 Visual Studio 选择“重新生成解决方案”后再 F5。若打包缺少文件，程序会在启动时显示缺失的完整路径，而不是打开空白 404。
+普通 Debug 编译输出通常在 `src/IPSys.Web/bin/Debug/net8.0-windows/`。关闭旧版 WinForms，拉取最新 main，选择“重新生成解决方案”再按 F5。即使 Debug 目录里没有 `wwwroot`，首页也应该正常显示。
 
-Windows CI 同时测试 Debug 普通编译和 Release 发布：核查三个静态文件以及根首页、CSS、JS 的 HTTP 请求。
+Windows CI 同时测试 Debug 普通编译和 Release 发布：确认输出目录**没有外置 `wwwroot`**，并通过 HTTP 请求验证内嵌首页、CSS、JS，以及 SQLCipher 资料往返。
 
 ## 4. 本地发布和自动测试
 

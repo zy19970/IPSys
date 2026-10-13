@@ -9,9 +9,12 @@
     <RootNamespace>IPSys.Web</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <!-- The HTTP host reads static files relative to AppContext.BaseDirectory.
-         Copy wwwroot for Visual Studio F5/Debug, not only for publish. -->
-    <Content Update="wwwroot\**\*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <!-- Embed HTML/CSS/JS into the executable, no external wwwroot folder. -->
+    <Content Remove="wwwroot\**\*" />
+    <None Remove="wwwroot\**\*" />
+    <EmbeddedResource Include="wwwroot\index.html" LogicalName="IPSys.Web.Embedded.index.html" />
+    <EmbeddedResource Include="wwwroot\style.css" LogicalName="IPSys.Web.Embedded.style.css" />
+    <EmbeddedResource Include="wwwroot\app.js" LogicalName="IPSys.Web.Embedded.app.js" />
     <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="8.0.10" />
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlcipher" Version="2.1.11" />
   </ItemGroup>

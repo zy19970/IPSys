@@ -11,23 +11,14 @@ using IPSys.Web;
 
 SQLitePCL.Batteries_V2.Init();
 var smoke = args.Contains("--smoke");
-// The WinForms process is launched from the exe folder, not necessarily the project folder.
-string staticRoot = Path.Combine(AppContext.BaseDirectory, "wwwroot");
-string indexFile = Path.Combine(staticRoot, "index.html");
-if (!File.Exists(indexFile))
-{
-    string message = "未找到网页首页文件：\n" + indexFile +
-                     "\n\n请重新编译或完整解压程序，确保 wwwroot 文件夹与 EXE 位于同一目录。";
-    if (smoke) throw new FileNotFoundException(message, indexFile);
-    System.Windows.Forms.MessageBox.Show(message, "IPSys 网页资源缺失",
-        System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
-    return;
-}
+// HTML/CSS/JS are read from managed assembly resources (works in Debug or single-file Release).
+byte[] html = EmbeddedWebAssets.Read("index.html");
+byte[] css = EmbeddedWebAssets.Read("style.css");
+byte[] javascript = EmbeddedWebAssets.Read("app.js");
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
     Args = Array.Empty<string>(),
-    ContentRootPath = AppContext.BaseDirectory,
-    WebRootPath = staticRoot
+    ContentRootPath = AppContext.BaseDirectory
 });
 builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = 66L * 1024 * 1024);
 builder.Services.AddSingleton<Vault>();
@@ -56,8 +47,11 @@ app.Use(async (ctx, next) =>
         "connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'";
     await next();
 });
-app.UseDefaultFiles();
-app.UseStaticFiles();
+// Serve web files from within the executable, not from wwwroot on disk.
+app.MapGet("/", () => Results.Bytes(html, contentType: "text/html; charset=utf-8"));
+app.MapGet("/index.html", () => Results.Bytes(html, contentType: "text/html; charset=utf-8"));
+app.MapGet("/style.css", () => Results.Bytes(css, contentType: "text/css; charset=utf-8"));
+app.MapGet("/app.js", () => Results.Bytes(javascript, contentType: "text/javascript; charset=utf-8"));
 
 app.MapGet("/api/status", (Vault v) => Results.Json(new
 {
@@ -509,5 +503,18 @@ static class WebSmoke
             finalLock.EnsureSuccessStatusCode();
         }
         finally { try { Directory.Delete(dir, true); } catch { } }
+    }
+}
+
+internal static class EmbeddedWebAssets
+{
+    internal static byte[] Read(string filename)
+    {
+        string name = "IPSys.Web.Embedded." + filename;
+        using var resource = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream(name)
+            ?? throw new InvalidOperationException("Missing embedded web resource: " + name);
+        using var memory = new MemoryStream();
+        resource.CopyTo(memory);
+        return memory.ToArray();
     }
 }
