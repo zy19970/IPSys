@@ -960,15 +960,33 @@ static class WebSmoke
             string copyFolder = System.IO.Path.Combine(dir, "manual-copy");
             Directory.CreateDirectory(copyFolder);
             string copiedPath = System.IO.Path.Combine(copyFolder, "copied.db");
+            var postLockStatus = await client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/status");
+            if (postLockStatus.GetProperty("unlocked").GetBoolean())
+                throw new IOException("数据库未关闭，不允许复制备份。");
             var rawHeader = new byte[16];
-            using (var dbFile = File.OpenRead(dbPath))
+            // Windows/AV may transiently hold a writer handle after SQLCipher
+            // disposal. Never bypass a lock with FileShare.ReadWrite: wait for
+            // a STRICT read and fail rather than copying while a writer exists.
+            bool backupReadable = false;
+            for (int attempt = 0; attempt < 60; attempt++)
             {
-                if (await dbFile.ReadAsync(rawHeader) != rawHeader.Length)
-                    throw new IOException("被复制的数据库文件不完整。");
+                try
+                {
+                    using (var dbFile = File.Open(dbPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+                        await dbFile.ReadExactlyAsync(rawHeader);
+                    File.Copy(dbPath, copiedPath);
+                    backupReadable = true;
+                    break;
+                }
+                catch (IOException) when (attempt < 59)
+                {
+                    await Task.Delay(200);
+                }
             }
+            if (!backupReadable)
+                throw new IOException("关闭数据库后仍无法安全读取备份源文件。");
             if (rawHeader.AsSpan().SequenceEqual(Encoding.ASCII.GetBytes("SQLite format 3\0")))
                 throw new IOException("手工备份源文件没有加密，禁止使用明文副本。");
-            File.Copy(dbPath, copiedPath);
             client.DefaultRequestHeaders.Remove("X-IPSys-Token");
             var copiedWrongPassword = await client.PostAsJsonAsync(
                 "/api/open", new OpenInput(copiedPath, "wrong", false));
