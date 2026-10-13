@@ -200,7 +200,7 @@ for(const name of ['pName','pType','pNo','pStatus','pLeader','pOrg','pStart','pE
  assert.ok(html.includes('id="'+name+'"'),'Missing project field '+name);
 for(const route of ["'/api/projects/'+space","method:'DELETE'","method:'PUT'","method:'POST'","targetWorkspace:destination"])
  assert.ok(js.includes(route),'Missing project persistence or transfer '+route);
-assert.ok(js.includes("projectRows=projects;render()"),'Projects must refresh from the real database');
+assert.ok(js.includes("projectRows=projects;ipRows=ips;render()"),'Projects and IP must refresh from the real database');
 const projectCtx=vm.createContext({sessionStorage:{getItem:()=>null}});
 const projector=js.slice(js.indexOf('function projectViewRows('),js.indexOf('function archiveCard(',js.indexOf('function projectViewRows(')));
 vm.runInContext(preamble+
