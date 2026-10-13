@@ -1,47 +1,43 @@
-# IPSys 最小网页版 — Windows 测试指南
+# IPSys 最小网页 + WinForms 启动器（Windows 测试）
 
-本版本用于验证浏览器与 C# 本地服务、SQLCipher 加密数据库之间的完整通信，**不是 V1.0 正式版**。目前仅开放“综合资料”演示模块；创建数据库、添加记录、上传/下载附件为实际写入，不是模拟数据。
+**当前版本是技术验证版，不要导入正式敏感文件。** 已实现 Windows Forms 程序入口，仍使用原有本地 ASP.NET Core 网页及 SQLCipher 加密数据库。当前网页只提供综合资料、公司/个人工作区、单文件上传下载和数据库检查，单文件上限 64 MiB。
 
-## 1. 获取绿色程序
+## 1. 下载与启动
 
-从 [GitHub Actions · IPSys minimal web Windows test](https://github.com/zy19970/IPSys/actions/workflows/web-windows.yml) 打开最新**成功**的一次运行，在页面底部 Artifacts 下载 `IPSys-Web-win-x64`，解压后双击 `IPSys.Web.exe`。程序会在电脑本机 `127.0.0.1` 的临时端口启动服务，并尝试通过 Windows 默认浏览器打开界面；如果自动打开失败，可将控制台打印的地址复制到 Edge/Chrome。
+打开 [WinForms Windows 构建工作流](https://github.com/zy19970/IPSys/actions/workflows/web-windows.yml)，选最新的**成功**运行，在底部 **Artifacts** 下载 `IPSys-Web-win-x64`。完整解压（包括 `wwwroot` 和 DLL），双击 `IPSys.Web.exe`。
 
-下载的是源码仓库之外的 Windows 自动构建产物，不需安装 .NET 运行时。**请保留解压目录内的 `wwwroot` 文件夹及相关 DLL，不要只复制 EXE。**
+弹出 **“IPSys · 本地管理系统” WinForms 窗口**，本地服务随窗口启动，**此时不会自动打开网页**。点击 **“打开浏览器管理界面”**，才会打开 Edge/Chrome。若浏览器无法自动启动，窗口会显示 localhost 地址，供你手动访问。
 
-## 2. 第一次测试
+关闭浏览器标签页，WinForms 不会退出；再次点击“打开浏览器管理界面”可继续进入。**关闭 WinForms 的 X 或点击“退出程序”，才会关闭本地服务和数据库，结束软件运行。** 网页内“安全退出”也是程序级退出入口。
 
-1. 在本机创建一个测试文件夹，例如 `D:\IPSys-test`，准备几份无敏感内容的小文件。
-2. 双击 `IPSys.Web.exe`，看到 IPSys 网页后选择“新建测试库”，输入完整路径 `D:\IPSys-test\my-test.db`，设置数据库密码并再次确认。
-3. 进入公司工作区，点击“新建资料”，输入“第一份测试资料”。随后点“上传文件”，选一个 PDF、图片或 TXT 文件（当前单文件上限 64 MiB）。
-4. 下载刚才的文件，检查内容是否与原件完全一致。切换到个人工作区，确认看不到公司的资料。也可在个人工作区独立新建记录和上传附件。
-5. 点击“检查数据库完整性”，检查是否出现 `ok`。点击“关闭数据库”后，再选择“打开已有库”，输入原路径与密码重新解锁，检查记录及附件是否仍在。
-6. 点击“安全退出”，等控制台结束；然后手动用 Windows 资源管理器复制加密数据库到其它位置，再运行程序从副本打开，检查是否能解锁并查看原有资料。
+## 2. 在电脑上测试
 
-**数据库路径目前通过文本框输入**，这是浏览器文件路径权限模型下的原型简化方案；正式 Windows 原生路径选择功能待 M1 继续验证。Chrome/Edge 的普通下载目录由浏览器自身决定，正式版“每次选择导出目标目录”的功能尚未实现。
+1. 建立测试文件夹，例如 `D:\IPSys-test`；只准备没有敏感数据的小文件。
+2. 双击 `IPSys.Web.exe`，点击 WinForms「打开浏览器管理界面」。
+3. 在网页选择新建测试库，路径输入 `D:\IPSys-test\test.db`，设置并确认密码。
+4. 在公司工作区新建综合资料，上传 TXT/PDF/图片，下载原件验证内容。
+5. 切换个人工作区，确认看不到公司记录。可另建个人记录。
+6. 点击“检查数据库完整性”确认返回 `ok`。关闭浏览器标签后，从 WinForms 再次点击打开按钮，确认页面仍可连接。
+7. 点击 WinForms 的“退出程序”或右上角 X，确认窗口关闭。随后在资源管理器中复制数据库文件，重新运行程序从副本打开并验证记录。**只有程序退出并完成数据库关闭后才手动复制文件。**
 
-## 3. 开发模式
+## 3. 本地编译和自动测试
 
-安装 .NET 8 SDK 后在仓库根目录执行：
-
-```powershell
-dotnet run --project .\src\IPSys.Web\IPSys.Web.csproj
-```
-
-发布便携测试包：
+安装 .NET 8 SDK 后在 Windows PowerShell 的仓库根目录运行：
 
 ```powershell
 dotnet publish .\src\IPSys.Web\IPSys.Web.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o .\out\IPSys-Web
-.\out\IPSys-Web\IPSys.Web.exe --smoke
+.\out\IPSys-Web\IPSys.Web.exe
 ```
 
-`--smoke` 自动在临时目录创建加密库，HTTP 创建公司记录、上传约 1 MiB 随机字节、下载比对、检查工作区隔离、拒绝错误密码，再打开正确密码。自动测试输出 `WEB SMOKE PASS` 才视为通过。Actions 还进行 Windows publish 和 JS 语法检查；**未见成功 workflow 前不得称程序已经测试通过。**
+使用 WinForms GUI 的 `WinExe` 子系统，不再默认弹出黑色控制台。自动测试使用 `--smoke` 参数，后台运行 HTTP/SQLCipher 往返校验但**不显示 WinForms 窗口**。CI 通过 PowerShell `Start-Process -Wait` 等待 GUI 进程结束，并确认程序生成 `WEB SMOKE PASS` 测试报告，避免 GUI 启动后误认为测试成功。
 
-## 4. 当前工程限制
+[查看本次成功的 Windows 构建](https://github.com/zy19970/IPSys/actions/runs/38378877601)。
 
-1. 单文件 64 MiB，采用 HTTP 原始流和 SQLCipher 内 1 MiB 分块存储；尚未在网页版验证大于 2 GiB 文件，也没有上传取消按钮、进度条、版本管理、去重、回收站、Excel、全部知识产权模块。
-2. 后台目前仅绑定 `127.0.0.1`、随机端口，通过会话令牌保护解锁数据库；不暴露到局域网。密码不记忆、不保存在浏览器存储中，但会话令牌在当前标签页的 sessionStorage 保留直到退出/关闭库。
-3. 不实现自动备份和删除来源文件；务必在安全退出后手工复制原始数据库。测试期间断电或拔 SSD 可能损坏数据库，必须只用可丢弃的测试资料。
-4. 当前数据库 Schema 与 M1 CLI 三张基础表兼容，但尚无正式数据库迁移保障；**不要打开正式资料数据库，避免误操作**。
-5. 先验证最短链路，再决定正式本地文件对话框、Edge 默认浏览器兼容、浏览器最后标签关闭时自动停止后端等细节。
+## 4. 测试版限制
 
-报错时请反馈 Windows 版本、浏览器类型、执行步骤、控制台报错、Actions 链接或截图，以便定位并直接修复仓库。
+1. **WinForms 生命周期和按钮实际点击需要本机实测**。Windows CI 已验证可编译、无界面的 SQLCipher/HTTP 往返和 SHA-256 一致性；不能由此声称 GUI 点击与窗口退出已经做过人工验收。
+2. 网页仅有最小综合资料模块，尚无正式文件版本管理、去重、回收站、Excel、专利/项目/合同等其它业务模块。
+3. 单文件暂限 64 MiB；SSD 突然断开、超 2 GiB 附件、文件导入过程中点击 X 的完整安全退出交互尚未实现/验证，请不要对真实数据进行破坏性测试。
+4. 目前数据库路径仍在网页输入，正式的 Windows 选路径、目录批量导出等尚待开发。主程序只在本机 `127.0.0.1` 启动 HTTP 服务，不开放到局域网。
+
+如果不能启动，把 Windows 版本、出现的窗口、报错界面和构建链接发回来即可。
