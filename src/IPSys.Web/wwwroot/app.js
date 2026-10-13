@@ -5,7 +5,7 @@ const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<
 let token=sessionStorage.getItem('ip-token')||'';
 let dbName=sessionStorage.getItem('ip-db')||'';
 let space=null,creating=false,resuming=false,localFileTaskActive=false;
-let page='dashboard',detail=null,archiveGroup=null,editingId=null,projectEditingId=null,projectRows=[],ipEditingId=null,ipRows=[],contractEditingId=null,contractProjectId=null,contractRows=[],liveRows=[],filterName='',filterKind='全部类型',filterState='全部状态',selected=new Set();
+let page='dashboard',detail=null,archiveGroup=null,editingId=null,projectEditingId=null,projectRows=[],ipEditingId=null,ipRows=[],contractEditingId=null,contractProjectId=null,contractRows=[],archiveRows={certificate:[],achievement:[],academic:[]},archiveEditingId=null,archiveTransferId=null,archiveTransferMode=null,liveRows=[],filterName='',filterKind='全部类型',filterState='全部状态',selected=new Set();
 const companyNav=[['dashboard','工作台','▦'],['ip','知识产权','◇'],['researchProject','科研项目','▤'],['horizontalProject','横向项目','▥'],['contract','全部合同','▧'],['certificate','企业资质','▣'],['general','综合资料','▥']];
 // Personal archives are grouped by evidence type, not by the company management menu.
 const personalNav=[['dashboard','个人工作台','▦'],['certificate','身份与资质','▣'],['ip','知识产权与著作','◇'],['researchProject','科研与合作项目','▤'],['achievement','成果与奖励','★'],['academic','学术与社会活动','▥'],['general','其他资料','▧']];
@@ -128,7 +128,7 @@ el('openForm').onsubmit=async event=>{
 };
 function selectSpace(next){
   if(!token)return;
-  space=next;page='dashboard';detail=null;archiveGroup=null;projectRows=[];ipRows=[];contractRows=[];filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();
+  space=next;page='dashboard';detail=null;archiveGroup=null;projectRows=[];ipRows=[];contractRows=[];archiveRows={certificate:[],achievement:[],academic:[]};filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();
   el('globalSearch').value='';el('sidebarDbName').textContent=dbName;
   el('chooseWorkspace').hidden=true;el('unlocked').hidden=false;
   refresh();
@@ -139,9 +139,18 @@ function setPage(next){page=next;detail=null;archiveGroup=null;filterName='';fil
 async function refresh(){
   if(!token||!space)return;
   const requestedSpace=space;
-  try{const [rows,projects,ips,contracts]=await Promise.all([api('/api/records/'+space).then(r=>r.json()),api('/api/projects/'+space).then(r=>r.json()),api('/api/ip/'+space).then(r=>r.json()),api('/api/contracts/'+space).then(r=>r.json())]);
+  try{const archiveSections=space==='personal'?['certificate','achievement','academic']:['certificate','achievement'];
+  const [rows,projects,ips,contracts,...archiveResults]=await Promise.all([
+    api('/api/records/'+space).then(r=>r.json()),
+    api('/api/projects/'+space).then(r=>r.json()),
+    api('/api/ip/'+space).then(r=>r.json()),
+    api('/api/contracts/'+space).then(r=>r.json()),
+    ...archiveSections.map(section=>api('/api/archives/'+space+'/'+section).then(r=>r.json()))
+  ]);
     if(requestedSpace!==space||!token)return;
-    liveRows=rows;projectRows=projects;ipRows=ips;contractRows=contracts;render();
+    liveRows=rows;projectRows=projects;ipRows=ips;contractRows=contracts;
+    archiveRows={certificate:[],achievement:[],academic:[]};
+    archiveSections.forEach((section,i)=>archiveRows[section]=archiveResults[i]);render();
   }catch(error){notice(error.message,true);}
 }
 function refreshSidebar(){
@@ -163,14 +172,15 @@ function pill(text){return `<span class="pill">${escapeHtml(text)}</span>`;}
 function stamp(){return '<span class="mockflag">界面示例 · 未接入业务</span>';}
 function dashboard(){
  const mods=labels().filter(x=>x[0]!=='dashboard');
+ if(space==='company')mods.splice(mods.length-1,0,['achievement','科研成果']);
  const general=liveRows.length;const fileCount=liveRows.reduce((n,r)=>n+r.files.length,0);
  const counts=space==='personal'
-  ? [['其他资料',general,'条真实记录'],['已归档原件',fileCount,'份真实附件'],['身份与资质',sample('certificate').length,'条界面示例'],['成果与奖励',sample('achievement').length,'条界面示例']]
+  ? [['其他资料',general,'条真实记录'],['已归档原件',fileCount,'份真实附件'],['身份与资质',archiveRows.certificate.length,'条真实记录'],['成果与奖励',archiveRows.achievement.length,'条真实记录']]
   : [['综合资料',general,'条真实记录'],['已归档原件',fileCount,'份真实附件'],['知识产权',ipRows.length,'条真实记录'],['科研项目',projectRows.filter(p=>p.projectType!=='横向项目').length,'条真实记录']];
- return heading(title('dashboard'),'当前工作区 · 真实综合资料与其余模块的界面示例')+
+ return heading(title('dashboard'),'当前工作区 · 真实业务台账与分类资料')+
  '<div class="cards">'+counts.map(([name,num,s])=>`<div class="card"><div class="metriclabel">${name}</div><div class="metric">${num}</div><div class="metricfoot">${s}</div></div>`).join('')+'</div>'+
- '<div class="panels"><section class="card"><h2 class="sectiontitle">'+(space==='personal'?'个人资料分类入口':'业务模块快捷入口')+'</h2><div class="modulegrid">'+mods.map(([key,name])=>`<button class="modulelink" data-nav="${key}"><span><b>${name}</b><small>${key==='general'?general+' 条真实记录':key==='ip'?ipRows.length+' 条真实记录':key==='contract'?contractRows.length+' 条真实记录':isProject(key)?projectViewRows(key).length+' 条真实记录':(sample(key).length||0)+' 条演示记录'}</small></span><span class="arrow">→</span></button>`).join('')+'</div></section>'+
- '<section class="card"><h2 class="sectiontitle">当前工作区资料概况</h2><div class="minirow"><span>公司 / 个人隔离</span><strong>已启用</strong></div><div class="minirow"><span>'+ (space==='personal'?'其他资料':'综合资料') +'存储</span><strong>真实 SQLCipher</strong></div><div class="minirow"><span>'+ (space==='personal'?'分类资料':'知识产权、项目与合同') +'</span>'+pill('界面设计')+'</div><div class="minirow"><span>当前数据库</span><span class="muted">'+escapeHtml(dbName)+'</span></div><p class="hint">证件、成果等分类仍为界面示例。真实文件请在“'+(space==='personal'?'其他资料':'综合资料')+'”中管理。</p></section></div>';
+ '<div class="panels"><section class="card"><h2 class="sectiontitle">'+(space==='personal'?'个人资料分类入口':'业务模块快捷入口')+'</h2><div class="modulegrid">'+mods.map(([key,name])=>`<button class="modulelink" data-nav="${key}"><span><b>${name}</b><small>${key==='general'?general+' 条真实记录':key==='ip'?ipRows.length+' 条真实记录':key==='contract'?contractRows.length+' 条真实记录':isProject(key)?projectViewRows(key).length+' 条真实记录':archiveSections.includes(key)?(archiveRows[key]||[]).length+' 条真实记录':(sample(key).length||0)+' 条演示记录'}</small></span><span class="arrow">→</span></button>`).join('')+'</div></section>'+
+ '<section class="card"><h2 class="sectiontitle">当前工作区资料概况</h2><div class="minirow"><span>公司 / 个人隔离</span><strong>已启用</strong></div><div class="minirow"><span>'+ (space==='personal'?'其他资料':'综合资料') +'存储</span><strong>真实 SQLCipher</strong></div><div class="minirow"><span>'+ (space==='personal'?'分类资料':'知识产权、项目与合同') +'</span>'+pill('界面设计')+'</div><div class="minirow"><span>当前数据库</span><span class="muted">'+escapeHtml(dbName)+'</span></div><p class="hint">证件和成果资料已接入真实台账；原件附件仅支持综合资料，其他模块附件待接入。真实文件请在“'+(space==='personal'?'其他资料':'综合资料')+'”中管理。</p></section></div>';
 }
 function generalList(){
  const rows=liveRows.filter(r=>r.title.toLowerCase().includes(filterName.toLowerCase()));
@@ -464,6 +474,109 @@ function archiveCategoryCard(type,rows){
    '<span class="archivecard-count">附件 <strong>'+total+'</strong> 份</span></div>'+
    '<div class="archivecard-actions"><span class="archivecategory-open">进入台账 →</span></div></article>';
 }
+
+const archiveSections=['certificate','achievement','academic'];
+const archiveDestinations=[
+ {workspace:'company',section:'certificate',label:'公司资料 / 企业资质',kind:'company_certificate'},
+ {workspace:'personal',section:'certificate',label:'个人资料 / 身份与资质',kind:'personal_certificate'},
+ {workspace:'company',section:'achievement',label:'公司资料 / 科研成果',kind:'research_output'},
+ {workspace:'personal',section:'achievement',label:'个人资料 / 成果与奖励',kind:'research_output'},
+ {workspace:'personal',section:'academic',label:'个人资料 / 学术与社会活动',kind:'research_output'}
+];
+function archiveSectionName(k){return space==='company'&&k==='achievement'?'科研成果':title(k);}
+function archiveCategories(k){
+ const defaults=space==='company'&&k==='achievement'
+  ?['技术成果','成果评价','项目奖励','标准制定','新产品','其他科研成果']
+  :[...new Set(sample(k).map(r=>r.type))];
+ return [...new Set([...defaults,...(archiveRows[k]||[]).map(r=>r.category||'未分类')])];
+}
+function realArchiveCategoryCard(category,count){
+ return '<article class="archivecard archivecategory" data-archive-category="'+escapeHtml(category)+'" role="button" tabindex="0" aria-label="查看'+escapeHtml(category)+'台账">'+
+ '<div class="archivecard-head"><div class="archivecard-titlewrap">'+
+ '<span class="archivecard-symbol" aria-hidden="true">▤</span><h3 class="archivecard-title">'+escapeHtml(category)+'</h3></div>'+
+ '<span class="realflag">真实记录</span></div>'+
+ '<div class="archivecard-meta"><span class="archivecard-type">'+count+' 条归档记录</span>'+
+ '<span class="archivecard-count">附件 <strong>0</strong> 份</span></div>'+
+ '<div class="archivecard-actions"><span class="archivecategory-open">进入台账 →</span></div></article>';
+}
+function realArchiveCards(k){
+ const rows=archiveRows[k]||[],categories=archiveCategories(k);
+ const visible=categories.filter(category=>
+  (filterKind==='全部类型'||category===filterKind)&&category.toLowerCase().includes(filterName.toLowerCase()));
+ return heading(archiveSectionName(k),'按材料类别归档 · 真实 SQLCipher 记录',
+  '<span class="realflag">真实记录</span><button class="btn primary" data-action="archiveAdd">＋ 新建记录</button>')+
+ '<section class="white filter"><div class="filterline"><div class="field wide"><label>类别名称</label><input id="filterSearch" placeholder="查找资料类别"></div>'+
+ '<div class="field"><label>类别</label><select id="filterKind">'+
+ ['全部类型',...categories].map(x=>'<option value="'+escapeHtml(x)+'" '+(x===filterKind?'selected':'')+'>'+escapeHtml(x)+'</option>').join('')+
+ '</select></div><button class="btn primary" data-action="filter">查询</button><button class="btn" data-action="clearFilter">重置</button></div></section>'+
+ '<section class="white"><div class="tabletools"><b>资料类别 · '+visible.length+' 类</b></div>'+
+ '<div class="recordgrid">'+visible.map(category=>realArchiveCategoryCard(category,
+  rows.filter(r=>(r.category||'未分类')===category).length)).join('')+'</div>'+
+ '<div class="tablefoot">真实记录 '+rows.length+' 条 · 可在每一类别下归档多条独立记录</div></section>';
+}
+function realArchiveTable(k,category){
+ const all=(archiveRows[k]||[]).filter(r=>(r.category||'未分类')===category);
+ const rows=all.filter(r=>[r.name,r.remarks,r.tags].join(' ').toLowerCase().includes(filterName.toLowerCase()));
+ return heading(category,archiveSectionName(k)+' / 分类台账 · 同一类别可归档多条记录',
+ '<button class="btn" data-archive-back="cards">← 返回类别卡片</button>'+
+ '<button class="btn primary" data-action="archiveAdd">＋ 新建记录</button>')+
+ '<section class="white filter"><div class="filterline"><div class="field wide"><label>资料名称</label><input id="filterSearch" placeholder="搜索此类别下的真实记录"></div>'+
+ '<button class="btn primary" data-action="filter">查询</button><button class="btn" data-action="clearFilter">重置</button></div></section>'+
+ '<section class="white"><div class="tabletools"><b>'+escapeHtml(category)+'台账 · '+rows.length+' 条真实记录</b></div>'+
+ '<div class="tablewrap archive-tablewrap"><table class="data"><thead><tr><th>序号</th><th>资料名称</th><th>资料类别</th><th>附件数量</th><th>操作</th></tr></thead><tbody>'+
+ (rows.length?rows.map((r,i)=>'<tr><td>'+(i+1)+'</td><td>'+
+ '<button class="link" data-archive-id="'+r.id+'">'+escapeHtml(r.name)+'</button></td>'+
+ '<td>'+escapeHtml(r.category||'未分类')+'</td><td>0 份</td><td><button class="btn btn-sm" data-archive-id="'+r.id+'">查看详情</button></td></tr>').join(''):
+ '<tr><td colspan="5" class="empty">此类别暂无记录，点击右上角新建。</td></tr>')+
+ '</tbody></table></div><div class="tablefoot">当前类别共 '+all.length+' 条真实记录</div></section>';
+}
+function realArchiveDetail(){
+ const record=(archiveRows[page]||[]).find(r=>r.id===detail?.id);
+ if(!record)return heading('资料不存在','当前工作区找不到此记录');
+ const back=archiveGroup?'<button class="btn" data-archive-back="table">← 返回'+escapeHtml(archiveGroup)+'台账</button>':
+ '<button class="btn" data-nav="'+page+'">← 返回类别卡片</button>';
+ const moveAvailable=page!=='certificate';
+ return heading(record.name,archiveSectionName(page)+' · 真实资料记录',
+  back+'<button class="btn" data-action="archiveEdit">修改</button>'+
+  '<button class="btn" data-action="archiveCopy">复制</button>'+
+  (moveAvailable?'<button class="btn" data-action="archiveMove">转移</button>':'')+
+  '<button class="btn" data-action="archiveDelete">删除</button>')+
+ section('基本信息','<div class="infogrid">'+infoRow('资料名称',record.name)+
+ infoRow('类别',record.category)+infoRow('备注',record.remarks)+infoRow('标签',record.tags)+'</div>')+
+ section('附件资料','<p class="hint">此记录的附件归属将在下一阶段接入。</p>');
+}
+function showArchiveForm(id=null){
+ const record=id===null?null:(archiveRows[page]||[]).find(r=>r.id===id);
+ if(id!==null&&!record){notice('记录不存在。',true);return;}
+ archiveEditingId=id;
+ el('archiveForm').reset();
+ el('archiveFormTitle').textContent=id===null?'新建资料':'修改资料';
+ el('aCategory').value=record?.category??(archiveGroup==='未分类'?'':archiveGroup||'');
+ el('aName').value=record?.name??'';
+ el('aRemarks').value=record?.remarks??'';
+ el('aTags').value=record?.tags??'';
+ const datalist=el('archiveCategories');datalist.replaceChildren();
+ archiveCategories(page).filter(x=>x!=='未分类').forEach(x=>{
+  const opt=document.createElement('option');opt.value=x;datalist.append(opt);
+ });
+ el('archiveDialog').showModal();
+}
+function showArchiveTransfer(move){
+ const record=(archiveRows[page]||[]).find(r=>r.id===detail?.id);
+ if(!record)return;
+ const current=archiveDestinations.find(x=>x.workspace===space&&x.section===page);
+ const legal=archiveDestinations.filter(x=>x.kind===current?.kind&&
+  (!move||x.workspace!==space||x.section!==page));
+ if(!legal.length){notice('当前资料类别没有可用的转移目标。',true);return;}
+ archiveTransferId=record.id;archiveTransferMode=move?'move':'copy';
+ const select=el('archiveDestination');select.replaceChildren();
+ legal.forEach(d=>{
+  const opt=document.createElement('option');opt.value=d.workspace+':'+d.section;
+  opt.textContent=d.label;select.append(opt);
+ });
+ el('archiveTransferTitle').textContent=move?'转移资料':'复制资料';
+ el('archiveTransferDialog').showModal();
+}
 function mockCardList(k){
  const all=sample(k);
  const visible=all.filter(r=>{
@@ -540,12 +653,12 @@ function render(){
  if(!space||!token)return;
  refreshSidebar();
  const content=el('content');
- content.innerHTML=detail?(detail.kind==='general'?realDetail():detail.kind==='project'?projectDetail():detail.kind==='contract'?contractDetail():detail.kind==='ip'?ipDetail():mockDetail()):
-   archiveGroup&&['certificate','achievement','academic'].includes(page)?mockCategoryTable(page,archiveGroup):
+ content.innerHTML=detail?(detail.kind==='general'?realDetail():detail.kind==='project'?projectDetail():detail.kind==='contract'?contractDetail():detail.kind==='ip'?ipDetail():detail.kind==='archive'?realArchiveDetail():mockDetail()):
+   archiveGroup&&archiveSections.includes(page)?realArchiveTable(page,archiveGroup):
    page==='dashboard'?dashboard():page==='general'?generalList():
    isProject(page)?projectList(page):page==='ip'?ipList():
    page==='contract'?contractList():
-   ['certificate','achievement','academic'].includes(page)?mockCardList(page):
+   archiveSections.includes(page)?realArchiveCards(page):
    page==='search'?searchPage():page==='settings'?settingsPage():trashPage();
  const searchBox=el('filterSearch');if(searchBox)searchBox.value=filterName;
 }
@@ -569,7 +682,7 @@ el('content').addEventListener('click',async ev=>{
  const categoryCard=ev.target.closest('[data-archive-category]');
  if(categoryCard){
   const category=categoryCard.dataset.archiveCategory;
-  if(['certificate','achievement','academic'].includes(page)&&sample(page).some(r=>r.type===category)){
+  if(archiveSections.includes(page)&&archiveCategories(page).includes(category)){
    archiveGroup=category;detail=null;filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();render();el('content').scrollTo(0,0);
   }
   return;
@@ -583,6 +696,10 @@ el('content').addEventListener('click',async ev=>{
  if(target.dataset.liveId){openLiveRecord(Number(target.dataset.liveId));return;}
  if(target.dataset.projectId){detail={kind:'project',id:Number(target.dataset.projectId)};render();el('content').scrollTo(0,0);return;}
  if(target.dataset.ipId){detail={kind:'ip',id:Number(target.dataset.ipId)};page='ip';render();el('content').scrollTo(0,0);return;}
+ if(target.dataset.archiveId){
+  detail={kind:'archive',id:Number(target.dataset.archiveId)};render();
+  el('content').scrollTo(0,0);return;
+ }
  if(target.dataset.mockId){openMockRecord(page,Number(target.dataset.mockId));return;}
  if(target.dataset.contractBackProject){
   const p=projectRows.find(r=>r.id===Number(target.dataset.contractBackProject));
@@ -598,6 +715,19 @@ el('content').addEventListener('click',async ev=>{
  if(target.dataset.searchDetail){const [k,id]=target.dataset.searchDetail.split(':');openMockRecord(k,Number(id));return;}
  if(target.dataset.download){const r=liveRows.find(r=>r.id===detail?.id);const file=r?.files.find(f=>f.id===Number(target.dataset.download));if(file)await download(file);return;}
  switch(target.dataset.action){
+  case 'archiveAdd':showArchiveForm();break;
+  case 'archiveEdit':showArchiveForm(detail?.id);break;
+  case 'archiveCopy':showArchiveTransfer(false);break;
+  case 'archiveMove':showArchiveTransfer(true);break;
+  case 'archiveDelete':{
+   const record=(archiveRows[page]||[]).find(r=>r.id===detail?.id);
+   if(!record||!confirm('移除资料“'+record.name+'”？此操作为软删除。'))break;
+   try{
+    await api('/api/archives/'+space+'/'+page+'/'+record.id,{method:'DELETE'});
+    detail=null;await refresh();notice('资料已从当前台账移除');
+   }catch(e){notice(e.message,true);}
+   break;
+  }
   case 'contractAdd':
    if(detail?.kind==='project')showContractForm(detail.id);break;
   case 'contractEdit':{
@@ -710,6 +840,48 @@ el('content').addEventListener('keydown',event=>{
 el('globalSearch').onkeydown=event=>{if(event.key==='Enter'&&space){filterName=el('globalSearch').value.trim();page='search';detail=null;render();}};
 el('cancelRecord').onclick=()=>{editingId=null;el('modal').close();};
 el('modal').addEventListener('close',()=>{editingId=null;});
+el('archiveCancel').onclick=()=>el('archiveDialog').close();
+el('archiveDialog').addEventListener('close',()=>{archiveEditingId=null;});
+el('archiveForm').onsubmit=async event=>{
+ event.preventDefault();
+ const id=archiveEditingId,workspace=space,section=page;
+ const input=Object.fromEntries(new FormData(el('archiveForm')).entries());
+ el('archiveSave').disabled=true;
+ try{
+  const path='/api/archives/'+workspace+'/'+section+(id===null?'':'/'+id);
+  const response=await api(path,{method:id===null?'POST':'PUT',json:input});
+  const recordId=id===null?(await response.json()).id:id;
+  el('archiveDialog').close();
+  await refresh();
+  const record=(archiveRows[section]||[]).find(r=>r.id===recordId);
+  if(record){
+   page=section;archiveGroup=record.category||'未分类';
+   detail={kind:'archive',id:recordId};render();
+  }
+  notice(id===null?'资料已创建':'资料修改已保存');
+ }catch(error){notice(error.message,true);}
+ finally{el('archiveSave').disabled=false;}
+};
+el('archiveTransferCancel').onclick=()=>el('archiveTransferDialog').close();
+el('archiveTransferDialog').addEventListener('close',()=>{
+ archiveTransferId=null;archiveTransferMode=null;
+});
+el('archiveTransferForm').onsubmit=async event=>{
+ event.preventDefault();
+ const id=archiveTransferId,move=archiveTransferMode==='move';
+ const sourceWorkspace=space,sourceSection=page;
+ const [targetWorkspace,targetSection]=el('archiveDestination').value.split(':');
+ if(id===null)return;
+ el('archiveTransferSave').disabled=true;
+ try{
+  await api('/api/archives/'+sourceWorkspace+'/'+sourceSection+'/'+id+'/transfer',
+   {method:'POST',json:{targetWorkspace,targetSection,move}});
+  el('archiveTransferDialog').close();
+  if(move)detail=null;
+  await refresh();notice(move?'资料已转移':'资料已复制');
+ }catch(error){notice(error.message,true);}
+ finally{el('archiveTransferSave').disabled=false;}
+};
 el('contractCancel').onclick=()=>el('contractDialog').close();
 el('contractDialog').addEventListener('close',()=>{contractEditingId=null;contractProjectId=null;});
 el('contractForm').onsubmit=async event=>{
@@ -788,7 +960,7 @@ el('newRecordForm').onsubmit=async ev=>{
 };
 async function closeDb(){
  if(!confirm('关闭当前数据库？再次打开时需要输入数据库密码。'))return;
- try{await api('/api/lock',{method:'POST'});token='';dbName='';space=null;liveRows=[];projectRows=[];ipRows=[];contractRows=[];sessionStorage.clear();recoveryMode(false);mode(false);screen(false);notice('已安全关闭数据库');}catch(e){notice(e.message,true);}
+ try{await api('/api/lock',{method:'POST'});token='';dbName='';space=null;liveRows=[];projectRows=[];ipRows=[];contractRows=[];archiveRows={certificate:[],achievement:[],academic:[]};sessionStorage.clear();recoveryMode(false);mode(false);screen(false);notice('已安全关闭数据库');}catch(e){notice(e.message,true);}
 }
 el('closeDbFromChoice').onclick=closeDb;
 async function sendExit(choice){

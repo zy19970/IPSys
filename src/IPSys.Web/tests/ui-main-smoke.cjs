@@ -59,7 +59,9 @@ for(const k of ['certificate','ip','researchProject','achievement','academic'])a
 for(const cls of ['.recordgrid','.archivecard','.archivecard-real','.archivecard-meta','.archivecard-actions','.archivecategory','.archive-tablewrap']){
  assert.ok(css.includes(cls),'Missing archive card style '+cls);
 }
-assert.ok(js.includes("['certificate','achievement','academic'].includes(page)?mockCardList(page)"),'Archive mock pages must select card mode');
+assert.ok(js.includes("archiveSections.includes(page)?realArchiveCards(page)"),'Archive sections must load actual SQLCipher category cards');
+assert.ok(js.includes("archiveGroup&&archiveSections.includes(page)?realArchiveTable(page,archiveGroup)"),'Category rows must use SQLCipher');
+assert.ok(js.includes("detail.kind==='archive'?realArchiveDetail()"),'Archive records must open real detail');
 assert.ok(js.includes("page==='general'?generalList()"),'Real general records must retain their route');
 assert.ok(js.includes("isProject(page)?projectList(page)"),'Project pages must use real SQLCipher records');
 assert.ok(js.includes("page==='ip'?ipList()"),'IP ledger must render genuine SQLCipher records');
@@ -258,4 +260,47 @@ assert.ok(!contractContext.__contracts.includes('data-action="contractAdd"'),'No
 assert.ok(contractContext.__owned.includes('data-action="contractAdd"'),'Project detail must offer adding a child contract');
 assert.ok(contractContext.__owned.includes('data-contract-id="31"'),'Project detail must list only owned contracts');
 assert.deepEqual(Array.from(contractContext.__display),['—','0.00','12.30']);
+
+// B04 minimal archives reuse frozen category cards -> ledger -> detail layout.
+for(const id of ['archiveDialog','archiveForm','aName','aCategory','aRemarks','aTags',
+ 'archiveTransferDialog','archiveTransferForm','archiveDestination'])
+ assert.ok(html.includes('id="'+id+'"'),'Archive form or transfer control missing: '+id);
+for(const action of ['archiveAdd','archiveEdit','archiveCopy','archiveMove','archiveDelete'])
+ assert.ok(js.includes("case '"+action+"'"),'Missing real archive action '+action);
+assert.ok(js.includes("archiveSections.map(section=>api('/api/archives/'+space+'/'+section)"),
+ 'Real archives must be fetched by current workspace and module');
+assert.ok(js.includes('data-archive-id='),'Real archive records must open stored IDs');
+assert.ok(js.includes("archiveRows[section]=archiveResults[i]"),'Archive records must be initialized from database');
+const archiveFirst=js.indexOf('const archiveSections=['),archiveLast=js.indexOf('function mockCardList(k){',archiveFirst);
+assert.ok(archiveFirst>=0&&archiveLast>archiveFirst,'Archive render functions missing');
+const realArchiveCtx=vm.createContext({sessionStorage:{getItem:()=>null}});
+vm.runInContext(preamble+'\n'+js.slice(archiveFirst,archiveLast)+
+ "\nfunction heading(name,subtitle,actions){return '<h1>'+name+'</h1>'+(actions||'');}"+
+ "\nfunction infoRow(k,v){return k+':'+v;}"+
+ "\nfunction section(name,content){return name+content;}"+
+ "\nspace='personal';page='academic';filterName='';filterKind='全部类型';"+
+ "archiveRows={certificate:[],achievement:[],academic:["+
+ "{id:21,name:'第一次兼职',category:'学术兼职',remarks:'',tags:''},"+
+ "{id:22,name:'第二次兼职',category:'学术兼职',remarks:'',tags:''},"+
+ "{id:23,name:'会议报告',category:'会议报告',remarks:'',tags:''}"+
+ "]};archiveGroup='学术兼职';"+
+ "globalThis.__realCards=realArchiveCards('academic');"+
+ "globalThis.__realTable=realArchiveTable('academic','学术兼职');"+
+ "globalThis.__realOther=realArchiveTable('academic','会议报告');"+
+ "globalThis.__realDetail=realArchiveDetail;"+
+ "globalThis.__possibleTargets=archiveDestinations;",realArchiveCtx);
+assert.ok(realArchiveCtx.__realCards.includes('data-archive-category="学术兼职"'),
+ 'Even with real data, the category cards must be separate from records');
+assert.ok(!realArchiveCtx.__realCards.includes('<table'),'Archive top level cannot turn into a table');
+assert.ok(realArchiveCtx.__realTable.includes('data-archive-id="21"')&&
+ realArchiveCtx.__realTable.includes('data-archive-id="22"'),
+ 'A category must support multiple independently persisted records');
+assert.ok(!realArchiveCtx.__realTable.includes('data-archive-id="23"'),
+ 'Academic categories must not mix their records');
+assert.ok(realArchiveCtx.__realOther.includes('data-archive-id="23"'),
+ 'Conference category must retain its own records');
+assert.ok(!realArchiveCtx.__realCards.includes('界面示例'),
+ 'Real archive pages must not be labelled as demonstration data');
+assert.ok(realArchiveCtx.__possibleTargets.some(x=>x.workspace==='company'&&x.kind==='company_certificate'),
+ 'Company and personal certificates must remain different logical kinds');
 console.log('MAIN UI SMOKE PASS: navigation, workspace choice, live API contract, mock markers, CSP-compatible markup');

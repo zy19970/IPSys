@@ -121,6 +121,27 @@
       <div class="dialogactions"><button type="button" class="btn" id="contractCancel">取消</button><button type="submit" class="btn primary" id="contractSave">保存合同</button></div>
     </form>
   </dialog>
+  <dialog id="archiveDialog" class="input-dialog project-dialog">
+    <form id="archiveForm">
+      <h2 id="archiveFormTitle">新建资料</h2>
+      <p class="subtle">资料名称必填，类别、备注与标签可选。</p>
+      <div class="project-form-grid">
+        <div class="form-field project-span"><label for="aName">资料名称 *</label><input id="aName" name="name" required maxlength="300"></div>
+        <div class="form-field project-span"><label for="aCategory">资料类别</label><input id="aCategory" name="category" list="archiveCategories"><datalist id="archiveCategories"></datalist></div>
+        <div class="form-field project-span"><label for="aTags">标签</label><input id="aTags" name="tags"></div>
+        <div class="form-field project-span"><label for="aRemarks">备注</label><textarea id="aRemarks" name="remarks" rows="3"></textarea></div>
+      </div>
+      <div class="dialogactions"><button type="button" class="btn" id="archiveCancel">取消</button><button type="submit" class="btn primary" id="archiveSave">保存资料</button></div>
+    </form>
+  </dialog>
+  <dialog id="archiveTransferDialog" class="input-dialog">
+    <form id="archiveTransferForm">
+      <h2 id="archiveTransferTitle">复制资料</h2>
+      <p class="subtle">仅复制资料的结构化字段，附件原件将在后续阶段接入。</p>
+      <div class="form-field"><label for="archiveDestination">目标工作区与类别</label><select id="archiveDestination" required></select></div>
+      <div class="dialogactions"><button type="button" class="btn" id="archiveTransferCancel">取消</button><button type="submit" class="btn primary" id="archiveTransferSave">确认</button></div>
+    </form>
+  </dialog>
   <dialog id="exitDialog" class="input-dialog"><h2>文件任务进行中</h2><p class="subtle">上传正在进行，请选择安全退出方式。</p><div class="dialogactions wrap"><button type="button" class="btn" id="exitCancelTask">取消任务并退出</button><button type="button" class="btn primary" id="exitFinishTask">任务完成后退出</button><button type="button" class="btn" id="exitStay">暂不退出</button></div></dialog>
   <div id="toast" role="status" aria-live="polite"></div>
 </body>

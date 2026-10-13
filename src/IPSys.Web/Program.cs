@@ -98,6 +98,7 @@ app.MapPost("/api/open", async (OpenInput input, Vault v) =>
             ProjectStore.Ensure(db);
             IpStore.Ensure(db);
             ContractStore.Ensure(db);
+            ArchiveStore.Ensure(db);
             string token = v.SetOpen(db, path);
             db = null;
             return Results.Json(new { token, name = Path.GetFileName(path) });
@@ -269,6 +270,92 @@ app.MapPost("/api/ip/{workspace}/{id:long}/transfer", async (
 
 // Contract creation requires an existing, active project in the same workspace.
 // "All contracts" is a read-only aggregation; it cannot create orphan records.
+// B04 minimal archives: the section is a validated view inside a fixed M0 module.
+app.MapGet("/api/archives/{workspace}/{section}", async (
+    HttpContext ctx, Vault v, string workspace, string section) =>
+{
+    if (!v.Allowed(ctx)) return Results.Unauthorized();
+    if (ArchiveStore.Module(workspace,section)==null) return Fail("无效的归档工作区或模块。");
+    await v.Gate.WaitAsync();
+    try
+    {
+        if (!v.Allowed(ctx)) return Results.Unauthorized();
+        return Results.Json(ArchiveStore.List(v.Db,workspace,section));
+    }
+    finally { v.Gate.Release(); }
+});
+app.MapPost("/api/archives/{workspace}/{section}", async (
+    HttpContext ctx, Vault v, string workspace, string section, ArchiveInput input) =>
+{
+    if (!v.Allowed(ctx)) return Results.Unauthorized();
+    if (ArchiveStore.Module(workspace,section)==null) return Fail("无效的归档工作区或模块。");
+    var validation=ArchiveStore.Validate(input);
+    if(validation!=null)return Fail(validation);
+    if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务或退出期间不可更改资料。",409);
+    await v.Gate.WaitAsync();
+    try
+    {
+        if (!v.Allowed(ctx)) return Results.Unauthorized();
+        if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务或退出期间不可更改资料。",409);
+        return Results.Json(new {id=ArchiveStore.Add(v.Db,workspace,section,input)});
+    }
+    finally { v.Gate.Release(); }
+});
+app.MapPut("/api/archives/{workspace}/{section}/{id:long}", async (
+    HttpContext ctx, Vault v, string workspace, string section, long id, ArchiveInput input) =>
+{
+    if (!v.Allowed(ctx)) return Results.Unauthorized();
+    if (ArchiveStore.Module(workspace,section)==null) return Fail("无效的归档工作区或模块。");
+    var validation=ArchiveStore.Validate(input);
+    if(validation!=null)return Fail(validation);
+    if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务或退出期间不可更改资料。",409);
+    await v.Gate.WaitAsync();
+    try
+    {
+        if (!v.Allowed(ctx)) return Results.Unauthorized();
+        if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务或退出期间不可更改资料。",409);
+        return ArchiveStore.Update(v.Db,workspace,section,id,input)
+            ? Results.Ok(new {ok=true}) : Results.NotFound();
+    }
+    finally { v.Gate.Release(); }
+});
+app.MapDelete("/api/archives/{workspace}/{section}/{id:long}", async (
+    HttpContext ctx, Vault v, string workspace, string section, long id) =>
+{
+    if (!v.Allowed(ctx)) return Results.Unauthorized();
+    if (ArchiveStore.Module(workspace,section)==null) return Fail("无效的归档工作区或模块。");
+    if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务或退出期间不可更改资料。",409);
+    await v.Gate.WaitAsync();
+    try
+    {
+        if (!v.Allowed(ctx)) return Results.Unauthorized();
+        if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务或退出期间不可更改资料。",409);
+        return ArchiveStore.Delete(v.Db,workspace,section,id)
+            ? Results.Ok(new {ok=true}) : Results.NotFound();
+    }
+    finally { v.Gate.Release(); }
+});
+app.MapPost("/api/archives/{workspace}/{section}/{id:long}/transfer", async (
+    HttpContext ctx, Vault v, string workspace, string section, long id, ArchiveTransfer input) =>
+{
+    if (!v.Allowed(ctx)) return Results.Unauthorized();
+    string? source=ArchiveStore.Module(workspace,section);
+    string? target=ArchiveStore.Module(input.TargetWorkspace,input.TargetSection);
+    if(source==null||target!=source)return Fail("不可转移至不兼容的资料类别。");
+    if(input.Move&&workspace==input.TargetWorkspace&&section==input.TargetSection)
+        return Fail("同一类别无需转移。");
+    if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务或退出期间不可更改资料。",409);
+    await v.Gate.WaitAsync();
+    try
+    {
+        if (!v.Allowed(ctx)) return Results.Unauthorized();
+        if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务或退出期间不可更改资料。",409);
+        long? newId=ArchiveStore.Transfer(v.Db,workspace,section,id,input.TargetWorkspace,input.TargetSection,input.Move);
+        return newId.HasValue?Results.Json(new {id=newId.Value}):Results.NotFound();
+    }
+    finally { v.Gate.Release(); }
+});
+
 app.MapGet("/api/contracts/{workspace}", async (HttpContext ctx, Vault v, string workspace) =>
 {
     if (!v.Allowed(ctx)) return Results.Unauthorized();
@@ -1270,6 +1357,105 @@ static class WebSmoke
             if((await client.GetFromJsonAsync<List<IpView>>("/api/ip/company"))?.Count!=0 ||
                (await client.GetFromJsonAsync<List<IpView>>("/api/ip/personal"))?.Count!=1)
                 throw new IOException("知识产权删除、复制、转移结果不符合预期。");
+            // B04 minimal archives: independent certificate scopes and the two
+            // personal research-output views keep all records out of sample data.
+            var companyCertificate = new ArchiveInput(
+                "ISO体系证书", "企业资质", "公司测试证件", "测试");
+            var certCreated = await client.PostAsJsonAsync(
+                "/api/archives/company/certificate", companyCertificate);
+            certCreated.EnsureSuccessStatusCode();
+            long companyCertificateId = (await certCreated.Content
+                .ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("id").GetInt64();
+            var certChange = companyCertificate with {Name="更新后的体系证书", Remarks="已修改"};
+            (await client.PutAsJsonAsync(
+                $"/api/archives/company/certificate/{companyCertificateId}",certChange))
+                .EnsureSuccessStatusCode();
+            var personalCertificate = await client.PostAsJsonAsync(
+                "/api/archives/personal/certificate",
+                new ArchiveInput("职称资格证书","职称资格","",""));
+            personalCertificate.EnsureSuccessStatusCode();
+            var allCompanyCerts=await client.GetFromJsonAsync<List<ArchiveView>>(
+                "/api/archives/company/certificate");
+            var allPersonalCerts=await client.GetFromJsonAsync<List<ArchiveView>>(
+                "/api/archives/personal/certificate");
+            if (allCompanyCerts?.Count!=1 ||
+                allCompanyCerts[0].Name!="更新后的体系证书" ||
+                allCompanyCerts[0].Remarks!="已修改" ||
+                allPersonalCerts?.Count!=1 ||
+                allPersonalCerts[0].Name!="职称资格证书")
+                throw new IOException("公司和个人资质证件的独立 CRUD 失败。");
+            var crossCertEdit=await client.PutAsJsonAsync(
+                $"/api/archives/personal/certificate/{companyCertificateId}",certChange);
+            if(crossCertEdit.StatusCode!=HttpStatusCode.NotFound)
+                throw new IOException("跨工作区或模块修改证件必须拒绝。");
+            var badArchive=await client.PostAsJsonAsync("/api/archives/personal/academic",
+                new ArchiveInput("  ","论文论著","",""));
+            if(badArchive.StatusCode!=HttpStatusCode.BadRequest)
+                throw new IOException("极简资料名称必填限制未生效。");
+            var invalidModule=await client.GetAsync("/api/archives/company/academic");
+            if(invalidModule.StatusCode!=HttpStatusCode.BadRequest)
+                throw new IOException("公司工作区不得读取个人学术模块。");
+            using(var noArchiveToken=new HttpClient{BaseAddress=new Uri(address)})
+            {
+                if((await noArchiveToken.GetAsync("/api/archives/personal/certificate"))
+                    .StatusCode!=HttpStatusCode.Unauthorized)
+                    throw new IOException("未授权不能读取归档资料。");
+            }
+            var certCopy=await client.PostAsJsonAsync(
+                $"/api/archives/company/certificate/{companyCertificateId}/transfer",
+                new ArchiveTransfer("company","certificate",false));
+            certCopy.EnsureSuccessStatusCode();
+            long duplicateCertId=(await certCopy.Content
+                .ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("id").GetInt64();
+            var crossCertificate=await client.PostAsJsonAsync(
+                $"/api/archives/company/certificate/{companyCertificateId}/transfer",
+                new ArchiveTransfer("personal","certificate",true));
+            if(crossCertificate.StatusCode!=HttpStatusCode.BadRequest)
+                throw new IOException("公司资质证件不得直接转型为个人证件。");
+            (await client.DeleteAsync(
+                $"/api/archives/company/certificate/{duplicateCertId}")).EnsureSuccessStatusCode();
+            if((await client.GetFromJsonAsync<List<ArchiveView>>(
+                "/api/archives/company/certificate"))?.Count!=1)
+                throw new IOException("同工作区复制和软删除证书未按预期处理。");
+
+            var personalAward=await client.PostAsJsonAsync(
+                "/api/archives/personal/achievement",
+                new ArchiveInput("矿山技术创新奖","个人奖励","获奖说明","奖项"));
+            personalAward.EnsureSuccessStatusCode();
+            var personalAcademic=await client.PostAsJsonAsync(
+                "/api/archives/personal/academic",
+                new ArchiveInput("学术任职证明","学术兼职","委员",""));
+            personalAcademic.EnsureSuccessStatusCode();
+            var companyOutput=await client.PostAsJsonAsync(
+                "/api/archives/company/achievement",
+                new ArchiveInput("企业科研成果","技术成果","研发表现",""));
+            companyOutput.EnsureSuccessStatusCode();
+            long companyOutputId=(await companyOutput.Content
+                .ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("id").GetInt64();
+            var copyToPersonalAcademic=await client.PostAsJsonAsync(
+                $"/api/archives/company/achievement/{companyOutputId}/transfer",
+                new ArchiveTransfer("personal","academic",false));
+            copyToPersonalAcademic.EnsureSuccessStatusCode();
+            var sameCategoryMove=await client.PostAsJsonAsync(
+                $"/api/archives/company/achievement/{companyOutputId}/transfer",
+                new ArchiveTransfer("company","achievement",true));
+            if(sameCategoryMove.StatusCode!=HttpStatusCode.BadRequest)
+                throw new IOException("同类别原地转移应该拒绝。");
+            var moveToPersonalAward=await client.PostAsJsonAsync(
+                $"/api/archives/company/achievement/{companyOutputId}/transfer",
+                new ArchiveTransfer("personal","achievement",true));
+            moveToPersonalAward.EnsureSuccessStatusCode();
+            var companyAfterMove=await client.GetFromJsonAsync<List<ArchiveView>>(
+                "/api/archives/company/achievement");
+            var personalAwards=await client.GetFromJsonAsync<List<ArchiveView>>(
+                "/api/archives/personal/achievement");
+            var personalAcademics=await client.GetFromJsonAsync<List<ArchiveView>>(
+                "/api/archives/personal/academic");
+            if(companyAfterMove?.Count!=0 || personalAwards?.Count!=2 ||
+                personalAcademics?.Count!=2 ||
+                !personalAcademics.Any(a=>a.Name=="学术任职证明"&&a.Category=="学术兼职") ||
+                !personalAcademics.Any(a=>a.Name=="企业科研成果"&&a.Category=="技术成果"))
+                throw new IOException("科研成果跨工作区复制/转移或多条学术记录不正确。");
             var data = RandomNumberGenerator.GetBytes(1024 * 1024 + 31);
             using var body = new ByteArrayContent(data);
             body.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
@@ -1364,6 +1550,18 @@ static class WebSmoke
             if(persistedIp is null || persistedIp.Count!=1 ||
                 persistedIp[0].Data.Name!="已修改发明" || persistedIp[0].Data.Status!="实质审查中")
                 throw new IOException("重新打开加密库后知识产权转移数据丢失。");
+            var persistedCompanyCertificates=await client.GetFromJsonAsync<List<ArchiveView>>(
+                "/api/archives/company/certificate");
+            var persistedPersonalCertificates=await client.GetFromJsonAsync<List<ArchiveView>>(
+                "/api/archives/personal/certificate");
+            var persistedAwards=await client.GetFromJsonAsync<List<ArchiveView>>(
+                "/api/archives/personal/achievement");
+            var persistedAcademic=await client.GetFromJsonAsync<List<ArchiveView>>(
+                "/api/archives/personal/academic");
+            if(persistedCompanyCertificates?.Count!=1 ||
+                persistedPersonalCertificates?.Count!=1 ||
+                persistedAwards?.Count!=2 || persistedAcademic?.Count!=2)
+                throw new IOException("重新打开加密库后 B04 资料缺少或工作区不一致。");
             var restoredContracts = await client.GetFromJsonAsync<List<ContractView>>("/api/contracts/personal");
             if (restoredContracts is null || restoredContracts.Count != 1 ||
                 restoredContracts[0].ProjectId != movedProjectId ||
