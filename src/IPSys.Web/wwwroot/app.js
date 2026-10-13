@@ -5,7 +5,7 @@ const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<
 let token=sessionStorage.getItem('ip-token')||'';
 let dbName=sessionStorage.getItem('ip-db')||'';
 let space=null,creating=false,resuming=false,localFileTaskActive=false;
-let page='dashboard',detail=null,archiveGroup=null,editingId=null,projectEditingId=null,projectRows=[],ipEditingId=null,ipRows=[],liveRows=[],filterName='',filterKind='全部类型',filterState='全部状态',selected=new Set();
+let page='dashboard',detail=null,archiveGroup=null,editingId=null,projectEditingId=null,projectRows=[],ipEditingId=null,ipRows=[],contractEditingId=null,contractProjectId=null,contractRows=[],liveRows=[],filterName='',filterKind='全部类型',filterState='全部状态',selected=new Set();
 const companyNav=[['dashboard','工作台','▦'],['ip','知识产权','◇'],['researchProject','科研项目','▤'],['horizontalProject','横向项目','▥'],['contract','全部合同','▧'],['certificate','企业资质','▣'],['general','综合资料','▥']];
 // Personal archives are grouped by evidence type, not by the company management menu.
 const personalNav=[['dashboard','个人工作台','▦'],['certificate','身份与资质','▣'],['ip','知识产权与著作','◇'],['researchProject','科研与合作项目','▤'],['achievement','成果与奖励','★'],['academic','学术与社会活动','▥'],['general','其他资料','▧']];
@@ -128,7 +128,7 @@ el('openForm').onsubmit=async event=>{
 };
 function selectSpace(next){
   if(!token)return;
-  space=next;page='dashboard';detail=null;archiveGroup=null;projectRows=[];ipRows=[];filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();
+  space=next;page='dashboard';detail=null;archiveGroup=null;projectRows=[];ipRows=[];contractRows=[];filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();
   el('globalSearch').value='';el('sidebarDbName').textContent=dbName;
   el('chooseWorkspace').hidden=true;el('unlocked').hidden=false;
   refresh();
@@ -139,9 +139,9 @@ function setPage(next){page=next;detail=null;archiveGroup=null;filterName='';fil
 async function refresh(){
   if(!token||!space)return;
   const requestedSpace=space;
-  try{const [rows,projects,ips]=await Promise.all([api('/api/records/'+space).then(r=>r.json()),api('/api/projects/'+space).then(r=>r.json()),api('/api/ip/'+space).then(r=>r.json())]);
+  try{const [rows,projects,ips,contracts]=await Promise.all([api('/api/records/'+space).then(r=>r.json()),api('/api/projects/'+space).then(r=>r.json()),api('/api/ip/'+space).then(r=>r.json()),api('/api/contracts/'+space).then(r=>r.json())]);
     if(requestedSpace!==space||!token)return;
-    liveRows=rows;projectRows=projects;ipRows=ips;render();
+    liveRows=rows;projectRows=projects;ipRows=ips;contractRows=contracts;render();
   }catch(error){notice(error.message,true);}
 }
 function refreshSidebar(){
@@ -166,11 +166,11 @@ function dashboard(){
  const general=liveRows.length;const fileCount=liveRows.reduce((n,r)=>n+r.files.length,0);
  const counts=space==='personal'
   ? [['其他资料',general,'条真实记录'],['已归档原件',fileCount,'份真实附件'],['身份与资质',sample('certificate').length,'条界面示例'],['成果与奖励',sample('achievement').length,'条界面示例']]
-  : [['综合资料',general,'条真实记录'],['已归档原件',fileCount,'份真实附件'],['知识产权',sample('ip').length,'条界面示例'],['科研项目',sample('researchProject').length,'条界面示例']];
+  : [['综合资料',general,'条真实记录'],['已归档原件',fileCount,'份真实附件'],['知识产权',ipRows.length,'条真实记录'],['科研项目',projectRows.filter(p=>p.projectType!=='横向项目').length,'条真实记录']];
  return heading(title('dashboard'),'当前工作区 · 真实综合资料与其余模块的界面示例')+
  '<div class="cards">'+counts.map(([name,num,s])=>`<div class="card"><div class="metriclabel">${name}</div><div class="metric">${num}</div><div class="metricfoot">${s}</div></div>`).join('')+'</div>'+
- '<div class="panels"><section class="card"><h2 class="sectiontitle">'+(space==='personal'?'个人资料分类入口':'业务模块快捷入口')+'</h2><div class="modulegrid">'+mods.map(([key,name])=>`<button class="modulelink" data-nav="${key}"><span><b>${name}</b><small>${key==='general'?general+' 条真实记录':(sample(key).length||0)+' 条演示记录'}</small></span><span class="arrow">→</span></button>`).join('')+'</div></section>'+
- '<section class="card"><h2 class="sectiontitle">当前工作区资料概况</h2><div class="minirow"><span>公司 / 个人隔离</span><strong>已启用</strong></div><div class="minirow"><span>'+ (space==='personal'?'其他资料':'综合资料') +'存储</span><strong>真实 SQLCipher</strong></div><div class="minirow"><span>'+ (space==='personal'?'分类资料':'知识产权、项目与合同') +'</span>'+pill('界面设计')+'</div><div class="minirow"><span>当前数据库</span><span class="muted">'+escapeHtml(dbName)+'</span></div><p class="hint">界面设计阶段，分类资料均为演示记录。真实文件请在“'+(space==='personal'?'其他资料':'综合资料')+'”中管理。</p></section></div>';
+ '<div class="panels"><section class="card"><h2 class="sectiontitle">'+(space==='personal'?'个人资料分类入口':'业务模块快捷入口')+'</h2><div class="modulegrid">'+mods.map(([key,name])=>`<button class="modulelink" data-nav="${key}"><span><b>${name}</b><small>${key==='general'?general+' 条真实记录':key==='ip'?ipRows.length+' 条真实记录':key==='contract'?contractRows.length+' 条真实记录':isProject(key)?projectViewRows(key).length+' 条真实记录':(sample(key).length||0)+' 条演示记录'}</small></span><span class="arrow">→</span></button>`).join('')+'</div></section>'+
+ '<section class="card"><h2 class="sectiontitle">当前工作区资料概况</h2><div class="minirow"><span>公司 / 个人隔离</span><strong>已启用</strong></div><div class="minirow"><span>'+ (space==='personal'?'其他资料':'综合资料') +'存储</span><strong>真实 SQLCipher</strong></div><div class="minirow"><span>'+ (space==='personal'?'分类资料':'知识产权、项目与合同') +'</span>'+pill('界面设计')+'</div><div class="minirow"><span>当前数据库</span><span class="muted">'+escapeHtml(dbName)+'</span></div><p class="hint">证件、成果等分类仍为界面示例。真实文件请在“'+(space==='personal'?'其他资料':'综合资料')+'”中管理。</p></section></div>';
 }
 function generalList(){
  const rows=liveRows.filter(r=>r.title.toLowerCase().includes(filterName.toLowerCase()));
@@ -283,6 +283,79 @@ function showIpForm(id=null){
  ipUpdateStatus(value?.status||'');
  el('ipDialog').showModal();
 }
+// Project-owned contracts. The aggregate view deliberately provides NO "new" action.
+const contractFieldLabels=[
+ ['name','合同名称'],['contractNo','合同编号'],['signDate','签订日期'],
+ ['amount','合同金额（人民币元）'],['signingParties','签约主体'],
+ ['category','辅助分类'],['tags','标签'],['remarks','备注']
+];
+function contractMoney(value){
+ if(value===null||value===undefined||String(value).trim()==='')return '—';
+ return Number(value).toFixed(2);
+}
+function contractList(){
+ const visible=contractRows.filter(c=>
+  [c.name,c.contractNo,c.projectName,c.signingParties].join(' ').toLowerCase().includes(filterName.toLowerCase()));
+ return heading('全部合同','当前工作区真实合同汇总 · 合同只能从所属项目详情新增',
+   '<span class="realflag">真实记录</span>')+
+ '<section class="white filter"><div class="filterline">'+
+ '<div class="field wide"><label>名称 / 编号 / 所属项目</label><input id="filterSearch" placeholder="搜索合同或项目"></div>'+
+ '<button class="btn primary" data-action="filter">查询</button><button class="btn" data-action="clearFilter">重置</button></div></section>'+
+ '<section class="white"><div class="tabletools"><b>合同台账 '+visible.length+' 条真实记录</b></div>'+
+ '<div class="tablewrap"><table class="data"><thead><tr>'+
+ '<th>合同名称</th><th>所属项目</th><th>合同编号</th><th>签订日期</th><th>合同金额（人民币元）</th>'+
+ '</tr></thead><tbody>'+
+ (visible.length?visible.map(c=>'<tr>'+
+ '<td><button class="link" data-contract-id="'+c.id+'">'+escapeHtml(c.name)+'</button></td>'+
+ '<td>'+escapeHtml(c.projectName)+'</td><td>'+escapeHtml(c.contractNo||'—')+'</td>'+
+ '<td>'+escapeHtml(c.signDate||'—')+'</td><td>'+contractMoney(c.amount)+'</td></tr>').join(''):
+ '<tr><td colspan="5" class="empty">暂无合同，请先进入所属项目详情新增。</td></tr>')+
+ '</tbody></table></div><div class="tablefoot">共 '+visible.length+' 条合同 · 所属项目从加密库关联读取</div></section>';
+}
+function projectContracts(projectId){
+ const subset=contractRows.filter(c=>c.projectId===projectId);
+ return '<div class="tabletools"><b>所属合同 '+subset.length+' 份</b>'+
+ '<button class="btn primary" data-action="contractAdd">＋ 新建合同</button></div>'+
+ (subset.length?'<div class="tablewrap"><table class="data"><thead><tr><th>合同名称</th><th>合同编号</th><th>签订日期</th><th>金额（人民币元）</th></tr></thead><tbody>'+
+ subset.map(c=>'<tr><td><button class="link" data-contract-id="'+c.id+'">'+escapeHtml(c.name)+'</button></td>'+
+ '<td>'+escapeHtml(c.contractNo||'—')+'</td><td>'+escapeHtml(c.signDate||'—')+'</td>'+
+ '<td>'+contractMoney(c.amount)+'</td></tr>').join('')+
+ '</tbody></table></div>':
+ '<p class="hint">尚无合同。合同必须由当前项目创建并自动关联。</p>');
+}
+function contractDetail(){
+ const c=contractRows.find(c=>c.id===detail?.id);
+ if(!c)return heading('合同不存在','当前工作区无此合同')+
+ '<button class="btn" data-nav="contract">返回合同台账</button>';
+ const returnToProject=detail?.returnProject&&projectRows.some(p=>p.id===detail.returnProject);
+ const back=returnToProject?
+ '<button class="btn" data-contract-back-project="'+detail.returnProject+'">← 返回所属项目</button>':
+ '<button class="btn" data-nav="contract">← 返回合同台账</button>';
+ return heading(c.name,'所属项目：'+escapeHtml(c.projectName)+' · SQLCipher 真实合同',back+
+ '<button class="btn" data-action="contractEdit">修改</button>'+
+ '<button class="btn" data-action="contractCopy">复制到本项目</button>'+
+ '<button class="btn" data-action="contractDelete">删除</button>')+
+ section('合同基本信息','<div class="infogrid">'+
+ infoRow('所属项目',c.projectName)+
+ contractFieldLabels.map(([field,label])=>infoRow(label,
+   field==='amount'?(c.amount?contractMoney(c.amount):''):c[field])).join('')+
+ '</div>')+
+ section('合同附件','<p class="hint">合同原件附件将在后续附件功能阶段接入。</p>');
+}
+function showContractForm(projectId,id=null){
+ const parent=projectRows.find(p=>p.id===projectId);
+ if(!parent){notice('请先从有效的项目详情打开合同表单。',true);return;}
+ const record=id===null?null:contractRows.find(c=>c.id===id&&c.projectId===projectId);
+ if(id!==null&&!record){notice('合同记录不存在或已不属于此项目。',true);return;}
+ contractEditingId=id;contractProjectId=projectId;
+ el('contractForm').reset();
+ el('contractFormTitle').textContent=record?'修改合同':'新建项目合同';
+ el('contractProjectHint').textContent='所属项目：'+parent.name+'（合同自动归属于该项目）';
+ if(record){
+  for(const [field] of contractFieldLabels)el('ct-'+field).value=record[field]??'';
+ }
+ el('contractDialog').showModal();
+}
 function projectViewRows(k){
  return projectRows.filter(p=>space==='personal'||(k==='researchProject'?p.projectType!=='横向项目':p.projectType==='横向项目'));
 }
@@ -325,7 +398,7 @@ function projectDetail(){
  infoRow('项目状态',p.projectStatus)+infoRow('开始日期',p.startDate)+
  infoRow('结束日期',p.endDate)+infoRow('辅助分类',p.category)+
  infoRow('标签',p.tags)+infoRow('备注',p.remarks)+'</div>')+
- section('所属合同','<p class="hint">项目记录已接入数据库；所属合同的真实业务关联下一阶段接入。</p>')+
+ section('所属合同',projectContracts(p.id))+
  section('项目自身附件','<p class="hint">项目附件归属与附件版本管理下一阶段接入。</p>');
 }
 function showProjectForm(id=null){
@@ -467,11 +540,11 @@ function render(){
  if(!space||!token)return;
  refreshSidebar();
  const content=el('content');
- content.innerHTML=detail?(detail.kind==='general'?realDetail():detail.kind==='project'?projectDetail():detail.kind==='ip'?ipDetail():mockDetail()):
+ content.innerHTML=detail?(detail.kind==='general'?realDetail():detail.kind==='project'?projectDetail():detail.kind==='contract'?contractDetail():detail.kind==='ip'?ipDetail():mockDetail()):
    archiveGroup&&['certificate','achievement','academic'].includes(page)?mockCategoryTable(page,archiveGroup):
    page==='dashboard'?dashboard():page==='general'?generalList():
    isProject(page)?projectList(page):page==='ip'?ipList():
-   page==='contract'?mockList(page):
+   page==='contract'?contractList():
    ['certificate','achievement','academic'].includes(page)?mockCardList(page):
    page==='search'?searchPage():page==='settings'?settingsPage():trashPage();
  const searchBox=el('filterSearch');if(searchBox)searchBox.value=filterName;
@@ -511,10 +584,53 @@ el('content').addEventListener('click',async ev=>{
  if(target.dataset.projectId){detail={kind:'project',id:Number(target.dataset.projectId)};render();el('content').scrollTo(0,0);return;}
  if(target.dataset.ipId){detail={kind:'ip',id:Number(target.dataset.ipId)};page='ip';render();el('content').scrollTo(0,0);return;}
  if(target.dataset.mockId){openMockRecord(page,Number(target.dataset.mockId));return;}
- if(target.dataset.contractId){openMockRecord('contract',Number(target.dataset.contractId));return;}
+ if(target.dataset.contractBackProject){
+  const p=projectRows.find(r=>r.id===Number(target.dataset.contractBackProject));
+  if(p){page=space==='personal'?'researchProject':p.projectType==='横向项目'?'horizontalProject':'researchProject';
+   detail={kind:'project',id:p.id};render();}
+  return;
+ }
+ if(target.dataset.contractId){
+  const parent=detail?.kind==='project'?detail.id:null;
+  detail={kind:'contract',id:Number(target.dataset.contractId),returnProject:parent};
+  render();el('content').scrollTo(0,0);return;
+ }
  if(target.dataset.searchDetail){const [k,id]=target.dataset.searchDetail.split(':');openMockRecord(k,Number(id));return;}
  if(target.dataset.download){const r=liveRows.find(r=>r.id===detail?.id);const file=r?.files.find(f=>f.id===Number(target.dataset.download));if(file)await download(file);return;}
  switch(target.dataset.action){
+  case 'contractAdd':
+   if(detail?.kind==='project')showContractForm(detail.id);break;
+  case 'contractEdit':{
+   const c=contractRows.find(row=>row.id===detail?.id);
+   if(c)showContractForm(c.projectId,c.id);break;
+  }
+  case 'contractCopy':{
+   const c=contractRows.find(row=>row.id===detail?.id);if(!c)break;
+   if(!confirm('在“'+c.projectName+'”项目下复制合同“'+c.name+'”？'))break;
+   try{
+    const input=Object.fromEntries(contractFieldLabels.map(([key])=>[key,c[key]]));
+    const response=await api('/api/projects/'+space+'/'+c.projectId+'/contracts',
+      {method:'POST',json:input});
+    const newId=(await response.json()).id;
+    const projectReturn=detail.returnProject;
+    await refresh();
+    detail={kind:'contract',id:newId,returnProject:projectReturn};render();
+    notice('合同已复制到原所属项目');
+   }catch(e){notice(e.message,true);}break;
+  }
+  case 'contractDelete':{
+   const c=contractRows.find(row=>row.id===detail?.id);if(!c)break;
+   if(!confirm('将合同“'+c.name+'”从台账移除？此操作为软删除。'))break;
+   try{
+    await api('/api/contracts/'+space+'/'+c.id,{method:'DELETE'});
+    const projectReturn=detail.returnProject;
+    detail=null;
+    await refresh();
+    if(projectReturn&&projectRows.some(p=>p.id===projectReturn))
+      detail={kind:'project',id:projectReturn};
+    render();notice('合同已移出当前台账');
+   }catch(e){notice(e.message,true);}break;
+  }
   case 'ipAdd':showIpForm();break;
   case 'ipEdit':showIpForm(detail?.id);break;
   case 'ipDelete':{
@@ -595,6 +711,27 @@ el('content').addEventListener('keydown',event=>{
 el('globalSearch').onkeydown=event=>{if(event.key==='Enter'&&space){filterName=el('globalSearch').value.trim();page='search';detail=null;render();}};
 el('cancelRecord').onclick=()=>{editingId=null;el('modal').close();};
 el('modal').addEventListener('close',()=>{editingId=null;});
+el('contractCancel').onclick=()=>el('contractDialog').close();
+el('contractDialog').addEventListener('close',()=>{contractEditingId=null;contractProjectId=null;});
+el('contractForm').onsubmit=async event=>{
+ event.preventDefault();
+ const id=contractEditingId,projectId=contractProjectId,workspace=space;
+ if(projectId===null)return notice('合同缺少所属项目，无法保存。',true);
+ const data=Object.fromEntries(new FormData(el('contractForm')).entries());
+ el('contractSave').disabled=true;
+ try{
+  const endpoint=id===null?'/api/projects/'+workspace+'/'+projectId+'/contracts':
+   '/api/contracts/'+workspace+'/'+id;
+  const response=await api(endpoint,{method:id===null?'POST':'PUT',json:data});
+  const savedId=id===null?(await response.json()).id:id;
+  const projectReturn=detail?.kind==='project'?projectId:detail?.returnProject||null;
+  el('contractDialog').close();
+  await refresh();
+  detail={kind:'contract',id:savedId,returnProject:projectReturn};render();
+  notice(id===null?'合同已创建并关联项目':'合同修改已保存');
+ }catch(error){notice(error.message,true);}
+ finally{el('contractSave').disabled=false;}
+};
 el('ipCancel').onclick=()=>el('ipDialog').close();
 el('ipDialog').addEventListener('close',()=>{ipEditingId=null;});
 el('ip-ipType').onchange=()=>ipUpdateStatus();
@@ -652,7 +789,7 @@ el('newRecordForm').onsubmit=async ev=>{
 };
 async function closeDb(){
  if(!confirm('关闭当前数据库？再次打开时需要输入数据库密码。'))return;
- try{await api('/api/lock',{method:'POST'});token='';dbName='';space=null;liveRows=[];projectRows=[];ipRows=[];sessionStorage.clear();recoveryMode(false);mode(false);screen(false);notice('已安全关闭数据库');}catch(e){notice(e.message,true);}
+ try{await api('/api/lock',{method:'POST'});token='';dbName='';space=null;liveRows=[];projectRows=[];ipRows=[];contractRows=[];sessionStorage.clear();recoveryMode(false);mode(false);screen(false);notice('已安全关闭数据库');}catch(e){notice(e.message,true);}
 }
 el('closeDbFromChoice').onclick=closeDb;
 async function sendExit(choice){

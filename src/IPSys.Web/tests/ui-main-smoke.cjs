@@ -63,7 +63,7 @@ assert.ok(js.includes("['certificate','achievement','academic'].includes(page)?m
 assert.ok(js.includes("page==='general'?generalList()"),'Real general records must retain their route');
 assert.ok(js.includes("isProject(page)?projectList(page)"),'Project pages must use real SQLCipher records');
 assert.ok(js.includes("page==='ip'?ipList()"),'IP ledger must render genuine SQLCipher records');
-assert.ok(js.includes("page==='contract'?mockList(page)"),'Contract preview must remain explicitly mock');
+assert.ok(js.includes("page==='contract'?contractList()"),'Contract summary must render real SQLCipher records');
 const rendererSource=[
  ['function generalList(){','function realDetail()'],
  ['function columns(k){','function archiveCard('],
@@ -200,7 +200,7 @@ for(const name of ['pName','pType','pNo','pStatus','pLeader','pOrg','pStart','pE
  assert.ok(html.includes('id="'+name+'"'),'Missing project field '+name);
 for(const route of ["'/api/projects/'+space","method:'DELETE'","method:'PUT'","method:'POST'","targetWorkspace:destination"])
  assert.ok(js.includes(route),'Missing project persistence or transfer '+route);
-assert.ok(js.includes("projectRows=projects;ipRows=ips;render()"),'Projects and IP must refresh from the real database');
+assert.ok(js.includes("projectRows=projects;ipRows=ips;contractRows=contracts;render()"),'Projects, IP and contracts must refresh from the real database');
 const projectCtx=vm.createContext({sessionStorage:{getItem:()=>null}});
 const projector=js.slice(js.indexOf('function projectViewRows('),js.indexOf('function archiveCard(',js.indexOf('function projectViewRows(')));
 vm.runInContext(preamble+
@@ -219,7 +219,7 @@ for(const name of ['name','ipType','status','applicants','rightHolders','creator
  assert.ok(html.includes('id="ip-'+name+'"'),'Missing intellectual-property field '+name);
 for(const action of ['ipAdd','ipEdit','ipDelete','ipCopy','ipMove'])
  assert.ok(js.includes("case '"+action+"'"),'IP operation missing '+action);
-assert.ok(js.includes("ipRows=ips;render()"),'IP records must be loaded from real API');
+assert.ok(js.includes("ipRows=ips;contractRows=contracts;render()"),'IP and contracts must be loaded from real API');
 const intellectualCode=js.slice(js.indexOf('const ipStatusByType='),js.indexOf('function projectViewRows(',js.indexOf('const ipStatusByType=')));
 assert.ok(intellectualCode.length>0);
 const ipCtx=vm.createContext({sessionStorage:{getItem:()=>null}});
@@ -229,4 +229,33 @@ vm.runInContext(preamble+
 assert.ok(ipCtx.__ip.includes('data-ip-id="32"'),'Real IP rows must link to stored IDs');
 assert.ok(!ipCtx.__ip.includes('仅演示'),'Real IP ledger must not use mock labels');
 assert.equal(ipCtx.__types.length,7,'Exactly seven M0 IP types must be selectable');
+
+// Contracts inherit the parent project and use the existing frozen ledger/details UI.
+assert.ok(html.includes('id="contractDialog"'),'Contract input form missing');
+for(const field of ['name','contractNo','signDate','amount','signingParties','category','tags','remarks'])
+ assert.ok(html.includes('id="ct-'+field+'"'),'Contract business field missing '+field);
+assert.ok(!js.includes('case \'demoContract\':notice('),'Contract must not be a demo-only operation');
+for(const action of ['contractAdd','contractEdit','contractCopy','contractDelete'])
+ assert.ok(js.includes("case '"+action+"'"),'Missing real contract action '+action);
+assert.ok(js.includes('data-contract-id='),'Real contract items must link to saved IDs');
+assert.ok(js.includes('data-contract-back-project'),'Contract detail must return to owning project');
+assert.ok(js.includes("section('所属合同',projectContracts(p.id))"),'Project details must list real children');
+assert.ok(js.includes("id===null?'/api/projects/'+workspace+'/'+projectId+'/contracts'"),
+ 'New contracts must be created from their project ID');
+const contractFrom=js.indexOf('const contractFieldLabels=');
+const contractUntil=js.indexOf('function projectViewRows(',contractFrom);
+assert.ok(contractFrom>=0&&contractUntil>contractFrom,'Contract renderers not found');
+const contractContext=vm.createContext({sessionStorage:{getItem:()=>null}});
+vm.runInContext(preamble+
+ '\nfunction heading(n,s,a){return n+(a||"");}\nfunction infoRow(n,v){return n+":"+v;}\nfunction section(n,v){return n+v;}\n'+
+ js.slice(contractFrom,contractUntil)+
+ "\nspace='company';contractRows=[{id:31,projectId:7,workspace:'company',projectName:'测试科研项目',name:'测试合同',contractNo:'HT-001',signDate:'2026-10-12',amount:'12.3',signingParties:'甲乙'}];"+
+ "globalThis.__contracts=contractList();globalThis.__owned=projectContracts(7);"+
+ "globalThis.__display=[contractMoney(''),contractMoney('0'),contractMoney('12.3')];",contractContext);
+assert.ok(contractContext.__contracts.includes('data-contract-id="31"'),'Contract summary must open actual record IDs');
+assert.ok(contractContext.__contracts.includes('测试科研项目'),'Contract summary must show parent project name');
+assert.ok(!contractContext.__contracts.includes('data-action="contractAdd"'),'No free-standing create contract action');
+assert.ok(contractContext.__owned.includes('data-action="contractAdd"'),'Project detail must offer adding a child contract');
+assert.ok(contractContext.__owned.includes('data-contract-id="31"'),'Project detail must list only owned contracts');
+assert.deepEqual(Array.from(contractContext.__display),['—','0.00','12.30']);
 console.log('MAIN UI SMOKE PASS: navigation, workspace choice, live API contract, mock markers, CSP-compatible markup');

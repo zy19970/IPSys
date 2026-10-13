@@ -97,6 +97,7 @@ app.MapPost("/api/open", async (OpenInput input, Vault v) =>
             else Vault.ValidateSchema(db);
             ProjectStore.Ensure(db);
             IpStore.Ensure(db);
+            ContractStore.Ensure(db);
             string token = v.SetOpen(db, path);
             db = null;
             return Results.Json(new { token, name = Path.GetFileName(path) });
@@ -262,6 +263,73 @@ app.MapPost("/api/ip/{workspace}/{id:long}/transfer", async (
         if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务或退出期间暂不能修改资料。",409);
         long? copied=IpStore.Transfer(v.Db,workspace,id,input.TargetWorkspace,input.Move);
         return copied.HasValue?Results.Json(new {id=copied.Value}):Results.NotFound();
+    }
+    finally { v.Gate.Release(); }
+});
+
+// Contract creation requires an existing, active project in the same workspace.
+// "All contracts" is a read-only aggregation; it cannot create orphan records.
+app.MapGet("/api/contracts/{workspace}", async (HttpContext ctx, Vault v, string workspace) =>
+{
+    if (!v.Allowed(ctx)) return Results.Unauthorized();
+    if (!Vault.WorkspaceValid(workspace)) return Fail("无效工作区。");
+    await v.Gate.WaitAsync();
+    try
+    {
+        if (!v.Allowed(ctx)) return Results.Unauthorized();
+        return Results.Json(ContractStore.List(v.Db, workspace));
+    }
+    finally { v.Gate.Release(); }
+});
+app.MapPost("/api/projects/{workspace}/{projectId:long}/contracts", async (
+    HttpContext ctx, Vault v, string workspace, long projectId, ContractInput input) =>
+{
+    if (!v.Allowed(ctx)) return Results.Unauthorized();
+    if (!Vault.WorkspaceValid(workspace)) return Fail("无效工作区。");
+    var invalid = ContractStore.Validate(input);
+    if (invalid != null) return Fail(invalid);
+    if (v.FileTaskActive || v.ExitRequested) return Fail("文件任务或退出期间不可修改合同。", 409);
+    await v.Gate.WaitAsync();
+    try
+    {
+        if (!v.Allowed(ctx)) return Results.Unauthorized();
+        if (v.FileTaskActive || v.ExitRequested) return Fail("文件任务或退出期间不可修改合同。", 409);
+        if (!ContractStore.ActiveProject(v.Db, workspace, projectId)) return Results.NotFound();
+        return Results.Json(new { id = ContractStore.Add(v.Db, workspace, projectId, input) });
+    }
+    finally { v.Gate.Release(); }
+});
+app.MapPut("/api/contracts/{workspace}/{id:long}", async (
+    HttpContext ctx, Vault v, string workspace, long id, ContractInput input) =>
+{
+    if (!v.Allowed(ctx)) return Results.Unauthorized();
+    if (!Vault.WorkspaceValid(workspace)) return Fail("无效工作区。");
+    var invalid = ContractStore.Validate(input);
+    if (invalid != null) return Fail(invalid);
+    if (v.FileTaskActive || v.ExitRequested) return Fail("文件任务或退出期间不可修改合同。", 409);
+    await v.Gate.WaitAsync();
+    try
+    {
+        if (!v.Allowed(ctx)) return Results.Unauthorized();
+        if (v.FileTaskActive || v.ExitRequested) return Fail("文件任务或退出期间不可修改合同。", 409);
+        return ContractStore.Update(v.Db, workspace, id, input)
+            ? Results.Ok(new { ok = true }) : Results.NotFound();
+    }
+    finally { v.Gate.Release(); }
+});
+app.MapDelete("/api/contracts/{workspace}/{id:long}", async (
+    HttpContext ctx, Vault v, string workspace, long id) =>
+{
+    if (!v.Allowed(ctx)) return Results.Unauthorized();
+    if (!Vault.WorkspaceValid(workspace)) return Fail("无效工作区。");
+    if (v.FileTaskActive || v.ExitRequested) return Fail("文件任务或退出期间不可修改合同。", 409);
+    await v.Gate.WaitAsync();
+    try
+    {
+        if (!v.Allowed(ctx)) return Results.Unauthorized();
+        if (v.FileTaskActive || v.ExitRequested) return Fail("文件任务或退出期间不可修改合同。", 409);
+        return ContractStore.SoftDelete(v.Db, workspace, id)
+            ? Results.Ok(new { ok = true }) : Results.NotFound();
     }
     finally { v.Gate.Release(); }
 });
@@ -769,6 +837,7 @@ static class ProjectStore
             insert.Parameters.AddWithValue("$w",target);Params(insert,input);
             newId=(long)insert.ExecuteScalar()!;
         }
+        ContractStore.CopyChildren(db,tx,workspace,id,target,newId);
         if(move)
         {
             using var delete=db.CreateCommand();delete.Transaction=tx;
@@ -1071,14 +1140,94 @@ static class WebSmoke
                 .GetAsync("/api/projects/company");
             if (noTokenProject.StatusCode != HttpStatusCode.Unauthorized)
                 throw new IOException("未登录不能查询项目。");
+            // B03: a contract must belong to one active project. Only a project
+            // detail may create a contract; the workspace aggregate is read-only.
+            var contractInput = new ContractInput("科研技术服务合同", "HT-2026-001",
+                "2026-10-12", "12.3", "甲方和乙方", "", "合同测试", "");
+            var noParentContract = await client.PostAsJsonAsync(
+                "/api/contracts/company", contractInput);
+            if (noParentContract.IsSuccessStatusCode)
+                throw new IOException("全部合同汇总接口不能独立新建合同。");
+            var orphanContract = await client.PostAsJsonAsync(
+                "/api/projects/company/987654321/contracts", contractInput);
+            if (orphanContract.StatusCode != HttpStatusCode.NotFound)
+                throw new IOException("不得为不存在的项目新增合同。");
+            var wrongScopeContract = await client.PostAsJsonAsync(
+                $"/api/projects/personal/{projectId}/contracts", contractInput);
+            if (wrongScopeContract.StatusCode != HttpStatusCode.NotFound)
+                throw new IOException("合同项目归属不能跨工作区。");
+            var invalidContract = await client.PostAsJsonAsync(
+                $"/api/projects/company/{projectId}/contracts",
+                contractInput with { SignDate = "2026-99-99" });
+            if (invalidContract.StatusCode != HttpStatusCode.BadRequest)
+                throw new IOException("合同签订日期必须经过校验。");
+            var negativeAmount = await client.PostAsJsonAsync(
+                $"/api/projects/company/{projectId}/contracts",
+                contractInput with { Amount = "-1" });
+            if (negativeAmount.StatusCode != HttpStatusCode.BadRequest)
+                throw new IOException("合同金额不能为负数。");
+            var contractCreate = await client.PostAsJsonAsync(
+                $"/api/projects/company/{projectId}/contracts", contractInput);
+            contractCreate.EnsureSuccessStatusCode();
+            long contractId = (await contractCreate.Content
+                .ReadFromJsonAsync<System.Text.Json.JsonElement>())
+                .GetProperty("id").GetInt64();
+            var contractEdited = contractInput with { Name = "合同已修改", Amount = "0" };
+            (await client.PutAsJsonAsync(
+                $"/api/contracts/company/{contractId}", contractEdited)).EnsureSuccessStatusCode();
+            var sourceContracts = await client.GetFromJsonAsync<List<ContractView>>("/api/contracts/company");
+            if (sourceContracts is null || sourceContracts.Count != 1 ||
+                sourceContracts[0].ProjectId != projectId ||
+                sourceContracts[0].ProjectName != "项目已修改" ||
+                sourceContracts[0].Name != "合同已修改" || sourceContracts[0].Amount != "0")
+                throw new IOException("合同必须关联所属项目且保留零金额。");
+            var cannotEditOtherWorkspace = await client.PutAsJsonAsync(
+                $"/api/contracts/personal/{contractId}", contractEdited);
+            if (cannotEditOtherWorkspace.StatusCode != HttpStatusCode.NotFound)
+                throw new IOException("跨工作区直接修改合同应被拒绝。");
+            using (var unauthenticated = new HttpClient { BaseAddress = new Uri(address) })
+            {
+                if ((await unauthenticated.GetAsync("/api/contracts/company"))
+                        .StatusCode != HttpStatusCode.Unauthorized)
+                    throw new IOException("无会话不得读取合同台账。");
+            }
+            var secondaryContract = await client.PostAsJsonAsync(
+                $"/api/projects/company/{projectId}/contracts",
+                contractInput with { Name = "待删除合同", Amount = "" });
+            secondaryContract.EnsureSuccessStatusCode();
+            long temporaryContract = (await secondaryContract.Content
+                .ReadFromJsonAsync<System.Text.Json.JsonElement>())
+                .GetProperty("id").GetInt64();
+            (await client.DeleteAsync($"/api/contracts/company/{temporaryContract}"))
+                .EnsureSuccessStatusCode();
+            if ((await client.GetFromJsonAsync<List<ContractView>>("/api/contracts/company"))?.Count != 1)
+                throw new IOException("删除合同后不得在汇总台账继续显示。");
             var copyProject = await client.PostAsJsonAsync(
                 $"/api/projects/company/{projectId}/transfer",new ProjectTransfer("company", false));
             copyProject.EnsureSuccessStatusCode();
             long copiedProjectId = (await copyProject.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
                 .GetProperty("id").GetInt64();
+            var afterProjectCopy = await client.GetFromJsonAsync<List<ContractView>>("/api/contracts/company");
+            if (afterProjectCopy is null || afterProjectCopy.Count != 2 ||
+                afterProjectCopy.Count(c => c.ProjectId == copiedProjectId) != 1 ||
+                afterProjectCopy.Count(c => c.ProjectId == projectId) != 1)
+                throw new IOException("复制项目未连同有效合同生成新的独立关联记录。");
             var moveProject = await client.PostAsJsonAsync(
                 $"/api/projects/company/{copiedProjectId}/transfer",new ProjectTransfer("personal", true));
             moveProject.EnsureSuccessStatusCode();
+            long movedProjectId = (await moveProject.Content
+                .ReadFromJsonAsync<System.Text.Json.JsonElement>())
+                .GetProperty("id").GetInt64();
+            var movedContracts = await client.GetFromJsonAsync<List<ContractView>>("/api/contracts/personal");
+            if (movedContracts is null || movedContracts.Count != 1 ||
+                movedContracts[0].ProjectId != movedProjectId ||
+                movedContracts[0].Workspace != "personal" ||
+                movedContracts[0].Name != "合同已修改")
+                throw new IOException("跨工作区转移项目时必须保留新项目下的合同关系。");
+            var hiddenOldCopy = await client.GetFromJsonAsync<List<ContractView>>("/api/contracts/company");
+            if (hiddenOldCopy is null || hiddenOldCopy.Count != 1 ||
+                hiddenOldCopy[0].ProjectId != projectId)
+                throw new IOException("转移后源项目所属合同应从原工作区隐藏。");
             var inPersonal = await client.GetFromJsonAsync<List<ProjectView>>("/api/projects/personal");
             if (inPersonal is null || inPersonal.Count != 1 ||
                 inPersonal[0].Name != "项目已修改")
@@ -1087,6 +1236,8 @@ static class WebSmoke
             var deletedProjects = await client.GetFromJsonAsync<List<ProjectView>>("/api/projects/company");
             if (deletedProjects is null || deletedProjects.Count != 0)
                 throw new IOException("项目软删除后不应继续在台账显示。");
+            if ((await client.GetFromJsonAsync<List<ContractView>>("/api/contracts/company"))?.Count != 0)
+                throw new IOException("原项目软删除后所属合同不得单独出现在汇总视图。");
             // IP register: seven fixed types, type-scoped statuses and persistence.
             var ipCreate = await client.PostAsJsonAsync("/api/ip/company",
                 new {name="测试发明",ipType="发明专利",status="已申请",applicationNo="CN-2026-01"});
@@ -1213,6 +1364,11 @@ static class WebSmoke
             if(persistedIp is null || persistedIp.Count!=1 ||
                 persistedIp[0].Data.Name!="已修改发明" || persistedIp[0].Data.Status!="实质审查中")
                 throw new IOException("重新打开加密库后知识产权转移数据丢失。");
+            var restoredContracts = await client.GetFromJsonAsync<List<ContractView>>("/api/contracts/personal");
+            if (restoredContracts is null || restoredContracts.Count != 1 ||
+                restoredContracts[0].ProjectId != movedProjectId ||
+                restoredContracts[0].Name != "合同已修改")
+                throw new IOException("关闭重开数据库后合同项目关系未能持久化。");
             var recoveredProject = await client.GetFromJsonAsync<List<ProjectView>>("/api/projects/personal");
             if (recoveredProject is null || recoveredProject.Count != 1 ||
                 recoveredProject[0].ProjectStatus != "进行中")

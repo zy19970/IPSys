@@ -104,6 +104,23 @@
       <div class="dialogactions"><button type="button" class="btn" id="ipCancel">取消</button><button type="submit" class="btn primary" id="ipSave">保存</button></div>
     </form>
   </dialog>
+  <dialog id="contractDialog" class="input-dialog project-dialog">
+    <form id="contractForm">
+      <h2 id="contractFormTitle">新建项目合同</h2>
+      <p class="subtle" id="contractProjectHint">只能从所属项目详情新建合同，金额单位为人民币元。</p>
+      <div class="project-form-grid">
+        <div class="form-field "><label for="ct-name">合同名称 *</label><input id="ct-name" name="name" type="text" required maxlength="300" ></div>
+<div class="form-field "><label for="ct-contractNo">合同编号</label><input id="ct-contractNo" name="contractNo" type="text"  ></div>
+<div class="form-field "><label for="ct-signDate">签订日期</label><input id="ct-signDate" name="signDate" type="date"  ></div>
+<div class="form-field "><label for="ct-amount">合同金额（人民币元）</label><input id="ct-amount" name="amount" type="number"  step="any" min="0"></div>
+<div class="form-field "><label for="ct-signingParties">签约主体</label><input id="ct-signingParties" name="signingParties" type="text"  ></div>
+<div class="form-field "><label for="ct-category">辅助分类</label><input id="ct-category" name="category" type="text"  ></div>
+<div class="form-field "><label for="ct-tags">标签</label><input id="ct-tags" name="tags" type="text"  ></div>
+<div class="form-field project-span"><label for="ct-remarks">备注</label><textarea id="ct-remarks" name="remarks" rows="3"></textarea></div>
+      </div>
+      <div class="dialogactions"><button type="button" class="btn" id="contractCancel">取消</button><button type="submit" class="btn primary" id="contractSave">保存合同</button></div>
+    </form>
+  </dialog>
   <dialog id="exitDialog" class="input-dialog"><h2>文件任务进行中</h2><p class="subtle">上传正在进行，请选择安全退出方式。</p><div class="dialogactions wrap"><button type="button" class="btn" id="exitCancelTask">取消任务并退出</button><button type="button" class="btn primary" id="exitFinishTask">任务完成后退出</button><button type="button" class="btn" id="exitStay">暂不退出</button></div></dialog>
   <div id="toast" role="status" aria-live="polite"></div>
 </body>
