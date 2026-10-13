@@ -7,7 +7,15 @@ let dbName=sessionStorage.getItem('ip-db')||'';
 let space=null,creating=true,resuming=false,localFileTaskActive=false;
 let page='dashboard',detail=null,liveRows=[],filterName='',filterKind='全部类型',filterState='全部状态',selected=new Set();
 const companyNav=[['dashboard','工作台','▦'],['ip','知识产权','◇'],['researchProject','科研项目','▤'],['horizontalProject','横向项目','▥'],['contract','全部合同','▧'],['certificate','企业资质','▣'],['general','综合资料','▥']];
-const personalNav=[['dashboard','个人工作台','▦'],['ip','个人知识产权','◇'],['researchProject','个人科研项目','▤'],['horizontalProject','个人横向项目','▥'],['contract','个人合同','▧'],['certificate','个人证件','▣'],['general','个人综合资料','▥']];
+// Personal archives are grouped by evidence type, not by the company management menu.
+const personalNav=[['dashboard','个人工作台','▦'],['certificate','身份与资质','▣'],['ip','知识产权与著作','◇'],['researchProject','科研与合作项目','▤'],['achievement','成果与奖励','★'],['academic','学术与社会活动','▥'],['general','其他资料','▧']];
+const personalCategoryNotes={
+  certificate:'身份证明、毕业及最高学历学位、职称证书、任职证明',
+  ip:'专利、软件著作权、其他著作权与著作材料',
+  researchProject:'科研项目、横向合作项目及所属合同',
+  achievement:'技术成果证书与评价、各类奖励、标准制定、新产品及人才奖励',
+  academic:'论文论著、学术兼职、会议报告、政府起草建议'
+};
 const mock={
   company:{
     ip:[
@@ -27,16 +35,44 @@ const mock={
     certificate:[{id:1,name:'质量管理体系认证证书',type:'企业资质',files:2},{id:2,name:'高新技术企业证书',type:'企业资质',files:1}]
   },
   personal:{
-    ip:[{id:1,name:'一种轻量化传感器安装方法',type:'发明专利',code:'CN202510112233.4',status:'申请中',owner:'个人示例',date:'2025-03-16',files:2}],
+    ip:[
+      {id:1,name:'一种轻量化传感器安装方法',type:'发明专利',code:'CN202510112233.4',status:'申请中',owner:'个人示例',date:'2025-03-16',files:2},
+      {id:2,name:'个人技术资料整理工具 V1.0',type:'软件著作权',code:'2026SR0033445',status:'已登记',owner:'个人示例',date:'2026-04-02',files:1},
+      {id:3,name:'个人著作权登记材料（示例）',type:'其他著作权',code:'',status:'已登记',owner:'个人示例',date:'',files:1}
+    ],
     researchProject:[{id:1,name:'个人专业技术研究课题',type:'科研项目',code:'GR-2026-001',status:'进行中',leader:'个人示例',date:'2026-02-15',files:2}],
     horizontalProject:[{id:2,name:'合作技术咨询项目',type:'横向项目',code:'GR-2025-002',status:'已完成',leader:'个人示例',date:'2025-08-03',files:1}],
     contract:[{id:1,name:'个人技术咨询合同',project:'合作技术咨询项目',code:'GRHT-2025-01',date:'2025-09-12',amount:'12000.00',files:1}],
-    certificate:[{id:1,name:'学历学位证书',type:'学历学位',files:2},{id:2,name:'专业技术资格证书',type:'职称资格',files:1}]
+    certificate:[
+      {id:1,name:'身份证明材料（示例）',type:'身份证明',files:1},
+      {id:2,name:'毕业证及最高学历学位证书（示例）',type:'学历学位',files:3},
+      {id:3,name:'专业技术职务证书（示例）',type:'职称资格',files:2},
+      {id:4,name:'任职与职务证明（示例）',type:'任职证明',files:1}
+    ],
+    achievement:[
+      {id:1,name:'技术成果证书与评价材料（示例）',type:'技术成果',files:3},
+      {id:2,name:'技术成果鉴定（评价）证明（示例）',type:'成果评价',files:1},
+      {id:3,name:'工程技术项目获奖证明（示例）',type:'项目奖励',files:2},
+      {id:4,name:'个人其他奖项证明（示例）',type:'个人奖励',files:1},
+      {id:5,name:'人才奖励证明（示例）',type:'人才奖励',files:1},
+      {id:6,name:'参与标准制定证明（示例）',type:'标准制定',files:2},
+      {id:7,name:'新产品相关证明（示例）',type:'新产品',files:1}
+    ],
+    academic:[
+      {id:1,name:'论文与论著首页（封面）材料（示例）',type:'论文论著',files:4},
+      {id:2,name:'学术兼职证明（示例）',type:'学术兼职',files:1},
+      {id:3,name:'会议报告材料（示例）',type:'会议报告',files:2},
+      {id:4,name:'政府起草建议相关材料（示例）',type:'政策建议',files:1}
+    ]
   }
 };
 const labels=()=>space==='personal'?personalNav:companyNav;
 const title=k=>(labels().find(x=>x[0]===k)||[])[1]||({search:'统一搜索',trash:'回收站',settings:'系统设置'}[k]||'记录详情');
-const sample=k=>(mock[space]&&mock[space][k])||[];
+const sample=k=>{
+  if(space==='personal'&&k==='researchProject')
+    return [...mock.personal.researchProject,...mock.personal.horizontalProject];
+  return (mock[space]&&mock[space][k])||[];
+};
 const isProject=k=>k==='researchProject'||k==='horizontalProject';
 const fmtSize=n=>n>=1024*1024?(n/1024/1024).toFixed(1)+' MiB':(n/1024).toFixed(1)+' KiB';
 window.addEventListener('beforeunload',ev=>{if(localFileTaskActive){ev.preventDefault();ev.returnValue='';}});
@@ -116,15 +152,17 @@ function stamp(){return '<span class="mockflag">界面示例 · 未接入业务<
 function dashboard(){
  const mods=labels().filter(x=>x[0]!=='dashboard');
  const general=liveRows.length;const fileCount=liveRows.reduce((n,r)=>n+r.files.length,0);
- const counts=[['综合资料',general,'条真实记录'],['已归档原件',fileCount,'份真实附件'],['知识产权',sample('ip').length,'条界面示例'],['科研项目',sample('researchProject').length,'条界面示例']];
+ const counts=space==='personal'
+  ? [['其他资料',general,'条真实记录'],['已归档原件',fileCount,'份真实附件'],['身份与资质',sample('certificate').length,'条界面示例'],['成果与奖励',sample('achievement').length,'条界面示例']]
+  : [['综合资料',general,'条真实记录'],['已归档原件',fileCount,'份真实附件'],['知识产权',sample('ip').length,'条界面示例'],['科研项目',sample('researchProject').length,'条界面示例']];
  return heading(title('dashboard'),'当前工作区 · 真实综合资料与其余模块的界面示例')+
  '<div class="cards">'+counts.map(([name,num,s])=>`<div class="card"><div class="metriclabel">${name}</div><div class="metric">${num}</div><div class="metricfoot">${s}</div></div>`).join('')+'</div>'+
- '<div class="panels"><section class="card"><h2 class="sectiontitle">业务模块快捷入口</h2><div class="modulegrid">'+mods.map(([key,name])=>`<button class="modulelink" data-nav="${key}"><span><b>${name}</b><small>${key==='general'?general+' 条真实记录':(sample(key).length||0)+' 条演示记录'}</small></span><span class="arrow">→</span></button>`).join('')+'</div></section>'+
- '<section class="card"><h2 class="sectiontitle">当前工作区资料概况</h2><div class="minirow"><span>公司 / 个人隔离</span><strong>已启用</strong></div><div class="minirow"><span>综合资料存储</span><strong>真实 SQLCipher</strong></div><div class="minirow"><span>知识产权、项目与合同</span>'+pill('界面设计')+'</div><div class="minirow"><span>当前数据库</span><span class="muted">'+escapeHtml(dbName)+'</span></div><p class="hint">界面设计阶段，未开发模块的数据仅为样例。真实文件请在“综合资料”中管理。</p></section></div>';
+ '<div class="panels"><section class="card"><h2 class="sectiontitle">'+(space==='personal'?'个人资料分类入口':'业务模块快捷入口')+'</h2><div class="modulegrid">'+mods.map(([key,name])=>`<button class="modulelink" data-nav="${key}"><span><b>${name}</b><small>${key==='general'?general+' 条真实记录':(sample(key).length||0)+' 条演示记录'}</small></span><span class="arrow">→</span></button>`).join('')+'</div></section>'+
+ '<section class="card"><h2 class="sectiontitle">当前工作区资料概况</h2><div class="minirow"><span>公司 / 个人隔离</span><strong>已启用</strong></div><div class="minirow"><span>'+ (space==='personal'?'其他资料':'综合资料') +'存储</span><strong>真实 SQLCipher</strong></div><div class="minirow"><span>'+ (space==='personal'?'分类资料':'知识产权、项目与合同') +'</span>'+pill('界面设计')+'</div><div class="minirow"><span>当前数据库</span><span class="muted">'+escapeHtml(dbName)+'</span></div><p class="hint">界面设计阶段，分类资料均为演示记录。真实文件请在“'+(space==='personal'?'其他资料':'综合资料')+'”中管理。</p></section></div>';
 }
 function generalList(){
  const rows=liveRows.filter(r=>r.title.toLowerCase().includes(filterName.toLowerCase()));
- return heading(title('general'),'综合资料使用当前加密库的真实记录和附件数据。',`<button class="btn primary" data-action="add">＋ 新建资料</button>`)+
+ return heading(title('general'),(space==='personal'?'尚未归入上述类别的个人资料，':'综合资料')+'使用当前加密库的真实记录和附件数据。',`<button class="btn primary" data-action="add">＋ 新建资料</button>`)+
  '<section class="white filter"><div class="filterline"><div class="field wide"><label>资料名称</label><input id="filterSearch" placeholder="搜索当前工作区资料"></div><button class="btn primary" data-action="filter">查询</button><button class="btn" data-action="clearFilter">重置</button></div></section>'+
  '<section class="white"><div class="tabletools"><span><b>资料列表</b> <small class="muted">'+rows.length+' 条真实记录</small></span><div class="actions"><span class="realflag">真实数据库</span><button class="btn" data-action="check">检查数据库</button></div></div>'+
  '<div class="tablewrap"><table class="data"><thead><tr><th>资料名称</th><th>附件数量</th><th>所属工作区</th><th>操作</th></tr></thead><tbody>'+
@@ -133,7 +171,7 @@ function generalList(){
 function realDetail(){
  const r=liveRows.find(r=>r.id===detail.id);
  if(!r)return heading('记录详情','记录不存在或当前工作区无权访问')+'<button class="btn" data-nav="general">返回台账</button>';
- return heading(r.title,'综合资料 / 记录详情 · 当前加密库真实数据',`<button class="btn" data-nav="general">← 返回台账</button>`)+
+ return heading(r.title,title('general')+' / 记录详情 · 当前加密库真实数据',`<button class="btn" data-nav="general">← 返回台账</button>`)+
  `<section class="white detailsection"><div class="detailsectionhead"><h2>基本信息</h2><span class="realflag">真实记录</span></div><div class="detailbody infogrid"><div class="info"><label>资料名称</label><strong>${escapeHtml(r.title)}</strong></div><div class="info"><label>所属工作区</label><strong>${space==='company'?'公司资料':'个人资料'}</strong></div><div class="info"><label>已归档附件</label><strong>${r.files.length} 份</strong></div></div></section>`+
  `<section class="white detailsection"><div class="detailsectionhead"><h2>附件资料</h2><button class="btn primary" data-action="upload">＋ 上传原件</button></div><div class="detailbody"><input type="file" id="uploadInput" hidden><p class="hint">当前原型支持真实上传与下载，单文件不超过 64 MiB。附件展示在该记录下。</p>`+
  (r.files.length?r.files.map(f=>`<div class="fileline"><span class="fileicon">${escapeHtml(f.name.split('.').pop().slice(0,4).toUpperCase())}</span><span class="filedesc"><strong>${escapeHtml(f.name)}</strong><small>${fmtSize(f.size)} · SHA-256 ${escapeHtml(f.sha256.slice(0,16))}…</small></span><button class="btn btn-sm" data-download="${f.id}">下载原件</button></div>`).join(''):'<div class="empty">暂无附件，点击“上传原件”开始归档。</div>')+'</div></section>'+
@@ -153,7 +191,7 @@ function mockList(k){
  });
  const types=[...new Set(all.map(x=>x.type).filter(Boolean))];const states=[...new Set(all.map(x=>x.status).filter(Boolean))];
  const cols=columns(k);
- return heading(title(k),'台账页面布局预览 · 记录均为虚构样例',`<span class="mockflag">仅演示</span>${k==='contract'?'':`<button class="btn primary" data-action="demoAdd">＋ 新建${isProject(k)?'项目':'记录'}</button>`}`)+
+ return heading(title(k),(space==='personal'&&personalCategoryNotes[k]?personalCategoryNotes[k]+' · ':'')+'台账页面布局预览 · 记录均为虚构样例',`<span class="mockflag">仅演示</span>${k==='contract'?'':`<button class="btn primary" data-action="demoAdd">＋ 新建${isProject(k)?'项目':'记录'}</button>`}`)+
  `<section class="white filter"><div class="filterline"><div class="field wide"><label>名称 / 编号</label><input id="filterSearch" placeholder="输入关键词筛选演示记录"></div><div class="field"><label>类型</label><select id="filterKind">${['全部类型',...types].map(x=>`<option value="${escapeHtml(x)}" ${x===filterKind?'selected':''}>${escapeHtml(x)}</option>`).join('')}</select></div>`+
  (states.length?`<div class="field"><label>状态</label><select id="filterState">${['全部状态',...states].map(x=>`<option value="${escapeHtml(x)}" ${x===filterState?'selected':''}>${escapeHtml(x)}</option>`).join('')}</select></div>`:'')+
  '<button class="btn primary" data-action="filter">查询</button><button class="btn" data-action="clearFilter">重置</button></div></section>'+
@@ -184,7 +222,10 @@ function mockDetail(){
   out+=section('合同附件',mockFile('合同扫描件.pdf','原件示例 · 1.6 MB'),stamp());
  }else{
   out+=section('基本信息','<div class="infogrid">'+infoRow('名称',r.name)+infoRow('类别',r.type)+infoRow('备注','未填写')+'</div>');
-  out+=section('附件资料',mockFile('归档证件.pdf','原件示例 · 1.2 MB'),stamp());
+  const exampleName=space==='personal'?
+    (k==='academic'?'学术与交流材料.pdf':k==='achievement'?'成果与奖励证明.pdf':k==='certificate'?'身份与资质证明.pdf':'归档材料.pdf')
+    :'归档证件.pdf';
+  out+=section('附件资料',mockFile(exampleName,'原件示例 · 1.2 MB'),stamp());
  }
  out+=section('关联资料','<div class="empty">暂无已关联的演示资料</div>',stamp());
  return out;
@@ -206,7 +247,7 @@ function render(){
  const content=el('content');
  content.innerHTML=detail?(detail.kind==='general'?realDetail():mockDetail()):
    page==='dashboard'?dashboard():page==='general'?generalList():
-   ['ip','researchProject','horizontalProject','contract','certificate'].includes(page)?mockList(page):
+   ['ip','researchProject','horizontalProject','contract','certificate','achievement','academic'].includes(page)?mockList(page):
    page==='search'?searchPage():page==='settings'?settingsPage():trashPage();
  const searchBox=el('filterSearch');if(searchBox)searchBox.value=filterName;
 }
@@ -235,7 +276,7 @@ el('content').addEventListener('click',async ev=>{
  if(target.dataset.searchDetail){const [k,id]=target.dataset.searchDetail.split(':');openMockRecord(k,Number(id));return;}
  if(target.dataset.download){const r=liveRows.find(r=>r.id===detail?.id);const file=r?.files.find(f=>f.id===Number(target.dataset.download));if(file)await download(file);return;}
  switch(target.dataset.action){
-  case 'add':el('modal').showModal();break;
+  case 'add':el('newRecordForm').querySelector('h2').textContent=space==='personal'?'新建其他资料':'新建综合资料';el('modal').showModal();break;
   case 'upload':el('uploadInput')?.click();break;
   case 'filter':filterName=el('filterSearch')?.value.trim()||'';filterKind=el('filterKind')?.value||'全部类型';filterState=el('filterState')?.value||'全部状态';selected.clear();render();break;
   case 'clearFilter':filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();render();break;
@@ -260,7 +301,7 @@ el('globalSearch').onkeydown=event=>{if(event.key==='Enter'&&space){filterName=e
 el('cancelRecord').onclick=()=>el('modal').close();
 el('newRecordForm').onsubmit=async ev=>{
  ev.preventDefault();el('saveRecord').disabled=true;
- try{await api('/api/records/'+space,{method:'POST',json:{title:el('title').value.trim()}});el('modal').close();el('title').value='';setPage('general');await refresh();notice('新建综合资料成功');}
+ try{await api('/api/records/'+space,{method:'POST',json:{title:el('title').value.trim()}});el('modal').close();el('title').value='';setPage('general');await refresh();notice(space==='personal'?'新建其他资料成功':'新建综合资料成功');}
  catch(e){notice(e.message,true);}finally{el('saveRecord').disabled=false;}
 };
 async function closeDb(){
