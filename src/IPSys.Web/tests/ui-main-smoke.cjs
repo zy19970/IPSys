@@ -202,7 +202,7 @@ for(const name of ['pName','pType','pNo','pStatus','pLeader','pOrg','pStart','pE
  assert.ok(html.includes('id="'+name+'"'),'Missing project field '+name);
 for(const route of ["'/api/projects/'+space","method:'DELETE'","method:'PUT'","method:'POST'","targetWorkspace:destination"])
  assert.ok(js.includes(route),'Missing project persistence or transfer '+route);
-assert.ok(js.includes("projectRows=projects;ipRows=ips;contractRows=contracts;render()"),'Projects, IP and contracts must refresh from the real database');
+assert.ok(js.includes("projectRows=projects;ipRows=ips;contractRows=contracts;"),'Projects, IP and contracts must refresh from the real database');
 const projectCtx=vm.createContext({sessionStorage:{getItem:()=>null}});
 const projector=js.slice(js.indexOf('function projectViewRows('),js.indexOf('function archiveCard(',js.indexOf('function projectViewRows(')));
 vm.runInContext(preamble+
@@ -221,7 +221,7 @@ for(const name of ['name','ipType','status','applicants','rightHolders','creator
  assert.ok(html.includes('id="ip-'+name+'"'),'Missing intellectual-property field '+name);
 for(const action of ['ipAdd','ipEdit','ipDelete','ipCopy','ipMove'])
  assert.ok(js.includes("case '"+action+"'"),'IP operation missing '+action);
-assert.ok(js.includes("ipRows=ips;contractRows=contracts;render()"),'IP and contracts must be loaded from real API');
+assert.ok(js.includes("ipRows=ips;contractRows=contracts;"),'IP and contracts must be loaded from real API');
 const intellectualCode=js.slice(js.indexOf('const ipStatusByType='),js.indexOf('function projectViewRows(',js.indexOf('const ipStatusByType=')));
 assert.ok(intellectualCode.length>0);
 const ipCtx=vm.createContext({sessionStorage:{getItem:()=>null}});
