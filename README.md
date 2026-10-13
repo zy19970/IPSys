@@ -17,6 +17,7 @@ IPSys 是面向 **Windows 10/11 x64** 的离线便携式单用户资料管理系
 
 | 文件 | 用途 | 状态 |
 | --- | --- | --- |
+| [HANDOFF.md](./HANDOFF.md) | **跨会话交接**：当前代码快照、已完成测试、关键修复、待办与新会话起始指令 | 2026-10-13 交接快照；以最新 main 为准 |
 | [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md) | **开发主计划**：现在是否能定稿、准备工作、阶段顺序、交付物与验收门槛 | **V0.1 路线图；未锁定工期** |
 | [REQUIREMENTS.md](./REQUIREMENTS.md) | V1.0 产品功能和业务行为的唯一需求基线，截止 Q162 | **范围冻结** |
 | [M0_DATA_DICTIONARY.md](./M0_DATA_DICTIONARY.md) | **M0 数据设计**：全部模块字段、固定/候选状态、Excel 映射、关系草图与验证样例 | **M0 已确认（R1–R3 默认方案）** |
