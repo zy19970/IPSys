@@ -335,9 +335,17 @@ if (smoke)
 }
 else
 {
-    try { Process.Start(new ProcessStartInfo(address) { UseShellExecute = true }); }
-    catch { Console.WriteLine("请在 Edge/Chrome 手工打开：" + address); }
-    await app.WaitForShutdownAsync();
+    // This is a Windows GUI application. WinForms owns the lifetime of the HTTP host.
+    // The browser is opened only when the user presses the launcher button.
+    try
+    {
+        await LauncherHost.WaitForExitAsync(address, app.Lifetime.ApplicationStopping);
+    }
+    finally
+    {
+        // Give in-flight requests time to stop and release the SQLCipher connection.
+        await app.StopAsync();
+    }
 }
 await app.DisposeAsync();
 
