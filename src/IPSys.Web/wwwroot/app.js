@@ -5,7 +5,7 @@ const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<
 let token=sessionStorage.getItem('ip-token')||'';
 let dbName=sessionStorage.getItem('ip-db')||'';
 let space=null,creating=true,resuming=false,localFileTaskActive=false;
-let page='dashboard',detail=null,liveRows=[],filterName='',filterKind='全部类型',filterState='全部状态',selected=new Set();
+let page='dashboard',detail=null,archiveGroup=null,liveRows=[],filterName='',filterKind='全部类型',filterState='全部状态',selected=new Set();
 const companyNav=[['dashboard','工作台','▦'],['ip','知识产权','◇'],['researchProject','科研项目','▤'],['horizontalProject','横向项目','▥'],['contract','全部合同','▧'],['certificate','企业资质','▣'],['general','综合资料','▥']];
 // Personal archives are grouped by evidence type, not by the company management menu.
 const personalNav=[['dashboard','个人工作台','▦'],['certificate','身份与资质','▣'],['ip','知识产权与著作','◇'],['researchProject','科研与合作项目','▤'],['achievement','成果与奖励','★'],['academic','学术与社会活动','▥'],['general','其他资料','▧']];
@@ -62,7 +62,11 @@ const mock={
       {id:1,name:'论文与论著首页（封面）材料（示例）',type:'论文论著',files:4},
       {id:2,name:'学术兼职证明（示例）',type:'学术兼职',files:1},
       {id:3,name:'会议报告材料（示例）',type:'会议报告',files:2},
-      {id:4,name:'政府起草建议相关材料（示例）',type:'政策建议',files:1}
+      {id:4,name:'政府起草建议相关材料（示例）',type:'政策建议',files:1},
+      {id:5,name:'专业学会理事任职证明（示例）',type:'学术兼职',files:2},
+      {id:6,name:'学术委员会委员聘任材料（示例）',type:'学术兼职',files:1},
+      {id:7,name:'学术交流报告证明（示例）',type:'会议报告',files:1},
+      {id:8,name:'行业政策起草参与证明（示例）',type:'政策建议',files:2}
     ]
   }
 };
@@ -116,14 +120,14 @@ el('openForm').onsubmit=async event=>{
 };
 function selectSpace(next){
   if(!token)return;
-  space=next;page='dashboard';detail=null;filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();
+  space=next;page='dashboard';detail=null;archiveGroup=null;filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();
   el('globalSearch').value='';el('sidebarDbName').textContent=dbName;
   el('chooseWorkspace').hidden=true;el('unlocked').hidden=false;
   refresh();
 }
 document.querySelectorAll('[data-workspace-choice]').forEach(b=>b.onclick=()=>selectSpace(b.dataset.workspaceChoice));
 el('workspaceBtn').onclick=()=>{space=null;el('unlocked').hidden=true;el('chooseWorkspace').hidden=false;};
-function setPage(next){page=next;detail=null;filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();el('globalSearch').value='';render();}
+function setPage(next){page=next;detail=null;archiveGroup=null;filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();el('globalSearch').value='';render();}
 async function refresh(){
   if(!token||!space)return;
   const requestedSpace=space;
@@ -229,6 +233,18 @@ function mockList(k){
  (visible.length?visible.map(r=>`<tr><td><input type="checkbox" class="rowcheck" value="${r.id}"></td>`+cols.map(([field],i)=>`<td>${field==='name'?`<button class="link" data-mock-id="${r.id}">${escapeHtml(r[field])}</button>`:field==='amount'?(r[field]?Number(r[field]).toFixed(2):'—'):field==='status'?`<span class="tag">${escapeHtml(r[field]||'—')}</span>`:escapeHtml(r[field]??'—')}</td>`).join('')+'</tr>').join(''):`<tr><td colspan="${cols.length+1}" class="empty">没有符合条件的演示记录</td></tr>`)+
  '</tbody></table></div><div class="tablefoot"><span>显示 '+visible.length+' 条演示记录</span><span id="selectionInfo">已勾选 0 条</span></div></section>';
 }
+
+function archiveCategoryCard(type,rows){
+ const total=rows.reduce((sum,r)=>sum+Number(r.files||0),0);
+ return '<article class="archivecard archivecategory" data-archive-category="'+escapeHtml(type)+'" role="button" tabindex="0" aria-label="查看'+escapeHtml(type)+'台账">'+
+   '<div class="archivecard-head"><div class="archivecard-titlewrap">'+
+   '<span class="archivecard-symbol" aria-hidden="true">▤</span>'+
+   '<h3 class="archivecard-title">'+escapeHtml(type)+'</h3></div>'+
+   '<span class="mockflag">类别示例</span></div>'+
+   '<div class="archivecard-meta"><span class="archivecard-type">'+rows.length+' 条归档记录</span>'+
+   '<span class="archivecard-count">附件 <strong>'+total+'</strong> 份</span></div>'+
+   '<div class="archivecard-actions"><span class="archivecategory-open">进入台账 →</span></div></article>';
+}
 function mockCardList(k){
  const all=sample(k);
  const visible=all.filter(r=>{
@@ -236,13 +252,28 @@ function mockCardList(k){
   return data.includes(filterName.toLowerCase())&&(filterKind==='全部类型'||r.type===filterKind);
  });
  const types=[...new Set(all.map(r=>r.type).filter(Boolean))];
- const subtitle=(space==='personal'&&personalCategoryNotes[k]?personalCategoryNotes[k]+' · ':'')+'资料卡片布局预览 · 所有记录均为模拟数据';
- const options=['全部类型',...types].map(t=>`<option value="${escapeHtml(t)}" ${t===filterKind?'selected':''}>${escapeHtml(t)}</option>`).join('');
- return heading(title(k),subtitle,'<span class="mockflag">仅演示</span><button class="btn primary" data-action="demoAdd">＋ 新建记录</button>')+
- '<section class="white filter"><div class="filterline"><div class="field wide"><label>名称 / 关键词</label><input id="filterSearch" placeholder="输入关键词筛选演示资料"></div><div class="field"><label>类型</label><select id="filterKind">'+options+'</select></div><button class="btn primary" data-action="filter">查询</button><button class="btn" data-action="clearFilter">重置</button></div></section>'+
- '<section class="white"><div class="tabletools"><span><b>资料卡片</b> <small class="muted">'+visible.length+' 条示例</small></span><div class="actions"><button class="btn" data-action="demoExcel">导出 XLSX（演示）</button></div></div>'+
- (visible.length?'<div class="recordgrid">'+visible.map(r=>archiveCard(r)).join('')+'</div>':'<div class="empty">没有符合条件的演示资料</div>')+
- '<div class="tablefoot">显示 '+visible.length+' 条演示记录</div></section>';
+ const groups=[...new Set(visible.map(r=>r.type))].map(t=>({
+  type:t,rows:visible.filter(r=>r.type===t)
+ }));
+ const subtitle=(space==='personal'&&personalCategoryNotes[k]?personalCategoryNotes[k]+' · ':'')+'按材料类别归档 · 点击类别进入该类别的多条记录台账';
+ const options=['全部类型',...types].map(t=>'<option value="'+escapeHtml(t)+'" '+(t===filterKind?'selected':'')+'>'+escapeHtml(t)+'</option>').join('');
+ return heading(title(k),subtitle,'<span class="mockflag">仅演示</span>')+
+ '<section class="white filter"><div class="filterline"><div class="field wide"><label>名称 / 关键词</label><input id="filterSearch" placeholder="输入关键词筛选演示资料"></div><div class="field"><label>类别</label><select id="filterKind">'+options+'</select></div><button class="btn primary" data-action="filter">查询</button><button class="btn" data-action="clearFilter">重置</button></div></section>'+
+ '<section class="white"><div class="tabletools"><span><b>资料类别</b> <small class="muted">'+groups.length+' 个类别 · '+visible.length+' 条演示记录</small></span><span class="mockflag">类别卡片 / 记录台账</span></div>'+
+ (groups.length?'<div class="recordgrid">'+groups.map(g=>archiveCategoryCard(g.type,g.rows)).join('')+'</div>':'<div class="empty">没有符合条件的演示资料</div>')+
+ '<div class="tablefoot">当前显示 '+groups.length+' 个类别 · 数据均为界面演示</div></section>';
+}
+function mockCategoryTable(k,category){
+ const rows=sample(k).filter(r=>r.type===category);
+ const visible=rows.filter(r=>r.name.toLowerCase().includes(filterName.toLowerCase()));
+ return heading(category,title(k)+' / 分类台账 · 一个类别可以归档多条独立记录',
+  '<button class="btn" data-archive-back="cards">← 返回类别卡片</button><span class="mockflag">模拟数据</span><button class="btn primary" data-action="demoAdd">＋ 新建记录（演示）</button>')+
+ '<section class="white filter"><div class="filterline"><div class="field wide"><label>资料名称</label><input id="filterSearch" placeholder="搜索此类别下的演示记录"></div><button class="btn primary" data-action="filter">查询</button><button class="btn" data-action="clearFilter">重置</button></div></section>'+
+ '<section class="white"><div class="tabletools"><span><b>'+escapeHtml(category)+'台账</b> <small class="muted">'+visible.length+' 条示例 / 共 '+rows.length+' 条</small></span><span class="mockflag">仅演示</span></div>'+
+ '<div class="tablewrap archive-tablewrap"><table class="data"><thead><tr><th>序号</th><th>资料名称</th><th>资料类别</th><th>附件数量</th><th>操作</th></tr></thead><tbody>'+
+ (visible.length?visible.map((r,i)=>'<tr><td>'+(i+1)+'</td><td><button class="link" data-mock-id="'+Number(r.id)+'">'+escapeHtml(r.name)+'</button></td><td>'+escapeHtml(r.type)+'</td><td>'+(Number(r.files)||0)+' 份</td><td><button class="btn btn-sm" data-mock-id="'+Number(r.id)+'">查看详情</button></td></tr>').join('')
+ :'<tr><td colspan="5" class="empty">该类别下暂无符合条件的演示记录</td></tr>')+
+ '</tbody></table></div><div class="tablefoot">同一类别可对应多条资料及各自的附件 · 尚未接入真实业务</div></section>';
 }
 function infoRow(label,value){return `<div class="info"><label>${label}</label><strong>${escapeHtml(value||'—')}</strong></div>`;}
 function section(name,body,action=''){return `<section class="white detailsection"><div class="detailsectionhead"><h2>${name}</h2>${action}</div><div class="detailbody">${body}</div></section>`;}
@@ -250,7 +281,8 @@ function mockFile(name,metadata){return `<div class="fileline"><span class="file
 function mockDetail(){
  const k=detail.kind,r=sample(k).find(x=>x.id===detail.id);
  if(!r)return heading('记录不存在','演示记录不存在')+`<button class="btn" data-nav="${k}">返回列表</button>`;
- let out=heading(r.name,`独立详情页 · ${title(k)} · 所有区块按顺序展开`,`<button class="btn" data-nav="${k}">← 返回台账</button><span class="mockflag">模拟数据</span>`);
+ const returnButton=archiveGroup&&['certificate','achievement','academic'].includes(k)?'<button class="btn" data-archive-back="table">← 返回'+escapeHtml(archiveGroup)+'台账</button>':`<button class="btn" data-nav="${k}">← 返回台账</button>`;
+ let out=heading(r.name,`独立详情页 · ${title(k)} · 所有区块按顺序展开`,returnButton+'<span class="mockflag">模拟数据</span>');
  if(k==='ip'){
   out+=section('基本信息','<div class="infogrid">'+infoRow('知识产权名称',r.name)+infoRow('知识产权类型',r.type)+infoRow('当前状态',r.status)+infoRow('当前权利人',r.owner)+infoRow('申请/登记号',r.code)+infoRow('申请/登记日期',r.date)+'</div>');
   out+=section('申请与登记信息','<div class="infogrid">'+infoRow('申请人',r.owner)+infoRow('发明人 / 作者','未填写')+infoRow('公开/授权公告信息','未填写')+'</div>');
@@ -290,6 +322,7 @@ function render(){
  refreshSidebar();
  const content=el('content');
  content.innerHTML=detail?(detail.kind==='general'?realDetail():mockDetail()):
+   archiveGroup&&['certificate','achievement','academic'].includes(page)?mockCategoryTable(page,archiveGroup):
    page==='dashboard'?dashboard():page==='general'?generalList():
    ['ip','researchProject','horizontalProject','contract'].includes(page)?mockList(page):
    ['certificate','achievement','academic'].includes(page)?mockCardList(page):
@@ -311,9 +344,21 @@ async function download(file){
  }catch(e){notice(e.message,true);}
 }
 function openLiveRecord(id){detail={kind:'general',id};page='general';render();el('content').scrollTo(0,0);}
-function openMockRecord(kind,id){detail={kind,id};page=kind;render();el('content').scrollTo(0,0);}
+function openMockRecord(kind,id){if(page!==kind)archiveGroup=null;detail={kind,id};page=kind;render();el('content').scrollTo(0,0);}
 el('content').addEventListener('click',async ev=>{
+ const categoryCard=ev.target.closest('[data-archive-category]');
+ if(categoryCard){
+  const category=categoryCard.dataset.archiveCategory;
+  if(['certificate','achievement','academic'].includes(page)&&sample(page).some(r=>r.type===category)){
+   archiveGroup=category;detail=null;filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();render();el('content').scrollTo(0,0);
+  }
+  return;
+ }
  const target=ev.target.closest('button');if(!target)return;
+ if(target.hasAttribute('data-archive-back')){
+  if(target.dataset.archiveBack==='cards')archiveGroup=null;
+  detail=null;filterName='';filterKind='全部类型';selected.clear();render();el('content').scrollTo(0,0);return;
+ }
  if(target.dataset.nav){setPage(target.dataset.nav);return;}
  if(target.dataset.liveId){openLiveRecord(Number(target.dataset.liveId));return;}
  if(target.dataset.mockId){openMockRecord(page,Number(target.dataset.mockId));return;}
@@ -341,7 +386,10 @@ el('content').addEventListener('change',async ev=>{
   const counter=el('selectionInfo');if(counter)counter.textContent='已勾选 '+selected.size+' 条';
  }
 });
-el('content').addEventListener('keydown',event=>{if(event.key==='Enter'&&event.target.id==='filterSearch'){event.preventDefault();el('content').querySelector('[data-action=filter]')?.click();}});
+el('content').addEventListener('keydown',event=>{
+ if((event.key==='Enter'||event.key===' ')&&event.target.matches('[data-archive-category]')){event.preventDefault();event.target.click();return;}
+ if(event.key==='Enter'&&event.target.id==='filterSearch'){event.preventDefault();el('content').querySelector('[data-action=filter]')?.click();}
+});
 el('globalSearch').onkeydown=event=>{if(event.key==='Enter'&&space){filterName=el('globalSearch').value.trim();page='search';detail=null;render();}};
 el('cancelRecord').onclick=()=>el('modal').close();
 el('newRecordForm').onsubmit=async ev=>{

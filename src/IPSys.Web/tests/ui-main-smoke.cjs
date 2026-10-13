@@ -49,7 +49,7 @@ assert.equal(v.foreignProjects.length,2,'Company project lookup must remain unch
 for(const k of ['certificate','ip','researchProject','achievement','academic'])assert.ok(v.noteKeys.includes(k),'Personal category note missing '+k);
 
 /* Document archives are cards, business ledgers are tables. Browserless render checks. */
-for(const cls of ['.recordgrid','.archivecard','.archivecard-real','.archivecard-meta','.archivecard-actions']){
+for(const cls of ['.recordgrid','.archivecard','.archivecard-real','.archivecard-meta','.archivecard-actions','.archivecategory','.archive-tablewrap']){
  assert.ok(css.includes(cls),'Missing archive card style '+cls);
 }
 assert.ok(js.includes("['certificate','achievement','academic'].includes(page)?mockCardList(page)"),'Archive mock pages must select card mode');
@@ -73,6 +73,10 @@ const renderSetup=[
  "space='personal';",
  "liveRows=[{id:41,title:'个人<资料&测试>',files:[{id:3},{id:4}]}];",
  "globalThis.__cards={",
+ " personalAcademicJobs:mockCategoryTable('academic','学术兼职'),",
+ " personalMeetings:mockCategoryTable('academic','会议报告'),",
+ " personalPolicies:mockCategoryTable('academic','政策建议'),",
+ " personalIdentityLedger:mockCategoryTable('certificate','身份证明'),",
  " personalIdentity:mockCardList('certificate'),",
  " personalAchievement:mockCardList('achievement'),",
  " personalAcademic:mockCardList('academic'),",
@@ -82,6 +86,7 @@ const renderSetup=[
  "space='company';",
  "liveRows=[{id:21,title:'公司资料',files:[{id:10}]}];",
  "globalThis.__cards.companyCertificate=mockCardList('certificate');",
+ "globalThis.__cards.companyCertificateLedger=mockCategoryTable('certificate','企业资质');",
  "globalThis.__cards.companyReal=generalList();",
  "globalThis.__cards.companyPatent=mockList('ip');"
 ].join('\n');
@@ -101,6 +106,19 @@ assert.ok(snapshots.personalReal.includes('data-live-id="41"'),'Real personal ca
 assert.ok(snapshots.companyReal.includes('data-live-id="21"'),'Real company card must open stored record');
 assert.ok(snapshots.personalReal.includes('附件 <strong>2</strong> 份'),'Real attachment count must derive from actual database objects');
 assert.ok(snapshots.personalReal.includes('个人&lt;资料&amp;测试&gt;'),'Untrusted card title must be escaped');
-assert.ok(snapshots.personalIdentity.includes('data-mock-id="1"'),'Demo card must open a design-only record');
+assert.ok(snapshots.personalIdentity.includes('data-archive-category="身份证明"'),'Category card must open the category ledger');
 assert.ok(!snapshots.personalIdentity.includes('data-live-id'),'Demo card must never masquerade as real SQLCipher data');
+
+for(const section of ['personalAcademicJobs','personalMeetings','personalPolicies','personalIdentityLedger','companyCertificateLedger']){
+ assert.ok(snapshots[section].includes('<table'),'Category drill-down must show table: '+section);
+ assert.ok(!snapshots[section].includes('class="recordgrid"'),'Category drill-down must not show tiles: '+section);
+}
+for(const id of ['2','5','6'])assert.ok(snapshots.personalAcademicJobs.includes('data-mock-id="'+id+'"'),'Academic jobs must support multiple distinct entries '+id);
+assert.ok(!snapshots.personalAcademicJobs.includes('data-mock-id="3"'),'Academic jobs table must exclude meeting records');
+for(const id of ['3','7'])assert.ok(snapshots.personalMeetings.includes('data-mock-id="'+id+'"'),'Meeting reports should be multiple table rows '+id);
+for(const id of ['4','8'])assert.ok(snapshots.personalPolicies.includes('data-mock-id="'+id+'"'),'Policy proposals should be multiple table rows '+id);
+assert.ok(snapshots.companyCertificateLedger.includes('data-mock-id="1"')&&snapshots.companyCertificateLedger.includes('data-mock-id="2"'),'Enterprise certificates must be distinct rows');
+assert.ok(snapshots.personalAcademic.includes('data-archive-category="学术兼职"'),'Academic category card must open table, not single detail');
+assert.ok(!snapshots.personalAcademic.includes('data-mock-id='),'Category cards must not link directly to record details');
+assert.ok(js.includes('archiveGroup=null')&&js.includes('data-archive-back="cards"')&&js.includes('data-archive-back="table"'),'Three-level navigation must preserve back destinations');
 console.log('MAIN UI SMOKE PASS: navigation, workspace choice, live API contract, mock markers, CSP-compatible markup');
