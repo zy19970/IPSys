@@ -162,11 +162,17 @@ function dashboard(){
 }
 function generalList(){
  const rows=liveRows.filter(r=>r.title.toLowerCase().includes(filterName.toLowerCase()));
- return heading(title('general'),(space==='personal'?'尚未归入上述类别的个人资料，':'综合资料')+'使用当前加密库的真实记录和附件数据。',`<button class="btn primary" data-action="add">＋ 新建资料</button>`)+
+ const subtitle=space==='personal'
+  ? '尚未归入上述类别的个人资料，使用当前加密库的真实记录和附件。'
+  : '综合资料使用当前加密库的真实记录和附件。';
+ return heading(title('general'),subtitle,`<button class="btn primary" data-action="add">＋ 新建资料</button>`)+
  '<section class="white filter"><div class="filterline"><div class="field wide"><label>资料名称</label><input id="filterSearch" placeholder="搜索当前工作区资料"></div><button class="btn primary" data-action="filter">查询</button><button class="btn" data-action="clearFilter">重置</button></div></section>'+
- '<section class="white"><div class="tabletools"><span><b>资料列表</b> <small class="muted">'+rows.length+' 条真实记录</small></span><div class="actions"><span class="realflag">真实数据库</span><button class="btn" data-action="check">检查数据库</button></div></div>'+
- '<div class="tablewrap"><table class="data"><thead><tr><th>资料名称</th><th>附件数量</th><th>所属工作区</th><th>操作</th></tr></thead><tbody>'+
- (rows.length?rows.map(r=>`<tr><td><button class="link" data-live-id="${r.id}">${escapeHtml(r.title)}</button></td><td>${r.files.length} 份</td><td>${space==='company'?'公司资料':'个人资料'}</td><td><button class="btn btn-sm" data-live-id="${r.id}">查看详情</button></td></tr>`).join(''):'<tr><td colspan="4" class="empty">没有符合条件的资料。可先创建记录，再上传附件。</td></tr>')+'</tbody></table></div><div class="tablefoot">共 '+rows.length+' 条记录 · 数据来自当前加密资料库</div></section>';
+ '<section class="white"><div class="tabletools"><span><b>资料卡片</b> <small class="muted">'+rows.length+' 条真实记录</small></span><div class="actions"><span class="realflag">真实数据库</span><button class="btn" data-action="check">检查数据库</button></div></div>'+
+ (rows.length?'<div class="recordgrid">'+rows.map(r=>archiveCard(r,{
+  title:r.title,type:space==='company'?'综合资料':'其他资料',
+  fileCount:r.files.length,real:true
+ })).join('')+'</div>':'<div class="empty">没有符合条件的资料。可先创建记录，再上传附件。</div>')+
+ '<div class="tablefoot">共 '+rows.length+' 条记录 · 数据来自当前加密资料库</div></section>';
 }
 function realDetail(){
  const r=liveRows.find(r=>r.id===detail.id);
@@ -182,6 +188,29 @@ function columns(k){
  if(isProject(k))return [['name','项目名称'],['type','项目类别'],['code','项目编号'],['status','项目状态'],['leader','负责人'],['date','开始日期'],['files','附件']];
  if(k==='contract')return [['name','合同名称'],['project','所属项目'],['code','合同编号'],['date','签订日期'],['amount','合同金额（元）'],['files','附件']];
  return [['name','名称'],['type','类别'],['files','附件']];
+}
+function archiveCard(record,options={}){
+ const headingText=options.title??record.name??record.title??'未命名资料';
+ const typeText=options.type??record.type??'未分类';
+ const fileCount=options.fileCount??(Array.isArray(record.files)?record.files.length:(record.files??0));
+ const real=options.real===true;
+ const action=real?'live':'mock';
+ return `<article class="archivecard${real?' archivecard-real':''}">
+   <div class="archivecard-head">
+     <div class="archivecard-titlewrap">
+       <span class="archivecard-symbol" aria-hidden="true">▤</span>
+       <h3 class="archivecard-title">${escapeHtml(headingText)}</h3>
+     </div>
+     <span class="${real?'realflag':'mockflag'}">${real?'真实记录':'界面示例'}</span>
+   </div>
+   <div class="archivecard-meta">
+     <span class="archivecard-type">${escapeHtml(typeText)}</span>
+     <span class="archivecard-count">附件 <strong>${Number(fileCount)}</strong> 份</span>
+   </div>
+   <div class="archivecard-actions">
+     <button class="btn btn-sm" data-${action}-id="${Number(record.id)}">查看详情</button>
+   </div>
+ </article>`;
 }
 function mockList(k){
  const all=sample(k);
@@ -199,6 +228,21 @@ function mockList(k){
  '<div class="tablewrap"><table class="data"><thead><tr><th><input type="checkbox" id="checkAll"></th>'+cols.map(c=>`<th>${c[1]}</th>`).join('')+'</tr></thead><tbody>'+
  (visible.length?visible.map(r=>`<tr><td><input type="checkbox" class="rowcheck" value="${r.id}"></td>`+cols.map(([field],i)=>`<td>${field==='name'?`<button class="link" data-mock-id="${r.id}">${escapeHtml(r[field])}</button>`:field==='amount'?(r[field]?Number(r[field]).toFixed(2):'—'):field==='status'?`<span class="tag">${escapeHtml(r[field]||'—')}</span>`:escapeHtml(r[field]??'—')}</td>`).join('')+'</tr>').join(''):`<tr><td colspan="${cols.length+1}" class="empty">没有符合条件的演示记录</td></tr>`)+
  '</tbody></table></div><div class="tablefoot"><span>显示 '+visible.length+' 条演示记录</span><span id="selectionInfo">已勾选 0 条</span></div></section>';
+}
+function mockCardList(k){
+ const all=sample(k);
+ const visible=all.filter(r=>{
+  const data=Object.values(r).join(' ').toLowerCase();
+  return data.includes(filterName.toLowerCase())&&(filterKind==='全部类型'||r.type===filterKind);
+ });
+ const types=[...new Set(all.map(r=>r.type).filter(Boolean))];
+ const subtitle=(space==='personal'&&personalCategoryNotes[k]?personalCategoryNotes[k]+' · ':'')+'资料卡片布局预览 · 所有记录均为模拟数据';
+ const options=['全部类型',...types].map(t=>`<option value="${escapeHtml(t)}" ${t===filterKind?'selected':''}>${escapeHtml(t)}</option>`).join('');
+ return heading(title(k),subtitle,'<span class="mockflag">仅演示</span><button class="btn primary" data-action="demoAdd">＋ 新建记录</button>')+
+ '<section class="white filter"><div class="filterline"><div class="field wide"><label>名称 / 关键词</label><input id="filterSearch" placeholder="输入关键词筛选演示资料"></div><div class="field"><label>类型</label><select id="filterKind">'+options+'</select></div><button class="btn primary" data-action="filter">查询</button><button class="btn" data-action="clearFilter">重置</button></div></section>'+
+ '<section class="white"><div class="tabletools"><span><b>资料卡片</b> <small class="muted">'+visible.length+' 条示例</small></span><div class="actions"><button class="btn" data-action="demoExcel">导出 XLSX（演示）</button></div></div>'+
+ (visible.length?'<div class="recordgrid">'+visible.map(r=>archiveCard(r)).join('')+'</div>':'<div class="empty">没有符合条件的演示资料</div>')+
+ '<div class="tablefoot">显示 '+visible.length+' 条演示记录</div></section>';
 }
 function infoRow(label,value){return `<div class="info"><label>${label}</label><strong>${escapeHtml(value||'—')}</strong></div>`;}
 function section(name,body,action=''){return `<section class="white detailsection"><div class="detailsectionhead"><h2>${name}</h2>${action}</div><div class="detailbody">${body}</div></section>`;}
@@ -247,7 +291,8 @@ function render(){
  const content=el('content');
  content.innerHTML=detail?(detail.kind==='general'?realDetail():mockDetail()):
    page==='dashboard'?dashboard():page==='general'?generalList():
-   ['ip','researchProject','horizontalProject','contract','certificate','achievement','academic'].includes(page)?mockList(page):
+   ['ip','researchProject','horizontalProject','contract'].includes(page)?mockList(page):
+   ['certificate','achievement','academic'].includes(page)?mockCardList(page):
    page==='search'?searchPage():page==='settings'?settingsPage():trashPage();
  const searchBox=el('filterSearch');if(searchBox)searchBox.value=filterName;
 }

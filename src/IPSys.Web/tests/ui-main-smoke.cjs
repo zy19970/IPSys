@@ -47,4 +47,60 @@ for(const t of ['论文论著','学术兼职','会议报告','政策建议'])ass
 assert.deepEqual(Array.from(v.projectTypes).sort(),['横向项目','科研项目']);
 assert.equal(v.foreignProjects.length,2,'Company project lookup must remain unchanged');
 for(const k of ['certificate','ip','researchProject','achievement','academic'])assert.ok(v.noteKeys.includes(k),'Personal category note missing '+k);
+
+/* Document archives are cards, business ledgers are tables. Browserless render checks. */
+for(const cls of ['.recordgrid','.archivecard','.archivecard-real','.archivecard-meta','.archivecard-actions']){
+ assert.ok(css.includes(cls),'Missing archive card style '+cls);
+}
+assert.ok(js.includes("['certificate','achievement','academic'].includes(page)?mockCardList(page)"),'Archive mock pages must select card mode');
+assert.ok(js.includes("page==='general'?generalList()"),'Real general records must retain their route');
+assert.ok(js.includes("['ip','researchProject','horizontalProject','contract'].includes(page)?mockList(page)"),'Ledger pages must retain tables');
+const rendererSource=[
+ ['function generalList(){','function realDetail()'],
+ ['function columns(k){','function archiveCard('],
+ ['function archiveCard(','function mockList(k){'],
+ ['function mockList(k){','function mockCardList(k){'],
+ ['function mockCardList(k){','function infoRow(']
+].map(([start,end])=>{
+ const a=js.indexOf(start),b=js.indexOf(end,a+start.length);
+ assert.ok(a>=0&&b>a,'Missing renderer: '+start);
+ return js.slice(a,b);
+}).join('\n');
+const cardsCtx=vm.createContext({sessionStorage:{getItem:()=>null}});
+const renderSetup=[
+ "function heading(name){return '<h1>'+escapeHtml(name)+'</h1>';}",
+ "function stamp(){return '<span class=mockflag>界面示例</span>';}",
+ "space='personal';",
+ "liveRows=[{id:41,title:'个人<资料&测试>',files:[{id:3},{id:4}]}];",
+ "globalThis.__cards={",
+ " personalIdentity:mockCardList('certificate'),",
+ " personalAchievement:mockCardList('achievement'),",
+ " personalAcademic:mockCardList('academic'),",
+ " personalReal:generalList(),",
+ " personalPatent:mockList('ip')",
+ "};",
+ "space='company';",
+ "liveRows=[{id:21,title:'公司资料',files:[{id:10}]}];",
+ "globalThis.__cards.companyCertificate=mockCardList('certificate');",
+ "globalThis.__cards.companyReal=generalList();",
+ "globalThis.__cards.companyPatent=mockList('ip');"
+].join('\n');
+const header=renderSetup.slice(0,renderSetup.indexOf("space='personal';"));
+const body=renderSetup.slice(renderSetup.indexOf("space='personal';"));
+vm.runInContext(preamble+'\n'+header+'\n'+rendererSource+'\n'+body,cardsCtx);
+const snapshots=cardsCtx.__cards;
+for(const section of ['personalIdentity','personalAchievement','personalAcademic','personalReal','companyCertificate','companyReal']){
+ assert.match(snapshots[section],/class="recordgrid"/,'Archive section must use a card grid: '+section);
+ assert.match(snapshots[section],/class="archivecard/,'Missing card: '+section);
+ assert.ok(!snapshots[section].includes('<table'),'Tables are not allowed in archive sections: '+section);
+}
+for(const section of ['personalPatent','companyPatent']){
+ assert.ok(snapshots[section].includes('<table'),'IP ledger must remain a table: '+section);
+}
+assert.ok(snapshots.personalReal.includes('data-live-id="41"'),'Real personal card must open stored record');
+assert.ok(snapshots.companyReal.includes('data-live-id="21"'),'Real company card must open stored record');
+assert.ok(snapshots.personalReal.includes('附件 <strong>2</strong> 份'),'Real attachment count must derive from actual database objects');
+assert.ok(snapshots.personalReal.includes('个人&lt;资料&amp;测试&gt;'),'Untrusted card title must be escaped');
+assert.ok(snapshots.personalIdentity.includes('data-mock-id="1"'),'Demo card must open a design-only record');
+assert.ok(!snapshots.personalIdentity.includes('data-live-id'),'Demo card must never masquerade as real SQLCipher data');
 console.log('MAIN UI SMOKE PASS: navigation, workspace choice, live API contract, mock markers, CSP-compatible markup');
