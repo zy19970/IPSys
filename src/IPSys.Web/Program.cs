@@ -15,6 +15,8 @@ var smoke = args.Contains("--smoke");
 byte[] html = EmbeddedWebAssets.Read("index.html");
 byte[] css = EmbeddedWebAssets.Read("style.css");
 byte[] javascript = EmbeddedWebAssets.Read("app.js");
+// The approved evolving UI draft lives in demo/ui-preview.html and is embedded as-is.
+byte[] previewHtml = EmbeddedWebAssets.Read("ui-preview.html");
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
     Args = Array.Empty<string>(),
@@ -52,6 +54,16 @@ app.MapGet("/", () => Results.Bytes(html, contentType: "text/html; charset=utf-8
 app.MapGet("/index.html", () => Results.Bytes(html, contentType: "text/html; charset=utf-8"));
 app.MapGet("/style.css", () => Results.Bytes(css, contentType: "text/css; charset=utf-8"));
 app.MapGet("/app.js", () => Results.Bytes(javascript, contentType: "text/javascript; charset=utf-8"));
+// Isolate the single-file mock UI in an opaque-origin CSP sandbox. It needs
+// inline handlers/styles, but must not acquire application origin or network access.
+app.MapGet("/ui-preview", (HttpContext ctx) =>
+{
+    ctx.Response.Headers["Content-Security-Policy"] =
+        "sandbox allow-scripts; default-src 'none'; script-src 'unsafe-inline'; " +
+        "style-src 'unsafe-inline'; img-src data:; connect-src 'none'; " +
+        "object-src 'none'; base-uri 'none'; form-action 'none'";
+    return Results.Bytes(previewHtml, contentType: "text/html; charset=utf-8");
+});
 
 app.MapGet("/api/status", (Vault v) => Results.Json(new
 {
@@ -684,6 +696,16 @@ static class WebSmoke
             string javascript = await client.GetStringAsync("/app.js");
             if (!css.Contains(":root") || !javascript.Contains("openForm"))
                 throw new IOException("HTML/CSS/JS 静态文件未完整加载。");
+            using var previewResponse = await client.GetAsync("/ui-preview");
+            previewResponse.EnsureSuccessStatusCode();
+            string preview = await previewResponse.Content.ReadAsStringAsync();
+            string previewPolicy = previewResponse.Headers.GetValues("Content-Security-Policy").Single();
+            if (!preview.Contains("科研项目") || !preview.Contains("横向项目") ||
+                !preview.Contains("个人资料") || !preview.Contains("公司资料") ||
+                !preview.Contains("<script>") ||
+                !previewPolicy.Contains("sandbox allow-scripts") ||
+                !previewPolicy.Contains("connect-src 'none'"))
+                throw new IOException("UI 预览缺失或未与真实业务数据隔离。");
             var open = await client.PostAsJsonAsync("/api/open", new OpenInput(dbPath, password, true));
             open.EnsureSuccessStatusCode();
             string token = (await open.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())

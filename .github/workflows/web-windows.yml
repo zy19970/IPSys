@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "src/IPSys.Web/**"
+      - "demo/ui-preview.html"
       - ".github/workflows/web-windows.yml"
   workflow_dispatch:
 
@@ -48,7 +49,16 @@ jobs:
           }
       - name: Verify browser JavaScript syntax
         shell: pwsh
-        run: node --check src/IPSys.Web/wwwroot/app.js
+        run: |
+          node --check src/IPSys.Web/wwwroot/app.js
+          if ($LASTEXITCODE -ne 0) { throw 'Original application JavaScript syntax failed' }
+          $source = Get-Content demo/ui-preview.html -Raw
+          $scriptMatch = [regex]::Match($source, '(?s)<script>(.*?)</script>')
+          if (-not $scriptMatch.Success) { throw 'No embedded UI preview script found' }
+          $scriptFile = Join-Path $env:RUNNER_TEMP 'ipsys-ui-preview.js'
+          [System.IO.File]::WriteAllText($scriptFile, $scriptMatch.Groups[1].Value)
+          node --check $scriptFile
+          if ($LASTEXITCODE -ne 0) { throw 'UI preview JavaScript syntax failed' }
       - name: Verify SQLCipher and local HTTP roundtrip
         shell: pwsh
         run: |

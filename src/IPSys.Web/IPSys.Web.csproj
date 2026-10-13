@@ -15,6 +15,8 @@
     <EmbeddedResource Include="wwwroot\index.html" LogicalName="IPSys.Web.Embedded.index.html" />
     <EmbeddedResource Include="wwwroot\style.css" LogicalName="IPSys.Web.Embedded.style.css" />
     <EmbeddedResource Include="wwwroot\app.js" LogicalName="IPSys.Web.Embedded.app.js" />
+    <!-- Reuse the Git-tracked standalone design source without duplicating it. -->
+    <EmbeddedResource Include="..\..\demo\ui-preview.html" LogicalName="IPSys.Web.Embedded.ui-preview.html" />
     <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="8.0.10" />
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlcipher" Version="2.1.11" />
   </ItemGroup>

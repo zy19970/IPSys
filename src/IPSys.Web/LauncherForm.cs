@@ -31,7 +31,7 @@ internal sealed class LauncherForm : Form
         MaximizeBox = false;
         MinimizeBox = true;
         ShowInTaskbar = true;
-        ClientSize = new Size(470, 272);
+        ClientSize = new Size(470, 334);
         MinimumSize = Size;
         MaximumSize = Size;
         AutoScaleMode = AutoScaleMode.Dpi;
@@ -86,15 +86,28 @@ internal sealed class LauncherForm : Form
         exit.FlatAppearance.BorderColor = Color.FromArgb(214, 223, 231);
         exit.Click += (_, _) => Close();
 
+        var preview = new Button
+        {
+            Text = "查看新版界面设计（模拟数据）",
+            Location = new Point(30, 219),
+            Size = new Size(410, 43),
+            FlatStyle = FlatStyle.Flat,
+            BackColor = Color.FromArgb(234, 246, 247),
+            ForeColor = Color.FromArgb(27, 103, 114),
+            Cursor = Cursors.Hand
+        };
+        preview.FlatAppearance.BorderColor = Color.FromArgb(190, 219, 223);
+        preview.Click += (_, _) => OpenBrowser("/ui-preview");
+
         var hint = new Label
         {
             Text = "关闭此窗口将安全停止本地服务；浏览器标签可以单独关闭。",
-            Location = new Point(31, 232),
+            Location = new Point(31, 291),
             ForeColor = Color.FromArgb(131, 144, 157),
             Font = new Font(Font.FontFamily, 8.5F),
             AutoSize = true
         };
-        Controls.AddRange(new Control[] { heading, summary, _status, launch, exit, hint });
+        Controls.AddRange(new Control[] { heading, summary, _status, launch, exit, preview, hint });
         AcceptButton = launch;
     }
 
@@ -167,10 +180,11 @@ internal sealed class LauncherForm : Form
         };
     }
 
-    private void OpenBrowser()
+    private void OpenBrowser(string relativePath = "")
     {
         try
         {
+            string target = _address.TrimEnd('/') + relativePath;
             // Reuse the default browser only when it is Chrome/Edge. Otherwise use Edge.
             string? browser = null;
             using (var choice = Registry.CurrentUser.OpenSubKey(
@@ -184,16 +198,18 @@ internal sealed class LauncherForm : Form
                     browser = "msedge.exe";
             }
             Process.Start(browser is null
-                ? new ProcessStartInfo(_address) { UseShellExecute = true }
-                : new ProcessStartInfo(browser, _address) { UseShellExecute = true });
-            _status.Text = "● 管理界面已在浏览器中打开";
+                ? new ProcessStartInfo(target) { UseShellExecute = true }
+                : new ProcessStartInfo(browser, target) { UseShellExecute = true });
+            _status.Text = relativePath.Length == 0
+                ? "● 管理界面已在浏览器中打开"
+                : "● 模拟界面设计预览已在浏览器中打开";
         }
         catch (Exception ex)
         {
             _status.Text = "● 本地服务仍在运行";
             MessageBox.Show(this,
                 "无法自动打开浏览器，请在 Edge 或 Chrome 手动访问：\n\n" +
-                _address + "\n\n错误：" + ex.Message,
+                (_address.TrimEnd('/') + relativePath) + "\n\n错误：" + ex.Message,
                 "打开浏览器失败", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
     }
