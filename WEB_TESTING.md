@@ -20,7 +20,15 @@
 6. 点击“检查数据库完整性”确认返回 `ok`。关闭浏览器标签后，从 WinForms 再次点击打开按钮，确认页面仍可连接。
 7. 点击 WinForms 的“退出程序”或右上角 X，确认窗口关闭。随后在资源管理器中复制数据库文件，重新运行程序从副本打开并验证记录。**只有程序退出并完成数据库关闭后才手动复制文件。**
 
-## 3. 本地编译和自动测试
+## 3. Visual Studio 2022 调试
+
+打开 `src/IPSys.Web/IPSys.Web.csproj`，选择 Debug 并按 F5。现在工程会自动将 `wwwroot/index.html`、`app.js`、`style.css` 复制到与 EXE 同级的 `wwwroot` 文件夹，不再要求手动拷贝网页文件。
+
+普通 Debug 编译输出通常在 `src/IPSys.Web/bin/Debug/net8.0-windows/`。如本地网页返回 HTTP 404，请先关闭旧 WinForms 程序，拉取 main 最新代码，在 Visual Studio 选择“重新生成解决方案”后再 F5。若打包缺少文件，程序会在启动时显示缺失的完整路径，而不是打开空白 404。
+
+Windows CI 同时测试 Debug 普通编译和 Release 发布：核查三个静态文件以及根首页、CSS、JS 的 HTTP 请求。
+
+## 4. 本地发布和自动测试
 
 安装 .NET 8 SDK 后在 Windows PowerShell 的仓库根目录运行：
 
@@ -33,7 +41,7 @@ dotnet publish .\src\IPSys.Web\IPSys.Web.csproj -c Release -r win-x64 --self-con
 
 [查看本次成功的 Windows 构建](https://github.com/zy19970/IPSys/actions/runs/38378877601)。
 
-## 4. 测试版限制
+## 5. 测试版限制
 
 1. **WinForms 生命周期和按钮实际点击需要本机实测**。Windows CI 已验证可编译、无界面的 SQLCipher/HTTP 往返和 SHA-256 一致性；不能由此声称 GUI 点击与窗口退出已经做过人工验收。
 2. 网页仅有最小综合资料模块，尚无正式文件版本管理、去重、回收站、Excel、专利/项目/合同等其它业务模块。

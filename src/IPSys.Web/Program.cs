@@ -11,11 +11,23 @@ using IPSys.Web;
 
 SQLitePCL.Batteries_V2.Init();
 var smoke = args.Contains("--smoke");
+// The WinForms process is launched from the exe folder, not necessarily the project folder.
+string staticRoot = Path.Combine(AppContext.BaseDirectory, "wwwroot");
+string indexFile = Path.Combine(staticRoot, "index.html");
+if (!File.Exists(indexFile))
+{
+    string message = "未找到网页首页文件：\n" + indexFile +
+                     "\n\n请重新编译或完整解压程序，确保 wwwroot 文件夹与 EXE 位于同一目录。";
+    if (smoke) throw new FileNotFoundException(message, indexFile);
+    System.Windows.Forms.MessageBox.Show(message, "IPSys 网页资源缺失",
+        System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
+    return;
+}
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
     Args = Array.Empty<string>(),
     ContentRootPath = AppContext.BaseDirectory,
-    WebRootPath = Path.Combine(AppContext.BaseDirectory, "wwwroot")
+    WebRootPath = staticRoot
 });
 builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = 66L * 1024 * 1024);
 builder.Services.AddSingleton<Vault>();
@@ -450,7 +462,12 @@ static class WebSmoke
             string dbPath = System.IO.Path.Combine(dir, "smoke.db");
             string password = "test-" + Guid.NewGuid().ToString("N");
             string landing = await client.GetStringAsync("/");
-            if (!landing.Contains("IPSys")) throw new IOException("未找到网页首页。");
+            if (!landing.Contains("IPSys") || !landing.Contains("app.js"))
+                throw new IOException("网页首页不可用。");
+            string css = await client.GetStringAsync("/style.css");
+            string javascript = await client.GetStringAsync("/app.js");
+            if (!css.Contains(":root") || !javascript.Contains("openForm"))
+                throw new IOException("HTML/CSS/JS 静态文件未完整加载。");
             var open = await client.PostAsJsonAsync("/api/open", new OpenInput(dbPath, password, true));
             open.EnsureSuccessStatusCode();
             string token = (await open.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
