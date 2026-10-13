@@ -5,7 +5,7 @@ const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<
 let token=sessionStorage.getItem('ip-token')||'';
 let dbName=sessionStorage.getItem('ip-db')||'';
 let space=null,creating=false,resuming=false,localFileTaskActive=false;
-let page='dashboard',detail=null,archiveGroup=null,editingId=null,liveRows=[],filterName='',filterKind='全部类型',filterState='全部状态',selected=new Set();
+let page='dashboard',detail=null,archiveGroup=null,editingId=null,projectEditingId=null,projectRows=[],liveRows=[],filterName='',filterKind='全部类型',filterState='全部状态',selected=new Set();
 const companyNav=[['dashboard','工作台','▦'],['ip','知识产权','◇'],['researchProject','科研项目','▤'],['horizontalProject','横向项目','▥'],['contract','全部合同','▧'],['certificate','企业资质','▣'],['general','综合资料','▥']];
 // Personal archives are grouped by evidence type, not by the company management menu.
 const personalNav=[['dashboard','个人工作台','▦'],['certificate','身份与资质','▣'],['ip','知识产权与著作','◇'],['researchProject','科研与合作项目','▤'],['achievement','成果与奖励','★'],['academic','学术与社会活动','▥'],['general','其他资料','▧']];
@@ -128,7 +128,7 @@ el('openForm').onsubmit=async event=>{
 };
 function selectSpace(next){
   if(!token)return;
-  space=next;page='dashboard';detail=null;archiveGroup=null;filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();
+  space=next;page='dashboard';detail=null;archiveGroup=null;projectRows=[];filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();
   el('globalSearch').value='';el('sidebarDbName').textContent=dbName;
   el('chooseWorkspace').hidden=true;el('unlocked').hidden=false;
   refresh();
@@ -139,9 +139,9 @@ function setPage(next){page=next;detail=null;archiveGroup=null;filterName='';fil
 async function refresh(){
   if(!token||!space)return;
   const requestedSpace=space;
-  try{const rows=await(await api('/api/records/'+space)).json();
+  try{const [rows,projects]=await Promise.all([api('/api/records/'+space).then(r=>r.json()),api('/api/projects/'+space).then(r=>r.json())]);
     if(requestedSpace!==space||!token)return;
-    liveRows=rows;render();
+    liveRows=rows;projectRows=projects;render();
   }catch(error){notice(error.message,true);}
 }
 function refreshSidebar(){
@@ -200,6 +200,63 @@ function columns(k){
  if(isProject(k))return [['name','项目名称'],['type','项目类别'],['code','项目编号'],['date','开始日期'],['files','附件']];
  if(k==='contract')return [['name','合同名称'],['project','所属项目'],['code','合同编号'],['date','签订日期'],['amount','合同金额（元）'],['files','附件']];
  return [['name','名称'],['type','类别'],['files','附件']];
+}
+
+function projectViewRows(k){
+ return projectRows.filter(p=>space==='personal'||(k==='researchProject'?p.projectType!=='横向项目':p.projectType==='横向项目'));
+}
+function projectList(k){
+ const rows=projectViewRows(k), visible=rows.filter(p=>
+  [p.name,p.projectNo,p.leader,p.undertakingOrg].join(' ').toLowerCase().includes(filterName.toLowerCase()) &&
+  (filterKind==='全部类型'||p.projectType===filterKind) &&
+  (filterState==='全部状态'||p.projectStatus===filterState));
+ const types=['全部类型','科研项目','横向项目','其他项目'];
+ const statuses=['全部状态','筹备中','进行中','已完成','已终止'];
+ return heading(title(k),'真实业务台账 · 当前加密资料库',
+  '<span class="realflag">真实记录</span><button class="btn primary" data-action="projectAdd">＋ 新建项目</button>')+
+ '<section class="white filter"><div class="filterline">'+
+ '<div class="field wide"><label>名称 / 编号</label><input id="filterSearch" placeholder="输入关键词筛选项目"></div>'+
+ '<div class="field"><label>类型</label><select id="filterKind">'+types.map(t=>'<option value="'+t+'" '+(filterKind===t?'selected':'')+'>'+t+'</option>').join('')+'</select></div>'+
+ '<div class="field"><label>状态</label><select id="filterState">'+statuses.map(t=>'<option value="'+t+'" '+(filterState===t?'selected':'')+'>'+t+'</option>').join('')+'</select></div>'+
+ '<button class="btn primary" data-action="filter">查询</button><button class="btn" data-action="clearFilter">重置</button></div></section>'+
+ '<section class="white"><div class="tabletools"><b>业务台账 '+visible.length+' 条真实记录</b></div>'+
+ '<div class="tablewrap"><table class="data"><thead><tr><th>项目名称</th><th>项目类别</th><th>项目编号</th><th>开始日期</th><th>附件</th></tr></thead><tbody>'+
+ (visible.length?visible.map(p=>'<tr>'+
+ '<td><button class="link" data-project-id="'+p.id+'">'+escapeHtml(p.name)+'</button></td>'+
+ '<td>'+escapeHtml(p.projectType)+'</td><td>'+escapeHtml(p.projectNo||'—')+'</td>'+
+ '<td>'+escapeHtml(p.startDate||'—')+'</td>'+
+ '<td>0</td></tr>').join(''):
+ '<tr><td colspan="5" class="empty">暂无项目，点击右上角新建项目。</td></tr>')+
+ '</tbody></table></div><div class="tablefoot">共 '+visible.length+' 条记录 · 数据保存在当前 SQLCipher 库</div></section>';
+}
+function projectDetail(){
+ const p=projectRows.find(x=>x.id===detail.id);
+ if(!p)return heading('项目不存在','当前工作区无此项目')+'<button class="btn" data-nav="researchProject">返回台账</button>';
+ return heading(p.name,'项目详情 · 真实 SQLCipher 记录',
+ '<button class="btn" data-nav="'+page+'">← 返回台账</button>'+
+ '<button class="btn" data-action="projectEdit">修改</button>'+
+ '<button class="btn" data-action="projectCopy">复制项目</button>'+
+ '<button class="btn" data-action="projectMove">转移工作区</button>'+
+ '<button class="btn" data-action="projectDelete">删除</button>')+
+ section('项目基本信息','<div class="infogrid">'+
+ infoRow('项目名称',p.name)+infoRow('项目类别',p.projectType)+infoRow('项目编号',p.projectNo)+
+ infoRow('负责人',p.leader)+infoRow('承担单位',p.undertakingOrg)+
+ infoRow('项目状态',p.projectStatus)+infoRow('开始日期',p.startDate)+
+ infoRow('结束日期',p.endDate)+infoRow('辅助分类',p.category)+
+ infoRow('标签',p.tags)+infoRow('备注',p.remarks)+'</div>')+
+ section('所属合同','<p class="hint">项目记录已接入数据库；所属合同的真实业务关联下一阶段接入。</p>')+
+ section('项目自身附件','<p class="hint">项目附件归属与附件版本管理下一阶段接入。</p>');
+}
+function showProjectForm(id=null){
+ projectEditingId=id;
+ const p=id===null?null:projectRows.find(r=>r.id===id);
+ el('projectForm').reset();
+ el('projectFormTitle').textContent=p?'修改项目':'新建项目';
+ el('pType').value=p?.projectType||(page==='horizontalProject'?'横向项目':'科研项目');
+ const fields={pName:'name',pNo:'projectNo',pStatus:'projectStatus',pLeader:'leader',
+  pOrg:'undertakingOrg',pStart:'startDate',pEnd:'endDate',pCategory:'category',pTags:'tags',pRemarks:'remarks'};
+ for(const [id,key] of Object.entries(fields))if(p)el(id).value=p[key]||'';
+ el('projectDialog').showModal();
 }
 function archiveCard(record,options={}){
  const headingText=options.title??record.name??record.title??'未命名资料';
@@ -329,10 +386,11 @@ function render(){
  if(!space||!token)return;
  refreshSidebar();
  const content=el('content');
- content.innerHTML=detail?(detail.kind==='general'?realDetail():mockDetail()):
+ content.innerHTML=detail?(detail.kind==='general'?realDetail():detail.kind==='project'?projectDetail():mockDetail()):
    archiveGroup&&['certificate','achievement','academic'].includes(page)?mockCategoryTable(page,archiveGroup):
    page==='dashboard'?dashboard():page==='general'?generalList():
-   ['ip','researchProject','horizontalProject','contract'].includes(page)?mockList(page):
+   isProject(page)?projectList(page):
+   ['ip','contract'].includes(page)?mockList(page):
    ['certificate','achievement','academic'].includes(page)?mockCardList(page):
    page==='search'?searchPage():page==='settings'?settingsPage():trashPage();
  const searchBox=el('filterSearch');if(searchBox)searchBox.value=filterName;
@@ -369,11 +427,34 @@ el('content').addEventListener('click',async ev=>{
  }
  if(target.dataset.nav){setPage(target.dataset.nav);return;}
  if(target.dataset.liveId){openLiveRecord(Number(target.dataset.liveId));return;}
+ if(target.dataset.projectId){detail={kind:'project',id:Number(target.dataset.projectId)};render();el('content').scrollTo(0,0);return;}
  if(target.dataset.mockId){openMockRecord(page,Number(target.dataset.mockId));return;}
  if(target.dataset.contractId){openMockRecord('contract',Number(target.dataset.contractId));return;}
  if(target.dataset.searchDetail){const [k,id]=target.dataset.searchDetail.split(':');openMockRecord(k,Number(id));return;}
  if(target.dataset.download){const r=liveRows.find(r=>r.id===detail?.id);const file=r?.files.find(f=>f.id===Number(target.dataset.download));if(file)await download(file);return;}
  switch(target.dataset.action){
+  case 'projectAdd':showProjectForm();break;
+  case 'projectEdit':showProjectForm(detail?.id);break;
+  case 'projectDelete':{
+   const p=projectRows.find(x=>x.id===detail?.id);
+   if(!p||!confirm('将项目“'+p.name+'”移出当前台账？此操作为软删除。'))break;
+   try{await api('/api/projects/'+space+'/'+p.id,{method:'DELETE'});detail=null;await refresh();notice('项目已移出当前台账');}
+   catch(e){notice(e.message,true);}break;
+  }
+  case 'projectCopy':
+  case 'projectMove':{
+   const p=projectRows.find(x=>x.id===detail?.id);if(!p)break;
+   const move=target.dataset.action==='projectMove';
+   const destination=move?(space==='company'?'personal':'company'):
+     (confirm('复制到另一个工作区？选择“取消”将在当前工作区复制。')?(space==='company'?'personal':'company'):space);
+   if(!confirm((move?'转移':'复制')+'项目“'+p.name+'”至'+(destination==='company'?'公司资料':'个人资料')+'？'))break;
+   try{
+    await api('/api/projects/'+space+'/'+p.id+'/transfer',{method:'POST',json:{targetWorkspace:destination,move}});
+    if(move)detail=null;
+    await refresh();notice(move?'项目已转移到另一工作区':'项目已复制');
+   }catch(e){notice(e.message,true);}
+   break;
+  }
   case 'add':
    editingId=null;el('title').value='';el('saveRecord').textContent='创建记录';
    el('newRecordForm').querySelector('h2').textContent=space==='personal'?'新建其他资料':'新建综合资料';
@@ -411,6 +492,29 @@ el('content').addEventListener('keydown',event=>{
 el('globalSearch').onkeydown=event=>{if(event.key==='Enter'&&space){filterName=el('globalSearch').value.trim();page='search';detail=null;render();}};
 el('cancelRecord').onclick=()=>{editingId=null;el('modal').close();};
 el('modal').addEventListener('close',()=>{editingId=null;});
+el('cancelProject').onclick=()=>el('projectDialog').close();
+el('projectDialog').addEventListener('close',()=>{projectEditingId=null;});
+el('projectForm').onsubmit=async ev=>{
+ ev.preventDefault();
+ const id=projectEditingId;
+ const values=Object.fromEntries(new FormData(el('projectForm')).entries());
+ el('saveProject').disabled=true;
+ try{
+  const result=await api('/api/projects/'+space+(id===null?'':'/'+id),
+   {method:id===null?'POST':'PUT',json:values});
+  const created=id===null?(await result.json()).id:id;
+  el('projectDialog').close();
+  await refresh();
+  const project=projectRows.find(p=>p.id===created);
+  if(project){
+   page=space==='personal'?'researchProject':project.projectType==='横向项目'?'horizontalProject':'researchProject';
+   detail={kind:'project',id:created};
+   render();
+  }
+  notice(id===null?'项目已创建':'项目修改已保存');
+ }catch(error){notice(error.message,true);}
+ finally{el('saveProject').disabled=false;}
+};
 el('newRecordForm').onsubmit=async ev=>{
  ev.preventDefault();el('saveRecord').disabled=true;
  const name=el('title').value.trim(),target=editingId,workspace=space;
@@ -427,7 +531,7 @@ el('newRecordForm').onsubmit=async ev=>{
 };
 async function closeDb(){
  if(!confirm('关闭当前数据库？再次打开时需要输入数据库密码。'))return;
- try{await api('/api/lock',{method:'POST'});token='';dbName='';space=null;liveRows=[];sessionStorage.clear();recoveryMode(false);mode(false);screen(false);notice('已安全关闭数据库');}catch(e){notice(e.message,true);}
+ try{await api('/api/lock',{method:'POST'});token='';dbName='';space=null;liveRows=[];projectRows=[];sessionStorage.clear();recoveryMode(false);mode(false);screen(false);notice('已安全关闭数据库');}catch(e){notice(e.message,true);}
 }
 el('closeDbFromChoice').onclick=closeDb;
 async function sendExit(choice){

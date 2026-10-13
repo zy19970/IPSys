@@ -66,3 +66,13 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 .archivecategory .archivecard-meta{margin-top:auto}
 .archive-tablewrap{min-height:0;max-height:calc(100vh - 365px)}
 .archive-tablewrap .data td:nth-child(2){white-space:normal;min-width:260px}
+
+/* Project editing reuses the existing dialog visual language. */
+.project-dialog{width:min(800px,calc(100vw - 32px));max-width:800px;max-height:85vh;overflow:auto}
+.project-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:18px;row-gap:0}
+.project-form-grid .form-field{margin:8px 0}
+.project-form-grid .form-field input,.project-form-grid .form-field select,
+.project-form-grid .form-field textarea{width:100%;border:1px solid #dfe6eb;border-radius:7px;padding:9px 11px;background:white;color:var(--ink);font:inherit}
+.project-form-grid .form-field input,.project-form-grid .form-field select{height:40px}
+.project-span{grid-column:1/-1}
+@media(max-width:620px){.project-form-grid{grid-template-columns:1fr}}

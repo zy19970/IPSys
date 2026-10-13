@@ -56,6 +56,26 @@
     </div>
   </div>
   <dialog id="modal" class="input-dialog"><form id="newRecordForm"><h2>新建综合资料</h2><p class="subtle">先创建资料记录，再上传原始文件。</p><div class="form-field"><label for="title">资料名称 <span class="required">*</span></label><input id="title" maxlength="300" required placeholder="例如：公司简介"></div><div class="dialogactions"><button class="btn" type="button" id="cancelRecord">取消</button><button class="btn primary" type="submit" id="saveRecord">创建记录</button></div></form></dialog>
+  <dialog id="projectDialog" class="input-dialog project-dialog">
+    <form id="projectForm">
+      <h2 id="projectFormTitle">新建项目</h2>
+      <p class="subtle">项目名称和项目类别必填，其余字段可后续补充。</p>
+      <div class="project-form-grid">
+        <div class="form-field"><label for="pName">项目名称 *</label><input id="pName" name="name" required maxlength="300"></div>
+        <div class="form-field"><label for="pType">项目类别 *</label><select id="pType" name="projectType" required><option value="科研项目">科研项目</option><option value="横向项目">横向项目</option><option value="其他项目">其他项目</option></select></div>
+        <div class="form-field"><label for="pNo">项目编号</label><input id="pNo" name="projectNo"></div>
+        <div class="form-field"><label for="pStatus">项目状态</label><select id="pStatus" name="projectStatus"><option>筹备中</option><option>进行中</option><option>已完成</option><option>已终止</option></select></div>
+        <div class="form-field"><label for="pLeader">负责人</label><input id="pLeader" name="leader"></div>
+        <div class="form-field"><label for="pOrg">承担单位</label><input id="pOrg" name="undertakingOrg"></div>
+        <div class="form-field"><label for="pStart">开始日期</label><input id="pStart" name="startDate" type="date"></div>
+        <div class="form-field"><label for="pEnd">结束日期</label><input id="pEnd" name="endDate" type="date"></div>
+        <div class="form-field"><label for="pCategory">辅助分类</label><input id="pCategory" name="category"></div>
+        <div class="form-field"><label for="pTags">标签</label><input id="pTags" name="tags"></div>
+        <div class="form-field project-span"><label for="pRemarks">备注</label><textarea id="pRemarks" name="remarks" rows="3"></textarea></div>
+      </div>
+      <div class="dialogactions"><button class="btn" id="cancelProject" type="button">取消</button><button class="btn primary" id="saveProject" type="submit">保存项目</button></div>
+    </form>
+  </dialog>
   <dialog id="exitDialog" class="input-dialog"><h2>文件任务进行中</h2><p class="subtle">上传正在进行，请选择安全退出方式。</p><div class="dialogactions wrap"><button type="button" class="btn" id="exitCancelTask">取消任务并退出</button><button type="button" class="btn primary" id="exitFinishTask">任务完成后退出</button><button type="button" class="btn" id="exitStay">暂不退出</button></div></dialog>
   <div id="toast" role="status" aria-live="polite"></div>
 </body>

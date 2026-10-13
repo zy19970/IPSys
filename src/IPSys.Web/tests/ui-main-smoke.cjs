@@ -61,7 +61,8 @@ for(const cls of ['.recordgrid','.archivecard','.archivecard-real','.archivecard
 }
 assert.ok(js.includes("['certificate','achievement','academic'].includes(page)?mockCardList(page)"),'Archive mock pages must select card mode');
 assert.ok(js.includes("page==='general'?generalList()"),'Real general records must retain their route');
-assert.ok(js.includes("['ip','researchProject','horizontalProject','contract'].includes(page)?mockList(page)"),'Ledger pages must retain tables');
+assert.ok(js.includes("isProject(page)?projectList(page)"),'Project pages must use real SQLCipher records');
+assert.ok(js.includes("['ip','contract'].includes(page)?mockList(page)"),'Other mock ledger pages remain explicit');
 const rendererSource=[
  ['function generalList(){','function realDetail()'],
  ['function columns(k){','function archiveCard('],
@@ -191,4 +192,20 @@ assert.ok(css.includes('max-height:calc(100vh - 355px);min-height:0'),'Ledger sh
 assert.ok(css.includes('min-width:100%;font-size:15px;line-height:1.5'),'Ledger body text must be larger');
 assert.ok(css.includes('text-align:left;font-size:13px;font-weight:650'),'Ledger headings must be readable');
 assert.ok(css.includes('.auth-mode-actions{display:flex'),'Secondary new-vault button must be styled');
+
+// Project tables are now real while other prototype business layouts are still mock.
+assert.ok(html.includes('id="projectDialog"'),'Project editor must be a real modal');
+for(const name of ['pName','pType','pNo','pStatus','pLeader','pOrg','pStart','pEnd','pCategory','pTags','pRemarks'])
+ assert.ok(html.includes('id="'+name+'"'),'Missing project field '+name);
+for(const route of ["'/api/projects/'+space","method:'DELETE'","method:'PUT'","method:'POST'","targetWorkspace:destination"])
+ assert.ok(js.includes(route),'Missing project persistence or transfer '+route);
+assert.ok(js.includes("projectRows=projects;render()"),'Projects must refresh from the real database');
+const projectCtx=vm.createContext({sessionStorage:{getItem:()=>null}});
+const projector=js.slice(js.indexOf('function projectViewRows('),js.indexOf('function archiveCard(',js.indexOf('function projectViewRows(')));
+vm.runInContext(preamble+
+ '\nfunction heading(t){return t;}\nfunction infoRow(n,v){return n+v;}\nfunction section(n,v){return n+v;}\n'+projector+
+ "\nspace='company';projectRows=[{id:12,name:'真实项目',projectType:'科研项目',projectNo:'X-1',startDate:'2026-01-02',projectStatus:'进行中',leader:'负责人甲'}];globalThis.__project=projectList('researchProject');",projectCtx);
+assert.ok(projectCtx.__project.includes('data-project-id="12"'),'Real project ledger must open persisted IDs');
+assert.ok(!projectCtx.__project.includes('负责人甲'),'Project leader must not appear in the ledger');
+assert.ok(!projectCtx.__project.includes('仅演示'),'Real project page must not be marked mock');
 console.log('MAIN UI SMOKE PASS: navigation, workspace choice, live API contract, mock markers, CSP-compatible markup');
