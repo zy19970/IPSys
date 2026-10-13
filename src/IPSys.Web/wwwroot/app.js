@@ -690,7 +690,6 @@ el('content').addEventListener('click',async ev=>{
   case 'clearFilter':filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();render();break;
   case 'check':try{const status=await(await api('/api/check')).json();const out=el('checkResult');if(out)out.textContent='完整性：'+status.result+'；未完成附件：'+status.incomplete;notice(status.result==='ok'?'数据库完整性检查通过':'数据库检查异常',status.result!=='ok');}catch(e){notice(e.message,true);}break;
   case 'lock':await closeDb();break;
-  case 'demoContract':notice('合同新增功能尚未开发，本页仅为布局演示');break;
   default:notice('当前仅展示界面设计，尚未接入该业务功能');
  }
 });
