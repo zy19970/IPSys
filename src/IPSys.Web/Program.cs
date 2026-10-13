@@ -690,12 +690,17 @@ static class WebSmoke
             string dbPath = System.IO.Path.Combine(dir, "smoke.db");
             string password = "test-" + Guid.NewGuid().ToString("N");
             string landing = await client.GetStringAsync("/");
-            if (!landing.Contains("IPSys") || !landing.Contains("app.js"))
-                throw new IOException("网页首页不可用。");
+            if (!landing.Contains("IPSys") || !landing.Contains("app.js") ||
+                !landing.Contains("id=\"chooseWorkspace\"") ||
+                !landing.Contains("id=\"sidebar\"") ||
+                !landing.Contains("id=\"content\""))
+                throw new IOException("新版主界面或工作区选择未成功加载。");
             string css = await client.GetStringAsync("/style.css");
             string javascript = await client.GetStringAsync("/app.js");
-            if (!css.Contains(":root") || !javascript.Contains("openForm"))
-                throw new IOException("HTML/CSS/JS 静态文件未完整加载。");
+            if (!css.Contains(":root") || !javascript.Contains("openForm") ||
+                !javascript.Contains("function realDetail") ||
+                !javascript.Contains("function mockDetail"))
+                throw new IOException("新版主界面 CSS/JS 未完整加载。");
             using var previewResponse = await client.GetAsync("/ui-preview");
             previewResponse.EnsureSuccessStatusCode();
             string preview = await previewResponse.Content.ReadAsStringAsync();

@@ -31,7 +31,7 @@ internal sealed class LauncherForm : Form
         MaximizeBox = false;
         MinimizeBox = true;
         ShowInTaskbar = true;
-        ClientSize = new Size(470, 334);
+        ClientSize = new Size(470, 272);
         MinimumSize = Size;
         MaximumSize = Size;
         AutoScaleMode = AutoScaleMode.Dpi;
@@ -86,28 +86,15 @@ internal sealed class LauncherForm : Form
         exit.FlatAppearance.BorderColor = Color.FromArgb(214, 223, 231);
         exit.Click += (_, _) => Close();
 
-        var preview = new Button
-        {
-            Text = "查看新版界面设计（模拟数据）",
-            Location = new Point(30, 219),
-            Size = new Size(410, 43),
-            FlatStyle = FlatStyle.Flat,
-            BackColor = Color.FromArgb(234, 246, 247),
-            ForeColor = Color.FromArgb(27, 103, 114),
-            Cursor = Cursors.Hand
-        };
-        preview.FlatAppearance.BorderColor = Color.FromArgb(190, 219, 223);
-        preview.Click += (_, _) => OpenBrowser("/ui-preview");
-
         var hint = new Label
         {
             Text = "关闭此窗口将安全停止本地服务；浏览器标签可以单独关闭。",
-            Location = new Point(31, 291),
+            Location = new Point(31, 232),
             ForeColor = Color.FromArgb(131, 144, 157),
             Font = new Font(Font.FontFamily, 8.5F),
             AutoSize = true
         };
-        Controls.AddRange(new Control[] { heading, summary, _status, launch, exit, preview, hint });
+        Controls.AddRange(new Control[] { heading, summary, _status, launch, exit, hint });
         AcceptButton = launch;
     }
 
