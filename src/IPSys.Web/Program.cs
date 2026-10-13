@@ -384,7 +384,9 @@ app.MapGet("/api/task", (HttpContext ctx, Vault v) =>
 app.MapPost("/api/exit", async (HttpContext ctx, Vault v, IHostApplicationLifetime life) =>
 {
     if (v.Unlocked && !v.Allowed(ctx)) return Results.Unauthorized();
-    ExitInput? input = ctx.Request.ContentLength > 0
+    // JSON requests may be chunked and have no Content-Length.
+    ExitInput? input = ctx.Request.ContentType?.StartsWith(
+        "application/json", StringComparison.OrdinalIgnoreCase) == true
         ? await ctx.Request.ReadFromJsonAsync<ExitInput>() : null;
     string choice = input?.Choice ?? "normal";
     if (choice is not ("normal" or "cancel" or "wait" or "stay"))
