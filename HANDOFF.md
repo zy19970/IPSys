@@ -2,7 +2,9 @@
 
 > 用途：供用户切换 ChatGPT 会话后直接接续 IPSys 开发，不再重复需求访谈或重新摸索已解决的技术问题。
 >
-> **后续维护说明（2026-10-13）**：本交接主体记录最初交接时的技术快照，后续已将唯一运行工程统一为 `src/IPSys.Web`，并删除不被其引用的历史控制台 `src/IPSys.M1`、专用 CI 和测试说明；历史实验与其 CI 成功证据仍可从既有提交及 Actions 运行历史追溯。当前功能及验收状态以最新 `main`、`DEVELOPMENT_PLAN.md`、`WEB_TESTING.md` 为准。
+> **最新交接更新（2026-10-13）**：用户已明确确认当前 UI 冻结，视觉/信息架构交接以 [UI_BASELINE.md](./UI_BASELINE.md) 为准。此后首先开发现有 SQLCipher「综合资料/其他资料」的 F01 真实名称修改（复用既有弹窗、记录 ID + 工作区授权更新、附件不受影响）；其状态以最新提交和 CI 为准。其它知识产权、科研项目、合同、资质和归档类别的记录主要仍为**模拟数据**。M1 超大附件、SSD 异常、退出实机和备份/目录选择未验收，不得因为开始功能开发就宣告 M1/M2 完成。
+>
+> **旧版维护说明**：本交接主体记录最初交接时的技术快照，后续已将唯一运行工程统一为 `src/IPSys.Web`，并删除不被其引用的历史控制台 `src/IPSys.M1`、专用 CI 和测试说明；历史实验与其 CI 成功证据仍可从既有提交及 Actions 运行历史追溯。当前功能及验收状态以最新 `main`、`DEVELOPMENT_PLAN.md`、`WEB_TESTING.md` 为准。
 >
 > 仓库：https://github.com/zy19970/IPSys ，工作分支：main。
 >
@@ -33,6 +35,7 @@
 | [REQUIREMENTS.md](./REQUIREMENTS.md) | 唯一正式业务需求基线。Q1–Q162 冻结，末尾第 37 节是后续 WinForms 启动与退出方式的明确修订；新设计须以较新覆盖条款为准 |
 | [M0_DATA_DICTIONARY.md](./M0_DATA_DICTIONARY.md) | M0 已确认：业务字段、类型、状态、Excel 导入导出列、逻辑实体关系和 17 项验证用例；R1–R3、R4 已确认 |
 | [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md) | 唯一开发主计划，M0–M7 的目标、进入条件、交付物；尚未定具体工期 |
+| [UI_BASELINE.md](./UI_BASELINE.md) | **U0 已确认的界面冻结基线**：导航、卡片、表格、独立详情及前端映射；界面扩展需用户提出 |
 | [FREEZE_AUDIT.md](./FREEZE_AUDIT.md) | 需求覆盖冲突 C01–C11、关键技术验证门槛 T01–T09，含安全和异常验收原则 |
 | [WEB_TESTING.md](./WEB_TESTING.md) | 当前 WinForms + 网页最小原型的 VS、EXE、数据库、附件及会话恢复实机测试指南 |
 | [README.md](./README.md) | 根目录统一入口；部分描述为历史阶段快照，以最新 CI 与此交接确认的代码状态为准 |
