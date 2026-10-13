@@ -143,6 +143,15 @@
     </form>
   </dialog>
   <input type="file" id="businessFileInput" hidden aria-label="上传业务原件">
+  <dialog id="businessAssocDialog" class="input-dialog project-dialog">
+    <form id="businessAssocForm">
+      <h2>附件关联操作</h2>
+      <p class="subtle" id="businessAssocNote">在当前工作区的已有业务记录之间复制或移动附件及其历史版本。</p>
+      <div class="form-field"><label for="businessAssocTarget">目标记录</label><select id="businessAssocTarget" required></select></div>
+      <div class="form-field"><label for="businessAssocMode">操作</label><select id="businessAssocMode"><option value="copy">复制关联（保留原记录）</option><option value="move">移动关联（原记录不再显示）</option></select></div>
+      <div class="dialogactions"><button class="btn" type="button" id="businessAssocCancel">取消</button><button class="btn primary" type="submit" id="businessAssocSave">确认</button></div>
+    </form>
+  </dialog>
   <dialog id="exitDialog" class="input-dialog"><h2>文件任务进行中</h2><p class="subtle">上传正在进行，请选择安全退出方式。</p><div class="dialogactions wrap"><button type="button" class="btn" id="exitCancelTask">取消任务并退出</button><button type="button" class="btn primary" id="exitFinishTask">任务完成后退出</button><button type="button" class="btn" id="exitStay">暂不退出</button></div></dialog>
   <div id="toast" role="status" aria-live="polite"></div>
 </body>

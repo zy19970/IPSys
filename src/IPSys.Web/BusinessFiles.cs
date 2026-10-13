@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Data.Sqlite;
 
+record BusinessAssociateInput(string TargetKind,long TargetOwnerId,string TargetSection,bool Move);
 record BusinessFileView(long Id,string Kind,long OwnerId,string Section,
     string Name,string Category,int Version,long Size,string Sha256);
 
@@ -204,26 +205,228 @@ static class BusinessFileStore
         if(!ScopeValid(fromWorkspace,fromKind,fromSection)||
            !ScopeValid(targetWorkspace,targetKind,targetSection)||
            fromKind!=targetKind)throw new IOException("不兼容的附件复制范围。");
-        using var cmd=db.CreateCommand();
-        cmd.Transaction=tx;
-        cmd.CommandText="""
-            INSERT INTO business_file_links(workspace,kind,owner_id,section,
-                object_id,filename,category,version,deleted)
-            SELECT $toW,$toKind,$toId,$toSection,object_id,filename,category,version,0
-            FROM business_file_links
-            WHERE workspace=$fromW AND kind=$fromKind AND owner_id=$fromId
-                AND section=$fromSection AND deleted=0;
-            """;
-        cmd.Parameters.AddWithValue("$toW",targetWorkspace);
-        cmd.Parameters.AddWithValue("$toKind",targetKind);
-        cmd.Parameters.AddWithValue("$toId",targetId);
-        cmd.Parameters.AddWithValue("$toSection",targetSection);
-        cmd.Parameters.AddWithValue("$fromW",fromWorkspace);
-        cmd.Parameters.AddWithValue("$fromKind",fromKind);
-        cmd.Parameters.AddWithValue("$fromId",fromId);
-        cmd.Parameters.AddWithValue("$fromSection",fromSection);
-        cmd.ExecuteNonQuery();
+        if(fromWorkspace==targetWorkspace)
+        {
+            // Zero-copy intra-workspace sharing.
+            using var cmd=db.CreateCommand();cmd.Transaction=tx;
+            cmd.CommandText="""
+                INSERT INTO business_file_links(workspace,kind,owner_id,section,
+                    object_id,filename,category,version,deleted)
+                SELECT $toW,$toKind,$toId,$toSection,object_id,filename,category,version,0
+                FROM business_file_links
+                WHERE workspace=$fromW AND kind=$fromKind AND owner_id=$fromId
+                    AND section=$fromSection AND deleted=0;
+                """;
+            cmd.Parameters.AddWithValue("$toW",targetWorkspace);
+            cmd.Parameters.AddWithValue("$toKind",targetKind);
+            cmd.Parameters.AddWithValue("$toId",targetId);
+            cmd.Parameters.AddWithValue("$toSection",targetSection);
+            cmd.Parameters.AddWithValue("$fromW",fromWorkspace);
+            cmd.Parameters.AddWithValue("$fromKind",fromKind);
+            cmd.Parameters.AddWithValue("$fromId",fromId);
+            cmd.Parameters.AddWithValue("$fromSection",fromSection);
+            cmd.ExecuteNonQuery();
+            return;
+        }
+        // Q61: cross-workspace links must not reference the same physical object.
+        // Duplicate each unique object once per clone transaction; new links refer
+        // only to independent copies of its complete encrypted-db byte stream.
+        var links=new List<(long ObjectId,string Name,string Category,int Version)>();
+        using(var query=db.CreateCommand())
+        {
+            query.Transaction=tx;
+            query.CommandText="""
+                SELECT l.object_id,l.filename,l.category,l.version
+                FROM business_file_links l JOIN business_file_objects o ON o.id=l.object_id
+                WHERE l.workspace=$w AND l.kind=$kind AND l.owner_id=$id
+                    AND l.section=$section AND l.deleted=0 AND o.state='ready'
+                ORDER BY l.id;
+                """;
+            query.Parameters.AddWithValue("$w",fromWorkspace);
+            query.Parameters.AddWithValue("$kind",fromKind);
+            query.Parameters.AddWithValue("$id",fromId);
+            query.Parameters.AddWithValue("$section",fromSection);
+            using var reader=query.ExecuteReader();
+            while(reader.Read())links.Add((reader.GetInt64(0),reader.GetString(1),
+                reader.GetString(2),reader.GetInt32(3)));
+        }
+        var copied=new Dictionary<long,long>();
+        foreach(var link in links)
+        {
+            if(!copied.TryGetValue(link.ObjectId,out long newObject))
+            {
+                using(var obj=db.CreateCommand())
+                {
+                    obj.Transaction=tx;
+                    obj.CommandText="""
+                        INSERT INTO business_file_objects(expected_size,size,sha256,state)
+                        SELECT expected_size,size,sha256,'ready' FROM business_file_objects
+                        WHERE id=$old AND state='ready';
+                        SELECT last_insert_rowid();
+                        """;
+                    obj.Parameters.AddWithValue("$old",link.ObjectId);
+                    newObject=(long)obj.ExecuteScalar()!;
+                }
+                using(var bytes=db.CreateCommand())
+                {
+                    bytes.Transaction=tx;
+                    bytes.CommandText="""
+                        INSERT INTO business_file_chunks(object_id,idx,bytes)
+                        SELECT $new,idx,bytes FROM business_file_chunks WHERE object_id=$old;
+                        """;
+                    bytes.Parameters.AddWithValue("$new",newObject);
+                    bytes.Parameters.AddWithValue("$old",link.ObjectId);
+                    bytes.ExecuteNonQuery();
+                }
+                copied.Add(link.ObjectId,newObject);
+            }
+            using var refCmd=db.CreateCommand();refCmd.Transaction=tx;
+            refCmd.CommandText="""
+                INSERT INTO business_file_links(workspace,kind,owner_id,section,object_id,
+                    filename,category,version)
+                VALUES($w,$kind,$owner,$section,$object,$name,$category,$version);
+                """;
+            refCmd.Parameters.AddWithValue("$w",targetWorkspace);
+            refCmd.Parameters.AddWithValue("$kind",targetKind);
+            refCmd.Parameters.AddWithValue("$owner",targetId);
+            refCmd.Parameters.AddWithValue("$section",targetSection);
+            refCmd.Parameters.AddWithValue("$object",newObject);
+            refCmd.Parameters.AddWithValue("$name",link.Name);
+            refCmd.Parameters.AddWithValue("$category",link.Category);
+            refCmd.Parameters.AddWithValue("$version",link.Version);
+            refCmd.ExecuteNonQuery();
+        }
     }
+    public static bool OwnerForDeletedLink(SqliteConnection db,string workspace,long linkId)
+    {
+        string kind,section;long ownerId;
+        using(var cmd=db.CreateCommand())
+        {
+            cmd.CommandText="""
+                SELECT kind,owner_id,section FROM business_file_links
+                WHERE id=$id AND workspace=$w AND deleted=1;
+                """;
+            cmd.Parameters.AddWithValue("$id",linkId);
+            cmd.Parameters.AddWithValue("$w",workspace);
+            using var reader=cmd.ExecuteReader();
+            if(!reader.Read())return false;
+            kind=reader.GetString(0);ownerId=reader.GetInt64(1);section=reader.GetString(2);
+        }
+        return OwnerExists(db,workspace,kind,ownerId,section);
+    }
+
+    // Q112: copy/move a logical set of active versions into another record in
+    // the SAME workspace. No data bytes are copied; each target link keeps the
+    // version's object ID. Other references stay intact when moving.
+    public static bool Associate(SqliteConnection db,string workspace,long sourceLinkId,
+        string kind,long targetOwner,string section,bool move)
+    {
+        if(!ScopeValid(workspace,kind,section)||
+            !OwnerExists(db,workspace,kind,targetOwner,section))return false;
+        string fromKind,fromSection,name,material;long fromOwner;
+        using(var cmd=db.CreateCommand())
+        {
+            cmd.CommandText="""
+                SELECT kind,owner_id,section,filename,category
+                FROM business_file_links WHERE id=$id AND workspace=$w AND deleted=0;
+                """;
+            cmd.Parameters.AddWithValue("$id",sourceLinkId);
+            cmd.Parameters.AddWithValue("$w",workspace);
+            using var r=cmd.ExecuteReader();
+            if(!r.Read())return false;
+            fromKind=r.GetString(0);fromOwner=r.GetInt64(1);fromSection=r.GetString(2);
+            name=r.GetString(3);material=r.GetString(4);
+        }
+        if(!OwnerExists(db,workspace,fromKind,fromOwner,fromSection))return false;
+        if(kind==fromKind&&targetOwner==fromOwner&&section==fromSection)return false;
+        string destCategory=kind=="ip"?
+            (IpMaterialAllowed(material)?material:"其他材料"):"";
+        var versions=new List<(long ObjectId,int Version)>();
+        using(var cmd=db.CreateCommand())
+        {
+            cmd.CommandText="""
+                SELECT l.object_id,l.version FROM business_file_links l
+                JOIN business_file_objects o ON o.id=l.object_id
+                WHERE l.workspace=$w AND l.kind=$kind AND l.owner_id=$owner
+                  AND l.section=$section AND l.filename=$name AND l.category=$material
+                  AND l.deleted=0 AND o.state='ready'
+                ORDER BY l.version,l.id;
+                """;
+            cmd.Parameters.AddWithValue("$w",workspace);
+            cmd.Parameters.AddWithValue("$kind",fromKind);
+            cmd.Parameters.AddWithValue("$owner",fromOwner);
+            cmd.Parameters.AddWithValue("$section",fromSection);
+            cmd.Parameters.AddWithValue("$name",name);
+            cmd.Parameters.AddWithValue("$material",material);
+            using var reader=cmd.ExecuteReader();
+            while(reader.Read())versions.Add((reader.GetInt64(0),reader.GetInt32(1)));
+        }
+        if(versions.Count==0)return false;
+        using var tx=db.BeginTransaction();
+        // If target already refers to these exact objects, abort rather than
+        // silently duplicating references or dropping the source on move.
+        int next;
+        using(var check=db.CreateCommand())
+        {
+            check.Transaction=tx;
+            check.CommandText="""
+                SELECT COALESCE(MAX(version),0) FROM business_file_links
+                WHERE workspace=$w AND kind=$kind AND owner_id=$owner AND section=$section
+                  AND filename=$name AND category=$material;
+                """;
+            check.Parameters.AddWithValue("$w",workspace);
+            check.Parameters.AddWithValue("$kind",kind);
+            check.Parameters.AddWithValue("$owner",targetOwner);
+            check.Parameters.AddWithValue("$section",section);
+            check.Parameters.AddWithValue("$name",name);
+            check.Parameters.AddWithValue("$material",destCategory);
+            next=Convert.ToInt32(check.ExecuteScalar());
+        }
+        foreach(var (objectId,_) in versions)
+        {
+            using var cmd=db.CreateCommand();
+            cmd.Transaction=tx;
+            cmd.CommandText="""
+                INSERT INTO business_file_links(workspace,kind,owner_id,section,object_id,
+                    filename,category,version,deleted)
+                SELECT $w,$kind,$owner,$section,$object,$name,$material,$version,0
+                WHERE NOT EXISTS(
+                    SELECT 1 FROM business_file_links WHERE workspace=$w AND kind=$kind
+                    AND owner_id=$owner AND section=$section AND object_id=$object AND deleted=0);
+                """;
+            cmd.Parameters.AddWithValue("$w",workspace);
+            cmd.Parameters.AddWithValue("$kind",kind);
+            cmd.Parameters.AddWithValue("$owner",targetOwner);
+            cmd.Parameters.AddWithValue("$section",section);
+            cmd.Parameters.AddWithValue("$object",objectId);
+            cmd.Parameters.AddWithValue("$name",name);
+            cmd.Parameters.AddWithValue("$material",destCategory);
+            cmd.Parameters.AddWithValue("$version",++next);
+            if(cmd.ExecuteNonQuery()!=1)return false;
+        }
+        if(move)
+        {
+            using var cmd=db.CreateCommand();
+            cmd.Transaction=tx;
+            cmd.CommandText="""
+                UPDATE business_file_links SET deleted=1
+                WHERE workspace=$w AND kind=$kind AND owner_id=$owner AND section=$section
+                    AND filename=$name AND category=$material AND deleted=0;
+                """;
+            cmd.Parameters.AddWithValue("$w",workspace);
+            cmd.Parameters.AddWithValue("$kind",fromKind);
+            cmd.Parameters.AddWithValue("$owner",fromOwner);
+            cmd.Parameters.AddWithValue("$section",fromSection);
+            cmd.Parameters.AddWithValue("$name",name);
+            cmd.Parameters.AddWithValue("$material",material);
+            if(cmd.ExecuteNonQuery()!=versions.Count)throw new IOException("源附件已变化，取消关联转移。");
+        }
+        tx.Commit();
+        return true;
+    }
+    private static bool IpMaterialAllowed(string category) =>
+        category is "申请材料" or "通知文件" or "证书文件" or "其他材料";
+
     public static bool RemoveLink(SqliteConnection db,string workspace,long linkId)
     {
         using var cmd=db.CreateCommand();
@@ -397,6 +600,25 @@ static class BusinessFileEndpoints
             finally{v.Gate.Release();}
         });
 
+
+        app.MapPost("/api/business-files/{workspace}/{linkId:long}/associate",
+            async(HttpContext ctx,Vault v,string workspace,long linkId,BusinessAssociateInput input)=>
+        {
+            if(!v.Allowed(ctx))return Results.Unauthorized();
+            if(!BusinessFileStore.ScopeValid(workspace,input.TargetKind,input.TargetSection))
+                return Fail("目标业务范围无效。");
+            if(v.FileTaskActive||v.ExitRequested)return Fail("当前存在文件任务或正在退出。",409);
+            await v.Gate.WaitAsync();
+            try
+            {
+                if(!v.Allowed(ctx))return Results.Unauthorized();
+                if(v.FileTaskActive||v.ExitRequested)return Fail("当前存在文件任务或正在退出。",409);
+                return BusinessFileStore.Associate(v.Db,workspace,linkId,input.TargetKind,
+                    input.TargetOwnerId,input.TargetSection,input.Move)
+                    ? Results.Ok(new {ok=true}) : Results.NotFound();
+            }
+            finally{v.Gate.Release();}
+        });
         app.MapDelete("/api/business-files/{workspace}/{linkId:long}",async(
             HttpContext ctx,Vault v,string workspace,long linkId)=>
         {

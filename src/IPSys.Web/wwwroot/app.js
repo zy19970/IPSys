@@ -5,7 +5,7 @@ const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<
 let token=sessionStorage.getItem('ip-token')||'';
 let dbName=sessionStorage.getItem('ip-db')||'';
 let space=null,creating=false,resuming=false,localFileTaskActive=false;
-let page='dashboard',detail=null,archiveGroup=null,editingId=null,projectEditingId=null,projectRows=[],ipEditingId=null,ipRows=[],contractEditingId=null,contractProjectId=null,contractRows=[],businessFileRows=[],pendingBusinessUpload=null,archiveRows={certificate:[],achievement:[],academic:[]},archiveEditingId=null,archiveTransferId=null,archiveTransferMode=null,liveRows=[],filterName='',filterKind='全部类型',filterState='全部状态',selected=new Set();
+let page='dashboard',detail=null,archiveGroup=null,editingId=null,projectEditingId=null,projectRows=[],ipEditingId=null,ipRows=[],contractEditingId=null,contractProjectId=null,contractRows=[],businessFileRows=[],trashRows=[],pendingBusinessUpload=null,pendingAssocId=null,archiveRows={certificate:[],achievement:[],academic:[]},archiveEditingId=null,archiveTransferId=null,archiveTransferMode=null,liveRows=[],filterName='',filterKind='全部类型',filterState='全部状态',selected=new Set();
 const companyNav=[['dashboard','工作台','▦'],['ip','知识产权','◇'],['researchProject','科研项目','▤'],['horizontalProject','横向项目','▥'],['contract','全部合同','▧'],['certificate','企业资质','▣'],['general','综合资料','▥']];
 // Personal archives are grouped by evidence type, not by the company management menu.
 const personalNav=[['dashboard','个人工作台','▦'],['certificate','身份与资质','▣'],['ip','知识产权与著作','◇'],['researchProject','科研与合作项目','▤'],['achievement','成果与奖励','★'],['academic','学术与社会活动','▥'],['general','其他资料','▧']];
@@ -128,7 +128,7 @@ el('openForm').onsubmit=async event=>{
 };
 function selectSpace(next){
   if(!token)return;
-  space=next;page='dashboard';detail=null;archiveGroup=null;projectRows=[];ipRows=[];contractRows=[];businessFileRows=[];archiveRows={certificate:[],achievement:[],academic:[]};filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();
+  space=next;page='dashboard';detail=null;archiveGroup=null;projectRows=[];ipRows=[];contractRows=[];businessFileRows=[];trashRows=[];archiveRows={certificate:[],achievement:[],academic:[]};filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();
   el('globalSearch').value='';el('sidebarDbName').textContent=dbName;
   el('chooseWorkspace').hidden=true;el('unlocked').hidden=false;
   refresh();
@@ -140,16 +140,17 @@ async function refresh(){
   if(!token||!space)return;
   const requestedSpace=space;
   try{const archiveSections=space==='personal'?['certificate','achievement','academic']:['certificate','achievement'];
-  const [rows,projects,ips,contracts,files,...archiveResults]=await Promise.all([
+  const [rows,projects,ips,contracts,files,trash,...archiveResults]=await Promise.all([
     api('/api/records/'+space).then(r=>r.json()),
     api('/api/projects/'+space).then(r=>r.json()),
     api('/api/ip/'+space).then(r=>r.json()),
     api('/api/contracts/'+space).then(r=>r.json()),
     api('/api/business-files/'+space).then(r=>r.json()),
+    api('/api/trash/'+space).then(r=>r.json()),
     ...archiveSections.map(section=>api('/api/archives/'+space+'/'+section).then(r=>r.json()))
   ]);
     if(requestedSpace!==space||!token)return;
-    liveRows=rows;projectRows=projects;ipRows=ips;contractRows=contracts;businessFileRows=files;
+    liveRows=rows;projectRows=projects;ipRows=ips;contractRows=contracts;businessFileRows=files;trashRows=trash;
     archiveRows={certificate:[],achievement:[],academic:[]};
     archiveSections.forEach((section,i)=>archiveRows[section]=archiveResults[i]);render();
   }catch(error){notice(error.message,true);}
@@ -404,21 +405,31 @@ function businessFileCount(kind,ownerId,section=''){
 }
 function businessAttachmentList(kind,ownerId,section=''){
  const files=businessFiles(kind,ownerId,section);
+ const groups=new Map();
+ for(const f of files){
+  const key=f.name+'\u0000'+f.category;
+  if(!groups.has(key))groups.set(key,[]);
+  groups.get(key).push(f);
+ }
  const category=kind==='ip'?'<label for="businessMaterialCategory">附件材料类别</label>'+
  '<select id="businessMaterialCategory">'+
- ['申请材料','通知文件','证书文件','其他材料'].map(x=>'<option>'+x+'</option>').join('')+
- '</select>':'';
- return '<div class="tabletools"><b>原件附件 '+files.length+' 份</b><div class="actions">'+category+
- '<button class="btn primary" data-action="businessUpload">＋ 上传原件</button></div></div>'+
- '<p class="hint">文件直接保存在当前加密数据库中，同名附件保留历史版本。单文件上限 64 MiB。</p>'+
- (files.length?files.map(f=>'<div class="fileline">'+
- '<span class="fileicon">'+escapeHtml(f.name.split('.').pop().slice(0,4).toUpperCase())+'</span>'+
- '<span class="filedesc"><strong>'+escapeHtml(f.name)+'</strong>'+
- '<small>v'+f.version+(f.category?' · '+escapeHtml(f.category):'')+
- ' · '+fmtSize(f.size)+' · SHA-256 '+escapeHtml(f.sha256.slice(0,12))+'…</small></span>'+
+ ['申请材料','通知文件','证书文件','其他材料'].map(x=>'<option>'+x+'</option>').join('')+'</select>':'';
+ const line=f=>'<div class="fileline"><span class="fileicon">'+
+ escapeHtml(f.name.split('.').pop().slice(0,4).toUpperCase())+'</span>'+
+ '<span class="filedesc"><strong>'+escapeHtml(f.name)+'</strong><small>v'+f.version+
+ (f.category?' · '+escapeHtml(f.category):'')+' · '+fmtSize(f.size)+
+ ' · SHA-256 '+escapeHtml(f.sha256.slice(0,12))+'…</small></span>'+
  '<button class="btn btn-sm" data-business-download="'+f.id+'">下载</button>'+
- '<button class="btn btn-sm" data-business-delete="'+f.id+'">移除</button></div>').join(''):
- '<p class="hint">暂无附件，可选择原始文件上传。</p>');
+ '<button class="btn btn-sm" data-business-delete="'+f.id+'">移除</button></div>';
+ return '<div class="tabletools"><b>原件附件 '+groups.size+' 份</b><div class="actions">'+category+
+ '<button class="btn primary" data-action="businessUpload">＋ 上传原件</button></div></div>'+
+ '<p class="hint">同名文件上传前确认新版本，旧版本保留；单文件上限 64 MiB。</p>'+
+ ([...groups.values()].map(g=>{g.sort((a,b)=>b.version-a.version||b.id-a.id);
+  return '<div class="business-file-group">'+line(g[0])+
+   '<button class="btn btn-sm" data-business-associate="'+g[0].id+'">复制／移动关联</button>'+
+   (g.length>1?'<details><summary>查看历史版本（'+(g.length-1)+'）</summary>'+
+    g.slice(1).map(line).join('')+'</details>':'')+'</div>';}).join('')||
+ '<p class="hint">暂无附件，可上传原始文件。</p>');
 }
 async function uploadBusinessAttachment(file,meta){
  if(file.size>64*1024*1024)return notice('单文件不得超过 64 MiB。',true);
@@ -702,11 +713,59 @@ function searchPage(){
  return heading('统一搜索','当前工作区跨模块查找 · 综合资料为真实数据，其他模块为界面示例')+
  (datasets.length?datasets.map(g=>`<section class="card searchgroup"><h2 class="sectiontitle">${escapeHtml(g.n)} <small class="muted">${g.rows.length} 条</small> ${g.k==='general'?'<span class="realflag">真实数据</span>':stamp()}</h2>${g.rows.map(r=>`<div class="minirow"><button class="link" ${g.k==='general'?`data-live-id="${r.id}"`:`data-search-detail="${g.k}:${r.id}"`}>${escapeHtml(g.k==='general'?r.title:r.name)}</button><span class="muted">进入详情 →</span></div>`).join('')}</section>`).join(''):'<section class="white empty">当前工作区没有匹配的资料。</section>');
 }
-function settingsPage(){return heading('系统设置','数据库管理与已确认的维护操作')+
+function settingsPage(){return heading('系统设置','数据库管理与已确认的维护操作','<button class="btn" data-nav="trash">查看回收站</button>')+
  `<section class="white detailsection"><div class="detailsectionhead"><h2>当前加密数据库</h2></div><div class="detailbody"><div class="minirow"><span>数据库文件</span><strong>${escapeHtml(dbName)}</strong></div><div class="minirow"><span>加密状态</span><span class="realflag">SQLCipher 已启用</span></div><div class="minirow"><span>数据库完整性检查</span><button class="btn" data-action="check">立即检查</button></div><div id="checkResult" class="hint"></div><div class="minirow"><span>关闭当前数据库</span><button class="btn" data-action="lock">关闭数据库</button></div></div></section>`+
  section('尚未接入的设置项','<div class="minirow"><span>修改数据库密码</span>'+stamp()+'</div><div class="minirow"><span>记录类别与标签</span>'+stamp()+'</div><p class="hint">手动备份需安全退出程序后在 Windows 资源管理器复制加密库。</p>');}
-function trashPage(){return heading('回收站','删除记录和附件的恢复、永久清理界面布局 · 仅演示')+
- `<section class="white"><div class="tabletools"><b>已删除资料</b>${stamp()}</div><div class="empty">此功能尚未接入真实数据库。</div></section>`;}
+function trashPage(){
+ const names={project:'项目',contract:'合同',ip:'知识产权',archive:'资质与成果',file:'附件'};
+ return heading('回收站','当前工作区的真实已删除记录与附件',
+ '<button class="btn" data-nav="settings">返回设置</button>')+
+ '<section class="white"><div class="tabletools"><b>已删除 '+trashRows.length+' 条</b><div class="actions">'+
+ '<button class="btn" data-action="trashRestoreSelected">恢复勾选</button>'+
+ '<button class="btn" data-action="trashPurgeSelected">永久删除勾选</button></div></div>'+
+ '<p class="hint">恢复项目将一并恢复其所属合同与关联附件；永久删除不可撤销。仅支持逐条或勾选多条，不提供一键清空。</p>'+
+ '<div class="tablewrap"><table class="data"><thead><tr><th><input type="checkbox" id="trashAll"></th>'+
+ '<th>类别</th><th>名称</th><th>原归属</th><th>操作</th></tr></thead><tbody>'+
+ (trashRows.length?trashRows.map((r,i)=>'<tr><td><input class="trashcheck" type="checkbox" value="'+i+'"></td>'+
+ '<td>'+escapeHtml(names[r.kind]||r.kind)+'</td><td>'+escapeHtml(r.name)+'</td><td>'+
+ escapeHtml(r.parent||r.section||'—')+'</td><td>'+
+ '<button class="btn btn-sm" data-trash-restore="'+i+'">恢复</button>'+
+ '<button class="btn btn-sm" data-trash-purge="'+i+'">永久删除</button></td></tr>').join(''):
+ '<tr><td colspan="5" class="empty">回收站为空</td></tr>')+'</tbody></table></div></section>';
+}
+async function changeTrash(operation,indices){
+ const items=[...new Set(indices)].map(i=>trashRows[i]).filter(Boolean)
+   .map(r=>({kind:r.kind,id:r.id,section:r.section||''}));
+ if(!items.length)return notice('请先勾选资料。',true);
+ if(operation==='purge'&&!confirm('永久删除选中的 '+items.length+' 条资料及适用附件？该操作不可撤销。'))return;
+ try{
+  await api('/api/trash/'+space+'/'+operation,{method:'POST',json:{items}});
+  await refresh();notice(operation==='restore'?'资料已恢复':'资料已永久删除');
+ }catch(e){notice(e.message,true);}
+}
+function businessAssocOptions(){
+ return [
+  ...projectRows.map(x=>({kind:'project',id:x.id,section:'',label:'项目 · '+x.name})),
+  ...contractRows.map(x=>({kind:'contract',id:x.id,section:'',label:'合同 · '+x.name})),
+  ...ipRows.map(x=>({kind:'ip',id:x.id,section:'',label:'知识产权 · '+x.data.name})),
+  ...Object.entries(archiveRows).flatMap(([section,rows])=>
+   rows.map(x=>({kind:'archive',id:x.id,section,label:'归档 · '+x.name})))
+ ];
+}
+function openBusinessAssoc(id){
+ const src=businessFileRows.find(x=>x.id===id);if(!src)return;
+ const options=businessAssocOptions().filter(x=>
+  !(x.kind===src.kind&&x.id===src.ownerId&&x.section===src.section));
+ if(!options.length)return notice('当前工作区没有其它可关联的业务记录。',true);
+ pendingAssocId=id;
+ const select=el('businessAssocTarget');select.replaceChildren();
+ options.forEach((x,i)=>{const opt=document.createElement('option');
+  opt.value=String(i);opt.textContent=x.label;select.append(opt);});
+ select.dataset.targets=JSON.stringify(options);
+ el('businessAssocMode').value='copy';
+ el('businessAssocNote').textContent='文件：'+src.name+'。操作包含同名同类别的历史版本，范围为当前工作区。';
+ el('businessAssocDialog').showModal();
+}
 function render(){
  if(!space||!token)return;
  refreshSidebar();
@@ -758,13 +817,22 @@ el('content').addEventListener('click',async ev=>{
   detail={kind:'archive',id:Number(target.dataset.archiveId)};render();
   el('content').scrollTo(0,0);return;
  }
+ if(target.dataset.trashRestore!==undefined){
+  await changeTrash('restore',[Number(target.dataset.trashRestore)]);return;
+ }
+ if(target.dataset.trashPurge!==undefined){
+  await changeTrash('purge',[Number(target.dataset.trashPurge)]);return;
+ }
+ if(target.dataset.businessAssociate){
+  openBusinessAssoc(Number(target.dataset.businessAssociate));return;
+ }
  if(target.dataset.businessDownload){
   await downloadBusinessAttachment(Number(target.dataset.businessDownload));return;
  }
  if(target.dataset.businessDelete){
   const fileId=Number(target.dataset.businessDelete);
   const f=businessFileRows.find(x=>x.id===fileId);
-  if(!f||!confirm('从这条业务记录中移除“'+f.name+'”（v'+f.version+'）？可在回收站完善后恢复。'))return;
+  if(!f||!confirm('从这条业务记录中移除“'+f.name+'”（v'+f.version+'）？可在回收站恢复。'))return;
   try{
    await api('/api/business-files/'+space+'/'+fileId,{method:'DELETE'});
    await refresh();notice('已从此记录移除附件（未物理删除原件）。');
@@ -786,6 +854,11 @@ el('content').addEventListener('click',async ev=>{
  if(target.dataset.searchDetail){const [k,id]=target.dataset.searchDetail.split(':');openMockRecord(k,Number(id));return;}
  if(target.dataset.download){const r=liveRows.find(r=>r.id===detail?.id);const file=r?.files.find(f=>f.id===Number(target.dataset.download));if(file)await download(file);return;}
  switch(target.dataset.action){
+  case 'trashRestoreSelected':
+  case 'trashPurgeSelected':{
+   const chosen=[...document.querySelectorAll('.trashcheck:checked')].map(x=>Number(x.value));
+   await changeTrash(target.dataset.action==='trashRestoreSelected'?'restore':'purge',chosen);break;
+  }
   case 'businessUpload':{
    if(!detail||!['project','ip','contract','archive'].includes(detail.kind))break;
    const owner=detail.kind==='archive'?(archiveRows[page]||[]).find(x=>x.id===detail.id):null;
@@ -904,16 +977,41 @@ el('content').addEventListener('click',async ev=>{
   default:notice('当前仅展示界面设计，尚未接入该业务功能');
  }
 });
+el('businessAssocCancel').onclick=()=>el('businessAssocDialog').close();
+el('businessAssocDialog').addEventListener('close',()=>{pendingAssocId=null;});
+el('businessAssocForm').onsubmit=async event=>{
+ event.preventDefault();
+ const id=pendingAssocId,sel=el('businessAssocTarget');
+ const target=JSON.parse(sel.dataset.targets||'[]')[Number(sel.value)];
+ if(id===null||!target)return notice('请选择有效目标记录。',true);
+ const move=el('businessAssocMode').value==='move';
+ if(!confirm((move?'移动':'复制')+'所选附件及其历史版本至“'+target.label+'”？'))return;
+ el('businessAssocSave').disabled=true;
+ try{
+  await api('/api/business-files/'+space+'/'+id+'/associate',{method:'POST',json:{
+   targetKind:target.kind,targetOwnerId:target.id,targetSection:target.section,move
+  }});
+  el('businessAssocDialog').close();await refresh();notice('附件关联操作已完成');
+ }catch(e){notice(e.message,true);}
+ finally{el('businessAssocSave').disabled=false;}
+};
 el('businessFileInput').onchange=async event=>{
  const input=event.target;
  const file=input.files?.[0],meta=pendingBusinessUpload;
  pendingBusinessUpload=null;input.value='';
- if(file&&meta)await uploadBusinessAttachment(file,meta);
+ if(file&&meta){
+ const exists=businessFiles(meta.kind,meta.ownerId,meta.section).some(f=>
+  f.name===file.name&&f.category===(meta.category||''));
+ if(exists&&!confirm('已有同名原件“'+file.name+'”。确定更新为新版本并保留旧版本？取消将不上传。'))return;
+ await uploadBusinessAttachment(file,meta);
+}
 };
 el('content').addEventListener('change',async ev=>{
  if(ev.target.id==='uploadInput'){
   const files=ev.target.files;if(files?.length&&detail?.kind==='general')await upload(detail.id,files[0]);ev.target.value='';
  }
+ if(ev.target.id==='trashAll')
+  document.querySelectorAll('.trashcheck').forEach(c=>c.checked=ev.target.checked);
  if(ev.target.id==='checkAll')document.querySelectorAll('.rowcheck').forEach(c=>c.checked=ev.target.checked);
  if(ev.target.matches('.rowcheck')||ev.target.id==='checkAll'){
   selected=new Set([...document.querySelectorAll('.rowcheck:checked')].map(x=>x.value));
@@ -1047,7 +1145,7 @@ el('newRecordForm').onsubmit=async ev=>{
 };
 async function closeDb(){
  if(!confirm('关闭当前数据库？再次打开时需要输入数据库密码。'))return;
- try{await api('/api/lock',{method:'POST'});token='';dbName='';space=null;liveRows=[];projectRows=[];ipRows=[];contractRows=[];businessFileRows=[];archiveRows={certificate:[],achievement:[],academic:[]};sessionStorage.clear();recoveryMode(false);mode(false);screen(false);notice('已安全关闭数据库');}catch(e){notice(e.message,true);}
+ try{await api('/api/lock',{method:'POST'});token='';dbName='';space=null;liveRows=[];projectRows=[];ipRows=[];contractRows=[];businessFileRows=[];trashRows=[];archiveRows={certificate:[],achievement:[],academic:[]};sessionStorage.clear();recoveryMode(false);mode(false);screen(false);notice('已安全关闭数据库');}catch(e){notice(e.message,true);}
 }
 el('closeDbFromChoice').onclick=closeDb;
 async function sendExit(choice){

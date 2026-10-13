@@ -319,4 +319,19 @@ assert.ok(js.includes("'/api/contracts/'+space+'/'+c.id+'/copy'"),
  'Duplicating contracts must clone persisted file references with the contract');
 assert.ok(js.includes("businessFileCount('archive',r.id,k)"),
  'Archive detail ledger must show actual attachment counts');
+
+// B05b: real trash and same-workspace attachment association.
+assert.ok(html.includes('id="businessAssocDialog"'));
+assert.ok(html.includes('id="businessAssocForm"'));
+assert.ok(js.includes("api('/api/trash/'+space).then(r=>r.json())"));
+assert.ok(js.includes("trashRows=trash"));
+assert.ok(js.includes("data-trash-restore=")&&js.includes("data-trash-purge="));
+assert.ok(js.includes("case 'trashRestoreSelected'")&&js.includes("case 'trashPurgeSelected'"));
+assert.ok(js.includes("'/api/trash/'+space+'/'+operation"));
+assert.ok(js.includes("'/api/business-files/'+space+'/'+id+'/associate'"));
+assert.ok(js.includes("openBusinessAssoc(Number(target.dataset.businessAssociate))"));
+assert.ok(js.includes("if(existing&&!confirm("),'Updating a same-name version must require consent');
+assert.ok(js.includes("历史版本"),'Historical file revisions need a readable UI');
+assert.ok(!js.includes("删除记录和附件的恢复、永久清理界面布局 · 仅演示"),
+ 'Trash must no longer appear as a mock page');
 console.log('MAIN UI SMOKE PASS: navigation, workspace choice, live API contract, mock markers, CSP-compatible markup');

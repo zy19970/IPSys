@@ -737,6 +737,7 @@ app.MapGet("/api/files/{workspace}/{id:long}", async (HttpContext ctx, Vault v, 
 });
 
 BusinessFileEndpoints.Map(app);
+RecycleEndpoints.Map(app);
 
 app.MapGet("/api/check", async (HttpContext ctx, Vault v) =>
 {
@@ -1578,6 +1579,102 @@ static class WebSmoke
                 !personalAcademics.Any(a=>a.Name=="学术任职证明"&&a.Category=="学术兼职") ||
                 !personalAcademics.Any(a=>a.Name=="企业科研成果"&&a.Category=="技术成果"))
                 throw new IOException("科研成果跨工作区复制/转移或多条学术记录不正确。");
+            // B05b: recover a removed attachment link without removing another
+            // active reference to the same immutable bytes.
+            var associateTarget=await client.PostAsJsonAsync("/api/archives/company/certificate",
+                new ArchiveInput("原件引用目标证书","职称","",""));
+            associateTarget.EnsureSuccessStatusCode();
+            long associateTargetId=(await associateTarget.Content
+                .ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("id").GetInt64();
+            var associateCopy=await client.PostAsJsonAsync(
+                $"/api/business-files/company/{certFile.Id}/associate",
+                new BusinessAssociateInput("archive",associateTargetId,"certificate",false));
+            associateCopy.EnsureSuccessStatusCode();
+            var linkedCopies=await client.GetFromJsonAsync<List<BusinessFileView>>(
+                "/api/business-files/company");
+            var associatedFile=linkedCopies?.SingleOrDefault(f=>f.Kind=="archive"&&
+                f.OwnerId==associateTargetId);
+            if(associatedFile is null||
+               !(await client.GetByteArrayAsync($"/api/business-files/company/download/{associatedFile.Id}"))
+                .AsSpan().SequenceEqual(businessData))
+                throw new IOException("同工作区附件引用复制未能复用可下载原件。");
+            (await client.DeleteAsync($"/api/business-files/company/{certFile.Id}")).EnsureSuccessStatusCode();
+            var trashCompany=await client.GetFromJsonAsync<List<RecycleItem>>("/api/trash/company");
+            if(trashCompany is null||!trashCompany.Any(r=>r.Kind=="file"&&r.Id==certFile.Id))
+                throw new IOException("解除附件关联后回收站必须可找到原链接。");
+            var restoredFile=await client.PostAsJsonAsync("/api/trash/company/restore",
+                new RecycleRequest([new RecycleKey("file",certFile.Id,"")]));
+            restoredFile.EnsureSuccessStatusCode();
+            if(!(await client.GetByteArrayAsync($"/api/business-files/company/download/{certFile.Id}"))
+                 .AsSpan().SequenceEqual(businessData))
+                throw new IOException("回收站恢复后的附件 SHA-256 往返失败。");
+            var moveTarget=await client.PostAsJsonAsync("/api/archives/company/certificate",
+                new ArchiveInput("附件移动目标","证书","",""));
+            moveTarget.EnsureSuccessStatusCode();
+            long moveTargetId=(await moveTarget.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
+                .GetProperty("id").GetInt64();
+            (await client.PostAsJsonAsync($"/api/business-files/company/{certFile.Id}/associate",
+                new BusinessAssociateInput("archive",moveTargetId,"certificate",true)))
+                .EnsureSuccessStatusCode();
+            var afterAssociateMove=await client.GetFromJsonAsync<List<BusinessFileView>>(
+                "/api/business-files/company");
+            if(afterAssociateMove is null||
+                afterAssociateMove.Any(f=>f.Id==certFile.Id)||
+                !afterAssociateMove.Any(f=>f.OwnerId==moveTargetId&&f.Name=="企业证书.pdf")||
+                !afterAssociateMove.Any(f=>f.OwnerId==associateTargetId&&f.Name=="企业证书.pdf"))
+                throw new IOException("移动附件时原关联必须隐藏，已共享的目标仍有效。");
+
+            // Recovering a project restores its project-owned contracts and files.
+            var recoveryProject=await client.PostAsJsonAsync("/api/projects/company",
+                new ProjectInput("回收站项目","科研项目","","","","","","","","",""));
+            recoveryProject.EnsureSuccessStatusCode();
+            long recoveryProjectId=(await recoveryProject.Content
+                .ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("id").GetInt64();
+            var recoveryContract=await client.PostAsJsonAsync(
+                $"/api/projects/company/{recoveryProjectId}/contracts",
+                new ContractInput("回收站合同","","","","","","",""));
+            recoveryContract.EnsureSuccessStatusCode();
+            long recoveryContractId=(await recoveryContract.Content
+                .ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("id").GetInt64();
+            var recoveryAttachment=await UploadBusinessFile(client,"company","contract",
+                recoveryContractId,businessData,"合同附件.pdf");
+            (await client.DeleteAsync($"/api/projects/company/{recoveryProjectId}"))
+                .EnsureSuccessStatusCode();
+            var recycleBefore=await client.GetFromJsonAsync<List<RecycleItem>>("/api/trash/company");
+            if(recycleBefore is null||!recycleBefore.Any(r=>r.Kind=="project"&&r.Id==recoveryProjectId)||
+                recycleBefore.Any(r=>r.Kind=="contract"&&r.Id==recoveryContractId))
+                throw new IOException("已删除项目应连同子合同归属进入回收站。");
+            (await client.PostAsJsonAsync("/api/trash/company/restore",
+                new RecycleRequest([new RecycleKey("project",recoveryProjectId,"")])))
+                .EnsureSuccessStatusCode();
+            if(!(await client.GetByteArrayAsync(
+                $"/api/business-files/company/download/{recoveryAttachment.Id}"))
+                .AsSpan().SequenceEqual(businessData))
+                throw new IOException("恢复项目必须使所属合同原件重新可下载。");
+            (await client.DeleteAsync($"/api/projects/company/{recoveryProjectId}"))
+                .EnsureSuccessStatusCode();
+            (await client.PostAsJsonAsync("/api/trash/company/purge",
+                new RecycleRequest([new RecycleKey("project",recoveryProjectId,"")])))
+                .EnsureSuccessStatusCode();
+            if((await client.GetAsync(
+                $"/api/business-files/company/download/{recoveryAttachment.Id}"))
+                .StatusCode!=HttpStatusCode.NotFound)
+                throw new IOException("永久删除项目及其合同后原附件不能继续访问。");
+            // Purging another reference must not remove data shared by a valid owner.
+            (await client.DeleteAsync($"/api/archives/company/certificate/{moveTargetId}"))
+                .EnsureSuccessStatusCode();
+            (await client.PostAsJsonAsync("/api/trash/company/purge",
+                new RecycleRequest([new RecycleKey("archive",moveTargetId,"certificate")])))
+                .EnsureSuccessStatusCode();
+            if(!(await client.GetByteArrayAsync(
+                $"/api/business-files/company/download/{associatedFile.Id}"))
+                .AsSpan().SequenceEqual(businessData))
+                throw new IOException("永久删除一处引用不能删除仍被其它记录引用的原件。");
+            (await client.DeleteAsync($"/api/archives/company/certificate/{associateTargetId}"))
+                .EnsureSuccessStatusCode();
+            (await client.PostAsJsonAsync("/api/trash/company/purge",
+                new RecycleRequest([new RecycleKey("archive",associateTargetId,"certificate")])))
+                .EnsureSuccessStatusCode();
             var data = RandomNumberGenerator.GetBytes(1024 * 1024 + 31);
             using var body = new ByteArrayContent(data);
             body.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
