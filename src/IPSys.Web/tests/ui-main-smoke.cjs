@@ -129,7 +129,7 @@ assert.ok(html.includes('id="confirmWrap" hidden'),'Password confirmation must b
 assert.ok(html.includes('id="submitOpen" class="btn primary full" type="submit">解锁并进入'),'Main submit must unlock existing vault by default');
 assert.ok(!html.includes('class="switch"'),'Login must not show creation as an equal primary tab');
 assert.ok(js.includes('let space=null,creating=false'),'Authentication must initially use existing-vault mode');
-assert.ok(js.includes("(async()=>{\n mode(false);"),'Startup mode must be existing-vault login');
+assert.match(js,/\(async\(\)=>\{\s*mode\(false\);/,'Startup mode must be existing-vault login');
 const authFields={};
 for(const id of ['newMode','oldMode','confirmWrap','dbPathHint','submitOpen','dbPathWrap','resumeHint','dbPath','modeActions'])
  authFields[id]={hidden:false,disabled:false,required:true,textContent:''};
