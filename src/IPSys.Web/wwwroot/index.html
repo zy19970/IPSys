@@ -76,6 +76,34 @@
       <div class="dialogactions"><button class="btn" id="cancelProject" type="button">取消</button><button class="btn primary" id="saveProject" type="submit">保存项目</button></div>
     </form>
   </dialog>
+  <dialog id="ipDialog" class="input-dialog project-dialog">
+    <form id="ipForm">
+      <h2 id="ipFormTitle">新建知识产权</h2><p class="subtle">名称及知识产权类型必填，状态按照所属类型选择。</p>
+      <div class="project-form-grid">
+        <div class="form-field "><label for="ip-name">知识产权名称 *</label><input id="ip-name" name="name" type="text" required maxlength="300"></div>
+        <div class="form-field "><label for="ip-ipType">知识产权类型 *</label><select id="ip-ipType" name="ipType" required><option value="发明专利">发明专利</option><option value="实用新型专利">实用新型专利</option><option value="外观设计专利">外观设计专利</option><option value="软件著作权">软件著作权</option><option value="其他著作权">其他著作权</option><option value="商标">商标</option><option value="集成电路布图设计">集成电路布图设计</option></select></div>
+        <div class="form-field "><label for="ip-status">状态</label><select id="ip-status" name="status"><option value="">未选择</option></select></div>
+        <div class="form-field "><label for="ip-applicants">申请人</label><input id="ip-applicants" name="applicants" type="text" ></div>
+        <div class="form-field "><label for="ip-rightHolders">当前权利人</label><input id="ip-rightHolders" name="rightHolders" type="text" ></div>
+        <div class="form-field "><label for="ip-creators">发明人 / 作者</label><input id="ip-creators" name="creators" type="text" ></div>
+        <div class="form-field "><label for="ip-applicationNo">申请号</label><input id="ip-applicationNo" name="applicationNo" type="text" ></div>
+        <div class="form-field "><label for="ip-applicationDate">申请日</label><input id="ip-applicationDate" name="applicationDate" type="date" ></div>
+        <div class="form-field "><label for="ip-publicationNo">公开号</label><input id="ip-publicationNo" name="publicationNo" type="text" ></div>
+        <div class="form-field "><label for="ip-publicationDate">公开日</label><input id="ip-publicationDate" name="publicationDate" type="date" ></div>
+        <div class="form-field "><label for="ip-grantNoticeNo">授权公告号</label><input id="ip-grantNoticeNo" name="grantNoticeNo" type="text" ></div>
+        <div class="form-field "><label for="ip-grantNoticeDate">授权公告日</label><input id="ip-grantNoticeDate" name="grantNoticeDate" type="date" ></div>
+        <div class="form-field "><label for="ip-publicationInfo">公开 / 授权公告信息</label><input id="ip-publicationInfo" name="publicationInfo" type="text" ></div>
+        <div class="form-field "><label for="ip-grantDate">授权日</label><input id="ip-grantDate" name="grantDate" type="date" ></div>
+        <div class="form-field "><label for="ip-registrationNo">登记 / 注册号</label><input id="ip-registrationNo" name="registrationNo" type="text" ></div>
+        <div class="form-field "><label for="ip-firstPublishedDate">首次发表日期</label><input id="ip-firstPublishedDate" name="firstPublishedDate" type="date" ></div>
+        <div class="form-field "><label for="ip-registrationDate">登记 / 注册日期</label><input id="ip-registrationDate" name="registrationDate" type="date" ></div>
+        <div class="form-field "><label for="ip-category">辅助分类</label><input id="ip-category" name="category" type="text" ></div>
+        <div class="form-field "><label for="ip-tags">标签</label><input id="ip-tags" name="tags" type="text" ></div>
+        <div class="form-field project-span"><label for="ip-remarks">备注</label><textarea id="ip-remarks" name="remarks" rows="3"></textarea></div>
+      </div>
+      <div class="dialogactions"><button type="button" class="btn" id="ipCancel">取消</button><button type="submit" class="btn primary" id="ipSave">保存</button></div>
+    </form>
+  </dialog>
   <dialog id="exitDialog" class="input-dialog"><h2>文件任务进行中</h2><p class="subtle">上传正在进行，请选择安全退出方式。</p><div class="dialogactions wrap"><button type="button" class="btn" id="exitCancelTask">取消任务并退出</button><button type="button" class="btn primary" id="exitFinishTask">任务完成后退出</button><button type="button" class="btn" id="exitStay">暂不退出</button></div></dialog>
   <div id="toast" role="status" aria-live="polite"></div>
 </body>

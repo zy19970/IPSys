@@ -96,6 +96,7 @@ app.MapPost("/api/open", async (OpenInput input, Vault v) =>
             if (input.Create) Vault.CreateSchema(db);
             else Vault.ValidateSchema(db);
             ProjectStore.Ensure(db);
+            IpStore.Ensure(db);
             string token = v.SetOpen(db, path);
             db = null;
             return Results.Json(new { token, name = Path.GetFileName(path) });
@@ -186,6 +187,85 @@ app.MapGet("/api/records/{workspace}", async (HttpContext ctx, Vault v, string w
 });
 
 // Project ledger: encrypted in the same SQLCipher file, isolated by workspace.
+// Intellectual property management. All operations require an unlocked session
+// and workspace-scoped SQL queries; attachments are a separate upcoming stage.
+app.MapGet("/api/ip/{workspace}", async (HttpContext ctx, Vault v, string workspace) =>
+{
+    if (!v.Allowed(ctx)) return Results.Unauthorized();
+    if (!Vault.WorkspaceValid(workspace)) return Fail("无效工作区。");
+    await v.Gate.WaitAsync();
+    try
+    {
+        if (!v.Allowed(ctx)) return Results.Unauthorized();
+        return Results.Json(IpStore.List(v.Db, workspace));
+    }
+    finally { v.Gate.Release(); }
+});
+app.MapPost("/api/ip/{workspace}", async (HttpContext ctx, Vault v, string workspace, IpInput input) =>
+{
+    if (!v.Allowed(ctx)) return Results.Unauthorized();
+    if (!Vault.WorkspaceValid(workspace)) return Fail("无效工作区。");
+    string? error=IpStore.Validate(input);
+    if(error!=null)return Fail(error);
+    if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务或退出期间暂不能修改资料。",409);
+    await v.Gate.WaitAsync();
+    try
+    {
+        if (!v.Allowed(ctx)) return Results.Unauthorized();
+        if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务或退出期间暂不能修改资料。",409);
+        return Results.Json(new { id=IpStore.Add(v.Db,workspace,input) });
+    }
+    finally { v.Gate.Release(); }
+});
+app.MapPut("/api/ip/{workspace}/{id:long}", async (HttpContext ctx, Vault v, string workspace, long id, IpInput input) =>
+{
+    if (!v.Allowed(ctx)) return Results.Unauthorized();
+    if (!Vault.WorkspaceValid(workspace)) return Fail("无效工作区。");
+    string? error=IpStore.Validate(input);
+    if(error!=null)return Fail(error);
+    if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务或退出期间暂不能修改资料。",409);
+    await v.Gate.WaitAsync();
+    try
+    {
+        if (!v.Allowed(ctx)) return Results.Unauthorized();
+        if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务或退出期间暂不能修改资料。",409);
+        return IpStore.Update(v.Db,workspace,id,input)?Results.Ok(new {ok=true}):Results.NotFound();
+    }
+    finally { v.Gate.Release(); }
+});
+app.MapDelete("/api/ip/{workspace}/{id:long}", async (HttpContext ctx, Vault v, string workspace, long id) =>
+{
+    if (!v.Allowed(ctx)) return Results.Unauthorized();
+    if (!Vault.WorkspaceValid(workspace)) return Fail("无效工作区。");
+    if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务或退出期间暂不能修改资料。",409);
+    await v.Gate.WaitAsync();
+    try
+    {
+        if (!v.Allowed(ctx)) return Results.Unauthorized();
+        if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务或退出期间暂不能修改资料。",409);
+        return IpStore.Delete(v.Db,workspace,id)?Results.Ok(new {ok=true}):Results.NotFound();
+    }
+    finally { v.Gate.Release(); }
+});
+app.MapPost("/api/ip/{workspace}/{id:long}/transfer", async (
+    HttpContext ctx, Vault v, string workspace, long id, IpTransfer input) =>
+{
+    if (!v.Allowed(ctx)) return Results.Unauthorized();
+    if (!Vault.WorkspaceValid(workspace)||!Vault.WorkspaceValid(input.TargetWorkspace))
+        return Fail("无效工作区。");
+    if(workspace==input.TargetWorkspace && input.Move)return Fail("同一工作区无需转移。");
+    if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务或退出期间暂不能修改资料。",409);
+    await v.Gate.WaitAsync();
+    try
+    {
+        if (!v.Allowed(ctx)) return Results.Unauthorized();
+        if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务或退出期间暂不能修改资料。",409);
+        long? copied=IpStore.Transfer(v.Db,workspace,id,input.TargetWorkspace,input.Move);
+        return copied.HasValue?Results.Json(new {id=copied.Value}):Results.NotFound();
+    }
+    finally { v.Gate.Release(); }
+});
+
 app.MapGet("/api/projects/{workspace}", async (HttpContext ctx, Vault v, string workspace) =>
 {
     if (!v.Allowed(ctx)) return Results.Unauthorized();
@@ -1007,6 +1087,38 @@ static class WebSmoke
             var deletedProjects = await client.GetFromJsonAsync<List<ProjectView>>("/api/projects/company");
             if (deletedProjects is null || deletedProjects.Count != 0)
                 throw new IOException("项目软删除后不应继续在台账显示。");
+            // IP register: seven fixed types, type-scoped statuses and persistence.
+            var ipCreate = await client.PostAsJsonAsync("/api/ip/company",
+                new {name="测试发明",ipType="发明专利",status="已申请",applicationNo="CN-2026-01"});
+            ipCreate.EnsureSuccessStatusCode();
+            long ipId=(await ipCreate.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
+                .GetProperty("id").GetInt64();
+            var ipEdit = await client.PutAsJsonAsync($"/api/ip/company/{ipId}",
+                new {name="已修改发明",ipType="发明专利",status="实质审查中",applicants="申请人甲"});
+            ipEdit.EnsureSuccessStatusCode();
+            var ipRows = await client.GetFromJsonAsync<List<IpView>>("/api/ip/company");
+            if(ipRows is null || ipRows.Count!=1 || ipRows[0].Data.Name!="已修改发明" ||
+                ipRows[0].Data.Applicants!="申请人甲")
+                throw new IOException("知识产权创建或修改后未持久化。");
+            var ipIllegal = await client.PostAsJsonAsync("/api/ip/company",
+                new {name="无效状态",ipType="软件著作权",status="已授权"});
+            if(ipIllegal.StatusCode!=HttpStatusCode.BadRequest)
+                throw new IOException("不同知识产权类型的状态必须分别校验。");
+            var ipWrongWorkspace=await client.DeleteAsync($"/api/ip/personal/{ipId}");
+            if(ipWrongWorkspace.StatusCode!=HttpStatusCode.NotFound)
+                throw new IOException("跨工作区删除知识产权必须拒绝。");
+            var ipCopy=await client.PostAsJsonAsync(
+                $"/api/ip/company/{ipId}/transfer",new IpTransfer("company",false));
+            ipCopy.EnsureSuccessStatusCode();
+            long copiedIp=(await ipCopy.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
+                .GetProperty("id").GetInt64();
+            var ipMove=await client.PostAsJsonAsync(
+                $"/api/ip/company/{copiedIp}/transfer",new IpTransfer("personal",true));
+            ipMove.EnsureSuccessStatusCode();
+            (await client.DeleteAsync($"/api/ip/company/{ipId}")).EnsureSuccessStatusCode();
+            if((await client.GetFromJsonAsync<List<IpView>>("/api/ip/company"))?.Count!=0 ||
+               (await client.GetFromJsonAsync<List<IpView>>("/api/ip/personal"))?.Count!=1)
+                throw new IOException("知识产权删除、复制、转移结果不符合预期。");
             var data = RandomNumberGenerator.GetBytes(1024 * 1024 + 31);
             using var body = new ByteArrayContent(data);
             body.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
@@ -1097,6 +1209,10 @@ static class WebSmoke
             again.EnsureSuccessStatusCode();
             string newToken = (await again.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("token").GetString()!;
             client.DefaultRequestHeaders.Add("X-IPSys-Token", newToken);
+            var persistedIp = await client.GetFromJsonAsync<List<IpView>>("/api/ip/personal");
+            if(persistedIp is null || persistedIp.Count!=1 ||
+                persistedIp[0].Data.Name!="已修改发明" || persistedIp[0].Data.Status!="实质审查中")
+                throw new IOException("重新打开加密库后知识产权转移数据丢失。");
             var recoveredProject = await client.GetFromJsonAsync<List<ProjectView>>("/api/projects/personal");
             if (recoveredProject is null || recoveredProject.Count != 1 ||
                 recoveredProject[0].ProjectStatus != "进行中")

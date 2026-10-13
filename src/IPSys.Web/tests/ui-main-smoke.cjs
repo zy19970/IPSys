@@ -62,7 +62,8 @@ for(const cls of ['.recordgrid','.archivecard','.archivecard-real','.archivecard
 assert.ok(js.includes("['certificate','achievement','academic'].includes(page)?mockCardList(page)"),'Archive mock pages must select card mode');
 assert.ok(js.includes("page==='general'?generalList()"),'Real general records must retain their route');
 assert.ok(js.includes("isProject(page)?projectList(page)"),'Project pages must use real SQLCipher records');
-assert.ok(js.includes("['ip','contract'].includes(page)?mockList(page)"),'Other mock ledger pages remain explicit');
+assert.ok(js.includes("page==='ip'?ipList()"),'IP ledger must render genuine SQLCipher records');
+assert.ok(js.includes("page==='contract'?mockList(page)"),'Contract preview must remain explicitly mock');
 const rendererSource=[
  ['function generalList(){','function realDetail()'],
  ['function columns(k){','function archiveCard('],
@@ -208,4 +209,24 @@ vm.runInContext(preamble+
 assert.ok(projectCtx.__project.includes('data-project-id="12"'),'Real project ledger must open persisted IDs');
 assert.ok(!projectCtx.__project.includes('负责人甲'),'Project leader must not appear in the ledger');
 assert.ok(!projectCtx.__project.includes('仅演示'),'Real project page must not be marked mock');
+
+// Intellectual property now uses a persisted workspace-scoped ledger and a full M0 form.
+assert.ok(html.includes('id="ipDialog"'),'IP form modal missing');
+for(const name of ['name','ipType','status','applicants','rightHolders','creators','applicationNo',
+ 'applicationDate','publicationNo','publicationDate','grantNoticeNo','grantNoticeDate',
+ 'publicationInfo','grantDate','registrationNo','firstPublishedDate','registrationDate',
+ 'category','tags','remarks'])
+ assert.ok(html.includes('id="ip-'+name+'"'),'Missing intellectual-property field '+name);
+for(const action of ['ipAdd','ipEdit','ipDelete','ipCopy','ipMove'])
+ assert.ok(js.includes("case '"+action+"'"),'IP operation missing '+action);
+assert.ok(js.includes("ipRows=ips;render()"),'IP records must be loaded from real API');
+const intellectualCode=js.slice(js.indexOf('const ipStatusByType='),js.indexOf('function projectViewRows(',js.indexOf('const ipStatusByType=')));
+assert.ok(intellectualCode.length>0);
+const ipCtx=vm.createContext({sessionStorage:{getItem:()=>null}});
+vm.runInContext(preamble+
+ '\nfunction heading(t){return t;}\nfunction infoRow(n,v){return n+v;}\nfunction section(n,v){return n+v;}\n'+intellectualCode+
+ "\nspace='company';ipRows=[{id:32,data:{name:'真实专利',ipType:'发明专利',applicationNo:'CN-42',status:'已申请',rightHolders:'权利人甲',applicationDate:'2026-02-01'}}];globalThis.__ip=ipList();globalThis.__types=Object.keys(ipStatusByType);",ipCtx);
+assert.ok(ipCtx.__ip.includes('data-ip-id="32"'),'Real IP rows must link to stored IDs');
+assert.ok(!ipCtx.__ip.includes('仅演示'),'Real IP ledger must not use mock labels');
+assert.equal(ipCtx.__types.length,7,'Exactly seven M0 IP types must be selectable');
 console.log('MAIN UI SMOKE PASS: navigation, workspace choice, live API contract, mock markers, CSP-compatible markup');
