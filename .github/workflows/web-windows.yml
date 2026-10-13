@@ -30,7 +30,10 @@ jobs:
           $env:IPSYS_SMOKE_REPORT = $report
           $exe = Join-Path $debugFolder 'IPSys.Web.exe'
           $proc = Start-Process -FilePath $exe -ArgumentList '--smoke' -PassThru -Wait
-          if ($proc.ExitCode -ne 0) { throw "Debug executable smoke failed (exit $($proc.ExitCode))" }
+          if ($proc.ExitCode -ne 0) {
+            if (Test-Path $report) { Write-Host (Get-Content $report -Raw) }
+            throw "Debug executable smoke failed (exit $($proc.ExitCode))"
+          }
           if (-not (Test-Path $report)) { throw "Debug smoke report missing" }
           if ((Get-Content $report -Raw) -notmatch 'WEB SMOKE PASS') { throw "Debug smoke assertions incomplete" }
           Write-Host 'Visual Studio Debug embedded HTML CSS JS and HTTP smoke: PASS'
@@ -53,7 +56,10 @@ jobs:
           $env:IPSYS_SMOKE_REPORT = $report
           $exe = (Resolve-Path '.\artifacts\IPSys-Web-win-x64\IPSys.Web.exe').Path
           $proc = Start-Process -FilePath $exe -ArgumentList '--smoke' -PassThru -Wait
-          if ($proc.ExitCode -ne 0) { throw "WinExe smoke failed (exit $($proc.ExitCode))" }
+          if ($proc.ExitCode -ne 0) {
+            if (Test-Path $report) { Write-Host (Get-Content $report -Raw) }
+            throw "WinExe smoke failed (exit $($proc.ExitCode))"
+          }
           if (-not (Test-Path $report)) { throw "Smoke completion report missing" }
           if ((Get-Content $report -Raw) -notmatch 'WEB SMOKE PASS') { throw "Smoke assertions incomplete" }
           Write-Host "WEB SMOKE PASS (WinExe process finished; report verified)"

@@ -408,6 +408,18 @@ if (smoke)
             File.WriteAllText(smokeReport, "WEB SMOKE PASS", Encoding.UTF8);
         Console.WriteLine("WEB SMOKE PASS");
     }
+    catch (Exception ex)
+    {
+        string? report = Environment.GetEnvironmentVariable("IPSYS_SMOKE_REPORT");
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(report))
+                File.WriteAllText(report, "WEB SMOKE FAIL\n" + ex, Encoding.UTF8);
+        }
+        catch { /* Report failures must not hide the original smoke exception. */ }
+        Console.Error.WriteLine(ex);
+        throw;
+    }
     finally { await app.StopAsync(); }
 }
 else
@@ -781,6 +793,7 @@ static class WebSmoke
             paused.Release();
             try { using var cancelledResponse = await runningUpload.WaitAsync(TimeSpan.FromSeconds(10)); }
             catch (HttpRequestException) { /* Cancellation may close an in-flight request. */ }
+            catch (OperationCanceledException) { /* Host exit may cancel the test HTTP client. */ }
         }
         finally { try { Directory.Delete(dir, true); } catch { } }
     }
