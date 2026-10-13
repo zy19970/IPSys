@@ -1,7 +1,7 @@
 const el=(id)=>document.getElementById(id);
 let token=sessionStorage.getItem("ip-token")||"";
 let dbName=sessionStorage.getItem("ip-db")||"";
-let space="company",creating=true;
+let space="company",creating=true,resuming=false;
 function notice(text,bad=false){const e=el("toast");e.textContent=text;e.className=bad?"visible bad":"visible";clearTimeout(notice.timer);notice.timer=setTimeout(()=>e.className="",4200);}
 async function api(path,opts={}){
   const headers=new Headers(opts.headers||{});
@@ -16,14 +16,28 @@ async function api(path,opts={}){
 function screen(unlocked){el("locked").hidden=unlocked;el("unlocked").hidden=!unlocked;if(unlocked){el("dbName").textContent=dbName;refresh();}}
 function mode(value){creating=value;el("newMode").classList.toggle("chosen",value);el("oldMode").classList.toggle("chosen",!value);
  el("confirmWrap").hidden=!value;el("submitOpen").textContent=value?"创建并进入":"解锁并进入";}
+function recoveryMode(active){
+ resuming=active;
+ el("dbPathWrap").hidden=active;
+ el("resumeHint").hidden=!active;
+ el("dbPath").required=!active;
+ el("newMode").disabled=active;
+ el("oldMode").disabled=active;
+ if(active){mode(false);el("submitOpen").textContent="验证密码并恢复会话";}
+}
 el("newMode").onclick=()=>mode(true);el("oldMode").onclick=()=>mode(false);
 el("openForm").onsubmit=async ev=>{
  ev.preventDefault();const pass=el("password").value;
  if(creating&&pass!==el("confirm").value){notice("两次密码不一致",true);return;}
  el("submitOpen").disabled=true;
- try{const data=await(await api("/api/open",{method:"POST",json:{path:el("dbPath").value,password:pass,create:creating}})).json();
+ try{
+   const endpoint=resuming?"/api/resume":"/api/open";
+   const payload=resuming?{password:pass}:{path:el("dbPath").value,password:pass,create:creating};
+   const data=await(await api(endpoint,{method:"POST",json:payload})).json();
    token=data.token;dbName=data.name;sessionStorage.setItem("ip-token",token);sessionStorage.setItem("ip-db",dbName);
-   el("password").value="";el("confirm").value="";screen(true);notice("加密资料库已打开");
+   el("password").value="";el("confirm").value="";
+   recoveryMode(false);screen(true);
+   notice(data.resumed?"已验证密码，恢复当前数据库会话":"加密资料库已打开");
  }catch(e){notice(e.message,true);}finally{el("submitOpen").disabled=false;}
 };
 function node(tag,cls="",text=""){const n=document.createElement(tag);if(cls)n.className=cls;if(text)n.textContent=text;return n;}
@@ -84,7 +98,7 @@ el("checkDb").onclick=async()=>{
 };
 el("closeDb").onclick=async()=>{
  if(!confirm("关闭数据库？下次打开需要再次输入密码。"))return;
- try{await api("/api/lock",{method:"POST"});token="";sessionStorage.clear();screen(false);notice("已安全关闭数据库");}
+ try{await api("/api/lock",{method:"POST"});token="";dbName="";sessionStorage.clear();recoveryMode(false);mode(false);screen(false);notice("已安全关闭数据库");}
  catch(e){notice(e.message,true);}
 };
 el("exit").onclick=async()=>{
@@ -95,7 +109,20 @@ el("exit").onclick=async()=>{
 };
 (async()=>{
  mode(true);
- try{const s=await(await api("/api/status")).json();el("dbPath").value=s.suggestion;
-    if(token&&s.unlocked)screen(true);else{token="";sessionStorage.clear();screen(false);}
+ try{
+   const state=await(await api("/api/status")).json();
+   el("dbPath").value=state.suggestion;
+   let sessionValid=false;
+   if(state.unlocked&&token){
+     try{await api("/api/check");sessionValid=true;}catch{sessionValid=false;}
+   }
+   if(state.unlocked&&sessionValid){recoveryMode(false);screen(true);}
+   else if(state.unlocked){
+     token="";dbName="";sessionStorage.clear();
+     recoveryMode(true);screen(false);
+   }else{
+     token="";dbName="";sessionStorage.clear();
+     recoveryMode(false);screen(false);
+   }
  }catch(e){notice("本地服务不可用："+e.message,true);}
 })();

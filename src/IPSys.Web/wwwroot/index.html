@@ -9,7 +9,7 @@
 <div class="eyebrow">STEP 01 · DATABASE</div><h1>打开本地资料库</h1><p>使用真实加密的 SQLite 数据库。新建测试库或打开本验证版数据库。</p>
 <div class="panel">
 <div class="switch"><button type="button" id="newMode" class="chosen">新建测试库</button><button type="button" id="oldMode">打开已有库</button></div>
-<form id="openForm"><label for="dbPath">数据库完整路径</label><input id="dbPath" type="text" required placeholder="D:\IPSys-test\test.db"><small>请预先建立所在文件夹；不会覆盖已有数据库。</small>
+<form id="openForm"><div id="dbPathWrap"><label for="dbPath">数据库完整路径</label><input id="dbPath" type="text" required placeholder="D:\IPSys-test\test.db"><small>请预先建立所在文件夹；不会覆盖已有数据库。</small></div><p id="resumeHint" class="hint" hidden>数据库仍由 WinForms 程序保持打开。请输入当前数据库密码即可恢复管理界面，无需关闭或重新打开数据库。</p>
 <label for="password">数据库密码</label><input id="password" type="password" required autocomplete="off" placeholder="输入密码">
 <div id="confirmWrap"><label for="confirm">再次确认密码</label><input id="confirm" type="password" autocomplete="off" placeholder="再次输入密码"></div>
 <button id="submitOpen" class="primary full">创建并进入</button></form></div>

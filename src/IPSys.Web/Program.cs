@@ -94,6 +94,32 @@ app.MapPost("/api/open", async (OpenInput input, Vault v) =>
     finally { v.Gate.Release(); }
 });
 
+// A browser tab may close while the WinForms-owned database stays open.
+// Re-authenticate against the existing encrypted file; do not close or replace it.
+app.MapPost("/api/resume", async (ResumeInput input, Vault v) =>
+{
+    if (string.IsNullOrWhiteSpace(input.Password)) return Fail("请输入数据库密码。");
+    await v.Gate.WaitAsync();
+    try
+    {
+        if (!v.Unlocked) return Fail("当前没有已打开的数据库，请正常打开数据库。", 409);
+        if (!v.PasswordMatches(input.Password))
+            return Fail("数据库密码错误，无法恢复会话。", 403);
+        return Results.Json(new
+        {
+            token = v.SessionToken,
+            name = Path.GetFileName(v.Path),
+            resumed = true
+        });
+    }
+    catch (Exception)
+    {
+        // The current SQLCipher connection is not modified on authentication failure.
+        return Fail("验证失败，数据库仍保持打开。", 403);
+    }
+    finally { v.Gate.Release(); }
+});
+
 app.MapPost("/api/lock", async (HttpContext ctx, Vault v) =>
 {
     if (!v.Allowed(ctx)) return Results.Unauthorized();
@@ -363,6 +389,7 @@ static IResult Fail(string message, int status = 400) =>
     Results.Json(new { error = message }, statusCode: status);
 
 record OpenInput(string? Path, string? Password, bool Create);
+record ResumeInput(string? Password);
 record TitleInput(string? Title);
 record FileView(long Id, string Name, long Size, string Sha256);
 record RecordView(long Id, string Title, List<FileView> Files);
@@ -375,6 +402,34 @@ sealed class Vault : IDisposable
     public bool Unlocked => _db != null;
     public SqliteConnection Db => _db ?? throw new InvalidOperationException("请先解锁数据库。");
     public string Path { get; private set; } = "";
+    public string SessionToken => _token ?? throw new InvalidOperationException("当前没有已打开的数据库。");
+
+    public bool PasswordMatches(string password)
+    {
+        if (!Unlocked || string.IsNullOrEmpty(password)) return false;
+        try
+        {
+            // Open a SECOND read-only connection. It cannot modify or replace the
+            // WinForms-owned connection and fails when the SQLCipher key is invalid.
+            var builder = new SqliteConnectionStringBuilder
+            {
+                DataSource = Path,
+                Mode = SqliteOpenMode.ReadOnly,
+                Password = password,
+                Pooling = false
+            };
+            using var check = new SqliteConnection(builder.ToString());
+            check.Open();
+            using var cmd = check.CreateCommand();
+            cmd.CommandText = "SELECT count(*) FROM sqlite_master;";
+            _ = cmd.ExecuteScalar();
+            return true;
+        }
+        catch (SqliteException)
+        {
+            return false;
+        }
+    }
     public bool Allowed(HttpContext context)
     {
         if (_db == null || _token == null) return false;
@@ -490,8 +545,35 @@ static class WebSmoke
             if (isolated.StatusCode != HttpStatusCode.NotFound) throw new IOException("工作区数据越权。");
             var check = await client.GetAsync("/api/check");
             check.EnsureSuccessStatusCode();
+            // Simulate closing the browser tab: a second browser has NO session token.
+            using var newTab = new HttpClient { BaseAddress = new Uri(address) };
+            var badResume = await newTab.PostAsJsonAsync("/api/resume", new ResumeInput("wrong"));
+            if (badResume.IsSuccessStatusCode)
+                throw new IOException("错误密码不应恢复会话。");
+            if ((await newTab.GetAsync("/api/records/company")).StatusCode != HttpStatusCode.Unauthorized)
+                throw new IOException("未认证的新标签页不得读取业务记录。");
+
+            var restored = await newTab.PostAsJsonAsync("/api/resume", new ResumeInput(password));
+            restored.EnsureSuccessStatusCode();
+            string restoredToken = (await restored.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
+                .GetProperty("token").GetString()!;
+            newTab.DefaultRequestHeaders.Add("X-IPSys-Token", restoredToken);
+            var restoredRecords = await newTab.GetAsync("/api/records/company");
+            restoredRecords.EnsureSuccessStatusCode();
+            string bodyText = await restoredRecords.Content.ReadAsStringAsync();
+            if (!bodyText.Contains("测试资料"))
+                throw new IOException("恢复会话后没有读到原有记录。");
+            // Reauthorization must not invalidate the original live tab.
+            (await client.GetAsync("/api/check")).EnsureSuccessStatusCode();
+
             using var locked = await client.PostAsync("/api/lock", null);
             locked.EnsureSuccessStatusCode();
+            // Locking must invalidate the recovered tab as well.
+            if ((await newTab.GetAsync("/api/records/company")).StatusCode != HttpStatusCode.Unauthorized)
+                throw new IOException("关闭数据库后旧会话未失效。");
+            var resumeAfterLock = await newTab.PostAsJsonAsync("/api/resume", new ResumeInput(password));
+            if (resumeAfterLock.IsSuccessStatusCode)
+                throw new IOException("关闭数据库后不得恢复会话。");
             client.DefaultRequestHeaders.Remove("X-IPSys-Token");
             var bad = await client.PostAsJsonAsync("/api/open", new OpenInput(dbPath, "wrong", false));
             if (bad.IsSuccessStatusCode) throw new IOException("错误密码竟能打开。");
