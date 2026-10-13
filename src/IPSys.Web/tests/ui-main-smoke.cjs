@@ -14,6 +14,13 @@ for(const style of ['.shell','.sidebar','.tablewrap','.data','.detailsection','.
 assert.ok(!html.includes('onclick='),'No inline script handlers may be added to real HTTP page');
 assert.ok(!/\bfetch\s*\(\s*['"]https?:/.test(js),'No external service access');
 assert.ok(js.includes('escapeHtml('),'Untrusted record and attachment names must be escaped');
+// UI is frozen: the first real business edit reuses the existing record dialog.
+assert.ok(js.includes('data-action="editRecord"'),'Real record detail must offer edit title');
+assert.ok(js.includes("case 'editRecord'"),'Title editor must only start from the real record view');
+assert.ok(js.includes("method:'PUT'"),'Existing records must use the authorized update endpoint');
+assert.ok(js.includes("if(target===null)setPage('general')"),'Editing a record should retain the detail view');
+assert.ok(js.includes("editingId=null"),'Record editor mode must be reset after use');
+
 assert.ok(js.includes('space=null')&&js.includes('selectSpace(next)'),'Explicit workspace choice is required');
 // Personal navigation is deliberately distinct from the company menu: archive groups
 // follow the user-supplied evidence folders without changing SQLCipher record types.

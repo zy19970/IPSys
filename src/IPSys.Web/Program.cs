@@ -207,6 +207,36 @@ app.MapPost("/api/records/{workspace}", async (HttpContext ctx, Vault v, string 
     finally { v.Gate.Release(); }
 });
 
+// Update only a record name in the existing encrypted prototype schema.
+// Business modules will get their own validated API after M2 schema design.
+app.MapPut("/api/records/{workspace}/{id:long}", async (
+    HttpContext ctx, Vault v, string workspace, long id, TitleInput input) =>
+{
+    if (!v.Allowed(ctx)) return Results.Unauthorized();
+    if (!Vault.WorkspaceValid(workspace)) return Fail("无效工作区。");
+    if (string.IsNullOrWhiteSpace(input.Title)) return Fail("名称不能为空。");
+    if (input.Title.Length > 300) return Fail("名称不能超过 300 字。");
+    if (v.FileTaskActive || v.ExitRequested)
+        return Fail("文件任务执行中或程序正在退出，暂不能修改资料。", 409);
+    await v.Gate.WaitAsync();
+    try
+    {
+        // Reauthorize after waiting, and scope the SQL UPDATE to the workspace.
+        if (!v.Allowed(ctx)) return Results.Unauthorized();
+        if (v.FileTaskActive || v.ExitRequested)
+            return Fail("文件任务执行中或程序正在退出，暂不能修改资料。", 409);
+        using var cmd = v.Db.CreateCommand();
+        cmd.CommandText = "UPDATE records SET title=$title WHERE id=$id AND workspace=$workspace;";
+        cmd.Parameters.AddWithValue("$title", input.Title.Trim());
+        cmd.Parameters.AddWithValue("$id", id);
+        cmd.Parameters.AddWithValue("$workspace", workspace);
+        if (cmd.ExecuteNonQuery() != 1) return Results.NotFound();
+        return Results.Ok(new { ok = true });
+    }
+    catch (Exception e) { return Fail(e.Message, 500); }
+    finally { v.Gate.Release(); }
+});
+
 app.MapPost("/api/records/{workspace}/{id:long}/files", async (HttpContext ctx, Vault v, string workspace, long id) =>
 {
     if (!v.Allowed(ctx)) return Results.Unauthorized();
@@ -737,6 +767,43 @@ static class WebSmoke
             if (!exported.AsSpan().SequenceEqual(data)) throw new IOException("文件往返不一致。");
             var isolated = await client.GetAsync($"/api/files/personal/{fileId}");
             if (isolated.StatusCode != HttpStatusCode.NotFound) throw new IOException("工作区数据越权。");
+            // First persisted business edit: update a general-record title, preserving
+            // its attachment and refusing unauthorized/cross-workspace updates.
+            using var anonymous = new HttpClient { BaseAddress = new Uri(address) };
+            var noTokenEdit = await anonymous.PutAsJsonAsync(
+                $"/api/records/company/{id}", new TitleInput("匿名修改"));
+            if (noTokenEdit.StatusCode != HttpStatusCode.Unauthorized)
+                throw new IOException("未登录请求不得修改资料名称。");
+            var wrongWorkspaceEdit = await client.PutAsJsonAsync(
+                $"/api/records/personal/{id}", new TitleInput("越权修改"));
+            if (wrongWorkspaceEdit.StatusCode != HttpStatusCode.NotFound)
+                throw new IOException("不得通过其它工作区修改资料。");
+            var emptyEdit = await client.PutAsJsonAsync(
+                $"/api/records/company/{id}", new TitleInput("   "));
+            if (emptyEdit.StatusCode != HttpStatusCode.BadRequest)
+                throw new IOException("资料名称不允许为空。");
+            var oversizedEdit = await client.PutAsJsonAsync(
+                $"/api/records/company/{id}", new TitleInput(new string('字', 301)));
+            if (oversizedEdit.StatusCode != HttpStatusCode.BadRequest)
+                throw new IOException("资料名称不得超过 300 字。");
+            var unknownEdit = await client.PutAsJsonAsync(
+                "/api/records/company/987654321", new TitleInput("不存在的记录"));
+            if (unknownEdit.StatusCode != HttpStatusCode.NotFound)
+                throw new IOException("不存在的资料不能修改。");
+            using var updated = await client.PutAsJsonAsync(
+                $"/api/records/company/{id}", new TitleInput("  测试资料（已修改）  "));
+            updated.EnsureSuccessStatusCode();
+            var afterEdit = await client.GetFromJsonAsync<List<RecordView>>("/api/records/company");
+            if (afterEdit is null || afterEdit.Count != 1 ||
+                afterEdit[0].Title != "测试资料（已修改）" ||
+                afterEdit[0].Files.Count != 1 || afterEdit[0].Files[0].Id != fileId)
+                throw new IOException("修改名称后记录、工作区或原有附件发生异常。");
+            var otherWorkspaceRows = await client.GetFromJsonAsync<List<RecordView>>("/api/records/personal");
+            if (otherWorkspaceRows is null || otherWorkspaceRows.Count != 0)
+                throw new IOException("修改记录后个人工作区发生数据泄漏。");
+            var stillExported = await client.GetByteArrayAsync($"/api/files/company/{fileId}");
+            if (!stillExported.AsSpan().SequenceEqual(data))
+                throw new IOException("修改资料名称后附件原件内容发生变化。");
             var check = await client.GetAsync("/api/check");
             check.EnsureSuccessStatusCode();
             // Simulate closing the browser tab: a second browser has NO session token.
@@ -755,8 +822,8 @@ static class WebSmoke
             var restoredRecords = await newTab.GetAsync("/api/records/company");
             restoredRecords.EnsureSuccessStatusCode();
             string bodyText = await restoredRecords.Content.ReadAsStringAsync();
-            if (!bodyText.Contains("测试资料"))
-                throw new IOException("恢复会话后没有读到原有记录。");
+            if (!bodyText.Contains("测试资料（已修改）"))
+                throw new IOException("恢复会话后没有读到已修改的记录。");
             // Reauthorization must not invalidate the original live tab.
             (await client.GetAsync("/api/check")).EnsureSuccessStatusCode();
 
@@ -775,6 +842,11 @@ static class WebSmoke
             again.EnsureSuccessStatusCode();
             string newToken = (await again.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("token").GetString()!;
             client.DefaultRequestHeaders.Add("X-IPSys-Token", newToken);
+            var persisted = await client.GetFromJsonAsync<List<RecordView>>("/api/records/company");
+            if (persisted is null || persisted.Count != 1 ||
+                persisted[0].Title != "测试资料（已修改）" ||
+                persisted[0].Files.Count != 1 || persisted[0].Files[0].Id != fileId)
+                throw new IOException("数据库重新打开后修改的名称或附件未能持久化。");
             // A prior browser tab must not touch the newly opened database.
             using var staleTab = new HttpClient { BaseAddress = new Uri(address) };
             staleTab.DefaultRequestHeaders.Add("X-IPSys-Token", token);

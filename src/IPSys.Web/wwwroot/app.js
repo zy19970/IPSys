@@ -5,7 +5,7 @@ const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<
 let token=sessionStorage.getItem('ip-token')||'';
 let dbName=sessionStorage.getItem('ip-db')||'';
 let space=null,creating=false,resuming=false,localFileTaskActive=false;
-let page='dashboard',detail=null,archiveGroup=null,liveRows=[],filterName='',filterKind='全部类型',filterState='全部状态',selected=new Set();
+let page='dashboard',detail=null,archiveGroup=null,editingId=null,liveRows=[],filterName='',filterKind='全部类型',filterState='全部状态',selected=new Set();
 const companyNav=[['dashboard','工作台','▦'],['ip','知识产权','◇'],['researchProject','科研项目','▤'],['horizontalProject','横向项目','▥'],['contract','全部合同','▧'],['certificate','企业资质','▣'],['general','综合资料','▥']];
 // Personal archives are grouped by evidence type, not by the company management menu.
 const personalNav=[['dashboard','个人工作台','▦'],['certificate','身份与资质','▣'],['ip','知识产权与著作','◇'],['researchProject','科研与合作项目','▤'],['achievement','成果与奖励','★'],['academic','学术与社会活动','▥'],['general','其他资料','▧']];
@@ -189,7 +189,7 @@ function generalList(){
 function realDetail(){
  const r=liveRows.find(r=>r.id===detail.id);
  if(!r)return heading('记录详情','记录不存在或当前工作区无权访问')+'<button class="btn" data-nav="general">返回台账</button>';
- return heading(r.title,title('general')+' / 记录详情 · 当前加密库真实数据',`<button class="btn" data-nav="general">← 返回台账</button>`)+
+ return heading(r.title,title('general')+' / 记录详情 · 当前加密库真实数据',`<button class="btn" data-nav="general">← 返回台账</button><button class="btn" data-action="editRecord">修改名称</button>`)+
  `<section class="white detailsection"><div class="detailsectionhead"><h2>基本信息</h2><span class="realflag">真实记录</span></div><div class="detailbody infogrid"><div class="info"><label>资料名称</label><strong>${escapeHtml(r.title)}</strong></div><div class="info"><label>所属工作区</label><strong>${space==='company'?'公司资料':'个人资料'}</strong></div><div class="info"><label>已归档附件</label><strong>${r.files.length} 份</strong></div></div></section>`+
  `<section class="white detailsection"><div class="detailsectionhead"><h2>附件资料</h2><button class="btn primary" data-action="upload">＋ 上传原件</button></div><div class="detailbody"><input type="file" id="uploadInput" hidden><p class="hint">当前原型支持真实上传与下载，单文件不超过 64 MiB。附件展示在该记录下。</p>`+
  (r.files.length?r.files.map(f=>`<div class="fileline"><span class="fileicon">${escapeHtml(f.name.split('.').pop().slice(0,4).toUpperCase())}</span><span class="filedesc"><strong>${escapeHtml(f.name)}</strong><small>${fmtSize(f.size)} · SHA-256 ${escapeHtml(f.sha256.slice(0,16))}…</small></span><button class="btn btn-sm" data-download="${f.id}">下载原件</button></div>`).join(''):'<div class="empty">暂无附件，点击“上传原件”开始归档。</div>')+'</div></section>'+
@@ -374,7 +374,17 @@ el('content').addEventListener('click',async ev=>{
  if(target.dataset.searchDetail){const [k,id]=target.dataset.searchDetail.split(':');openMockRecord(k,Number(id));return;}
  if(target.dataset.download){const r=liveRows.find(r=>r.id===detail?.id);const file=r?.files.find(f=>f.id===Number(target.dataset.download));if(file)await download(file);return;}
  switch(target.dataset.action){
-  case 'add':el('newRecordForm').querySelector('h2').textContent=space==='personal'?'新建其他资料':'新建综合资料';el('modal').showModal();break;
+  case 'add':
+   editingId=null;el('title').value='';el('saveRecord').textContent='创建记录';
+   el('newRecordForm').querySelector('h2').textContent=space==='personal'?'新建其他资料':'新建综合资料';
+   el('modal').showModal();break;
+  case 'editRecord':{
+   const r=detail?.kind==='general'?liveRows.find(row=>row.id===detail.id):null;
+   if(!r){notice('找不到要修改的真实记录。',true);break;}
+   editingId=r.id;el('title').value=r.title;el('saveRecord').textContent='保存修改';
+   el('newRecordForm').querySelector('h2').textContent='修改资料名称';
+   el('modal').showModal();break;
+  }
   case 'upload':el('uploadInput')?.click();break;
   case 'filter':filterName=el('filterSearch')?.value.trim()||'';filterKind=el('filterKind')?.value||'全部类型';filterState=el('filterState')?.value||'全部状态';selected.clear();render();break;
   case 'clearFilter':filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();render();break;
@@ -399,11 +409,21 @@ el('content').addEventListener('keydown',event=>{
  if(event.key==='Enter'&&event.target.id==='filterSearch'){event.preventDefault();el('content').querySelector('[data-action=filter]')?.click();}
 });
 el('globalSearch').onkeydown=event=>{if(event.key==='Enter'&&space){filterName=el('globalSearch').value.trim();page='search';detail=null;render();}};
-el('cancelRecord').onclick=()=>el('modal').close();
+el('cancelRecord').onclick=()=>{editingId=null;el('modal').close();};
+el('modal').addEventListener('close',()=>{editingId=null;});
 el('newRecordForm').onsubmit=async ev=>{
  ev.preventDefault();el('saveRecord').disabled=true;
- try{await api('/api/records/'+space,{method:'POST',json:{title:el('title').value.trim()}});el('modal').close();el('title').value='';setPage('general');await refresh();notice(space==='personal'?'新建其他资料成功':'新建综合资料成功');}
- catch(e){notice(e.message,true);}finally{el('saveRecord').disabled=false;}
+ const name=el('title').value.trim(),target=editingId,workspace=space;
+ try{
+  if(target!==null)
+   await api('/api/records/'+workspace+'/'+target,{method:'PUT',json:{title:name}});
+  else
+   await api('/api/records/'+workspace,{method:'POST',json:{title:name}});
+  el('modal').close();editingId=null;el('title').value='';
+  if(target===null)setPage('general');
+  await refresh();
+  notice(target!==null?'资料名称已更新':workspace==='personal'?'新建其他资料成功':'新建综合资料成功');
+ }catch(e){notice(e.message,true);}finally{el('saveRecord').disabled=false;}
 };
 async function closeDb(){
  if(!confirm('关闭当前数据库？再次打开时需要输入数据库密码。'))return;
