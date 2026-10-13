@@ -1,0 +1,9 @@
+**/bin/
+**/obj/
+out/
+artifacts/
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.partial
