@@ -7,8 +7,12 @@ static class GeneralStore
     {
         AddColumn(db,"records","deleted","INTEGER NOT NULL DEFAULT 0");
         AddColumn(db,"attachments","deleted","INTEGER NOT NULL DEFAULT 0");
-        bool versionAdded=AddColumn(db,"attachments","version","INTEGER NOT NULL DEFAULT 1");
+        AddColumn(db,"attachments","version","INTEGER NOT NULL DEFAULT 1");
         AddColumn(db,"attachments","group_id","TEXT NOT NULL DEFAULT ''");
+        // Retryable if an earlier run was interrupted after an ALTER TABLE.
+        using var check=db.CreateCommand();
+        check.CommandText="SELECT count(*) FROM attachments WHERE group_id='';";
+        if((long)check.ExecuteScalar()! ==0)return;
         using var tx=db.BeginTransaction();
         using var groups=db.CreateCommand();groups.Transaction=tx;
         groups.CommandText="""
@@ -27,7 +31,7 @@ static class GeneralStore
                 AND x.id<=attachments.id)
             WHERE group_id LIKE 'general-legacy-%';
             """;
-        if(versionAdded)versions.ExecuteNonQuery();
+        versions.ExecuteNonQuery();
         tx.Commit();
     }
 
