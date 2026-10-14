@@ -73,7 +73,7 @@ async function api(url,{signal}={}){
  }}}};
 }
 const sandbox={document,window,TextEncoder,Uint32Array,Uint8Array,DataView,api,
- notice:(message,bad)=>notices.push({message,bad}),DOMException,console};
+ notice:(message,bad)=>notices.push({message,bad}),DOMException,AbortController,console};
 vm.runInNewContext(code,sandbox,{filename:'export.js'});
 const exporter=sandbox.IPSysExport;
 assert.ok(exporter);
