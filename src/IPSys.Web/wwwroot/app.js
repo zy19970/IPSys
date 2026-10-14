@@ -279,8 +279,7 @@ function ipList(){
  '<button class="btn primary" data-action="filter">查询</button><button class="btn" data-action="clearFilter">重置</button></div></section>'+
  '<section class="white"><div class="tabletools"><b>业务台账 '+rows.length+' 条真实记录</b>'+
  '<div class="actions"><span id="ledgerExportCount">已选 0 条</span>'+
- '<button class="btn" data-action="projectExportFolder">导出文件夹</button>'+
- '<button class="btn primary" data-action="projectExportZip">导出 ZIP</button></div></div>'+
+ '<button class="btn" data-action="ledgerSelectAttachments">选择记录附件</button></div></div>'+
  '<div class="tablewrap"><table class="data"><thead><tr><th><input type="checkbox" id="ledgerExportAll" class="ledger-export-all" aria-label="全选当前知识产权"></th><th>名称</th><th>知识产权类型</th><th>申请/登记号</th><th>状态</th><th>当前权利人</th><th>申请/登记日期</th><th>附件</th></tr></thead><tbody>'+
  (rows.length?rows.map(r=>{const v=r.data;return '<tr><td><input type="checkbox" class="ledger-export-row" value="'+r.id+'" aria-label="选择知识产权 '+escapeHtml(v.name)+'"></td>'+
  '<td><button class="link" data-ip-id="'+r.id+'">'+escapeHtml(v.name)+'</button></td>'+
@@ -417,7 +416,8 @@ function projectList(k){
  '<button class="btn primary" data-action="filter">查询</button><button class="btn" data-action="clearFilter">重置</button></div></section>'+
  '<section class="white"><div class="tabletools"><b>业务台账 '+visible.length+' 条真实记录</b>'+
  '<div class="actions"><span id="ledgerExportCount">已选 0 条</span>'+
- '<button class="btn" data-action="ledgerSelectAttachments">选择记录附件</button></div></div>'+
+ '<button class="btn" data-action="projectExportFolder">导出文件夹</button>'+
+ '<button class="btn primary" data-action="projectExportZip">导出 ZIP</button></div></div>'+
  '<div class="tablewrap"><table class="data"><thead><tr><th><input type="checkbox" id="ledgerExportAll" class="ledger-export-all" aria-label="全选当前项目"></th><th>项目名称</th><th>项目类别</th><th>项目编号</th><th>开始日期</th><th>附件</th></tr></thead><tbody>'+
  (visible.length?visible.map(p=>'<tr><td><input type="checkbox" class="ledger-export-row" value="'+p.id+'" aria-label="选择项目 '+escapeHtml(p.name)+'"></td>'+
  '<td><button class="link" data-project-id="'+p.id+'">'+escapeHtml(p.name)+'</button></td>'+
