@@ -1,5 +1,7 @@
 # IPSys 开发总计划（阶段路线图 V0.1）
 
+**P1 第一批最新自动验证（2026-10-14）**：项目和知识产权固定 XLSX 模板、台账当前筛选/全部导出、逐行导入、三种重复策略、合法及错误行混合导入已通过 Windows Actions [#38512444768](https://github.com/zy19970/IPSys/actions/runs/38512444768)。Debug、Release、浏览器脚本、MCP、SQLCipher HTTP 均成功，生成 `IPSys-Web-win-x64` 发布包。实际桌面 Excel 编辑与用户本机操作尚待验收；证书/科研成果/综合资料、合同只导出仍属下一 Excel 批次。
+
 ## P1 Excel 台账开发进展（第一批，2026-10-14）
 
 已进入代码实施：`src/IPSys.Web/ExcelLedger.cs` 使用离线 OpenXML XLSX 固定表头处理项目（11 列）和知识产权（20 列），对应公司/个人工作区；`Program.cs` 提供 Excel 模板、导出当前筛选/全部、逐行导入 API，`app.js` 提供默认折叠入口。按项目编号、申请号/登记号等检测重复，由用户按钮选择跳过、更新或另建；错误行单独列示，实际 XLSX 限制 8 MiB/5000 行；不导入附件和合同。Windows CI 已运行后以最新结果为准，实际 Excel 桌面打开/编辑仍需用户验收。

@@ -1,5 +1,8 @@
 # IPSys 跨会话详细交接（2026-10-13）
 
+**P1 第一批最新自动验证（2026-10-14）**：项目和知识产权固定 XLSX 模板、台账当前筛选/全部导出、逐行导入、三种重复策略、合法及错误行混合导入已通过 Windows Actions [#38512444768](https://github.com/zy19970/IPSys/actions/runs/38512444768)。Debug、Release、浏览器脚本、MCP、SQLCipher HTTP 均成功，生成 `IPSys-Web-win-x64` 发布包。实际桌面 Excel 编辑与用户本机操作尚待验收；证书/科研成果/综合资料、合同只导出仍属下一 Excel 批次。
+
+
 ## 2026-10-14 验收状态收尾与下一阶段实施安排（以最新 main 为准）
 
 当前以用户实际操作反馈和 Windows CI 双重区分：
