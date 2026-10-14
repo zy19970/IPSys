@@ -1680,6 +1680,19 @@ static class WebSmoke
                     .Select(x=>x.GroupId).Distinct().Count()!=2 ||
                 isolatedSameName.Version!=1)
                 throw new IOException("独立同名原件不能自动并入已有历史版本组。");
+            // Two independently named logical groups may safely share one
+            // physical object, and both can be associated into the same owner.
+            (await client.PostAsJsonAsync(
+                $"/api/business-files/company/{isolatedSameName.Id}/associate",
+                new BusinessAssociateInput("archive",companyCertificateId,"certificate",false)))
+                .EnsureSuccessStatusCode();
+            var groupCopies=await client.GetFromJsonAsync<List<BusinessFileView>>(
+                "/api/business-files/company");
+            if(groupCopies is null||!groupCopies.Any(x=>x.OwnerId==companyCertificateId
+                &&x.GroupId==sameNameGroups.Single(x=>x.Id==isolatedSameName.Id).GroupId) ||
+                groupCopies.Where(x=>x.OwnerId==companyCertificateId
+                    &&x.Name=="企业证书.pdf").Select(x=>x.GroupId).Distinct().Count()!=2)
+                throw new IOException("同内容不同附件组应可在同一记录独立引用。");
             (await client.DeleteAsync(
                 $"/api/business-files/company/{isolatedSameName.Id}")).EnsureSuccessStatusCode();
             (await client.PostAsJsonAsync("/api/trash/company/purge",
