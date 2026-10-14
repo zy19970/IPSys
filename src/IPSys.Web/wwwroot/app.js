@@ -200,7 +200,7 @@ function generalList(){
   title:r.title,type:space==='company'?'综合资料':'其他资料',
   fileCount:new Set(r.files.map(f=>f.groupId||f.name)).size,real:true
  })).join('')+'</div>':'<div class="empty">没有符合条件的资料。可先创建记录，再上传附件。</div>')+
- '<div class="tablefoot">共 '+rows.length+' 条记录 · 数据来自当前加密资料库</div></section>';
+ '<div class="tablefoot">共 '+rows.length+' 条记录 · 数据来自当前加密资料库</div></section>'+moduleExportPanel(rows,'general');
 }
 function realDetail(){
  const r=liveRows.find(r=>r.id===detail.id);
@@ -287,7 +287,7 @@ function ipList(){
  '<td>'+escapeHtml(v.rightHolders||'—')+'</td>'+
  '<td>'+escapeHtml(v.applicationDate||v.registrationDate||'—')+'</td>'+
  '<td>'+businessFileCount('ip',r.id)+'</td></tr>';}).join(''):'<tr><td colspan="7" class="empty">暂无知识产权记录，点击新建。</td></tr>')+
- '</tbody></table></div><div class="tablefoot">共 '+rows.length+' 条记录 · 数据保存在当前 SQLCipher 库</div></section>';
+ '</tbody></table></div><div class="tablefoot">共 '+rows.length+' 条记录 · 数据保存在当前 SQLCipher 库</div></section>'+moduleExportPanel(rows,'ip');
 }
 function ipDetail(){
  const row=ipRows.find(x=>x.id===detail?.id);
@@ -349,7 +349,7 @@ function contractList(){
  '<td>'+escapeHtml(c.projectName)+'</td><td>'+escapeHtml(c.contractNo||'—')+'</td>'+
  '<td>'+escapeHtml(c.signDate||'—')+'</td><td>'+contractMoney(c.amount)+'</td></tr>').join(''):
  '<tr><td colspan="5" class="empty">暂无合同，请先进入所属项目详情新增。</td></tr>')+
- '</tbody></table></div><div class="tablefoot">共 '+visible.length+' 条合同 · 所属项目从加密库关联读取</div></section>';
+ '</tbody></table></div><div class="tablefoot">共 '+visible.length+' 条合同 · 所属项目从加密库关联读取</div></section>'+moduleExportPanel(visible,'contract');
 }
 function projectContracts(projectId){
  const subset=contractRows.filter(c=>c.projectId===projectId);
@@ -420,7 +420,7 @@ function projectList(k){
  '<td>'+escapeHtml(p.startDate||'—')+'</td>'+
  '<td>'+businessFileCount('project',p.id)+'</td></tr>').join(''):
  '<tr><td colspan="5" class="empty">暂无项目，点击右上角新建项目。</td></tr>')+
- '</tbody></table></div><div class="tablefoot">共 '+visible.length+' 条记录 · 数据保存在当前 SQLCipher 库</div></section>';
+ '</tbody></table></div><div class="tablefoot">共 '+visible.length+' 条记录 · 数据保存在当前 SQLCipher 库</div></section>'+moduleExportPanel(visible,'project');
 }
 
 function businessFiles(kind,ownerId,section=''){
@@ -435,6 +435,39 @@ function exportButtons(){
  return '<div class="export-tools"><span>只导出手动勾选的原件（含可单独勾选的历史版本）</span>'+
  '<div class="actions"><button class="btn" data-action="exportFolder">导出至文件夹</button>'+
  '<button class="btn primary" data-action="exportZip">导出 ZIP</button></div></div>';
+}
+function moduleExportPanel(records,source,section=''){
+ const blocks=[];let total=0;
+ function fileLines(files,origin){
+  const groups=new Map();
+  for(const f of files){const key=f.groupId||f.name;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(f);}
+  total+=groups.size;
+  return [...groups.values()].map(group=>{
+   group.sort((a,b)=>b.version-a.version||b.id-a.id);
+   const entry=f=>'<div class="export-record-line">'+exportCheck(f,origin)+
+    '<span>'+escapeHtml(f.name)+' · v'+f.version+'</span></div>';
+   return entry(group[0])+(group.length>1?'<details><summary>历史版本（'+
+    (group.length-1)+'）</summary>'+group.slice(1).map(entry).join('')+'</details>':'');
+  }).join('');
+ }
+ for(const record of records){
+  const files=source==='general'?record.files:businessFiles(source,record.id,section);
+  const children=source==='project'?contractRows.filter(c=>c.projectId===record.id):[];
+  const linked=children.map(c=>{
+   const attachments=businessFiles('contract',c.id);
+   return attachments.length?'<div class="module-export-sub"><b>合同：'+escapeHtml(c.name)+
+    '</b>'+fileLines(attachments,'business')+'</div>':'';
+  }).join('');
+  if(!files.length&&!linked)continue;
+  const label=source==='general'?record.title:
+   source==='ip'?record.data.name:record.name;
+  blocks.push('<div class="contract-export-group"><strong>'+escapeHtml(label)+'</strong>'+
+   fileLines(files,source==='general'?'general':'business')+linked+'</div>');
+ }
+ if(!blocks.length)return '';
+ return '<details class="module-export"><summary>批量选择当前台账原件（'+total+
+  ' 组）</summary><p class="hint">只导出勾选的原件；项目合同、共享附件及历史版本需分别选中。</p>'+
+  blocks.join('')+exportButtons()+'</details>';
 }
 function selectedOriginals(){
  const items=[];
@@ -714,7 +747,7 @@ function realArchiveTable(k,category){
  '<button class="link" data-archive-id="'+r.id+'">'+escapeHtml(r.name)+'</button></td>'+
  '<td>'+escapeHtml(r.category||'未分类')+'</td><td>'+businessFileCount('archive',r.id,k)+' 份</td><td><button class="btn btn-sm" data-archive-id="'+r.id+'">查看详情</button></td></tr>').join(''):
  '<tr><td colspan="5" class="empty">此类别暂无记录，点击右上角新建。</td></tr>')+
- '</tbody></table></div><div class="tablefoot">当前类别共 '+all.length+' 条真实记录</div></section>';
+ '</tbody></table></div><div class="tablefoot">当前类别共 '+all.length+' 条真实记录</div></section>'+moduleExportPanel(rows,'archive',k);
 }
 function realArchiveDetail(){
  const record=(archiveRows[page]||[]).find(r=>r.id===detail?.id);
