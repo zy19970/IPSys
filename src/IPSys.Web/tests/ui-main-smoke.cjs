@@ -55,7 +55,9 @@ globalThis.__layout={
 };`,context);
 const v=context.__layout;
 assert.deepEqual(Array.from(v.personalNav),['个人工作台','身份与资质','知识产权与著作','科研与合作项目','成果与奖励','学术与社会活动','其他资料']);
-assert.deepEqual(Array.from(v.companyNav),['工作台','知识产权','科研项目','横向项目','全部合同','企业资质','业务档案','综合资料']);
+assert.deepEqual(Array.from(v.companyNav),['工作台','企业资质','业务档案','公司项目','知识产权','综合资料']);
+assert.ok(!v.companyModules.includes('horizontalProject')&&!v.companyModules.includes('contract'),
+ 'Company sidebar should have one project entry and contracts reached from it');
 assert.ok(v.companyModules.includes('achievement'),'Company business archives retain the existing SQLCipher section');
 assert.ok(!v.personalModules.includes('contract')&&!v.personalModules.includes('horizontalProject'),'Personal groups should have no redundant separate contract/horizontal menu');
 for(const k of ['certificate','ip','researchProject','achievement','academic','general'])assert.ok(v.personalModules.includes(k),'Personal group missing '+k);
@@ -127,7 +129,7 @@ const projectColumnLabels=JSON.parse(vm.runInContext("JSON.stringify(columns('re
 const horizontalColumnLabels=JSON.parse(vm.runInContext("JSON.stringify(columns('horizontalProject').map(x=>x[1]))",cardsCtx));
 const patentColumnLabels=JSON.parse(vm.runInContext("JSON.stringify(columns('ip').map(x=>x[1]))",cardsCtx));
 for(const labels of [projectColumnLabels,horizontalColumnLabels]){
- assert.deepEqual(labels,['项目名称','项目类别','项目编号','开始日期','附件']);
+ assert.deepEqual(labels,['项目名称','项目类型','项目编号','开始日期','附件']);
  assert.ok(!labels.includes('负责人')&&!labels.includes('项目状态'),'Project ledger must omit detail-only fields');
 }
 assert.ok(patentColumnLabels.includes('状态')&&patentColumnLabels.includes('当前权利人'),'Patent ledger columns must remain unchanged');
@@ -221,6 +223,29 @@ vm.runInContext(preamble+
  '\nfunction heading(t){return t;}\nfunction infoRow(n,v){return n+v;}\nfunction section(n,v){return n+v;}\nfunction businessFileCount(){return 0;}\nfunction excelExportButton(){return "excelExport";}\n'+projector+
  "\nspace='company';projectRows=[{id:12,name:'真实项目',projectType:'科研项目',projectNo:'X-1',startDate:'2026-01-02',projectStatus:'进行中',leader:'负责人甲'}];globalThis.__project=projectList('researchProject');",projectCtx);
 assert.ok(projectCtx.__project.includes('data-project-id="12"'),'Real project ledger must open persisted IDs');
+assert.ok(projectCtx.__project.includes('data-nav="contract"')&&projectCtx.__project.includes('查看全部合同'),
+ 'Contract aggregate remains accessible from the company project ledger');
+assert.ok(projectCtx.__project.includes('class="pill"')&&projectCtx.__project.includes('科研项目'),
+ 'Project type must display as a tag in every row');
+vm.runInContext(
+ "projectRows=["+
+ "{id:12,name:'科研甲',projectType:'科研项目',projectNo:'R-12'},"+
+ "{id:13,name:'横向乙',projectType:'横向项目',projectNo:'H-13'},"+
+ "{id:14,name:'其他丙',projectType:'其他项目',projectNo:'O-14'}];"+
+ "space='company';filterKind='全部类型';filterState='全部状态';filterName='';"+
+ "globalThis.__allProjects=projectList('researchProject');"+
+ "filterKind='横向项目';globalThis.__horizontalOnly=projectList('researchProject');",
+ projectCtx);
+for(const name of ['科研甲','横向乙','其他丙'])
+ assert.ok(projectCtx.__allProjects.includes(name),'Company project view missing '+name);
+assert.ok(projectCtx.__horizontalOnly.includes('横向乙')&&
+ !projectCtx.__horizontalOnly.includes('科研甲')&&!projectCtx.__horizontalOnly.includes('其他丙'),
+ 'Project type must filter one common ledger, preserving all types');
+assert.ok(js.includes("if(space==='company'&&next==='horizontalProject')next='researchProject'"),
+ 'Legacy company horizontal route must resolve to unified project ledger');
+assert.ok(js.includes("if(p){page='researchProject'")&&
+ js.includes("else if(kind==='project')page='researchProject'"),
+ 'Contract back and search navigation must use common project ledger');
 assert.ok(!projectCtx.__project.includes('ledger-excel')&&projectCtx.__project.includes('excelExport')&&
  !projectCtx.__project.includes('excelExportAll'),'One Excel button beside project ZIP');
 assert.ok(projectCtx.__project.includes('class="ledger-export-row"')&&projectCtx.__project.includes('ledgerExportAll'),

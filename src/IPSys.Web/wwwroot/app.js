@@ -36,7 +36,7 @@ let dbName=sessionStorage.getItem('ip-db')||'';
 let mcpEnabled=false;
 let space=null,creating=false,resuming=false,localFileTaskActive=false;
 let page='dashboard',detail=null,archiveGroup=null,editingId=null,projectEditingId=null,projectRows=[],ipEditingId=null,ipRows=[],contractEditingId=null,contractProjectId=null,contractRows=[],businessFileRows=[],trashRows=[],pendingBusinessUpload=null,pendingAssocId=null,archiveRows={certificate:[],achievement:[],academic:[]},archiveEditingId=null,archiveTransferId=null,archiveTransferMode=null,liveRows=[],filterName='',filterKind='全部类型',filterState='全部状态',selected=new Set();
-const companyNav=[['dashboard','工作台','▦'],['ip','知识产权','◇'],['researchProject','科研项目','▤'],['horizontalProject','横向项目','▥'],['contract','全部合同','▧'],['certificate','企业资质','▣'],['achievement','业务档案','▤'],['general','综合资料','▥']];
+const companyNav=[['dashboard','工作台','▦'],['certificate','企业资质','▣'],['achievement','业务档案','▤'],['researchProject','公司项目','▤'],['ip','知识产权','◇'],['general','综合资料','▥']];
 // Personal archives are grouped by evidence type, not by the company management menu.
 const personalNav=[['dashboard','个人工作台','▦'],['certificate','身份与资质','▣'],['ip','知识产权与著作','◇'],['researchProject','科研与合作项目','▤'],['achievement','成果与奖励','★'],['academic','学术与社会活动','▥'],['general','其他资料','▧']];
 const personalCategoryNotes={
@@ -169,7 +169,7 @@ document.querySelectorAll('[data-workspace-choice]').forEach(b=>b.onclick=()=>se
 document.querySelectorAll('[data-workspace-switch]').forEach(button=>{
  button.onclick=()=>selectSpace(button.dataset.workspaceSwitch);
 });
-function setPage(next){globalSerial++;globalHits=[];globalQuery='';globalPending=false;globalError='';page=next;detail=null;archiveGroup=null;filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();el('globalSearch').value='';render();}
+function setPage(next){if(space==='company'&&next==='horizontalProject')next='researchProject';globalSerial++;globalHits=[];globalQuery='';globalPending=false;globalError='';page=next;detail=null;archiveGroup=null;filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();el('globalSearch').value='';render();}
 async function refresh(){
   if(!token||!space)return;
   const requestedSpace=space;
@@ -216,7 +216,7 @@ function dashboard(){
   const general=liveRows.length;const fileCount=liveRows.reduce((n,r)=>n+r.files.length,0);
  const counts=space==='personal'
   ? [['其他资料',general,'条记录'],['已归档原件',fileCount,'份附件'],['身份与资质',archiveRows.certificate.length,'条记录'],['成果与奖励',archiveRows.achievement.length,'条记录']]
-  : [['综合资料',general,'条记录'],['已归档原件',fileCount,'份附件'],['知识产权',ipRows.length,'条记录'],['科研项目',projectRows.filter(p=>p.projectType!=='横向项目').length,'条记录']];
+  : [['综合资料',general,'条记录'],['已归档原件',fileCount,'份附件'],['知识产权',ipRows.length,'条记录'],['公司项目',projectRows.length,'条记录']];
  return heading(title('dashboard'),'当前工作区 · 业务台账与分类资料')+
  '<div class="cards">'+counts.map(([name,num,s])=>`<div class="card"><div class="metriclabel">${name}</div><div class="metric">${num}</div><div class="metricfoot">${s}</div></div>`).join('')+'</div>'+
  '<div class="panels"><section class="card"><h2 class="sectiontitle">'+(space==='personal'?'个人资料分类入口':'业务模块快捷入口')+'</h2><div class="modulegrid">'+mods.map(([key,name])=>`<button class="modulelink" data-nav="${key}"><span><b>${name}</b><small>${key==='general'?general+' 条记录':key==='ip'?ipRows.length+' 条记录':key==='contract'?contractRows.length+' 条记录':isProject(key)?projectViewRows(key).length+' 条记录':archiveSections.includes(key)?(archiveRows[key]||[]).length+' 条记录':(sample(key).length||0)+' 条演示记录'}</small></span><span class="arrow">→</span></button>`).join('')+'</div></section>'+
@@ -271,7 +271,7 @@ function realDetail(){
 }
 function columns(k){
  if(k==='ip')return [['name','名称'],['type','知识产权类型'],['code','申请/登记号'],['status','状态'],['owner','当前权利人'],['date','申请/登记日期'],['files','附件']];
- if(isProject(k))return [['name','项目名称'],['type','项目类别'],['code','项目编号'],['date','开始日期'],['files','附件']];
+ if(isProject(k))return [['name','项目名称'],['type','项目类型'],['code','项目编号'],['date','开始日期'],['files','附件']];
  if(k==='contract')return [['name','合同名称'],['project','所属项目'],['code','合同编号'],['date','签订日期'],['amount','合同金额（元）'],['files','附件']];
  return [['name','名称'],['type','类别'],['files','附件']];
 }
@@ -374,8 +374,8 @@ function contractMoney(value){
 function contractList(){
  const visible=contractRows.filter(c=>
   [c.name,c.contractNo,c.projectName,c.signingParties].join(' ').toLowerCase().includes(filterName.toLowerCase()));
- return heading('全部合同','当前工作区真实合同汇总 · 合同只能从所属项目详情新增',
-   '')+
+ return heading('全部合同','当前工作区合同汇总 · 合同只能从所属项目详情新增',
+   space==='company'?'<button class="btn" data-nav="researchProject">← 返回公司项目</button>':'')+
  
  '<section class="white filter"><div class="filterline">'+
  '<div class="field wide"><label>名称 / 编号 / 所属项目</label><input id="filterSearch" placeholder="搜索合同或项目"></div>'+
@@ -436,7 +436,8 @@ function showContractForm(projectId,id=null){
  el('contractDialog').showModal();
 }
 function projectViewRows(k){
- return projectRows.filter(p=>space==='personal'||(k==='researchProject'?p.projectType!=='横向项目':p.projectType==='横向项目'));
+ // Each workspace has one project ledger; projectType is its visible classification tag.
+ return projectRows;
 }
 // Fixed M0 Excel ledgers are separate from the original-file export controls.
 // Compact file and Excel exports for each live ledger.
@@ -558,21 +559,22 @@ function projectList(k){
   (filterState==='全部状态'||p.projectStatus===filterState));
  const types=['全部类型','科研项目','横向项目','其他项目'];
  const statuses=['全部状态','筹备中','进行中','已完成','已终止'];
- return heading(title(k),'当前加密资料库',
+ return heading(title(k),'科研、横向及其他项目统一归档 · 通过项目类型筛选',
+  (space==='company'?'<button class="btn" data-nav="contract">查看全部合同</button>':'')+
   '<button class="btn primary" data-action="projectAdd">＋ 新建项目</button>')+
  '<section class="white filter"><div class="filterline">'+
  '<div class="field wide"><label>名称 / 编号</label><input id="filterSearch" placeholder="输入关键词筛选项目"></div>'+
- '<div class="field"><label>类型</label><select id="filterKind">'+types.map(t=>'<option value="'+t+'" '+(filterKind===t?'selected':'')+'>'+t+'</option>').join('')+'</select></div>'+
+ '<div class="field"><label>项目类型</label><select id="filterKind">'+types.map(t=>'<option value="'+t+'" '+(filterKind===t?'selected':'')+'>'+t+'</option>').join('')+'</select></div>'+
  '<div class="field"><label>状态</label><select id="filterState">'+statuses.map(t=>'<option value="'+t+'" '+(filterState===t?'selected':'')+'>'+t+'</option>').join('')+'</select></div>'+
  '<button class="btn primary" data-action="filter">查询</button><button class="btn" data-action="clearFilter">重置</button></div></section>'+
  '<section class="white"><div class="tabletools"><b>业务台账 '+visible.length+' 条记录</b>'+
  '<div class="actions"><span id="ledgerExportCount">已选 0 条</span>'+
  '<button class="btn" data-action="projectExportFolder">导出附件文件夹</button>'+
  '<button class="btn primary" data-action="projectExportZip">导出附件 ZIP</button>'+excelExportButton('project')+'</div></div>'+
- '<div class="tablewrap"><table class="data"><thead><tr><th><input type="checkbox" id="ledgerExportAll" class="ledger-export-all" aria-label="全选当前项目"></th><th>项目名称</th><th>项目类别</th><th>项目编号</th><th>开始日期</th><th>附件</th></tr></thead><tbody>'+
+ '<div class="tablewrap"><table class="data"><thead><tr><th><input type="checkbox" id="ledgerExportAll" class="ledger-export-all" aria-label="全选当前项目"></th><th>项目名称</th><th>项目类型</th><th>项目编号</th><th>开始日期</th><th>附件</th></tr></thead><tbody>'+
  (visible.length?visible.map(p=>'<tr><td><input type="checkbox" class="ledger-export-row" value="'+p.id+'" aria-label="选择项目 '+escapeHtml(p.name)+'"></td>'+
  '<td><button class="link" data-project-id="'+p.id+'">'+escapeHtml(p.name)+'</button></td>'+
- '<td>'+escapeHtml(p.projectType)+'</td><td>'+escapeHtml(p.projectNo||'—')+'</td>'+
+ '<td>'+pill(p.projectType)+'</td><td>'+escapeHtml(p.projectNo||'—')+'</td>'+
  '<td>'+escapeHtml(p.startDate||'—')+'</td>'+
  '<td>'+businessFileCount('project',p.id)+'</td></tr>').join(''):
  '<tr><td colspan="6" class="empty">暂无项目，点击右上角新建项目。</td></tr>')+
@@ -824,7 +826,7 @@ function projectDetail(){
  '<button class="btn" data-action="projectExportFolder">导出文件夹</button>'+
  '<button class="btn primary" data-action="projectExportZip">导出 ZIP</button>')+
  section('项目基本信息','<div class="infogrid project-info-grid">'+
- infoRow('项目名称',p.name)+infoRow('项目类别',p.projectType)+infoRow('项目编号',p.projectNo)+
+ infoRow('项目名称',p.name)+infoRow('项目类型',p.projectType)+infoRow('项目编号',p.projectNo)+
  infoRow('负责人',p.leader)+infoRow('承担单位',p.undertakingOrg)+
  infoRow('项目状态',p.projectStatus)+infoRow('开始日期',p.startDate)+
  infoRow('结束日期',p.endDate)+infoRow('辅助分类',p.category)+
@@ -838,7 +840,7 @@ function showProjectForm(id=null){
  el('projectForm').reset();
  el('projectFormTitle').textContent=p?'修改项目':'新建项目';
  el('projectExcelImport').hidden=!!p;
- el('pType').value=p?.projectType||(page==='horizontalProject'?'横向项目':'科研项目');
+ el('pType').value=p?.projectType||'科研项目';
  const fields={pName:'name',pNo:'projectNo',pStatus:'projectStatus',pLeader:'leader',
   pOrg:'undertakingOrg',pStart:'startDate',pEnd:'endDate',pCategory:'category',pTags:'tags',pRemarks:'remarks'};
  for(const [id,key] of Object.entries(fields))if(p)el(id).value=p[key]||'';
@@ -1050,7 +1052,7 @@ function mockDetail(){
   out+=section('知识产权附件',mockFile('专利申请文件.pdf','申请材料 · 1.8 MB · v1')+mockFile('受理通知书.pdf','通知文件 · 0.6 MB · v1')+mockFile('电子证书.pdf','证书文件 · 1.1 MB · v2'),stamp());
  }else if(isProject(k)){
   const cs=sample('contract').filter(c=>c.project===r.name);
-  out+=section('项目基本信息','<div class="infogrid">'+infoRow('项目名称',r.name)+infoRow('项目类别',r.type)+infoRow('项目编号',r.code)+infoRow('负责人',r.leader)+infoRow('项目状态',r.status)+infoRow('开始日期',r.date)+'</div>');
+  out+=section('项目基本信息','<div class="infogrid">'+infoRow('项目名称',r.name)+infoRow('项目类型',r.type)+infoRow('项目编号',r.code)+infoRow('负责人',r.leader)+infoRow('项目状态',r.status)+infoRow('开始日期',r.date)+'</div>');
   out+=section('所属合同',(cs.length?cs.map(c=>`<div class="minirow"><button class="link" data-contract-id="${c.id}">${escapeHtml(c.name)}</button><span>${escapeHtml(c.amount?Number(c.amount).toFixed(2)+' 元':'金额未填')}</span></div>`).join(''):'<div class="empty">暂无合同示例</div>'),'<button class="btn primary" data-action="demoContract">＋ 新建合同（演示）</button>');
   out+=section('项目自身附件',mockFile('项目实施方案.pdf','项目原件 · 2.4 MB · v1')+mockFile('项目说明.docx','项目原件 · 0.8 MB · v2'),stamp());
   out+=section('全部附件汇总',`<p class="hint">此处汇总项目附件及所属合同附件，不重复存储二进制。</p><div class="minirow"><span>项目自身附件</span><strong>2 份</strong></div>${cs.map(c=>`<div class="minirow"><span>${escapeHtml(c.name)}</span><span>${c.files} 份</span></div>`).join('')}`,stamp());
@@ -1094,7 +1096,7 @@ function openSearchHit(index){
  const row=candidates.find(r=>r.id===id);
  if(!row){notice('记录已发生变化，请重新搜索。',true);return;}
  if(kind==='general')page='general';
- else if(kind==='project')page=space==='company'&&row.projectType==='横向项目'?'horizontalProject':'researchProject';
+ else if(kind==='project')page='researchProject';
  else if(kind==='contract')page='contract';
  else if(kind==='ip')page='ip';
  else if(kind==='archive'){page=h.section;archiveGroup=row.category||'未分类';}
@@ -1126,7 +1128,7 @@ function settingsPage(){return heading('系统设置','数据库管理与已确�
  `<section class="white detailsection"><div class="detailsectionhead"><h2>当前加密数据库</h2></div><div class="detailbody"><div class="minirow"><span>数据库文件</span><strong>${escapeHtml(dbName)}</strong></div><div class="minirow"><span>加密状态</span><span class="realflag">SQLCipher 已启用</span></div><div class="minirow"><span>数据库完整性检查</span><button class="btn" data-action="check">立即检查</button></div><div id="checkResult" class="hint"></div><div class="minirow"><span>本机 Codex MCP</span><span class="actions"><span class="hint">${mcpEnabled?'已开启':'默认关闭'}</span><button class="btn" data-action="mcpToggle">${mcpEnabled?'关闭 MCP':'开启 MCP'}</button></span></div><p class="hint">仅允许当前 Windows 用户通过本机 Codex MCP 操作已解锁的数据库；关库或退出自动失效。开启后 Codex 可新增项目、合同及原件。</p><div class="minirow"><span>关闭当前数据库</span><button class="btn" data-action="lock">关闭数据库</button></div></div></section>`+
  section('尚未接入的设置项','<div class="minirow"><span>修改数据库密码</span>'+stamp()+'</div><div class="minirow"><span>记录类别与标签</span>'+stamp()+'</div><p class="hint">手动备份需安全退出程序后在 Windows 资源管理器复制加密库。</p>');}
 function trashPage(){
- const names={project:'项目',contract:'合同',ip:'知识产权',archive:'资质与成果',file:'业务附件',general:'综合资料',general_file:'综合资料附件'};
+ const names={project:'项目',contract:'合同',ip:'知识产权',archive:space==='company'?'资质与业务档案':'证件与成果',file:'业务附件',general:'综合资料',general_file:'综合资料附件'};
  return heading('回收站','当前工作区的真实已删除记录与附件',
  '<button class="btn" data-nav="settings">返回设置</button>')+
  '<section class="white"><div class="tabletools"><b>已删除 '+trashRows.length+' 条</b><div class="actions">'+
@@ -1295,7 +1297,7 @@ el('content').addEventListener('click',async ev=>{
  if(target.dataset.mockId){openMockRecord(page,Number(target.dataset.mockId));return;}
  if(target.dataset.contractBackProject){
   const p=projectRows.find(r=>r.id===Number(target.dataset.contractBackProject));
-  if(p){page=space==='personal'?'researchProject':p.projectType==='横向项目'?'horizontalProject':'researchProject';
+  if(p){page='researchProject';
    detail={kind:'project',id:p.id};render();}
   return;
  }
@@ -1686,7 +1688,7 @@ el('projectForm').onsubmit=async ev=>{
   await refresh();
   const project=projectRows.find(p=>p.id===created);
   if(project){
-   page=space==='personal'?'researchProject':project.projectType==='横向项目'?'horizontalProject':'researchProject';
+   page='researchProject';
    detail={kind:'project',id:created};
    render();
   }
