@@ -1,5 +1,8 @@
 /* IPSys UI-first main entry: real SQLCipher general records + clearly marked design-only pages. */
 "use strict";
+// Export engine is another local embedded asset; no external wwwroot is required.
+const b06Script=document.createElement('script');
+b06Script.src='/export.js';document.head.appendChild(b06Script);
 const el=id=>document.getElementById(id);
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let activePreviewUrl=null;
@@ -1018,7 +1021,8 @@ el('content').addEventListener('click',async ev=>{
   case 'exportFolder':
   case 'exportZip':{
    const originals=selectedOriginals();
-   await IPSysExport.start(target.dataset.action==='exportFolder'?'folder':'zip',originals);
+   if(!globalThis.IPSysExport){notice('导出模块仍在初始化，请重试。',true);break;}
+   await globalThis.IPSysExport.start(target.dataset.action==='exportFolder'?'folder':'zip',originals);
    break;
   }
   case 'businessUpload':{
