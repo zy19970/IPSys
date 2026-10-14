@@ -273,7 +273,7 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 #archiveDialog #archiveTagsField[hidden],
 #archiveDialog #archiveAttachmentField[hidden]{display:none!important}
 #archiveDialog #aAttachment{height:auto;min-height:40px;padding:7px}
-.certificate-ledger .data td:nth-child(2){max-width:380px;overflow-wrap:anywhere}
+.certificate-ledger .archive-tablewrap .data td:nth-child(2){min-width:0;max-width:none;white-space:nowrap}
 .certificate-ledger .data td:nth-child(3){max-width:330px;white-space:normal;overflow-wrap:anywhere}
 
 /* The company certificate table shows the size of the same original used by one-click download. */
@@ -290,3 +290,21 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 .certificate-ledger .certificate-selected-count{font-size:12px;color:var(--muted);white-space:nowrap}
 .certificate-ledger .data td:nth-child(4){max-width:380px;overflow-wrap:anywhere}
 .certificate-ledger .data td:nth-child(6){max-width:330px;white-space:normal;overflow-wrap:anywhere}
+
+/* Company certificate table: narrow control columns, flexible name and attachment. */
+.certificate-ledger .data{width:100%;min-width:1010px;table-layout:fixed}
+.certificate-ledger .data col.certificate-col-check{width:42px}
+.certificate-ledger .data col.certificate-col-sequence{width:54px}
+.certificate-ledger .data col.certificate-col-name{width:25%}
+.certificate-ledger .data col.certificate-col-file{width:25%}
+.certificate-ledger .data col.certificate-col-size{width:110px}
+.certificate-ledger .data col.certificate-col-order{width:96px}
+.certificate-ledger .data col.certificate-col-action{width:82px}
+.certificate-ledger .data .certificate-check{width:42px;min-width:0;padding-left:4px;padding-right:4px;text-align:center}
+.certificate-ledger .data .certificate-sequence{width:54px;min-width:0;padding-left:5px;padding-right:5px;text-align:center}
+.certificate-ledger .data .certificate-order{width:96px;min-width:0;padding-left:4px;padding-right:4px;text-align:center}
+.certificate-ledger .data .certificate-action{width:82px;min-width:0;padding-left:4px;padding-right:4px;text-align:center}
+.certificate-ledger .certificate-order .btn{min-width:32px;padding:5px}
+.certificate-ledger .data td:nth-child(3),.certificate-ledger .data td:nth-child(4){max-width:none;white-space:normal;overflow-wrap:anywhere}
+.certificate-ledger .certificate-batch-delete{color:#a9424e;border-color:#e6cbd0}
+.certificate-ledger .certificate-batch-delete:hover:not(:disabled){background:#fff5f5;border-color:#c98a94}

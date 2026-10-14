@@ -158,6 +158,28 @@ static class ArchiveStore
         AddData(cmd,x);
         return cmd.ExecuteNonQuery()==1;
     }
+    // Atomic soft deletion: invalid, duplicate or cross-workspace IDs cancel the entire selection.
+    public static bool DeleteCompanyCertificates(SqliteConnection db,long[]? ids)
+    {
+        if(ids is null || ids.Length==0 ||
+           ids.Any(id=>id<=0) || ids.Distinct().Count()!=ids.Length)return false;
+        using var tx=db.BeginTransaction();
+        using var cmd=db.CreateCommand();
+        cmd.Transaction=tx;
+        cmd.CommandText="""
+            UPDATE business_archives SET deleted=1
+            WHERE id=$id AND workspace='company' AND module='company_certificate'
+                AND section='certificate' AND deleted=0;
+            """;
+        var idParam=cmd.Parameters.Add("$id",SqliteType.Integer);
+        foreach(var id in ids)
+        {
+            idParam.Value=id;
+            if(cmd.ExecuteNonQuery()!=1)return false;
+        }
+        tx.Commit();
+        return true;
+    }
     public static bool Delete(SqliteConnection db,string workspace,string section,long id)
     {
         using var cmd=db.CreateCommand();

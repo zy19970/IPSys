@@ -420,7 +420,7 @@ assert.ok(realArchiveCtx.__certAll.includes('data-archive-id="51"')&&
 assert.ok(realArchiveCtx.__certAll.includes('<th class="certificate-check">')&&
  realArchiveCtx.__certAll.includes('class="certificate-checkall"')&&
  realArchiveCtx.__certAll.includes('<th class="certificate-sequence">序号</th>')&&
- realArchiveCtx.__certAll.includes('<th>资料名称</th><th>附件</th><th class="certificate-size">文件大小</th><th>备注</th><th class="certificate-order">排序</th><th>操作</th>')&&
+ realArchiveCtx.__certAll.includes('<th>资料名称</th><th>附件</th><th class="certificate-size">文件大小</th><th>备注</th><th class="certificate-order">排序</th><th class="certificate-action">操作</th>')&&
  !realArchiveCtx.__certAll.includes('<th>类别</th>')&&!realArchiveCtx.__certAll.includes('id="filterKind"'),
  'Company certificate table and filters must exclude the category field');
 assert.ok(realArchiveCtx.__certAll.includes('data-certificate-download="102"')&&
@@ -462,6 +462,60 @@ assert.ok(js.includes('if(ev.target.matches(\'.certificate-checkall,.certificate
 assert.ok(js.includes("ids=certificateExportIds();")&&
  js.includes("new Set(certificateExportIds())"),
  'Both Excel and original-file export must prioritize selected certificate row IDs');
+assert.ok(realArchiveCtx.__certAll.includes('data-action="certificateBatchDelete" disabled')&&
+ realArchiveCtx.__certSelected.includes('data-action="certificateBatchDelete"')&&
+ !realArchiveCtx.__certSelected.includes('data-action="certificateBatchDelete" disabled')&&
+ realArchiveCtx.__certAll.includes('<colgroup>')&&
+ realArchiveCtx.__certAll.includes('certificate-col-action')&&
+ css.includes('.certificate-ledger .archive-tablewrap .data td:nth-child(2){min-width:0')&&
+ css.includes('table-layout:fixed'),
+ 'Certificate batch delete and fixed utility columns must render correctly');
+assert.ok(js.includes('all.indeterminate=count>0&&count<visible.length')&&
+ js.includes('syncCompanyCertificateSelectionUi();')&&
+ js.includes("case 'certificateBatchDelete':")&&
+ js.includes("'/api/archives/company/certificate/batch-delete'"),
+ 'Select-all partial state and batch deletion must call the real API');
+// Check the real selection helper with controlled fake table inputs.
+const headerCheck={checked:false,indeterminate:false};
+const rowChecks=[{value:'51',checked:false},{value:'52',checked:false}];
+const deleteAction={disabled:true};
+const selectedLabel={textContent:''};
+const certificateContent={
+ querySelector(selector){return selector==='.certificate-checkall'?headerCheck:
+  selector==='[data-action="certificateBatchDelete"]'?deleteAction:null;},
+ querySelectorAll(selector){return selector==='.certificate-rowcheck'?rowChecks:[];}
+};
+const certificateDoc={getElementById(id){return id==='content'?certificateContent:
+ id==='certificateSelectedCount'?selectedLabel:null;}};
+const selectionVm=vm.createContext({document:certificateDoc});
+const selectionStart=js.indexOf('function companyCertificateRows(){');
+const selectionEnd=js.indexOf('async function moveCompanyCertificate(',selectionStart);
+assert.ok(selectionStart>=0&&selectionEnd>selectionStart,'Company certificate selection helper missing');
+vm.runInContext(
+ "let archiveRows={certificate:[{id:51,name:'证书甲',remarks:''},{id:52,name:'证书乙',remarks:''}]};"+
+ "let filterName='';let certificateSelected=new Set(),certificateDeleteBusy=false;"+
+ "function el(id){return document.getElementById(id);}\n"+
+ js.slice(selectionStart,selectionEnd),selectionVm);
+vm.runInContext('syncCompanyCertificateSelectionUi()',selectionVm);
+assert.equal(headerCheck.checked,false);
+assert.equal(headerCheck.indeterminate,false);
+assert.equal(deleteAction.disabled,true,'No record checked must disable batch deletion');
+vm.runInContext('certificateSelected.add(51);syncCompanyCertificateSelectionUi()',selectionVm);
+assert.equal(headerCheck.checked,false);
+assert.equal(headerCheck.indeterminate,true,'Partial row selection must display indeterminate header');
+assert.equal(deleteAction.disabled,false,'One selected row enables deletion');
+assert.deepEqual(rowChecks.map(x=>x.checked),[true,false]);
+assert.equal(selectedLabel.textContent,'已选 1 条');
+vm.runInContext('certificateSelected.add(52);syncCompanyCertificateSelectionUi()',selectionVm);
+assert.equal(headerCheck.checked,true,'All records checked must show checked header');
+assert.equal(headerCheck.indeterminate,false);
+assert.deepEqual(rowChecks.map(x=>x.checked),[true,true]);
+vm.runInContext('certificateDeleteBusy=true;syncCompanyCertificateSelectionUi()',selectionVm);
+assert.equal(deleteAction.disabled,true,'In-flight deletion must prevent repeat submission');
+vm.runInContext('certificateDeleteBusy=false;certificateSelected.clear();syncCompanyCertificateSelectionUi()',selectionVm);
+assert.equal(headerCheck.checked,false);
+assert.equal(selectedLabel.textContent,'已选 0 条');
+assert.equal(deleteAction.disabled,true);
 assert.ok(realArchiveCtx.__certAll.includes('data-certificate-download="103"')&&
  realArchiveCtx.__certAll.includes('data-certificate-download="" disabled title="该资料尚无附件"'),
  'Download must be disabled for records without attachments, not cause fake download');

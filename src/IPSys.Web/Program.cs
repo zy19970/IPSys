@@ -397,6 +397,23 @@ app.MapPost("/api/archives/company/certificate/order", async (
     }
     finally{v.Gate.Release();}
 });
+// Selected company certificates are soft-deleted in one transaction.
+app.MapPost("/api/archives/company/certificate/batch-delete", async (
+    HttpContext ctx,Vault v,CompanyCertificateBatchDeleteInput input) =>
+{
+    if(!v.Allowed(ctx))return (IResult)Results.Unauthorized();
+    if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务或退出期间不可更改资料。",409);
+    await v.Gate.WaitAsync();
+    try
+    {
+        if(!v.Allowed(ctx))return Results.Unauthorized();
+        if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务或退出期间不可更改资料。",409);
+        return ArchiveStore.DeleteCompanyCertificates(v.Db,input.Ids)
+            ?Results.Ok(new {ok=true,count=input.Ids?.Length??0})
+            :Fail("所选资料已发生变化，请刷新列表后重新选择。",409);
+    }
+    finally{v.Gate.Release();}
+});
 app.MapPost("/api/archives/{workspace}/{section}", async (
     HttpContext ctx, Vault v, string workspace, string section, ArchiveInput input) =>
 {
@@ -994,6 +1011,7 @@ static IResult Fail(string message, int status = 400) =>
 record McpAccessInput(bool Enabled);
 record ExcelExportInput(string Mode,long[]? Ids);
 record CompanyCertificateOrderInput(long[]? Ids);
+record CompanyCertificateBatchDeleteInput(long[]? Ids);
 record ProjectInput(string? Name, string? ProjectType, string? ProjectNo, string? Leader,
     string? UndertakingOrg, string? StartDate, string? EndDate, string? ProjectStatus,
     string? Category, string? Remarks, string? Tags);
@@ -2140,6 +2158,46 @@ static class WebSmoke
             if((await client.GetFromJsonAsync<List<ArchiveView>>(
                 "/api/archives/company/certificate"))?.Count!=1)
                 throw new IOException("同工作区复制和软删除证书未按预期处理。");
+
+            // The batch must be atomic and visible in the recycle bin.
+            var batchUrl="/api/archives/company/certificate/batch-delete";
+            var batchAdded=new List<long>();
+            foreach(var name in new[]{"批量删除测试资质甲","批量删除测试资质乙"})
+            {
+                var add=await client.PostAsJsonAsync("/api/archives/company/certificate",
+                    new ArchiveInput(name,"","",""));
+                add.EnsureSuccessStatusCode();
+                batchAdded.Add((await add.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
+                    .GetProperty("id").GetInt64());
+            }
+            if((await client.PostAsJsonAsync(batchUrl,
+                new CompanyCertificateBatchDeleteInput(new[]{batchAdded[0],batchAdded[0]})))
+                .StatusCode!=HttpStatusCode.Conflict)
+                throw new IOException("重复编号的企业资质批量删除必须拒绝。");
+            if((await client.PostAsJsonAsync(batchUrl,
+                new CompanyCertificateBatchDeleteInput(new[]{batchAdded[0],companyCertificateId+999999})))
+                .StatusCode!=HttpStatusCode.Conflict)
+                throw new IOException("含不存在记录的批量删除必须整体拒绝。");
+            if((await client.GetFromJsonAsync<List<ArchiveView>>(
+                "/api/archives/company/certificate"))?.Count!=3)
+                throw new IOException("非法批量删除不得部分软删除企业资质。");
+            using(var unauthorizedBatch=new HttpClient{BaseAddress=new Uri(address)})
+            {
+                if((await unauthorizedBatch.PostAsJsonAsync(batchUrl,
+                    new CompanyCertificateBatchDeleteInput(batchAdded.ToArray())))
+                    .StatusCode!=HttpStatusCode.Unauthorized)
+                    throw new IOException("未授权客户端不得批量删除企业资质。");
+            }
+            (await client.PostAsJsonAsync(batchUrl,
+                new CompanyCertificateBatchDeleteInput(batchAdded.ToArray())))
+                .EnsureSuccessStatusCode();
+            if((await client.GetFromJsonAsync<List<ArchiveView>>(
+                "/api/archives/company/certificate"))?.Count!=1)
+                throw new IOException("企业资质批量删除未同步刷新活跃台账。");
+            var batchTrash=await client.GetFromJsonAsync<List<RecycleItem>>("/api/trash/company");
+            if(batchTrash is null || batchAdded.Any(id=>
+                !batchTrash.Any(item=>item.Kind=="archive"&&item.Id==id)))
+                throw new IOException("批量软删除的企业资质必须全部进入回收站。");
 
             var personalAward=await client.PostAsJsonAsync(
                 "/api/archives/personal/achievement",

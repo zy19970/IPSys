@@ -35,7 +35,7 @@ let token=sessionStorage.getItem('ip-token')||'';
 let dbName=sessionStorage.getItem('ip-db')||'';
 let mcpEnabled=false;
 let space=null,creating=false,resuming=false,localFileTaskActive=false;
-let page='dashboard',detail=null,archiveGroup=null,editingId=null,projectEditingId=null,projectRows=[],ipEditingId=null,ipRows=[],contractEditingId=null,contractProjectId=null,contractRows=[],businessFileRows=[],trashRows=[],pendingBusinessUpload=null,pendingAssocId=null,archiveRows={certificate:[],achievement:[],academic:[]},archiveEditingId=null,archiveTransferId=null,archiveTransferMode=null,liveRows=[],filterName='',filterKind='全部类型',filterState='全部状态',selected=new Set(),certificateSelected=new Set();
+let page='dashboard',detail=null,archiveGroup=null,editingId=null,projectEditingId=null,projectRows=[],ipEditingId=null,ipRows=[],contractEditingId=null,contractProjectId=null,contractRows=[],businessFileRows=[],trashRows=[],pendingBusinessUpload=null,pendingAssocId=null,archiveRows={certificate:[],achievement:[],academic:[]},archiveEditingId=null,archiveTransferId=null,archiveTransferMode=null,liveRows=[],filterName='',filterKind='全部类型',filterState='全部状态',selected=new Set(),certificateSelected=new Set(),certificateDeleteBusy=false;
 const companyNav=[['dashboard','工作台','▦'],['certificate','企业资质','▣'],['achievement','业务档案','▤'],['researchProject','公司项目','▤'],['ip','知识产权','◇'],['general','综合资料','▥']];
 // Personal archives are grouped by evidence type, not by the company management menu.
 const personalNav=[['dashboard','个人工作台','▦'],['certificate','身份与资质','▣'],['ip','知识产权与著作','◇'],['researchProject','科研与合作项目','▤'],['achievement','成果与奖励','★'],['academic','学术与社会活动','▥'],['general','其他资料','▧']];
@@ -988,6 +988,22 @@ function certificateExportIds(){
  const checked=rows.filter(r=>certificateSelected.has(r.id));
  return (checked.length?checked:rows).map(r=>r.id);
 }
+// Keep individual rows, header all/partial state, counter and batch action synchronized.
+function syncCompanyCertificateSelectionUi(){
+ const content=el('content');
+ const all=content?.querySelector('.certificate-checkall');
+ if(!all)return;
+ const visible=companyCertificateRows();
+ const count=visible.filter(row=>certificateSelected.has(row.id)).length;
+ all.checked=visible.length>0&&count===visible.length;
+ all.indeterminate=count>0&&count<visible.length;
+ for(const box of content.querySelectorAll('.certificate-rowcheck'))
+  box.checked=certificateSelected.has(Number(box.value));
+ const status=el('certificateSelectedCount');
+ if(status)status.textContent='已选 '+count+' 条';
+ const bulk=content.querySelector('[data-action="certificateBatchDelete"]');
+ if(bulk)bulk.disabled=certificateDeleteBusy||count===0;
+}
 async function moveCompanyCertificate(id,direction){
  const visible=companyCertificateRows();
  const at=visible.findIndex(r=>r.id===id);
@@ -1034,13 +1050,18 @@ function realCompanyCertificateList(){
  '<button class="btn" data-action="clearFilter">重置</button></div>'+
  '<div class="certificate-toolbar-actions">'+
  '<span class="certificate-selected-count" id="certificateSelectedCount">已选 '+checkedCount+' 条</span>'+
+ '<button type="button" class="btn certificate-batch-delete" data-action="certificateBatchDelete"'+(checkedCount?'':' disabled')+'>批量删除</button>'+
  '<button class="btn primary" data-action="archiveAdd">＋ 新建记录</button>'+
  certificateExportMenu(rows)+'</div></div>'+
- '<div class="tablewrap archive-tablewrap"><table class="data"><thead><tr>'+
+ '<div class="tablewrap archive-tablewrap"><table class="data">'+
+ '<colgroup><col class="certificate-col-check"><col class="certificate-col-sequence">'+
+ '<col class="certificate-col-name"><col class="certificate-col-file">'+
+ '<col class="certificate-col-size"><col class="certificate-col-remarks">'+
+ '<col class="certificate-col-order"><col class="certificate-col-action"></colgroup><thead><tr>'+
  '<th class="certificate-check"><input type="checkbox" class="certificate-checkall" aria-label="全选当前列表"'+
  (rows.length&&checkedCount===rows.length?' checked':'')+(rows.length?'':' disabled')+'></th>'+
  '<th class="certificate-sequence">序号</th><th>资料名称</th><th>附件</th><th class="certificate-size">文件大小</th>'+
- '<th>备注</th><th class="certificate-order">排序</th><th>操作</th></tr></thead><tbody>'+
+ '<th>备注</th><th class="certificate-order">排序</th><th class="certificate-action">操作</th></tr></thead><tbody>'+
  (rows.length?rows.map((r,index)=>{
   const original=companyCertificateAttachment(r.id);
   return '<tr><td class="certificate-check"><input type="checkbox" class="certificate-rowcheck" value="'+r.id+
@@ -1053,7 +1074,7 @@ function realCompanyCertificateList(){
    '<td class="certificate-order">'+
    '<button type="button" class="btn btn-sm" aria-label="将'+escapeHtml(r.name)+'上移" data-certificate-move="'+r.id+'" data-move-direction="-1"'+(index===0?' disabled':'')+'>↑</button>'+
    '<button type="button" class="btn btn-sm" aria-label="将'+escapeHtml(r.name)+'下移" data-certificate-move="'+r.id+'" data-move-direction="1"'+(index===rows.length-1?' disabled':'')+'>↓</button></td>'+
-   '<td><button class="btn btn-sm" data-certificate-download="'+(original?.id||'')+'"'+
+   '<td class="certificate-action"><button class="btn btn-sm" data-certificate-download="'+(original?.id||'')+'"'+
    (original?'':' disabled title="该资料尚无附件"')+'>下载</button></td></tr>';
  }).join(''):
  '<tr><td colspan="8" class="empty">暂无符合条件的资料，可点击上方新建。</td></tr>')+
@@ -1333,6 +1354,7 @@ function render(){
    page==='search'?searchPage():page==='settings'?settingsPage():trashPage();
  compactBusinessListToolbar(content);
  const searchBox=el('filterSearch');if(searchBox)searchBox.value=filterName;
+ syncCompanyCertificateSelectionUi();
 }
 async function upload(id,file,choice,workspace){
  const response=await api('/api/records/'+workspace+'/'+id+'/files',{
@@ -1541,7 +1563,22 @@ el('content').addEventListener('click',async ev=>{
   case 'archiveEdit':showArchiveForm(detail?.id);break;
   case 'archiveCopy':showArchiveTransfer(false);break;
   case 'archiveMove':showArchiveTransfer(true);break;
-  case 'archiveDelete':{
+  case 'certificateBatchDelete':{
+    if(space!=='company'||page!=='certificate'||certificateDeleteBusy)break;
+    const ids=companyCertificateRows().filter(r=>certificateSelected.has(r.id)).map(r=>r.id);
+    if(!ids.length)break;
+    if(!confirm('确定删除选中的 '+ids.length+' 条企业资质记录吗？删除后可在回收站恢复。'))break;
+    certificateDeleteBusy=true;syncCompanyCertificateSelectionUi();
+    try{
+     await api('/api/archives/company/certificate/batch-delete',{method:'POST',json:{ids}});
+     certificateSelected.clear();
+     await refresh();
+     notice('已删除 '+ids.length+' 条企业资质记录，可在回收站恢复。');
+    }catch(error){notice('批量删除失败：'+error.message,true);}
+    finally{certificateDeleteBusy=false;syncCompanyCertificateSelectionUi();}
+    break;
+   }
+   case 'archiveDelete':{
    const record=(archiveRows[page]||[]).find(r=>r.id===detail?.id);
    if(!record||!confirm('移除资料“'+record.name+'”？此操作为软删除。'))break;
    try{
@@ -1702,6 +1739,7 @@ el('content').addEventListener('change',async ev=>{
   if(all)all.checked=visible.length>0&&count===visible.length;
   const status=el('certificateSelectedCount');
   if(status)status.textContent='已选 '+count+' 条';
+   syncCompanyCertificateSelectionUi();
  }
  if(ev.target.id==='uploadInput'){
   const files=[...(ev.target.files||[])],id=detail?.id;ev.target.value='';
