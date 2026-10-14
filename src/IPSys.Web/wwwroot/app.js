@@ -2,6 +2,7 @@
 "use strict";
 const el=id=>document.getElementById(id);
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let activePreviewUrl=null;
 let token=sessionStorage.getItem('ip-token')||'';
 let dbName=sessionStorage.getItem('ip-db')||'';
 let space=null,creating=false,resuming=false,localFileTaskActive=false;
@@ -206,6 +207,7 @@ function realDetail(){
  const fileLine=f=>'<div class="fileline"><span class="fileicon">'+escapeHtml(f.name.split('.').pop().slice(0,4).toUpperCase())+'</span>'+
  '<span class="filedesc"><strong>'+escapeHtml(f.name)+'</strong><small>v'+f.version+' · '+fmtSize(f.size)+
  ' · SHA-256 '+escapeHtml(f.sha256.slice(0,16))+'…</small></span>'+
+ '<button class="btn btn-sm" data-preview-general="'+f.id+'">预览</button>'+
  '<button class="btn btn-sm" data-download="'+f.id+'">下载原件</button>'+
  '<button class="btn btn-sm" data-general-file-delete="'+f.id+'">移除</button></div>';
  return heading(r.title,title('general')+' / 记录详情 · 当前加密库真实数据',
@@ -439,6 +441,7 @@ function businessAttachmentList(kind,ownerId,section=''){
  '<span class="filedesc"><strong>'+escapeHtml(f.name)+'</strong><small>v'+f.version+
  (f.category?' · '+escapeHtml(f.category):'')+' · '+fmtSize(f.size)+
  ' · SHA-256 '+escapeHtml(f.sha256.slice(0,12))+'…</small></span>'+
+ '<button class="btn btn-sm" data-preview-business="'+f.id+'">预览</button>'+
  '<button class="btn btn-sm" data-business-download="'+f.id+'">下载</button>'+
  '<button class="btn btn-sm" data-business-delete="'+f.id+'">移除</button></div>';
  return '<div class="tabletools"><b>原件附件 '+groups.size+' 份</b><div class="actions">'+category+
@@ -474,6 +477,30 @@ async function uploadBusinessAttachment(file,meta){
  }catch(e){notice(e.message,true);}
  finally{localFileTaskActive=false;}
 }
+async function previewOriginal(file,url){
+ const extension=(file.name.split('.').pop()||'').toLowerCase();
+ const images=['png','jpg','jpeg','gif','webp','bmp'];
+ if(extension!=='pdf'&&!images.includes(extension))
+  return notice('仅 PDF 或常见图片支持直接预览，请下载原件。',true);
+ try{
+  const response=await api(url),data=await response.blob();
+  if(activePreviewUrl)URL.revokeObjectURL(activePreviewUrl);
+  activePreviewUrl=URL.createObjectURL(data);
+  const body=el('filePreviewBody');body.replaceChildren();
+  const view=document.createElement(extension==='pdf'?'iframe':'img');
+  view.src=activePreviewUrl;
+  if(extension==='pdf')view.title='PDF 原件预览';
+  else view.alt=file.name;
+  body.append(view);
+  el('filePreviewTitle').textContent=file.name;
+  el('filePreviewDialog').showModal();
+ }catch(e){notice('无法预览：'+e.message,true);}
+}
+el('filePreviewClose').onclick=()=>el('filePreviewDialog').close();
+el('filePreviewDialog').addEventListener('close',()=>{
+ el('filePreviewBody').replaceChildren();
+ if(activePreviewUrl){URL.revokeObjectURL(activePreviewUrl);activePreviewUrl=null;}
+});
 async function downloadBusinessAttachment(fileId){
  try{
   const file=businessFileRows.find(f=>f.id===fileId);if(!file)return;
@@ -871,6 +898,17 @@ el('content').addEventListener('click',async ev=>{
  }
  if(target.dataset.businessDownload){
   await downloadBusinessAttachment(Number(target.dataset.businessDownload));return;
+ }
+ if(target.dataset.previewBusiness){
+  const file=businessFileRows.find(f=>f.id===Number(target.dataset.previewBusiness));
+  if(file)await previewOriginal(file,'/api/business-files/'+space+'/download/'+file.id);
+  return;
+ }
+ if(target.dataset.previewGeneral){
+  const row=liveRows.find(x=>x.id===detail?.id);
+  const file=row?.files.find(f=>f.id===Number(target.dataset.previewGeneral));
+  if(file)await previewOriginal(file,'/api/files/'+space+'/'+file.id);
+  return;
  }
  if(target.dataset.generalFileDelete){
   const record=liveRows.find(r=>r.id===detail?.id);
