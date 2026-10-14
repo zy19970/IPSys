@@ -15,6 +15,7 @@ var smoke = args.Contains("--smoke");
 byte[] html = EmbeddedWebAssets.Read("index.html");
 byte[] css = EmbeddedWebAssets.Read("style.css");
 byte[] javascript = EmbeddedWebAssets.Read("app.js");
+byte[] exportScript = EmbeddedWebAssets.Read("export.js");
 // The approved evolving UI draft lives in demo/ui-preview.html and is embedded as-is.
 byte[] previewHtml = EmbeddedWebAssets.Read("ui-preview.html");
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
@@ -54,6 +55,7 @@ app.MapGet("/", () => Results.Bytes(html, contentType: "text/html; charset=utf-8
 app.MapGet("/index.html", () => Results.Bytes(html, contentType: "text/html; charset=utf-8"));
 app.MapGet("/style.css", () => Results.Bytes(css, contentType: "text/css; charset=utf-8"));
 app.MapGet("/app.js", () => Results.Bytes(javascript, contentType: "text/javascript; charset=utf-8"));
+app.MapGet("/export.js", () => Results.Bytes(exportScript, contentType: "text/javascript; charset=utf-8"));
 // Isolate the single-file mock UI in an opaque-origin CSP sandbox. It needs
 // inline handlers/styles, but must not acquire application origin or network access.
 app.MapGet("/ui-preview", (HttpContext ctx) =>
