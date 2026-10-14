@@ -462,9 +462,10 @@ assert.ok(js.includes('if(ev.target.matches(\'.certificate-checkall,.certificate
 assert.ok(js.includes("ids=certificateExportIds();")&&
  js.includes("new Set(certificateExportIds())"),
  'Both Excel and original-file export must prioritize selected certificate row IDs');
-assert.ok(realArchiveCtx.__certAll.includes('data-action="certificateBatchDelete" disabled')&&
+assert.ok(realArchiveCtx.__certAll.includes('data-action="certificateBatchDelete" disabled hidden')&&
  realArchiveCtx.__certSelected.includes('data-action="certificateBatchDelete"')&&
  !realArchiveCtx.__certSelected.includes('data-action="certificateBatchDelete" disabled')&&
+ !realArchiveCtx.__certSelected.includes('data-action="certificateBatchDelete" hidden')&&
  realArchiveCtx.__certAll.includes('<colgroup>')&&
  realArchiveCtx.__certAll.includes('certificate-col-action')&&
  css.includes('.certificate-ledger .archive-tablewrap .data td:nth-child(2){min-width:0')&&
@@ -478,7 +479,7 @@ assert.ok(js.includes('all.indeterminate=count>0&&count<visible.length')&&
 // Check the real selection helper with controlled fake table inputs.
 const headerCheck={checked:false,indeterminate:false};
 const rowChecks=[{value:'51',checked:false},{value:'52',checked:false}];
-const deleteAction={disabled:true};
+const deleteAction={disabled:true,hidden:true};
 const selectedLabel={textContent:''};
 const certificateContent={
  querySelector(selector){return selector==='.certificate-checkall'?headerCheck:
@@ -500,10 +501,12 @@ vm.runInContext('syncCompanyCertificateSelectionUi()',selectionVm);
 assert.equal(headerCheck.checked,false);
 assert.equal(headerCheck.indeterminate,false);
 assert.equal(deleteAction.disabled,true,'No record checked must disable batch deletion');
+assert.equal(deleteAction.hidden,true,'No selection must hide batch deletion');
 vm.runInContext('certificateSelected.add(51);syncCompanyCertificateSelectionUi()',selectionVm);
 assert.equal(headerCheck.checked,false);
 assert.equal(headerCheck.indeterminate,true,'Partial row selection must display indeterminate header');
 assert.equal(deleteAction.disabled,false,'One selected row enables deletion');
+assert.equal(deleteAction.hidden,false,'Selecting a row must reveal batch deletion');
 assert.deepEqual(rowChecks.map(x=>x.checked),[true,false]);
 assert.equal(selectedLabel.textContent,'已选 1 条');
 vm.runInContext('certificateSelected.add(52);syncCompanyCertificateSelectionUi()',selectionVm);
@@ -512,10 +515,12 @@ assert.equal(headerCheck.indeterminate,false);
 assert.deepEqual(rowChecks.map(x=>x.checked),[true,true]);
 vm.runInContext('certificateDeleteBusy=true;syncCompanyCertificateSelectionUi()',selectionVm);
 assert.equal(deleteAction.disabled,true,'In-flight deletion must prevent repeat submission');
+assert.equal(deleteAction.hidden,false,'In-flight deletion remains visible but disabled');
 vm.runInContext('certificateDeleteBusy=false;certificateSelected.clear();syncCompanyCertificateSelectionUi()',selectionVm);
 assert.equal(headerCheck.checked,false);
 assert.equal(selectedLabel.textContent,'已选 0 条');
 assert.equal(deleteAction.disabled,true);
+assert.equal(deleteAction.hidden,true,'Clearing selection must hide batch deletion again');
 assert.ok(realArchiveCtx.__certAll.includes('data-certificate-download="103"')&&
  realArchiveCtx.__certAll.includes('data-certificate-download="" disabled title="该资料尚无附件"'),
  'Download must be disabled for records without attachments, not cause fake download');
