@@ -546,27 +546,76 @@ function businessAttachmentList(kind,ownerId,section=''){
  '<p class="hint">暂无附件，可上传原始文件。</p>')+
  (files.length||(kind==='project'&&contractRows.some(c=>c.projectId===ownerId&&businessFiles('contract',c.id).length))?exportButtons():'');
 }
-async function uploadBusinessAttachment(file,meta){
- if(file.size>64*1024*1024)return notice('单文件不得超过 64 MiB。',true);
- if(localFileTaskActive)return notice('当前已有文件任务，请等待完成。',true);
- const workspace=space;
- localFileTaskActive=true;notice('正在将原件写入加密数据库…');
+function chooseVersionAction(file,matches){
+ if(!matches.length)return Promise.resolve({mode:'new',groupId:''});
+ return new Promise(resolve=>{
+  const dialog=document.createElement('dialog');
+  dialog.className='input-dialog upload-conflict-dialog';
+  dialog.setAttribute('aria-label','同名原件版本处理');
+  dialog.innerHTML='<h3>发现同名原件</h3>'+
+   '<p class="hint">“'+escapeHtml(file.name)+'”已归档。请选择：</p>'+
+   '<div class="upload-conflict-actions">'+matches.map((f,i)=>
+     '<button type="button" class="btn" data-upload-choice="'+i+'">更新为新版本'+
+     (matches.length>1?'（原件 '+(i+1)+'）':'')+
+     ' · 当前 v'+f.version+' · '+fmtSize(f.size)+'</button>').join('')+
+   '<button type="button" class="btn primary" data-upload-choice="new">作为独立原件</button>'+
+   '<button type="button" class="btn" data-upload-choice="skip">跳过此文件</button></div>';
+  document.body.append(dialog);
+  let done=false;
+  const close=value=>{
+   if(done)return;done=true;
+   if(dialog.open)dialog.close();
+   dialog.remove();resolve(value);
+  };
+  dialog.addEventListener('click',e=>{
+   const choice=e.target.closest('[data-upload-choice]')?.dataset.uploadChoice;
+   if(choice===undefined)return;
+   if(choice==='skip')close(null);
+   else if(choice==='new')close({mode:'new',groupId:''});
+   else {
+    const match=matches[Number(choice)];
+    if(match)close({mode:'update',groupId:match.groupId});
+   }
+  });
+  dialog.addEventListener('cancel',e=>{e.preventDefault();close(null);});
+  dialog.showModal();
+ });
+}
+async function uploadBusinessAttachment(file,meta,workspace){
+ const url='/api/business-files/'+workspace+'/'+meta.kind+'/'+meta.ownerId+
+  (meta.kind==='archive'?'?section='+encodeURIComponent(meta.section):'');
+ const response=await api(url,{method:'POST',headers:{
+  'Content-Type':'application/octet-stream',
+  'X-File-Name':encodeURIComponent(file.name),
+  'X-Material-Category':encodeURIComponent(meta.category||''),
+  'X-Upload-Mode':meta.mode||'new',
+  'X-File-Group':meta.groupId||'',
+  'X-Duplicate-Mode':meta.duplicateMode||'independent'
+ },body:file});
+ return response.json();
+}
+async function uploadBusinessBatch(files,meta){
+ if(localFileTaskActive)return notice('已有文件任务，请等待完成。',true);
+ const workspace=space,errors=[];let completed=0,skipped=0;
+ localFileTaskActive=true;
  try{
-  const url='/api/business-files/'+workspace+'/'+meta.kind+'/'+meta.ownerId+
-   (meta.kind==='archive'?'?section='+encodeURIComponent(meta.section):'');
-  const response=await api(url,{method:'POST',headers:{
-   'Content-Type':'application/octet-stream',
-   'X-File-Name':encodeURIComponent(file.name),
-   'X-Material-Category':encodeURIComponent(meta.category||''),
-   'X-Upload-Mode':meta.mode||'new',
-   'X-File-Group':meta.groupId||'',
-   'X-Duplicate-Mode':meta.duplicateMode||'independent'
-  },body:file});
-  const saved=await response.json();
-  await refresh();
-  notice('附件已归档（v'+saved.version+'）'+(saved.reused?'，复用了同工作区已有字节':'')+'，SHA-256 '+saved.sha256.slice(0,16)+'…');
- }catch(e){notice(e.message,true);}
- finally{localFileTaskActive=false;}
+  for(const file of files){
+   if(space!==workspace){errors.push('工作区已切换，上传终止');break;}
+   if(file.size>64*1024*1024){errors.push(file.name+'：超过 64 MiB');continue;}
+   const matches=[...new Map(businessFiles(meta.kind,meta.ownerId,meta.section)
+    .filter(f=>f.name===file.name&&f.category===(meta.category||''))
+    .map(f=>[f.groupId||'legacy-'+f.id,f])).values()];
+   const choice=await chooseVersionAction(file,matches);
+   if(!choice){skipped++;continue;}
+   notice('上传中：'+file.name+'（'+(completed+skipped+errors.length+1)+'/'+files.length+'）');
+   try{
+    await uploadBusinessAttachment(file,{...meta,...choice},workspace);
+    completed++;await refresh();
+   }catch(err){errors.push(file.name+'：'+err.message);}
+  }
+ }finally{localFileTaskActive=false;}
+ notice('上传完成：成功 '+completed+'，失败 '+errors.length+'，跳过 '+skipped+
+  (errors.length?'；'+errors.join('；'):''),errors.length>0);
 }
 async function previewOriginal(file,url){
  const extension=(file.name.split('.').pop()||'').toLowerCase();
@@ -929,36 +978,38 @@ function render(){
    page==='search'?searchPage():page==='settings'?settingsPage():trashPage();
  const searchBox=el('filterSearch');if(searchBox)searchBox.value=filterName;
 }
-async function upload(id,file){
- if(file.size>64*1024*1024)return notice('本阶段单文件不能超过 64 MiB',true);
- if(localFileTaskActive)return notice('当前已有文件上传任务，请等待完成',true);
- const record=liveRows.find(r=>r.id===id);
- if(!record)return notice('资料已失效，请刷新页面。',true);
- const matches=[...new Map(record.files.filter(f=>f.name===file.name).map(f=>[f.groupId||'legacy-'+f.id,f])).values()];
- let mode='new',groupId='';
- if(matches.length){
-  const groupsInfo=matches.map((f,i)=>(i+1)+'. v'+f.version+' · '+fmtSize(f.size)+
-   ' · SHA-256 '+f.sha256.slice(0,12)).join('\n');
-  const choice=prompt('已有 '+matches.length+' 组同名原件“'+file.name+'”：\n'+groupsInfo+
-   '\n输入 1-'+matches.length+' 更新对应原件；N 独立归档；0 取消。','1');
-  if(choice===null||choice.trim()==='0')return;
-  if(choice.trim().toUpperCase()==='N')mode='new';
-  else{
-   const index=Number(choice.trim());
-   if(!Number.isInteger(index)||index<1||index>matches.length)
-    return notice('选择的原件序号无效。',true);
-   mode='update';groupId=matches[index-1].groupId;
-  }
- }
- notice('正在向加密资料库写入文件…');localFileTaskActive=true;
- const destSpace=space;
+async function upload(id,file,choice,workspace){
+ const response=await api('/api/records/'+workspace+'/'+id+'/files',{
+  method:'POST',headers:{
+   'Content-Type':'application/octet-stream',
+   'X-File-Name':encodeURIComponent(file.name),
+   'X-Upload-Mode':choice.mode,'X-File-Group':choice.groupId||''
+  },body:file});
+ return response.json();
+}
+async function uploadGeneralBatch(id,files){
+ if(localFileTaskActive)return notice('已有文件任务，请等待完成。',true);
+ const workspace=space,errors=[];let completed=0,skipped=0;
+ localFileTaskActive=true;
  try{
-  const result=await(await api('/api/records/'+destSpace+'/'+id+'/files',{
-    method:'POST',headers:{'Content-Type':'application/octet-stream',
-      'X-File-Name':encodeURIComponent(file.name),'X-Upload-Mode':mode,'X-File-Group':groupId},
-    body:file})).json();
-  notice('成功归档 v'+result.version+'，SHA-256 '+result.sha256.slice(0,16)+'…');await refresh();
- }catch(e){notice(e.message,true);}finally{localFileTaskActive=false;}
+  for(const file of files){
+   if(space!==workspace){errors.push('工作区已切换，上传终止');break;}
+   if(file.size>64*1024*1024){errors.push(file.name+'：超过 64 MiB');continue;}
+   const record=liveRows.find(r=>r.id===id);
+   if(!record){errors.push('资料已不存在');break;}
+   const matches=[...new Map(record.files.filter(f=>f.name===file.name)
+    .map(f=>[f.groupId||'legacy-'+f.id,f])).values()];
+   const choice=await chooseVersionAction(file,matches);
+   if(!choice){skipped++;continue;}
+   notice('上传中：'+file.name+'（'+(completed+skipped+errors.length+1)+'/'+files.length+'）');
+   try{
+    await upload(id,file,choice,workspace);
+    completed++;await refresh();
+   }catch(err){errors.push(file.name+'：'+err.message);}
+  }
+ }finally{localFileTaskActive=false;}
+ notice('上传完成：成功 '+completed+'，失败 '+errors.length+'，跳过 '+skipped+
+  (errors.length?'；'+errors.join('；'):''),errors.length>0);
 }
 async function download(file){
  try{const result=await api(`/api/files/${space}/${file.id}`);const blob=await result.blob();const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=file.name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);notice('已开始下载 '+file.name);
@@ -1204,35 +1255,16 @@ el('businessAssocForm').onsubmit=async event=>{
  }catch(e){notice(e.message,true);}
  finally{el('businessAssocSave').disabled=false;}
 };
+el('businessFileInput').multiple=true;
 el('businessFileInput').onchange=async event=>{
- const input=event.target;
- const file=input.files?.[0],meta=pendingBusinessUpload;
+ const input=event.target,files=[...(input.files||[])],meta=pendingBusinessUpload;
  pendingBusinessUpload=null;input.value='';
- if(file&&meta){
- const matches=[...new Map(businessFiles(meta.kind,meta.ownerId,meta.section)
-  .filter(f=>f.name===file.name&&f.category===(meta.category||''))
-  .map(f=>[f.groupId||'legacy-'+f.id,f])).values()];
- let mode=matches.length?'update':'new',groupId='';
- if(matches.length){
-  const groupsInfo=matches.map((f,i)=>(i+1)+'. v'+f.version+' · '+fmtSize(f.size)+
-   ' · SHA-256 '+f.sha256.slice(0,12)).join('\n');
-  const choice=prompt('已有 '+matches.length+' 组同名原件“'+file.name+'”：\n'+groupsInfo+
-   '\n输入 1-'+matches.length+' 更新指定原件及其共享引用；N 独立归档；0 取消。','1');
-  if(choice===null||choice.trim()==='0')return;
-  if(choice.trim().toUpperCase()==='N')mode='new';
-  else{
-   const which=Number(choice.trim());
-   if(!Number.isInteger(which)||which<1||which>matches.length)
-    return notice('请选择有效的同名原件序号或 N。',true);
-   groupId=matches[which-1].groupId;
-  }
- }
- await uploadBusinessAttachment(file,{...meta,mode,groupId});
-}
+ if(files.length&&meta)await uploadBusinessBatch(files,meta);
 };
 el('content').addEventListener('change',async ev=>{
  if(ev.target.id==='uploadInput'){
-  const files=ev.target.files;if(files?.length&&detail?.kind==='general')await upload(detail.id,files[0]);ev.target.value='';
+  const files=[...(ev.target.files||[])],id=detail?.id;ev.target.value='';
+  if(files.length&&detail?.kind==='general')await uploadGeneralBatch(id,files);
  }
  if(ev.target.id==='trashAll')
   document.querySelectorAll('.trashcheck').forEach(c=>c.checked=ev.target.checked);
