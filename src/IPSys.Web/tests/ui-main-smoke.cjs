@@ -220,7 +220,7 @@ assert.ok(js.includes("projectRows=projects;ipRows=ips;contractRows=contracts;")
 const projectCtx=vm.createContext({sessionStorage:{getItem:()=>null},document:exportDocument});
 const projector=js.slice(js.indexOf('function projectViewRows('),js.indexOf('function archiveCard(',js.indexOf('function projectViewRows(')));
 vm.runInContext(preamble+
- '\nfunction heading(t){return t;}\nfunction infoRow(n,v){return n+v;}\nfunction section(n,v){return n+v;}\nfunction businessFileCount(){return 0;}\nfunction excelExportButton(){return "excelExport";}\nfunction pill(v){return "<span class="+String.fromCharCode(34)+"pill"+String.fromCharCode(34)+">"+escapeHtml(v)+"</span>";}\n'+projector+
+ '\nfunction heading(t,s,actions){return t+(actions||"");}\nfunction infoRow(n,v){return n+v;}\nfunction section(n,v){return n+v;}\nfunction businessFileCount(){return 0;}\nfunction excelExportButton(){return "excelExport";}\nfunction pill(v){return "<span class="+String.fromCharCode(34)+"pill"+String.fromCharCode(34)+">"+escapeHtml(v)+"</span>";}\n'+projector+
  "\nspace='company';projectRows=[{id:12,name:'真实项目',projectType:'科研项目',projectNo:'X-1',startDate:'2026-01-02',projectStatus:'进行中',leader:'负责人甲'}];globalThis.__project=projectList('researchProject');",projectCtx);
 assert.ok(projectCtx.__project.includes('data-project-id="12"'),'Real project ledger must open persisted IDs');
 assert.ok(projectCtx.__project.includes('data-nav="contract"')&&projectCtx.__project.includes('查看全部合同'),
