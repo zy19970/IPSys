@@ -511,7 +511,7 @@ function businessAttachmentList(kind,ownerId,section=''){
    (g.length>1?'<details><summary>查看历史版本（'+(g.length-1)+'）</summary>'+
     g.slice(1).map(line).join('')+'</details>':'')+'</div>';}).join('')||
  '<p class="hint">暂无附件，可上传原始文件。</p>')+
- (files.length?exportButtons():'');
+ (files.length||(kind==='project'&&contractRows.some(c=>c.projectId===ownerId&&businessFiles('contract',c.id).length))?exportButtons():'');
 }
 async function uploadBusinessAttachment(file,meta){
  if(file.size>64*1024*1024)return notice('单文件不得超过 64 MiB。',true);
