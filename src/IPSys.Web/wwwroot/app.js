@@ -207,10 +207,10 @@ function realDetail(){
  if(!r)return heading('记录详情','记录不存在或当前工作区无权访问')+'<button class="btn" data-nav="general">返回台账</button>';
  const groups=new Map();
  for(const f of r.files){const key=f.groupId||f.name;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(f);}
- const fileLine=(f,showVersion)=>'<div class="fileline"><span class="fileicon">'+escapeHtml(f.name.split('.').pop().slice(0,4).toUpperCase())+'</span>'+
+ const fileLine=(f,showVersion,latest=false)=>'<div class="fileline"><span class="fileicon">'+escapeHtml(f.name.split('.').pop().slice(0,4).toUpperCase())+'</span>'+
  '<span class="filedesc"><strong>'+escapeHtml(f.name)+'</strong><small>'+(showVersion?'v'+f.version+' · ':'')+fmtSize(f.size)+
  ' · SHA-256 '+escapeHtml(f.sha256.slice(0,16))+'…</small></span>'+
- exportCheck(f,'general')+
+ exportCheck(f,'general',latest)+
  '<button class="btn btn-sm" data-preview-general="'+f.id+'">预览</button>'+
  '<button class="btn btn-sm" data-download="'+f.id+'">下载原件</button>'+
  '<button class="btn btn-sm" data-general-file-delete="'+f.id+'">移除</button></div>';
@@ -226,7 +226,7 @@ function realDetail(){
  '<button class="btn primary" data-action="upload">＋ 上传原件</button></div><div class="detailbody">'+
  '<input type="file" id="uploadInput" multiple hidden><p class="hint">支持更新指定同名原件或单独归档新原件，保留可展开的历史版本。单文件上限 64 MiB。</p>'+
  ([...groups.values()].map(g=>{g.sort((a,b)=>b.version-a.version||b.id-a.id);
- return '<div class="business-file-group">'+fileLine(g[0],g.length>1)+
+ return '<div class="business-file-group">'+fileLine(g[0],g.length>1,true)+
  (g.length>1?'<details><summary>查看历史版本（'+(g.length-1)+'）</summary>'+
  g.slice(1).map(f=>fileLine(f,true)).join('')+'</details>':'')+'</div>';}).join('')||
  '<div class="empty">暂无附件，点击“上传原件”开始归档。</div>')+
@@ -427,13 +427,15 @@ function businessFiles(kind,ownerId,section=''){
  return businessFileRows.filter(f=>f.kind===kind&&f.ownerId===ownerId&&
   (kind!=='archive'||f.section===section));
 }
-function exportCheck(file,source='business'){
+function exportCheck(file,source='business',latest=false){
  return '<label class="export-check"><input type="checkbox" class="export-filecheck"'+
-  ' data-export-source="'+source+'" data-export-id="'+file.id+'"> 导出此版</label>';
+  ' data-export-source="'+source+'" data-export-id="'+file.id+'"'+
+  (latest?' data-export-latest="1"':'')+'> 导出此版</label>';
 }
 function exportButtons(){
  return '<div class="export-tools"><span>只导出手动勾选的原件（含可单独勾选的历史版本）</span>'+
- '<div class="actions"><button class="btn" data-action="exportFolder">导出至文件夹</button>'+
+ '<div class="actions"><label class="export-check"><input type="checkbox" class="export-checkall"> 全选附件</label>'+ 
+ '<button class="btn" data-action="exportFolder">导出至文件夹</button>'+
  '<button class="btn primary" data-action="exportZip">导出 ZIP</button></div></div>';
 }
 function moduleExportPanel(records,source,section=''){
@@ -444,9 +446,9 @@ function moduleExportPanel(records,source,section=''){
   total+=groups.size;
   return [...groups.values()].map(group=>{
    group.sort((a,b)=>b.version-a.version||b.id-a.id);
-   const entry=(f,showVersion)=>'<div class="export-record-line">'+exportCheck(f,origin)+
+   const entry=(f,showVersion,latest=false)=>'<div class="export-record-line">'+exportCheck(f,origin,latest)+
     '<span>'+escapeHtml(f.name)+(showVersion?' · v'+f.version:'')+'</span></div>';
-   return entry(group[0],group.length>1)+(group.length>1?'<details><summary>历史版本（'+
+   return entry(group[0],group.length>1,true)+(group.length>1?'<details><summary>历史版本（'+
     (group.length-1)+'）</summary>'+group.slice(1).map(f=>entry(f,true)).join('')+'</details>':'');
   }).join('');
  }
@@ -461,7 +463,7 @@ function moduleExportPanel(records,source,section=''){
   if(!files.length&&!linked)continue;
   const label=source==='general'?record.title:
    source==='ip'?record.data.name:record.name;
-  blocks.push('<div class="contract-export-group"><strong>'+escapeHtml(label)+'</strong>'+
+  blocks.push('<div class="contract-export-group module-export-record" data-export-record-kind="'+source+'" data-export-record-id="'+record.id+'"><strong>'+escapeHtml(label)+'</strong>'+
    fileLines(files,source==='general'?'general':'business')+linked+'</div>');
  }
  if(!blocks.length)return '';
@@ -503,9 +505,9 @@ function projectContractExport(projectId){
   return '<div class="contract-export-group"><strong>'+escapeHtml(c.name)+'</strong>'+
    [...groups.values()].map(group=>{
     group.sort((a,b)=>b.version-a.version||b.id-a.id);
-    const one=(f,showVersion)=>'<div class="export-record-line">'+exportCheck(f)+
+    const one=(f,showVersion,latest=false)=>'<div class="export-record-line">'+exportCheck(f,'business',latest)+
       '<span>'+escapeHtml(f.name)+(showVersion?' · v'+f.version:'')+'</span></div>';
-    return one(group[0],group.length>1)+(group.length>1?'<details><summary>历史版本</summary>'+
+    return one(group[0],group.length>1,true)+(group.length>1?'<details><summary>历史版本</summary>'+
       group.slice(1).map(f=>one(f,true)).join('')+'</details>':'');
    }).join('')+'</div>';
  }).filter(Boolean);
@@ -526,12 +528,12 @@ function businessAttachmentList(kind,ownerId,section=''){
  const category=kind==='ip'?'<label for="businessMaterialCategory">附件材料类别</label>'+
  '<select id="businessMaterialCategory">'+
  ['申请材料','通知文件','证书文件','其他材料'].map(x=>'<option>'+x+'</option>').join('')+'</select>':'';
- const line=(f,showVersion)=>'<div class="fileline"><span class="fileicon">'+
+ const line=(f,showVersion,latest=false)=>'<div class="fileline"><span class="fileicon">'+
  escapeHtml(f.name.split('.').pop().slice(0,4).toUpperCase())+'</span>'+
  '<span class="filedesc"><strong>'+escapeHtml(f.name)+'</strong><small>'+(showVersion?'v'+f.version:'')+
  (f.category?' · '+escapeHtml(f.category):'')+' · '+fmtSize(f.size)+
  ' · SHA-256 '+escapeHtml(f.sha256.slice(0,12))+'…</small></span>'+
- exportCheck(f)+'<button class="btn btn-sm" data-preview-business="'+f.id+'">预览</button>'+
+ exportCheck(f,'business',latest)+'<button class="btn btn-sm" data-preview-business="'+f.id+'">预览</button>'+
  '<button class="btn btn-sm" data-business-download="'+f.id+'">下载</button>'+
  '<button class="btn btn-sm" data-business-delete="'+f.id+'">移除</button></div>';
  return '<div class="tabletools"><b>原件附件 '+groups.size+' 份</b><div class="actions">'+category+
@@ -539,7 +541,7 @@ function businessAttachmentList(kind,ownerId,section=''){
  '<button class="btn primary" data-action="businessUpload">＋ 上传原件</button></div></div>'+
  '<p class="hint">同名原件可选择更新已有版本链，或作为独立新文件归档；同工作区共享引用自动显示新版本。单文件上限 64 MiB。</p>'+
  ([...groups.values()].map(g=>{g.sort((a,b)=>b.version-a.version||b.id-a.id);
-  return '<div class="business-file-group">'+line(g[0],g.length>1)+
+  return '<div class="business-file-group">'+line(g[0],g.length>1,true)+
    '<button class="btn btn-sm" data-business-associate="'+g[0].id+'">复制／移动关联</button>'+
    (g.length>1?'<details><summary>查看历史版本（'+(g.length-1)+'）</summary>'+
     g.slice(1).map(f=>line(f,true)).join('')+'</details>':'')+'</div>';}).join('')||
@@ -1102,6 +1104,27 @@ el('content').addEventListener('click',async ev=>{
    const chosen=[...document.querySelectorAll('.trashcheck:checked')].map(x=>Number(x.value));
    await changeTrash(target.dataset.action==='trashRestoreSelected'?'restore':'purge',chosen);break;
   }
+  case 'ledgerSelectAttachments':{
+   const checked=[...document.querySelectorAll('.ledger-export-row:checked')];
+   if(!checked.length){notice('请先勾选项目或知识产权记录。',true);break;}
+   const panel=el('content').querySelector('.module-export');
+   if(!panel){notice('所选记录暂无可导出的附件。',true);break;}
+   panel.open=true;
+   panel.querySelectorAll('.export-filecheck').forEach(box=>box.checked=false);
+   const selectedIds=new Set(checked.map(box=>box.value));
+   let count=0;
+   panel.querySelectorAll('.module-export-record').forEach(record=>{
+    if(!selectedIds.has(record.dataset.exportRecordId))return;
+    record.querySelectorAll(':scope > .export-record-line .export-filecheck[data-export-latest="1"]')
+      .forEach(box=>{box.checked=true;count++;});
+   });
+   const checkAll=panel.querySelector('.export-checkall');
+   if(checkAll)checkAll.checked=false;
+   panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+   notice('已选择 '+checked.length+' 条记录的 '+count+
+    ' 份最新版原件；合同附件和历史版本可按需补选。');
+   break;
+  }
   case 'exportFolder':
   case 'exportZip':{
    const originals=selectedOriginals();
@@ -1265,6 +1288,27 @@ el('content').addEventListener('change',async ev=>{
  if(ev.target.id==='uploadInput'){
   const files=[...(ev.target.files||[])],id=detail?.id;ev.target.value='';
   if(files.length&&detail?.kind==='general')await uploadGeneralBatch(id,files);
+ }
+ if(ev.target.matches('.export-checkall')){
+  const scope=detail?.kind==='project'?el('content'):
+   ev.target.closest('.module-export')||ev.target.closest('.detailsection')||el('content');
+  const files=scope.querySelectorAll('.export-filecheck');
+  files.forEach(box=>box.checked=ev.target.checked&&box.dataset.exportLatest==='1');
+ }
+ if(ev.target.matches('.export-filecheck')){
+  const scope=ev.target.closest('.module-export')||ev.target.closest('.detailsection');
+  const all=scope?.querySelector('.export-checkall');
+  if(all)all.checked=[...scope.querySelectorAll('.export-filecheck[data-export-latest="1"]')]
+    .every(box=>box.checked);
+ }
+ if(ev.target.matches('.ledger-export-all')){
+  el('content').querySelectorAll('.ledger-export-row').forEach(box=>box.checked=ev.target.checked);
+ }
+ if(ev.target.matches('.ledger-export-row')||ev.target.matches('.ledger-export-all')){
+  const rows=[...el('content').querySelectorAll('.ledger-export-row')];
+  const checked=rows.filter(box=>box.checked);
+  const counter=el('ledgerExportCount');if(counter)counter.textContent='已选 '+checked.length+' 条';
+  const all=el('ledgerExportAll');if(all)all.checked=rows.length>0&&checked.length===rows.length;
  }
  if(ev.target.id==='trashAll')
   document.querySelectorAll('.trashcheck').forEach(c=>c.checked=ev.target.checked);
