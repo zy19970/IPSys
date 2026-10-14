@@ -833,7 +833,7 @@ function projectDetail(){
  '<button class="btn" data-action="projectDelete">删除</button>'+
  '<button class="btn" data-action="projectExportFolder">导出文件夹</button>'+
  '<button class="btn primary" data-action="projectExportZip">导出 ZIP</button>')+
- section('项目基本信息','<div class="infogrid">'+
+ section('项目基本信息','<div class="infogrid project-info-grid">'+
  infoRow('项目名称',p.name)+infoRow('项目类别',p.projectType)+infoRow('项目编号',p.projectNo)+
  infoRow('负责人',p.leader)+infoRow('承担单位',p.undertakingOrg)+
  infoRow('项目状态',p.projectStatus)+infoRow('开始日期',p.startDate)+
@@ -1123,8 +1123,8 @@ function searchPage(){
   if(!hits.length)continue;
   out+='<section class="white searchgroup"><h2 class="sectiontitle">'+escapeHtml(label)+' <small class="muted">'+hits.length+' 条</small></h2>'+
    hits.map(({hit,index})=>'<div class="minirow search-hit"><button class="link" data-search-index="'+index+'">'+
-    escapeHtml(hit.title)+'</button><span class="muted">'+escapeHtml(hit.description||'')+
-    '</span><span class="muted">进入详情 →</span></div>').join('')+'</section>';
+    escapeHtml(hit.title)+'</button><span class="muted search-hit-description">'+escapeHtml(hit.description||'')+
+    '</span></div>').join('')+'</section>';
  }
  if(globalTruncated)out+='<p class="hint">每类最多显示 60 条，请缩小关键词。</p>';
  return out;

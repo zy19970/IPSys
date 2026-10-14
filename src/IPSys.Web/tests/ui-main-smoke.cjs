@@ -220,6 +220,16 @@ assert.ok(projectCtx.__project.includes('data-action="projectExportFolder"')&&
 assert.ok(!projectCtx.__project.includes('module-export')&&!projectCtx.__project.includes('选择记录附件'),
  'Project ledger must not require a second file-picking panel');
 assert.ok(!projectCtx.__project.includes('负责人甲'),'Project leader must not appear in the ledger');
+assert.ok(js.includes("section('项目基本信息','<div class=\"infogrid project-info-grid\">'"),
+ 'Real project detail must mount the scoped dense information grid');
+assert.ok(css.includes('.project-info-grid{grid-template-columns:repeat(auto-fit,minmax(185px,1fr))')&&
+ css.includes('.project-info-grid .info strong{font-size:15px')&&
+ css.includes('.project-info-grid .info:first-child,.project-info-grid .info:last-child{grid-column:span 2}'),
+ 'Project field cards should be compact, readable and let longer names/remarks span cells');
+assert.ok(css.includes('@media(max-width:420px)')&&
+ css.includes('.project-info-grid{grid-template-columns:1fr}'),
+ 'Project details must keep usable layout at narrow widths');
+
 assert.ok(!projectCtx.__project.includes('仅演示'),'Real project page must not be marked mock');
 
 // Intellectual property now uses a persisted workspace-scoped ledger and a full M0 form.

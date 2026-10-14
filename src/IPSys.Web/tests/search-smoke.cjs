@@ -45,6 +45,13 @@ vm.runInContext(source,ctx);
  assert.ok(html.includes('测试&lt;项目&gt;')&&!html.includes('测试<项目>'),
   'Untrusted record titles must be escaped');
  assert.ok(html.includes('data-search-index="1"'),'Attachments must have own search link');
+ assert.ok(!html.includes('进入详情 →'),
+  'Search rows must not repeat a non-clickable detail-entry label after the linked title');
+ assert.equal((html.match(/data-search-index="/g)||[]).length,2,
+  'Each result keeps one clickable title that opens the original business detail');
+ assert.ok(html.includes('search-hit-description')&&html.includes('科研项目'),
+  'Result description remains visible without a redundant action column');
+
  vm.runInContext('openSearchHit(1)',ctx);
  assert.equal(ctx.page,'researchProject','Attachment must resolve owning real project');
  assert.equal(ctx.detail.kind,'project');assert.equal(ctx.detail.id,1);

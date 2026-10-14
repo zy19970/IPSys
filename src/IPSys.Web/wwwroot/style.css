@@ -152,6 +152,25 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 .search-hit{display:flex;align-items:center;gap:12px;padding:9px 3px;border-top:1px solid #e8edf0}
 .search-hit .link{min-width:160px;text-align:left;overflow-wrap:anywhere;flex:1}
 .search-hit .muted{font-size:12px;overflow-wrap:anywhere}
-.search-hit .muted:last-child{flex:none;white-space:nowrap}
+.search-hit .search-hit-description{flex:0 1 46%;max-width:46%;min-width:0;
+ text-align:right;white-space:normal;line-height:1.45}
 @media(max-width:750px){.search-hit{align-items:flex-start;flex-wrap:wrap}
- .search-hit .link{flex-basis:100%}}
+ .search-hit .link{flex-basis:100%}
+ .search-hit .search-hit-description{flex-basis:100%;max-width:100%;text-align:left}}
+
+/* Real project detail: tighter information density and more legible values.
+   Keep the global info grid of other business modules unchanged. */
+.project-info-grid{grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:8px}
+.project-info-grid .info{min-width:0;min-height:54px;padding:7px 10px;
+ border-color:#e5ebf0;background:#fbfcfd}
+.project-info-grid .info label{font-size:12px;line-height:1.25;margin-bottom:3px}
+.project-info-grid .info strong{font-size:15px;line-height:1.4;font-weight:650}
+.project-info-grid .info:first-child,.project-info-grid .info:last-child{grid-column:span 2}
+@media(max-width:750px){
+ .project-info-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .project-info-grid .info:first-child,.project-info-grid .info:last-child{grid-column:1/-1}
+}
+@media(max-width:420px){
+ .project-info-grid{grid-template-columns:1fr}
+ .project-info-grid .info:first-child,.project-info-grid .info:last-child{grid-column:auto}
+}
