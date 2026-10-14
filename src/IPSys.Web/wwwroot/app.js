@@ -1002,7 +1002,7 @@ function syncCompanyCertificateSelectionUi(){
  const status=el('certificateSelectedCount');
  if(status)status.textContent='已选 '+count+' 条';
  const bulk=content.querySelector('[data-action="certificateBatchDelete"]');
- if(bulk)bulk.disabled=certificateDeleteBusy||count===0;
+ if(bulk){bulk.hidden=count===0;bulk.disabled=certificateDeleteBusy||count===0;}
 }
 async function moveCompanyCertificate(id,direction){
  const visible=companyCertificateRows();
@@ -1050,7 +1050,7 @@ function realCompanyCertificateList(){
  '<button class="btn" data-action="clearFilter">重置</button></div>'+
  '<div class="certificate-toolbar-actions">'+
  '<span class="certificate-selected-count" id="certificateSelectedCount">已选 '+checkedCount+' 条</span>'+
- '<button type="button" class="btn certificate-batch-delete" data-action="certificateBatchDelete"'+(checkedCount?'':' disabled')+'>批量删除</button>'+
+ '<button type="button" class="btn certificate-batch-delete" data-action="certificateBatchDelete"'+(checkedCount?'':' disabled hidden')+'>批量删除</button>'+
  '<button class="btn primary" data-action="archiveAdd">＋ 新建记录</button>'+
  certificateExportMenu(rows)+'</div></div>'+
  '<div class="tablewrap archive-tablewrap"><table class="data">'+
