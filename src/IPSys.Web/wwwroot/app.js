@@ -483,7 +483,11 @@ async function previewOriginal(file,url){
  if(extension!=='pdf'&&!images.includes(extension))
   return notice('仅 PDF 或常见图片支持直接预览，请下载原件。',true);
  try{
-  const response=await api(url),data=await response.blob();
+  const response=await api(url),raw=await response.blob();
+  const mime=extension==='pdf'?'application/pdf':
+   extension==='png'?'image/png':extension==='gif'?'image/gif':
+   extension==='webp'?'image/webp':extension==='bmp'?'image/bmp':'image/jpeg';
+  const data=new Blob([raw],{type:mime});
   if(activePreviewUrl)URL.revokeObjectURL(activePreviewUrl);
   activePreviewUrl=URL.createObjectURL(data);
   const body=el('filePreviewBody');body.replaceChildren();
