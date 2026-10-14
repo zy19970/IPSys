@@ -98,9 +98,11 @@ static class BusinessFileStore
         using(var columns=db.CreateCommand())
         {
             columns.CommandText="PRAGMA table_info(business_file_links);";
-            using var reader=columns.ExecuteReader();
             bool found=false;
-            while(reader.Read())if(reader.GetString(1)=="group_id")found=true;
+            using(var reader=columns.ExecuteReader())
+            {
+                while(reader.Read())if(reader.GetString(1)=="group_id")found=true;
+            }
             if(!found)
             {
                 using var alter=db.CreateCommand();
