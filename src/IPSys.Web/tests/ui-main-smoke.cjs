@@ -341,7 +341,7 @@ const fileListEnd=js.indexOf('function chooseVersionAction(',fileListStart);
 assert.ok(fileListStart>0&&fileListEnd>fileListStart,'Missing business file renderer');
 const fileListCtx=vm.createContext({sessionStorage:{getItem:()=>null},document:exportDocument});
 vm.runInContext(preamble+
- '\nfunction escapeHtml(s){return String(s);}\nfunction fmtSize(n){return n+" B";}'+
+ 
  '\nfunction exportCheck(){return "";}\nfunction exportButtons(){return "";}'+
  '\nfunction businessFiles(){return globalThis.filesForTest;}'+
  '\ncontractRows=[];'+js.slice(fileListStart,fileListEnd)+
