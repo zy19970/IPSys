@@ -6,6 +6,30 @@ b06Script.src='/export.js';document.head.appendChild(b06Script);
 const el=id=>document.getElementById(id);
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let activePreviewUrl=null;
+let activePdfViewer=null,previewSerial=0,pdfScriptsPromise=null;
+function loadPreviewScript(url){
+ return new Promise((resolve,reject)=>{
+  const script=document.createElement('script');
+  script.src=url;
+  script.onload=resolve;
+  script.onerror=()=>reject(new Error('离线 PDF 组件加载失败：'+url));
+  document.head.appendChild(script);
+ });
+}
+async function ensurePdfViewer(){
+ if(window.pdfjsLib&&window.IPSysPdfViewer)return window.IPSysPdfViewer;
+ if(!pdfScriptsPromise){
+  pdfScriptsPromise=(async()=>{
+   await loadPreviewScript('/pdfjs/pdf.min.js');
+   await loadPreviewScript('/pdf-preview.js');
+   if(!window.pdfjsLib||!window.IPSysPdfViewer)
+    throw new Error('离线 PDF 阅读器初始化失败。');
+   return window.IPSysPdfViewer;
+  })().catch(error=>{pdfScriptsPromise=null;throw error;});
+ }
+ return pdfScriptsPromise;
+}
+
 let token=sessionStorage.getItem('ip-token')||'';
 let dbName=sessionStorage.getItem('ip-db')||'';
 let mcpEnabled=false;
@@ -628,49 +652,52 @@ async function uploadBusinessBatch(files,meta){
   (errors.length?'；'+errors.join('；'):''),errors.length>0);
 }
 async function previewOriginal(file,url){
+ const serial=++previewSerial;
  const extension=(file.name.split('.').pop()||'').toLowerCase();
  const images=['png','jpg','jpeg','gif','webp','bmp'];
  if(extension!=='pdf'&&!images.includes(extension))
   return notice('仅 PDF 或常见图片支持直接预览，请下载原件。',true);
  try{
-  const response=await api(url),raw=await response.blob();
-  const mime=extension==='pdf'?'application/pdf':
-   extension==='png'?'image/png':extension==='gif'?'image/gif':
-   extension==='webp'?'image/webp':extension==='bmp'?'image/bmp':'image/jpeg';
-  const data=new Blob([raw],{type:mime});
-  if(activePreviewUrl)URL.revokeObjectURL(activePreviewUrl);
-  activePreviewUrl=URL.createObjectURL(data);
-  const previewUrl=activePreviewUrl;
-  const isPdf=extension==='pdf';
-  const body=el('filePreviewBody');body.replaceChildren();
-  body.classList.toggle('pdf-mode',isPdf);
-  const view=document.createElement(isPdf?'iframe':'img');
-  if(isPdf){
-   view.title='PDF 原件预览';
-  }else{
-   view.alt=file.name;
-   view.src=previewUrl;
-  }
-  body.append(view);
+  const response=await api(url);
+  if(serial!==previewSerial)return;
+  const body=el('filePreviewBody'),dialog=el('filePreviewDialog');
+  if(activePdfViewer){activePdfViewer.destroy();activePdfViewer=null;}
+  if(activePreviewUrl){URL.revokeObjectURL(activePreviewUrl);activePreviewUrl=null;}
+  body.replaceChildren();
   el('filePreviewTitle').textContent=file.name;
-  const dialog=el('filePreviewDialog');
-  dialog.showModal();
-  if(isPdf){
-   // An iframe given a PDF blob URL while its dialog is hidden can initialize
-   // Chromium's built-in PDF viewer at the 150px intrinsic frame height.
-   // Let the modal obtain its final dimensions before starting the viewer.
-   requestAnimationFrame(()=>{
-    if(dialog.open&&activePreviewUrl===previewUrl&&view.isConnected){
-     view.getBoundingClientRect();
-     view.src=previewUrl+'#view=FitH';
-    }
-   });
+  if(extension==='pdf'){
+   // Render directly to a canvas: Chromium's embedded PDF iframe viewer has
+   // an internal 150px surface defect that cannot be fixed with CSS sizing.
+   body.classList.add('pdf-mode');
+   body.textContent='正在加载 PDF 预览…';
+   dialog.showModal();
+   const bytes=await response.arrayBuffer();
+   if(serial!==previewSerial||!dialog.open)return;
+   const renderer=await ensurePdfViewer();
+   if(serial!==previewSerial||!dialog.open)return;
+   activePdfViewer=renderer.create(body,bytes);
+   await activePdfViewer.open();
+  }else{
+   const raw=await response.blob();
+   if(serial!==previewSerial)return;
+   const mime=extension==='png'?'image/png':extension==='gif'?'image/gif':
+    extension==='webp'?'image/webp':extension==='bmp'?'image/bmp':'image/jpeg';
+   activePreviewUrl=URL.createObjectURL(new Blob([raw],{type:mime}));
+   body.classList.remove('pdf-mode');
+   const image=document.createElement('img');
+   image.alt=file.name;image.src=activePreviewUrl;body.append(image);
+   dialog.showModal();
   }
- }catch(e){notice('无法预览：'+e.message,true);}
+ }catch(e){
+  if(serial===previewSerial)notice('无法预览：'+e.message,true);
+ }
 }
 el('filePreviewClose').onclick=()=>el('filePreviewDialog').close();
 el('filePreviewDialog').addEventListener('close',()=>{
+ ++previewSerial;
+ if(activePdfViewer){activePdfViewer.destroy();activePdfViewer=null;}
  el('filePreviewBody').replaceChildren();
+ el('filePreviewBody').classList.remove('pdf-mode');
  if(activePreviewUrl){URL.revokeObjectURL(activePreviewUrl);activePreviewUrl=null;}
 });
 async function downloadBusinessAttachment(fileId){

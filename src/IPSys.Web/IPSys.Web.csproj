@@ -16,6 +16,10 @@
     <EmbeddedResource Include="wwwroot\style.css" LogicalName="IPSys.Web.Embedded.style.css" />
     <EmbeddedResource Include="wwwroot\app.js" LogicalName="IPSys.Web.Embedded.app.js" />
     <EmbeddedResource Include="wwwroot\export.js" LogicalName="IPSys.Web.Embedded.export.js" />
+    <EmbeddedResource Include="wwwroot\pdfjs\pdf.min.js" LogicalName="IPSys.Web.Embedded.pdf.min.js" />
+    <EmbeddedResource Include="wwwroot\pdfjs\pdf.worker.min.js" LogicalName="IPSys.Web.Embedded.pdf.worker.min.js" />
+    <EmbeddedResource Include="wwwroot\pdf-preview.js" LogicalName="IPSys.Web.Embedded.pdf-preview.js" />
+    <EmbeddedResource Include="wwwroot\pdfjs\LICENSE.txt" LogicalName="IPSys.Web.Embedded.pdfjs.LICENSE.txt" />
     <!-- Reuse the Git-tracked standalone design source without duplicating it. -->
     <EmbeddedResource Include="..\..\demo\ui-preview.html" LogicalName="IPSys.Web.Embedded.ui-preview.html" />
     <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="8.0.10" />

@@ -1,5 +1,15 @@
 # IPSys 最小网页 + WinForms 启动器（Windows 测试）
 
+## 2026-10-14：PDF 预览第二次修复（使用离线 Canvas 阅读器）
+
+用户实测表明前两次调整 iframe 布局和延迟初始化后，Chromium 内置 PDF 插件仍只渲染约 150px 的阅读区，其余为灰色。该行为不由 PDF 内容或 SQLCipher 数据损坏引起，本版替换为 Mozilla PDF.js Canvas 单页渲染（以 Apache-2.0 许可内嵌到 EXE，运行时无需联网）。PDF 与图片继续使用原来的弹窗入口，图片预览保持不变。
+
+Windows 实机检查：在 Chrome、Edge 分别打开 PDF 测试原件（含几行文字的单页文档、完整 A4、多页和横向文档）。应看到白色 PDF 页面绘制在整个阅读区内部，不再有顶部窄条独占渲染的情况。使用「上一页」「下一页」「−」「＋」「适应宽度」，验证不同页及缩放效果，单页很短的文本其余白纸区域属于 PDF 原文内容。关闭 PDF 弹窗后再次预览应正确释放前一个渲染任务，PNG/JPG 图片仍可预览。上传、下载、SHA-256 与 SQLCipher 资料不受影响。
+
+实现校验：Node 对本地 PDF.js/Worker 的 Git blob SHA 做一致性检查，模拟 Canvas 真实渲染调用、翻页、缩放、销毁；Windows CI 检查嵌入资源、浏览器脚本语法、MCP 与 SQLCipher HTTP 回归。**自动测试不能代替用户本机 Edge/Chrome 视觉验收。**
+
+
+
 ## PDF 预览初始化顺序修复（2026-10-14）
 
 用户截图中的 PDF 弹窗出现顶部约 150px 的可见阅读区域、下方大面积空白。此前浏览器在弹窗隐藏时已经接收到 PDF iframe 的 blob 地址，可能使 Chromium 内置 PDF 插件按 iframe 默认高度初始化。现先显示预览弹窗，使用 PDF 专属、固定尺寸的容器，待浏览器布局完成后再为 iframe 设置 blob URL，并按页面宽度显示。关闭后销毁 iframe 和临时 blob URL。

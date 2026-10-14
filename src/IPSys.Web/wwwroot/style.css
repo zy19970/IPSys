@@ -77,18 +77,26 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 .project-span{grid-column:1/-1}
 @media(max-width:620px){.project-form-grid{grid-template-columns:1fr}}
 
-/* Minimal read-only file preview, consistent with existing input dialogs. */
+/* Offline canvas PDF viewer avoids Chromium's unreliable embedded-PDF iframe. */
 .preview-dialog{width:min(1000px,calc(100vw - 32px));max-width:1000px;max-height:90vh;overflow:auto}
 .preview-dialog .dialogactions{justify-content:space-between;align-items:center}
 .preview-body{display:grid;place-items:center;min-height:200px;max-height:70vh;overflow:auto;background:#f4f7f9;border:1px solid #dfe6eb;border-radius:8px}
 .preview-body img{display:block;max-width:100%;max-height:68vh;object-fit:contain}
-.preview-body iframe{display:block;width:100%;height:68vh;border:0;background:#fff}
-/* Initialize Chromium PDF plugin only after this visible, sized viewport exists. */
-.preview-body.pdf-mode{display:block;width:100%;height:68vh;min-height:260px;
- max-height:70vh;overflow:hidden;background:#e9edf1}
-.preview-body.pdf-mode iframe{display:block;width:100%;height:100%;min-width:0;
- border:0;background:#e9edf1}
-@media(max-height:560px){.preview-body.pdf-mode{height:55vh;min-height:160px}}
+.preview-body.pdf-mode{display:flex;flex-direction:column;width:100%;height:68vh;
+ min-height:260px;max-height:70vh;overflow:hidden;background:#e6e9ed}
+.pdf-toolbar{display:flex;align-items:center;justify-content:center;gap:7px;
+ width:100%;min-height:43px;padding:5px 8px;border-bottom:1px solid #d2dce3;
+ background:#fff;flex:none;overflow-x:auto}
+.pdf-toolbar .btn{flex:none;white-space:nowrap;padding:5px 11px}
+.pdf-count{color:#526474;font-size:12px;white-space:nowrap;min-width:56px;text-align:center}
+.pdf-canvas-area{flex:1;min-height:0;width:100%;overflow:auto;padding:16px;
+ background:#e6e9ed}
+.pdf-canvas{display:block;max-width:none;margin:0 auto;background:#fff;
+ box-shadow:0 2px 12px #202f3d22}
+.pdf-render-status{font-size:12px;flex:none;padding:7px 12px;background:#fff;
+ color:#607283;text-align:center;min-height:0}
+.pdf-render-status:empty{display:none}
+@media(max-height:560px){.preview-body.pdf-mode{height:53vh;min-height:155px}}
 .file-dedup-choice{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--ink)}
 
 /* B06 selected-original export controls, using the frozen detail layout. */

@@ -21,6 +21,10 @@ byte[] html = EmbeddedWebAssets.Read("index.html");
 byte[] css = EmbeddedWebAssets.Read("style.css");
 byte[] javascript = EmbeddedWebAssets.Read("app.js");
 byte[] exportScript = EmbeddedWebAssets.Read("export.js");
+byte[] pdfScript = EmbeddedWebAssets.Read("pdf.min.js");
+byte[] pdfWorker = EmbeddedWebAssets.Read("pdf.worker.min.js");
+byte[] pdfPreviewScript = EmbeddedWebAssets.Read("pdf-preview.js");
+byte[] pdfJsLicense = EmbeddedWebAssets.Read("pdfjs.LICENSE.txt");
 // The approved evolving UI draft lives in demo/ui-preview.html and is embedded as-is.
 byte[] previewHtml = EmbeddedWebAssets.Read("ui-preview.html");
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
@@ -52,7 +56,7 @@ app.Use(async (ctx, next) =>
     ctx.Response.Headers["X-Content-Type-Options"] = "nosniff";
     ctx.Response.Headers["Content-Security-Policy"] =
         "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; " +
-        "connect-src 'self'; frame-src blob:; object-src 'none'; frame-ancestors 'none'; base-uri 'none'";
+        "connect-src 'self'; worker-src 'self'; frame-src blob:; object-src 'none'; frame-ancestors 'none'; base-uri 'none'";
     await next();
 });
 // Serve web files from within the executable, not from wwwroot on disk.
@@ -61,6 +65,10 @@ app.MapGet("/index.html", () => Results.Bytes(html, contentType: "text/html; cha
 app.MapGet("/style.css", () => Results.Bytes(css, contentType: "text/css; charset=utf-8"));
 app.MapGet("/app.js", () => Results.Bytes(javascript, contentType: "text/javascript; charset=utf-8"));
 app.MapGet("/export.js", () => Results.Bytes(exportScript, contentType: "text/javascript; charset=utf-8"));
+app.MapGet("/pdfjs/pdf.min.js", () => Results.Bytes(pdfScript, contentType: "text/javascript; charset=utf-8"));
+app.MapGet("/pdfjs/pdf.worker.min.js", () => Results.Bytes(pdfWorker, contentType: "text/javascript; charset=utf-8"));
+app.MapGet("/pdf-preview.js", () => Results.Bytes(pdfPreviewScript, contentType: "text/javascript; charset=utf-8"));
+app.MapGet("/pdfjs/LICENSE.txt", () => Results.Bytes(pdfJsLicense, contentType: "text/plain; charset=utf-8"));
 // Isolate the single-file mock UI in an opaque-origin CSP sandbox. It needs
 // inline handlers/styles, but must not acquire application origin or network access.
 app.MapGet("/ui-preview", (HttpContext ctx) =>
