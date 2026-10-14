@@ -98,7 +98,7 @@ static class SearchStore
             if(!Any(query,a.Name,a.Category,a.Remarks,a.Tags))continue;
             Add(new SearchHit("archive",a.Id,a.Section,a.Name,
                 Summary(a.Category,a.Section=="academic"?"学术与社会活动":
-                    a.Section=="achievement"?"成果与奖励":"资质与证件")));
+                    a.Section=="achievement"?(workspace=="company"?"业务档案":"成果与奖励"):"资质与证件")));
         }
         foreach(var r in general)
         {

@@ -45,6 +45,12 @@ static class SearchSmoke
         archive.EnsureSuccessStatusCode();
         long archiveId=(await archive.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
             .GetProperty("id").GetInt64();
+        using var companyBusiness=await client.PostAsJsonAsync("/api/archives/company/achievement",new {
+            name=marker+"-首台套申报",category="申报与认定",remarks="业务归档"
+        });
+        companyBusiness.EnsureSuccessStatusCode();
+        long businessId=(await companyBusiness.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
+            .GetProperty("id").GetInt64();
         using var academic=await client.PostAsJsonAsync("/api/archives/personal/academic",new {
             name=marker+"-学术兼职",category="学术兼职"
         });
@@ -62,6 +68,9 @@ static class SearchSmoke
                 throw new IOException("搜索缺失真实业务模块："+type);
         if(company.Results.Any(h=>h.Title.Contains("个人项目")||h.Title.Contains("学术兼职")))
             throw new IOException("公司搜索不应泄漏个人工作区记录。");
+        if(!company.Results.Any(h=>h.Kind=="archive"&&h.Section=="achievement"&&
+            h.Id==businessId&&h.Description.Contains("业务档案")))
+            throw new IOException("公司业务档案搜索命中应标记为业务档案。");
         var personal=await Find(client,"personal",marker);
         if(!personal.Results.Any(h=>h.Kind=="project"&&h.Id==personalId)||
            !personal.Results.Any(h=>h.Kind=="archive"&&h.Id==academicId&&h.Section=="academic"))

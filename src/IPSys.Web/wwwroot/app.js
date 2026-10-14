@@ -36,7 +36,7 @@ let dbName=sessionStorage.getItem('ip-db')||'';
 let mcpEnabled=false;
 let space=null,creating=false,resuming=false,localFileTaskActive=false;
 let page='dashboard',detail=null,archiveGroup=null,editingId=null,projectEditingId=null,projectRows=[],ipEditingId=null,ipRows=[],contractEditingId=null,contractProjectId=null,contractRows=[],businessFileRows=[],trashRows=[],pendingBusinessUpload=null,pendingAssocId=null,archiveRows={certificate:[],achievement:[],academic:[]},archiveEditingId=null,archiveTransferId=null,archiveTransferMode=null,liveRows=[],filterName='',filterKind='全部类型',filterState='全部状态',selected=new Set();
-const companyNav=[['dashboard','工作台','▦'],['ip','知识产权','◇'],['researchProject','科研项目','▤'],['horizontalProject','横向项目','▥'],['contract','全部合同','▧'],['certificate','企业资质','▣'],['general','综合资料','▥']];
+const companyNav=[['dashboard','工作台','▦'],['ip','知识产权','◇'],['researchProject','科研项目','▤'],['horizontalProject','横向项目','▥'],['contract','全部合同','▧'],['certificate','企业资质','▣'],['achievement','业务档案','▤'],['general','综合资料','▥']];
 // Personal archives are grouped by evidence type, not by the company management menu.
 const personalNav=[['dashboard','个人工作台','▦'],['certificate','身份与资质','▣'],['ip','知识产权与著作','◇'],['researchProject','科研与合作项目','▤'],['achievement','成果与奖励','★'],['academic','学术与社会活动','▥'],['general','其他资料','▧']];
 const personalCategoryNotes={
@@ -213,8 +213,7 @@ function pill(text){return `<span class="pill">${escapeHtml(text)}</span>`;}
 function stamp(){return '<span class="mockflag">界面示例 · 未接入业务</span>';}
 function dashboard(){
  const mods=labels().filter(x=>x[0]!=='dashboard');
- if(space==='company')mods.splice(mods.length-1,0,['achievement','科研成果']);
- const general=liveRows.length;const fileCount=liveRows.reduce((n,r)=>n+r.files.length,0);
+  const general=liveRows.length;const fileCount=liveRows.reduce((n,r)=>n+r.files.length,0);
  const counts=space==='personal'
   ? [['其他资料',general,'条记录'],['已归档原件',fileCount,'份附件'],['身份与资质',archiveRows.certificate.length,'条记录'],['成果与奖励',archiveRows.achievement.length,'条记录']]
   : [['综合资料',general,'条记录'],['已归档原件',fileCount,'份附件'],['知识产权',ipRows.length,'条记录'],['科研项目',projectRows.filter(p=>p.projectType!=='横向项目').length,'条记录']];
@@ -902,14 +901,15 @@ const archiveSections=['certificate','achievement','academic'];
 const archiveDestinations=[
  {workspace:'company',section:'certificate',label:'公司资料 / 企业资质',kind:'company_certificate'},
  {workspace:'personal',section:'certificate',label:'个人资料 / 身份与资质',kind:'personal_certificate'},
- {workspace:'company',section:'achievement',label:'公司资料 / 科研成果',kind:'research_output'},
+ {workspace:'company',section:'achievement',label:'公司资料 / 业务档案',kind:'research_output'},
  {workspace:'personal',section:'achievement',label:'个人资料 / 成果与奖励',kind:'research_output'},
  {workspace:'personal',section:'academic',label:'个人资料 / 学术与社会活动',kind:'research_output'}
 ];
-function archiveSectionName(k){return space==='company'&&k==='achievement'?'科研成果':title(k);}
+function archiveSectionName(k){return space==='company'&&k==='achievement'?'业务档案':title(k);}
 function archiveCategories(k){
+ // Legacy company/achievement data and custom categories remain visible.
  const defaults=space==='company'&&k==='achievement'
-  ?['技术成果','成果评价','项目奖励','标准制定','新产品','其他科研成果']
+  ?["申报与认定","规划与管理","汇报与宣传","会议与活动","专项工作与合作","政策与行业资料","其他业务资料"]
   :[...new Set(sample(k).map(r=>r.type))];
  return [...new Set([...defaults,...(archiveRows[k]||[]).map(r=>r.category||'未分类')])];
 }

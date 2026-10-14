@@ -55,7 +55,8 @@ globalThis.__layout={
 };`,context);
 const v=context.__layout;
 assert.deepEqual(Array.from(v.personalNav),['个人工作台','身份与资质','知识产权与著作','科研与合作项目','成果与奖励','学术与社会活动','其他资料']);
-assert.deepEqual(Array.from(v.companyNav),['工作台','知识产权','科研项目','横向项目','全部合同','企业资质','综合资料']);
+assert.deepEqual(Array.from(v.companyNav),['工作台','知识产权','科研项目','横向项目','全部合同','企业资质','业务档案','综合资料']);
+assert.ok(v.companyModules.includes('achievement'),'Company business archives retain the existing SQLCipher section');
 assert.ok(!v.personalModules.includes('contract')&&!v.personalModules.includes('horizontalProject'),'Personal groups should have no redundant separate contract/horizontal menu');
 for(const k of ['certificate','ip','researchProject','achievement','academic','general'])assert.ok(v.personalModules.includes(k),'Personal group missing '+k);
 for(const t of ['身份证明','学历学位','职称资格','任职证明'])assert.ok(v.identity.includes(t),'Identity credential category missing '+t);
@@ -341,6 +342,23 @@ assert.ok(!realArchiveCtx.__realCards.includes('界面示例'),
  'Real archive pages must not be labelled as demonstration data');
 assert.ok(realArchiveCtx.__possibleTargets.some(x=>x.workspace==='company'&&x.kind==='company_certificate'),
  'Company and personal certificates must remain different logical kinds');
+vm.runInContext(
+ "space='company';page='achievement';archiveRows.achievement=["+
+ "{id:31,name:'首台套申报',category:'申报与认定',remarks:'',tags:''},"+
+ "{id:32,name:'历史成果资料',category:'技术成果',remarks:'',tags:''}];"+
+ "globalThis.__companyName=archiveSectionName('achievement');"+
+ "globalThis.__companyCats=archiveCategories('achievement');"+
+ "globalThis.__companyCards=realArchiveCards('achievement');"+
+ "globalThis.__companyTable=realArchiveTable('achievement','申报与认定');",
+ realArchiveCtx);
+assert.equal(realArchiveCtx.__companyName,'业务档案');
+for(const c of ["申报与认定","规划与管理","汇报与宣传","会议与活动","专项工作与合作","政策与行业资料","其他业务资料"])
+ assert.ok(realArchiveCtx.__companyCats.includes(c),'Missing business archive category '+c);
+assert.ok(realArchiveCtx.__companyCats.includes('技术成果'),'Legacy categories must remain available');
+assert.ok(realArchiveCtx.__companyCards.includes('data-archive-category="技术成果"')&&
+ realArchiveCtx.__companyTable.includes('data-archive-id="31"'),'Old and new company data must be accessible');
+assert.ok(js.includes("label:'公司资料 / 业务档案'"));
+assert.ok(!v.personalNav.includes('业务档案'),'Personal achievements should not change');
 
 // B05 real business file links are scoped to stored records, not demo attachments.
 assert.ok(html.includes('id="businessFileInput"'),'Business original file picker missing');
