@@ -17,7 +17,7 @@ const program=fs.readFileSync(path.resolve(__dirname,'../Program.cs'),'utf8');
 assert.ok(!app.includes("view.src=previewUrl+'#view=FitH'"),'Native PDF iframe path must be removed');
 assert.ok(app.includes("activePdfViewer=renderer.create(body,bytes)")&&
  app.includes("activePdfViewer.destroy()"),'PDF canvas viewer must mount and release');
-assert.ok(program.includes('worker-src \\'self\\'')&&
+assert.ok(program.includes("worker-src 'self'")&&
  program.includes('"/pdfjs/pdf.worker.min.js"'),'Worker must be local and allowed by CSP');
 assert.ok(css.includes('.preview-body.pdf-mode{display:flex')&&
  css.includes('.pdf-canvas-area{flex:1'),'PDF must occupy actual modal viewport');
