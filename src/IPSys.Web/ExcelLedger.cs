@@ -152,7 +152,7 @@ static class ExcelLedger
                         new XAttribute("applyNumberFormat","1")),
                     new XElement(Main+"xf",new XAttribute("numFmtId","49"),new XAttribute("fontId","0"),
                         new XAttribute("fillId","0"),new XAttribute("borderId","0"),new XAttribute("xfId","0"),
-                        new XAttribute("applyNumberFormat","1")))));
+                        new XAttribute("applyNumberFormat","1"))))));
             var rows=new List<XElement>{new(Main+"row",new XAttribute("r","1"),
                 columns.Select((col,i)=>Cell(i,1,col.Heading,true)))};
             for(int r=0;r<data.Count;r++)
