@@ -322,6 +322,11 @@ assert.ok(js.includes("'/api/contracts/'+space+'/'+c.id+'/copy'"),
 assert.ok(js.includes("businessFileCount('archive',r.id,k)"),
  'Archive detail ledger must show actual attachment counts');
 
+// B06 UX: latest-version-only select all, record-level multiple selection and single-version labels.
+for(const phrase of ["class=\"ledger-export-row\"","class=\"ledger-export-all\"",
+ "case 'ledgerSelectAttachments'","class=\"export-checkall\"",
+ "data-export-latest=\"1\"","(showVersion?'v'+f.version",
+ "module-export-record"])assert.ok(js.includes(phrase),'Missing multi-selection feature '+phrase);
 // B06: the selected-original export remains within the current ledger/detail.
 for(const needle of ["moduleExportPanel(visible,'project')","moduleExportPanel(rows,'ip')",
  "moduleExportPanel(visible,'contract')","moduleExportPanel(rows,'general')",
@@ -340,8 +345,10 @@ assert.ok(js.includes("case 'trashRestoreSelected'")&&js.includes("case 'trashPu
 assert.ok(js.includes("'/api/trash/'+space+'/'+operation"));
 assert.ok(js.includes("'/api/business-files/'+space+'/'+id+'/associate'"));
 assert.ok(js.includes("openBusinessAssoc(Number(target.dataset.businessAssociate))"));
-assert.ok(js.includes("const matches=[...new Map(")&&js.includes("const choice=prompt("),
- 'Same-name originals must offer explicit new-file versus update choice');
+assert.ok(js.includes("function chooseVersionAction(file,matches)")&&
+ js.includes('data-upload-choice="new"')&&js.includes("if(choice==='new')"),
+ 'Same-name originals must use explicit action buttons');
+assert.ok(!js.includes("const choice=prompt("),'Same-name files must not require typing a choice');
 assert.ok(js.includes("'X-Upload-Mode':meta.mode||'new'")&&js.includes("'X-File-Group':meta.groupId||''"),
  'Business upload must identify the selected original group');
 assert.ok(js.includes("'X-Duplicate-Mode':meta.duplicateMode||'independent'")&&
@@ -354,8 +361,12 @@ assert.ok(js.includes('data-preview-business=')&&js.includes('data-preview-gener
  'Both original-file stores must provide preview and release temporary blob URLs');
 assert.ok(js.includes('data-general-file-delete=')&&js.includes("case 'deleteRecord'"),
  'Legacy general records and originals must expose the trash actions');
-assert.ok(js.includes("'X-Upload-Mode':mode")&&js.includes("'X-File-Group':groupId"),
- 'Legacy general files must also support explicit version updates');
+assert.ok(js.includes("'X-Upload-Mode':choice.mode")&&js.includes("'X-File-Group':choice.groupId||''"),
+ 'General originals must carry the explicitly selected version group');
+assert.ok(js.includes("el('businessFileInput').multiple=true")&&
+ js.includes('id="uploadInput" multiple hidden')&&
+ js.includes("uploadBusinessBatch(files,meta)")&&js.includes("uploadGeneralBatch(id,files)"),
+ 'Both upload paths must support multi-file selections');
 assert.ok(js.includes("历史版本"),'Historical file revisions need a readable UI');
 assert.ok(!js.includes("删除记录和附件的恢复、永久清理界面布局 · 仅演示"),
  'Trash must no longer appear as a mock page');
