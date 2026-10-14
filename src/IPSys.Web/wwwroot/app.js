@@ -279,7 +279,8 @@ function ipList(){
  '<button class="btn primary" data-action="filter">查询</button><button class="btn" data-action="clearFilter">重置</button></div></section>'+
  '<section class="white"><div class="tabletools"><b>业务台账 '+rows.length+' 条真实记录</b>'+
  '<div class="actions"><span id="ledgerExportCount">已选 0 条</span>'+
- '<button class="btn" data-action="ledgerSelectAttachments">选择记录附件</button></div></div>'+
+ '<button class="btn" data-action="projectExportFolder">导出文件夹</button>'+
+ '<button class="btn primary" data-action="projectExportZip">导出 ZIP</button></div></div>'+
  '<div class="tablewrap"><table class="data"><thead><tr><th><input type="checkbox" id="ledgerExportAll" class="ledger-export-all" aria-label="全选当前知识产权"></th><th>名称</th><th>知识产权类型</th><th>申请/登记号</th><th>状态</th><th>当前权利人</th><th>申请/登记日期</th><th>附件</th></tr></thead><tbody>'+
  (rows.length?rows.map(r=>{const v=r.data;return '<tr><td><input type="checkbox" class="ledger-export-row" value="'+r.id+'" aria-label="选择知识产权 '+escapeHtml(v.name)+'"></td>'+
  '<td><button class="link" data-ip-id="'+r.id+'">'+escapeHtml(v.name)+'</button></td>'+
@@ -424,7 +425,7 @@ function projectList(k){
  '<td>'+escapeHtml(p.startDate||'—')+'</td>'+
  '<td>'+businessFileCount('project',p.id)+'</td></tr>').join(''):
  '<tr><td colspan="6" class="empty">暂无项目，点击右上角新建项目。</td></tr>')+
- '</tbody></table></div><div class="tablefoot">共 '+visible.length+' 条记录 · 数据保存在当前 SQLCipher 库</div></section>'+moduleExportPanel(visible,'project');
+ '</tbody></table></div><div class="tablefoot">共 '+visible.length+' 条记录 · 数据保存在当前 SQLCipher 库</div></section>';
 }
 
 function businessFiles(kind,ownerId,section=''){
@@ -499,24 +500,25 @@ function selectedOriginals(){
  }
  return items;
 }
-function projectContractExport(projectId){
- const contracts=contractRows.filter(c=>c.projectId===projectId);
- const parts=contracts.map(c=>{
-  const files=businessFiles('contract',c.id);
-  if(!files.length)return '';
-  const groups=new Map();
-  for(const f of files){const key=f.groupId||f.name;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(f);}
-  return '<div class="contract-export-group"><strong>'+escapeHtml(c.name)+'</strong>'+
-   [...groups.values()].map(group=>{
-    group.sort((a,b)=>b.version-a.version||b.id-a.id);
-    const one=(f,showVersion,latest=false)=>'<div class="export-record-line">'+exportCheck(f,'business',latest)+
-      '<span>'+escapeHtml(f.name)+(showVersion?' · v'+f.version:'')+'</span></div>';
-    return one(group[0],group.length>1,true)+(group.length>1?'<details><summary>历史版本</summary>'+
-      group.slice(1).map(f=>one(f,true)).join('')+'</details>':'');
-   }).join('')+'</div>';
- }).filter(Boolean);
- return parts.length?'<p class="hint">合同原件必须单独勾选，不会因为勾选项目原件而自动包含。</p>'+
-  parts.join(''):'<p class="hint">当前项目所属合同没有可导出的原件。</p>';
+// Project export is one action: every active original in the project and all its contracts.
+// Version links remain distinct; no file checkbox or second selection panel is needed.
+function projectOriginals(projectIds){
+ const selected=new Set(projectIds.map(Number));
+ const projects=new Map(projectRows.filter(p=>selected.has(p.id)).map(p=>[p.id,p]));
+ const contracts=new Map(contractRows.filter(c=>projects.has(c.projectId)).map(c=>[c.id,c]));
+ return businessFileRows.filter(f=>
+   (f.kind==='project'&&projects.has(f.ownerId))||
+   (f.kind==='contract'&&contracts.has(f.ownerId))
+ ).map(f=>{
+   const contract=f.kind==='contract'?contracts.get(f.ownerId):null;
+   const project=projects.get(contract?contract.projectId:f.ownerId);
+   return {
+    source:'business',workspace:space,id:f.id,name:f.name,size:f.size,
+    kind:f.kind,ownerId:f.ownerId,section:f.section,
+    ownerName:contract?contract.name:project.name,
+    ...(contract?{projectId:contract.projectId,projectName:project.name}:{})
+   };
+ });
 }
 function businessFileCount(kind,ownerId,section=''){
  return new Set(businessFiles(kind,ownerId,section).map(f=>f.groupId||f.name+'\u0000'+f.category)).size;
@@ -537,7 +539,7 @@ function businessAttachmentList(kind,ownerId,section=''){
  '<span class="filedesc"><strong>'+escapeHtml(f.name)+'</strong><small>'+(showVersion?'v'+f.version+' · ':'')+
  (f.category?escapeHtml(f.category)+' · ':'')+fmtSize(f.size)+
  ' · SHA-256 '+escapeHtml(f.sha256.slice(0,12))+'…</small></span>'+
- exportCheck(f,'business',latest)+'<button class="btn btn-sm" data-preview-business="'+f.id+'">预览</button>'+
+ (kind==='project'?'':exportCheck(f,'business',latest))+'<button class="btn btn-sm" data-preview-business="'+f.id+'">预览</button>'+
  '<button class="btn btn-sm" data-business-download="'+f.id+'">下载</button>'+
  '<button class="btn btn-sm" data-business-delete="'+f.id+'">移除</button></div>';
  return '<div class="tabletools"><b>原件附件 '+groups.size+' 份</b><div class="actions">'+category+
@@ -550,7 +552,7 @@ function businessAttachmentList(kind,ownerId,section=''){
    (g.length>1?'<details><summary>查看历史版本（'+(g.length-1)+'）</summary>'+
     g.slice(1).map(f=>line(f,true)).join('')+'</details>':'')+'</div>';}).join('')||
  '<p class="hint">暂无附件，可上传原始文件。</p>')+
- (files.length||(kind==='project'&&contractRows.some(c=>c.projectId===ownerId&&businessFiles('contract',c.id).length))?exportButtons():'');
+ (kind!=='project'&&files.length?exportButtons():'');
 }
 function chooseVersionAction(file,matches){
  if(!matches.length)return Promise.resolve({mode:'new',groupId:''});
@@ -671,7 +673,9 @@ function projectDetail(){
  '<button class="btn" data-action="projectEdit">修改</button>'+
  '<button class="btn" data-action="projectCopy">复制项目</button>'+
  '<button class="btn" data-action="projectMove">转移工作区</button>'+
- '<button class="btn" data-action="projectDelete">删除</button>')+
+ '<button class="btn" data-action="projectDelete">删除</button>'+
+ '<button class="btn" data-action="projectExportFolder">导出文件夹</button>'+
+ '<button class="btn primary" data-action="projectExportZip">导出 ZIP</button>')+
  section('项目基本信息','<div class="infogrid">'+
  infoRow('项目名称',p.name)+infoRow('项目类别',p.projectType)+infoRow('项目编号',p.projectNo)+
  infoRow('负责人',p.leader)+infoRow('承担单位',p.undertakingOrg)+
@@ -679,7 +683,6 @@ function projectDetail(){
  infoRow('结束日期',p.endDate)+infoRow('辅助分类',p.category)+
  infoRow('标签',p.tags)+infoRow('备注',p.remarks)+'</div>')+
  section('所属合同',projectContracts(p.id))+
- section('所属合同附件导出',projectContractExport(p.id))+
  section('项目自身附件',businessAttachmentList('project',p.id));
 }
 function showProjectForm(id=null){
@@ -1107,6 +1110,19 @@ el('content').addEventListener('click',async ev=>{
   case 'trashPurgeSelected':{
    const chosen=[...document.querySelectorAll('.trashcheck:checked')].map(x=>Number(x.value));
    await changeTrash(target.dataset.action==='trashRestoreSelected'?'restore':'purge',chosen);break;
+  }
+  case 'projectExportFolder':
+  case 'projectExportZip':{
+   const ids=detail?.kind==='project'?[detail.id]:
+    [...el('content').querySelectorAll('.ledger-export-row:checked')].map(x=>Number(x.value));
+   if(!ids.length){notice('请先勾选要导出的项目。',true);break;}
+   const originals=projectOriginals(ids);
+   if(!originals.length){
+    notice('所选项目及其所属合同没有可导出的原件。',true);break;
+   }
+   if(!globalThis.IPSysExport){notice('导出功能仍在初始化，请稍后重试。',true);break;}
+   await globalThis.IPSysExport.start(target.dataset.action==='projectExportFolder'?'folder':'zip',originals);
+   break;
   }
   case 'ledgerSelectAttachments':{
    const checked=[...document.querySelectorAll('.ledger-export-row:checked')];

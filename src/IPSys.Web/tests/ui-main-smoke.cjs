@@ -212,6 +212,11 @@ vm.runInContext(preamble+
 assert.ok(projectCtx.__project.includes('data-project-id="12"'),'Real project ledger must open persisted IDs');
 assert.ok(projectCtx.__project.includes('class="ledger-export-row"')&&projectCtx.__project.includes('ledgerExportAll'),
  'Project ledger must allow selecting multiple actual records');
+assert.ok(projectCtx.__project.includes('data-action="projectExportFolder"')&&
+ projectCtx.__project.includes('data-action="projectExportZip"'),
+ 'Project ledger must export selected projects directly as folder or ZIP');
+assert.ok(!projectCtx.__project.includes('module-export')&&!projectCtx.__project.includes('选择记录附件'),
+ 'Project ledger must not require a second file-picking panel');
 assert.ok(!projectCtx.__project.includes('负责人甲'),'Project leader must not appear in the ledger');
 assert.ok(!projectCtx.__project.includes('仅演示'),'Real project page must not be marked mock');
 
@@ -328,14 +333,15 @@ assert.ok(js.includes("businessFileCount('archive',r.id,k)"),
 
 // B06 UX: latest-version-only select all, record-level multiple selection and single-version labels.
 for(const phrase of ["class=\"ledger-export-row\"","class=\"ledger-export-all\"",
+ "case 'projectExportFolder'","case 'projectExportZip'",
  "case 'ledgerSelectAttachments'","class=\"export-checkall\"",
  "data-export-latest=\"1\"","(showVersion?'v'+f.version",
  "module-export-record"])assert.ok(js.includes(phrase),'Missing multi-selection feature '+phrase);
 // B06: the selected-original export remains within the current ledger/detail.
-for(const needle of ["moduleExportPanel(visible,'project')","moduleExportPanel(rows,'ip')",
+for(const needle of ["projectOriginals(ids)","moduleExportPanel(rows,'ip')",
  "moduleExportPanel(visible,'contract')","moduleExportPanel(rows,'general')",
  "moduleExportPanel(rows,'archive',k)","case 'exportFolder'","case 'exportZip'",
- "section('所属合同附件导出',projectContractExport(p.id))"])
+ "section('所属合同',projectContracts(p.id))"])
  assert.ok(js.includes(needle),'Selected-original export wiring missing: '+needle);
 assert.ok(js.includes("b06Script.src='/export.js'"),'The embedded ZIP/folder engine must load from localhost');
 
@@ -392,3 +398,5 @@ assert.ok(js.includes("历史版本"),'Historical file revisions need a readable
 assert.ok(!js.includes("删除记录和附件的恢复、永久清理界面布局 · 仅演示"),
  'Trash must no longer appear as a mock page');
 console.log('MAIN UI SMOKE PASS: navigation, workspace choice, live API contract, mock markers, CSP-compatible markup');
+assert.ok(!js.includes("section('所属合同附件导出',projectContractExport(p.id))"),
+ 'Project detail must not ask for separate contract attachment choices');

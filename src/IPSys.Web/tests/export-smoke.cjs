@@ -104,6 +104,38 @@ assert.deepEqual(JSON.parse(JSON.stringify(plan.map(x=>x.path))),[
  assert.match(elems.get('exportResult').textContent,/成功 4，失败 0/);
  assert.equal((await (await root.getDirectoryHandle('研发_项目')).getFileHandle('方案.pdf')).bytes.toString(),'123456');
  assert.equal((await (await root.getDirectoryHandle('研发_项目')).getDirectoryHandle('合同A')).children.get('附件.txt').bytes.toString(),'aFile01');
+ 
+// Project export must include all active project and linked-contract file versions,
+// while excluding unrelated project/contract and IP originals.
+const appCode=fs.readFileSync(path.resolve(__dirname,'../wwwroot/app.js'),'utf8');
+const projectStart=appCode.indexOf('function projectOriginals(');
+const projectEnd=appCode.indexOf('function businessFileCount(',projectStart);
+assert.ok(projectStart>=0&&projectEnd>projectStart,'Project all-original export helper missing');
+const projectContext={
+ projectRows:[{id:1,name:'研发:项目'},{id:2,name:'研发:项目'},{id:3,name:'未选项目'}],
+ contractRows:[{id:11,name:'合同A',projectId:1},{id:12,name:'合同A',projectId:2},
+  {id:13,name:'无关合同',projectId:3}],
+ businessFileRows:[
+  {id:101,name:'报告.pdf',size:3,kind:'project',ownerId:1,version:1},
+  {id:102,name:'报告.pdf',size:5,kind:'project',ownerId:1,version:2},
+  {id:103,name:'合同.pdf',size:8,kind:'contract',ownerId:11,version:1},
+  {id:104,name:'合同.pdf',size:9,kind:'contract',ownerId:12,version:1},
+  {id:105,name:'忽略.pdf',size:6,kind:'contract',ownerId:13,version:1},
+  {id:106,name:'忽略.pdf',size:6,kind:'project',ownerId:3,version:1},
+  {id:107,name:'其他专利.pdf',size:3,kind:'ip',ownerId:1,version:1}
+ ],
+ space:'personal'
+};
+const projectFiles=vm.runInNewContext(appCode.slice(projectStart,projectEnd)+
+ '\nprojectOriginals([1,2])',projectContext);
+assert.deepEqual(Array.from(projectFiles,x=>x.id),[101,102,103,104],
+ 'Every selected project must include all project/contract versions, excluding others');
+assert.ok(projectFiles.every(x=>x.workspace==='personal'),'Workspace isolation');
+assert.deepEqual(JSON.parse(JSON.stringify(exporter.makePlan(projectFiles).map(x=>x.path))),[
+ '研发_项目/报告.pdf','研发_项目/报告 (2).pdf',
+ '研发_项目/合同A/合同.pdf','研发_项目 (2)/合同A/合同.pdf'
+],'ZIP/folder grouping must keep each project and its contracts separate');
+
  // Q149: repeating export never changes the prior export tree.
  await exporter.start('folder',selected.slice(0,1));
  assert.ok(root.children.has('研发_项目 (3)'));
