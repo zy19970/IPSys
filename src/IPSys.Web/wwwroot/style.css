@@ -224,17 +224,17 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 .content{padding-top:16px}
 .content>.breadcrumb{margin-bottom:7px}
 .content>.heading{margin-bottom:10px}
-.compact-ledger>.compact-ledger-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:20px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.compact-ledger>.compact-ledger-toolbar{display:grid;grid-template-columns:max-content minmax(0,1fr) max-content;align-items:center;column-gap:18px;row-gap:10px;padding:12px 16px;border-bottom:1px solid var(--line)}
 .compact-ledger-title{display:flex;flex:0 0 auto;align-items:baseline;flex-wrap:wrap;gap:8px;max-width:260px}
 .compact-ledger-title h1{font-size:19px;font-weight:750;line-height:1.35;margin:0;white-space:normal}
 .compact-ledger-count{font-size:12px;color:var(--muted);white-space:nowrap}
-.compact-ledger-filters{display:flex;align-items:center;gap:9px;min-width:0;max-width:850px;flex:1 1 580px;flex-wrap:nowrap}
+.compact-ledger-filters{display:flex;align-items:center;justify-content:center;justify-self:center;gap:9px;min-width:0;width:100%;max-width:850px;flex-wrap:nowrap}
 .compact-ledger-filters>.field{display:flex;min-width:0;flex:0 1 175px;gap:0}
 .compact-ledger-filters>.field.wide{flex:1 1 240px;min-width:155px;max-width:410px}
 .compact-ledger-filters>.field label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
 .compact-ledger-filters .field input,.compact-ledger-filters .field select{height:36px;width:100%;min-width:0;padding:7px 10px}
 .compact-ledger-filters>.btn{min-height:36px;padding:6px 12px}
-.compact-ledger-actions{display:flex;align-items:center;flex:0 0 auto;gap:8px;margin-left:auto;padding-left:18px;border-left:1px solid var(--line);flex-wrap:wrap;justify-content:flex-end}
+.compact-ledger-actions{display:flex;align-items:center;justify-self:end;gap:8px;margin-left:0;padding-left:18px;border-left:1px solid var(--line);flex-wrap:wrap;justify-content:flex-end}
 .compact-ledger-actions>.btn{min-height:36px;padding:6px 13px}
 .compact-ledger-actions #ledgerExportCount{white-space:nowrap;font-size:12px;color:var(--muted)}
 .compact-ledger-export{position:relative}
@@ -253,11 +253,13 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 .compact-ledger .recordgrid{gap:12px;padding:14px}
 .compact-ledger .archivecard{min-height:146px;padding:14px;gap:9px}
 @media(max-width:1350px){
- .compact-ledger-filters{order:3;flex:1 1 100%;max-width:none;flex-wrap:wrap}
- .compact-ledger-actions{margin-left:auto}
+ .compact-ledger>.compact-ledger-toolbar{grid-template-columns:minmax(0,1fr) auto}
+ .compact-ledger-title{grid-column:1;grid-row:1}
+ .compact-ledger-actions{grid-column:2;grid-row:1}
+ .compact-ledger-filters{grid-column:1/-1;grid-row:2;justify-self:stretch;justify-content:flex-start;max-width:none;flex-wrap:wrap}
 }
 @media(max-width:760px){
- .compact-ledger>.compact-ledger-toolbar{gap:10px;padding:10px 12px}
+ .compact-ledger>.compact-ledger-toolbar{column-gap:10px;row-gap:10px;padding:10px 12px}
  .compact-ledger-actions{padding-left:10px}
  .compact-ledger-filters>.field.wide{flex:1 1 100%;max-width:none}
  .compact-ledger-filters>.field{flex:1 1 140px}

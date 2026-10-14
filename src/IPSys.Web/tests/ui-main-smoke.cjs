@@ -704,3 +704,20 @@ assert.ok(!projectCtx.__project.includes('真实记录')&&!ipCtx.__ip.includes('
  }
  compactFixture('table');
  compactFixture('cards');
+
+ // Shared ledger layout: both sides of the query group should receive equal free space,
+ // with title and business actions anchored to their own grid tracks.
+ assert.ok(css.includes('.compact-ledger>.compact-ledger-toolbar{display:grid;grid-template-columns:max-content minmax(0,1fr) max-content;'),
+  'Compact ledger should use three balanced grid tracks rather than pushing the query left');
+ assert.ok(css.includes('.compact-ledger-filters{display:flex;align-items:center;justify-content:center;justify-self:center;')&&
+  css.includes('width:100%;max-width:850px;flex-wrap:nowrap}'),
+  'Query group must be horizontally centered within its available middle track');
+ assert.ok(css.includes('.compact-ledger-actions{display:flex;align-items:center;justify-self:end;')&&
+  css.includes('margin-left:0;padding-left:18px;border-left:1px solid var(--line);'),
+  'Business actions remain right-aligned and visually separated without flex auto-margin');
+ assert.ok(css.includes('.compact-ledger>.compact-ledger-toolbar{grid-template-columns:minmax(0,1fr) auto}')&&
+  css.includes('.compact-ledger-filters{grid-column:1/-1;grid-row:2;justify-self:stretch;justify-content:flex-start;max-width:none;flex-wrap:wrap}'),
+  'Narrow widths should show title/actions above a full-width query row');
+ assert.ok(css.includes('.certificate-ledger .certificate-toolbar-filter{')&&
+  !js.includes('compactBusinessListToolbar(content) && page===\'certificate\''),
+  'The separately approved company certificate toolbar must not be changed by shared grid styling');
