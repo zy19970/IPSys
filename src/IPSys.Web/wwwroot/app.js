@@ -523,6 +523,8 @@ async function exportExcel(kind,scope,section=''){
   else if(kind==='contract')
    ids=contractRows.filter(c=>[c.name,c.contractNo,c.projectName,c.signingParties]
     .join(' ').toLowerCase().includes(filterName.toLowerCase())).map(c=>c.id);
+  else if(kind==='archive'&&space==='company'&&section==='certificate')
+   ids=companyCertificateRows().map(r=>r.id);
   else if(kind==='archive')
    ids=(archiveRows[section]||[]).filter(r=>{
     const category=r.category||'未分类';
@@ -924,6 +926,41 @@ function realArchiveCategoryCard(category,count,files){
  '<span class="archivecard-count">附件 <strong>'+files+'</strong> 份</span></div>'+
  '<div class="archivecard-actions"><span class="archivecategory-open">进入台账 →</span></div></article>';
 }
+
+function companyCertificateRows(){
+ return (archiveRows.certificate||[]).filter(r=>{
+  const category=r.category||'未分类';
+  return [r.name,category,r.remarks,r.tags].join(' ').toLowerCase().includes(filterName.toLowerCase())&&
+   (filterKind==='全部类型'||category===filterKind);
+ });
+}
+function realCompanyCertificateList(){
+ const all=archiveRows.certificate||[],rows=companyCertificateRows();
+ const categories=[...new Set(all.map(r=>r.category||'未分类'))];
+ const options=['全部类型',...categories].map(x=>
+  '<option value="'+escapeHtml(x)+'" '+(filterKind===x?'selected':'')+'>'+escapeHtml(x)+'</option>').join('');
+ return heading('企业资质','证书、认定和企业资质记录',
+  '<button class="btn primary" data-action="archiveAdd">＋ 新建记录</button>')+
+ '<section class="white certificate-ledger">'+
+ '<div class="certificate-filterline">'+
+ '<div class="certificate-filter-field certificate-keyword"><label for="filterSearch">资质名称 / 关键词</label>'+
+ '<input id="filterSearch" placeholder="搜索资质名称、类别或备注"></div>'+
+ '<div class="certificate-filter-field certificate-category"><label for="filterKind">类别</label>'+
+ '<select id="filterKind">'+options+'</select></div>'+
+ '<button class="btn primary" data-action="filter">查询</button>'+
+ '<button class="btn" data-action="clearFilter">重置</button></div>'+
+ '<div class="tabletools"><b>企业资质 · '+rows.length+' 条记录</b>'+
+ '<div class="actions">'+quickExportButtons(rows,'archive','certificate')+'</div></div>'+
+ '<div class="tablewrap archive-tablewrap"><table class="data"><thead><tr>'+
+ '<th>资质名称</th><th>类别</th><th>附件</th><th>操作</th></tr></thead><tbody>'+
+ (rows.length?rows.map(r=>
+  '<tr><td><button class="link" data-archive-id="'+r.id+'">'+escapeHtml(r.name)+'</button></td>'+
+  '<td><span class="tag">'+escapeHtml(r.category||'未分类')+'</span></td>'+
+  '<td>'+businessFileCount('archive',r.id,'certificate')+' 份</td>'+
+  '<td><button class="btn btn-sm" data-archive-id="'+r.id+'">查看详情</button></td></tr>').join(''):
+  '<tr><td colspan="4" class="empty">暂无符合条件的资质记录，可点击右上角新建。</td></tr>')+
+ '</tbody></table></div><div class="tablefoot">共 '+all.length+' 条企业资质记录</div></section>';
+}
 function realArchiveCards(k){
  const rows=archiveRows[k]||[],categories=archiveCategories(k);
  const visible=categories.filter(category=>
@@ -963,7 +1000,9 @@ function realArchiveTable(k,category){
 function realArchiveDetail(){
  const record=(archiveRows[page]||[]).find(r=>r.id===detail?.id);
  if(!record)return heading('资料不存在','当前工作区找不到此记录');
- const back=archiveGroup?'<button class="btn" data-archive-back="table">← 返回'+escapeHtml(archiveGroup)+'台账</button>':
+ const back=space==='company'&&page==='certificate'?
+ '<button class="btn" data-nav="certificate">← 返回企业资质</button>':
+ archiveGroup?'<button class="btn" data-archive-back="table">← 返回'+escapeHtml(archiveGroup)+'台账</button>':
  '<button class="btn" data-nav="'+page+'">← 返回类别卡片</button>';
  const moveAvailable=page!=='certificate';
  return heading(record.name,archiveSectionName(page)+' · 资料记录',
@@ -1099,7 +1138,7 @@ function openSearchHit(index){
  else if(kind==='project')page='researchProject';
  else if(kind==='contract')page='contract';
  else if(kind==='ip')page='ip';
- else if(kind==='archive'){page=h.section;archiveGroup=row.category||'未分类';}
+ else if(kind==='archive'){page=h.section;archiveGroup=space==='company'&&page==='certificate'?null:row.category||'未分类';}
  else return;
  detail={kind,id};globalSerial++;globalPending=false;
  filterName='';filterKind='全部类型';filterState='全部状态';
@@ -1182,11 +1221,11 @@ function render(){
  refreshSidebar();
  const content=el('content');
  content.innerHTML=detail?(detail.kind==='general'?realDetail():detail.kind==='project'?projectDetail():detail.kind==='contract'?contractDetail():detail.kind==='ip'?ipDetail():detail.kind==='archive'?realArchiveDetail():mockDetail()):
-   archiveGroup&&archiveSections.includes(page)?realArchiveTable(page,archiveGroup):
+   archiveGroup&&archiveSections.includes(page)&&!(space==='company'&&page==='certificate')?realArchiveTable(page,archiveGroup):
    page==='dashboard'?dashboard():page==='general'?generalList():
    isProject(page)?projectList(page):page==='ip'?ipList():
    page==='contract'?contractList():
-   archiveSections.includes(page)?realArchiveCards(page):
+   archiveSections.includes(page)?(space==='company'&&page==='certificate'?realCompanyCertificateList():realArchiveCards(page)):
    page==='search'?searchPage():page==='settings'?settingsPage():trashPage();
  const searchBox=el('filterSearch');if(searchBox)searchBox.value=filterName;
 }
@@ -1583,7 +1622,7 @@ el('archiveForm').onsubmit=async event=>{
   await refresh();
   const record=(archiveRows[section]||[]).find(r=>r.id===recordId);
   if(record){
-   page=section;archiveGroup=record.category||'未分类';
+   page=section;archiveGroup=workspace==='company'&&section==='certificate'?null:record.category||'未分类';
    detail={kind:'archive',id:recordId};render();
   }
   notice(id===null?'资料已创建':'资料修改已保存');

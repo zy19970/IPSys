@@ -73,8 +73,10 @@ for(const k of ['certificate','ip','researchProject','achievement','academic'])a
 for(const cls of ['.recordgrid','.archivecard','.archivecard-real','.archivecard-meta','.archivecard-actions','.archivecategory','.archive-tablewrap']){
  assert.ok(css.includes(cls),'Missing archive card style '+cls);
 }
-assert.ok(js.includes("archiveSections.includes(page)?realArchiveCards(page)"),'Archive sections must load actual SQLCipher category cards');
-assert.ok(js.includes("archiveGroup&&archiveSections.includes(page)?realArchiveTable(page,archiveGroup)"),'Category rows must use SQLCipher');
+assert.ok(js.includes("archiveSections.includes(page)?(space==='company'&&page==='certificate'?realCompanyCertificateList():realArchiveCards(page))"),
+ 'Company certificate routes directly to its real list; other archives keep category cards');
+assert.ok(js.includes("archiveGroup&&archiveSections.includes(page)&&!(space==='company'&&page==='certificate')?realArchiveTable(page,archiveGroup)"),
+ 'Card-based archive categories must retain their existing drill-down, except company certificate');
 assert.ok(js.includes("detail.kind==='archive'?realArchiveDetail()"),'Archive records must open real detail');
 assert.ok(js.includes("page==='general'?generalList()"),'Real general records must retain their route');
 assert.ok(js.includes("isProject(page)?projectList(page)"),'Project pages must use real SQLCipher records');
@@ -384,6 +386,50 @@ assert.ok(realArchiveCtx.__companyCards.includes('data-archive-category="技术�
  realArchiveCtx.__companyTable.includes('data-archive-id="31"'),'Old and new company data must be accessible');
 assert.ok(js.includes("label:'公司资料 / 业务档案'"));
 assert.ok(!v.personalNav.includes('业务档案'),'Personal achievements should not change');
+// Company enterprise certificates skip category cards and use the original stored records as table rows.
+vm.runInContext(
+ "space='company';page='certificate';archiveGroup=null;filterName='';filterKind='全部类型';"+
+ "archiveRows.certificate=["+
+ "{id:51,name:'高新技术企业证书',category:'企业认定',remarks:'2026',tags:'资质'},"+
+ "{id:52,name:'质量管理体系认证',category:'体系认证',remarks:'ISO',tags:'认证'},"+
+ "{id:53,name:'待分类证明',category:'',remarks:'',tags:''}];"+
+ "globalThis.__certAll=realCompanyCertificateList();"+
+ "filterKind='体系认证';globalThis.__certType=realCompanyCertificateList();"+
+ "filterKind='全部类型';filterName='高新';globalThis.__certKeyword=realCompanyCertificateList();"+
+ "archiveRows.certificate=[];filterName='';globalThis.__certEmpty=realCompanyCertificateList();",
+ realArchiveCtx);
+for(const label of ['高新技术企业证书','质量管理体系认证','待分类证明'])
+ assert.ok(realArchiveCtx.__certAll.includes(label),'Company certificate list missing actual record '+label);
+assert.ok(realArchiveCtx.__certAll.includes('<table')&&
+ !realArchiveCtx.__certAll.includes('data-archive-category=')&&
+ !realArchiveCtx.__certAll.includes('class="recordgrid"'),
+ 'Company certificate must enter a direct record table without a category-card stage');
+assert.ok(realArchiveCtx.__certAll.includes('data-archive-id="51"')&&
+ realArchiveCtx.__certAll.includes('data-archive-id="52"')&&
+ realArchiveCtx.__certAll.includes('data-archive-id="53"'),
+ 'Each existing certificate must have an accessible detail link');
+assert.ok(realArchiveCtx.__certAll.includes('certificate-filterline')&&
+ realArchiveCtx.__certAll.includes('data-action="archiveAdd"')&&
+ realArchiveCtx.__certAll.includes('excelExport ZIP'),
+ 'Direct list must keep compact filter, new record, and original/Excel exports');
+assert.ok(realArchiveCtx.__certType.includes('质量管理体系认证')&&
+ !realArchiveCtx.__certType.includes('高新技术企业证书'),
+ 'Category filter must be based on certificate records rather than mock categories');
+assert.ok(realArchiveCtx.__certKeyword.includes('高新技术企业证书')&&
+ !realArchiveCtx.__certKeyword.includes('质量管理体系认证'),
+ 'Keyword filter must operate on actual certificate names');
+assert.ok(realArchiveCtx.__certEmpty.includes('暂无符合条件的资质记录')&&
+ !realArchiveCtx.__certEmpty.includes('企业资质</h3>'),
+ 'Empty enterprise certificate page must display a table empty state, not a fake card');
+assert.ok(js.includes("ids=companyCertificateRows().map(r=>r.id)"),
+ 'Excel export must select the same rows as the certificate list');
+assert.ok(js.includes("workspace==='company'&&section==='certificate'?null:record.category"),
+ 'Saved certificate detail must return to the direct company list, not the category table');
+assert.ok(js.includes('data-nav="certificate">← 返回企业资质'),
+ 'Certificate detail must offer a direct list return');
+assert.ok(css.includes('.certificate-ledger .certificate-filterline')&&
+ css.includes('.certificate-ledger .certificate-keyword{flex:0 1 400px'),
+ 'Compact certificate filter must use constrained widths instead of stretching across the page');
 
 // B05 real business file links are scoped to stored records, not demo attachments.
 assert.ok(html.includes('id="businessFileInput"'),'Business original file picker missing');

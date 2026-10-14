@@ -184,3 +184,18 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 .project-excel-entry{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border:1px solid var(--line);border-radius:8px;background:#f8fafb;margin-top:15px;padding:12px 14px}
 .project-excel-entry strong{font-size:13px}.project-excel-entry .hint{margin:2px 0 0;font-size:12px}
 @media(max-width:740px){.workspace-switches{margin:0 2px 10px}.workspace-switch{justify-content:center;padding:9px 3px}.workspace-switch-name{display:none}.project-excel-entry{align-items:flex-start}}
+
+/* Compact direct list for company enterprise certificates. Other archives retain category cards. */
+.certificate-ledger .certificate-filterline{display:flex;align-items:flex-end;flex-wrap:wrap;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.certificate-ledger .certificate-filter-field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.certificate-ledger .certificate-keyword{flex:0 1 400px;min-width:210px}
+.certificate-ledger .certificate-category{flex:0 1 220px;min-width:150px}
+.certificate-ledger .certificate-filter-field label{font-size:12px;color:#758493}
+.certificate-ledger .certificate-filter-field input,.certificate-ledger .certificate-filter-field select{height:36px;width:100%;border:1px solid #dfe5eb;border-radius:6px;background:#fff;padding:7px 10px;outline:none}
+.certificate-ledger .certificate-filterline>.btn{min-height:36px;padding:7px 14px}
+.certificate-ledger .tabletools{padding:10px 16px}
+.certificate-ledger .data th,.certificate-ledger .data td{padding-top:10px;padding-bottom:10px}
+@media(max-width:760px){
+ .certificate-ledger .certificate-keyword{flex:1 1 100%}
+ .certificate-ledger .certificate-category{flex:1 1 160px}
+}
