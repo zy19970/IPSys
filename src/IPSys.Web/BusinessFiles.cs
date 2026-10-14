@@ -546,10 +546,7 @@ static class BusinessFileStore
             cmd.CommandText="""
                 INSERT INTO business_file_links(workspace,kind,owner_id,section,object_id,
                     filename,category,version,group_id,deleted)
-                SELECT $w,$kind,$owner,$section,$object,$name,$material,$version,$group,0
-                WHERE NOT EXISTS(
-                    SELECT 1 FROM business_file_links WHERE workspace=$w AND kind=$kind
-                    AND owner_id=$owner AND section=$section AND object_id=$object AND deleted=0);
+                VALUES($w,$kind,$owner,$section,$object,$name,$material,$version,$group,0);
                 """;
             cmd.Parameters.AddWithValue("$w",workspace);
             cmd.Parameters.AddWithValue("$kind",kind);
