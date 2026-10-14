@@ -401,13 +401,13 @@ function businessFiles(kind,ownerId,section=''){
   (kind!=='archive'||f.section===section));
 }
 function businessFileCount(kind,ownerId,section=''){
- return businessFiles(kind,ownerId,section).length;
+ return new Set(businessFiles(kind,ownerId,section).map(f=>f.groupId||f.name+'\u0000'+f.category)).size;
 }
 function businessAttachmentList(kind,ownerId,section=''){
  const files=businessFiles(kind,ownerId,section);
  const groups=new Map();
  for(const f of files){
-  const key=f.name+'\u0000'+f.category;
+  const key=f.groupId||f.name+'\u0000'+f.category;
   if(!groups.has(key))groups.set(key,[]);
   groups.get(key).push(f);
  }
@@ -423,7 +423,7 @@ function businessAttachmentList(kind,ownerId,section=''){
  '<button class="btn btn-sm" data-business-delete="'+f.id+'">移除</button></div>';
  return '<div class="tabletools"><b>原件附件 '+groups.size+' 份</b><div class="actions">'+category+
  '<button class="btn primary" data-action="businessUpload">＋ 上传原件</button></div></div>'+
- '<p class="hint">同名文件上传前确认新版本，旧版本保留；单文件上限 64 MiB。</p>'+
+ '<p class="hint">同名原件可选择更新已有版本链，或作为独立新文件归档；同工作区共享引用自动显示新版本。单文件上限 64 MiB。</p>'+
  ([...groups.values()].map(g=>{g.sort((a,b)=>b.version-a.version||b.id-a.id);
   return '<div class="business-file-group">'+line(g[0])+
    '<button class="btn btn-sm" data-business-associate="'+g[0].id+'">复制／移动关联</button>'+
@@ -442,7 +442,9 @@ async function uploadBusinessAttachment(file,meta){
   const response=await api(url,{method:'POST',headers:{
    'Content-Type':'application/octet-stream',
    'X-File-Name':encodeURIComponent(file.name),
-   'X-Material-Category':encodeURIComponent(meta.category||'')
+   'X-Material-Category':encodeURIComponent(meta.category||''),
+   'X-Upload-Mode':meta.mode||'new',
+   'X-File-Group':meta.groupId||''
   },body:file});
   const saved=await response.json();
   await refresh();
@@ -1000,10 +1002,23 @@ el('businessFileInput').onchange=async event=>{
  const file=input.files?.[0],meta=pendingBusinessUpload;
  pendingBusinessUpload=null;input.value='';
  if(file&&meta){
- const exists=businessFiles(meta.kind,meta.ownerId,meta.section).some(f=>
-  f.name===file.name&&f.category===(meta.category||''));
- if(exists&&!confirm('已有同名原件“'+file.name+'”。确定更新为新版本并保留旧版本？取消将不上传。'))return;
- await uploadBusinessAttachment(file,meta);
+ const matches=[...new Map(businessFiles(meta.kind,meta.ownerId,meta.section)
+  .filter(f=>f.name===file.name&&f.category===(meta.category||''))
+  .map(f=>[f.groupId||'legacy-'+f.id,f])).values()];
+ let mode=matches.length?'update':'new',groupId='';
+ if(matches.length){
+  const choice=prompt('已有 '+matches.length+' 组同名原件“'+file.name+
+   '”。输入 1-'+matches.length+' 更新指定原件及其共享引用；输入 N 另建同名独立原件；输入 0 取消上传。','1');
+  if(choice===null||choice.trim()==='0')return;
+  if(choice.trim().toUpperCase()==='N')mode='new';
+  else{
+   const which=Number(choice.trim());
+   if(!Number.isInteger(which)||which<1||which>matches.length)
+    return notice('请选择有效的同名原件序号或 N。',true);
+   groupId=matches[which-1].groupId;
+  }
+ }
+ await uploadBusinessAttachment(file,{...meta,mode,groupId});
 }
 };
 el('content').addEventListener('change',async ev=>{
