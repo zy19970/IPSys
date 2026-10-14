@@ -206,6 +206,56 @@ function refreshSidebar(){
     const b=document.createElement('button');b.type='button';b.className='nav'+(page===key?' active':'');b.textContent=ico+'   '+name;b.onclick=()=>setPage(key);bottom.append(b);
   }
 }
+
+/* Normalize list/category-card headers into the confirmed compact toolbar,
+   retaining the original elements, data-actions, and archive navigation. */
+function compactBusinessListToolbar(content){
+ const pageHeading=content.querySelector(':scope > .heading');
+ const filterPanel=content.querySelector(':scope > .white.filter');
+ const ledger=filterPanel?.nextElementSibling;
+ const ledgerTools=ledger?.querySelector(':scope > .tabletools');
+ const filterLine=filterPanel?.querySelector('.filterline');
+ const title=pageHeading?.querySelector('h1');
+ if(!pageHeading||!filterPanel||!ledger?.classList.contains('white')||!ledgerTools||!filterLine||!title)return;
+ const toolbar=document.createElement('div');toolbar.className='compact-ledger-toolbar';
+ const titleGroup=document.createElement('div');titleGroup.className='compact-ledger-title';
+ titleGroup.append(title);
+ const count=ledgerTools.querySelector('b');
+ if(count){
+  const summary=document.createElement('span');summary.className='compact-ledger-count';
+  summary.textContent=count.textContent.trim();titleGroup.append(summary);
+ }
+ toolbar.append(titleGroup);
+ const filters=document.createElement('div');filters.className='compact-ledger-filters';
+ for(const field of filterLine.querySelectorAll('.field')){
+  const label=field.querySelector('label');
+  const control=field.querySelector('input,select');
+  if(label&&control&&!control.getAttribute('aria-label'))control.setAttribute('aria-label',label.textContent.trim());
+ }
+ while(filterLine.firstChild)filters.append(filterLine.firstChild);
+ toolbar.append(filters);
+ const actions=document.createElement('div');actions.className='compact-ledger-actions';
+ for(const parent of [pageHeading.querySelector('.actions'),ledgerTools.querySelector('.actions')]){
+  if(parent)while(parent.firstChild)actions.append(parent.firstChild);
+ }
+ const exportButtons=Array.from(actions.querySelectorAll('button[data-action]')).filter(button=>
+  ['projectExportFolder','projectExportZip','ipExportFolder','ipExportZip',
+   'moduleExportFolder','moduleExportZip','excelExport'].includes(button.dataset.action));
+ if(exportButtons.length>=2){
+  const menu=document.createElement('details');menu.className='compact-ledger-export';
+  const trigger=document.createElement('summary');trigger.className='btn compact-ledger-export-trigger';
+  trigger.textContent='导出 ▾';trigger.setAttribute('aria-label','选择导出方式');
+  const choices=document.createElement('div');choices.className='compact-ledger-export-options';
+  choices.setAttribute('role','group');choices.setAttribute('aria-label','导出方式');
+  exportButtons[0].before(menu);
+  for(const button of exportButtons)choices.append(button);
+  menu.append(trigger,choices);
+ }
+ toolbar.append(actions);
+ pageHeading.remove();filterPanel.remove();ledgerTools.remove();
+ ledger.classList.add('compact-ledger');ledger.prepend(toolbar);
+}
+
 function heading(name,subtitle,actions=''){
  return `<div class="breadcrumb">${space==='company'?'公司资料':'个人资料'} / ${escapeHtml(name)}</div><div class="heading"><div><h1>${escapeHtml(name)}</h1><div class="subtitle">${subtitle}</div></div><div class="actions">${actions}</div></div>`;
 }
@@ -1239,6 +1289,7 @@ function render(){
    page==='contract'?contractList():
    archiveSections.includes(page)?(space==='company'&&page==='certificate'?realCompanyCertificateList():realArchiveCards(page)):
    page==='search'?searchPage():page==='settings'?settingsPage():trashPage();
+ compactBusinessListToolbar(content);
  const searchBox=el('filterSearch');if(searchBox)searchBox.value=filterName;
 }
 async function upload(id,file,choice,workspace){
@@ -1283,6 +1334,9 @@ function openMockRecord(kind,id){if(page!==kind)archiveGroup=null;detail={kind,i
 el('content').addEventListener('click',async ev=>{
  const expandedExport=el('content').querySelector('.certificate-export[open]');
  if(expandedExport&&!ev.target.closest('.certificate-export'))expandedExport.removeAttribute('open');
+ for(const menu of el('content').querySelectorAll('.compact-ledger-export[open]')){
+  if(!ev.target.closest('.compact-ledger-export')||ev.target.closest('.compact-ledger-export-options button'))menu.removeAttribute('open');
+ }
  const categoryCard=ev.target.closest('[data-archive-category]');
  if(categoryCard){
   const category=categoryCard.dataset.archiveCategory;
@@ -1615,6 +1669,7 @@ el('content').addEventListener('change',async ev=>{
 });
 el('content').addEventListener('keydown',event=>{
  if(event.key==='Escape')el('content').querySelector('.certificate-export[open]')?.removeAttribute('open');
+ if(event.key==='Escape')el('content').querySelectorAll('.compact-ledger-export[open]').forEach(menu=>menu.removeAttribute('open'));
  if((event.key==='Enter'||event.key===' ')&&event.target.matches('[data-archive-category]')){event.preventDefault();event.target.click();return;}
  if(event.key==='Enter'&&event.target.id==='filterSearch'){event.preventDefault();el('content').querySelector('[data-action=filter]')?.click();}
 });

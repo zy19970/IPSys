@@ -605,3 +605,102 @@ assert.ok(js.includes("button.onclick=()=>selectSpace(button.dataset.workspaceSw
 assert.ok(js.includes("el('projectExcelImport').hidden=!!p"),'Excel import should be visible only when creating a project');
 assert.ok(js.includes("await importExcel(kind,file,section)"),'Every modal Excel input must use existing XLSX API');
 assert.ok(!projectCtx.__project.includes('真实记录')&&!ipCtx.__ip.includes('真实记录'),'Real ledger badge should disappear');
+
+
+ // Shared compact ledgers must preserve working filters and the original export action IDs.
+ for(const source of ["function compactBusinessListToolbar(content)","compactBusinessListToolbar(content);",
+   "'projectExportFolder','projectExportZip','ipExportFolder','ipExportZip'",
+   "'moduleExportFolder','moduleExportZip','excelExport'",
+   "if(event.key==='Escape')el('content').querySelectorAll('.compact-ledger-export[open]')"])
+  assert.ok(js.includes(source),'Unified compact toolbar missing behavior: '+source);
+ for(const source of ["compact-ledger-toolbar","compact-ledger-filters","compact-ledger-export-options",
+   "compact-ledger .recordgrid","@media(max-width:1350px)"])
+  assert.ok(css.includes(source),'Unified compact toolbar missing responsive style: '+source);
+ for(const marker of ["function generalList(){","function ipList(){","function projectList(k){",
+   "function contractList(){","function realArchiveCards(k){","function realArchiveTable(k,category){"])
+  assert.ok(js.includes(marker),'Preserve the original ledger/card renderer: '+marker);
+ // Exercise the DOM transformation itself without requiring a browser on the CI runner.
+ class CompactNode{
+  constructor(tag='div',name=''){this.tag=tag;this.name=name;this.children=[];this.parent=null;
+   this.attrs={};this.dataset={};this.textContent='';this.removed=false;this.styles=new Set();}
+  get firstChild(){return this.children[0]||null;}
+  get className(){return [...this.styles].join(' ');}
+  set className(v){this.styles=new Set(String(v).split(' ').filter(Boolean));}
+  get classList(){return {contains:x=>this.styles.has(x),add:x=>this.styles.add(x)};}
+  append(...nodes){for(const node of nodes){
+   if(node.parent)node.parent.children.splice(node.parent.children.indexOf(node),1);
+   this.children.push(node);node.parent=this;
+  }}
+  prepend(...nodes){for(const node of nodes.reverse()){
+   if(node.parent)node.parent.children.splice(node.parent.children.indexOf(node),1);
+   this.children.unshift(node);node.parent=this;
+  }}
+  before(node){if(!this.parent)throw Error('missing button parent');
+   if(node.parent)node.parent.children.splice(node.parent.children.indexOf(node),1);
+   const i=this.parent.children.indexOf(this);this.parent.children.splice(i,0,node);node.parent=this.parent;
+  }
+  remove(){this.removed=true;if(this.parent){
+   this.parent.children.splice(this.parent.children.indexOf(this),1);this.parent=null;
+  }}
+  getAttribute(key){return this.attrs[key]||null;}
+  setAttribute(key,value){this.attrs[key]=value;}
+  querySelector(selector){return this.lookup?.[selector]||null;}
+  querySelectorAll(selector){
+   if(selector==='.field')return this.children.filter(n=>n.styles.has('field'));
+   if(selector==='button[data-action]'){
+    const output=[];const scan=n=>{if(n.tag==='button'&&n.dataset.action)output.push(n);
+     for(const child of n.children)scan(child);};
+    scan(this);return output;
+   }
+   return [];
+  }
+ }
+ const compactHelper=js.slice(js.indexOf('function compactBusinessListToolbar('),
+  js.indexOf('function heading(',js.indexOf('function compactBusinessListToolbar(')));
+ const compactVM=vm.createContext({document:{createElement:tag=>new CompactNode(tag)}});
+ vm.runInContext(compactHelper+'\nglobalThis.compact=compactBusinessListToolbar;',compactVM);
+ function compactFixture(recordMode){
+  const content=new CompactNode(),header=new CompactNode(),filter=new CompactNode(),
+   card=new CompactNode(),tools=new CompactNode(),line=new CompactNode();
+  card.className='white';filter.className='white filter';
+  const title=new CompactNode('h1'),count=new CompactNode('b');
+  title.textContent=recordMode==='cards'?'业务档案':'公司项目';
+  count.textContent=recordMode==='cards'?'资料类别 7 类':'业务台账 3 条记录';
+  const headActions=new CompactNode(),listActions=new CompactNode();
+  const create=new CompactNode('button');create.dataset.action='projectAdd';
+  headActions.append(create);
+  const folder=new CompactNode('button');folder.dataset.action='moduleExportFolder';
+  const zip=new CompactNode('button');zip.dataset.action='moduleExportZip';
+  const xlsx=new CompactNode('button');xlsx.dataset.action='excelExport';
+  listActions.append(folder,zip,xlsx);
+  const field=new CompactNode();field.className='field';
+  const label=new CompactNode('label');label.textContent='名称 / 编号';
+  const input=new CompactNode('input');
+  field.lookup={label,'input,select':input};line.append(field);
+  const search=new CompactNode('button');search.dataset.action='filter';line.append(search);
+  header.lookup={h1:title,'.actions':headActions};
+  filter.lookup={'.filterline':line};filter.nextElementSibling=card;
+  tools.lookup={b:count,'.actions':listActions};
+  card.lookup={':scope > .tabletools':tools};
+  const body=new CompactNode(recordMode==='cards'?'article':'table');body.name=recordMode;
+  card.append(tools,body);
+  content.append(header,filter,card);
+  content.lookup={':scope > .heading':header,':scope > .white.filter':filter};
+  compactVM.compact(content);
+  assert.ok(card.classList.contains('compact-ledger'),'Unified toolbar must decorate real record/container');
+  assert.equal(card.children[0].className,'compact-ledger-toolbar');
+  assert.ok(card.children.includes(body),'Record table or category cards must remain in place');
+  assert.ok(header.removed&&filter.removed&&tools.removed,'Redundant header/filter/tool rows must be removed');
+  assert.equal(input.getAttribute('aria-label'),'名称 / 编号','Moved search must have accessible label');
+  const [titleBox,filters,actions]=card.children[0].children;
+  assert.ok(titleBox.children.some(x=>x.tag==='h1'),'Original page title must survive');
+  assert.ok(filters.children.includes(field)&&filters.children.includes(search),'Original filters/buttons must survive');
+  assert.ok(actions.children.includes(create),'Original add-record command must survive');
+  const exportMenu=actions.children.find(x=>x.tag==='details');
+  assert.ok(exportMenu,'3 export buttons must become one dropdown menu');
+  const optionButtons=exportMenu.children[1].children;
+  assert.deepEqual(optionButtons.map(x=>x.dataset.action),
+   ['moduleExportFolder','moduleExportZip','excelExport'],'Export actions must retain exact handlers and order');
+ }
+ compactFixture('table');
+ compactFixture('cards');

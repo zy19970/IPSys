@@ -219,3 +219,48 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
  .certificate-ledger .certificate-toolbar-title{flex-basis:auto}
  .certificate-ledger .certificate-toolbar-actions{padding-left:12px}
 }
+
+/* Shared compact lists and category cards. Company enterprise certificates keep their approved toolbar. */
+.content{padding-top:16px}
+.content>.breadcrumb{margin-bottom:7px}
+.content>.heading{margin-bottom:10px}
+.compact-ledger>.compact-ledger-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:20px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.compact-ledger-title{display:flex;flex:0 0 auto;align-items:baseline;flex-wrap:wrap;gap:8px;max-width:260px}
+.compact-ledger-title h1{font-size:19px;font-weight:750;line-height:1.35;margin:0;white-space:normal}
+.compact-ledger-count{font-size:12px;color:var(--muted);white-space:nowrap}
+.compact-ledger-filters{display:flex;align-items:center;gap:9px;min-width:0;max-width:850px;flex:1 1 580px;flex-wrap:nowrap}
+.compact-ledger-filters>.field{display:flex;min-width:0;flex:0 1 175px;gap:0}
+.compact-ledger-filters>.field.wide{flex:1 1 240px;min-width:155px;max-width:410px}
+.compact-ledger-filters>.field label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+.compact-ledger-filters .field input,.compact-ledger-filters .field select{height:36px;width:100%;min-width:0;padding:7px 10px}
+.compact-ledger-filters>.btn{min-height:36px;padding:6px 12px}
+.compact-ledger-actions{display:flex;align-items:center;flex:0 0 auto;gap:8px;margin-left:auto;padding-left:18px;border-left:1px solid var(--line);flex-wrap:wrap;justify-content:flex-end}
+.compact-ledger-actions>.btn{min-height:36px;padding:6px 13px}
+.compact-ledger-actions #ledgerExportCount{white-space:nowrap;font-size:12px;color:var(--muted)}
+.compact-ledger-export{position:relative}
+.compact-ledger-export-trigger{display:flex;align-items:center;justify-content:center;min-height:36px;padding:6px 13px;list-style:none;user-select:none}
+.compact-ledger-export-trigger::-webkit-details-marker{display:none}
+.compact-ledger-export[open]>.compact-ledger-export-trigger{background:var(--pale);border-color:#a4ccd0}
+.compact-ledger-export-options{position:absolute;top:calc(100% + 6px);right:0;z-index:22;min-width:190px;padding:5px;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 12px 28px #27374721}
+.compact-ledger-export-options button{display:block;width:100%;text-align:left;padding:9px 12px;border:0;border-radius:5px;background:transparent;color:var(--ink);font-size:13px;white-space:nowrap}
+.compact-ledger-export-options button:hover,.compact-ledger-export-options button:focus-visible{background:var(--pale);color:var(--primary)}
+.compact-ledger-export-options .btn,.compact-ledger-export-options .btn.primary{background:transparent;color:var(--ink);border:0;box-shadow:none}
+.compact-ledger-export-options .btn:hover,.compact-ledger-export-options .btn.primary:hover{background:var(--pale);color:var(--primary)}
+
+.compact-ledger .data th,.compact-ledger .data td{padding-top:10px;padding-bottom:10px}
+.compact-ledger .tablefoot{padding:7px 16px;font-size:12px}
+.compact-ledger .tablewrap{max-height:calc(100vh - 265px)}
+.compact-ledger .recordgrid{gap:12px;padding:14px}
+.compact-ledger .archivecard{min-height:146px;padding:14px;gap:9px}
+@media(max-width:1350px){
+ .compact-ledger-filters{order:3;flex:1 1 100%;max-width:none;flex-wrap:wrap}
+ .compact-ledger-actions{margin-left:auto}
+}
+@media(max-width:760px){
+ .compact-ledger>.compact-ledger-toolbar{gap:10px;padding:10px 12px}
+ .compact-ledger-actions{padding-left:10px}
+ .compact-ledger-filters>.field.wide{flex:1 1 100%;max-width:none}
+ .compact-ledger-filters>.field{flex:1 1 140px}
+ .compact-ledger .recordgrid{gap:10px;padding:10px}
+ .compact-ledger .archivecard{min-height:0;padding:12px}
+}
