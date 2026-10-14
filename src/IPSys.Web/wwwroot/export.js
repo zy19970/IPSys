@@ -282,4 +282,14 @@ const IPSysExport=(()=>{
  return {start,cancel,makePlan,cleanName,crcStep};
 })();
 globalThis.IPSysExport=IPSysExport;
-document.getElementById('exportCancel').onclick=()=>IPSysExport.cancel();
+(function setupExportBar(){
+ const bar=document.createElement('div');bar.id='exportStatus';bar.className='export-status';
+ bar.hidden=true;
+ const heading=document.createElement('strong');heading.textContent='原件导出';
+ const message=document.createElement('span');message.id='exportStatusText';
+ const cancel=document.createElement('button');cancel.id='exportCancel';
+ cancel.type='button';cancel.className='btn btn-sm';cancel.textContent='取消导出';
+ const report=document.createElement('pre');report.id='exportResult';report.setAttribute('aria-live','polite');
+ bar.append(heading,message,cancel,report);document.body.append(bar);
+ cancel.onclick=()=>IPSysExport.cancel();
+})();
