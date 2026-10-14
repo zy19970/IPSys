@@ -207,6 +207,7 @@ function realDetail(){
  const fileLine=f=>'<div class="fileline"><span class="fileicon">'+escapeHtml(f.name.split('.').pop().slice(0,4).toUpperCase())+'</span>'+
  '<span class="filedesc"><strong>'+escapeHtml(f.name)+'</strong><small>v'+f.version+' · '+fmtSize(f.size)+
  ' · SHA-256 '+escapeHtml(f.sha256.slice(0,16))+'…</small></span>'+
+ exportCheck(f,'general')+
  '<button class="btn btn-sm" data-preview-general="'+f.id+'">预览</button>'+
  '<button class="btn btn-sm" data-download="'+f.id+'">下载原件</button>'+
  '<button class="btn btn-sm" data-general-file-delete="'+f.id+'">移除</button></div>';
@@ -225,7 +226,8 @@ function realDetail(){
  return '<div class="business-file-group">'+fileLine(g[0])+
  (g.length>1?'<details><summary>查看历史版本（'+(g.length-1)+'）</summary>'+
  g.slice(1).map(fileLine).join('')+'</details>':'')+'</div>';}).join('')||
- '<div class="empty">暂无附件，点击“上传原件”开始归档。</div>')+'</div></section>'+
+ '<div class="empty">暂无附件，点击“上传原件”开始归档。</div>')+
+ (r.files.length?exportButtons():'')+'</div></section>'+
  '<section class="white detailsection"><div class="detailsectionhead"><h2>关联资料</h2>'+stamp()+
  '</div><div class="empty">跨业务记录关联将在后续统一实现</div></section>';
 }
@@ -422,6 +424,58 @@ function businessFiles(kind,ownerId,section=''){
  return businessFileRows.filter(f=>f.kind===kind&&f.ownerId===ownerId&&
   (kind!=='archive'||f.section===section));
 }
+function exportCheck(file,source='business'){
+ return '<label class="export-check"><input type="checkbox" class="export-filecheck"'+
+  ' data-export-source="'+source+'" data-export-id="'+file.id+'"> 导出此版</label>';
+}
+function exportButtons(){
+ return '<div class="export-tools"><span>只导出手动勾选的原件（含可单独勾选的历史版本）</span>'+
+ '<div class="actions"><button class="btn" data-action="exportFolder">导出至文件夹</button>'+
+ '<button class="btn primary" data-action="exportZip">导出 ZIP</button></div></div>';
+}
+function selectedOriginals(){
+ const items=[];
+ for(const checkbox of document.querySelectorAll('.export-filecheck:checked')){
+  const id=Number(checkbox.dataset.exportId),source=checkbox.dataset.exportSource;
+  if(source==='general'){
+   const found=liveRows.flatMap(r=>r.files.map(f=>({record:r,file:f}))).find(x=>x.file.id===id);
+   if(found)items.push({source:'general',workspace:space,id,name:found.file.name,
+    size:found.file.size,ownerId:found.record.id,ownerName:found.record.title});
+   continue;
+  }
+  const f=businessFileRows.find(x=>x.id===id);
+  if(!f)continue;
+  const parent=f.kind==='contract'?contractRows.find(x=>x.id===f.ownerId):null;
+  const ownerName=f.kind==='project'?projectRows.find(x=>x.id===f.ownerId)?.name:
+   f.kind==='ip'?ipRows.find(x=>x.id===f.ownerId)?.data.name:
+   f.kind==='contract'?parent?.name:
+   archiveRows[f.section]?.find(x=>x.id===f.ownerId)?.name;
+  if(!ownerName)continue;
+  items.push({source:'business',workspace:space,id:f.id,name:f.name,size:f.size,
+   kind:f.kind,ownerId:f.ownerId,section:f.section,ownerName,
+   ...(parent?{projectId:parent.projectId,projectName:parent.projectName}:{})});
+ }
+ return items;
+}
+function projectContractExport(projectId){
+ const contracts=contractRows.filter(c=>c.projectId===projectId);
+ const parts=contracts.map(c=>{
+  const files=businessFiles('contract',c.id);
+  if(!files.length)return '';
+  const groups=new Map();
+  for(const f of files){const key=f.groupId||f.name;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(f);}
+  return '<div class="contract-export-group"><strong>'+escapeHtml(c.name)+'</strong>'+
+   [...groups.values()].map(group=>{
+    group.sort((a,b)=>b.version-a.version||b.id-a.id);
+    const one=f=>'<div class="export-record-line">'+exportCheck(f)+
+      '<span>'+escapeHtml(f.name)+' · v'+f.version+'</span></div>';
+    return one(group[0])+(group.length>1?'<details><summary>历史版本</summary>'+
+      group.slice(1).map(one).join('')+'</details>':'');
+   }).join('')+'</div>';
+ }).filter(Boolean);
+ return parts.length?'<p class="hint">合同原件必须单独勾选，不会因为勾选项目原件而自动包含。</p>'+
+  parts.join(''):'<p class="hint">当前项目所属合同没有可导出的原件。</p>';
+}
 function businessFileCount(kind,ownerId,section=''){
  return new Set(businessFiles(kind,ownerId,section).map(f=>f.groupId||f.name+'\u0000'+f.category)).size;
 }
@@ -441,7 +495,7 @@ function businessAttachmentList(kind,ownerId,section=''){
  '<span class="filedesc"><strong>'+escapeHtml(f.name)+'</strong><small>v'+f.version+
  (f.category?' · '+escapeHtml(f.category):'')+' · '+fmtSize(f.size)+
  ' · SHA-256 '+escapeHtml(f.sha256.slice(0,12))+'…</small></span>'+
- '<button class="btn btn-sm" data-preview-business="'+f.id+'">预览</button>'+
+ exportCheck(f)+'<button class="btn btn-sm" data-preview-business="'+f.id+'">预览</button>'+
  '<button class="btn btn-sm" data-business-download="'+f.id+'">下载</button>'+
  '<button class="btn btn-sm" data-business-delete="'+f.id+'">移除</button></div>';
  return '<div class="tabletools"><b>原件附件 '+groups.size+' 份</b><div class="actions">'+category+
@@ -453,7 +507,8 @@ function businessAttachmentList(kind,ownerId,section=''){
    '<button class="btn btn-sm" data-business-associate="'+g[0].id+'">复制／移动关联</button>'+
    (g.length>1?'<details><summary>查看历史版本（'+(g.length-1)+'）</summary>'+
     g.slice(1).map(line).join('')+'</details>':'')+'</div>';}).join('')||
- '<p class="hint">暂无附件，可上传原始文件。</p>');
+ '<p class="hint">暂无附件，可上传原始文件。</p>')+
+ (files.length?exportButtons():'');
 }
 async function uploadBusinessAttachment(file,meta){
  if(file.size>64*1024*1024)return notice('单文件不得超过 64 MiB。',true);
@@ -533,6 +588,7 @@ function projectDetail(){
  infoRow('结束日期',p.endDate)+infoRow('辅助分类',p.category)+
  infoRow('标签',p.tags)+infoRow('备注',p.remarks)+'</div>')+
  section('所属合同',projectContracts(p.id))+
+ section('所属合同附件导出',projectContractExport(p.id))+
  section('项目自身附件',businessAttachmentList('project',p.id));
 }
 function showProjectForm(id=null){
@@ -958,6 +1014,12 @@ el('content').addEventListener('click',async ev=>{
   case 'trashPurgeSelected':{
    const chosen=[...document.querySelectorAll('.trashcheck:checked')].map(x=>Number(x.value));
    await changeTrash(target.dataset.action==='trashRestoreSelected'?'restore':'purge',chosen);break;
+  }
+  case 'exportFolder':
+  case 'exportZip':{
+   const originals=selectedOriginals();
+   await IPSysExport.start(target.dataset.action==='exportFolder'?'folder':'zip',originals);
+   break;
   }
   case 'businessUpload':{
    if(!detail||!['project','ip','contract','archive'].includes(detail.kind))break;
