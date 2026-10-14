@@ -30,10 +30,10 @@
     <div class="auth-brand"><span class="logo">IP</span><span><strong>IPSys</strong><small>选择工作空间</small></span></div>
     <div class="workspace-choice">
       <div class="eyebrow">SELECT WORKSPACE</div><h1>选择一个工作区</h1>
-      <p class="subtle">公司资料与个人资料分别管理，切换工作区不会混合记录与原始附件。</p>
+      <p class="subtle">以个人资料管理为主，公司资料用于集中归纳；两个工作区独立保存记录与原始附件。</p>
       <div class="choice-grid">
-        <button type="button" class="choice" data-workspace-choice="company"><span class="choice-symbol">▣</span><strong>公司资料</strong><small>企业知识产权、科研项目、横向项目、合同与综合资料</small><span class="choice-arrow">进入工作区 →</span></button>
-        <button type="button" class="choice" data-workspace-choice="personal"><span class="choice-symbol personal">♙</span><strong>个人资料</strong><small>个人知识产权、科研项目、横向项目、证件与综合资料</small><span class="choice-arrow">进入工作区 →</span></button>
+        <button type="button" class="choice" data-workspace-choice="personal"><span class="choice-symbol personal">♙</span><strong>个人资料</strong><small>个人知识产权、科研项目、证件、成果、学术活动与其他资料</small><span class="choice-arrow">进入工作区 →</span></button>
+        <button type="button" class="choice" data-workspace-choice="company"><span class="choice-symbol">▣</span><strong>公司资料</strong><small>企业知识产权、项目、合同、资质与综合资料的集中归纳</small><span class="choice-arrow">进入工作区 →</span></button>
       </div>
       <div class="choice-bottom"><span>当前数据库：<strong id="dbNameChoice">—</strong></span><button id="closeDbFromChoice" class="btn" type="button">关闭数据库</button></div>
     </div>
@@ -43,8 +43,8 @@
       <div class="brand"><span class="logo">IP</span><span><strong>IPSys</strong><small>知识产权与资料管理系统</small></span></div>
       <div class="navlabel">工作空间</div>
       <div class="workspace-switches" role="group" aria-label="工作区切换">
-        <button type="button" class="workspace-switch" data-workspace-switch="company" aria-label="公司资料"><span class="workspace-switch-icon" aria-hidden="true">企</span><span class="workspace-switch-name">公司资料</span></button>
         <button type="button" class="workspace-switch" data-workspace-switch="personal" aria-label="个人资料"><span class="workspace-switch-icon" aria-hidden="true">人</span><span class="workspace-switch-name">个人资料</span></button>
+        <button type="button" class="workspace-switch" data-workspace-switch="company" aria-label="公司资料"><span class="workspace-switch-icon" aria-hidden="true">企</span><span class="workspace-switch-name">公司资料</span></button>
       </div>
       <div class="navlabel">业务导航</div>
       <nav id="sidebar" aria-label="业务导航"></nav>
