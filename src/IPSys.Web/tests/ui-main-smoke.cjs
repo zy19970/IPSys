@@ -408,18 +408,36 @@ assert.ok(realArchiveCtx.__certAll.includes('data-archive-id="51"')&&
  realArchiveCtx.__certAll.includes('data-archive-id="52"')&&
  realArchiveCtx.__certAll.includes('data-archive-id="53"'),
  'Each existing certificate must have an accessible detail link');
-assert.ok(realArchiveCtx.__certAll.includes('certificate-filterline')&&
+assert.ok(realArchiveCtx.__certAll.includes('certificate-toolbar-filter')&&
  realArchiveCtx.__certAll.includes('data-action="archiveAdd"')&&
- realArchiveCtx.__certAll.includes('excelExport ZIP'),
- 'Direct list must keep compact filter, new record, and original/Excel exports');
+ realArchiveCtx.__certAll.includes('class="certificate-export-options"'),
+ 'Direct list must keep the integrated filter, new record, and single export menu');
+assert.ok(realArchiveCtx.__certAll.includes('<summary class="btn certificate-export-trigger"')&&
+ (realArchiveCtx.__certAll.match(/<summary /g)||[]).length===1&&
+ (realArchiveCtx.__certAll.match(/class="certificate-export-options"/g)||[]).length===1,
+ 'Certificate top bar must offer exactly one visible export trigger');
+for(const [action,label] of [['moduleExportFolder','导出附件文件夹'],['moduleExportZip','导出 ZIP'],['excelExport','导出 Excel']])
+ assert.ok(realArchiveCtx.__certAll.includes('data-action="'+action+'"')&&
+ realArchiveCtx.__certAll.includes(label),'All original export formats must remain inside one menu');
+assert.ok(realArchiveCtx.__certAll.indexOf('certificate-toolbar-title')<
+ realArchiveCtx.__certAll.indexOf('certificate-toolbar-filter')&&
+ realArchiveCtx.__certAll.indexOf('certificate-toolbar-filter')<
+ realArchiveCtx.__certAll.indexOf('certificate-toolbar-actions')&&
+ !realArchiveCtx.__certAll.includes('class="heading"')&&
+ !realArchiveCtx.__certAll.includes('class="tabletools"')&&
+ !realArchiveCtx.__certAll.includes('class="certificate-filterline"'),
+ 'Heading, search, create and export must share one condensed toolbar, without a second header row');
 assert.ok(realArchiveCtx.__certType.includes('质量管理体系认证')&&
- !realArchiveCtx.__certType.includes('高新技术企业证书'),
- 'Category filter must be based on certificate records rather than mock categories');
+ !realArchiveCtx.__certType.includes('高新技术企业证书')&&
+ realArchiveCtx.__certType.includes('data-export-ids="52"'),
+ 'Category filter and the original-file export menu must use the same record selection');
 assert.ok(realArchiveCtx.__certKeyword.includes('高新技术企业证书')&&
- !realArchiveCtx.__certKeyword.includes('质量管理体系认证'),
- 'Keyword filter must operate on actual certificate names');
+ !realArchiveCtx.__certKeyword.includes('质量管理体系认证')&&
+ realArchiveCtx.__certKeyword.includes('data-export-ids="51"'),
+ 'Keyword filter and both original-file menu actions must use the same record selection');
 assert.ok(realArchiveCtx.__certEmpty.includes('暂无符合条件的资质记录')&&
- !realArchiveCtx.__certEmpty.includes('企业资质</h3>'),
+ !realArchiveCtx.__certEmpty.includes('企业资质</h3>')&&
+ realArchiveCtx.__certEmpty.includes('data-export-ids=""'),
  'Empty enterprise certificate page must display a table empty state, not a fake card');
 assert.ok(js.includes("ids=companyCertificateRows().map(r=>r.id)"),
  'Excel export must select the same rows as the certificate list');
@@ -427,9 +445,18 @@ assert.ok(js.includes("workspace==='company'&&section==='certificate'?null:recor
  'Saved certificate detail must return to the direct company list, not the category table');
 assert.ok(js.includes('data-nav="certificate">← 返回企业资质'),
  'Certificate detail must offer a direct list return');
-assert.ok(css.includes('.certificate-ledger .certificate-filterline')&&
- css.includes('.certificate-ledger .certificate-keyword{flex:0 1 400px'),
- 'Compact certificate filter must use constrained widths instead of stretching across the page');
+assert.ok(css.includes('.certificate-ledger .certificate-toolbar{display:flex')&&
+ css.includes('.certificate-ledger .certificate-toolbar-filter input{flex:1 1 220px;max-width:360px')&&
+ css.includes('.certificate-ledger .certificate-export-options{position:absolute')&&
+ css.includes('@media(max-width:630px)'),
+ 'Compact toolbar must constrain search width, position export menu and wrap on narrow screens');
+assert.ok(js.includes("target.closest('.certificate-export-options')")&&
+ js.includes("if(event.key==='Escape')el('content').querySelector('.certificate-export[open]')"),
+ 'Export menu must close on action selection and Escape');
+assert.ok(js.includes("data-export-kind=\"archive\" data-export-section=\"certificate\""),
+ 'Certificate menu original exports must continue using the existing archive export APIs');
+assert.ok(js.includes("data-excel-kind=\"archive\" data-excel-section=\"certificate\""),
+ 'Certificate Excel export must continue using the existing filtered XLSX API');
 
 // B05 real business file links are scoped to stored records, not demo attachments.
 assert.ok(html.includes('id="businessFileInput"'),'Business original file picker missing');

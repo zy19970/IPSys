@@ -934,23 +934,35 @@ function companyCertificateRows(){
    (filterKind==='全部类型'||category===filterKind);
  });
 }
+function certificateExportMenu(rows){
+ const attrs=' data-export-kind="archive" data-export-section="certificate" data-export-ids="'+rows.map(r=>r.id).join(',')+'"';
+ return '<details class="certificate-export">'+
+  '<summary class="btn certificate-export-trigger" aria-label="选择导出格式">导出 <span aria-hidden="true">▾</span></summary>'+
+  '<div class="certificate-export-options" role="group" aria-label="企业资质导出方式">'+
+  '<button type="button" data-action="moduleExportFolder"'+attrs+'>导出附件文件夹</button>'+
+  '<button type="button" data-action="moduleExportZip"'+attrs+'>导出 ZIP</button>'+
+  '<button type="button" data-action="excelExport" data-excel-kind="archive" data-excel-section="certificate">导出 Excel</button>'+
+  '</div></details>';
+}
 function realCompanyCertificateList(){
  const all=archiveRows.certificate||[],rows=companyCertificateRows();
  const categories=[...new Set(all.map(r=>r.category||'未分类'))];
  const options=['全部类型',...categories].map(x=>
   '<option value="'+escapeHtml(x)+'" '+(filterKind===x?'selected':'')+'>'+escapeHtml(x)+'</option>').join('');
- return heading('企业资质','证书、认定和企业资质记录',
-  '<button class="btn primary" data-action="archiveAdd">＋ 新建记录</button>')+
+ return '<div class="breadcrumb certificate-breadcrumb">公司资料 / 企业资质</div>'+
  '<section class="white certificate-ledger">'+
- '<div class="certificate-filterline">'+
- '<div class="certificate-filter-field certificate-keyword"><label for="filterSearch">资质名称 / 关键词</label>'+
- '<input id="filterSearch" placeholder="搜索资质名称、类别或备注"></div>'+
- '<div class="certificate-filter-field certificate-category"><label for="filterKind">类别</label>'+
- '<select id="filterKind">'+options+'</select></div>'+
+ '<div class="certificate-toolbar">'+
+ '<div class="certificate-toolbar-title"><h1>企业资质</h1><span>共 '+all.length+' 条记录</span></div>'+
+ '<div class="certificate-toolbar-filter">'+
+ '<label class="certificate-sr-only" for="filterSearch">资质名称或关键词</label>'+
+ '<input id="filterSearch" aria-label="资质名称或关键词" placeholder="搜索资质名称、类别或备注">'+
+ '<label class="certificate-sr-only" for="filterKind">类别</label>'+
+ '<select id="filterKind" aria-label="按类别筛选">'+options+'</select>'+
  '<button class="btn primary" data-action="filter">查询</button>'+
  '<button class="btn" data-action="clearFilter">重置</button></div>'+
- '<div class="tabletools"><b>企业资质 · '+rows.length+' 条记录</b>'+
- '<div class="actions">'+quickExportButtons(rows,'archive','certificate')+'</div></div>'+
+ '<div class="certificate-toolbar-actions">'+
+ '<button class="btn primary" data-action="archiveAdd">＋ 新建记录</button>'+
+ certificateExportMenu(rows)+'</div></div>'+
  '<div class="tablewrap archive-tablewrap"><table class="data"><thead><tr>'+
  '<th>资质名称</th><th>类别</th><th>附件</th><th>操作</th></tr></thead><tbody>'+
  (rows.length?rows.map(r=>
@@ -958,8 +970,8 @@ function realCompanyCertificateList(){
   '<td><span class="tag">'+escapeHtml(r.category||'未分类')+'</span></td>'+
   '<td>'+businessFileCount('archive',r.id,'certificate')+' 份</td>'+
   '<td><button class="btn btn-sm" data-archive-id="'+r.id+'">查看详情</button></td></tr>').join(''):
-  '<tr><td colspan="4" class="empty">暂无符合条件的资质记录，可点击右上角新建。</td></tr>')+
- '</tbody></table></div><div class="tablefoot">共 '+all.length+' 条企业资质记录</div></section>';
+  '<tr><td colspan="4" class="empty">暂无符合条件的资质记录，可点击上方新建。</td></tr>')+
+ '</tbody></table></div><div class="tablefoot">显示 '+rows.length+' 条 · 共 '+all.length+' 条企业资质记录</div></section>';
 }
 function realArchiveCards(k){
  const rows=archiveRows[k]||[],categories=archiveCategories(k);
@@ -1269,6 +1281,8 @@ async function download(file){
 function openLiveRecord(id){detail={kind:'general',id};page='general';render();el('content').scrollTo(0,0);}
 function openMockRecord(kind,id){if(page!==kind)archiveGroup=null;detail={kind,id};page=kind;render();el('content').scrollTo(0,0);}
 el('content').addEventListener('click',async ev=>{
+ const expandedExport=el('content').querySelector('.certificate-export[open]');
+ if(expandedExport&&!ev.target.closest('.certificate-export'))expandedExport.removeAttribute('open');
  const categoryCard=ev.target.closest('[data-archive-category]');
  if(categoryCard){
   const category=categoryCard.dataset.archiveCategory;
@@ -1278,6 +1292,7 @@ el('content').addEventListener('click',async ev=>{
   return;
  }
  const target=ev.target.closest('button');if(!target)return;
+ if(target.closest('.certificate-export-options'))target.closest('.certificate-export')?.removeAttribute('open');
  if(target.hasAttribute('data-archive-back')){
   if(target.dataset.archiveBack==='cards')archiveGroup=null;
   detail=null;filterName='';filterKind='全部类型';selected.clear();render();el('content').scrollTo(0,0);return;
@@ -1599,6 +1614,7 @@ el('content').addEventListener('change',async ev=>{
  }
 });
 el('content').addEventListener('keydown',event=>{
+ if(event.key==='Escape')el('content').querySelector('.certificate-export[open]')?.removeAttribute('open');
  if((event.key==='Enter'||event.key===' ')&&event.target.matches('[data-archive-category]')){event.preventDefault();event.target.click();return;}
  if(event.key==='Enter'&&event.target.id==='filterSearch'){event.preventDefault();el('content').querySelector('[data-action=filter]')?.click();}
 });
