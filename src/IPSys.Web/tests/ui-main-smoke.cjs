@@ -104,7 +104,7 @@ const renderSetup=[
 ].join('\n');
 const header=renderSetup.slice(0,renderSetup.indexOf("space='personal';"));
 const body=renderSetup.slice(renderSetup.indexOf("space='personal';"));
-vm.runInContext(preamble+'\n'+header+'\nfunction excelPanel(){return "<details>Excel 台账</details>";}\n'+rendererSource+'\n'+body,cardsCtx);
+vm.runInContext(preamble+'\n'+header+'\nfunction quickExportButtons(){return "excelExport ZIP";}\n'+rendererSource+'\n'+body,cardsCtx);
 const snapshots=cardsCtx.__cards;
 for(const section of ['personalIdentity','personalAchievement','personalAcademic','personalReal','companyCertificate','companyReal']){
  assert.match(snapshots[section],/class="recordgrid"/,'Archive section must use a card grid: '+section);
@@ -207,11 +207,11 @@ assert.ok(js.includes("projectRows=projects;ipRows=ips;contractRows=contracts;")
 const projectCtx=vm.createContext({sessionStorage:{getItem:()=>null},document:exportDocument});
 const projector=js.slice(js.indexOf('function projectViewRows('),js.indexOf('function archiveCard(',js.indexOf('function projectViewRows(')));
 vm.runInContext(preamble+
- '\nfunction heading(t){return t;}\nfunction infoRow(n,v){return n+v;}\nfunction section(n,v){return n+v;}\nfunction businessFileCount(){return 0;}\nfunction moduleExportPanel(){return "";}\n'+projector+
+ '\nfunction heading(t){return t;}\nfunction infoRow(n,v){return n+v;}\nfunction section(n,v){return n+v;}\nfunction businessFileCount(){return 0;}\nfunction excelExportButton(){return "excelExport";}\n'+projector+
  "\nspace='company';projectRows=[{id:12,name:'真实项目',projectType:'科研项目',projectNo:'X-1',startDate:'2026-01-02',projectStatus:'进行中',leader:'负责人甲'}];globalThis.__project=projectList('researchProject');",projectCtx);
 assert.ok(projectCtx.__project.includes('data-project-id="12"'),'Real project ledger must open persisted IDs');
-assert.ok(!projectCtx.__project.includes('ledger-excel')&&projectCtx.__project.includes('data-action="excelExportFiltered"')&&projectCtx.__project.includes('data-action="excelExportAll"'),
- 'Project ledger uses compact Excel export buttons; import is inside new project modal');
+assert.ok(!projectCtx.__project.includes('ledger-excel')&&projectCtx.__project.includes('excelExport')&&
+ !projectCtx.__project.includes('excelExportAll'),'One Excel button beside project ZIP');
 assert.ok(projectCtx.__project.includes('class="ledger-export-row"')&&projectCtx.__project.includes('ledgerExportAll'),
  'Project ledger must allow selecting multiple actual records');
 assert.ok(projectCtx.__project.includes('data-action="projectExportFolder"')&&
@@ -246,10 +246,10 @@ const intellectualCode=js.slice(js.indexOf('const ipStatusByType='),js.indexOf('
 assert.ok(intellectualCode.length>0);
 const ipCtx=vm.createContext({sessionStorage:{getItem:()=>null},document:exportDocument});
 vm.runInContext(preamble+
- '\nfunction heading(t){return t;}\nfunction infoRow(n,v){return n+v;}\nfunction section(n,v){return n+v;}\nfunction businessFileCount(){return 0;}\nfunction moduleExportPanel(){return "";}\nfunction excelPanel(){return "<details>Excel 台账</details>";}\n'+intellectualCode+
+ '\nfunction heading(t){return t;}\nfunction infoRow(n,v){return n+v;}\nfunction section(n,v){return n+v;}\nfunction businessFileCount(){return 0;}\nfunction excelExportButton(){return "excelExport";}\nfunction quickExportButtons(){return "excelExport ZIP";}\n'+intellectualCode+
  "\nspace='company';businessFileRows=[];ipRows=[{id:32,data:{name:'真实专利',ipType:'发明专利',applicationNo:'CN-42',status:'已申请',rightHolders:'权利人甲',applicationDate:'2026-02-01'}}];globalThis.__ip=ipList();globalThis.__types=Object.keys(ipStatusByType);",ipCtx);
 assert.ok(ipCtx.__ip.includes('data-ip-id="32"'),'Real IP rows must link to stored IDs');
-assert.ok(ipCtx.__ip.includes('Excel 台账'),'IP ledger must mount Excel controls');
+assert.ok(ipCtx.__ip.includes('excelExport')&&!ipCtx.__ip.includes('ledger-excel'),'One Excel button beside IP ZIP');
 assert.ok(ipCtx.__ip.includes('data-action="ipExportFolder"')&&ipCtx.__ip.includes('data-action="ipExportZip"'),'IP ledger must directly export selected records');
 assert.ok(!ipCtx.__ip.includes('选择记录附件')&&!ipCtx.__ip.includes('module-export'),'IP ledger must not render a second selection panel');
 assert.ok(ipCtx.__ip.includes('class="ledger-export-row"')&&ipCtx.__ip.includes('ledgerExportAll'),
@@ -274,8 +274,8 @@ const contractUntil=js.indexOf('function projectViewRows(',contractFrom);
 assert.ok(contractFrom>=0&&contractUntil>contractFrom,'Contract renderers not found');
 const contractContext=vm.createContext({sessionStorage:{getItem:()=>null},document:exportDocument});
 vm.runInContext(preamble+
- '\nfunction moduleExportPanel(){return "";}' +
- '\nfunction excelPanel(){return "<details>Excel 台账</details>";}' +
+ '\nfunction excelExportButton(){return "excelExport";}' +
+ '\nfunction quickExportButtons(){return "excelExport ZIP";}' +
  '\nfunction heading(n,s,a){return n+(a||"");}\nfunction infoRow(n,v){return n+":"+v;}\nfunction section(n,v){return n+v;}\n'+
  js.slice(contractFrom,contractUntil)+
  "\nspace='company';contractRows=[{id:31,projectId:7,workspace:'company',projectName:'测试科研项目',name:'测试合同',contractNo:'HT-001',signDate:'2026-10-12',amount:'12.3',signingParties:'甲乙'}];"+
@@ -305,7 +305,7 @@ vm.runInContext(preamble+'\n'+js.slice(archiveFirst,archiveLast)+
  "\nfunction heading(name,subtitle,actions){return '<h1>'+name+'</h1>'+(actions||'');}"+
  "\nfunction infoRow(k,v){return k+':'+v;}"+
  "\nfunction section(name,content){return name+content;}"+
- "\nfunction businessFileCount(){return 0;}\nfunction moduleExportPanel(){return '';}\nfunction excelPanel(){return '<details>Excel 台账</details>';}"+
+ "\nfunction businessFileCount(){return 0;}\nfunction quickExportButtons(){return 'excelExport ZIP';}\nfunction quickExportButtons(){return 'excelExport ZIP';}"+
  "\nspace='personal';page='academic';filterName='';filterKind='全部类型';"+
  "archiveRows={certificate:[],achievement:[],academic:["+
  "{id:21,name:'第一次兼职',category:'学术兼职',remarks:'',tags:''},"+
@@ -357,11 +357,11 @@ for(const phrase of ["class=\"ledger-export-row\"","class=\"ledger-export-all\""
  "case 'projectExportFolder'","case 'projectExportZip'",
  "case 'ipExportFolder'","case 'ipExportZip'","class=\"export-checkall\"",
  "data-export-latest=\"1\"","(showVersion?'v'+f.version",
- "module-export-record"])assert.ok(js.includes(phrase),'Missing multi-selection feature '+phrase);
+ "case 'moduleExportZip'"])assert.ok(js.includes(phrase),'Missing direct export controls '+phrase);
 // B06: the selected-original export remains within the current ledger/detail.
 for(const needle of ["projectOriginals(ids)","ipOriginals(ids)",
- "moduleExportPanel(visible,'contract')","moduleExportPanel(rows,'general')",
- "moduleExportPanel(rows,'archive',k)","case 'exportFolder'","case 'exportZip'",
+ "quickExportButtons(visible,'contract')","quickExportButtons(rows,'general')",
+ "quickExportButtons(rows,'archive',k)","case 'exportFolder'","case 'exportZip'",
  "section('所属合同',projectContracts(p.id))"])
  assert.ok(js.includes(needle),'Selected-original export wiring missing: '+needle);
 assert.ok(js.includes("b06Script.src='/export.js'"),'The embedded ZIP/folder engine must load from localhost');
@@ -428,34 +428,48 @@ console.log('MAIN UI SMOKE PASS: navigation, workspace choice, live API contract
 assert.ok(!js.includes("section('所属合同附件导出',projectContractExport(p.id))"),
  'Project detail must not ask for separate contract attachment choices');
 
-assert.ok(js.includes("case 'excelTemplate'")&&js.includes("case 'excelExportFiltered'")&&
- js.includes("case 'excelExportAll'")&&js.includes("case 'excelImport'")&&
- js.includes("chooseExcelDuplicatePolicy()")&&js.includes("showExcelImportReport(report)"),
- 'Excel controls must permit explicit export scopes, duplicate handling and row error reports');
-
-// P1 Excel round two: persist existing archive/general/contract ledger UI navigation.
-for(const target of ["excelPanel('archive',k)","excelPanel('general')","excelPanel('contract')"])
- assert.ok(js.includes(target),'Excel second batch must be reachable through real ledger: '+target);
-assert.ok(js.includes("kind==='contract'?'只读导出")&&
- js.includes("kind==='archive'?'?section='+encodeURIComponent(section)"),
- 'Contracts must be export-only; archive Excel calls retain the section boundary');
-const excelSource=js.slice(js.indexOf('function excelPanel('),js.indexOf('async function saveExcel('));
-const excelVM=vm.createContext({escapeHtml:value=>String(value),encodeURIComponent});
-vm.runInContext(excelSource+'\nglobalThis.excelPanel=excelPanel;',excelVM);
-const contractPanel=excelVM.excelPanel('contract');
-assert.ok(contractPanel.includes('导出当前筛选结果')&&contractPanel.includes('导出全部记录'));
-assert.ok(!contractPanel.includes('excelImport')&&!contractPanel.includes('excelTemplate'),
- 'Contract ledger must not permit Excel import or template download');
-const personalArchivePanel=excelVM.excelPanel('archive','academic');
-assert.ok(personalArchivePanel.includes('data-excel-kind="archive"')&&
- personalArchivePanel.includes('data-excel-section="academic"')&&
- personalArchivePanel.includes('导入 Excel 台账'),
- 'Personal academic archive must preserve the section for XLSX import/export');
+// All Excel importers are moved to their corresponding new-record dialogs.
+for(const prefix of ['project','ip','archive','general']){
+ for(const suffix of ['ExcelImport','ExcelTemplate','ExcelChoose','ExcelFile'])
+  assert.ok(html.includes('id="'+prefix+suffix+'"'),'Missing create Excel '+prefix+suffix);
+}
+assert.ok(!html.includes('id="contractExcelImport"'),'Contract XLSX export must remain read only');
+assert.ok(!js.includes('function excelPanel(')&&!js.includes('function moduleExportPanel('),
+ 'Old Excel accordion and record-level file selector must not remain on ledgers');
+for(const anchor of ["quickExportButtons(rows,'general')","quickExportButtons(visible,'contract')",
+ "quickExportButtons(rows,'archive',k)","case 'moduleExportZip'","case 'excelExport'",
+ "bindExcelCreate('project'","bindExcelCreate('ip'","bindExcelCreate('archive'","bindExcelCreate('general'"])
+ assert.ok(js.includes(anchor),'Missing compact XLSX control '+anchor);
+assert.ok(js.includes("chooseExcelDuplicatePolicy()")&&js.includes("showExcelImportReport(report)"),
+ 'Excel import duplicate policy and result report must remain');
+assert.ok(js.includes("el('ipExcelImport').hidden=!!value")&&js.includes("el('archiveExcelImport').hidden=id!==null")&&
+ js.includes("el('generalExcelImport').hidden=true")&&js.includes("el('generalExcelImport').hidden=false"),
+ 'Excel importer should be visible only on new-record mode');
+assert.ok(js.includes("const checked=visible.filter(box=>box.checked)"),'Selected project/IP rows should take priority');
+const quickCode=js.slice(js.indexOf('function excelExportButton('),js.indexOf('async function saveExcel('));
+const quickVm=vm.createContext({escapeHtml:String});
+vm.runInContext(quickCode+'\nglobalThis.renderActions=quickExportButtons;',quickVm);
+const buttons=quickVm.renderActions([{id:2},{id:5}],'archive','academic');
+assert.ok(buttons.indexOf('data-action="moduleExportZip"')<buttons.indexOf('data-action="excelExport"'),
+ 'Excel button must sit after ZIP');
+assert.ok(buttons.includes('data-export-ids="2,5"')&&buttons.includes('data-excel-section="academic"'),
+ 'Module export must carry current records and section');
+const modelCode=quickCode.slice(quickCode.indexOf('function moduleOriginals('));
+const model=vm.createContext({});
+vm.runInContext("let space='company';function businessFiles(kind,id,section){return globalThis.files.filter(x=>x.kind===kind&&x.ownerId===id&&x.section===section)};"+
+ modelCode+"globalThis.files=[{id:6,kind:'archive',ownerId:9,name:'证书.pdf',size:45,section:'certificate'}];"+
+ "globalThis.result=moduleOriginals([{id:9,name:'证书甲'}],'archive','certificate');",model);
+assert.equal(model.result.length,1,'Archive export must retain section');
+assert.equal(model.result[0].ownerName,'证书甲');
+assert.equal(model.result[0].section,'certificate');
+assert.ok(contractContext.__contracts.includes('excelExport'),'Contract XLSX export required');
+assert.ok(realArchiveCtx.__realCards.includes('excelExport')&&realArchiveCtx.__realTable.includes('excelExport'),
+ 'Archive card and table XLSX export required');
 
 // Updated workspace and batch Excel-entry requirements.
 assert.ok(!html.includes('id="workspaceBtn"'),'Top-bar workspace switch should be removed');
 for(const x of ['company','personal'])assert.ok(html.includes('data-workspace-switch="'+x+'"'),'Sidebar workspace button missing');
 assert.ok(js.includes("button.onclick=()=>selectSpace(button.dataset.workspaceSwitch)"),'Sidebar workspace click must switch workspace');
 assert.ok(js.includes("el('projectExcelImport').hidden=!!p"),'Excel import should be visible only when creating a project');
-assert.ok(js.includes("await importExcel('project',file)"),'Project import must reuse existing XLSX API');
+assert.ok(js.includes("await importExcel(kind,file,section)"),'Every modal Excel input must use existing XLSX API');
 assert.ok(!projectCtx.__project.includes('真实记录')&&!ipCtx.__ip.includes('真实记录'),'Real ledger badge should disappear');

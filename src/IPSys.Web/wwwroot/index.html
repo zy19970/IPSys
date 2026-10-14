@@ -59,7 +59,7 @@
       <main class="content" id="content" aria-live="polite"></main>
     </div>
   </div>
-  <dialog id="modal" class="input-dialog"><form id="newRecordForm"><h2>新建综合资料</h2><p class="subtle">先创建资料记录，再上传原始文件。</p><div class="form-field"><label for="title">资料名称 <span class="required">*</span></label><input id="title" maxlength="300" required placeholder="例如：公司简介"></div><div class="dialogactions"><button class="btn" type="button" id="cancelRecord">取消</button><button class="btn primary" type="submit" id="saveRecord">创建记录</button></div></form></dialog>
+  <dialog id="modal" class="input-dialog"><form id="newRecordForm"><h2>新建综合资料</h2><p class="subtle">先创建资料记录，再上传原始文件。</p><div class="form-field"><label for="title">资料名称 <span class="required">*</span></label><input id="title" maxlength="300" required placeholder="例如：公司简介"></div><div id="generalExcelImport" class="project-excel-entry"><div><strong>Excel 批量导入</strong><p class="hint">下载模板填写后导入，重复记录可选择处理方式。</p></div><div class="actions"><button class="btn" type="button" id="generalExcelTemplate">下载 Excel 模板</button><button class="btn" type="button" id="generalExcelChoose">导入 Excel</button></div><input type="file" id="generalExcelFile" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden></div><div class="dialogactions"><button class="btn" type="button" id="cancelRecord">取消</button><button class="btn primary" type="submit" id="saveRecord">创建记录</button></div></form></dialog>
   <dialog id="projectDialog" class="input-dialog project-dialog">
     <form id="projectForm">
       <h2 id="projectFormTitle">新建项目</h2>
@@ -110,7 +110,7 @@
         <div class="form-field "><label for="ip-tags">标签</label><input id="ip-tags" name="tags" type="text" ></div>
         <div class="form-field project-span"><label for="ip-remarks">备注</label><textarea id="ip-remarks" name="remarks" rows="3"></textarea></div>
       </div>
-      <div class="dialogactions"><button type="button" class="btn" id="ipCancel">取消</button><button type="submit" class="btn primary" id="ipSave">保存</button></div>
+      <div id="ipExcelImport" class="project-excel-entry"><div><strong>Excel 批量导入</strong><p class="hint">下载模板填写后导入，重复记录可选择处理方式。</p></div><div class="actions"><button class="btn" type="button" id="ipExcelTemplate">下载 Excel 模板</button><button class="btn" type="button" id="ipExcelChoose">导入 Excel</button></div><input type="file" id="ipExcelFile" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden></div><div class="dialogactions"><button type="button" class="btn" id="ipCancel">取消</button><button type="submit" class="btn primary" id="ipSave">保存</button></div>
     </form>
   </dialog>
   <dialog id="contractDialog" class="input-dialog project-dialog">
@@ -140,7 +140,7 @@
         <div class="form-field project-span"><label for="aTags">标签</label><input id="aTags" name="tags"></div>
         <div class="form-field project-span"><label for="aRemarks">备注</label><textarea id="aRemarks" name="remarks" rows="3"></textarea></div>
       </div>
-      <div class="dialogactions"><button type="button" class="btn" id="archiveCancel">取消</button><button type="submit" class="btn primary" id="archiveSave">保存资料</button></div>
+      <div id="archiveExcelImport" class="project-excel-entry"><div><strong>Excel 批量导入</strong><p class="hint">下载模板填写后导入，重复记录可选择处理方式。</p></div><div class="actions"><button class="btn" type="button" id="archiveExcelTemplate">下载 Excel 模板</button><button class="btn" type="button" id="archiveExcelChoose">导入 Excel</button></div><input type="file" id="archiveExcelFile" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden></div><div class="dialogactions"><button type="button" class="btn" id="archiveCancel">取消</button><button type="submit" class="btn primary" id="archiveSave">保存资料</button></div>
     </form>
   </dialog>
   <dialog id="archiveTransferDialog" class="input-dialog">
