@@ -452,10 +452,10 @@ assert.ok(css.includes('.certificate-ledger .certificate-toolbar{display:flex')&
  'Compact toolbar must grow the search field, position export menu and wrap on narrow screens');
 assert.ok(css.includes('.certificate-ledger .certificate-toolbar-title{display:flex;flex:0 0 170px;flex-direction:row;align-items:baseline;')&&
  css.includes('.certificate-ledger .certificate-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:24px;')&&
- css.includes('.certificate-ledger .certificate-toolbar-filter{display:flex;align-items:center;justify-content:flex-start;flex:1 1 840px;max-width:940px;')&&
+ css.includes('.certificate-ledger .certificate-toolbar-filter{display:flex;align-items:center;justify-content:flex-start;flex:1 1 840px;max-width:940px;min-width:0;margin-left:clamp(0px,calc(20vw - 280px),70px);')&&
  css.includes('.certificate-ledger .certificate-toolbar-actions{display:flex;align-items:center;gap:8px;margin-left:auto;padding-left:24px;border-left:1px solid var(--line);')&&
- css.includes('.certificate-ledger .certificate-toolbar-filter{order:3;flex:1 1 100%;max-width:none;justify-content:flex-start;flex-wrap:wrap}'),
- 'Company certificate toolbar must separate title, left-aligned filters and distinct right-side operations, with responsive wrapping');
+ css.includes('.certificate-ledger .certificate-toolbar-filter{order:3;flex:1 1 100%;max-width:none;margin-left:0;justify-content:flex-start;flex-wrap:wrap}'),
+ 'Company certificate toolbar must shift filters moderately right only on wide desktops, keeping actions separated and responsive wrapping intact');
 assert.ok(js.includes("target.closest('.certificate-export-options')")&&
  js.includes("if(event.key==='Escape')el('content').querySelector('.certificate-export[open]')"),
  'Export menu must close on action selection and Escape');

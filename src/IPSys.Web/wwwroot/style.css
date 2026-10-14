@@ -191,7 +191,7 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 .certificate-ledger .certificate-toolbar-title{display:flex;flex:0 0 170px;flex-direction:row;align-items:baseline;min-width:0;gap:12px;white-space:nowrap}
 .certificate-ledger .certificate-toolbar-title h1{font-size:19px;line-height:1.35;margin:0;font-weight:750}
 .certificate-ledger .certificate-toolbar-title span{color:var(--muted);font-size:12px;white-space:nowrap}
-.certificate-ledger .certificate-toolbar-filter{display:flex;align-items:center;justify-content:flex-start;flex:1 1 840px;max-width:940px;min-width:0;gap:10px;flex-wrap:nowrap}
+.certificate-ledger .certificate-toolbar-filter{display:flex;align-items:center;justify-content:flex-start;flex:1 1 840px;max-width:940px;min-width:0;margin-left:clamp(0px,calc(20vw - 280px),70px);gap:10px;flex-wrap:nowrap}
 .certificate-ledger .certificate-toolbar-filter input,.certificate-ledger .certificate-toolbar-filter select{height:36px;background:#fff;border:1px solid #dfe5eb;border-radius:6px;padding:6px 10px;min-width:0;outline:none}
 .certificate-ledger .certificate-toolbar-filter input{flex:1 1 300px;max-width:590px;min-width:160px}
 .certificate-ledger .certificate-toolbar-filter select{flex:0 0 180px;min-width:142px}
@@ -209,7 +209,7 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 .certificate-ledger .certificate-export-options button:hover,.certificate-ledger .certificate-export-options button:focus-visible{background:var(--pale);color:var(--primary)}
 .certificate-ledger .data th,.certificate-ledger .data td{padding-top:10px;padding-bottom:10px}
 @media(max-width:1200px){
- .certificate-ledger .certificate-toolbar-filter{order:3;flex:1 1 100%;max-width:none;justify-content:flex-start;flex-wrap:wrap}
+ .certificate-ledger .certificate-toolbar-filter{order:3;flex:1 1 100%;max-width:none;margin-left:0;justify-content:flex-start;flex-wrap:wrap}
  .certificate-ledger .certificate-toolbar-actions{margin-left:auto}
 }
 @media(max-width:630px){
