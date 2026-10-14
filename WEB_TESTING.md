@@ -1,5 +1,13 @@
 # IPSys 最小网页 + WinForms 启动器（Windows 测试）
 
+## PDF 预览初始化顺序修复（2026-10-14）
+
+用户截图中的 PDF 弹窗出现顶部约 150px 的可见阅读区域、下方大面积空白。此前浏览器在弹窗隐藏时已经接收到 PDF iframe 的 blob 地址，可能使 Chromium 内置 PDF 插件按 iframe 默认高度初始化。现先显示预览弹窗，使用 PDF 专属、固定尺寸的容器，待浏览器布局完成后再为 iframe 设置 blob URL，并按页面宽度显示。关闭后销毁 iframe 和临时 blob URL。
+
+实机在 Chrome 和 Edge 分别测试：先打开一份 A4 多页 PDF，再打开横向 PDF 和一份只有 2–3 行内容的测试 PDF，确认阅读器纵向区域填满预览框、滚动/翻页正常；短页 PDF 内部的空白属于文件原内容，程序不修改页尺寸或填充文字。快速打开后关闭弹窗不得出现已失效 blob 的残留加载；PNG/JPG 图片仍保持按比例完整显示。所有原件字节和 SQLCipher 内容不受影响。
+
+
+
 ## MCP 专利与知识产权操作验收（2026-10-14）
 
 1. 在本机打开可丢弃 SQLCipher 测试库，系统设置启用 MCP。使用 Codex 或其他本机 MCP 客户端，确认工具清单包含 `list_ips`、`create_ip`、`update_ip`、`delete_ip`，此前十项工具仍可调用。

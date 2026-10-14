@@ -391,6 +391,11 @@ assert.ok(html.includes('id="filePreviewDialog"')&&html.includes('id="filePrevie
 assert.ok(js.includes('data-preview-business=')&&js.includes('data-preview-general=')&&
  js.includes("URL.revokeObjectURL(activePreviewUrl)"),
  'Both original-file stores must provide preview and release temporary blob URLs');
+assert.ok(js.includes("body.classList.toggle('pdf-mode',isPdf)")&&
+ js.includes("dialog.showModal();")&&js.includes("requestAnimationFrame(()=>")&&
+ js.includes("view.getBoundingClientRect();")&&js.includes("view.src=previewUrl+'#view=FitH'"),
+ 'PDF preview must initialize after the visible dialog has been sized');
+
 assert.ok(js.includes('data-general-file-delete=')&&js.includes("case 'deleteRecord'"),
  'Legacy general records and originals must expose the trash actions');
 assert.ok(js.includes("'X-Upload-Mode':choice.mode")&&js.includes("'X-File-Group':choice.groupId||''"),

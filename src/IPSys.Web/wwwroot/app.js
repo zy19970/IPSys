@@ -640,14 +640,32 @@ async function previewOriginal(file,url){
   const data=new Blob([raw],{type:mime});
   if(activePreviewUrl)URL.revokeObjectURL(activePreviewUrl);
   activePreviewUrl=URL.createObjectURL(data);
+  const previewUrl=activePreviewUrl;
+  const isPdf=extension==='pdf';
   const body=el('filePreviewBody');body.replaceChildren();
-  const view=document.createElement(extension==='pdf'?'iframe':'img');
-  view.src=activePreviewUrl;
-  if(extension==='pdf')view.title='PDF 原件预览';
-  else view.alt=file.name;
+  body.classList.toggle('pdf-mode',isPdf);
+  const view=document.createElement(isPdf?'iframe':'img');
+  if(isPdf){
+   view.title='PDF 原件预览';
+  }else{
+   view.alt=file.name;
+   view.src=previewUrl;
+  }
   body.append(view);
   el('filePreviewTitle').textContent=file.name;
-  el('filePreviewDialog').showModal();
+  const dialog=el('filePreviewDialog');
+  dialog.showModal();
+  if(isPdf){
+   // An iframe given a PDF blob URL while its dialog is hidden can initialize
+   // Chromium's built-in PDF viewer at the 150px intrinsic frame height.
+   // Let the modal obtain its final dimensions before starting the viewer.
+   requestAnimationFrame(()=>{
+    if(dialog.open&&activePreviewUrl===previewUrl&&view.isConnected){
+     view.getBoundingClientRect();
+     view.src=previewUrl+'#view=FitH';
+    }
+   });
+  }
  }catch(e){notice('无法预览：'+e.message,true);}
 }
 el('filePreviewClose').onclick=()=>el('filePreviewDialog').close();
