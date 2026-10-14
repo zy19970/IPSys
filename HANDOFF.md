@@ -1,5 +1,7 @@
 # IPSys 跨会话详细交接（2026-10-13）
 
+**2026-10-14 发布策略最新修订**：按用户最终要求，Release 交付保持只有一个 `IPSys.Web.exe`，但不再内置 .NET 运行时，目标机器须自行安装 .NET 8 Desktop Runtime（x64）及 ASP.NET Core Runtime 8（x64）。此前自包含打包的历史方案已失效。实际结果以 main 的 Windows CI 为准；详见 README 的“单 EXE 发布”章节。
+
 **P2 统一搜索（2026-10-14）**：本轮实现 SQLCipher 后端单关键词跨模块搜索、前端顶部输入框与真实分组结果、项目/合同/IP/资质/综合资料及附件归属跳转；用户在不同工作区隔离，回收站过滤，单组上限 60 条。Windows CI 结果以最新 Actions 为准。见 SEARCH.md。
 
 
@@ -153,7 +155,7 @@ WinForms 窗口代码在 src/IPSys.Web/LauncherForm.cs。当前应用将 WinForm
 
 HTML、CSS、JS 源码保留在 src/IPSys.Web/wwwroot/ 下，但 .csproj 把三个文件以 **EmbeddedResource** 编入程序集；src/IPSys.Web/Program.cs 里的 EmbeddedWebAssets.Read 从程序集资源读取，localhost 路由直接返回。Debug/Release 运行时无须外置 wwwroot。曾有 Visual Studio Debug 浏览器打开后 HTTP 404 的问题，起因是静态文件路径/复制；先通过资源复制修复，后已彻底改为 EXE 内嵌资源（commit e81ea05d）。
 
-注意区分：**网页资源单独文件已经不需要**，但自包含 .NET 与 SQLCipher 仍可能产生其他发布依赖文件，不能未经实测承诺只复制一个 EXE 必定运行。
+注意区分：**网页资源无须外置**；目前 Release 是经 Windows CI 验证的 **依赖外部 .NET 8 运行时的单 EXE 发布**。程序运行前目标 Windows x64 电脑须安装 .NET Desktop Runtime 8 与 ASP.NET Core Runtime 8；SQLCipher 原生库已随 EXE 打包。不要将历史自包含方案当作当前发布要求。
 
 ### 4.3 最小业务原型与数据库模型
 
@@ -273,10 +275,10 @@ git pull origin main
 
 在 VS 中打开主工程 src/IPSys.Web/IPSys.Web.csproj，选择 Debug，F5 启动 WinForms，点击「打开浏览器管理界面」。新网页源码修改后重新生成主项目即可，无需手工拷贝任何 wwwroot 目录。首次运行从测试文件夹创建加密测试库并上传无敏感文件。
 
-发布自包含 x64 程序：
+发布依赖用户已安装 .NET 8 运行时的单 EXE x64 程序：
 
 ~~~powershell
-dotnet publish .\src\IPSys.Web\IPSys.Web.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o .\out\IPSys-Web
+dotnet publish .\src\IPSys.Web\IPSys.Web.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o .\out\IPSys-Web
 .\out\IPSys-Web\IPSys.Web.exe
 ~~~
 

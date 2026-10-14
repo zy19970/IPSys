@@ -40,7 +40,18 @@ jobs:
           Write-Host 'Visual Studio Debug embedded HTML CSS JS and HTTP smoke: PASS'
       - name: Publish Windows x64 portable web app
         shell: pwsh
-        run: dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/IPSys-Web-win-x64
+        run: dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/IPSys-Web-win-x64
+      - name: Verify framework-dependent Release runtime prerequisites
+        shell: pwsh
+        run: |
+          $installed = @(dotnet --list-runtimes)
+          foreach ($framework in @('Microsoft.WindowsDesktop.App', 'Microsoft.AspNetCore.App')) {
+            if (-not ($installed | Where-Object { $_ -match "^$([regex]::Escape($framework)) 8\\." })) {
+              $installed | ForEach-Object { Write-Host $_ }
+              throw "Missing .NET 8 framework: $framework"
+            }
+          }
+          Write-Host 'External .NET 8 desktop and ASP.NET Core shared runtimes available: PASS'
       - name: Verify portable Release package contains only one EXE
         shell: pwsh
         run: |

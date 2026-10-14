@@ -8,10 +8,10 @@
     <AssemblyName>IPSys.Web</AssemblyName>
     <RootNamespace>IPSys.Web</RootNamespace>
   </PropertyGroup>
-  <!-- Visual Studio Debug remains multi-file for debugging; Release Publish is a portable single EXE. -->
+  <!-- Debug remains multi-file; Release Publish is framework-dependent and produces one EXE. -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <SelfContained>true</SelfContained>
+    <SelfContained>false</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <DebugType>embedded</DebugType>
