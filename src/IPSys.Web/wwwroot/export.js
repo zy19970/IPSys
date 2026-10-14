@@ -5,6 +5,7 @@ const IPSysExport=(()=>{
  const encoder=new TextEncoder();
  const MAX32=0xffffffff;
  let active=null;
+ let hideTimer=null;
  function cleanName(value,isFile=false){
   let n=String(value||'未命名').replace(/[<>:"/\\|?*\x00-\x1f]/g,'_').replace(/[. ]+$/g,'').trim();
   if(!n||/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\.|$)/i.test(n))n='_'+(n||'未命名');
@@ -239,6 +240,12 @@ const IPSysExport=(()=>{
   const result=document.getElementById('exportResult');
   if(result)result.textContent=summary+(detail?'\n失败清单：\n'+detail:'');
   notice(summary,report.failures.length>0);
+  if(typeof setTimeout==='function'){
+   hideTimer=setTimeout(()=>{
+    if(!active){const panel=document.getElementById('exportStatus');if(panel)panel.hidden=true;}
+    hideTimer=null;
+   },report.failures.length?18000:9000);
+  }
  }
  async function start(format,selected){
   if(active)return notice('已有导出任务，请先完成或取消。',true);
@@ -248,6 +255,8 @@ const IPSysExport=(()=>{
    const bytes=selected.reduce((n,f)=>n+f.size+200+encoder.encode(f.name).length,0);
    if(bytes>=MAX32)return notice('本版 ZIP 不支持超过 4 GiB，请分批导出。',true);
   }
+  if(hideTimer!==null&&typeof clearTimeout==='function')clearTimeout(hideTimer);
+  hideTimer=null;
   let target;
   try{target=format==='folder'?await chooseFolder():await chooseZip()}
   catch(err){if(err.name!=='AbortError')notice(err.message||String(err),true);return}
@@ -282,7 +291,7 @@ const IPSysExport=(()=>{
   active.cancelled=true;active.controller.abort();
   status('正在取消并清理未完成文件…');
  }
- return {start,cancel,makePlan,cleanName,crcStep};
+ return {start,cancel,makePlan,cleanName,crcStep,isActive:()=>!!active};
 })();
 globalThis.IPSysExport=IPSysExport;
 (function setupExportBar(){
@@ -292,7 +301,10 @@ globalThis.IPSysExport=IPSysExport;
  const message=document.createElement('span');message.id='exportStatusText';
  const cancel=document.createElement('button');cancel.id='exportCancel';
  cancel.type='button';cancel.className='btn btn-sm';cancel.textContent='取消导出';
+ const dismiss=document.createElement('button');dismiss.type='button';dismiss.className='btn btn-sm';
+ dismiss.textContent='关闭';dismiss.setAttribute('aria-label','关闭导出结果');
+ dismiss.onclick=()=>{if(!IPSysExport.isActive())bar.hidden=true;};
  const report=document.createElement('pre');report.id='exportResult';report.setAttribute('aria-live','polite');
- bar.append(heading,message,cancel,report);document.body.append(bar);
+ bar.append(heading,message,cancel,dismiss,report);document.body.append(bar);
  cancel.onclick=()=>IPSysExport.cancel();
 })();
