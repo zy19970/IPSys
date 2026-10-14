@@ -755,7 +755,39 @@ assert.ok(js.includes("await importExcel(kind,file,section)"),'Every modal Excel
 assert.ok(!projectCtx.__project.includes('真实记录')&&!ipCtx.__ip.includes('真实记录'),'Real ledger badge should disappear');
 
 
- // Shared compact ledgers must preserve working filters and the original export action IDs.
+ // Shared table decoration covers project, IP, contracts and category-specific archive records.
+for(const name of ['ledgerScope','ledgerSourceRows','sortLedgerData','decorateLedgerControls',
+ 'syncLedgerSelection','moveLedgerRecord'])
+ assert.ok(js.includes('function '+name+'('),'Shared table helper missing '+name);
+for(const token of ["api('/api/ledger/'+space+'/order')","case 'ledgerBatchDelete':",
+ "dataset.ledgerMove","del.dataset.action='ledgerBatchDelete'","'序号'","'排序'",
+ ".ledger-record-row:checked","all.indeterminate=count>0&&count<checks.length",
+ "ledgerOrders[scope.kind+':'+scope.section]=ids"])
+ assert.ok(js.includes(token),'Shared table operation missing '+token);
+for(const rule of ['.data.ledger-record-table','.ledger-record-order-cell .btn',
+ '.archive-tablewrap .data.ledger-record-table td:nth-child(2)',
+ '.ledger-batch-delete[hidden]'])
+ assert.ok(css.includes(rule),'Record table sizing / hidden delete missing '+rule);
+// Check SQLCipher ordering metadata is applied across module arrays, not only to the DOM.
+const helpers=js.slice(js.indexOf('function ledgerScope(){'),js.indexOf('function render(){'));
+assert.ok(helpers.length>3000,'Generic ledger helper span was not found');
+const orderVm=vm.createContext({});
+vm.runInContext(
+ "let space='personal',projectRows=[{id:1},{id:2},{id:3}],ipRows=[{id:4},{id:5}],"+
+ "contractRows=[{id:6},{id:7}],archiveRows={certificate:[{id:8},{id:9}],academic:[],achievement:[]},"+
+ "ledgerOrders={'project:':[3,1,2],'ip:':[5,4],'contract:':[7,6],'archive:certificate':[9,8]};"+
+ helpers+"sortLedgerData();"+
+ "globalThis.ids=[projectRows.map(x=>x.id),ipRows.map(x=>x.id),"+
+ "contractRows.map(x=>x.id),archiveRows.certificate.map(x=>x.id)];",orderVm);
+assert.deepEqual(JSON.parse(JSON.stringify(orderVm.ids)),[[3,1,2],[5,4],[7,6],[9,8]],
+ 'Saved order must apply to project, IP, contract and personal archive independently');
+// Other categories remain untouched by a different section's ordering.
+assert.ok(js.includes("if(detail?.kind==='project')return {kind:'contract',section:''}")&&
+ js.includes("if(archiveGroup&&archiveSections.includes(page)")&&
+ js.includes("content.querySelector('[data-contract-id]')?.closest('table')"),
+ 'Project-owned contract ledger and category tables must be handled without affecting cards');
+
+// Shared compact ledgers must preserve working filters and the original export action IDs.
  for(const source of ["function compactBusinessListToolbar(content)","compactBusinessListToolbar(content);",
    "'projectExportFolder','projectExportZip','ipExportFolder','ipExportZip'",
    "'moduleExportFolder','moduleExportZip','excelExport'",

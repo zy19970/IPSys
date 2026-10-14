@@ -125,6 +125,7 @@ app.MapPost("/api/open", async (OpenInput input, Vault v) =>
             IpStore.Ensure(db);
             ContractStore.Ensure(db);
             ArchiveStore.Ensure(db);
+            LedgerBatch.Ensure(db);
             BusinessFileStore.Ensure(db);
             GeneralStore.Ensure(db);
             string token = v.SetOpen(db, path);
@@ -193,6 +194,53 @@ app.MapGet("/api/search/{workspace}",async (HttpContext ctx,Vault v,string works
         if(!v.Allowed(ctx))return Results.Unauthorized();
         try{return Results.Json(SearchStore.Find(v.Db,workspace,q));}
         catch(InvalidDataException ex){return Fail(ex.Message);}
+    }
+    finally{v.Gate.Release();}
+});
+
+// Scoped row ordering and atomic soft delete for all non-certificate record ledgers.
+app.MapGet("/api/ledger/{workspace}/order",async(HttpContext ctx,Vault v,string workspace)=>
+{
+    if(!v.Allowed(ctx))return (IResult)Results.Unauthorized();
+    if(!Vault.WorkspaceValid(workspace))return Fail("无效工作区。");
+    await v.Gate.WaitAsync();
+    try
+    {
+        if(!v.Allowed(ctx))return Results.Unauthorized();
+        return Results.Json(LedgerBatch.Orders(v.Db,workspace));
+    }
+    finally{v.Gate.Release();}
+});
+app.MapPost("/api/ledger/{workspace}/{kind}/order",async(
+    HttpContext ctx,Vault v,string workspace,string kind,LedgerIdsInput input)=>
+{
+    if(!v.Allowed(ctx))return (IResult)Results.Unauthorized();
+    if(!Vault.WorkspaceValid(workspace))return Fail("无效工作区。");
+    if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务或退出期间不可调整排序。",409);
+    await v.Gate.WaitAsync();
+    try
+    {
+        if(!v.Allowed(ctx))return Results.Unauthorized();
+        if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务或退出期间不可调整排序。",409);
+        return LedgerBatch.Reorder(v.Db,workspace,kind,input.Section??"",input.Ids)
+            ?Results.Ok(new{ok=true}):Fail("资料列表已变化或模块无效，请刷新后重新排序。",409);
+    }
+    finally{v.Gate.Release();}
+});
+app.MapPost("/api/ledger/{workspace}/{kind}/batch-delete",async(
+    HttpContext ctx,Vault v,string workspace,string kind,LedgerIdsInput input)=>
+{
+    if(!v.Allowed(ctx))return (IResult)Results.Unauthorized();
+    if(!Vault.WorkspaceValid(workspace))return Fail("无效工作区。");
+    if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务或退出期间不可删除资料。",409);
+    await v.Gate.WaitAsync();
+    try
+    {
+        if(!v.Allowed(ctx))return Results.Unauthorized();
+        if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务或退出期间不可删除资料。",409);
+        return LedgerBatch.SoftDelete(v.Db,workspace,kind,input.Section??"",input.Ids)
+            ?Results.Ok(new{ok=true,count=input.Ids?.Length??0})
+            :Fail("所选资料列表已变化或模块无效，请刷新后重新选择。",409);
     }
     finally{v.Gate.Release();}
 });
@@ -2198,6 +2246,64 @@ static class WebSmoke
             if(batchTrash is null || batchAdded.Any(id=>
                 !batchTrash.Any(item=>item.Kind=="archive"&&item.Id==id)))
                 throw new IOException("批量软删除的企业资质必须全部进入回收站。");
+
+            // Shared record-ledger order and batch soft-delete, isolated by type/workspace.
+            var testIpIds=new List<long>();
+            foreach(var testName in new[]{"统一列表测试甲","统一列表测试乙"})
+            {
+                var added=await client.PostAsJsonAsync("/api/ip/company",new {
+                    name=testName,ipType="发明专利",status="准备中"
+                });
+                added.EnsureSuccessStatusCode();
+                testIpIds.Add((await added.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
+                    .GetProperty("id").GetInt64());
+            }
+            var allIp=await client.GetFromJsonAsync<List<IpView>>("/api/ip/company")
+                ??throw new IOException("统一知识产权台账读取失败。");
+            var orderedIpIds=allIp.Select(x=>x.Id).Reverse().ToArray();
+            var ipOrderPath="/api/ledger/company/ip/order";
+            (await client.PostAsJsonAsync(ipOrderPath,new LedgerIdsInput(orderedIpIds))).EnsureSuccessStatusCode();
+            var savedOrder=await client.GetFromJsonAsync<Dictionary<string,List<long>>>("/api/ledger/company/order");
+            if(savedOrder is null||!savedOrder.TryGetValue("ip:",out var savedIp)||
+                !savedIp.SequenceEqual(orderedIpIds))
+                throw new IOException("跨刷新读取的知识产权自定义顺序不一致。");
+            if((await client.PostAsJsonAsync(ipOrderPath,
+                new LedgerIdsInput(new[]{testIpIds[0],testIpIds[0]})))
+                .StatusCode!=HttpStatusCode.Conflict)
+                throw new IOException("排序必须拒绝重复或不完整的 ID 列表。");
+            if((await client.PostAsJsonAsync("/api/ledger/personal/ip/order",
+                new LedgerIdsInput(orderedIpIds)))
+                .StatusCode!=HttpStatusCode.Conflict)
+                throw new IOException("不能把公司知识产权顺序写入个人工作区。");
+            var ipBatchPath="/api/ledger/company/ip/batch-delete";
+            if((await client.PostAsJsonAsync(ipBatchPath,
+                new LedgerIdsInput(new[]{testIpIds[0],long.MaxValue})))
+                .StatusCode!=HttpStatusCode.Conflict)
+                throw new IOException("带失效 ID 的批量删除必须整体回滚。");
+            if((await client.GetFromJsonAsync<List<IpView>>("/api/ip/company"))?.Count!=allIp.Count)
+                throw new IOException("失败的批量删除错误地移除了部分记录。");
+            (await client.PostAsJsonAsync(ipBatchPath,
+                new LedgerIdsInput(testIpIds.ToArray()))).EnsureSuccessStatusCode();
+            var ipTrashAfterBatch=await client.GetFromJsonAsync<List<RecycleItem>>("/api/trash/company");
+            if(ipTrashAfterBatch is null||testIpIds.Any(id=>
+                !ipTrashAfterBatch.Any(x=>x.Kind=="ip"&&x.Id==id)))
+                throw new IOException("批量删除知识产权必须进入公司回收站。");
+            var projectIds=(await client.GetFromJsonAsync<List<ProjectView>>(
+                "/api/projects/company"))!.Select(x=>x.Id).ToArray();
+            (await client.PostAsJsonAsync("/api/ledger/company/project/order",
+                new LedgerIdsInput(projectIds.Reverse().ToArray()))).EnsureSuccessStatusCode();
+            var contractIds=(await client.GetFromJsonAsync<List<ContractView>>(
+                "/api/contracts/company"))!.Select(x=>x.Id).ToArray();
+            (await client.PostAsJsonAsync("/api/ledger/company/contract/order",
+                new LedgerIdsInput(contractIds))).EnsureSuccessStatusCode();
+            var personalArchiveIds=(await client.GetFromJsonAsync<List<ArchiveView>>(
+                "/api/archives/personal/certificate"))!.Select(x=>x.Id).ToArray();
+            (await client.PostAsJsonAsync("/api/ledger/personal/archive/order",
+                new LedgerIdsInput(personalArchiveIds,"certificate"))).EnsureSuccessStatusCode();
+            if((await client.PostAsJsonAsync("/api/ledger/company/archive/order",
+                new LedgerIdsInput(new[]{companyCertificateId},"certificate")))
+                .StatusCode!=HttpStatusCode.Conflict)
+                throw new IOException("公司企业资质不得被新排序接口覆盖。");
 
             var personalAward=await client.PostAsJsonAsync(
                 "/api/archives/personal/achievement",

@@ -36,6 +36,7 @@ let dbName=sessionStorage.getItem('ip-db')||'';
 let mcpEnabled=false;
 let space=null,creating=false,resuming=false,localFileTaskActive=false;
 let page='dashboard',detail=null,archiveGroup=null,editingId=null,projectEditingId=null,projectRows=[],ipEditingId=null,ipRows=[],contractEditingId=null,contractProjectId=null,contractRows=[],businessFileRows=[],trashRows=[],pendingBusinessUpload=null,pendingAssocId=null,archiveRows={certificate:[],achievement:[],academic:[]},archiveEditingId=null,archiveTransferId=null,archiveTransferMode=null,liveRows=[],filterName='',filterKind='全部类型',filterState='全部状态',selected=new Set(),certificateSelected=new Set(),certificateDeleteBusy=false;
+let ledgerOrders={},ledgerMutationBusy=false;
 const companyNav=[['dashboard','工作台','▦'],['certificate','企业资质','▣'],['achievement','业务档案','▤'],['researchProject','公司项目','▤'],['ip','知识产权','◇'],['general','综合资料','▥']];
 // Personal archives are grouped by evidence type, not by the company management menu.
 const personalNav=[['dashboard','个人工作台','▦'],['certificate','身份与资质','▣'],['ip','知识产权与著作','◇'],['researchProject','科研与合作项目','▤'],['achievement','成果与奖励','★'],['academic','学术与社会活动','▥'],['general','其他资料','▧']];
@@ -160,7 +161,7 @@ function selectSpace(next){
   if(!token)return;
   globalSerial++;globalHits=[];globalQuery='';globalPending=false;globalError='';
   if(space===next)return;
-  space=next;page='dashboard';detail=null;archiveGroup=null;projectRows=[];ipRows=[];contractRows=[];businessFileRows=[];trashRows=[];archiveRows={certificate:[],achievement:[],academic:[]};filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();certificateSelected.clear();
+  space=next;page='dashboard';detail=null;archiveGroup=null;ledgerOrders={};projectRows=[];ipRows=[];contractRows=[];businessFileRows=[];trashRows=[];archiveRows={certificate:[],achievement:[],academic:[]};filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();certificateSelected.clear();
   el('globalSearch').value='';el('sidebarDbName').textContent=dbName;
   el('chooseWorkspace').hidden=true;el('unlocked').hidden=false;
   refresh();
@@ -174,7 +175,7 @@ async function refresh(){
   if(!token||!space)return;
   const requestedSpace=space;
   try{const archiveSections=space==='personal'?['certificate','achievement','academic']:['certificate','achievement'];
-  const [rows,projects,ips,contracts,files,trash,mcpAccess,...archiveResults]=await Promise.all([
+  const [rows,projects,ips,contracts,files,trash,mcpAccess,savedOrders,...archiveResults]=await Promise.all([
     api('/api/records/'+space).then(r=>r.json()),
     api('/api/projects/'+space).then(r=>r.json()),
     api('/api/ip/'+space).then(r=>r.json()),
@@ -182,12 +183,13 @@ async function refresh(){
     api('/api/business-files/'+space).then(r=>r.json()),
     api('/api/trash/'+space).then(r=>r.json()),
     api('/api/mcp').then(r=>r.json()),
+    api('/api/ledger/'+space+'/order').then(r=>r.json()),
     ...archiveSections.map(section=>api('/api/archives/'+space+'/'+section).then(r=>r.json()))
   ]);
     if(requestedSpace!==space||!token)return;
     liveRows=rows;projectRows=projects;ipRows=ips;contractRows=contracts;businessFileRows=files;trashRows=trash;mcpEnabled=!!mcpAccess.enabled;
     archiveRows={certificate:[],achievement:[],academic:[]};
-    archiveSections.forEach((section,i)=>archiveRows[section]=archiveResults[i]);render();
+    archiveSections.forEach((section,i)=>archiveRows[section]=archiveResults[i]);ledgerOrders=savedOrders||{};sortLedgerData();render();
   }catch(error){notice(error.message,true);}
 }
 function refreshSidebar(){
@@ -1341,6 +1343,132 @@ function openBusinessAssoc(id){
  el('businessAssocNote').textContent='文件：'+src.name+'。操作包含同名同类别的历史版本，范围为当前工作区。';
  el('businessAssocDialog').showModal();
 }
+
+function ledgerScope(){
+ if(detail?.kind==='project')return {kind:'contract',section:''};
+ if(detail)return null;
+ if(isProject(page))return {kind:'project',section:''};
+ if(page==='ip'||page==='contract')return {kind:page,section:''};
+ if(archiveGroup&&archiveSections.includes(page)&&!(space==='company'&&page==='certificate'))
+  return {kind:'archive',section:page};
+ return null;
+}
+function ledgerSourceRows(scope){
+ return scope.kind==='project'?projectRows:scope.kind==='ip'?ipRows:
+  scope.kind==='contract'?contractRows:(archiveRows[scope.section]||[]);
+}
+function sortLedgerData(){
+ for(const [kind,section,rows] of [
+  ['project','',projectRows],['ip','',ipRows],['contract','',contractRows],
+  ...Object.entries(archiveRows).filter(([part])=>!(space==='company'&&part==='certificate'))
+   .map(([part,items])=>['archive',part,items])
+ ]){
+  const ranks=new Map((ledgerOrders[kind+':'+section]||[]).map((id,i)=>[id,i]));
+  const before=new Map(rows.map((row,i)=>[row.id,i]));
+  rows.sort((a,b)=>(ranks.get(a.id)??Number.MAX_SAFE_INTEGER)-
+   (ranks.get(b.id)??Number.MAX_SAFE_INTEGER)||before.get(a.id)-before.get(b.id));
+ }
+}
+function ledgerRecordId(row,kind){
+ const attrs={project:['project-id','projectId'],ip:['ip-id','ipId'],
+  contract:['contract-id','contractId'],archive:['archive-id','archiveId']};
+ const [attr,key]=attrs[kind],button=row.querySelector('[data-'+attr+']');
+ return button?Number(button.dataset[key]):null;
+}
+function decorateLedgerControls(content){
+ const scope=ledgerScope();if(!scope)return;
+ const table=detail?.kind==='project'?
+  content.querySelector('[data-contract-id]')?.closest('table'):
+  content.querySelector('.tablewrap table.data');
+ if(!table||!table.tHead||!table.tBodies.length)return;
+ table.classList.add('ledger-record-table');
+ const head=table.tHead.rows[0],body=table.tBodies[0];
+ const rows=[...body.rows].map(tr=>({tr,id:ledgerRecordId(tr,scope.kind)}))
+  .filter(x=>Number.isInteger(x.id)&&x.id>0);
+ let all=head.querySelector('.ledger-export-all');
+ if(!all){
+  const th=document.createElement('th');th.className='ledger-record-check-cell';
+  all=document.createElement('input');all.type='checkbox';th.append(all);head.prepend(th);
+ }else all.closest('th').classList.add('ledger-record-check-cell');
+ all.classList.add('ledger-record-all');all.setAttribute('aria-label','全选当前列表');
+ const archiveSequence=scope.kind==='archive';
+ if(!archiveSequence){
+  const th=document.createElement('th');th.className='ledger-record-sequence-cell';th.textContent='序号';
+  head.cells[0].after(th);
+ }else head.cells[1].classList.add('ledger-record-sequence-cell');
+ const last=document.createElement('th');last.className='ledger-record-order-cell';last.textContent='排序';
+ head.append(last);
+ rows.forEach(({tr,id},index)=>{
+  tr.dataset.ledgerRecordId=String(id);
+  let check=tr.querySelector('.ledger-export-row');
+  if(!check){
+   const td=document.createElement('td');td.className='ledger-record-check-cell';
+   check=document.createElement('input');check.type='checkbox';check.value=String(id);
+   td.append(check);tr.prepend(td);
+  }else check.closest('td').classList.add('ledger-record-check-cell');
+  check.classList.add('ledger-record-row');
+  check.setAttribute('aria-label','选择第'+(index+1)+'条记录');
+  if(!archiveSequence){
+   const td=document.createElement('td');td.className='ledger-record-sequence-cell';
+   td.textContent=String(index+1);tr.cells[0].after(td);
+  }else tr.cells[1].classList.add('ledger-record-sequence-cell');
+  const td=document.createElement('td');td.className='ledger-record-order-cell';
+  for(const direction of [-1,1]){
+   const btn=document.createElement('button');btn.type='button';btn.className='btn btn-sm';
+   btn.textContent=direction<0?'↑':'↓';btn.dataset.ledgerMove=String(id);
+   btn.dataset.ledgerDirection=String(direction);
+   btn.disabled=direction<0?index===0:index===rows.length-1;
+   btn.setAttribute('aria-label','将第'+(index+1)+'条记录'+(direction<0?'上移':'下移'));
+   td.append(btn);
+  }
+  tr.append(td);
+ });
+ const empty=body.querySelector('td[colspan]');
+ if(empty&&rows.length===0)empty.colSpan+=archiveSequence?2:scope.kind==='contract'?3:2;
+ const toolbar=detail?.kind==='project'?
+  table.closest('.detailsection')?.querySelector('.tabletools'):
+  content.querySelector('.compact-ledger-actions')||content.querySelector('.tabletools .actions');
+ if(toolbar){
+  const status=document.createElement('span');status.className='ledger-selected-count';status.hidden=true;
+  const del=document.createElement('button');del.type='button';del.className='btn ledger-batch-delete';
+  del.dataset.action='ledgerBatchDelete';del.textContent='批量删除';del.hidden=true;del.disabled=true;
+  toolbar.append(status,del);
+ }
+ syncLedgerSelection();
+}
+function syncLedgerSelection(){
+ const content=el('content'),table=content?.querySelector('.ledger-record-table');if(!table)return;
+ const checks=[...table.querySelectorAll('.ledger-record-row')],count=checks.filter(c=>c.checked).length;
+ const all=table.querySelector('.ledger-record-all');
+ if(all){all.checked=checks.length>0&&count===checks.length;all.indeterminate=count>0&&count<checks.length;}
+ const button=content.querySelector('[data-action="ledgerBatchDelete"]');
+ if(button){button.hidden=count===0;button.disabled=ledgerMutationBusy||count===0;}
+ const status=content.querySelector('.ledger-selected-count');
+ if(status){status.hidden=count===0;status.textContent='已选 '+count+' 条';}
+}
+async function moveLedgerRecord(id,direction){
+ const scope=ledgerScope(),content=el('content'),table=content.querySelector('.ledger-record-table');
+ if(!scope||!table||ledgerMutationBusy)return;
+ const visible=[...table.querySelectorAll('tr[data-ledger-record-id]')]
+  .map(row=>Number(row.dataset.ledgerRecordId));
+ const at=visible.indexOf(id),other=visible[at+direction];
+ if(at<0||!other)return;
+ const ids=ledgerSourceRows(scope).map(x=>x.id);
+ const first=ids.indexOf(id),second=ids.indexOf(other);
+ if(first<0||second<0)return;
+ [ids[first],ids[second]]=[ids[second],ids[first]];
+ const chosen=[...table.querySelectorAll('.ledger-record-row:checked')].map(c=>Number(c.value));
+ ledgerMutationBusy=true;syncLedgerSelection();
+ try{
+  await api('/api/ledger/'+space+'/'+scope.kind+'/order',
+   {method:'POST',json:{ids,section:scope.section}});
+  ledgerOrders[scope.kind+':'+scope.section]=ids;sortLedgerData();render();
+  el('content').querySelectorAll('.ledger-record-row').forEach(c=>c.checked=chosen.includes(Number(c.value)));
+  syncLedgerSelection();notice('顺序已保存。');
+ }catch(error){notice('调整排序失败：'+error.message,true);}
+ finally{ledgerMutationBusy=false;syncLedgerSelection();}
+}
+
 function render(){
  if(!space||!token)return;
  refreshSidebar();
@@ -1353,6 +1481,7 @@ function render(){
    archiveSections.includes(page)?(space==='company'&&page==='certificate'?realCompanyCertificateList():realArchiveCards(page)):
    page==='search'?searchPage():page==='settings'?settingsPage():trashPage();
  compactBusinessListToolbar(content);
+ decorateLedgerControls(content);
  const searchBox=el('filterSearch');if(searchBox)searchBox.value=filterName;
  syncCompanyCertificateSelectionUi();
 }
@@ -1419,6 +1548,9 @@ el('content').addEventListener('click',async ev=>{
  if(target.dataset.liveId){openLiveRecord(Number(target.dataset.liveId));return;}
  if(target.dataset.projectId){detail={kind:'project',id:Number(target.dataset.projectId)};render();el('content').scrollTo(0,0);return;}
  if(target.dataset.ipId){detail={kind:'ip',id:Number(target.dataset.ipId)};page='ip';render();el('content').scrollTo(0,0);return;}
+ if(target.dataset.ledgerMove){
+  await moveLedgerRecord(Number(target.dataset.ledgerMove),Number(target.dataset.ledgerDirection));return;
+ }
  if(target.dataset.certificateMove){
   await moveCompanyCertificate(Number(target.dataset.certificateMove),Number(target.dataset.moveDirection));
   return;
@@ -1576,6 +1708,21 @@ el('content').addEventListener('click',async ev=>{
      notice('已删除 '+ids.length+' 条企业资质记录，可在回收站恢复。');
     }catch(error){notice('批量删除失败：'+error.message,true);}
     finally{certificateDeleteBusy=false;syncCompanyCertificateSelectionUi();}
+    break;
+   }
+   case 'ledgerBatchDelete':{
+    const scope=ledgerScope(),table=el('content').querySelector('.ledger-record-table');
+    if(!scope||!table||ledgerMutationBusy)break;
+    const ids=[...table.querySelectorAll('.ledger-record-row:checked')].map(box=>Number(box.value));
+    if(!ids.length)break;
+    if(!confirm('确定删除选中的 '+ids.length+' 条记录吗？删除后可在回收站恢复。'))break;
+    ledgerMutationBusy=true;syncLedgerSelection();
+    try{
+     await api('/api/ledger/'+space+'/'+scope.kind+'/batch-delete',
+      {method:'POST',json:{ids,section:scope.section}});
+     await refresh();notice('已删除 '+ids.length+' 条记录，可在回收站恢复。');
+    }catch(error){notice('批量删除失败：'+error.message,true);}
+    finally{ledgerMutationBusy=false;syncLedgerSelection();}
     break;
    }
    case 'archiveDelete':{
@@ -1760,12 +1907,16 @@ el('content').addEventListener('change',async ev=>{
  if(ev.target.matches('.ledger-export-all')){
   el('content').querySelectorAll('.ledger-export-row').forEach(box=>box.checked=ev.target.checked);
  }
- if(ev.target.matches('.ledger-export-row')||ev.target.matches('.ledger-export-all')){
+ if(ev.target.matches('.ledger-record-all')&&!ev.target.matches('.ledger-export-all')){
+   el('content').querySelectorAll('.ledger-record-row').forEach(box=>box.checked=ev.target.checked);
+  }
+  if(ev.target.matches('.ledger-export-row')||ev.target.matches('.ledger-export-all')){
   const rows=[...el('content').querySelectorAll('.ledger-export-row')];
   const checked=rows.filter(box=>box.checked);
   const counter=el('ledgerExportCount');if(counter)counter.textContent='已选 '+checked.length+' 条';
   const all=el('ledgerExportAll');if(all)all.checked=rows.length>0&&checked.length===rows.length;
  }
+ if(ev.target.matches('.ledger-record-row,.ledger-record-all'))syncLedgerSelection();
  if(ev.target.id==='trashAll')
   document.querySelectorAll('.trashcheck').forEach(c=>c.checked=ev.target.checked);
  if(ev.target.id==='checkAll')document.querySelectorAll('.rowcheck').forEach(c=>c.checked=ev.target.checked);
