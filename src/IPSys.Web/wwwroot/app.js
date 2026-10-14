@@ -194,18 +194,38 @@ function generalList(){
  '<section class="white"><div class="tabletools"><span><b>资料卡片</b> <small class="muted">'+rows.length+' 条真实记录</small></span><div class="actions"><span class="realflag">真实数据库</span><button class="btn" data-action="check">检查数据库</button></div></div>'+
  (rows.length?'<div class="recordgrid">'+rows.map(r=>archiveCard(r,{
   title:r.title,type:space==='company'?'综合资料':'其他资料',
-  fileCount:r.files.length,real:true
+  fileCount:new Set(r.files.map(f=>f.groupId||f.name)).size,real:true
  })).join('')+'</div>':'<div class="empty">没有符合条件的资料。可先创建记录，再上传附件。</div>')+
  '<div class="tablefoot">共 '+rows.length+' 条记录 · 数据来自当前加密资料库</div></section>';
 }
 function realDetail(){
  const r=liveRows.find(r=>r.id===detail.id);
  if(!r)return heading('记录详情','记录不存在或当前工作区无权访问')+'<button class="btn" data-nav="general">返回台账</button>';
- return heading(r.title,title('general')+' / 记录详情 · 当前加密库真实数据',`<button class="btn" data-nav="general">← 返回台账</button><button class="btn" data-action="editRecord">修改名称</button>`)+
- `<section class="white detailsection"><div class="detailsectionhead"><h2>基本信息</h2><span class="realflag">真实记录</span></div><div class="detailbody infogrid"><div class="info"><label>资料名称</label><strong>${escapeHtml(r.title)}</strong></div><div class="info"><label>所属工作区</label><strong>${space==='company'?'公司资料':'个人资料'}</strong></div><div class="info"><label>已归档附件</label><strong>${r.files.length} 份</strong></div></div></section>`+
- `<section class="white detailsection"><div class="detailsectionhead"><h2>附件资料</h2><button class="btn primary" data-action="upload">＋ 上传原件</button></div><div class="detailbody"><input type="file" id="uploadInput" hidden><p class="hint">当前原型支持真实上传与下载，单文件不超过 64 MiB。附件展示在该记录下。</p>`+
- (r.files.length?r.files.map(f=>`<div class="fileline"><span class="fileicon">${escapeHtml(f.name.split('.').pop().slice(0,4).toUpperCase())}</span><span class="filedesc"><strong>${escapeHtml(f.name)}</strong><small>${fmtSize(f.size)} · SHA-256 ${escapeHtml(f.sha256.slice(0,16))}…</small></span><button class="btn btn-sm" data-download="${f.id}">下载原件</button></div>`).join(''):'<div class="empty">暂无附件，点击“上传原件”开始归档。</div>')+'</div></section>'+
- '<section class="white detailsection"><div class="detailsectionhead"><h2>关联资料</h2>'+stamp()+'</div><div class="empty">关联功能尚待开发</div></section>';
+ const groups=new Map();
+ for(const f of r.files){const key=f.groupId||f.name;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(f);}
+ const fileLine=f=>'<div class="fileline"><span class="fileicon">'+escapeHtml(f.name.split('.').pop().slice(0,4).toUpperCase())+'</span>'+
+ '<span class="filedesc"><strong>'+escapeHtml(f.name)+'</strong><small>v'+f.version+' · '+fmtSize(f.size)+
+ ' · SHA-256 '+escapeHtml(f.sha256.slice(0,16))+'…</small></span>'+
+ '<button class="btn btn-sm" data-download="'+f.id+'">下载原件</button>'+
+ '<button class="btn btn-sm" data-general-file-delete="'+f.id+'">移除</button></div>';
+ return heading(r.title,title('general')+' / 记录详情 · 当前加密库真实数据',
+ '<button class="btn" data-nav="general">← 返回台账</button>'+
+ '<button class="btn" data-action="editRecord">修改名称</button>'+
+ '<button class="btn" data-action="deleteRecord">删除资料</button>')+
+ '<section class="white detailsection"><div class="detailsectionhead"><h2>基本信息</h2><span class="realflag">真实记录</span></div>'+
+ '<div class="detailbody infogrid"><div class="info"><label>资料名称</label><strong>'+escapeHtml(r.title)+'</strong></div>'+
+ '<div class="info"><label>所属工作区</label><strong>'+(space==='company'?'公司资料':'个人资料')+'</strong></div>'+
+ '<div class="info"><label>已归档原件</label><strong>'+groups.size+' 份</strong></div></div></section>'+
+ '<section class="white detailsection"><div class="detailsectionhead"><h2>附件资料</h2>'+
+ '<button class="btn primary" data-action="upload">＋ 上传原件</button></div><div class="detailbody">'+
+ '<input type="file" id="uploadInput" hidden><p class="hint">支持更新指定同名原件或单独归档新原件，保留可展开的历史版本。单文件上限 64 MiB。</p>'+
+ ([...groups.values()].map(g=>{g.sort((a,b)=>b.version-a.version||b.id-a.id);
+ return '<div class="business-file-group">'+fileLine(g[0])+
+ (g.length>1?'<details><summary>查看历史版本（'+(g.length-1)+'）</summary>'+
+ g.slice(1).map(fileLine).join('')+'</details>':'')+'</div>';}).join('')||
+ '<div class="empty">暂无附件，点击“上传原件”开始归档。</div>')+'</div></section>'+
+ '<section class="white detailsection"><div class="detailsectionhead"><h2>关联资料</h2>'+stamp()+
+ '</div><div class="empty">跨业务记录关联将在后续统一实现</div></section>';
 }
 function columns(k){
  if(k==='ip')return [['name','名称'],['type','知识产权类型'],['code','申请/登记号'],['status','状态'],['owner','当前权利人'],['date','申请/登记日期'],['files','附件']];
@@ -719,7 +739,7 @@ function settingsPage(){return heading('系统设置','数据库管理与已确�
  `<section class="white detailsection"><div class="detailsectionhead"><h2>当前加密数据库</h2></div><div class="detailbody"><div class="minirow"><span>数据库文件</span><strong>${escapeHtml(dbName)}</strong></div><div class="minirow"><span>加密状态</span><span class="realflag">SQLCipher 已启用</span></div><div class="minirow"><span>数据库完整性检查</span><button class="btn" data-action="check">立即检查</button></div><div id="checkResult" class="hint"></div><div class="minirow"><span>关闭当前数据库</span><button class="btn" data-action="lock">关闭数据库</button></div></div></section>`+
  section('尚未接入的设置项','<div class="minirow"><span>修改数据库密码</span>'+stamp()+'</div><div class="minirow"><span>记录类别与标签</span>'+stamp()+'</div><p class="hint">手动备份需安全退出程序后在 Windows 资源管理器复制加密库。</p>');}
 function trashPage(){
- const names={project:'项目',contract:'合同',ip:'知识产权',archive:'资质与成果',file:'附件'};
+ const names={project:'项目',contract:'合同',ip:'知识产权',archive:'资质与成果',file:'业务附件',general:'综合资料',general_file:'综合资料附件'};
  return heading('回收站','当前工作区的真实已删除记录与附件',
  '<button class="btn" data-nav="settings">返回设置</button>')+
  '<section class="white"><div class="tabletools"><b>已删除 '+trashRows.length+' 条</b><div class="actions">'+
@@ -784,11 +804,30 @@ function render(){
 async function upload(id,file){
  if(file.size>64*1024*1024)return notice('本阶段单文件不能超过 64 MiB',true);
  if(localFileTaskActive)return notice('当前已有文件上传任务，请等待完成',true);
+ const record=liveRows.find(r=>r.id===id);
+ if(!record)return notice('资料已失效，请刷新页面。',true);
+ const matches=[...new Map(record.files.filter(f=>f.name===file.name).map(f=>[f.groupId||'legacy-'+f.id,f])).values()];
+ let mode='new',groupId='';
+ if(matches.length){
+  const choice=prompt('已有 '+matches.length+' 组同名原件“'+file.name+
+   '”。输入 1-'+matches.length+' 更新对应原件；输入 N 单独归档同名新原件；输入 0 取消。','1');
+  if(choice===null||choice.trim()==='0')return;
+  if(choice.trim().toUpperCase()==='N')mode='new';
+  else{
+   const index=Number(choice.trim());
+   if(!Number.isInteger(index)||index<1||index>matches.length)
+    return notice('选择的原件序号无效。',true);
+   mode='update';groupId=matches[index-1].groupId;
+  }
+ }
  notice('正在向加密资料库写入文件…');localFileTaskActive=true;
  const destSpace=space;
  try{
-  const result=await(await api(`/api/records/${destSpace}/${id}/files`,{method:'POST',headers:{'Content-Type':'application/octet-stream','X-File-Name':encodeURIComponent(file.name)},body:file})).json();
-  notice('已成功归档文件，SHA-256 '+result.sha256.slice(0,16)+'…');await refresh();
+  const result=await(await api('/api/records/'+destSpace+'/'+id+'/files',{
+    method:'POST',headers:{'Content-Type':'application/octet-stream',
+      'X-File-Name':encodeURIComponent(file.name),'X-Upload-Mode':mode,'X-File-Group':groupId},
+    body:file})).json();
+  notice('成功归档 v'+result.version+'，SHA-256 '+result.sha256.slice(0,16)+'…');await refresh();
  }catch(e){notice(e.message,true);}finally{localFileTaskActive=false;}
 }
 async function download(file){
@@ -830,6 +869,16 @@ el('content').addEventListener('click',async ev=>{
  }
  if(target.dataset.businessDownload){
   await downloadBusinessAttachment(Number(target.dataset.businessDownload));return;
+ }
+ if(target.dataset.generalFileDelete){
+  const record=liveRows.find(r=>r.id===detail?.id);
+  const file=record?.files.find(f=>f.id===Number(target.dataset.generalFileDelete));
+  if(!file||!confirm('移除原件“'+file.name+'”（v'+file.version+'）？可以在回收站恢复。'))return;
+  try{
+   await api('/api/files/'+space+'/'+file.id,{method:'DELETE'});
+   await refresh();notice('原件已移至回收站。');
+  }catch(e){notice(e.message,true);}
+  return;
  }
  if(target.dataset.businessDelete){
   const fileId=Number(target.dataset.businessDelete);
@@ -970,6 +1019,15 @@ el('content').addEventListener('click',async ev=>{
    editingId=r.id;el('title').value=r.title;el('saveRecord').textContent='保存修改';
    el('newRecordForm').querySelector('h2').textContent='修改资料名称';
    el('modal').showModal();break;
+  }
+  case 'deleteRecord':{
+   const record=liveRows.find(r=>r.id===detail?.id);
+   if(!record||!confirm('将综合资料“'+record.title+'”及其附件移至回收站？'))break;
+   try{
+    await api('/api/records/'+space+'/'+record.id,{method:'DELETE'});
+    detail=null;await refresh();notice('综合资料已移至回收站。');
+   }catch(e){notice(e.message,true);}
+   break;
   }
   case 'upload':el('uploadInput')?.click();break;
   case 'filter':filterName=el('filterSearch')?.value.trim()||'';filterKind=el('filterKind')?.value||'全部类型';filterState=el('filterState')?.value||'全部状态';selected.clear();render();break;
