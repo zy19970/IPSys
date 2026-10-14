@@ -210,6 +210,8 @@ vm.runInContext(preamble+
  '\nfunction heading(t){return t;}\nfunction infoRow(n,v){return n+v;}\nfunction section(n,v){return n+v;}\nfunction businessFileCount(){return 0;}\nfunction moduleExportPanel(){return "";}\n'+projector+
  "\nspace='company';projectRows=[{id:12,name:'真实项目',projectType:'科研项目',projectNo:'X-1',startDate:'2026-01-02',projectStatus:'进行中',leader:'负责人甲'}];globalThis.__project=projectList('researchProject');",projectCtx);
 assert.ok(projectCtx.__project.includes('data-project-id="12"'),'Real project ledger must open persisted IDs');
+assert.ok(projectCtx.__project.includes('class="ledger-export-row"')&&projectCtx.__project.includes('ledgerExportAll'),
+ 'Project ledger must allow selecting multiple actual records');
 assert.ok(!projectCtx.__project.includes('负责人甲'),'Project leader must not appear in the ledger');
 assert.ok(!projectCtx.__project.includes('仅演示'),'Real project page must not be marked mock');
 
@@ -230,6 +232,8 @@ vm.runInContext(preamble+
  '\nfunction heading(t){return t;}\nfunction infoRow(n,v){return n+v;}\nfunction section(n,v){return n+v;}\nfunction businessFileCount(){return 0;}\nfunction moduleExportPanel(){return "";}\n'+intellectualCode+
  "\nspace='company';businessFileRows=[];ipRows=[{id:32,data:{name:'真实专利',ipType:'发明专利',applicationNo:'CN-42',status:'已申请',rightHolders:'权利人甲',applicationDate:'2026-02-01'}}];globalThis.__ip=ipList();globalThis.__types=Object.keys(ipStatusByType);",ipCtx);
 assert.ok(ipCtx.__ip.includes('data-ip-id="32"'),'Real IP rows must link to stored IDs');
+assert.ok(ipCtx.__ip.includes('class="ledger-export-row"')&&ipCtx.__ip.includes('ledgerExportAll'),
+ 'IP ledger must allow selecting multiple actual records');
 assert.ok(!ipCtx.__ip.includes('仅演示'),'Real IP ledger must not use mock labels');
 assert.equal(ipCtx.__types.length,7,'Exactly seven M0 IP types must be selectable');
 
