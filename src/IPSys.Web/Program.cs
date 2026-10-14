@@ -1235,7 +1235,7 @@ static class WebSmoke
 {
     private static async Task<(long Id,int Version)> UploadBusinessFile(HttpClient client,
         string workspace,string kind,long ownerId,byte[] data,string name,
-        string section="",string category="")
+        string section="",string category="",string mode="update",string group="")
     {
         var path=$"/api/business-files/{workspace}/{kind}/{ownerId}"+
             (section.Length>0?"?section="+Uri.EscapeDataString(section):"");
@@ -1244,6 +1244,8 @@ static class WebSmoke
         using var request=new HttpRequestMessage(HttpMethod.Post,path){Content=body};
         request.Headers.Add("X-File-Name",Uri.EscapeDataString(name));
         if(category.Length>0)request.Headers.Add("X-Material-Category",Uri.EscapeDataString(category));
+        request.Headers.Add("X-Upload-Mode",mode);
+        if(group.Length>0)request.Headers.Add("X-File-Group",group);
         using var response=await client.SendAsync(request);
         response.EnsureSuccessStatusCode();
         var json=(await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>());
@@ -1648,6 +1650,38 @@ static class WebSmoke
                !(await client.GetByteArrayAsync($"/api/business-files/company/download/{associatedFile.Id}"))
                 .AsSpan().SequenceEqual(businessData))
                 throw new IOException("同工作区附件引用复制未能复用可下载原件。");
+            // B05b-2: the same shared logical original gets one new version
+            // visible in all current references, but a same-name independent
+            // original must not become part of that version chain.
+            byte[] revisedBusinessData=RandomNumberGenerator.GetBytes(2037);
+            var sharedUpdate=await UploadBusinessFile(client,"company","archive",
+                associateTargetId,revisedBusinessData,"企业证书.pdf",section:"certificate",
+                mode:"update",group:associatedFile.GroupId);
+            var sharedRows=await client.GetFromJsonAsync<List<BusinessFileView>>(
+                "/api/business-files/company");
+            if(sharedRows is null||sharedUpdate.Version<=associatedFile.Version||
+                !sharedRows.Any(x=>x.OwnerId==companyCertificateId&&x.GroupId==associatedFile.GroupId
+                    &&x.Version==sharedUpdate.Version)||
+                !(await client.GetByteArrayAsync(
+                    $"/api/business-files/company/download/{sharedUpdate.Id}"))
+                    .AsSpan().SequenceEqual(revisedBusinessData))
+                throw new IOException("同工作区共享版本更新未同步至所有引用者。");
+            var isolatedSameName=await UploadBusinessFile(client,"company","archive",
+                associateTargetId,businessData,"企业证书.pdf",section:"certificate",
+                mode:"new");
+            var sameNameGroups=await client.GetFromJsonAsync<List<BusinessFileView>>(
+                "/api/business-files/company");
+            if(sameNameGroups is null||
+                sameNameGroups.Where(x=>x.OwnerId==associateTargetId&&x.Name=="企业证书.pdf")
+                    .Select(x=>x.GroupId).Distinct().Count()!=2 ||
+                isolatedSameName.Version!=1)
+                throw new IOException("独立同名原件不能自动并入已有历史版本组。");
+            (await client.DeleteAsync(
+                $"/api/business-files/company/{isolatedSameName.Id}")).EnsureSuccessStatusCode();
+            (await client.PostAsJsonAsync("/api/trash/company/purge",
+                new RecycleRequest([new RecycleKey("file",isolatedSameName.Id,"")])))
+                .EnsureSuccessStatusCode();
+
             (await client.DeleteAsync($"/api/business-files/company/{certFile.Id}")).EnsureSuccessStatusCode();
             var trashCompany=await client.GetFromJsonAsync<List<RecycleItem>>("/api/trash/company");
             if(trashCompany is null||!trashCompany.Any(r=>r.Kind=="file"&&r.Id==certFile.Id))
@@ -1740,6 +1774,65 @@ static class WebSmoke
             if (!exported.AsSpan().SequenceEqual(data)) throw new IOException("文件往返不一致。");
             var isolated = await client.GetAsync($"/api/files/personal/{fileId}");
             if (isolated.StatusCode != HttpStatusCode.NotFound) throw new IOException("工作区数据越权。");
+            // Legacy general files: same-name independent group, version update,
+            // soft-delete, restore, and permanent purge must preserve the original.
+            async Task<long> SendGeneral(byte[] content,string mode,string group="")
+            {
+                using var uploadContent=new ByteArrayContent(content);
+                using var request=new HttpRequestMessage(HttpMethod.Post,
+                    $"/api/records/company/{id}/files"){Content=uploadContent};
+                request.Headers.Add("X-File-Name",Uri.EscapeDataString("test.bin"));
+                request.Headers.Add("X-Upload-Mode",mode);
+                if(group.Length>0)request.Headers.Add("X-File-Group",group);
+                using var response=await client.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+                var result=await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+                return result.GetProperty("id").GetInt64();
+            }
+            var generalBefore=await client.GetFromJsonAsync<List<RecordView>>("/api/records/company");
+            var generalGroup=generalBefore!.Single(r=>r.Id==id).Files.Single(f=>f.Id==fileId).GroupId;
+            long independentGeneralId=await SendGeneral(data,"new");
+            long generalNewVersionId=await SendGeneral(data,"update",generalGroup);
+            var generalVersions=await client.GetFromJsonAsync<List<RecordView>>("/api/records/company");
+            var updatedGeneral=generalVersions!.Single(r=>r.Id==id).Files;
+            if(updatedGeneral.Count!=3||updatedGeneral.Select(x=>x.GroupId).Distinct().Count()!=2||
+                updatedGeneral.Single(x=>x.Id==generalNewVersionId).Version!=2)
+                throw new IOException("旧综合资料的独立同名原件与新版分组错误。");
+            (await client.DeleteAsync($"/api/files/company/{independentGeneralId}"))
+                .EnsureSuccessStatusCode();
+            if((await client.GetAsync($"/api/files/company/{independentGeneralId}"))
+                 .StatusCode!=HttpStatusCode.NotFound)
+                throw new IOException("被移除的综合资料附件仍可下载。");
+            var generalTrash=await client.GetFromJsonAsync<List<RecycleItem>>("/api/trash/company");
+            if(generalTrash is null||!generalTrash.Any(x=>x.Kind=="general_file"&&x.Id==independentGeneralId))
+                throw new IOException("通用附件软删除未进入回收站。");
+            (await client.PostAsJsonAsync("/api/trash/company/restore",
+                new RecycleRequest([new RecycleKey("general_file",independentGeneralId,"")])))
+                .EnsureSuccessStatusCode();
+            if(!(await client.GetByteArrayAsync($"/api/files/company/{independentGeneralId}"))
+                .AsSpan().SequenceEqual(data))
+                throw new IOException("综合资料附件恢复后字节不一致。");
+            (await client.DeleteAsync($"/api/files/company/{independentGeneralId}"))
+                .EnsureSuccessStatusCode();
+            (await client.PostAsJsonAsync("/api/trash/company/purge",
+                new RecycleRequest([new RecycleKey("general_file",independentGeneralId,"")])))
+                .EnsureSuccessStatusCode();
+            (await client.DeleteAsync($"/api/files/company/{generalNewVersionId}"))
+                .EnsureSuccessStatusCode();
+            (await client.PostAsJsonAsync("/api/trash/company/purge",
+                new RecycleRequest([new RecycleKey("general_file",generalNewVersionId,"")])))
+                .EnsureSuccessStatusCode();
+            (await client.DeleteAsync($"/api/records/company/{id}"))
+                .EnsureSuccessStatusCode();
+            if((await client.GetAsync($"/api/files/company/{fileId}"))
+                .StatusCode!=HttpStatusCode.NotFound)
+                throw new IOException("删除综合资料后原件应不可访问。");
+            (await client.PostAsJsonAsync("/api/trash/company/restore",
+                new RecycleRequest([new RecycleKey("general",id,"")])))
+                .EnsureSuccessStatusCode();
+            if(!(await client.GetByteArrayAsync($"/api/files/company/{fileId}"))
+                .AsSpan().SequenceEqual(data))
+                throw new IOException("恢复综合资料记录后旧附件丢失。");
             // First persisted business edit: update a general-record title, preserving
             // its attachment and refusing unauthorized/cross-workspace updates.
             using var anonymous = new HttpClient { BaseAddress = new Uri(address) };
