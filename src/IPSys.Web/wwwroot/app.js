@@ -1012,16 +1012,17 @@ function realCompanyCertificateList(){
  '<button class="btn primary" data-action="archiveAdd">＋ 新建记录</button>'+
  certificateExportMenu(rows)+'</div></div>'+
  '<div class="tablewrap archive-tablewrap"><table class="data"><thead><tr>'+
- '<th>资料名称</th><th>附件</th><th>备注</th><th>操作</th></tr></thead><tbody>'+
+ '<th>资料名称</th><th>附件</th><th class="certificate-size">文件大小</th><th>备注</th><th>操作</th></tr></thead><tbody>'+
  (rows.length?rows.map(r=>{
   const original=companyCertificateAttachment(r.id);
   return '<tr><td><button class="link" data-archive-id="'+r.id+'">'+escapeHtml(r.name)+'</button></td>'+
    '<td>'+(original?escapeHtml(original.name):'<span class="muted">未上传</span>')+'</td>'+
+   '<td class="certificate-size">'+(original?fmtSize(original.size):'—')+'</td>'+
    '<td>'+escapeHtml(r.remarks||'—')+'</td>'+
    '<td><button class="btn btn-sm" data-certificate-download="'+(original?.id||'')+'"'+
    (original?'':' disabled title="该资料尚无附件"')+'>下载</button></td></tr>';
  }).join(''):
- '<tr><td colspan="4" class="empty">暂无符合条件的资料，可点击上方新建。</td></tr>')+
+ '<tr><td colspan="5" class="empty">暂无符合条件的资料，可点击上方新建。</td></tr>')+
  '</tbody></table></div><div class="tablefoot">显示 '+rows.length+' 条 · 共 '+all.length+' 条企业资质记录</div></section>';
 }
 function realArchiveCards(k){

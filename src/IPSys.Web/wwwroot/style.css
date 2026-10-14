@@ -275,3 +275,6 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 #archiveDialog #aAttachment{height:auto;min-height:40px;padding:7px}
 .certificate-ledger .data td:nth-child(2){max-width:380px;overflow-wrap:anywhere}
 .certificate-ledger .data td:nth-child(3){max-width:330px;white-space:normal;overflow-wrap:anywhere}
+
+/* The company certificate table shows the size of the same original used by one-click download. */
+.certificate-ledger .data th.certificate-size,.certificate-ledger .data td.certificate-size{width:124px;min-width:105px;white-space:nowrap;text-align:left;font-variant-numeric:tabular-nums}

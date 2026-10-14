@@ -394,9 +394,9 @@ vm.runInContext(
  "{id:52,name:'质量管理体系认证',category:'体系认证',remarks:'ISO',tags:'认证'},"+
  "{id:53,name:'待分类证明',category:'',remarks:'',tags:''}];"+
  "globalThis.mockCertificateFiles=["+
- "{id:101,kind:'archive',ownerId:51,section:'certificate',name:'旧证书.pdf',version:1},"+
- "{id:102,kind:'archive',ownerId:51,section:'certificate',name:'新证书.pdf',version:2},"+
- "{id:103,kind:'archive',ownerId:52,section:'certificate',name:'认证附件.docx',version:1}];"+
+ "{id:101,kind:'archive',ownerId:51,section:'certificate',name:'旧证书.pdf',size:1024,version:1},"+
+ "{id:102,kind:'archive',ownerId:51,section:'certificate',name:'新证书.pdf',size:2457600,version:2},"+
+ "{id:103,kind:'archive',ownerId:52,section:'certificate',name:'认证附件.docx',size:65536,version:1}];"+
  "globalThis.__certAll=realCompanyCertificateList();"+
  "filterKind='体系认证';globalThis.__certStillAll=realCompanyCertificateList();"+
  "filterName='高新';globalThis.__certKeyword=realCompanyCertificateList();"+
@@ -413,13 +413,20 @@ assert.ok(realArchiveCtx.__certAll.includes('data-archive-id="51"')&&
  realArchiveCtx.__certAll.includes('data-archive-id="52"')&&
  realArchiveCtx.__certAll.includes('data-archive-id="53"'),
  'Each existing certificate name must remain an editable detail link');
-assert.ok(realArchiveCtx.__certAll.includes('<th>资料名称</th><th>附件</th><th>备注</th><th>操作</th>')&&
+assert.ok(realArchiveCtx.__certAll.includes('<th>资料名称</th><th>附件</th><th class="certificate-size">文件大小</th><th>备注</th><th>操作</th>')&&
  !realArchiveCtx.__certAll.includes('<th>类别</th>')&&!realArchiveCtx.__certAll.includes('id="filterKind"'),
  'Company certificate table and filters must exclude the category field');
 assert.ok(realArchiveCtx.__certAll.includes('data-certificate-download="102"')&&
  realArchiveCtx.__certAll.includes('新证书.pdf')&&
  !realArchiveCtx.__certAll.includes('data-certificate-download="101"'),
  'One-click download must resolve the newest stored original for each record');
+assert.ok(realArchiveCtx.__certAll.includes('<td class="certificate-size">2.3 MiB</td>')&&
+ realArchiveCtx.__certAll.includes('<td class="certificate-size">64.0 KiB</td>')&&
+ !realArchiveCtx.__certAll.includes('<td class="certificate-size">1.0 KiB</td>'),
+ 'File size must follow each record\'s latest downloadable attachment, not an older version');
+assert.ok(realArchiveCtx.__certAll.includes('<td class="certificate-size">—</td>')&&
+ realArchiveCtx.__certEmpty.includes('colspan="5"'),
+ 'No-attachment row shows a dash and the empty-state row spans five columns');
 assert.ok(realArchiveCtx.__certAll.includes('data-certificate-download="103"')&&
  realArchiveCtx.__certAll.includes('data-certificate-download="" disabled title="该资料尚无附件"'),
  'Download must be disabled for records without attachments, not cause fake download');
@@ -483,6 +490,8 @@ assert.ok(js.includes("detail=simpleCertificate?null:{kind:'archive',id:recordId
  js.includes("await downloadBusinessAttachment(Number(target.dataset.certificateDownload))"),
  'Company certificate save must return to list and download directly from existing authorized endpoint');
 
+assert.ok(css.includes('.certificate-ledger .data th.certificate-size,.certificate-ledger .data td.certificate-size{width:124px;min-width:105px;white-space:nowrap'),
+ 'Size column should have a compact width and prevent unit wrapping');
 assert.ok(css.includes('.certificate-ledger .certificate-toolbar{display:flex')&&
  css.includes('.certificate-ledger .certificate-toolbar-filter input{flex:1 1 300px;max-width:590px;min-width:160px')&&
  css.includes('.certificate-ledger .certificate-export-options{position:absolute')&&
