@@ -1,5 +1,8 @@
 # IPSys 开发总计划（阶段路线图 V0.1）
 
+**P2 统一搜索开发（2026-10-14）**：沿用顶部 globalSearch，使用新增的工作区认证 SQLCipher GET /api/search/{workspace} 检索项目/合同/知识产权/资质成果/综合资料及附件文件名；按类型分组，结果跳转真实所属详情。原搜索页使用 sample/mock 的逻辑已替换。每组最多展示 60 条；仅结构化字段和附件元数据，不实施 OCR/正文检索。以 Windows CI 和用户本机搜索验收为准，见 [SEARCH.md](./SEARCH.md)。
+
+
 **P1 第二批验收状态（2026-10-14）**：资料四字段台账（企业/个人资质、科研成果、学术活动）、综合/其他资料名称单字段台账、合同只读 XLSX 导出均已完成。Windows Actions [#38514681983](https://github.com/zy19970/IPSys/actions/runs/38514681983) Debug/Release、SQLCipher、MCP、浏览器和 Excel 读写回归全通过；用户桌面 Excel 实机验收未单独进行。因该功能使用频率低，下一开发批次转向当前工作区跨模块统一搜索。
 
 
