@@ -292,7 +292,7 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 .certificate-ledger .data td:nth-child(6){max-width:330px;white-space:normal;overflow-wrap:anywhere}
 
 /* Company certificate table: narrow control columns, flexible name and attachment. */
-.certificate-ledger .data{width:100%;min-width:1010px;table-layout:fixed}
+.certificate-ledger .data{width:100%;min-width:0;table-layout:fixed}
 .certificate-ledger .data col.certificate-col-check{width:42px}
 .certificate-ledger .data col.certificate-col-sequence{width:54px}
 .certificate-ledger .data col.certificate-col-name{width:25%}
@@ -319,7 +319,16 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 .ledger-record-order-cell .btn{min-width:32px;padding:5px 5px;margin:0 2px}
 .ledger-record-order-cell .btn:disabled{opacity:.35}
 .ledger-record-check-cell input{width:16px;height:16px;accent-color:var(--primary);cursor:pointer;vertical-align:middle}
-.ledger-record-table{min-width:850px}
+/* Record list tables fill the available pane. Long values wrap instead of pushing sorting controls off-screen. */
+.data.ledger-record-table{width:100%;min-width:0;table-layout:fixed;white-space:normal}
+.data.ledger-record-table th,
+.data.ledger-record-table td{padding:9px 8px;white-space:normal;overflow-wrap:anywhere;vertical-align:middle}
+.data.ledger-record-table .link{white-space:normal;overflow-wrap:anywhere}
+/* A genuinely narrow viewport may scroll; ordinary desktop widths show the entire table. */
+@media(max-width:900px){
+ .data.ledger-record-table{min-width:760px}
+ .certificate-ledger .data{min-width:850px}
+}
 .ledger-record-table td:nth-child(2){max-width:none}
 .archive-tablewrap .data.ledger-record-table td:nth-child(2){min-width:58px;white-space:nowrap}
 .ledger-selected-count{font-size:12px;color:var(--muted);white-space:nowrap}

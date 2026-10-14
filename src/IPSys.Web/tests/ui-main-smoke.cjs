@@ -768,6 +768,15 @@ for(const rule of ['.data.ledger-record-table','.ledger-record-order-cell .btn',
  '.archive-tablewrap .data.ledger-record-table td:nth-child(2)',
  '.ledger-batch-delete[hidden]'])
  assert.ok(css.includes(rule),'Record table sizing / hidden delete missing '+rule);
+// All business ledgers should show their final controls without horizontal overflow on desktop.
+assert.ok(css.includes('.data.ledger-record-table{width:100%;min-width:0;table-layout:fixed;white-space:normal}'),
+ 'Record tables should fill the desktop pane rather than reserve a rigid 850px width');
+assert.ok(css.includes('.data.ledger-record-table td{padding:9px 8px;white-space:normal;overflow-wrap:anywhere'),
+ 'Business field cells must wrap rather than expand the table outside the viewport');
+assert.ok(css.includes('.certificate-ledger .data{width:100%;min-width:0;table-layout:fixed}'),
+ 'Company certificate ledger should also fit the desktop pane');
+assert.ok(css.includes('@media(max-width:900px)')&&css.includes('min-width:760px'),
+ 'On truly narrow windows keep a scrollable minimum for readable table columns');
 // Check SQLCipher ordering metadata is applied across module arrays, not only to the DOM.
 const helpers=js.slice(js.indexOf('function ledgerScope(){'),js.indexOf('function render(){'));
 assert.ok(helpers.length>3000,'Generic ledger helper span was not found');
