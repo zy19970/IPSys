@@ -183,7 +183,7 @@ function dashboard(){
  return heading(title('dashboard'),'当前工作区 · 真实业务台账与分类资料')+
  '<div class="cards">'+counts.map(([name,num,s])=>`<div class="card"><div class="metriclabel">${name}</div><div class="metric">${num}</div><div class="metricfoot">${s}</div></div>`).join('')+'</div>'+
  '<div class="panels"><section class="card"><h2 class="sectiontitle">'+(space==='personal'?'个人资料分类入口':'业务模块快捷入口')+'</h2><div class="modulegrid">'+mods.map(([key,name])=>`<button class="modulelink" data-nav="${key}"><span><b>${name}</b><small>${key==='general'?general+' 条真实记录':key==='ip'?ipRows.length+' 条真实记录':key==='contract'?contractRows.length+' 条真实记录':isProject(key)?projectViewRows(key).length+' 条真实记录':archiveSections.includes(key)?(archiveRows[key]||[]).length+' 条真实记录':(sample(key).length||0)+' 条演示记录'}</small></span><span class="arrow">→</span></button>`).join('')+'</div></section>'+
- '<section class="card"><h2 class="sectiontitle">当前工作区资料概况</h2><div class="minirow"><span>公司 / 个人隔离</span><strong>已启用</strong></div><div class="minirow"><span>'+ (space==='personal'?'其他资料':'综合资料') +'存储</span><strong>真实 SQLCipher</strong></div><div class="minirow"><span>'+ (space==='personal'?'分类资料':'知识产权、项目与合同') +'</span>'+pill('界面设计')+'</div><div class="minirow"><span>当前数据库</span><span class="muted">'+escapeHtml(dbName)+'</span></div><p class="hint">证件和成果资料已接入真实台账；原件附件仅支持综合资料，其他模块附件待接入。真实文件请在“'+(space==='personal'?'其他资料':'综合资料')+'”中管理。</p></section></div>';
+ '<section class="card"><h2 class="sectiontitle">当前工作区资料概况</h2><div class="minirow"><span>公司 / 个人隔离</span><strong>已启用</strong></div><div class="minirow"><span>'+ (space==='personal'?'其他资料':'综合资料') +'存储</span><strong>真实 SQLCipher</strong></div><div class="minirow"><span>'+ (space==='personal'?'分类资料':'知识产权、项目与合同') +'</span>'+pill('界面设计')+'</div><div class="minirow"><span>当前数据库</span><span class="muted">'+escapeHtml(dbName)+'</span></div><p class="hint">证件和成果及原件均已接入真实加密台账；可在“'+(space==='personal'?'其他资料':'综合资料')+'”以及各业务详情中管理原件。</p></section></div>';
 }
 function generalList(){
  const rows=liveRows.filter(r=>r.title.toLowerCase().includes(filterName.toLowerCase()));
@@ -610,13 +610,13 @@ function archiveCategories(k){
   :[...new Set(sample(k).map(r=>r.type))];
  return [...new Set([...defaults,...(archiveRows[k]||[]).map(r=>r.category||'未分类')])];
 }
-function realArchiveCategoryCard(category,count){
+function realArchiveCategoryCard(category,count,files){
  return '<article class="archivecard archivecategory" data-archive-category="'+escapeHtml(category)+'" role="button" tabindex="0" aria-label="查看'+escapeHtml(category)+'台账">'+
  '<div class="archivecard-head"><div class="archivecard-titlewrap">'+
  '<span class="archivecard-symbol" aria-hidden="true">▤</span><h3 class="archivecard-title">'+escapeHtml(category)+'</h3></div>'+
  '<span class="realflag">真实记录</span></div>'+
  '<div class="archivecard-meta"><span class="archivecard-type">'+count+' 条归档记录</span>'+
- '<span class="archivecard-count">附件 <strong>0</strong> 份</span></div>'+
+ '<span class="archivecard-count">附件 <strong>'+files+'</strong> 份</span></div>'+
  '<div class="archivecard-actions"><span class="archivecategory-open">进入台账 →</span></div></article>';
 }
 function realArchiveCards(k){
@@ -630,8 +630,11 @@ function realArchiveCards(k){
  ['全部类型',...categories].map(x=>'<option value="'+escapeHtml(x)+'" '+(x===filterKind?'selected':'')+'>'+escapeHtml(x)+'</option>').join('')+
  '</select></div><button class="btn primary" data-action="filter">查询</button><button class="btn" data-action="clearFilter">重置</button></div></section>'+
  '<section class="white"><div class="tabletools"><b>资料类别 · '+visible.length+' 类</b></div>'+
- '<div class="recordgrid">'+visible.map(category=>realArchiveCategoryCard(category,
-  rows.filter(r=>(r.category||'未分类')===category).length)).join('')+'</div>'+
+ '<div class="recordgrid">'+visible.map(category=>{
+  const members=rows.filter(r=>(r.category||'未分类')===category);
+  return realArchiveCategoryCard(category,members.length,
+    members.reduce((n,r)=>n+businessFileCount('archive',r.id,k),0));
+ }).join('')+'</div>'+
  '<div class="tablefoot">真实记录 '+rows.length+' 条 · 可在每一类别下归档多条独立记录</div></section>';
 }
 function realArchiveTable(k,category){
