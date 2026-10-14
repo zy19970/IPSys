@@ -130,3 +130,16 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 .ledger-export-row,.ledger-export-all{vertical-align:middle}
 .data th:has(.ledger-export-all),.data td:has(.ledger-export-row){width:38px;min-width:38px;text-align:center}
 .module-export-record{scroll-margin-top:16px}
+
+/* P1 XLSX ledger controls; collapsed by default to preserve the frozen U0 layout. */
+.ledger-excel{margin:0 0 12px;padding:10px 15px;border:1px solid #dde5eb;
+ border-radius:9px;background:#fff}
+.ledger-excel>summary{cursor:pointer;color:#28475b;font-size:13px;font-weight:600}
+.ledger-excel[open]>summary{margin-bottom:10px}
+.excel-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.excel-choice{display:flex;gap:9px;flex-direction:column;margin-top:15px}
+.excel-choice .btn{text-align:left;white-space:normal}
+.excel-report{width:min(580px,calc(100vw - 28px))}
+.excel-errors{max-height:40vh;overflow:auto;background:#f5f7f9;padding:10px;
+ border:1px solid #e1e6eb;border-radius:6px}
+.excel-errors p{margin:4px 0;font-size:12px}

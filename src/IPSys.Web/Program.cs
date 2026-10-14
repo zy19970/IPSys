@@ -296,6 +296,56 @@ app.MapPost("/api/ip/{workspace}/{id:long}/transfer", async (
     finally { v.Gate.Release(); }
 });
 
+// P1 fixed Excel ledgers. Browser receives real XLSX files; never accepts
+// arbitrary column mapping, formulas, contract import or file paths as records.
+app.MapGet("/api/excel/{workspace}/{kind}/template", (HttpContext ctx,Vault v,string workspace,string kind) =>
+{
+    if(!v.Allowed(ctx))return (IResult)Results.Unauthorized();
+    if(!Vault.WorkspaceValid(workspace)||!ExcelLedger.ValidKind(kind))return Fail("Excel 模块或工作区无效。");
+    return Results.File(ExcelLedger.Template(kind),ExcelLedger.ContentType,kind+"-template.xlsx");
+});
+app.MapPost("/api/excel/{workspace}/{kind}/export",async (
+    HttpContext ctx,Vault v,string workspace,string kind,ExcelExportInput input)=>
+{
+    if(!v.Allowed(ctx))return (IResult)Results.Unauthorized();
+    if(!Vault.WorkspaceValid(workspace)||!ExcelLedger.ValidKind(kind))return Fail("Excel 模块或工作区无效。");
+    await v.Gate.WaitAsync();
+    try
+    {
+        if(!v.Allowed(ctx))return Results.Unauthorized();
+        try
+        {
+            byte[] bytes=ExcelLedger.Export(v.Db,workspace,kind,input.Mode,input.Ids);
+            return Results.File(bytes,ExcelLedger.ContentType,kind+"-ledger.xlsx");
+        }
+        catch(InvalidDataException ex){return Fail(ex.Message);}
+    }
+    finally{v.Gate.Release();}
+});
+app.MapPost("/api/excel/{workspace}/{kind}/import",async (
+    HttpContext ctx,Vault v,string workspace,string kind,string? policy)=>
+{
+    if(!v.Allowed(ctx))return (IResult)Results.Unauthorized();
+    if(!Vault.WorkspaceValid(workspace)||!ExcelLedger.ValidKind(kind))return Fail("Excel 模块或工作区无效。");
+    if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务或退出期间不可批量导入。",409);
+    if(ctx.Request.ContentLength>ExcelLedger.MaxWorkbookBytes)
+        return Fail("Excel 文件不能超过 8 MiB。",413);
+    using var buffer=new MemoryStream();
+    await ctx.Request.Body.CopyToAsync(buffer);
+    if(buffer.Length>ExcelLedger.MaxWorkbookBytes)
+        return Fail("Excel 文件不能超过 8 MiB。",413);
+    await v.Gate.WaitAsync();
+    try
+    {
+        if(!v.Allowed(ctx))return Results.Unauthorized();
+        if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务或退出期间不可批量导入。",409);
+        try{return Results.Json(ExcelLedger.Import(v.Db,workspace,kind,policy??"",buffer.ToArray()));}
+        catch(InvalidDataException ex){return Fail(ex.Message);}
+        catch(System.Xml.XmlException){return Fail("Excel 工作表 XML 无效。");}
+    }
+    finally{v.Gate.Release();}
+});
+
 // Contract creation requires an existing, active project in the same workspace.
 // "All contracts" is a read-only aggregation; it cannot create orphan records.
 // B04 minimal archives: the section is a validated view inside a fixed M0 module.
@@ -907,6 +957,7 @@ static IResult Fail(string message, int status = 400) =>
     Results.Json(new { error = message }, statusCode: status);
 
 record McpAccessInput(bool Enabled);
+record ExcelExportInput(string Mode,long[]? Ids);
 record ProjectInput(string? Name, string? ProjectType, string? ProjectNo, string? Leader,
     string? UndertakingOrg, string? StartDate, string? EndDate, string? ProjectStatus,
     string? Category, string? Remarks, string? Tags);
@@ -1298,6 +1349,92 @@ static class WebSmoke
         return (json.GetProperty("id").GetInt64(),json.GetProperty("version").GetInt32(),
             json.GetProperty("reused").GetBoolean());
     }
+    private static async Task VerifyExcelAsync(HttpClient client)
+    {
+        var unique=Guid.NewGuid().ToString("N")[..8];
+        var projectResult=await client.PostAsJsonAsync("/api/projects/company",new {
+            name="Excel 自动测试项目",projectType="科研项目",projectNo="XLSX-"+unique,
+            projectStatus="进行中",remarks="备注应原样保留"
+        });
+        projectResult.EnsureSuccessStatusCode();
+        var projectJson=await projectResult.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        long projectId=projectJson.GetProperty("id").GetInt64();
+        var ipResult=await client.PostAsJsonAsync("/api/ip/company",new {
+            name="Excel 自动测试知识产权",ipType="发明专利",status="实质审查中",
+            applicationNo="CN-XLSX-"+unique,rightHolders="测试单位"
+        });
+        ipResult.EnsureSuccessStatusCode();
+        var ipJson=await ipResult.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        long ipId=ipJson.GetProperty("id").GetInt64();
+        foreach(string kind in new[]{"project","ip"})
+        {
+            var template=await client.GetByteArrayAsync("/api/excel/company/"+kind+"/template");
+            if(template.Length<400||template[0]!=0x50||template[1]!=0x4b)
+                throw new IOException("Excel 固定模板不是有效 XLSX ZIP 结构。");
+            var path="/api/excel/company/"+kind;
+            var filtered=await client.PostAsJsonAsync(path+"/export",
+                new ExcelExportInput("filtered",Array.Empty<long>()));
+            filtered.EnsureSuccessStatusCode();
+            byte[] empty=await filtered.Content.ReadAsByteArrayAsync();
+            using(var body=new ByteArrayContent(empty))
+            {
+                body.Headers.ContentType=new System.Net.Http.Headers.MediaTypeHeaderValue(ExcelLedger.ContentType);
+                var imported=await client.PostAsync(path+"/import?policy=skip",body);
+                imported.EnsureSuccessStatusCode();
+                var zero=await imported.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+                if(zero.GetProperty("total").GetInt32()!=0)
+                    throw new IOException("筛选范围为空却导出了业务行。");
+            }
+            var response=await client.PostAsJsonAsync(path+"/export",
+                new ExcelExportInput("filtered",new[]{kind=="project"?projectId:ipId}));
+            response.EnsureSuccessStatusCode();
+            byte[] workbook=await response.Content.ReadAsByteArrayAsync();
+            using(var body=new ByteArrayContent(workbook))
+            {
+                body.Headers.ContentType=new System.Net.Http.Headers.MediaTypeHeaderValue(ExcelLedger.ContentType);
+                var imported=await client.PostAsync(path+"/import?policy=skip",body);
+                imported.EnsureSuccessStatusCode();
+                var result=await imported.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+                if(result.GetProperty("skipped").GetInt32()!=1||result.GetProperty("created").GetInt32()!=0)
+                    throw new IOException("Excel 重复记录跳过策略无效。");
+            }
+            using(var body=new ByteArrayContent(workbook))
+            {
+                body.Headers.ContentType=new System.Net.Http.Headers.MediaTypeHeaderValue(ExcelLedger.ContentType);
+                var imported=await client.PostAsync(path+"/import?policy=update",body);
+                imported.EnsureSuccessStatusCode();
+                var result=await imported.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+                if(result.GetProperty("updated").GetInt32()!=1)
+                    throw new IOException("Excel 重复记录更新策略无效。");
+            }
+            using(var body=new ByteArrayContent(workbook))
+            {
+                body.Headers.ContentType=new System.Net.Http.Headers.MediaTypeHeaderValue(ExcelLedger.ContentType);
+                var imported=await client.PostAsync(path+"/import?policy=create",body);
+                imported.EnsureSuccessStatusCode();
+                var result=await imported.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+                if(result.GetProperty("created").GetInt32()!=1)
+                    throw new IOException("Excel 重复记录独立新建策略无效。");
+            }
+            using(var invalidBody=new ByteArrayContent(new byte[]{1,2,3}))
+            {
+                var invalid=await client.PostAsync(path+"/import?policy=skip",invalidBody);
+                if(invalid.IsSuccessStatusCode)
+                    throw new IOException("Excel 非 XLSX 数据不应被接受。");
+            }
+        }
+        var personal=await client.PostAsJsonAsync("/api/excel/personal/project/export",
+            new ExcelExportInput("filtered",new[]{projectId}));
+        personal.EnsureSuccessStatusCode();
+        // Filtered export must not leak company records into the personal workspace.
+        using var check=new ByteArrayContent(await personal.Content.ReadAsByteArrayAsync());
+        var importPersonal=await client.PostAsync("/api/excel/personal/project/import?policy=skip",check);
+        importPersonal.EnsureSuccessStatusCode();
+        var resultPersonal=await importPersonal.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        if(resultPersonal.GetProperty("total").GetInt32()!=0)
+            throw new IOException("Excel 导出跨工作区泄漏了记录。");
+    }
+
     private static async Task VerifyMcpAsync(HttpClient client,string dir)
     {
         var disabled=await client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/mcp");
@@ -2166,6 +2303,7 @@ static class WebSmoke
             // Real MCP pipe, authorization gate, CRUD and source-byte roundtrip.
             // All writes occur in a disposable SQLCipher smoke database.
             await VerifyMcpAsync(client,dir);
+            await VerifyExcelAsync(client);
             using var finalLock = await client.PostAsync("/api/lock", null);
             finalLock.EnsureSuccessStatusCode();
 

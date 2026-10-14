@@ -298,6 +298,7 @@ function ipList(){
  const options=(vals,active)=>vals.map(v=>'<option value="'+escapeHtml(v)+'" '+(active===v?'selected':'')+'>'+escapeHtml(v)+'</option>').join('');
  return heading(title('ip'),'知识产权真实业务台账 · 当前加密资料库',
   '<span class="realflag">真实记录</span><button class="btn primary" data-action="ipAdd">＋ 新建记录</button>')+
+ excelPanel('ip')+
  '<section class="white filter"><div class="filterline">'+
  '<div class="field wide"><label>名称 / 编号</label><input id="filterSearch" placeholder="搜索知识产权"></div>'+
  '<div class="field"><label>类型</label><select id="filterKind">'+options(['全部类型',...allTypes],filterKind)+'</select></div>'+
@@ -426,6 +427,85 @@ function showContractForm(projectId,id=null){
 function projectViewRows(k){
  return projectRows.filter(p=>space==='personal'||(k==='researchProject'?p.projectType!=='横向项目':p.projectType==='横向项目'));
 }
+// Fixed M0 Excel ledgers are separate from the original-file export controls.
+function excelPanel(kind){
+ return '<details class="ledger-excel"><summary>Excel 台账导入与导出</summary>'+
+  '<div class="actions excel-actions">'+
+  '<button class="btn" data-action="excelTemplate" data-excel-kind="'+kind+'">下载固定模板</button>'+
+  '<button class="btn" data-action="excelExportFiltered" data-excel-kind="'+kind+'">导出当前筛选结果</button>'+
+  '<button class="btn" data-action="excelExportAll" data-excel-kind="'+kind+'">导出全部记录</button>'+
+  '<button class="btn primary" data-action="excelImport" data-excel-kind="'+kind+'">导入 Excel 台账</button>'+
+  '</div><p class="hint">仅导入固定表头和业务字段，原件需进入记录后单独上传；重复记录需要明确选择处理方式。</p>'+
+  '<input id="excelImportFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>'+
+  '</details>';
+}
+async function saveExcel(response,name){
+ const file=await response.blob();
+ const url=URL.createObjectURL(file);
+ const a=document.createElement('a');
+ a.href=url;a.download=name;document.body.append(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),30000);
+}
+function chooseExcelDuplicatePolicy(){
+ return new Promise(resolve=>{
+  const dialog=document.createElement('dialog');dialog.className='input-dialog';
+  dialog.innerHTML='<h3>重复记录如何处理？</h3>'+
+   '<p class="hint">系统会按项目编号、申请/登记号等识别疑似重复项。正确行继续导入，错误行单独报告。</p>'+
+   '<div class="excel-choice">'+
+   '<button class="btn" data-excel-policy="skip">跳过重复记录（推荐）</button>'+
+   '<button class="btn" data-excel-policy="update">更新已有记录</button>'+
+   '<button class="btn" data-excel-policy="create">将重复记录另建一条</button>'+
+   '<button class="btn" data-excel-policy="cancel">取消导入</button></div>';
+  document.body.append(dialog);
+  let done=false;
+  const finish=value=>{
+   if(done)return;done=true;if(dialog.open)dialog.close();dialog.remove();resolve(value);
+  };
+  dialog.addEventListener('click',event=>{
+   const value=event.target.closest('[data-excel-policy]')?.dataset.excelPolicy;
+   if(value)finish(value==='cancel'?null:value);
+  });
+  dialog.addEventListener('cancel',event=>{event.preventDefault();finish(null);});
+  dialog.showModal();
+ });
+}
+function showExcelImportReport(report){
+ const details=report.errors||[];
+ const dialog=document.createElement('dialog');dialog.className='input-dialog excel-report';
+ dialog.innerHTML='<h3>Excel 导入结果</h3>'+
+  '<p>新增 '+report.created+' 条，更新 '+report.updated+' 条，跳过 '+report.skipped+
+  ' 条，失败 '+report.failed+' 条。</p>'+
+  (details.length?'<div class="excel-errors">'+details.map(e=>
+   '<p>第 '+Number(e.row)+' 行：'+escapeHtml(e.error)+'</p>').join('')+'</div>':'')+
+  '<div class="dialogactions"><button class="btn primary" data-excel-close="1">关闭</button></div>';
+ document.body.append(dialog);
+ dialog.addEventListener('click',e=>{if(e.target.closest('[data-excel-close]'))dialog.close();});
+ dialog.addEventListener('close',()=>dialog.remove(),{once:true});
+ dialog.showModal();
+}
+async function exportExcel(kind,scope){
+ const workspace=space;
+ const path='/api/excel/'+workspace+'/'+kind;
+ const ids=scope==='filtered'?[...el('content').querySelectorAll('.ledger-export-row')]
+  .map(box=>Number(box.value)):null;
+ const response=await api(path+'/export',{method:'POST',json:{mode:scope,ids}});
+ await saveExcel(response,kind+'-'+workspace+'-'+(scope==='filtered'?'filtered':'all')+'.xlsx');
+}
+async function importExcel(kind,file){
+ if(!file||file.size>8*1024*1024)return notice('请使用小于 8 MiB 的固定 XLSX 模板。',true);
+ const workspace=space;
+ const policy=await chooseExcelDuplicatePolicy();
+ if(!policy)return;
+ try{
+  const response=await api('/api/excel/'+workspace+'/'+kind+'/import?policy='+policy,{
+   method:'POST',headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},
+   body:file});
+  const report=await response.json();
+  if(workspace===space)await refresh();
+  showExcelImportReport(report);
+ }catch(error){notice('Excel 导入失败：'+error.message,true);}
+}
+
 function projectList(k){
  const rows=projectViewRows(k), visible=rows.filter(p=>
   [p.name,p.projectNo,p.leader,p.undertakingOrg].join(' ').toLowerCase().includes(filterName.toLowerCase()) &&
@@ -435,6 +515,7 @@ function projectList(k){
  const statuses=['全部状态','筹备中','进行中','已完成','已终止'];
  return heading(title(k),'真实业务台账 · 当前加密资料库',
   '<span class="realflag">真实记录</span><button class="btn primary" data-action="projectAdd">＋ 新建项目</button>')+
+ excelPanel('project')+
  '<section class="white filter"><div class="filterline">'+
  '<div class="field wide"><label>名称 / 编号</label><input id="filterSearch" placeholder="输入关键词筛选项目"></div>'+
  '<div class="field"><label>类型</label><select id="filterKind">'+types.map(t=>'<option value="'+t+'" '+(filterKind===t?'selected':'')+'>'+t+'</option>').join('')+'</select></div>'+
@@ -1158,6 +1239,25 @@ el('content').addEventListener('click',async ev=>{
    const chosen=[...document.querySelectorAll('.trashcheck:checked')].map(x=>Number(x.value));
    await changeTrash(target.dataset.action==='trashRestoreSelected'?'restore':'purge',chosen);break;
   }
+  case 'excelTemplate':
+  case 'excelExportFiltered':
+  case 'excelExportAll':
+  case 'excelImport':{
+   const kind=target.dataset.excelKind;
+   if(kind!=='project'&&kind!=='ip')break;
+   try{
+    if(target.dataset.action==='excelImport'){
+     const filePicker=el('excelImportFile');
+     if(filePicker)filePicker.click();
+    }else if(target.dataset.action==='excelTemplate'){
+     const response=await api('/api/excel/'+space+'/'+kind+'/template');
+     await saveExcel(response,kind+'-template.xlsx');
+    }else{
+     await exportExcel(kind,target.dataset.action==='excelExportFiltered'?'filtered':'all');
+    }
+   }catch(error){notice('Excel 操作失败：'+error.message,true);}
+   break;
+  }
   case 'projectExportFolder':
   case 'projectExportZip':{
    const ids=detail?.kind==='project'?[detail.id]:
@@ -1358,6 +1458,11 @@ el('businessFileInput').onchange=async event=>{
  if(files.length&&meta)await uploadBusinessBatch(files,meta);
 };
 el('content').addEventListener('change',async ev=>{
+ if(ev.target.id==='excelImportFile'){
+  const file=ev.target.files?.[0],kind=page==='ip'?'ip':isProject(page)?'project':null;
+  ev.target.value='';
+  if(kind&&file)await importExcel(kind,file);
+ }
  if(ev.target.id==='uploadInput'){
   const files=[...(ev.target.files||[])],id=detail?.id;ev.target.value='';
   if(files.length&&detail?.kind==='general')await uploadGeneralBatch(id,files);
