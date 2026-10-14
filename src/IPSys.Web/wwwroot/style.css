@@ -106,3 +106,13 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 .module-export[open]>summary{padding-bottom:10px}
 .module-export .contract-export-group{margin:8px 0}
 .module-export-sub{margin:8px 4px 8px 20px;border-left:2px solid #d7e5e8;padding-left:10px}
+
+/* B06: optional multi-record selection and explicit same-name upload choices. */
+.upload-conflict-dialog{width:min(480px,calc(100vw - 28px));max-width:480px}
+.upload-conflict-dialog h3{margin:0 0 12px;font-size:17px}
+.upload-conflict-actions{display:flex;flex-direction:column;gap:9px;margin-top:16px}
+.upload-conflict-actions .btn{text-align:left;white-space:normal;min-height:38px}
+.ledger-export-row,.ledger-export-all,.export-checkall{width:15px;height:15px;cursor:pointer;accent-color:#217b86}
+.ledger-export-row,.ledger-export-all{vertical-align:middle}
+.data th:has(.ledger-export-all),.data td:has(.ledger-export-row){width:38px;min-width:38px;text-align:center}
+.module-export-record{scroll-margin-top:16px}
