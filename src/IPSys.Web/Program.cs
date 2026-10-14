@@ -182,6 +182,21 @@ app.MapPost("/api/lock", async (HttpContext ctx, Vault v) =>
     finally { v.Gate.Release(); }
 });
 
+// P2 workspace-scoped SQLCipher search across real records and attachment metadata.
+app.MapGet("/api/search/{workspace}",async (HttpContext ctx,Vault v,string workspace,string? q)=>
+{
+    if(!v.Allowed(ctx))return (IResult)Results.Unauthorized();
+    if(!Vault.WorkspaceValid(workspace))return Fail("无效工作区。");
+    await v.Gate.WaitAsync(ctx.RequestAborted);
+    try
+    {
+        if(!v.Allowed(ctx))return Results.Unauthorized();
+        try{return Results.Json(SearchStore.Find(v.Db,workspace,q));}
+        catch(InvalidDataException ex){return Fail(ex.Message);}
+    }
+    finally{v.Gate.Release();}
+});
+
 app.MapGet("/api/records/{workspace}", async (HttpContext ctx, Vault v, string workspace) =>
 {
     if (!v.Allowed(ctx)) return Results.Unauthorized();
@@ -2454,6 +2469,7 @@ static class WebSmoke
             await VerifyMcpAsync(client,dir);
             await VerifyExcelAsync(client);
             await VerifySecondExcelBatchAsync(client);
+            await SearchSmoke.VerifyAsync(client);
             using var finalLock = await client.PostAsync("/api/lock", null);
             finalLock.EnsureSuccessStatusCode();
 

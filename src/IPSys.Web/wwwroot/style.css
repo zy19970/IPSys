@@ -143,3 +143,15 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 .excel-errors{max-height:40vh;overflow:auto;background:#f5f7f9;padding:10px;
  border:1px solid #e1e6eb;border-radius:6px}
 .excel-errors p{margin:4px 0;font-size:12px}
+
+/* Current-workspace unified search reuses the existing heading and table density. */
+.search-summary{display:flex;justify-content:space-between;align-items:center;gap:12px;
+ padding:12px 16px;margin-bottom:12px;flex-wrap:wrap}
+.searchgroup{margin-bottom:12px;padding:12px 16px}
+.searchgroup .sectiontitle{margin:0 0 7px;font-size:15px}
+.search-hit{display:flex;align-items:center;gap:12px;padding:9px 3px;border-top:1px solid #e8edf0}
+.search-hit .link{min-width:160px;text-align:left;overflow-wrap:anywhere;flex:1}
+.search-hit .muted{font-size:12px;overflow-wrap:anywhere}
+.search-hit .muted:last-child{flex:none;white-space:nowrap}
+@media(max-width:750px){.search-hit{align-items:flex-start;flex-wrap:wrap}
+ .search-hit .link{flex-basis:100%}}

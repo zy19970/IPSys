@@ -30,6 +30,7 @@ async function ensurePdfViewer(){
  return pdfScriptsPromise;
 }
 
+let globalHits=[],globalPending=false,globalError='',globalTruncated=false,globalQuery='',globalSerial=0;
 let token=sessionStorage.getItem('ip-token')||'';
 let dbName=sessionStorage.getItem('ip-db')||'';
 let mcpEnabled=false;
@@ -157,14 +158,15 @@ el('openForm').onsubmit=async event=>{
 };
 function selectSpace(next){
   if(!token)return;
+  globalSerial++;globalHits=[];globalQuery='';globalPending=false;globalError='';
   space=next;page='dashboard';detail=null;archiveGroup=null;projectRows=[];ipRows=[];contractRows=[];businessFileRows=[];trashRows=[];archiveRows={certificate:[],achievement:[],academic:[]};filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();
   el('globalSearch').value='';el('sidebarDbName').textContent=dbName;
   el('chooseWorkspace').hidden=true;el('unlocked').hidden=false;
   refresh();
 }
 document.querySelectorAll('[data-workspace-choice]').forEach(b=>b.onclick=()=>selectSpace(b.dataset.workspaceChoice));
-el('workspaceBtn').onclick=()=>{space=null;el('unlocked').hidden=true;el('chooseWorkspace').hidden=false;};
-function setPage(next){page=next;detail=null;archiveGroup=null;filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();el('globalSearch').value='';render();}
+el('workspaceBtn').onclick=()=>{globalSerial++;globalHits=[];globalQuery='';space=null;el('unlocked').hidden=true;el('chooseWorkspace').hidden=false;};
+function setPage(next){globalSerial++;globalHits=[];globalQuery='';globalPending=false;globalError='';page=next;detail=null;archiveGroup=null;filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();el('globalSearch').value='';render();}
 async function refresh(){
   if(!token||!space)return;
   const requestedSpace=space;
@@ -1072,11 +1074,60 @@ function mockDetail(){
  out+=section('关联资料','<div class="empty">暂无已关联的演示资料</div>',stamp());
  return out;
 }
+const searchGroupLabels={project:'项目',contract:'合同',ip:'知识产权',archive:'资质、成果与学术资料',general:'综合及其他资料',file:'附件文件名'};
+async function runGlobalSearch(input){
+ if(!space||!token)return;
+ const q=String(input??'').trim(),workspace=space,serial=++globalSerial;
+ globalQuery=q;globalHits=[];globalPending=!!q;globalError='';globalTruncated=false;
+ page='search';detail=null;archiveGroup=null;selected.clear();
+ filterName='';filterKind='全部类型';filterState='全部状态';
+ el('globalSearch').value=q;render();
+ if(!q)return;
+ try{
+  const response=await api('/api/search/'+workspace+'?q='+encodeURIComponent(q));
+  const data=await response.json();
+  if(serial!==globalSerial||workspace!==space||page!=='search'||!token)return;
+  globalHits=Array.isArray(data.results)?data.results:[];
+  globalTruncated=!!data.truncated;
+ }catch(e){if(serial===globalSerial&&workspace===space)globalError=e.message;}
+ finally{if(serial===globalSerial&&workspace===space&&page==='search'){globalPending=false;render();}}
+}
+function openSearchHit(index){
+ const h=globalHits[index];if(!h||!space)return;
+ const kind=h.kind==='file'?h.ownerKind:h.kind,id=h.kind==='file'?h.ownerId:h.id;
+ const candidates=kind==='general'?liveRows:kind==='project'?projectRows:
+  kind==='contract'?contractRows:kind==='ip'?ipRows:
+  kind==='archive'?(archiveRows[h.section]||[]):[];
+ const row=candidates.find(r=>r.id===id);
+ if(!row){notice('记录已发生变化，请重新搜索。',true);return;}
+ if(kind==='general')page='general';
+ else if(kind==='project')page=space==='company'&&row.projectType==='横向项目'?'horizontalProject':'researchProject';
+ else if(kind==='contract')page='contract';
+ else if(kind==='ip')page='ip';
+ else if(kind==='archive'){page=h.section;archiveGroup=row.category||'未分类';}
+ else return;
+ detail={kind,id};globalSerial++;globalPending=false;
+ filterName='';filterKind='全部类型';filterState='全部状态';
+ render();el('content').scrollTo(0,0);
+}
 function searchPage(){
- const q=filterName.toLowerCase();
- const datasets=labels().filter(([k])=>k!=='dashboard').map(([k,n])=>({k,n,rows:k==='general'?liveRows.filter(r=>r.title.toLowerCase().includes(q)):sample(k).filter(r=>Object.values(r).join(' ').toLowerCase().includes(q))})).filter(g=>g.rows.length);
- return heading('统一搜索','当前工作区跨模块查找 · 综合资料为真实数据，其他模块为界面示例')+
- (datasets.length?datasets.map(g=>`<section class="card searchgroup"><h2 class="sectiontitle">${escapeHtml(g.n)} <small class="muted">${g.rows.length} 条</small> ${g.k==='general'?'<span class="realflag">真实数据</span>':stamp()}</h2>${g.rows.map(r=>`<div class="minirow"><button class="link" ${g.k==='general'?`data-live-id="${r.id}"`:`data-search-detail="${g.k}:${r.id}"`}>${escapeHtml(g.k==='general'?r.title:r.name)}</button><span class="muted">进入详情 →</span></div>`).join('')}</section>`).join(''):'<section class="white empty">当前工作区没有匹配的资料。</section>');
+ let out=heading('统一搜索','当前工作区真实业务记录和附件名称检索')+
+ '<section class="white search-summary"><strong>'+escapeHtml(globalQuery||'输入关键词后按 Enter 搜索')+'</strong>'+
+ '<span class="muted">'+(globalPending?'正在搜索…':globalError?'查询失败':globalQuery?'匹配 '+globalHits.length+' 条':'项目、合同、专利、资料与附件')+'</span></section>';
+ if(globalError)return out+'<section class="white empty">'+escapeHtml(globalError)+'</section>';
+ if(globalPending)return out+'<section class="white empty">正在检索加密台账…</section>';
+ if(!globalQuery)return out+'<section class="white empty">请在顶部搜索框输入关键词并按 Enter。</section>';
+ if(!globalHits.length)return out+'<section class="white empty">当前工作区没有匹配的真实记录或附件。</section>';
+ for(const [kind,label] of Object.entries(searchGroupLabels)){
+  const hits=globalHits.map((hit,index)=>({hit,index})).filter(item=>item.hit.kind===kind);
+  if(!hits.length)continue;
+  out+='<section class="white searchgroup"><h2 class="sectiontitle">'+escapeHtml(label)+' <small class="muted">'+hits.length+' 条</small></h2>'+
+   hits.map(({hit,index})=>'<div class="minirow search-hit"><button class="link" data-search-index="'+index+'">'+
+    escapeHtml(hit.title)+'</button><span class="muted">'+escapeHtml(hit.description||'')+
+    '</span><span class="muted">进入详情 →</span></div>').join('')+'</section>';
+ }
+ if(globalTruncated)out+='<p class="hint">每类最多显示 60 条，请缩小关键词。</p>';
+ return out;
 }
 function settingsPage(){return heading('系统设置','数据库管理与已确认的维护操作','<button class="btn" data-nav="trash">查看回收站</button>')+
  `<section class="white detailsection"><div class="detailsectionhead"><h2>当前加密数据库</h2></div><div class="detailbody"><div class="minirow"><span>数据库文件</span><strong>${escapeHtml(dbName)}</strong></div><div class="minirow"><span>加密状态</span><span class="realflag">SQLCipher 已启用</span></div><div class="minirow"><span>数据库完整性检查</span><button class="btn" data-action="check">立即检查</button></div><div id="checkResult" class="hint"></div><div class="minirow"><span>本机 Codex MCP</span><span class="actions"><span class="hint">${mcpEnabled?'已开启':'默认关闭'}</span><button class="btn" data-action="mcpToggle">${mcpEnabled?'关闭 MCP':'开启 MCP'}</button></span></div><p class="hint">仅允许当前 Windows 用户通过本机 Codex MCP 操作已解锁的数据库；关库或退出自动失效。开启后 Codex 可新增项目、合同及原件。</p><div class="minirow"><span>关闭当前数据库</span><button class="btn" data-action="lock">关闭数据库</button></div></div></section>`+
@@ -1260,7 +1311,7 @@ el('content').addEventListener('click',async ev=>{
   detail={kind:'contract',id:Number(target.dataset.contractId),returnProject:parent};
   render();el('content').scrollTo(0,0);return;
  }
- if(target.dataset.searchDetail){const [k,id]=target.dataset.searchDetail.split(':');openMockRecord(k,Number(id));return;}
+ if(target.dataset.searchIndex!==undefined){openSearchHit(Number(target.dataset.searchIndex));return;}
  if(target.dataset.download){const r=liveRows.find(r=>r.id===detail?.id);const file=r?.files.find(f=>f.id===Number(target.dataset.download));if(file)await download(file);return;}
  switch(target.dataset.action){
   case 'trashRestoreSelected':
@@ -1532,7 +1583,9 @@ el('content').addEventListener('keydown',event=>{
  if((event.key==='Enter'||event.key===' ')&&event.target.matches('[data-archive-category]')){event.preventDefault();event.target.click();return;}
  if(event.key==='Enter'&&event.target.id==='filterSearch'){event.preventDefault();el('content').querySelector('[data-action=filter]')?.click();}
 });
-el('globalSearch').onkeydown=event=>{if(event.key==='Enter'&&space){filterName=el('globalSearch').value.trim();page='search';detail=null;render();}};
+el('globalSearch').onkeydown=event=>{
+ if(event.key==='Enter'&&space){event.preventDefault();void runGlobalSearch(el('globalSearch').value);}
+};
 el('cancelRecord').onclick=()=>{editingId=null;el('modal').close();};
 el('modal').addEventListener('close',()=>{editingId=null;});
 el('archiveCancel').onclick=()=>el('archiveDialog').close();
