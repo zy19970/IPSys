@@ -6,10 +6,10 @@ const dir=path.resolve(__dirname,'../wwwroot');
 const html=fs.readFileSync(path.join(dir,'index.html'),'utf8');
 const js=fs.readFileSync(path.join(dir,'app.js'),'utf8');
 const css=fs.readFileSync(path.join(dir,'style.css'),'utf8');
-const requiredIds=['locked','chooseWorkspace','unlocked','openForm','newMode','oldMode','dbPathWrap','dbPath','resumeHint','password','confirmWrap','confirm','submitOpen','sidebar','bottomnav','workspaceBtn','workspacelabel','sidebarDbName','globalSearch','content','dbNameChoice','closeDbFromChoice','modal','newRecordForm','title','saveRecord','cancelRecord','exit','exitDialog','exitCancelTask','exitFinishTask','exitStay','toast'];
+const requiredIds=['locked','chooseWorkspace','unlocked','openForm','newMode','oldMode','dbPathWrap','dbPath','resumeHint','password','confirmWrap','confirm','submitOpen','sidebar','bottomnav','projectExcelImport','projectExcelTemplate','projectExcelChoose','projectExcelFile','sidebarDbName','globalSearch','content','dbNameChoice','closeDbFromChoice','modal','newRecordForm','title','saveRecord','cancelRecord','exit','exitDialog','exitCancelTask','exitFinishTask','exitStay','toast'];
 for(const id of requiredIds)assert.match(html,new RegExp(`id="${id}"`),`Missing real page element ${id}`);
 for(const phrase of ['选择一个工作区','公司资料','个人资料','app.js','style.css'])assert.ok(html.includes(phrase),'Missing '+phrase);
-for(const phrase of ['科研项目','横向项目','知识产权','项目基本信息','所属合同','全部附件汇总','申请与登记信息','/api/records/','/api/resume','/api/exit','/api/files/','/api/task','/api/check','localFileTaskActive','sessionStorage','mockflag','realflag'])assert.ok(js.includes(phrase),'Missing UI/API design anchor '+phrase);
+for(const phrase of ['科研项目','横向项目','知识产权','项目基本信息','所属合同','全部附件汇总','申请与登记信息','/api/records/','/api/resume','/api/exit','/api/files/','/api/task','/api/check','localFileTaskActive','sessionStorage','mockflag','workspace-switches'])assert.ok(js.includes(phrase),'Missing UI/API design anchor '+phrase);
 for(const style of ['.shell','.sidebar','.tablewrap','.data','.detailsection','.auth-screen','.workspace-screen'])assert.ok(css.includes(style),'Missing UI style '+style);
 assert.ok(!html.includes('onclick='),'No inline script handlers may be added to real HTTP page');
 assert.ok(!/\bfetch\s*\(\s*['"]https?:/.test(js),'No external service access');
@@ -210,8 +210,8 @@ vm.runInContext(preamble+
  '\nfunction heading(t){return t;}\nfunction infoRow(n,v){return n+v;}\nfunction section(n,v){return n+v;}\nfunction businessFileCount(){return 0;}\nfunction moduleExportPanel(){return "";}\n'+projector+
  "\nspace='company';projectRows=[{id:12,name:'真实项目',projectType:'科研项目',projectNo:'X-1',startDate:'2026-01-02',projectStatus:'进行中',leader:'负责人甲'}];globalThis.__project=projectList('researchProject');",projectCtx);
 assert.ok(projectCtx.__project.includes('data-project-id="12"'),'Real project ledger must open persisted IDs');
-assert.ok(projectCtx.__project.includes('下载固定模板')&&projectCtx.__project.includes('导出当前筛选结果'),
- 'Project ledger must expose collapsed fixed XLSX controls');
+assert.ok(!projectCtx.__project.includes('ledger-excel')&&projectCtx.__project.includes('data-action="excelExportFiltered"')&&projectCtx.__project.includes('data-action="excelExportAll"'),
+ 'Project ledger uses compact Excel export buttons; import is inside new project modal');
 assert.ok(projectCtx.__project.includes('class="ledger-export-row"')&&projectCtx.__project.includes('ledgerExportAll'),
  'Project ledger must allow selecting multiple actual records');
 assert.ok(projectCtx.__project.includes('data-action="projectExportFolder"')&&
@@ -250,6 +250,8 @@ vm.runInContext(preamble+
  "\nspace='company';businessFileRows=[];ipRows=[{id:32,data:{name:'真实专利',ipType:'发明专利',applicationNo:'CN-42',status:'已申请',rightHolders:'权利人甲',applicationDate:'2026-02-01'}}];globalThis.__ip=ipList();globalThis.__types=Object.keys(ipStatusByType);",ipCtx);
 assert.ok(ipCtx.__ip.includes('data-ip-id="32"'),'Real IP rows must link to stored IDs');
 assert.ok(ipCtx.__ip.includes('Excel 台账'),'IP ledger must mount Excel controls');
+assert.ok(ipCtx.__ip.includes('data-action="ipExportFolder"')&&ipCtx.__ip.includes('data-action="ipExportZip"'),'IP ledger must directly export selected records');
+assert.ok(!ipCtx.__ip.includes('选择记录附件')&&!ipCtx.__ip.includes('module-export'),'IP ledger must not render a second selection panel');
 assert.ok(ipCtx.__ip.includes('class="ledger-export-row"')&&ipCtx.__ip.includes('ledgerExportAll'),
  'IP ledger must allow selecting multiple actual records');
 assert.ok(!ipCtx.__ip.includes('仅演示'),'Real IP ledger must not use mock labels');
@@ -353,11 +355,11 @@ assert.ok(js.includes("case 'mcpToggle'")&&js.includes("api('/api/mcp'")&&
 // B06 UX: latest-version-only select all, record-level multiple selection and single-version labels.
 for(const phrase of ["class=\"ledger-export-row\"","class=\"ledger-export-all\"",
  "case 'projectExportFolder'","case 'projectExportZip'",
- "case 'ledgerSelectAttachments'","class=\"export-checkall\"",
+ "case 'ipExportFolder'","case 'ipExportZip'","class=\"export-checkall\"",
  "data-export-latest=\"1\"","(showVersion?'v'+f.version",
  "module-export-record"])assert.ok(js.includes(phrase),'Missing multi-selection feature '+phrase);
 // B06: the selected-original export remains within the current ledger/detail.
-for(const needle of ["projectOriginals(ids)","moduleExportPanel(rows,'ip')",
+for(const needle of ["projectOriginals(ids)","ipOriginals(ids)",
  "moduleExportPanel(visible,'contract')","moduleExportPanel(rows,'general')",
  "moduleExportPanel(rows,'archive',k)","case 'exportFolder'","case 'exportZip'",
  "section('所属合同',projectContracts(p.id))"])
@@ -449,3 +451,11 @@ assert.ok(personalArchivePanel.includes('data-excel-kind="archive"')&&
  personalArchivePanel.includes('data-excel-section="academic"')&&
  personalArchivePanel.includes('导入 Excel 台账'),
  'Personal academic archive must preserve the section for XLSX import/export');
+
+// Updated workspace and batch Excel-entry requirements.
+assert.ok(!html.includes('id="workspaceBtn"'),'Top-bar workspace switch should be removed');
+for(const x of ['company','personal'])assert.ok(html.includes('data-workspace-switch="'+x+'"'),'Sidebar workspace button missing');
+assert.ok(js.includes("button.onclick=()=>selectSpace(button.dataset.workspaceSwitch)"),'Sidebar workspace click must switch workspace');
+assert.ok(js.includes("el('projectExcelImport').hidden=!!p"),'Excel import should be visible only when creating a project');
+assert.ok(js.includes("await importExcel('project',file)"),'Project import must reuse existing XLSX API');
+assert.ok(!projectCtx.__project.includes('真实记录')&&!ipCtx.__ip.includes('真实记录'),'Real ledger badge should disappear');

@@ -42,12 +42,16 @@
     <aside class="sidebar">
       <div class="brand"><span class="logo">IP</span><span><strong>IPSys</strong><small>知识产权与资料管理系统</small></span></div>
       <div class="navlabel">工作空间</div>
+      <div class="workspace-switches" role="group" aria-label="工作区切换">
+        <button type="button" class="workspace-switch" data-workspace-switch="company" aria-label="公司资料"><span class="workspace-switch-icon" aria-hidden="true">企</span><span class="workspace-switch-name">公司资料</span></button>
+        <button type="button" class="workspace-switch" data-workspace-switch="personal" aria-label="个人资料"><span class="workspace-switch-icon" aria-hidden="true">人</span><span class="workspace-switch-name">个人资料</span></button>
+      </div>
+      <div class="navlabel">业务导航</div>
       <nav id="sidebar" aria-label="业务导航"></nav>
       <div class="sidebottom"><nav id="bottomnav" aria-label="系统导航"></nav><div class="sidehint">本地管理 · SQLCipher 加密<br><span id="sidebarDbName">—</span></div></div>
     </aside>
     <div class="main">
       <header class="top">
-        <button type="button" class="workspace" id="workspaceBtn">▣ <span id="workspacelabel">公司资料</span> <span class="down">⌄</span></button>
         <div class="searchglobal"><span>⌕</span><input id="globalSearch" type="search" placeholder="搜索当前工作区资料" aria-label="搜索当前工作区"></div>
         <span class="topbadge">● 本地加密</span>
         <button id="exit" type="button" class="btn topbutton">安全退出</button>
@@ -72,6 +76,11 @@
         <div class="form-field"><label for="pCategory">辅助分类</label><input id="pCategory" name="category"></div>
         <div class="form-field"><label for="pTags">标签</label><input id="pTags" name="tags"></div>
         <div class="form-field project-span"><label for="pRemarks">备注</label><textarea id="pRemarks" name="remarks" rows="3"></textarea></div>
+      </div>
+      <div id="projectExcelImport" class="project-excel-entry">
+        <div><strong>Excel 批量新建项目</strong><p class="hint">下载模板填写并导入，重复记录由你选择处理方式。</p></div>
+        <div class="actions"><button class="btn" type="button" id="projectExcelTemplate">下载模板</button><button class="btn" type="button" id="projectExcelChoose">导入 Excel</button></div>
+        <input type="file" id="projectExcelFile" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
       </div>
       <div class="dialogactions"><button class="btn" id="cancelProject" type="button">取消</button><button class="btn primary" id="saveProject" type="submit">保存项目</button></div>
     </form>

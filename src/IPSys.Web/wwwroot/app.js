@@ -159,13 +159,16 @@ el('openForm').onsubmit=async event=>{
 function selectSpace(next){
   if(!token)return;
   globalSerial++;globalHits=[];globalQuery='';globalPending=false;globalError='';
+  if(space===next)return;
   space=next;page='dashboard';detail=null;archiveGroup=null;projectRows=[];ipRows=[];contractRows=[];businessFileRows=[];trashRows=[];archiveRows={certificate:[],achievement:[],academic:[]};filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();
   el('globalSearch').value='';el('sidebarDbName').textContent=dbName;
   el('chooseWorkspace').hidden=true;el('unlocked').hidden=false;
   refresh();
 }
 document.querySelectorAll('[data-workspace-choice]').forEach(b=>b.onclick=()=>selectSpace(b.dataset.workspaceChoice));
-el('workspaceBtn').onclick=()=>{globalSerial++;globalHits=[];globalQuery='';space=null;el('unlocked').hidden=true;el('chooseWorkspace').hidden=false;};
+document.querySelectorAll('[data-workspace-switch]').forEach(button=>{
+ button.onclick=()=>selectSpace(button.dataset.workspaceSwitch);
+});
 function setPage(next){globalSerial++;globalHits=[];globalQuery='';globalPending=false;globalError='';page=next;detail=null;archiveGroup=null;filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();el('globalSearch').value='';render();}
 async function refresh(){
   if(!token||!space)return;
@@ -189,7 +192,11 @@ async function refresh(){
 }
 function refreshSidebar(){
   document.documentElement.dataset.workspace=space;
-  el('workspacelabel').textContent=space==='company'?'公司资料':'个人资料';
+  document.querySelectorAll('[data-workspace-switch]').forEach(button=>{
+   const active=button.dataset.workspaceSwitch===space;
+   button.classList.toggle('active',active);
+   button.setAttribute('aria-pressed',String(active));
+  });
   const nav=el('sidebar');nav.replaceChildren();
   for(const [key,name,ico] of labels()){
     const b=document.createElement('button');b.type='button';b.className='nav'+(page===key?' active':'');b.textContent=ico+'   '+name;b.onclick=()=>setPage(key);nav.append(b);
@@ -209,22 +216,22 @@ function dashboard(){
  if(space==='company')mods.splice(mods.length-1,0,['achievement','科研成果']);
  const general=liveRows.length;const fileCount=liveRows.reduce((n,r)=>n+r.files.length,0);
  const counts=space==='personal'
-  ? [['其他资料',general,'条真实记录'],['已归档原件',fileCount,'份真实附件'],['身份与资质',archiveRows.certificate.length,'条真实记录'],['成果与奖励',archiveRows.achievement.length,'条真实记录']]
-  : [['综合资料',general,'条真实记录'],['已归档原件',fileCount,'份真实附件'],['知识产权',ipRows.length,'条真实记录'],['科研项目',projectRows.filter(p=>p.projectType!=='横向项目').length,'条真实记录']];
- return heading(title('dashboard'),'当前工作区 · 真实业务台账与分类资料')+
+  ? [['其他资料',general,'条记录'],['已归档原件',fileCount,'份附件'],['身份与资质',archiveRows.certificate.length,'条记录'],['成果与奖励',archiveRows.achievement.length,'条记录']]
+  : [['综合资料',general,'条记录'],['已归档原件',fileCount,'份附件'],['知识产权',ipRows.length,'条记录'],['科研项目',projectRows.filter(p=>p.projectType!=='横向项目').length,'条记录']];
+ return heading(title('dashboard'),'当前工作区 · 业务台账与分类资料')+
  '<div class="cards">'+counts.map(([name,num,s])=>`<div class="card"><div class="metriclabel">${name}</div><div class="metric">${num}</div><div class="metricfoot">${s}</div></div>`).join('')+'</div>'+
- '<div class="panels"><section class="card"><h2 class="sectiontitle">'+(space==='personal'?'个人资料分类入口':'业务模块快捷入口')+'</h2><div class="modulegrid">'+mods.map(([key,name])=>`<button class="modulelink" data-nav="${key}"><span><b>${name}</b><small>${key==='general'?general+' 条真实记录':key==='ip'?ipRows.length+' 条真实记录':key==='contract'?contractRows.length+' 条真实记录':isProject(key)?projectViewRows(key).length+' 条真实记录':archiveSections.includes(key)?(archiveRows[key]||[]).length+' 条真实记录':(sample(key).length||0)+' 条演示记录'}</small></span><span class="arrow">→</span></button>`).join('')+'</div></section>'+
+ '<div class="panels"><section class="card"><h2 class="sectiontitle">'+(space==='personal'?'个人资料分类入口':'业务模块快捷入口')+'</h2><div class="modulegrid">'+mods.map(([key,name])=>`<button class="modulelink" data-nav="${key}"><span><b>${name}</b><small>${key==='general'?general+' 条记录':key==='ip'?ipRows.length+' 条记录':key==='contract'?contractRows.length+' 条记录':isProject(key)?projectViewRows(key).length+' 条记录':archiveSections.includes(key)?(archiveRows[key]||[]).length+' 条记录':(sample(key).length||0)+' 条演示记录'}</small></span><span class="arrow">→</span></button>`).join('')+'</div></section>'+
  '<section class="card"><h2 class="sectiontitle">当前工作区资料概况</h2><div class="minirow"><span>公司 / 个人隔离</span><strong>已启用</strong></div><div class="minirow"><span>'+ (space==='personal'?'其他资料':'综合资料') +'存储</span><strong>真实 SQLCipher</strong></div><div class="minirow"><span>'+ (space==='personal'?'分类资料':'知识产权、项目与合同') +'</span>'+pill('界面设计')+'</div><div class="minirow"><span>当前数据库</span><span class="muted">'+escapeHtml(dbName)+'</span></div><p class="hint">证件和成果及原件均已接入真实加密台账；可在“'+(space==='personal'?'其他资料':'综合资料')+'”以及各业务详情中管理原件。</p></section></div>';
 }
 function generalList(){
  const rows=liveRows.filter(r=>r.title.toLowerCase().includes(filterName.toLowerCase()));
  const subtitle=space==='personal'
-  ? '尚未归入上述类别的个人资料，使用当前加密库的真实记录和附件。'
-  : '综合资料使用当前加密库的真实记录和附件。';
+  ? '尚未归入上述类别的个人资料，使用当前加密库的记录和附件。'
+  : '综合资料使用当前加密库的记录和附件。';
  return heading(title('general'),subtitle,`<button class="btn primary" data-action="add">＋ 新建资料</button>`)+
  excelPanel('general')+
  '<section class="white filter"><div class="filterline"><div class="field wide"><label>资料名称</label><input id="filterSearch" placeholder="搜索当前工作区资料"></div><button class="btn primary" data-action="filter">查询</button><button class="btn" data-action="clearFilter">重置</button></div></section>'+
- '<section class="white"><div class="tabletools"><span><b>资料卡片</b> <small class="muted">'+rows.length+' 条真实记录</small></span><div class="actions"><span class="realflag">真实数据库</span><button class="btn" data-action="check">检查数据库</button></div></div>'+
+ '<section class="white"><div class="tabletools"><span><b>资料卡片</b> <small class="muted">'+rows.length+' 条记录</small></span><div class="actions"><button class="btn" data-action="check">检查数据库</button></div></div>'+
  (rows.length?'<div class="recordgrid">'+rows.map(r=>archiveCard(r,{
   title:r.title,type:space==='company'?'综合资料':'其他资料',
   fileCount:new Set(r.files.map(f=>f.groupId||f.name)).size,real:true
@@ -247,7 +254,7 @@ function realDetail(){
  '<button class="btn" data-nav="general">← 返回台账</button>'+
  '<button class="btn" data-action="editRecord">修改名称</button>'+
  '<button class="btn" data-action="deleteRecord">删除资料</button>')+
- '<section class="white detailsection"><div class="detailsectionhead"><h2>基本信息</h2><span class="realflag">真实记录</span></div>'+
+ '<section class="white detailsection"><div class="detailsectionhead"><h2>基本信息</h2></div>'+
  '<div class="detailbody infogrid"><div class="info"><label>资料名称</label><strong>'+escapeHtml(r.title)+'</strong></div>'+
  '<div class="info"><label>所属工作区</label><strong>'+(space==='company'?'公司资料':'个人资料')+'</strong></div>'+
  '<div class="info"><label>已归档原件</label><strong>'+groups.size+' 份</strong></div></div></section>'+
@@ -299,17 +306,17 @@ function ipList(){
  const allTypes=Object.keys(ipStatusByType);
  const allStates=[...new Set(Object.values(ipStatusByType).flat())];
  const options=(vals,active)=>vals.map(v=>'<option value="'+escapeHtml(v)+'" '+(active===v?'selected':'')+'>'+escapeHtml(v)+'</option>').join('');
- return heading(title('ip'),'知识产权真实业务台账 · 当前加密资料库',
-  '<span class="realflag">真实记录</span><button class="btn primary" data-action="ipAdd">＋ 新建记录</button>')+
+ return heading(title('ip'),'知识产权业务台账 · 当前加密资料库',
+  '<button class="btn primary" data-action="ipAdd">＋ 新建记录</button>')+
  excelPanel('ip')+
  '<section class="white filter"><div class="filterline">'+
  '<div class="field wide"><label>名称 / 编号</label><input id="filterSearch" placeholder="搜索知识产权"></div>'+
  '<div class="field"><label>类型</label><select id="filterKind">'+options(['全部类型',...allTypes],filterKind)+'</select></div>'+
  '<div class="field"><label>状态</label><select id="filterState">'+options(['全部状态',...allStates],filterState)+'</select></div>'+
  '<button class="btn primary" data-action="filter">查询</button><button class="btn" data-action="clearFilter">重置</button></div></section>'+
- '<section class="white"><div class="tabletools"><b>业务台账 '+rows.length+' 条真实记录</b>'+
+ '<section class="white"><div class="tabletools"><b>业务台账 '+rows.length+' 条记录</b>'+
  '<div class="actions"><span id="ledgerExportCount">已选 0 条</span>'+
- '<button class="btn" data-action="ledgerSelectAttachments">选择记录附件</button></div></div>'+
+ '<button class="btn" data-action="ipExportFolder">导出附件文件夹</button><button class="btn primary" data-action="ipExportZip">导出附件 ZIP</button></div></div>'+
  '<div class="tablewrap"><table class="data"><thead><tr><th><input type="checkbox" id="ledgerExportAll" class="ledger-export-all" aria-label="全选当前知识产权"></th><th>名称</th><th>知识产权类型</th><th>申请/登记号</th><th>状态</th><th>当前权利人</th><th>申请/登记日期</th><th>附件</th></tr></thead><tbody>'+
  (rows.length?rows.map(r=>{const v=r.data;return '<tr><td><input type="checkbox" class="ledger-export-row" value="'+r.id+'" aria-label="选择知识产权 '+escapeHtml(v.name)+'"></td>'+
  '<td><button class="link" data-ip-id="'+r.id+'">'+escapeHtml(v.name)+'</button></td>'+
@@ -319,14 +326,14 @@ function ipList(){
  '<td>'+escapeHtml(v.rightHolders||'—')+'</td>'+
  '<td>'+escapeHtml(v.applicationDate||v.registrationDate||'—')+'</td>'+
  '<td>'+businessFileCount('ip',r.id)+'</td></tr>';}).join(''):'<tr><td colspan="8" class="empty">暂无知识产权记录，点击新建。</td></tr>')+
- '</tbody></table></div><div class="tablefoot">共 '+rows.length+' 条记录 · 数据保存在当前 SQLCipher 库</div></section>'+moduleExportPanel(rows,'ip');
+ '</tbody></table></div><div class="tablefoot">共 '+rows.length+' 条记录 · 数据保存在当前 SQLCipher 库</div></section>';
 }
 function ipDetail(){
  const row=ipRows.find(x=>x.id===detail?.id);
  if(!row)return heading('知识产权不存在','当前工作区无此记录')+'<button class="btn" data-nav="ip">返回台账</button>';
  const v=row.data;
  const fields=ipFieldLabels.map(([k,label])=>infoRow(label,v[k])).join('');
- return heading(v.name,'知识产权详情 · SQLCipher 真实记录',
+ return heading(v.name,'知识产权详情 · 当前资料库记录',
   '<button class="btn" data-nav="ip">← 返回台账</button>'+
   '<button class="btn" data-action="ipEdit">修改</button>'+
   '<button class="btn" data-action="ipCopy">复制记录</button>'+
@@ -368,12 +375,12 @@ function contractList(){
  const visible=contractRows.filter(c=>
   [c.name,c.contractNo,c.projectName,c.signingParties].join(' ').toLowerCase().includes(filterName.toLowerCase()));
  return heading('全部合同','当前工作区真实合同汇总 · 合同只能从所属项目详情新增',
-   '<span class="realflag">真实记录</span>')+
+   '')+
  excelPanel('contract')+
  '<section class="white filter"><div class="filterline">'+
  '<div class="field wide"><label>名称 / 编号 / 所属项目</label><input id="filterSearch" placeholder="搜索合同或项目"></div>'+
  '<button class="btn primary" data-action="filter">查询</button><button class="btn" data-action="clearFilter">重置</button></div></section>'+
- '<section class="white"><div class="tabletools"><b>合同台账 '+visible.length+' 条真实记录</b></div>'+
+ '<section class="white"><div class="tabletools"><b>合同台账 '+visible.length+' 条记录</b></div>'+
  '<div class="tablewrap"><table class="data"><thead><tr>'+
  '<th>合同名称</th><th>所属项目</th><th>合同编号</th><th>签订日期</th><th>合同金额（人民币元）</th>'+
  '</tr></thead><tbody>'+
@@ -542,18 +549,19 @@ function projectList(k){
   (filterState==='全部状态'||p.projectStatus===filterState));
  const types=['全部类型','科研项目','横向项目','其他项目'];
  const statuses=['全部状态','筹备中','进行中','已完成','已终止'];
- return heading(title(k),'真实业务台账 · 当前加密资料库',
-  '<span class="realflag">真实记录</span><button class="btn primary" data-action="projectAdd">＋ 新建项目</button>')+
- excelPanel('project')+
+ return heading(title(k),'当前加密资料库',
+  '<button class="btn primary" data-action="projectAdd">＋ 新建项目</button>')+
  '<section class="white filter"><div class="filterline">'+
  '<div class="field wide"><label>名称 / 编号</label><input id="filterSearch" placeholder="输入关键词筛选项目"></div>'+
  '<div class="field"><label>类型</label><select id="filterKind">'+types.map(t=>'<option value="'+t+'" '+(filterKind===t?'selected':'')+'>'+t+'</option>').join('')+'</select></div>'+
  '<div class="field"><label>状态</label><select id="filterState">'+statuses.map(t=>'<option value="'+t+'" '+(filterState===t?'selected':'')+'>'+t+'</option>').join('')+'</select></div>'+
  '<button class="btn primary" data-action="filter">查询</button><button class="btn" data-action="clearFilter">重置</button></div></section>'+
- '<section class="white"><div class="tabletools"><b>业务台账 '+visible.length+' 条真实记录</b>'+
- '<div class="actions"><span id="ledgerExportCount">已选 0 条</span>'+
- '<button class="btn" data-action="projectExportFolder">导出文件夹</button>'+
- '<button class="btn primary" data-action="projectExportZip">导出 ZIP</button></div></div>'+
+ '<section class="white"><div class="tabletools"><b>业务台账 '+visible.length+' 条记录</b>'+
+ '<div class="actions"><button class="btn" data-action="excelExportFiltered" data-excel-kind="project">导出筛选 Excel</button>'+ 
+  '<button class="btn" data-action="excelExportAll" data-excel-kind="project">导出全部 Excel</button>'+
+  '<span id="ledgerExportCount">已选 0 条</span>'+
+ '<button class="btn" data-action="projectExportFolder">导出附件文件夹</button>'+
+ '<button class="btn primary" data-action="projectExportZip">导出附件 ZIP</button></div></div>'+
  '<div class="tablewrap"><table class="data"><thead><tr><th><input type="checkbox" id="ledgerExportAll" class="ledger-export-all" aria-label="全选当前项目"></th><th>项目名称</th><th>项目类别</th><th>项目编号</th><th>开始日期</th><th>附件</th></tr></thead><tbody>'+
  (visible.length?visible.map(p=>'<tr><td><input type="checkbox" class="ledger-export-row" value="'+p.id+'" aria-label="选择项目 '+escapeHtml(p.name)+'"></td>'+
  '<td><button class="link" data-project-id="'+p.id+'">'+escapeHtml(p.name)+'</button></td>'+
@@ -655,6 +663,14 @@ function projectOriginals(projectIds){
     ...(contract?{projectId:contract.projectId,projectName:project.name}:{})
    };
  });
+}
+function ipOriginals(ids){
+ const chosen=new Set(ids.map(Number));
+ const names=new Map(ipRows.filter(r=>chosen.has(r.id)).map(r=>[r.id,r.data.name]));
+ return businessFileRows.filter(f=>f.kind==='ip'&&names.has(f.ownerId)).map(f=>({
+  source:'business',workspace:space,id:f.id,name:f.name,size:f.size,
+  kind:'ip',ownerId:f.ownerId,section:f.section||'',ownerName:names.get(f.ownerId)
+ }));
 }
 function businessFileCount(kind,ownerId,section=''){
  return new Set(businessFiles(kind,ownerId,section).map(f=>f.groupId||f.name+'\u0000'+f.category)).size;
@@ -825,7 +841,7 @@ async function downloadBusinessAttachment(fileId){
 function projectDetail(){
  const p=projectRows.find(x=>x.id===detail.id);
  if(!p)return heading('项目不存在','当前工作区无此项目')+'<button class="btn" data-nav="researchProject">返回台账</button>';
- return heading(p.name,'项目详情 · 真实 SQLCipher 记录',
+ return heading(p.name,'项目详情 · 当前资料库记录',
  '<button class="btn" data-nav="'+page+'">← 返回台账</button>'+
  '<button class="btn" data-action="projectEdit">修改</button>'+
  '<button class="btn" data-action="projectCopy">复制项目</button>'+
@@ -847,6 +863,7 @@ function showProjectForm(id=null){
  const p=id===null?null:projectRows.find(r=>r.id===id);
  el('projectForm').reset();
  el('projectFormTitle').textContent=p?'修改项目':'新建项目';
+ el('projectExcelImport').hidden=!!p;
  el('pType').value=p?.projectType||(page==='horizontalProject'?'横向项目':'科研项目');
  const fields={pName:'name',pNo:'projectNo',pStatus:'projectStatus',pLeader:'leader',
   pOrg:'undertakingOrg',pStart:'startDate',pEnd:'endDate',pCategory:'category',pTags:'tags',pRemarks:'remarks'};
@@ -865,7 +882,7 @@ function archiveCard(record,options={}){
        <span class="archivecard-symbol" aria-hidden="true">▤</span>
        <h3 class="archivecard-title">${escapeHtml(headingText)}</h3>
      </div>
-     <span class="${real?'realflag':'mockflag'}">${real?'真实记录':'界面示例'}</span>
+     ${real?'':'<span class="mockflag">界面示例</span>'}
    </div>
    <div class="archivecard-meta">
      <span class="archivecard-type">${escapeHtml(typeText)}</span>
@@ -925,7 +942,7 @@ function realArchiveCategoryCard(category,count,files){
  return '<article class="archivecard archivecategory" data-archive-category="'+escapeHtml(category)+'" role="button" tabindex="0" aria-label="查看'+escapeHtml(category)+'台账">'+
  '<div class="archivecard-head"><div class="archivecard-titlewrap">'+
  '<span class="archivecard-symbol" aria-hidden="true">▤</span><h3 class="archivecard-title">'+escapeHtml(category)+'</h3></div>'+
- '<span class="realflag">真实记录</span></div>'+
+ '</div>'+
  '<div class="archivecard-meta"><span class="archivecard-type">'+count+' 条归档记录</span>'+
  '<span class="archivecard-count">附件 <strong>'+files+'</strong> 份</span></div>'+
  '<div class="archivecard-actions"><span class="archivecategory-open">进入台账 →</span></div></article>';
@@ -934,8 +951,8 @@ function realArchiveCards(k){
  const rows=archiveRows[k]||[],categories=archiveCategories(k);
  const visible=categories.filter(category=>
   (filterKind==='全部类型'||category===filterKind)&&category.toLowerCase().includes(filterName.toLowerCase()));
- return heading(archiveSectionName(k),'按材料类别归档 · 真实 SQLCipher 记录',
-  '<span class="realflag">真实记录</span><button class="btn primary" data-action="archiveAdd">＋ 新建记录</button>')+
+ return heading(archiveSectionName(k),'按材料类别归档 · 当前资料库记录',
+  '<button class="btn primary" data-action="archiveAdd">＋ 新建记录</button>')+
  excelPanel('archive',k)+
  '<section class="white filter"><div class="filterline"><div class="field wide"><label>类别名称</label><input id="filterSearch" placeholder="查找资料类别"></div>'+
  '<div class="field"><label>类别</label><select id="filterKind">'+
@@ -947,7 +964,7 @@ function realArchiveCards(k){
   return realArchiveCategoryCard(category,members.length,
     members.reduce((n,r)=>n+businessFileCount('archive',r.id,k),0));
  }).join('')+'</div>'+
- '<div class="tablefoot">真实记录 '+rows.length+' 条 · 可在每一类别下归档多条独立记录</div></section>';
+ '<div class="tablefoot">记录 '+rows.length+' 条 · 可在每一类别下归档多条独立记录</div></section>';
 }
 function realArchiveTable(k,category){
  const all=(archiveRows[k]||[]).filter(r=>(r.category||'未分类')===category);
@@ -956,15 +973,15 @@ function realArchiveTable(k,category){
  '<button class="btn" data-archive-back="cards">← 返回类别卡片</button>'+
  '<button class="btn primary" data-action="archiveAdd">＋ 新建记录</button>')+
  excelPanel('archive',k)+
- '<section class="white filter"><div class="filterline"><div class="field wide"><label>资料名称</label><input id="filterSearch" placeholder="搜索此类别下的真实记录"></div>'+
+ '<section class="white filter"><div class="filterline"><div class="field wide"><label>资料名称</label><input id="filterSearch" placeholder="搜索此类别下的记录"></div>'+
  '<button class="btn primary" data-action="filter">查询</button><button class="btn" data-action="clearFilter">重置</button></div></section>'+
- '<section class="white"><div class="tabletools"><b>'+escapeHtml(category)+'台账 · '+rows.length+' 条真实记录</b></div>'+
+ '<section class="white"><div class="tabletools"><b>'+escapeHtml(category)+'台账 · '+rows.length+' 条记录</b></div>'+
  '<div class="tablewrap archive-tablewrap"><table class="data"><thead><tr><th>序号</th><th>资料名称</th><th>资料类别</th><th>附件数量</th><th>操作</th></tr></thead><tbody>'+
  (rows.length?rows.map((r,i)=>'<tr><td>'+(i+1)+'</td><td>'+
  '<button class="link" data-archive-id="'+r.id+'">'+escapeHtml(r.name)+'</button></td>'+
  '<td>'+escapeHtml(r.category||'未分类')+'</td><td>'+businessFileCount('archive',r.id,k)+' 份</td><td><button class="btn btn-sm" data-archive-id="'+r.id+'">查看详情</button></td></tr>').join(''):
  '<tr><td colspan="5" class="empty">此类别暂无记录，点击右上角新建。</td></tr>')+
- '</tbody></table></div><div class="tablefoot">当前类别共 '+all.length+' 条真实记录</div></section>'+moduleExportPanel(rows,'archive',k);
+ '</tbody></table></div><div class="tablefoot">当前类别共 '+all.length+' 条记录</div></section>'+moduleExportPanel(rows,'archive',k);
 }
 function realArchiveDetail(){
  const record=(archiveRows[page]||[]).find(r=>r.id===detail?.id);
@@ -972,7 +989,7 @@ function realArchiveDetail(){
  const back=archiveGroup?'<button class="btn" data-archive-back="table">← 返回'+escapeHtml(archiveGroup)+'台账</button>':
  '<button class="btn" data-nav="'+page+'">← 返回类别卡片</button>';
  const moveAvailable=page!=='certificate';
- return heading(record.name,archiveSectionName(page)+' · 真实资料记录',
+ return heading(record.name,archiveSectionName(page)+' · 资料记录',
   back+'<button class="btn" data-action="archiveEdit">修改</button>'+
   '<button class="btn" data-action="archiveCopy">复制</button>'+
   (moveAvailable?'<button class="btn" data-action="archiveMove">转移</button>':'')+
@@ -1117,7 +1134,7 @@ function searchPage(){
  if(globalError)return out+'<section class="white empty">'+escapeHtml(globalError)+'</section>';
  if(globalPending)return out+'<section class="white empty">正在检索加密台账…</section>';
  if(!globalQuery)return out+'<section class="white empty">请在顶部搜索框输入关键词并按 Enter。</section>';
- if(!globalHits.length)return out+'<section class="white empty">当前工作区没有匹配的真实记录或附件。</section>';
+ if(!globalHits.length)return out+'<section class="white empty">当前工作区没有匹配的记录或附件。</section>';
  for(const [kind,label] of Object.entries(searchGroupLabels)){
   const hits=globalHits.map((hit,index)=>({hit,index})).filter(item=>item.hit.kind===kind);
   if(!hits.length)continue;
@@ -1353,25 +1370,14 @@ el('content').addEventListener('click',async ev=>{
    await globalThis.IPSysExport.start(target.dataset.action==='projectExportFolder'?'folder':'zip',originals);
    break;
   }
-  case 'ledgerSelectAttachments':{
-   const checked=[...document.querySelectorAll('.ledger-export-row:checked')];
-   if(!checked.length){notice('请先勾选项目或知识产权记录。',true);break;}
-   const panel=el('content').querySelector('.module-export');
-   if(!panel){notice('所选记录暂无可导出的附件。',true);break;}
-   panel.open=true;
-   panel.querySelectorAll('.export-filecheck').forEach(box=>box.checked=false);
-   const selectedIds=new Set(checked.map(box=>box.value));
-   let count=0;
-   panel.querySelectorAll('.module-export-record').forEach(record=>{
-    if(!selectedIds.has(record.dataset.exportRecordId))return;
-    record.querySelectorAll(':scope > .export-record-line .export-filecheck[data-export-latest="1"]')
-      .forEach(box=>{box.checked=true;count++;});
-   });
-   const checkAll=panel.querySelector('.export-checkall');
-   if(checkAll)checkAll.checked=false;
-   panel.scrollIntoView({behavior:'smooth',block:'nearest'});
-   notice('已选择 '+checked.length+' 条记录的 '+count+
-    ' 份最新版原件；合同附件和历史版本可按需补选。');
+  case 'ipExportFolder':
+  case 'ipExportZip':{
+   const ids=[...el('content').querySelectorAll('.ledger-export-row:checked')].map(x=>Number(x.value));
+   if(!ids.length){notice('请先勾选知识产权记录。',true);break;}
+   const originals=ipOriginals(ids);
+   if(!originals.length){notice('所选知识产权没有可导出的附件。',true);break;}
+   if(!globalThis.IPSysExport){notice('导出模块仍在初始化，请稍后重试。',true);break;}
+   await globalThis.IPSysExport.start(target.dataset.action==='ipExportFolder'?'folder':'zip',originals);
    break;
   }
   case 'exportFolder':
@@ -1487,7 +1493,7 @@ el('content').addEventListener('click',async ev=>{
    el('modal').showModal();break;
   case 'editRecord':{
    const r=detail?.kind==='general'?liveRows.find(row=>row.id===detail.id):null;
-   if(!r){notice('找不到要修改的真实记录。',true);break;}
+   if(!r){notice('找不到要修改的记录。',true);break;}
    editingId=r.id;el('title').value=r.title;el('saveRecord').textContent='保存修改';
    el('newRecordForm').querySelector('h2').textContent='修改资料名称';
    el('modal').showModal();break;
@@ -1668,6 +1674,16 @@ el('ipForm').onsubmit=async ev=>{
   notice(id===null?'知识产权已创建':'知识产权修改已保存');
  }catch(error){notice(error.message,true);}
  finally{el('ipSave').disabled=false;}
+};
+el('projectExcelTemplate').onclick=async()=>{
+ try{const r=await api('/api/excel/'+space+'/project/template');await saveExcel(r,'project-template.xlsx');}
+ catch(e){notice('下载 Excel 模板失败：'+e.message,true);}
+};
+el('projectExcelChoose').onclick=()=>{el('projectExcelFile').value='';el('projectExcelFile').click();};
+el('projectExcelFile').onchange=async event=>{
+ const file=event.target.files?.[0];event.target.value='';
+ if(!file||projectEditingId!==null)return;
+ el('projectDialog').close();await importExcel('project',file);
 };
 el('cancelProject').onclick=()=>el('projectDialog').close();
 el('projectDialog').addEventListener('close',()=>{projectEditingId=null;});
