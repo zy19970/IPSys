@@ -46,7 +46,7 @@ jobs:
         run: |
           $installed = @(dotnet --list-runtimes)
           foreach ($framework in @('Microsoft.WindowsDesktop.App', 'Microsoft.AspNetCore.App')) {
-            if (-not ($installed | Where-Object { $_ -match "^$([regex]::Escape($framework)) 8\\." })) {
+            if (-not ($installed | Where-Object { $_ -match "^$([regex]::Escape($framework)) 8[.]" })) {
               $installed | ForEach-Object { Write-Host $_ }
               throw "Missing .NET 8 framework: $framework"
             }
