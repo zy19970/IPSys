@@ -1233,9 +1233,9 @@ sealed class Vault : IDisposable
 
 static class WebSmoke
 {
-    private static async Task<(long Id,int Version)> UploadBusinessFile(HttpClient client,
+    private static async Task<(long Id,int Version,bool Reused)> UploadBusinessFile(HttpClient client,
         string workspace,string kind,long ownerId,byte[] data,string name,
-        string section="",string category="",string mode="update",string group="")
+        string section="",string category="",string mode="update",string group="",string duplicate="independent")
     {
         var path=$"/api/business-files/{workspace}/{kind}/{ownerId}"+
             (section.Length>0?"?section="+Uri.EscapeDataString(section):"");
@@ -1245,13 +1245,15 @@ static class WebSmoke
         request.Headers.Add("X-File-Name",Uri.EscapeDataString(name));
         if(category.Length>0)request.Headers.Add("X-Material-Category",Uri.EscapeDataString(category));
         request.Headers.Add("X-Upload-Mode",mode);
+        request.Headers.Add("X-Duplicate-Mode",duplicate);
         if(group.Length>0)request.Headers.Add("X-File-Group",group);
         using var response=await client.SendAsync(request);
         response.EnsureSuccessStatusCode();
         var json=(await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>());
         if(json.GetProperty("sha256").GetString()!=Convert.ToHexString(SHA256.HashData(data)))
             throw new IOException("入库原件 SHA-256 与源文件不一致。");
-        return (json.GetProperty("id").GetInt64(),json.GetProperty("version").GetInt32());
+        return (json.GetProperty("id").GetInt64(),json.GetProperty("version").GetInt32(),
+            json.GetProperty("reused").GetBoolean());
     }
     public static async Task Run(string address)
     {
@@ -1668,7 +1670,9 @@ static class WebSmoke
                 throw new IOException("同工作区共享版本更新未同步至所有引用者。");
             var isolatedSameName=await UploadBusinessFile(client,"company","archive",
                 associateTargetId,businessData,"企业证书.pdf",section:"certificate",
-                mode:"new");
+                mode:"new",duplicate:"reuse");
+            if(!isolatedSameName.Reused)
+                throw new IOException("显式复用相同内容时应命中当前工作区已存在的字节对象。");
             var sameNameGroups=await client.GetFromJsonAsync<List<BusinessFileView>>(
                 "/api/business-files/company");
             if(sameNameGroups is null||
