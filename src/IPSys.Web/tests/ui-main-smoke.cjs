@@ -104,7 +104,7 @@ const renderSetup=[
 ].join('\n');
 const header=renderSetup.slice(0,renderSetup.indexOf("space='personal';"));
 const body=renderSetup.slice(renderSetup.indexOf("space='personal';"));
-vm.runInContext(preamble+'\n'+header+'\n'+rendererSource+'\n'+body,cardsCtx);
+vm.runInContext(preamble+'\n'+header+'\nfunction excelPanel(){return "<details>Excel 台账</details>";}\n'+rendererSource+'\n'+body,cardsCtx);
 const snapshots=cardsCtx.__cards;
 for(const section of ['personalIdentity','personalAchievement','personalAcademic','personalReal','companyCertificate','companyReal']){
  assert.match(snapshots[section],/class="recordgrid"/,'Archive section must use a card grid: '+section);
@@ -263,6 +263,7 @@ assert.ok(contractFrom>=0&&contractUntil>contractFrom,'Contract renderers not fo
 const contractContext=vm.createContext({sessionStorage:{getItem:()=>null},document:exportDocument});
 vm.runInContext(preamble+
  '\nfunction moduleExportPanel(){return "";}' +
+ '\nfunction excelPanel(){return "<details>Excel 台账</details>";}' +
  '\nfunction heading(n,s,a){return n+(a||"");}\nfunction infoRow(n,v){return n+":"+v;}\nfunction section(n,v){return n+v;}\n'+
  js.slice(contractFrom,contractUntil)+
  "\nspace='company';contractRows=[{id:31,projectId:7,workspace:'company',projectName:'测试科研项目',name:'测试合同',contractNo:'HT-001',signDate:'2026-10-12',amount:'12.3',signingParties:'甲乙'}];"+
@@ -292,7 +293,7 @@ vm.runInContext(preamble+'\n'+js.slice(archiveFirst,archiveLast)+
  "\nfunction heading(name,subtitle,actions){return '<h1>'+name+'</h1>'+(actions||'');}"+
  "\nfunction infoRow(k,v){return k+':'+v;}"+
  "\nfunction section(name,content){return name+content;}"+
- "\nfunction businessFileCount(){return 0;}\nfunction moduleExportPanel(){return '';}"+
+ "\nfunction businessFileCount(){return 0;}\nfunction moduleExportPanel(){return '';}\nfunction excelPanel(){return '<details>Excel 台账</details>';}"+
  "\nspace='personal';page='academic';filterName='';filterKind='全部类型';"+
  "archiveRows={certificate:[],achievement:[],academic:["+
  "{id:21,name:'第一次兼职',category:'学术兼职',remarks:'',tags:''},"+
