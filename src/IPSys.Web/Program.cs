@@ -1349,6 +1349,101 @@ static class WebSmoke
         return (json.GetProperty("id").GetInt64(),json.GetProperty("version").GetInt32(),
             json.GetProperty("reused").GetBoolean());
     }
+    private static async Task VerifySecondExcelBatchAsync(HttpClient client)
+    {
+        var unique=Guid.NewGuid().ToString("N")[..8];
+        string SheetText(byte[] workbook)
+        {
+            using var source=new MemoryStream(workbook);
+            using var zip=new System.IO.Compression.ZipArchive(source,System.IO.Compression.ZipArchiveMode.Read);
+            var sheet=zip.GetEntry("xl/worksheets/sheet1.xml")
+                ??throw new IOException("第二批 Excel 工作表缺失。");
+            using var reader=new StreamReader(sheet.Open());
+            return reader.ReadToEnd();
+        }
+        var modules=new[]{
+            (Workspace:"company",Kind:"archive",Section:"certificate",Category:"企业资质"),
+            (Workspace:"company",Kind:"archive",Section:"achievement",Category:"科研成果"),
+            (Workspace:"personal",Kind:"archive",Section:"certificate",Category:"学历学位"),
+            (Workspace:"personal",Kind:"archive",Section:"achievement",Category:"成果奖励"),
+            (Workspace:"personal",Kind:"archive",Section:"academic",Category:"学术兼职"),
+            (Workspace:"company",Kind:"general",Section:"",Category:""),
+            (Workspace:"personal",Kind:"general",Section:"",Category:"")
+        };
+        foreach(var m in modules)
+        {
+            string name="XLSX2-"+m.Kind+"-"+m.Workspace+"-"+m.Section+"-"+unique;
+            string url=m.Kind=="archive"
+                ?$"/api/archives/{m.Workspace}/{m.Section}"
+                :$"/api/records/{m.Workspace}";
+            using var creation=m.Kind=="archive"
+                ?await client.PostAsJsonAsync(url,new {name,category=m.Category,remarks="Excel备注",tags="批量"})
+                :await client.PostAsJsonAsync(url,new {title=name});
+            creation.EnsureSuccessStatusCode();
+            var id=(await creation.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("id").GetInt64();
+            string query=m.Kind=="archive"?"?section="+m.Section:"";
+            string excel=$"/api/excel/{m.Workspace}/{m.Kind}";
+            using var templ=await client.GetAsync(excel+"/template"+query);
+            templ.EnsureSuccessStatusCode();
+            byte[] template=await templ.Content.ReadAsByteArrayAsync();
+            if(!SheetText(template).Contains("资料名称",StringComparison.Ordinal))
+                throw new IOException("第二批资料 XLSX 模板缺少名称列。");
+            if(m.Kind=="archive"&&!SheetText(template).Contains("类别",StringComparison.Ordinal))
+                throw new IOException("资料四字段模板缺少类别。");
+            using var filtered=await client.PostAsJsonAsync(excel+"/export"+query,new ExcelExportInput("filtered",new[]{id}));
+            filtered.EnsureSuccessStatusCode();
+            byte[] bytes=await filtered.Content.ReadAsByteArrayAsync();
+            if(!SheetText(bytes).Contains(name,StringComparison.Ordinal))
+                throw new IOException("资料 Excel 筛选结果未包含当前记录。");
+            if(m.Kind=="archive"&&!SheetText(bytes).Contains("Excel备注",StringComparison.Ordinal))
+                throw new IOException("资料 Excel 导出未保留业务备注。");
+            foreach(var (policy,key,expected) in new[]{
+                ("skip","skipped",1),("update","updated",1),("create","created",1)})
+            {
+                using var body=new ByteArrayContent(bytes);
+                body.Headers.ContentType=new System.Net.Http.Headers.MediaTypeHeaderValue(ExcelLedger.ContentType);
+                using var response=await client.PostAsync(excel+"/import?policy="+policy+
+                    (m.Kind=="archive"?"&section="+m.Section:""),body);
+                response.EnsureSuccessStatusCode();
+                var stats=await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+                if(stats.GetProperty(key).GetInt32()!=expected)
+                    throw new IOException($"第二批 Excel {m.Kind}/{m.Section}/{policy} 重复策略失败。");
+            }
+            string other=m.Workspace=="company"?"personal":"company";
+            if(m.Kind!="archive"||ArchiveStore.Module(other,m.Section)!=null)
+            {
+                using var isolation=await client.PostAsJsonAsync(
+                    $"/api/excel/{other}/{m.Kind}/export"+query,
+                    new ExcelExportInput("filtered",new[]{id}));
+                isolation.EnsureSuccessStatusCode();
+                if(SheetText(await isolation.Content.ReadAsByteArrayAsync()).Contains(name,StringComparison.Ordinal))
+                    throw new IOException("Excel 第二批跨工作区泄漏记录。");
+            }
+        }
+        using(var bad=await client.GetAsync("/api/excel/personal/archive/template?section=invalid"))
+            if(bad.IsSuccessStatusCode)throw new IOException("Excel 不得接受非法资料模块。");
+        var projects=await client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/projects/company");
+        long projectId=projects.EnumerateArray().First().GetProperty("id").GetInt64();
+        using var contract=await client.PostAsJsonAsync($"/api/projects/company/{projectId}/contracts",
+            new {name="Excel 合同 "+unique,contractNo="CN-"+unique,signDate="2026-10-14",
+                amount="125.5",signingParties="甲方和乙方",remarks="合同只读导出"});
+        contract.EnsureSuccessStatusCode();
+        long contractId=(await contract.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("id").GetInt64();
+        using var contractExport=await client.PostAsJsonAsync("/api/excel/company/contract/export",
+            new ExcelExportInput("filtered",new[]{contractId}));
+        contractExport.EnsureSuccessStatusCode();
+        string contractXml=SheetText(await contractExport.Content.ReadAsByteArrayAsync());
+        if(!contractXml.Contains("Excel 合同 "+unique,StringComparison.Ordinal)||
+           !contractXml.Contains("所属项目",StringComparison.Ordinal)||
+           !contractXml.Contains("125.50",StringComparison.Ordinal))
+            throw new IOException("合同 XLSX 必须包括当前合同、所属项目列和 0.00 金额。");
+        using var contractTemplate=await client.GetAsync("/api/excel/company/contract/template");
+        if(contractTemplate.IsSuccessStatusCode)throw new IOException("合同 Excel 不提供可写入模板。");
+        using var denied=await client.PostAsync("/api/excel/company/contract/import?policy=create",
+            new ByteArrayContent(await client.GetByteArrayAsync("/api/excel/company/project/template")));
+        if(denied.IsSuccessStatusCode)throw new IOException("合同不得通过 Excel 导入创建。");
+    }
+
     private static byte[] MixedExcelRows(byte[] original)
     {
         // Duplicate a valid project row, then make the third row invalid;
@@ -2354,6 +2449,7 @@ static class WebSmoke
             // All writes occur in a disposable SQLCipher smoke database.
             await VerifyMcpAsync(client,dir);
             await VerifyExcelAsync(client);
+            await VerifySecondExcelBatchAsync(client);
             using var finalLock = await client.PostAsync("/api/lock", null);
             finalLock.EnsureSuccessStatusCode();
 

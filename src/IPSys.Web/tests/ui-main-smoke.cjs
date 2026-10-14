@@ -419,3 +419,22 @@ assert.ok(js.includes("case 'excelTemplate'")&&js.includes("case 'excelExportFil
  js.includes("case 'excelExportAll'")&&js.includes("case 'excelImport'")&&
  js.includes("chooseExcelDuplicatePolicy()")&&js.includes("showExcelImportReport(report)"),
  'Excel controls must permit explicit export scopes, duplicate handling and row error reports');
+
+// P1 Excel round two: persist existing archive/general/contract ledger UI navigation.
+for(const target of ["excelPanel('archive',k)","excelPanel('general')","excelPanel('contract')"])
+ assert.ok(js.includes(target),'Excel second batch must be reachable through real ledger: '+target);
+assert.ok(js.includes("kind==='contract'?'只读导出")&&
+ js.includes("kind==='archive'?'?section='+encodeURIComponent(section)"),
+ 'Contracts must be export-only; archive Excel calls retain the section boundary');
+const excelSource=js.slice(js.indexOf('function excelPanel('),js.indexOf('async function saveExcel('));
+const excelVM=vm.createContext({escapeHtml:value=>String(value),encodeURIComponent});
+vm.runInContext(excelSource+'\nglobalThis.excelPanel=excelPanel;',excelVM);
+const contractPanel=excelVM.excelPanel('contract');
+assert.ok(contractPanel.includes('导出当前筛选结果')&&contractPanel.includes('导出全部记录'));
+assert.ok(!contractPanel.includes('excelImport')&&!contractPanel.includes('excelTemplate'),
+ 'Contract ledger must not permit Excel import or template download');
+const personalArchivePanel=excelVM.excelPanel('archive','academic');
+assert.ok(personalArchivePanel.includes('data-excel-kind="archive"')&&
+ personalArchivePanel.includes('data-excel-section="academic"')&&
+ personalArchivePanel.includes('导入 Excel 台账'),
+ 'Personal academic archive must preserve the section for XLSX import/export');

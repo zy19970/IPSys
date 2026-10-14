@@ -220,6 +220,7 @@ function generalList(){
   ? '尚未归入上述类别的个人资料，使用当前加密库的真实记录和附件。'
   : '综合资料使用当前加密库的真实记录和附件。';
  return heading(title('general'),subtitle,`<button class="btn primary" data-action="add">＋ 新建资料</button>`)+
+ excelPanel('general')+
  '<section class="white filter"><div class="filterline"><div class="field wide"><label>资料名称</label><input id="filterSearch" placeholder="搜索当前工作区资料"></div><button class="btn primary" data-action="filter">查询</button><button class="btn" data-action="clearFilter">重置</button></div></section>'+
  '<section class="white"><div class="tabletools"><span><b>资料卡片</b> <small class="muted">'+rows.length+' 条真实记录</small></span><div class="actions"><span class="realflag">真实数据库</span><button class="btn" data-action="check">检查数据库</button></div></div>'+
  (rows.length?'<div class="recordgrid">'+rows.map(r=>archiveCard(r,{
@@ -366,6 +367,7 @@ function contractList(){
   [c.name,c.contractNo,c.projectName,c.signingParties].join(' ').toLowerCase().includes(filterName.toLowerCase()));
  return heading('全部合同','当前工作区真实合同汇总 · 合同只能从所属项目详情新增',
    '<span class="realflag">真实记录</span>')+
+ excelPanel('contract')+
  '<section class="white filter"><div class="filterline">'+
  '<div class="field wide"><label>名称 / 编号 / 所属项目</label><input id="filterSearch" placeholder="搜索合同或项目"></div>'+
  '<button class="btn primary" data-action="filter">查询</button><button class="btn" data-action="clearFilter">重置</button></div></section>'+
@@ -428,15 +430,20 @@ function projectViewRows(k){
  return projectRows.filter(p=>space==='personal'||(k==='researchProject'?p.projectType!=='横向项目':p.projectType==='横向项目'));
 }
 // Fixed M0 Excel ledgers are separate from the original-file export controls.
-function excelPanel(kind){
- return '<details class="ledger-excel"><summary>Excel 台账导入与导出</summary>'+
+function excelPanel(kind,section=''){
+ const suffix=kind==='archive'?'?section='+encodeURIComponent(section):'';
+ const attrs=' data-excel-kind="'+kind+'" data-excel-section="'+escapeHtml(section)+'"';
+ const writable=kind!=='contract';
+ return '<details class="ledger-excel"><summary>Excel 台账'+(writable?'导入与导出':'导出')+'</summary>'+
   '<div class="actions excel-actions">'+
-  '<button class="btn" data-action="excelTemplate" data-excel-kind="'+kind+'">下载固定模板</button>'+
-  '<button class="btn" data-action="excelExportFiltered" data-excel-kind="'+kind+'">导出当前筛选结果</button>'+
-  '<button class="btn" data-action="excelExportAll" data-excel-kind="'+kind+'">导出全部记录</button>'+
-  '<button class="btn primary" data-action="excelImport" data-excel-kind="'+kind+'">导入 Excel 台账</button>'+
-  '</div><p class="hint">仅导入固定表头和业务字段，原件需进入记录后单独上传；重复记录需要明确选择处理方式。</p>'+
-  '<input id="excelImportFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>'+
+  (writable?'<button class="btn" data-action="excelTemplate"'+attrs+'>下载固定模板</button>':'')+
+  '<button class="btn" data-action="excelExportFiltered"'+attrs+'>导出当前筛选结果</button>'+
+  '<button class="btn" data-action="excelExportAll"'+attrs+'>导出全部记录</button>'+
+  (writable?'<button class="btn primary" data-action="excelImport"'+attrs+'>导入 Excel 台账</button>':'')+
+  '</div><p class="hint">'+(kind==='contract'?'只读导出，合同必须从所属项目详情创建。':
+  kind==='general'?'综合资料按现有资料名称字段归档；原件不经 Excel 导入。':
+  '使用固定业务字段；附件单独上传，重复记录需明确选择处理方式。')+'</p>'+
+  (writable?'<input id="excelImportFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" data-excel-kind="'+kind+'" data-excel-section="'+escapeHtml(section)+'" hidden>':'')+
   '</details>';
 }
 async function saveExcel(response,name){
@@ -484,21 +491,40 @@ function showExcelImportReport(report){
  dialog.addEventListener('close',()=>dialog.remove(),{once:true});
  dialog.showModal();
 }
-async function exportExcel(kind,scope){
+async function exportExcel(kind,scope,section=''){
  const workspace=space;
+ const query=kind==='archive'?'?section='+encodeURIComponent(section):'';
  const path='/api/excel/'+workspace+'/'+kind;
- const ids=scope==='filtered'?[...el('content').querySelectorAll('.ledger-export-row')]
-  .map(box=>Number(box.value)):null;
- const response=await api(path+'/export',{method:'POST',json:{mode:scope,ids}});
- await saveExcel(response,kind+'-'+workspace+'-'+(scope==='filtered'?'filtered':'all')+'.xlsx');
+ let ids=null;
+ if(scope==='filtered'){
+  if(kind==='project'||kind==='ip')
+   ids=[...el('content').querySelectorAll('.ledger-export-row')].map(box=>Number(box.value));
+  else if(kind==='general')
+   ids=liveRows.filter(r=>r.title.toLowerCase().includes(filterName.toLowerCase())).map(r=>r.id);
+  else if(kind==='contract')
+   ids=contractRows.filter(c=>[c.name,c.contractNo,c.projectName,c.signingParties]
+    .join(' ').toLowerCase().includes(filterName.toLowerCase())).map(c=>c.id);
+  else if(kind==='archive')
+   ids=(archiveRows[section]||[]).filter(r=>{
+    const category=r.category||'未分类';
+    return archiveGroup?category===archiveGroup&&
+     [r.name,r.remarks,r.tags].join(' ').toLowerCase().includes(filterName.toLowerCase()):
+     (filterKind==='全部类型'||category===filterKind)&&
+      category.toLowerCase().includes(filterName.toLowerCase());
+   }).map(r=>r.id);
+ }
+ const response=await api(path+'/export'+query,{method:'POST',json:{mode:scope,ids}});
+ await saveExcel(response,kind+'-'+workspace+(section?'-'+section:'')+'-'+
+  (scope==='filtered'?'filtered':'all')+'.xlsx');
 }
-async function importExcel(kind,file){
+async function importExcel(kind,file,section=''){
  if(!file||file.size>8*1024*1024)return notice('请使用小于 8 MiB 的固定 XLSX 模板。',true);
  const workspace=space;
  const policy=await chooseExcelDuplicatePolicy();
  if(!policy)return;
  try{
-  const response=await api('/api/excel/'+workspace+'/'+kind+'/import?policy='+policy,{
+  const query='?policy='+policy+(kind==='archive'?'&section='+encodeURIComponent(section):'');
+  const response=await api('/api/excel/'+workspace+'/'+kind+'/import'+query,{
    method:'POST',headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},
    body:file});
   const report=await response.json();
@@ -908,6 +934,7 @@ function realArchiveCards(k){
   (filterKind==='全部类型'||category===filterKind)&&category.toLowerCase().includes(filterName.toLowerCase()));
  return heading(archiveSectionName(k),'按材料类别归档 · 真实 SQLCipher 记录',
   '<span class="realflag">真实记录</span><button class="btn primary" data-action="archiveAdd">＋ 新建记录</button>')+
+ excelPanel('archive',k)+
  '<section class="white filter"><div class="filterline"><div class="field wide"><label>类别名称</label><input id="filterSearch" placeholder="查找资料类别"></div>'+
  '<div class="field"><label>类别</label><select id="filterKind">'+
  ['全部类型',...categories].map(x=>'<option value="'+escapeHtml(x)+'" '+(x===filterKind?'selected':'')+'>'+escapeHtml(x)+'</option>').join('')+
@@ -926,6 +953,7 @@ function realArchiveTable(k,category){
  return heading(category,archiveSectionName(k)+' / 分类台账 · 同一类别可归档多条记录',
  '<button class="btn" data-archive-back="cards">← 返回类别卡片</button>'+
  '<button class="btn primary" data-action="archiveAdd">＋ 新建记录</button>')+
+ excelPanel('archive',k)+
  '<section class="white filter"><div class="filterline"><div class="field wide"><label>资料名称</label><input id="filterSearch" placeholder="搜索此类别下的真实记录"></div>'+
  '<button class="btn primary" data-action="filter">查询</button><button class="btn" data-action="clearFilter">重置</button></div></section>'+
  '<section class="white"><div class="tabletools"><b>'+escapeHtml(category)+'台账 · '+rows.length+' 条真实记录</b></div>'+
@@ -1244,17 +1272,19 @@ el('content').addEventListener('click',async ev=>{
   case 'excelExportFiltered':
   case 'excelExportAll':
   case 'excelImport':{
-   const kind=target.dataset.excelKind;
-   if(kind!=='project'&&kind!=='ip')break;
+   const kind=target.dataset.excelKind,section=target.dataset.excelSection||'';
+   if(!['project','ip','archive','general','contract'].includes(kind))break;
+   if(kind==='contract'&&['excelTemplate','excelImport'].includes(target.dataset.action))break;
    try{
     if(target.dataset.action==='excelImport'){
-     const filePicker=el('excelImportFile');
+     const filePicker=target.closest('.ledger-excel')?.querySelector('#excelImportFile');
      if(filePicker)filePicker.click();
     }else if(target.dataset.action==='excelTemplate'){
-     const response=await api('/api/excel/'+space+'/'+kind+'/template');
-     await saveExcel(response,kind+'-template.xlsx');
+     const query=kind==='archive'?'?section='+encodeURIComponent(section):'';
+     const response=await api('/api/excel/'+space+'/'+kind+'/template'+query);
+     await saveExcel(response,kind+(section?'-'+section:'')+'-template.xlsx');
     }else{
-     await exportExcel(kind,target.dataset.action==='excelExportFiltered'?'filtered':'all');
+     await exportExcel(kind,target.dataset.action==='excelExportFiltered'?'filtered':'all',section);
     }
    }catch(error){notice('Excel 操作失败：'+error.message,true);}
    break;
@@ -1460,9 +1490,10 @@ el('businessFileInput').onchange=async event=>{
 };
 el('content').addEventListener('change',async ev=>{
  if(ev.target.id==='excelImportFile'){
-  const file=ev.target.files?.[0],kind=page==='ip'?'ip':isProject(page)?'project':null;
+  const file=ev.target.files?.[0],kind=ev.target.dataset.excelKind,section=ev.target.dataset.excelSection||'';
   ev.target.value='';
-  if(kind&&file)await importExcel(kind,file);
+  if(file&&['project','ip','archive','general'].includes(kind))
+   await importExcel(kind,file,section);
  }
  if(ev.target.id==='uploadInput'){
   const files=[...(ev.target.files||[])],id=detail?.id;ev.target.value='';
