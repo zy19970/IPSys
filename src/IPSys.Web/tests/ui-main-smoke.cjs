@@ -335,6 +335,23 @@ for(const needle of ["moduleExportPanel(visible,'project')","moduleExportPanel(r
  assert.ok(js.includes(needle),'Selected-original export wiring missing: '+needle);
 assert.ok(js.includes("b06Script.src='/export.js'"),'The embedded ZIP/folder engine must load from localhost');
 
+// When only one effective revision survives, never display its stored historical version number.
+const fileListStart=js.indexOf('function businessAttachmentList(');
+const fileListEnd=js.indexOf('function chooseVersionAction(',fileListStart);
+assert.ok(fileListStart>0&&fileListEnd>fileListStart,'Missing business file renderer');
+const fileListCtx=vm.createContext({sessionStorage:{getItem:()=>null},document:exportDocument});
+vm.runInContext(preamble+
+ '\nfunction escapeHtml(s){return String(s);}\nfunction fmtSize(n){return n+" B";}'+
+ '\nfunction exportCheck(){return "";}\nfunction exportButtons(){return "";}'+
+ '\nfunction businessFiles(){return globalThis.filesForTest;}'+
+ '\ncontractRows=[];'+js.slice(fileListStart,fileListEnd)+
+ '\nglobalThis.filesForTest=[{id:2,name:"test.pdf",category:"申请材料",groupId:"group-A",version:2,size:123,sha256:"0123456789abcdef"}];'+
+ '\nglobalThis.__onlyVersion=businessAttachmentList("ip",1);'+
+ '\nglobalThis.filesForTest.push({id:1,name:"test.pdf",category:"申请材料",groupId:"group-A",version:1,size:120,sha256:"0123456789abcdef"});'+
+ '\nglobalThis.__history=businessAttachmentList("ip",1);',fileListCtx);
+assert.ok(!fileListCtx.__onlyVersion.includes('<small>v2'),'Single surviving revision must not show v2');
+assert.ok(fileListCtx.__history.includes('<small>v2'),'Two effective revisions must show version history');
+
 // B05b: real trash and same-workspace attachment association.
 assert.ok(html.includes('id="businessAssocDialog"'));
 assert.ok(html.includes('id="businessAssocForm"'));
