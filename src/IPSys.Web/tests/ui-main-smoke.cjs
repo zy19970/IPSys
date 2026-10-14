@@ -250,6 +250,7 @@ const contractUntil=js.indexOf('function projectViewRows(',contractFrom);
 assert.ok(contractFrom>=0&&contractUntil>contractFrom,'Contract renderers not found');
 const contractContext=vm.createContext({sessionStorage:{getItem:()=>null},document:exportDocument});
 vm.runInContext(preamble+
+ '\nfunction moduleExportPanel(){return "";}' +
  '\nfunction heading(n,s,a){return n+(a||"");}\nfunction infoRow(n,v){return n+":"+v;}\nfunction section(n,v){return n+v;}\n'+
  js.slice(contractFrom,contractUntil)+
  "\nspace='company';contractRows=[{id:31,projectId:7,workspace:'company',projectName:'测试科研项目',name:'测试合同',contractNo:'HT-001',signDate:'2026-10-12',amount:'12.3',signingParties:'甲乙'}];"+
