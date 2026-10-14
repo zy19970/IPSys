@@ -26,7 +26,7 @@ assert.ok(js.includes('space=null')&&js.includes('selectSpace(next)'),'Explicit 
 // follow the user-supplied evidence folders without changing SQLCipher record types.
 const vm=require('node:vm');
 const preamble=js.slice(0,js.indexOf('window.addEventListener('));
-const exportDocument={createElement:()=>({}),head:{appendChild:()=>{}}};
+const exportDocument={createElement:()=>({}),head:{appendChild:()=>{}},getElementById:()=>({addEventListener:()=>{}})};
 assert.ok(preamble.length>0,'Cannot isolate personal archive configuration');
 const context=vm.createContext({sessionStorage:{getItem:()=>null},document:exportDocument});
 vm.runInContext(preamble+`
