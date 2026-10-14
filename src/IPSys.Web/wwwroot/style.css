@@ -278,3 +278,15 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 
 /* The company certificate table shows the size of the same original used by one-click download. */
 .certificate-ledger .data th.certificate-size,.certificate-ledger .data td.certificate-size{width:124px;min-width:105px;white-space:nowrap;text-align:left;font-variant-numeric:tabular-nums}
+
+/* Company certificates: explicit row selection, stable sequence and manual order controls. */
+.certificate-ledger .data .certificate-check{width:44px;min-width:44px;text-align:center;padding-left:10px;padding-right:8px}
+.certificate-ledger .certificate-check input{width:16px;height:16px;vertical-align:middle;cursor:pointer;accent-color:var(--primary)}
+.certificate-ledger .data .certificate-sequence{width:60px;min-width:60px;text-align:center;font-variant-numeric:tabular-nums}
+.certificate-ledger .data .certificate-order{width:108px;min-width:108px;white-space:nowrap}
+.certificate-ledger .certificate-order .btn{min-width:34px;padding:5px 7px;margin-right:4px}
+.certificate-ledger .certificate-order .btn:last-child{margin-right:0}
+.certificate-ledger .certificate-order .btn:disabled{opacity:.35;cursor:default}
+.certificate-ledger .certificate-selected-count{font-size:12px;color:var(--muted);white-space:nowrap}
+.certificate-ledger .data td:nth-child(4){max-width:380px;overflow-wrap:anywhere}
+.certificate-ledger .data td:nth-child(6){max-width:330px;white-space:normal;overflow-wrap:anywhere}

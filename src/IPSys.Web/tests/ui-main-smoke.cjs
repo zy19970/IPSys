@@ -398,6 +398,10 @@ vm.runInContext(
  "{id:102,kind:'archive',ownerId:51,section:'certificate',name:'新证书.pdf',size:2457600,version:2},"+
  "{id:103,kind:'archive',ownerId:52,section:'certificate',name:'认证附件.docx',size:65536,version:1}];"+
  "globalThis.__certAll=realCompanyCertificateList();"+
+ "certificateSelected.add(52);globalThis.__certSelected=realCompanyCertificateList();"+
+ "globalThis.__selectedIds=certificateExportIds();"+
+ "certificateSelected.delete(52);certificateSelected.add(51);certificateSelected.add(53);"+
+ "globalThis.__certMultiple=realCompanyCertificateList();certificateSelected.clear();"+
  "filterKind='体系认证';globalThis.__certStillAll=realCompanyCertificateList();"+
  "filterName='高新';globalThis.__certKeyword=realCompanyCertificateList();"+
  "filterName='ISO';globalThis.__certRemark=realCompanyCertificateList();"+
@@ -413,7 +417,10 @@ assert.ok(realArchiveCtx.__certAll.includes('data-archive-id="51"')&&
  realArchiveCtx.__certAll.includes('data-archive-id="52"')&&
  realArchiveCtx.__certAll.includes('data-archive-id="53"'),
  'Each existing certificate name must remain an editable detail link');
-assert.ok(realArchiveCtx.__certAll.includes('<th>资料名称</th><th>附件</th><th class="certificate-size">文件大小</th><th>备注</th><th>操作</th>')&&
+assert.ok(realArchiveCtx.__certAll.includes('<th class="certificate-check">')&&
+ realArchiveCtx.__certAll.includes('class="certificate-checkall"')&&
+ realArchiveCtx.__certAll.includes('<th class="certificate-sequence">序号</th>')&&
+ realArchiveCtx.__certAll.includes('<th>资料名称</th><th>附件</th><th class="certificate-size">文件大小</th><th>备注</th><th class="certificate-order">排序</th><th>操作</th>')&&
  !realArchiveCtx.__certAll.includes('<th>类别</th>')&&!realArchiveCtx.__certAll.includes('id="filterKind"'),
  'Company certificate table and filters must exclude the category field');
 assert.ok(realArchiveCtx.__certAll.includes('data-certificate-download="102"')&&
@@ -425,8 +432,36 @@ assert.ok(realArchiveCtx.__certAll.includes('<td class="certificate-size">2.3 Mi
  !realArchiveCtx.__certAll.includes('<td class="certificate-size">1.0 KiB</td>'),
  'File size must follow each record\'s latest downloadable attachment, not an older version');
 assert.ok(realArchiveCtx.__certAll.includes('<td class="certificate-size">—</td>')&&
- realArchiveCtx.__certEmpty.includes('colspan="5"'),
+ realArchiveCtx.__certEmpty.includes('colspan="8"'),
  'No-attachment row shows a dash and the empty-state row spans five columns');
+assert.ok(realArchiveCtx.__certAll.includes('class="certificate-rowcheck" value="51"')&&
+ realArchiveCtx.__certAll.includes('class="certificate-rowcheck" value="52"')&&
+ realArchiveCtx.__certAll.includes('class="certificate-sequence">1</td>')&&
+ realArchiveCtx.__certAll.includes('class="certificate-sequence">3</td>'),
+ 'All certificate records must have a checkbox and a sequential displayed row number');
+assert.equal(Array.from(realArchiveCtx.__selectedIds).join(','),'52',
+ 'Selected certificate IDs must be the exact subset shown for export');
+assert.ok(realArchiveCtx.__certSelected.includes('已选 1 条')&&
+ realArchiveCtx.__certSelected.includes('class="certificate-rowcheck" value="52" aria-label="选择资料 质量管理体系认证" checked'),
+ 'Checked certificate rows and selected count must remain visible after rerender');
+assert.ok(realArchiveCtx.__certMultiple.includes('已选 2 条')&&
+ realArchiveCtx.__certMultiple.includes('class="certificate-rowcheck" value="53" aria-label="选择资料 待分类证明" checked'),
+ 'Multiple nonadjacent certificate records must remain selected');
+assert.ok(realArchiveCtx.__certAll.includes('data-certificate-move="51" data-move-direction="-1" disabled')&&
+ realArchiveCtx.__certAll.includes('data-certificate-move="51" data-move-direction="1"')&&
+ realArchiveCtx.__certAll.includes('data-certificate-move="53" data-move-direction="1" disabled'),
+ 'First and last row movement must be constrained while intermediate moves stay enabled');
+assert.ok(js.includes("await api('/api/archives/company/certificate/order',{method:'POST',json:{ids}})")&&
+ js.includes("const ids=(archiveRows.certificate||[]).map(r=>r.id)")&&
+ js.includes("if(target.dataset.certificateMove)")&&
+ js.includes("await moveCompanyCertificate(Number(target.dataset.certificateMove)"),
+ 'A row move must save the entire company certificate order through its scoped API');
+assert.ok(js.includes('if(ev.target.matches(\'.certificate-checkall,.certificate-rowcheck\'))')&&
+ js.includes('certificateSelected.clear();render();break;'),
+ 'Certificate checkbox handlers must update selection and filtering must clear stale selections');
+assert.ok(js.includes("ids=certificateExportIds();")&&
+ js.includes("new Set(certificateExportIds())"),
+ 'Both Excel and original-file export must prioritize selected certificate row IDs');
 assert.ok(realArchiveCtx.__certAll.includes('data-certificate-download="103"')&&
  realArchiveCtx.__certAll.includes('data-certificate-download="" disabled title="该资料尚无附件"'),
  'Download must be disabled for records without attachments, not cause fake download');
@@ -490,6 +525,11 @@ assert.ok(js.includes("detail=simpleCertificate?null:{kind:'archive',id:recordId
  js.includes("await downloadBusinessAttachment(Number(target.dataset.certificateDownload))"),
  'Company certificate save must return to list and download directly from existing authorized endpoint');
 
+assert.ok(css.includes('.certificate-ledger .data .certificate-check{width:44px;')&&
+ css.includes('.certificate-ledger .data .certificate-sequence{width:60px;')&&
+ css.includes('.certificate-ledger .data .certificate-order{width:108px;')&&
+ css.includes('.certificate-ledger .certificate-selected-count{'),
+ 'Checkbox, sequence and move controls should use compact table columns');
 assert.ok(css.includes('.certificate-ledger .data th.certificate-size,.certificate-ledger .data td.certificate-size{width:124px;min-width:105px;white-space:nowrap'),
  'Size column should have a compact width and prevent unit wrapping');
 assert.ok(css.includes('.certificate-ledger .certificate-toolbar{display:flex')&&

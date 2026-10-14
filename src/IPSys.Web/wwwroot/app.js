@@ -35,7 +35,7 @@ let token=sessionStorage.getItem('ip-token')||'';
 let dbName=sessionStorage.getItem('ip-db')||'';
 let mcpEnabled=false;
 let space=null,creating=false,resuming=false,localFileTaskActive=false;
-let page='dashboard',detail=null,archiveGroup=null,editingId=null,projectEditingId=null,projectRows=[],ipEditingId=null,ipRows=[],contractEditingId=null,contractProjectId=null,contractRows=[],businessFileRows=[],trashRows=[],pendingBusinessUpload=null,pendingAssocId=null,archiveRows={certificate:[],achievement:[],academic:[]},archiveEditingId=null,archiveTransferId=null,archiveTransferMode=null,liveRows=[],filterName='',filterKind='全部类型',filterState='全部状态',selected=new Set();
+let page='dashboard',detail=null,archiveGroup=null,editingId=null,projectEditingId=null,projectRows=[],ipEditingId=null,ipRows=[],contractEditingId=null,contractProjectId=null,contractRows=[],businessFileRows=[],trashRows=[],pendingBusinessUpload=null,pendingAssocId=null,archiveRows={certificate:[],achievement:[],academic:[]},archiveEditingId=null,archiveTransferId=null,archiveTransferMode=null,liveRows=[],filterName='',filterKind='全部类型',filterState='全部状态',selected=new Set(),certificateSelected=new Set();
 const companyNav=[['dashboard','工作台','▦'],['certificate','企业资质','▣'],['achievement','业务档案','▤'],['researchProject','公司项目','▤'],['ip','知识产权','◇'],['general','综合资料','▥']];
 // Personal archives are grouped by evidence type, not by the company management menu.
 const personalNav=[['dashboard','个人工作台','▦'],['certificate','身份与资质','▣'],['ip','知识产权与著作','◇'],['researchProject','科研与合作项目','▤'],['achievement','成果与奖励','★'],['academic','学术与社会活动','▥'],['general','其他资料','▧']];
@@ -160,7 +160,7 @@ function selectSpace(next){
   if(!token)return;
   globalSerial++;globalHits=[];globalQuery='';globalPending=false;globalError='';
   if(space===next)return;
-  space=next;page='dashboard';detail=null;archiveGroup=null;projectRows=[];ipRows=[];contractRows=[];businessFileRows=[];trashRows=[];archiveRows={certificate:[],achievement:[],academic:[]};filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();
+  space=next;page='dashboard';detail=null;archiveGroup=null;projectRows=[];ipRows=[];contractRows=[];businessFileRows=[];trashRows=[];archiveRows={certificate:[],achievement:[],academic:[]};filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();certificateSelected.clear();
   el('globalSearch').value='';el('sidebarDbName').textContent=dbName;
   el('chooseWorkspace').hidden=true;el('unlocked').hidden=false;
   refresh();
@@ -169,7 +169,7 @@ document.querySelectorAll('[data-workspace-choice]').forEach(b=>b.onclick=()=>se
 document.querySelectorAll('[data-workspace-switch]').forEach(button=>{
  button.onclick=()=>selectSpace(button.dataset.workspaceSwitch);
 });
-function setPage(next){if(space==='company'&&next==='horizontalProject')next='researchProject';globalSerial++;globalHits=[];globalQuery='';globalPending=false;globalError='';page=next;detail=null;archiveGroup=null;filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();el('globalSearch').value='';render();}
+function setPage(next){if(space==='company'&&next==='horizontalProject')next='researchProject';globalSerial++;globalHits=[];globalQuery='';globalPending=false;globalError='';page=next;detail=null;archiveGroup=null;filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();certificateSelected.clear();el('globalSearch').value='';render();}
 async function refresh(){
   if(!token||!space)return;
   const requestedSpace=space;
@@ -574,7 +574,7 @@ async function exportExcel(kind,scope,section=''){
    ids=contractRows.filter(c=>[c.name,c.contractNo,c.projectName,c.signingParties]
     .join(' ').toLowerCase().includes(filterName.toLowerCase())).map(c=>c.id);
   else if(kind==='archive'&&space==='company'&&section==='certificate')
-   ids=companyCertificateRows().map(r=>r.id);
+   ids=certificateExportIds();
   else if(kind==='archive')
    ids=(archiveRows[section]||[]).filter(r=>{
     const category=r.category||'未分类';
@@ -983,6 +983,29 @@ function companyCertificateRows(){
   return [r.name,r.remarks].join(' ').toLowerCase().includes(filterName.toLowerCase());
  });
 }
+function certificateExportIds(){
+ const rows=companyCertificateRows();
+ const checked=rows.filter(r=>certificateSelected.has(r.id));
+ return (checked.length?checked:rows).map(r=>r.id);
+}
+async function moveCompanyCertificate(id,direction){
+ const visible=companyCertificateRows();
+ const at=visible.findIndex(r=>r.id===id);
+ const next=at+direction;
+ if(at<0||next<0||next>=visible.length)return;
+ const ids=(archiveRows.certificate||[]).map(r=>r.id);
+ const a=ids.indexOf(visible[at].id),b=ids.indexOf(visible[next].id);
+ if(a<0||b<0)return;
+ [ids[a],ids[b]]=[ids[b],ids[a]];
+ try{
+  await api('/api/archives/company/certificate/order',{method:'POST',json:{ids}});
+  await refresh();
+  notice('顺序已保存。');
+ }catch(error){
+  await refresh();
+  notice('排序失败：'+error.message,true);
+ }
+}
 function certificateExportMenu(rows){
  const attrs=' data-export-kind="archive" data-export-section="certificate" data-export-ids="'+rows.map(r=>r.id).join(',')+'"';
  return '<details class="certificate-export">'+
@@ -999,6 +1022,7 @@ function companyCertificateAttachment(recordId){
 }
 function realCompanyCertificateList(){
  const all=archiveRows.certificate||[],rows=companyCertificateRows();
+ const checkedCount=rows.filter(r=>certificateSelected.has(r.id)).length;
  return '<div class="breadcrumb certificate-breadcrumb">公司资料 / 企业资质</div>'+
  '<section class="white certificate-ledger">'+
  '<div class="certificate-toolbar">'+
@@ -1009,20 +1033,30 @@ function realCompanyCertificateList(){
  '<button class="btn primary" data-action="filter">查询</button>'+
  '<button class="btn" data-action="clearFilter">重置</button></div>'+
  '<div class="certificate-toolbar-actions">'+
+ '<span class="certificate-selected-count" id="certificateSelectedCount">已选 '+checkedCount+' 条</span>'+
  '<button class="btn primary" data-action="archiveAdd">＋ 新建记录</button>'+
  certificateExportMenu(rows)+'</div></div>'+
  '<div class="tablewrap archive-tablewrap"><table class="data"><thead><tr>'+
- '<th>资料名称</th><th>附件</th><th class="certificate-size">文件大小</th><th>备注</th><th>操作</th></tr></thead><tbody>'+
- (rows.length?rows.map(r=>{
+ '<th class="certificate-check"><input type="checkbox" class="certificate-checkall" aria-label="全选当前列表"'+
+ (rows.length&&checkedCount===rows.length?' checked':'')+(rows.length?'':' disabled')+'></th>'+
+ '<th class="certificate-sequence">序号</th><th>资料名称</th><th>附件</th><th class="certificate-size">文件大小</th>'+
+ '<th>备注</th><th class="certificate-order">排序</th><th>操作</th></tr></thead><tbody>'+
+ (rows.length?rows.map((r,index)=>{
   const original=companyCertificateAttachment(r.id);
-  return '<tr><td><button class="link" data-archive-id="'+r.id+'">'+escapeHtml(r.name)+'</button></td>'+
+  return '<tr><td class="certificate-check"><input type="checkbox" class="certificate-rowcheck" value="'+r.id+
+   '" aria-label="选择资料 '+escapeHtml(r.name)+'"'+(certificateSelected.has(r.id)?' checked':'')+'></td>'+
+   '<td class="certificate-sequence">'+(index+1)+'</td>'+
+   '<td><button class="link" data-archive-id="'+r.id+'">'+escapeHtml(r.name)+'</button></td>'+
    '<td>'+(original?escapeHtml(original.name):'<span class="muted">未上传</span>')+'</td>'+
    '<td class="certificate-size">'+(original?fmtSize(original.size):'—')+'</td>'+
    '<td>'+escapeHtml(r.remarks||'—')+'</td>'+
+   '<td class="certificate-order">'+
+   '<button type="button" class="btn btn-sm" aria-label="将'+escapeHtml(r.name)+'上移" data-certificate-move="'+r.id+'" data-move-direction="-1"'+(index===0?' disabled':'')+'>↑</button>'+
+   '<button type="button" class="btn btn-sm" aria-label="将'+escapeHtml(r.name)+'下移" data-certificate-move="'+r.id+'" data-move-direction="1"'+(index===rows.length-1?' disabled':'')+'>↓</button></td>'+
    '<td><button class="btn btn-sm" data-certificate-download="'+(original?.id||'')+'"'+
    (original?'':' disabled title="该资料尚无附件"')+'>下载</button></td></tr>';
  }).join(''):
- '<tr><td colspan="5" class="empty">暂无符合条件的资料，可点击上方新建。</td></tr>')+
+ '<tr><td colspan="8" class="empty">暂无符合条件的资料，可点击上方新建。</td></tr>')+
  '</tbody></table></div><div class="tablefoot">显示 '+rows.length+' 条 · 共 '+all.length+' 条企业资质记录</div></section>';
 }
 function realArchiveCards(k){
@@ -1363,6 +1397,10 @@ el('content').addEventListener('click',async ev=>{
  if(target.dataset.liveId){openLiveRecord(Number(target.dataset.liveId));return;}
  if(target.dataset.projectId){detail={kind:'project',id:Number(target.dataset.projectId)};render();el('content').scrollTo(0,0);return;}
  if(target.dataset.ipId){detail={kind:'ip',id:Number(target.dataset.ipId)};page='ip';render();el('content').scrollTo(0,0);return;}
+ if(target.dataset.certificateMove){
+  await moveCompanyCertificate(Number(target.dataset.certificateMove),Number(target.dataset.moveDirection));
+  return;
+ }
  if(target.dataset.certificateDownload){
   await downloadBusinessAttachment(Number(target.dataset.certificateDownload));return;
  }
@@ -1444,7 +1482,9 @@ el('content').addEventListener('click',async ev=>{
    case 'moduleExportZip':{
     const kind=target.dataset.exportKind,section=target.dataset.exportSection||'';
     if(!['archive','general','contract'].includes(kind))break;
-    const ids=new Set((target.dataset.exportIds||'').split(',').filter(Boolean).map(Number));
+    const ids=kind==='archive'&&space==='company'&&section==='certificate'?
+     new Set(certificateExportIds()):
+     new Set((target.dataset.exportIds||'').split(',').filter(Boolean).map(Number));
     const records=kind==='general'?liveRows.filter(r=>ids.has(r.id)):
      kind==='contract'?contractRows.filter(r=>ids.has(r.id)):
      (archiveRows[section]||[]).filter(r=>ids.has(r.id));
@@ -1607,8 +1647,8 @@ el('content').addEventListener('click',async ev=>{
    break;
   }
   case 'upload':el('uploadInput')?.click();break;
-  case 'filter':filterName=el('filterSearch')?.value.trim()||'';filterKind=el('filterKind')?.value||'全部类型';filterState=el('filterState')?.value||'全部状态';selected.clear();render();break;
-  case 'clearFilter':filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();render();break;
+  case 'filter':filterName=el('filterSearch')?.value.trim()||'';filterKind=el('filterKind')?.value||'全部类型';filterState=el('filterState')?.value||'全部状态';selected.clear();certificateSelected.clear();render();break;
+  case 'clearFilter':filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();certificateSelected.clear();render();break;
   case 'mcpToggle':
    try{
     const updated=await(await api('/api/mcp',{method:'POST',json:{enabled:!mcpEnabled}})).json();
@@ -1645,6 +1685,24 @@ el('businessFileInput').onchange=async event=>{
  if(files.length&&meta)await uploadBusinessBatch(files,meta);
 };
 el('content').addEventListener('change',async ev=>{
+ if(ev.target.matches('.certificate-checkall,.certificate-rowcheck')){
+  const visible=companyCertificateRows();
+  if(ev.target.matches('.certificate-checkall')){
+   for(const row of visible){
+    if(ev.target.checked)certificateSelected.add(row.id);
+    else certificateSelected.delete(row.id);
+   }
+  }else{
+   const id=Number(ev.target.value);
+   if(ev.target.checked)certificateSelected.add(id);
+   else certificateSelected.delete(id);
+  }
+  const count=visible.filter(row=>certificateSelected.has(row.id)).length;
+  const all=el('content').querySelector('.certificate-checkall');
+  if(all)all.checked=visible.length>0&&count===visible.length;
+  const status=el('certificateSelectedCount');
+  if(status)status.textContent='已选 '+count+' 条';
+ }
  if(ev.target.id==='uploadInput'){
   const files=[...(ev.target.files||[])],id=detail?.id;ev.target.value='';
   if(files.length&&detail?.kind==='general')await uploadGeneralBatch(id,files);

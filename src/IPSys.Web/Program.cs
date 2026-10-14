@@ -381,6 +381,22 @@ app.MapGet("/api/archives/{workspace}/{section}", async (
     }
     finally { v.Gate.Release(); }
 });
+// Only company certificates expose manual list ordering; no other archive view is changed.
+app.MapPost("/api/archives/company/certificate/order", async (
+    HttpContext ctx,Vault v,CompanyCertificateOrderInput input) =>
+{
+    if(!v.Allowed(ctx))return (IResult)Results.Unauthorized();
+    if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务或退出期间不可调整排序。",409);
+    await v.Gate.WaitAsync();
+    try
+    {
+        if(!v.Allowed(ctx))return Results.Unauthorized();
+        if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务或退出期间不可调整排序。",409);
+        return ArchiveStore.ReorderCompanyCertificates(v.Db,input.Ids)
+            ?Results.Ok(new {ok=true}):Fail("资料列表已经变化，请刷新后重新调整顺序。",409);
+    }
+    finally{v.Gate.Release();}
+});
 app.MapPost("/api/archives/{workspace}/{section}", async (
     HttpContext ctx, Vault v, string workspace, string section, ArchiveInput input) =>
 {
@@ -977,6 +993,7 @@ static IResult Fail(string message, int status = 400) =>
 
 record McpAccessInput(bool Enabled);
 record ExcelExportInput(string Mode,long[]? Ids);
+record CompanyCertificateOrderInput(long[]? Ids);
 record ProjectInput(string? Name, string? ProjectType, string? ProjectNo, string? Leader,
     string? UndertakingOrg, string? StartDate, string? EndDate, string? ProjectStatus,
     string? Category, string? Remarks, string? Tags);
@@ -2083,6 +2100,41 @@ static class WebSmoke
                 new ArchiveTransfer("personal","certificate",true));
             if(crossCertificate.StatusCode!=HttpStatusCode.BadRequest)
                 throw new IOException("公司资质证件不得直接转型为个人证件。");
+            // Company certificate ordering must persist and reject incomplete/stale lists.
+            var certOrderUrl="/api/archives/company/certificate/order";
+            (await client.PostAsJsonAsync(certOrderUrl,new CompanyCertificateOrderInput(
+                new[]{companyCertificateId,duplicateCertId}))).EnsureSuccessStatusCode();
+            var reorderedCerts=await client.GetFromJsonAsync<List<ArchiveView>>(
+                "/api/archives/company/certificate");
+            if(reorderedCerts is null || reorderedCerts.Select(x=>x.Id)
+                    .SequenceEqual(new[]{companyCertificateId,duplicateCertId})==false)
+                throw new IOException("公司资质自定义顺序没有从加密数据库读出。");
+            if((await client.PostAsJsonAsync(certOrderUrl,new CompanyCertificateOrderInput(
+                new[]{companyCertificateId,companyCertificateId}))).StatusCode!=HttpStatusCode.Conflict)
+                throw new IOException("排序接口必须拒绝重复记录编号。");
+            if((await client.PostAsJsonAsync(certOrderUrl,new CompanyCertificateOrderInput(
+                new[]{companyCertificateId}))).StatusCode!=HttpStatusCode.Conflict)
+                throw new IOException("排序接口必须拒绝遗漏记录的过期列表。");
+            if((await client.PostAsJsonAsync(certOrderUrl,new CompanyCertificateOrderInput(
+                new[]{companyCertificateId,allPersonalCerts![0].Id})))
+                    .StatusCode!=HttpStatusCode.Conflict)
+                throw new IOException("排序接口必须拒绝个人资料的记录编号。");
+            if((await client.PostAsJsonAsync(certOrderUrl,new CompanyCertificateOrderInput(
+                new[]{companyCertificateId,companyCertificateId+9999})))
+                    .StatusCode!=HttpStatusCode.Conflict)
+                throw new IOException("排序接口必须拒绝未知的企业资质记录编号。");
+            var stillOrdered=await client.GetFromJsonAsync<List<ArchiveView>>(
+                "/api/archives/company/certificate");
+            if(stillOrdered is null || stillOrdered.Select(x=>x.Id)
+                    .SequenceEqual(new[]{companyCertificateId,duplicateCertId})==false)
+                throw new IOException("无效排序请求不得改变此前保存的顺序。");
+            using(var unauthorizedOrder=new HttpClient{BaseAddress=new Uri(address)})
+            {
+                if((await unauthorizedOrder.PostAsJsonAsync(certOrderUrl,
+                    new CompanyCertificateOrderInput(new[]{companyCertificateId,duplicateCertId})))
+                    .StatusCode!=HttpStatusCode.Unauthorized)
+                    throw new IOException("未授权客户端不得调整企业资质顺序。");
+            }
             (await client.DeleteAsync(
                 $"/api/archives/company/certificate/{duplicateCertId}")).EnsureSuccessStatusCode();
             if((await client.GetFromJsonAsync<List<ArchiveView>>(

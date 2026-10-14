@@ -43,6 +43,10 @@ static class ArchiveStore
               deleted INTEGER NOT NULL DEFAULT 0 CHECK(deleted IN (0,1)));
             CREATE INDEX IF NOT EXISTS idx_business_archives_scope
               ON business_archives(workspace,section,deleted,category);
+            CREATE TABLE IF NOT EXISTS company_certificate_order(
+              archive_id INTEGER PRIMARY KEY,
+              position INTEGER NOT NULL,
+              FOREIGN KEY(archive_id) REFERENCES business_archives(id));
             """;
         cmd.ExecuteNonQuery();
     }
@@ -51,7 +55,14 @@ static class ArchiveStore
         var list=new List<ArchiveView>();
         string module=Module(workspace,section) ?? throw new ArgumentException("无效的资料模块。");
         using var cmd=db.CreateCommand();
-        cmd.CommandText = """
+        cmd.CommandText = workspace=="company"&&section=="certificate" ? """
+            SELECT a.id,a.workspace,a.section,a.name,a.category,a.remarks,a.tags
+            FROM business_archives a
+            LEFT JOIN company_certificate_order o ON o.archive_id=a.id
+            WHERE a.workspace=$workspace AND a.section=$section AND a.module=$module AND a.deleted=0
+            ORDER BY CASE WHEN o.position IS NULL THEN 1 ELSE 0 END,
+                     o.position ASC,a.id DESC;
+            """ : """
             SELECT id,workspace,section,name,category,remarks,tags
             FROM business_archives
             WHERE workspace=$workspace AND section=$section AND module=$module AND deleted=0
@@ -65,6 +76,52 @@ static class ArchiveStore
             r.GetString(3),r.GetString(4),r.GetString(5),r.GetString(6)));
         return list;
     }
+
+    // Persist only the ordering of existing, non-deleted company certificate records.
+    // An exact ID permutation prevents stale clients from silently hiding or moving records.
+    public static bool ReorderCompanyCertificates(SqliteConnection db,long[]? ids)
+    {
+        if(ids is null)return false;
+        using var tx=db.BeginTransaction();
+        var current=new List<long>();
+        using(var query=db.CreateCommand())
+        {
+            query.Transaction=tx;
+            query.CommandText="""
+                SELECT id FROM business_archives
+                WHERE workspace='company' AND section='certificate'
+                  AND module='company_certificate' AND deleted=0
+                ORDER BY id DESC;
+                """;
+            using var reader=query.ExecuteReader();
+            while(reader.Read())current.Add(reader.GetInt64(0));
+        }
+        if(ids.Length!=current.Count || ids.Distinct().Count()!=ids.Length ||
+           !ids.OrderBy(x=>x).SequenceEqual(current.OrderBy(x=>x)))return false;
+
+        using(var clear=db.CreateCommand())
+        {
+            clear.Transaction=tx;
+            clear.CommandText="DELETE FROM company_certificate_order;";
+            clear.ExecuteNonQuery();
+        }
+        using(var insert=db.CreateCommand())
+        {
+            insert.Transaction=tx;
+            insert.CommandText="INSERT INTO company_certificate_order(archive_id,position) VALUES($id,$position);";
+            var idParam=insert.Parameters.Add("$id",SqliteType.Integer);
+            var posParam=insert.Parameters.Add("$position",SqliteType.Integer);
+            for(var i=0;i<ids.Length;i++)
+            {
+                idParam.Value=ids[i];
+                posParam.Value=i;
+                insert.ExecuteNonQuery();
+            }
+        }
+        tx.Commit();
+        return true;
+    }
+
     private static void AddData(SqliteCommand cmd,ArchiveInput x)
     {
         cmd.Parameters.AddWithValue("$name",Clean(x.Name));
