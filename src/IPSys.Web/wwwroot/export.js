@@ -5,10 +5,10 @@ const IPSysExport=(()=>{
  const encoder=new TextEncoder();
  const MAX32=0xffffffff;
  let active=null;
- function cleanName(value){
+ function cleanName(value,isFile=false){
   let n=String(value||'未命名').replace(/[<>:"/\\|?*\x00-\x1f]/g,'_').replace(/[. ]+$/g,'').trim();
   if(!n||/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\.|$)/i.test(n))n='_'+(n||'未命名');
-  return n.slice(0,170);
+  return n.slice(0,isFile?240:170);
  }
  function suffix(name,index){
   if(index===1)return name;
@@ -16,10 +16,10 @@ const IPSysExport=(()=>{
   return dot>0?name.slice(0,dot)+' ('+index+')'+name.slice(dot):
    name+' ('+index+')';
  }
- function distinctName(base,used){
+ function distinctName(base,used,isDirectory=false){
   let candidate=base,n=1;
   while(used.has(candidate.toLowerCase())){
-   candidate=suffix(base,++n);
+   candidate=isDirectory?base+' ('+(++n)+')':suffix(base,++n);
   }
   used.add(candidate.toLowerCase());
   return candidate;
@@ -37,7 +37,7 @@ const IPSysExport=(()=>{
   return files.map(file=>{
    const where=owner(file);
    const rootKey=where.parentKey||where.recordKey;
-   if(!roots.has(rootKey))roots.set(rootKey,distinctName(cleanName(where.root),usedRoots));
+   if(!roots.has(rootKey))roots.set(rootKey,distinctName(cleanName(where.root),usedRoots,true));
    const parts=[roots.get(rootKey)];
    let directoryKey=rootKey;
    if(where.parentKey){
@@ -45,13 +45,13 @@ const IPSysExport=(()=>{
     const group=children.get(rootKey);
     if(!group.has(where.recordKey)){
      const used=new Set([...group.values()].map(x=>x.toLowerCase()));
-     group.set(where.recordKey,distinctName(cleanName(where.sub),used));
+     group.set(where.recordKey,distinctName(cleanName(where.sub),used,true));
     }
     parts.push(group.get(where.recordKey));
     directoryKey=where.recordKey;
    }
    if(!fileNames.has(directoryKey))fileNames.set(directoryKey,new Set());
-   parts.push(distinctName(cleanName(file.name),fileNames.get(directoryKey)));
+   parts.push(distinctName(cleanName(file.name,true),fileNames.get(directoryKey)));
    return {...file,parts,path:parts.join('/')};
   });
  }
@@ -152,7 +152,7 @@ const IPSysExport=(()=>{
  }
  async function exportFolder(root,items,signal,report){
   const rootUsed=await existingNames(root);
-  const dirs=new Map(),nameMap=new Map(),createdRoots=new Map();
+  const dirs=new Map(),nameMap=new Map();
   for(let i=0;i<items.length;i++){
    if(signal.aborted)break;
    const item=items[i],key=item.parts.slice(0,-1).join('/');
@@ -162,7 +162,7 @@ const IPSysExport=(()=>{
      const keyPart=item.parts.slice(0,j+1).join('/');
      if(!dirs.has(keyPart)){
       const used=j===0?rootUsed:await existingNames(parent);
-      const name=distinctName(item.parts[j],used);
+      const name=distinctName(item.parts[j],used,true);
       dirs.set(keyPart,{name,handle:await parent.getDirectoryHandle(name,{create:true})});
      }
      parent=dirs.get(keyPart).handle;
@@ -221,16 +221,18 @@ const IPSysExport=(()=>{
    }
    if(signal.aborted)throw new DOMException('已取消','AbortError');
    if(central.length>65535)throw Error('ZIP 文件数超过 65535，请分批导出。');
+   if(central.length===0)throw Error('所选附件全部导出失败，未生成 ZIP。');
    const start=offset;
    for(const entry of central)await write(centralHeader(entry));
    await write(endHeader(central.length,start,offset-start));
    await writer.close();done=true;
   }finally{if(!done){try{await writer.abort()}catch{}}}
  }
- function renderReport(report,format,cancelled){
+ function renderReport(report,format,cancelled,discarded){
+  if(format==='zip'&&discarded)report.success=0;
   const skipped=report.total-report.success-report.failures.length;
   const detail=report.failures.map(x=>x.name+'：'+x.error).join('\n');
-  const summary=(cancelled?'导出已取消。':'导出完成。')+
+  const summary=(cancelled?'导出已取消。':discarded?'ZIP 导出失败，未保存不完整压缩包。':'导出完成。')+
    '成功 '+report.success+'，失败 '+report.failures.length+
    '，取消/未完成 '+Math.max(0,skipped)+'。';
   status(summary);
@@ -259,19 +261,20 @@ const IPSysExport=(()=>{
   if(result)result.textContent='';
   status('准备导出已勾选的 '+selected.length+' 份原件…');
   const plan=makePlan(selected);
-  let cancelled=false;
+  let cancelled=false,discarded=false;
   try{
    if(format==='folder')await exportFolder(target,plan,abort.signal,report);
    else await exportZip(target,plan,abort.signal,report);
    cancelled=abort.signal.aborted;
   }catch(err){
    cancelled=isCancel(err);
+   if(format==='zip')discarded=true;
    if(!cancelled)report.failures.push({name:'导出任务',error:String(err.message||err)});
   }finally{
    if(abort.signal.aborted)cancelled=true;
    if(cancelButton)cancelButton.disabled=true;
    active=null;
-   renderReport(report,format,cancelled);
+   renderReport(report,format,cancelled,discarded);
   }
  }
  function cancel(){
