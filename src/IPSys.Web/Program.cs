@@ -100,6 +100,7 @@ app.MapPost("/api/open", async (OpenInput input, Vault v) =>
             ContractStore.Ensure(db);
             ArchiveStore.Ensure(db);
             BusinessFileStore.Ensure(db);
+            GeneralStore.Ensure(db);
             string token = v.SetOpen(db, path);
             db = null;
             return Results.Json(new { token, name = Path.GetFileName(path) });
@@ -167,10 +168,10 @@ app.MapGet("/api/records/{workspace}", async (HttpContext ctx, Vault v, string w
         var rows = new List<RecordView>();
         using var cmd = v.Db.CreateCommand();
         cmd.CommandText = """
-            SELECT r.id,r.title,a.id,a.filename,a.size,a.sha256
+            SELECT r.id,r.title,a.id,a.filename,a.size,a.sha256,a.version,a.group_id
             FROM records r LEFT JOIN attachments a
-            ON r.id=a.record_id AND a.state='ready'
-            WHERE r.workspace=$w ORDER BY r.id DESC,a.id;
+            ON r.id=a.record_id AND a.state='ready' AND a.deleted=0
+            WHERE r.workspace=$w AND r.deleted=0 ORDER BY r.id DESC,a.id;
             """;
         cmd.Parameters.AddWithValue("$w", workspace);
         using var reader = cmd.ExecuteReader();
@@ -181,7 +182,7 @@ app.MapGet("/api/records/{workspace}", async (HttpContext ctx, Vault v, string w
                 rows.Add(new RecordView(id, reader.GetString(1), new()));
             if (!reader.IsDBNull(2))
                 rows[^1].Files.Add(new FileView(reader.GetInt64(2), reader.GetString(3),
-                    reader.GetInt64(4), reader.GetString(5)));
+                    reader.GetInt64(4), reader.GetString(5),reader.GetInt32(6),reader.GetString(7)));
         }
         return Results.Json(rows);
     }
@@ -563,7 +564,7 @@ app.MapPut("/api/records/{workspace}/{id:long}", async (
         if (v.FileTaskActive || v.ExitRequested)
             return Fail("文件任务执行中或程序正在退出，暂不能修改资料。", 409);
         using var cmd = v.Db.CreateCommand();
-        cmd.CommandText = "UPDATE records SET title=$title WHERE id=$id AND workspace=$workspace;";
+        cmd.CommandText = "UPDATE records SET title=$title WHERE id=$id AND workspace=$workspace AND deleted=0;";
         cmd.Parameters.AddWithValue("$title", input.Title.Trim());
         cmd.Parameters.AddWithValue("$id", id);
         cmd.Parameters.AddWithValue("$workspace", workspace);
@@ -574,6 +575,27 @@ app.MapPut("/api/records/{workspace}/{id:long}", async (
     finally { v.Gate.Release(); }
 });
 
+// Legacy general records share the same authenticated soft-delete and trash policy.
+app.MapDelete("/api/records/{workspace}/{id:long}",async(
+    HttpContext ctx,Vault v,string workspace,long id)=>
+{
+    if(!v.Allowed(ctx))return Results.Unauthorized();
+    if(!Vault.WorkspaceValid(workspace))return Fail("无效工作区。");
+    if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务执行中，不可删除。",409);
+    await v.Gate.WaitAsync();
+    try
+    {
+        if(!v.Allowed(ctx))return Results.Unauthorized();
+        if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务执行中，不可删除。",409);
+        using var cmd=v.Db.CreateCommand();
+        cmd.CommandText="UPDATE records SET deleted=1 WHERE id=$id AND workspace=$w AND deleted=0;";
+        cmd.Parameters.AddWithValue("$id",id);
+        cmd.Parameters.AddWithValue("$w",workspace);
+        return cmd.ExecuteNonQuery()==1?Results.Ok(new{ok=true}):Results.NotFound();
+    }
+    finally{v.Gate.Release();}
+});
+
 app.MapPost("/api/records/{workspace}/{id:long}/files", async (HttpContext ctx, Vault v, string workspace, long id) =>
 {
     if (!v.Allowed(ctx)) return Results.Unauthorized();
@@ -582,9 +604,10 @@ app.MapPost("/api/records/{workspace}/{id:long}/files", async (HttpContext ctx, 
     const long limit = 64L * 1024 * 1024; // Intentionally small for first web prototype.
     if (length is null or < 0 or > limit) return Fail("测试版仅支持已知大小、最多 64 MiB 的单文件。", 413);
     string name = Uri.UnescapeDataString(ctx.Request.Headers["X-File-Name"].ToString());
-    if (string.IsNullOrWhiteSpace(name) || name != Path.GetFileName(name) ||
-        name is "." or ".." || name.Contains('\\') || name.Contains('/') || name.Length > 240)
-        return Fail("文件名无效。");
+    if(BusinessFileStore.CheckName(name) is string badName)return Fail(badName);
+    string mode=ctx.Request.Headers["X-Upload-Mode"].ToString();
+    if(mode=="")mode="update";
+    string requestedGroup=ctx.Request.Headers["X-File-Group"].ToString();
     if (!v.TryBeginFileTask(ctx, out var taskCancellation))
         return Fail("当前有文件任务正在执行，或程序正在安全退出。", 409);
     try
@@ -597,7 +620,7 @@ app.MapPost("/api/records/{workspace}/{id:long}/files", async (HttpContext ctx, 
             if (!v.Allowed(ctx)) return Results.Unauthorized();
         using (var exists = v.Db.CreateCommand())
         {
-            exists.CommandText = "SELECT count(*) FROM records WHERE id=$id AND workspace=$w;";
+            exists.CommandText = "SELECT count(*) FROM records WHERE id=$id AND workspace=$w AND deleted=0;";
             exists.Parameters.AddWithValue("$id", id);
             exists.Parameters.AddWithValue("$w", workspace);
             if ((long)exists.ExecuteScalar()! != 1L) return Results.NotFound();
@@ -605,16 +628,19 @@ app.MapPost("/api/records/{workspace}/{id:long}/files", async (HttpContext ctx, 
         long reserve = Math.Max(128L * 1024 * 1024, length.Value / 3);
         long free = new DriveInfo(Path.GetPathRoot(v.Path)!).AvailableFreeSpace;
         if (free < length + reserve) return Fail("数据库所在磁盘剩余空间不足。", 507);
+        var choice=GeneralStore.ChooseVersion(v.Db,workspace,id,name,mode,requestedGroup);
         long fileId;
         using (var insert = v.Db.CreateCommand())
         {
             insert.CommandText = """
-                INSERT INTO attachments(record_id,filename,expected_size,state)
-                VALUES($r,$n,$size,'writing'); SELECT last_insert_rowid();
+                INSERT INTO attachments(record_id,filename,expected_size,state,version,group_id)
+                VALUES($r,$n,$size,'writing',$version,$group); SELECT last_insert_rowid();
                 """;
             insert.Parameters.AddWithValue("$r", id);
             insert.Parameters.AddWithValue("$n", name);
             insert.Parameters.AddWithValue("$size", length.Value);
+            insert.Parameters.AddWithValue("$version",choice.Version);
+            insert.Parameters.AddWithValue("$group",choice.Group);
             fileId = (long)insert.ExecuteScalar()!;
         }
         try
@@ -657,7 +683,7 @@ app.MapPost("/api/records/{workspace}/{id:long}/files", async (HttpContext ctx, 
             update.Parameters.AddWithValue("$h", digest);
             update.Parameters.AddWithValue("$id", fileId);
             update.ExecuteNonQuery();
-            return Results.Json(new { id = fileId, size, sha256 = digest });
+            return Results.Json(new { id = fileId, size, sha256 = digest,version=choice.Version,groupId=choice.Group });
         }
         catch
         {
@@ -706,7 +732,7 @@ app.MapGet("/api/files/{workspace}/{id:long}", async (HttpContext ctx, Vault v, 
         {
             lookup.CommandText = """
                 SELECT a.filename FROM attachments a JOIN records r ON a.record_id=r.id
-                WHERE a.id=$id AND a.state='ready' AND r.workspace=$w;
+                WHERE a.id=$id AND a.state='ready' AND a.deleted=0 AND r.deleted=0 AND r.workspace=$w;
                 """;
             lookup.Parameters.AddWithValue("$id", id);
             lookup.Parameters.AddWithValue("$w", workspace);
@@ -722,7 +748,7 @@ app.MapGet("/api/files/{workspace}/{id:long}", async (HttpContext ctx, Vault v, 
             SELECT c.bytes FROM chunks c
             JOIN attachments a ON a.id=c.attachment_id
             JOIN records r ON a.record_id=r.id
-            WHERE a.id=$id AND a.state='ready' AND r.workspace=$w ORDER BY c.idx;
+            WHERE a.id=$id AND a.state='ready' AND a.deleted=0 AND r.deleted=0 AND r.workspace=$w ORDER BY c.idx;
             """;
         cmd.Parameters.AddWithValue("$id", id);
         cmd.Parameters.AddWithValue("$w", workspace);
@@ -734,6 +760,30 @@ app.MapGet("/api/files/{workspace}/{id:long}", async (HttpContext ctx, Vault v, 
         }
     }
     finally { v.Gate.Release(); }
+});
+
+app.MapDelete("/api/files/{workspace}/{id:long}",async(
+    HttpContext ctx,Vault v,string workspace,long id)=>
+{
+    if(!v.Allowed(ctx))return Results.Unauthorized();
+    if(!Vault.WorkspaceValid(workspace))return Fail("无效工作区。");
+    if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务执行中，不可删除原件。",409);
+    await v.Gate.WaitAsync();
+    try
+    {
+        if(!v.Allowed(ctx))return Results.Unauthorized();
+        if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务执行中，不可删除原件。",409);
+        using var cmd=v.Db.CreateCommand();
+        cmd.CommandText="""
+            UPDATE attachments SET deleted=1 WHERE id=$id AND deleted=0
+            AND state='ready' AND EXISTS(SELECT 1 FROM records r
+              WHERE r.id=record_id AND r.workspace=$w AND r.deleted=0);
+            """;
+        cmd.Parameters.AddWithValue("$id",id);
+        cmd.Parameters.AddWithValue("$w",workspace);
+        return cmd.ExecuteNonQuery()==1?Results.Ok(new{ok=true}):Results.NotFound();
+    }
+    finally{v.Gate.Release();}
 });
 
 BusinessFileEndpoints.Map(app);
@@ -963,7 +1013,7 @@ record OpenInput(string? Path, string? Password, bool Create);
 record ResumeInput(string? Password);
 record ExitInput(string? Choice);
 record TitleInput(string? Title);
-record FileView(long Id, string Name, long Size, string Sha256);
+record FileView(long Id, string Name, long Size, string Sha256,int Version=1,string GroupId="");
 record RecordView(long Id, string Title, List<FileView> Files);
 
 sealed class Vault : IDisposable
