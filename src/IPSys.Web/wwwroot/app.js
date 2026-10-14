@@ -442,6 +442,7 @@ function businessAttachmentList(kind,ownerId,section=''){
  '<button class="btn btn-sm" data-business-download="'+f.id+'">下载</button>'+
  '<button class="btn btn-sm" data-business-delete="'+f.id+'">移除</button></div>';
  return '<div class="tabletools"><b>原件附件 '+groups.size+' 份</b><div class="actions">'+category+
+ '<label class="file-dedup-choice"><input type="checkbox" id="businessReuseExisting"> 同内容复用存储</label>'+
  '<button class="btn primary" data-action="businessUpload">＋ 上传原件</button></div></div>'+
  '<p class="hint">同名原件可选择更新已有版本链，或作为独立新文件归档；同工作区共享引用自动显示新版本。单文件上限 64 MiB。</p>'+
  ([...groups.values()].map(g=>{g.sort((a,b)=>b.version-a.version||b.id-a.id);
@@ -464,11 +465,12 @@ async function uploadBusinessAttachment(file,meta){
    'X-File-Name':encodeURIComponent(file.name),
    'X-Material-Category':encodeURIComponent(meta.category||''),
    'X-Upload-Mode':meta.mode||'new',
-   'X-File-Group':meta.groupId||''
+   'X-File-Group':meta.groupId||'',
+   'X-Duplicate-Mode':meta.duplicateMode||'independent'
   },body:file});
   const saved=await response.json();
   await refresh();
-  notice('附件已归档（v'+saved.version+'），SHA-256 '+saved.sha256.slice(0,16)+'…');
+  notice('附件已归档（v'+saved.version+'）'+(saved.reused?'，复用了同工作区已有字节':'')+'，SHA-256 '+saved.sha256.slice(0,16)+'…');
  }catch(e){notice(e.message,true);}
  finally{localFileTaskActive=false;}
 }
@@ -917,7 +919,8 @@ el('content').addEventListener('click',async ev=>{
    pendingBusinessUpload={
     kind:detail.kind,ownerId:detail.id,
     section:detail.kind==='archive'?page:'',
-    category:detail.kind==='ip'?(el('businessMaterialCategory')?.value||'其他材料'):''
+    category:detail.kind==='ip'?(el('businessMaterialCategory')?.value||'其他材料'):'',
+    duplicateMode:el('businessReuseExisting')?.checked?'reuse':'independent'
    };
    const chooser=el('businessFileInput');chooser.value='';chooser.click();
    break;
