@@ -334,6 +334,9 @@ assert.ok(js.includes("const matches=[...new Map(")&&js.includes("const choice=p
  'Same-name originals must offer explicit new-file versus update choice');
 assert.ok(js.includes("'X-Upload-Mode':meta.mode||'new'")&&js.includes("'X-File-Group':meta.groupId||''"),
  'Business upload must identify the selected original group');
+assert.ok(js.includes("'X-Duplicate-Mode':meta.duplicateMode||'independent'")&&
+ js.includes('id="businessReuseExisting"'),
+ 'Byte deduplication must require a visible user choice');
 assert.ok(js.includes('data-general-file-delete=')&&js.includes("case 'deleteRecord'"),
  'Legacy general records and originals must expose the trash actions');
 assert.ok(js.includes("'X-Upload-Mode':mode")&&js.includes("'X-File-Group':groupId"),
