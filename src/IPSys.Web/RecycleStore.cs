@@ -26,6 +26,9 @@ static class RecycleStore
             ORDER BY id DESC;
             ""","project");
         rows.AddRange(Simple(db,workspace,"""
+            SELECT id,title,'' FROM records WHERE workspace=$w AND deleted=1 ORDER BY id DESC;
+            ""","general"));
+        rows.AddRange(Simple(db,workspace,"""
             SELECT id,name,'' FROM business_ips WHERE workspace=$w AND deleted=1
             ORDER BY id DESC;
             ""","ip"));
@@ -50,6 +53,12 @@ static class RecycleStore
         foreach(var r in dead)
             if(BusinessFileStore.OwnerForDeletedLink(db,workspace,r.Id))
                 rows.Add(new RecycleItem("file",r.Id,r.Name,"",null));
+        rows.AddRange(Simple(db,workspace,"""
+            SELECT a.id,a.filename,'' FROM attachments a
+            JOIN records r ON r.id=a.record_id
+            WHERE r.workspace=$w AND r.deleted=0 AND a.deleted=1 AND a.state='ready'
+            ORDER BY a.id DESC;
+            ""","general_file"));
         return rows;
     }
     private static bool Deleted(SqliteConnection db,string workspace,RecycleKey r)
@@ -60,6 +69,18 @@ static class RecycleStore
         cmd.Parameters.AddWithValue("$w",workspace);
         switch(r.Kind)
         {
+            case "general":
+                if(r.Section!="")return false;
+                cmd.CommandText="SELECT count(*) FROM records WHERE id=$id AND workspace=$w AND deleted=1;";
+                break;
+            case "general_file":
+                if(r.Section!="")return false;
+                cmd.CommandText="""
+                    SELECT count(*) FROM attachments a JOIN records r ON r.id=a.record_id
+                    WHERE a.id=$id AND a.deleted=1 AND a.state='ready'
+                    AND r.workspace=$w AND r.deleted=0;
+                    """;
+                break;
             case "project":
                 if(r.Section!="")return false;
                 cmd.CommandText="SELECT count(*) FROM business_projects WHERE id=$id AND workspace=$w AND deleted=1;";
@@ -108,6 +129,23 @@ static class RecycleStore
         var id=item.Id;var section=item.Section;
         switch(item.Kind)
         {
+            case "general":
+                if(purge)
+                {
+                    Execute(db,tx,"DELETE FROM chunks WHERE attachment_id IN (SELECT id FROM attachments WHERE record_id=$id);",workspace,id);
+                    Execute(db,tx,"DELETE FROM attachments WHERE record_id=$id;",workspace,id);
+                    Execute(db,tx,"DELETE FROM records WHERE id=$id AND workspace=$w AND deleted=1;",workspace,id);
+                }
+                else Execute(db,tx,"UPDATE records SET deleted=0 WHERE id=$id AND workspace=$w AND deleted=1;",workspace,id);
+                break;
+            case "general_file":
+                if(purge)
+                {
+                    Execute(db,tx,"DELETE FROM chunks WHERE attachment_id=$id;",workspace,id);
+                    Execute(db,tx,"DELETE FROM attachments WHERE id=$id AND deleted=1;",workspace,id);
+                }
+                else Execute(db,tx,"UPDATE attachments SET deleted=0 WHERE id=$id AND deleted=1;",workspace,id);
+                break;
             case "file":
                 Execute(db,tx,purge?
                     "DELETE FROM business_file_links WHERE id=$id AND workspace=$w AND deleted=1;":
