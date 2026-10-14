@@ -4,7 +4,7 @@ using Microsoft.Data.Sqlite;
 
 record BusinessAssociateInput(string TargetKind,long TargetOwnerId,string TargetSection,bool Move);
 record BusinessFileView(long Id,string Kind,long OwnerId,string Section,
-    string Name,string Category,int Version,long Size,string Sha256);
+    string Name,string Category,int Version,long Size,string Sha256,string GroupId);
 
 static class BusinessFileStore
 {
@@ -88,11 +88,72 @@ static class BusinessFileStore
               filename TEXT NOT NULL,
               category TEXT NOT NULL DEFAULT '',
               version INTEGER NOT NULL CHECK(version>0),
+              group_id TEXT NOT NULL DEFAULT '',
               deleted INTEGER NOT NULL DEFAULT 0 CHECK(deleted IN (0,1)));
             CREATE INDEX IF NOT EXISTS idx_business_file_owner
               ON business_file_links(workspace,kind,owner_id,section,deleted);
             """;
         cmd.ExecuteNonQuery();
+        // Non-destructive metadata upgrade for databases created before B05b-2.
+        using(var columns=db.CreateCommand())
+        {
+            columns.CommandText="PRAGMA table_info(business_file_links);";
+            using var reader=columns.ExecuteReader();
+            bool found=false;
+            while(reader.Read())if(reader.GetString(1)=="group_id")found=true;
+            if(!found)
+            {
+                using var alter=db.CreateCommand();
+                alter.CommandText="ALTER TABLE business_file_links ADD COLUMN group_id TEXT NOT NULL DEFAULT '';";
+                alter.ExecuteNonQuery();
+            }
+        }
+        BackfillGroups(db);
+    }
+    private static void BackfillGroups(SqliteConnection db)
+    {
+        var links=new List<(long Id,string Workspace,string Key,long ObjectId)>();
+        using(var q=db.CreateCommand())
+        {
+            q.CommandText="""
+                SELECT id,workspace,kind,owner_id,section,filename,category,object_id
+                FROM business_file_links ORDER BY id;
+                """;
+            using var r=q.ExecuteReader();
+            while(r.Read())
+                links.Add((r.GetInt64(0),r.GetString(1),
+                    r.GetString(1)+"|"+r.GetString(2)+"|"+r.GetInt64(3)+"|"+
+                    r.GetString(4)+"|"+r.GetString(5)+"|"+r.GetString(6),r.GetInt64(7)));
+        }
+        using(var pending=db.CreateCommand())
+        {
+            pending.CommandText="SELECT count(*) FROM business_file_links WHERE group_id='';";
+            if((long)pending.ExecuteScalar()! ==0)return;
+        }
+        // Legacy revisions of one owner/name/category and links sharing the same
+        // ready object in a workspace form one logical file, including deleted links.
+        int[] parent=Enumerable.Range(0,links.Count).ToArray();
+        int Root(int i){while(parent[i]!=i){parent[i]=parent[parent[i]];i=parent[i];}return i;}
+        void Union(int a,int b){a=Root(a);b=Root(b);if(a!=b)parent[Math.Max(a,b)]=Math.Min(a,b);}
+        var owner=new Dictionary<string,int>();
+        var objects=new Dictionary<string,int>();
+        for(int i=0;i<links.Count;i++)
+        {
+            var x=links[i];
+            if(owner.TryGetValue(x.Key,out int j))Union(i,j);else owner[x.Key]=i;
+            string key=x.Workspace+"|"+x.ObjectId;
+            if(objects.TryGetValue(key,out j))Union(i,j);else objects[key]=i;
+        }
+        using var tx=db.BeginTransaction();
+        for(int i=0;i<links.Count;i++)
+        {
+            using var cmd=db.CreateCommand();cmd.Transaction=tx;
+            cmd.CommandText="UPDATE business_file_links SET group_id=$group WHERE id=$id AND group_id='';";
+            cmd.Parameters.AddWithValue("$group","legacy-"+links[Root(i)].Id);
+            cmd.Parameters.AddWithValue("$id",links[i].Id);
+            cmd.ExecuteNonQuery();
+        }
+        tx.Commit();
     }
     public static List<BusinessFileView> List(SqliteConnection db,string workspace)
     {
@@ -101,7 +162,7 @@ static class BusinessFileStore
         {
             cmd.CommandText="""
                 SELECT l.id,l.kind,l.owner_id,l.section,l.filename,l.category,
-                    l.version,o.size,o.sha256
+                    l.version,o.size,o.sha256,l.group_id
                 FROM business_file_links l JOIN business_file_objects o ON o.id=l.object_id
                 WHERE l.workspace=$w AND l.deleted=0 AND o.state='ready'
                 ORDER BY l.id DESC;
@@ -111,7 +172,7 @@ static class BusinessFileStore
             while(reader.Read())
                 list.Add(new BusinessFileView(reader.GetInt64(0),reader.GetString(1),
                     reader.GetInt64(2),reader.GetString(3),reader.GetString(4),
-                    reader.GetString(5),reader.GetInt32(6),reader.GetInt64(7),reader.GetString(8)));
+                    reader.GetString(5),reader.GetInt32(6),reader.GetInt64(7),reader.GetString(8),reader.GetString(9)));
         }
         return list.Where(r=>OwnerExists(db,workspace,r.Kind,r.OwnerId,r.Section)).ToList();
     }
@@ -130,9 +191,36 @@ static class BusinessFileStore
     }
     public static (long LinkId,int Version) Finish(SqliteConnection db,long objectId,
         string workspace,string kind,long ownerId,string section,string name,string category,
-        long size,string sha256)
+        long size,string sha256,string mode,string requestedGroup)
     {
+        if(mode is not ("new" or "update"))throw new IOException("无效的附件版本处理方式。");
         using var tx=db.BeginTransaction();
+        string group=Guid.NewGuid().ToString("N");
+        if(mode=="update")
+        {
+            var choices=new HashSet<string>();
+            using var select=db.CreateCommand();select.Transaction=tx;
+            select.CommandText="""
+                SELECT DISTINCT group_id FROM business_file_links
+                WHERE workspace=$w AND kind=$kind AND owner_id=$owner AND section=$section
+                AND filename=$name AND category=$category AND deleted=0;
+                """;
+            select.Parameters.AddWithValue("$w",workspace);
+            select.Parameters.AddWithValue("$kind",kind);
+            select.Parameters.AddWithValue("$owner",ownerId);
+            select.Parameters.AddWithValue("$section",section);
+            select.Parameters.AddWithValue("$name",name);
+            select.Parameters.AddWithValue("$category",category);
+            using(var r=select.ExecuteReader())while(r.Read())choices.Add(r.GetString(0));
+            if(requestedGroup.Length>0)
+            {
+                if(!choices.Contains(requestedGroup))throw new IOException("指定的附件版本链不存在。");
+                group=requestedGroup;
+            }
+            else if(choices.Count==1)group=choices.Single();
+            else if(choices.Count>1)throw new IOException("同名原件有多组，请选择要更新的原件。");
+            // No matching name means a new logical file, preserving older callers.
+        }
         using(var update=db.CreateCommand())
         {
             update.Transaction=tx;
@@ -145,45 +233,59 @@ static class BusinessFileStore
             update.Parameters.AddWithValue("$hash",sha256);
             if(update.ExecuteNonQuery()!=1)throw new IOException("附件写入状态失效。");
         }
-        int version;
-        using(var lookup=db.CreateCommand())
+        int version=1;
+        var targets=new List<(string Kind,long OwnerId,string Section,string Filename,string Category)>();
+        if(mode=="update")
         {
-            lookup.Transaction=tx;
-            lookup.CommandText="""
-                SELECT COALESCE(MAX(version),0)+1 FROM business_file_links
-                WHERE workspace=$w AND kind=$kind AND owner_id=$owner
-                    AND section=$section AND filename=$name AND category=$category;
-                """;
-            lookup.Parameters.AddWithValue("$w",workspace);
-            lookup.Parameters.AddWithValue("$kind",kind);
-            lookup.Parameters.AddWithValue("$owner",ownerId);
-            lookup.Parameters.AddWithValue("$section",section);
-            lookup.Parameters.AddWithValue("$name",name);
-            lookup.Parameters.AddWithValue("$category",category);
-            version=Convert.ToInt32(lookup.ExecuteScalar());
+            using(var num=db.CreateCommand())
+            {
+                num.Transaction=tx;
+                num.CommandText="SELECT COALESCE(MAX(version),0)+1 FROM business_file_links WHERE workspace=$w AND group_id=$group;";
+                num.Parameters.AddWithValue("$w",workspace);
+                num.Parameters.AddWithValue("$group",group);
+                version=Convert.ToInt32(num.ExecuteScalar());
+            }
+            using(var find=db.CreateCommand())
+            {
+                find.Transaction=tx;
+                find.CommandText="""
+                    SELECT DISTINCT kind,owner_id,section,filename,category
+                    FROM business_file_links WHERE workspace=$w AND group_id=$group AND deleted=0;
+                    """;
+                find.Parameters.AddWithValue("$w",workspace);
+                find.Parameters.AddWithValue("$group",group);
+                using var r=find.ExecuteReader();
+                while(r.Read())targets.Add((r.GetString(0),r.GetInt64(1),r.GetString(2),
+                    r.GetString(3),r.GetString(4)));
+            }
         }
-        long linkId;
-        using(var link=db.CreateCommand())
+        if(targets.Count==0)targets.Add((kind,ownerId,section,name,category));
+        long primary=0;
+        foreach(var target in targets)
         {
-            link.Transaction=tx;
-            link.CommandText="""
+            // Removed references must not silently reappear on version updates.
+            using var insert=db.CreateCommand();insert.Transaction=tx;
+            insert.CommandText="""
                 INSERT INTO business_file_links(workspace,kind,owner_id,section,
-                    object_id,filename,category,version)
-                VALUES($w,$kind,$owner,$section,$object,$name,$category,$version);
+                    object_id,filename,category,version,group_id)
+                VALUES($w,$kind,$owner,$section,$object,$name,$category,$version,$group);
                 SELECT last_insert_rowid();
                 """;
-            link.Parameters.AddWithValue("$w",workspace);
-            link.Parameters.AddWithValue("$kind",kind);
-            link.Parameters.AddWithValue("$owner",ownerId);
-            link.Parameters.AddWithValue("$section",section);
-            link.Parameters.AddWithValue("$object",objectId);
-            link.Parameters.AddWithValue("$name",name);
-            link.Parameters.AddWithValue("$category",category);
-            link.Parameters.AddWithValue("$version",version);
-            linkId=(long)link.ExecuteScalar()!;
+            insert.Parameters.AddWithValue("$w",workspace);
+            insert.Parameters.AddWithValue("$kind",target.Kind);
+            insert.Parameters.AddWithValue("$owner",target.OwnerId);
+            insert.Parameters.AddWithValue("$section",target.Section);
+            insert.Parameters.AddWithValue("$object",objectId);
+            insert.Parameters.AddWithValue("$name",target.Filename);
+            insert.Parameters.AddWithValue("$category",target.Category);
+            insert.Parameters.AddWithValue("$version",version);
+            insert.Parameters.AddWithValue("$group",group);
+            var inserted=(long)insert.ExecuteScalar()!;
+            if(target.Kind==kind&&target.OwnerId==ownerId&&target.Section==section)primary=inserted;
         }
+        if(primary==0)throw new IOException("更新目标与上传记录不一致。");
         tx.Commit();
-        return (linkId,version);
+        return (primary,version);
     }
     public static void CleanupWriting(SqliteConnection db,long objectId)
     {
@@ -211,8 +313,8 @@ static class BusinessFileStore
             using var cmd=db.CreateCommand();cmd.Transaction=tx;
             cmd.CommandText="""
                 INSERT INTO business_file_links(workspace,kind,owner_id,section,
-                    object_id,filename,category,version,deleted)
-                SELECT $toW,$toKind,$toId,$toSection,object_id,filename,category,version,0
+                    object_id,filename,category,version,group_id,deleted)
+                SELECT $toW,$toKind,$toId,$toSection,object_id,filename,category,version,group_id,0
                 FROM business_file_links
                 WHERE workspace=$fromW AND kind=$fromKind AND owner_id=$fromId
                     AND section=$fromSection AND deleted=0;
@@ -231,12 +333,12 @@ static class BusinessFileStore
         // Q61: cross-workspace links must not reference the same physical object.
         // Duplicate each unique object once per clone transaction; new links refer
         // only to independent copies of its complete encrypted-db byte stream.
-        var links=new List<(long ObjectId,string Name,string Category,int Version)>();
+        var links=new List<(long ObjectId,string Name,string Category,int Version,string GroupId)>();
         using(var query=db.CreateCommand())
         {
             query.Transaction=tx;
             query.CommandText="""
-                SELECT l.object_id,l.filename,l.category,l.version
+                SELECT l.object_id,l.filename,l.category,l.version,l.group_id
                 FROM business_file_links l JOIN business_file_objects o ON o.id=l.object_id
                 WHERE l.workspace=$w AND l.kind=$kind AND l.owner_id=$id
                     AND l.section=$section AND l.deleted=0 AND o.state='ready'
@@ -248,9 +350,10 @@ static class BusinessFileStore
             query.Parameters.AddWithValue("$section",fromSection);
             using var reader=query.ExecuteReader();
             while(reader.Read())links.Add((reader.GetInt64(0),reader.GetString(1),
-                reader.GetString(2),reader.GetInt32(3)));
+                reader.GetString(2),reader.GetInt32(3),reader.GetString(4)));
         }
         var copied=new Dictionary<long,long>();
+        var groups=new Dictionary<string,string>();
         foreach(var link in links)
         {
             if(!copied.TryGetValue(link.ObjectId,out long newObject))
@@ -280,11 +383,13 @@ static class BusinessFileStore
                 }
                 copied.Add(link.ObjectId,newObject);
             }
+            if(!groups.TryGetValue(link.GroupId,out string? clonedGroup))
+                groups[link.GroupId]=clonedGroup=Guid.NewGuid().ToString("N");
             using var refCmd=db.CreateCommand();refCmd.Transaction=tx;
             refCmd.CommandText="""
                 INSERT INTO business_file_links(workspace,kind,owner_id,section,object_id,
-                    filename,category,version)
-                VALUES($w,$kind,$owner,$section,$object,$name,$category,$version);
+                    filename,category,version,group_id)
+                VALUES($w,$kind,$owner,$section,$object,$name,$category,$version,$group);
                 """;
             refCmd.Parameters.AddWithValue("$w",targetWorkspace);
             refCmd.Parameters.AddWithValue("$kind",targetKind);
@@ -294,6 +399,7 @@ static class BusinessFileStore
             refCmd.Parameters.AddWithValue("$name",link.Name);
             refCmd.Parameters.AddWithValue("$category",link.Category);
             refCmd.Parameters.AddWithValue("$version",link.Version);
+            refCmd.Parameters.AddWithValue("$group",clonedGroup);
             refCmd.ExecuteNonQuery();
         }
     }
@@ -323,11 +429,11 @@ static class BusinessFileStore
     {
         if(!ScopeValid(workspace,kind,section)||
             !OwnerExists(db,workspace,kind,targetOwner,section))return false;
-        string fromKind,fromSection,name,material;long fromOwner;
+        string fromKind,fromSection,name,material,sourceGroup;long fromOwner;
         using(var cmd=db.CreateCommand())
         {
             cmd.CommandText="""
-                SELECT kind,owner_id,section,filename,category
+                SELECT kind,owner_id,section,filename,category,group_id
                 FROM business_file_links WHERE id=$id AND workspace=$w AND deleted=0;
                 """;
             cmd.Parameters.AddWithValue("$id",sourceLinkId);
@@ -335,7 +441,7 @@ static class BusinessFileStore
             using var r=cmd.ExecuteReader();
             if(!r.Read())return false;
             fromKind=r.GetString(0);fromOwner=r.GetInt64(1);fromSection=r.GetString(2);
-            name=r.GetString(3);material=r.GetString(4);
+            name=r.GetString(3);material=r.GetString(4);sourceGroup=r.GetString(5);
         }
         if(!OwnerExists(db,workspace,fromKind,fromOwner,fromSection))return false;
         if(kind==fromKind&&targetOwner==fromOwner&&section==fromSection)return false;
@@ -348,7 +454,7 @@ static class BusinessFileStore
                 SELECT l.object_id,l.version FROM business_file_links l
                 JOIN business_file_objects o ON o.id=l.object_id
                 WHERE l.workspace=$w AND l.kind=$kind AND l.owner_id=$owner
-                  AND l.section=$section AND l.filename=$name AND l.category=$material
+                  AND l.section=$section AND l.group_id=$group
                   AND l.deleted=0 AND o.state='ready'
                 ORDER BY l.version,l.id;
                 """;
@@ -357,7 +463,7 @@ static class BusinessFileStore
             cmd.Parameters.AddWithValue("$owner",fromOwner);
             cmd.Parameters.AddWithValue("$section",fromSection);
             cmd.Parameters.AddWithValue("$name",name);
-            cmd.Parameters.AddWithValue("$material",material);
+            cmd.Parameters.AddWithValue("$group",sourceGroup);
             using var reader=cmd.ExecuteReader();
             while(reader.Read())versions.Add((reader.GetInt64(0),reader.GetInt32(1)));
         }
@@ -366,6 +472,20 @@ static class BusinessFileStore
         // If target already refers to these exact objects, abort rather than
         // silently duplicating references or dropping the source on move.
         int next;
+        using(var already=db.CreateCommand())
+        {
+            already.Transaction=tx;
+            already.CommandText="""
+                SELECT count(*) FROM business_file_links WHERE workspace=$w AND kind=$kind
+                AND owner_id=$owner AND section=$section AND group_id=$group AND deleted=0;
+                """;
+            already.Parameters.AddWithValue("$w",workspace);
+            already.Parameters.AddWithValue("$kind",kind);
+            already.Parameters.AddWithValue("$owner",targetOwner);
+            already.Parameters.AddWithValue("$section",section);
+            already.Parameters.AddWithValue("$group",sourceGroup);
+            if((long)already.ExecuteScalar()!>0)return false;
+        }
         using(var check=db.CreateCommand())
         {
             check.Transaction=tx;
@@ -388,8 +508,8 @@ static class BusinessFileStore
             cmd.Transaction=tx;
             cmd.CommandText="""
                 INSERT INTO business_file_links(workspace,kind,owner_id,section,object_id,
-                    filename,category,version,deleted)
-                SELECT $w,$kind,$owner,$section,$object,$name,$material,$version,0
+                    filename,category,version,group_id,deleted)
+                SELECT $w,$kind,$owner,$section,$object,$name,$material,$version,$group,0
                 WHERE NOT EXISTS(
                     SELECT 1 FROM business_file_links WHERE workspace=$w AND kind=$kind
                     AND owner_id=$owner AND section=$section AND object_id=$object AND deleted=0);
@@ -401,6 +521,7 @@ static class BusinessFileStore
             cmd.Parameters.AddWithValue("$object",objectId);
             cmd.Parameters.AddWithValue("$name",name);
             cmd.Parameters.AddWithValue("$material",destCategory);
+            cmd.Parameters.AddWithValue("$group",sourceGroup);
             cmd.Parameters.AddWithValue("$version",++next);
             if(cmd.ExecuteNonQuery()!=1)return false;
         }
@@ -411,14 +532,14 @@ static class BusinessFileStore
             cmd.CommandText="""
                 UPDATE business_file_links SET deleted=1
                 WHERE workspace=$w AND kind=$kind AND owner_id=$owner AND section=$section
-                    AND filename=$name AND category=$material AND deleted=0;
+                    AND group_id=$group AND deleted=0;
                 """;
             cmd.Parameters.AddWithValue("$w",workspace);
             cmd.Parameters.AddWithValue("$kind",fromKind);
             cmd.Parameters.AddWithValue("$owner",fromOwner);
             cmd.Parameters.AddWithValue("$section",fromSection);
             cmd.Parameters.AddWithValue("$name",name);
-            cmd.Parameters.AddWithValue("$material",material);
+            cmd.Parameters.AddWithValue("$group",sourceGroup);
             if(cmd.ExecuteNonQuery()!=versions.Count)throw new IOException("源附件已变化，取消关联转移。");
         }
         tx.Commit();
@@ -481,6 +602,11 @@ static class BusinessFileEndpoints
         {
             if(!v.Allowed(ctx))return Results.Unauthorized();
             string section=ctx.Request.Query["section"].ToString();
+            string mode=ctx.Request.Headers["X-Upload-Mode"].ToString();
+            if(mode=="")mode="update";
+            string group=ctx.Request.Headers["X-File-Group"].ToString();
+            if(mode is not ("new" or "update") || group.Length>80 || group.Any(char.IsControl))
+                return Fail("附件版本处理选项无效。");
             if(!BusinessFileStore.ScopeValid(workspace,kind,section))
                 return Fail("无效的附件业务范围。");
             long? length=ctx.Request.ContentLength;
@@ -555,7 +681,7 @@ static class BusinessFileEndpoints
                         if(total!=length.Value)throw new IOException("附件上传不完整。");
                         string digest=Convert.ToHexString(hash.GetHashAndReset());
                         var saved=BusinessFileStore.Finish(v.Db,objectId,workspace,kind,id,
-                            section,filename,category,total,digest);
+                            section,filename,category,total,digest,mode,group);
                         return Results.Json(new {
                             id=saved.LinkId,version=saved.Version,size=total,sha256=digest
                         });
