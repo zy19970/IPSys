@@ -52,6 +52,10 @@ jobs:
         run: |
           node --check src/IPSys.Web/wwwroot/app.js
           if ($LASTEXITCODE -ne 0) { throw 'Main application JavaScript syntax failed' }
+          node --check src/IPSys.Web/wwwroot/export.js
+          if ($LASTEXITCODE -ne 0) { throw 'Export script syntax failed' }
+          node src/IPSys.Web/tests/export-smoke.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Directory/ZIP export smoke failed' }
           node src/IPSys.Web/tests/ui-main-smoke.cjs
           if ($LASTEXITCODE -ne 0) { throw 'Merged UI structure smoke failed' }
           $source = Get-Content demo/ui-preview.html -Raw
