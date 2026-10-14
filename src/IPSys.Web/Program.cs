@@ -45,8 +45,8 @@ app.Use(async (ctx, next) =>
     ctx.Response.Headers["Cache-Control"] = "no-store";
     ctx.Response.Headers["X-Content-Type-Options"] = "nosniff";
     ctx.Response.Headers["Content-Security-Policy"] =
-        "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; " +
-        "connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'";
+        "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; " +
+        "connect-src 'self'; frame-src blob:; object-src 'none'; frame-ancestors 'none'; base-uri 'none'";
     await next();
 });
 // Serve web files from within the executable, not from wwwroot on disk.
