@@ -8,6 +8,7 @@ const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<
 let activePreviewUrl=null;
 let token=sessionStorage.getItem('ip-token')||'';
 let dbName=sessionStorage.getItem('ip-db')||'';
+let mcpEnabled=false;
 let space=null,creating=false,resuming=false,localFileTaskActive=false;
 let page='dashboard',detail=null,archiveGroup=null,editingId=null,projectEditingId=null,projectRows=[],ipEditingId=null,ipRows=[],contractEditingId=null,contractProjectId=null,contractRows=[],businessFileRows=[],trashRows=[],pendingBusinessUpload=null,pendingAssocId=null,archiveRows={certificate:[],achievement:[],academic:[]},archiveEditingId=null,archiveTransferId=null,archiveTransferMode=null,liveRows=[],filterName='',filterKind='全部类型',filterState='全部状态',selected=new Set();
 const companyNav=[['dashboard','工作台','▦'],['ip','知识产权','◇'],['researchProject','科研项目','▤'],['horizontalProject','横向项目','▥'],['contract','全部合同','▧'],['certificate','企业资质','▣'],['general','综合资料','▥']];
@@ -144,17 +145,18 @@ async function refresh(){
   if(!token||!space)return;
   const requestedSpace=space;
   try{const archiveSections=space==='personal'?['certificate','achievement','academic']:['certificate','achievement'];
-  const [rows,projects,ips,contracts,files,trash,...archiveResults]=await Promise.all([
+  const [rows,projects,ips,contracts,files,trash,mcpAccess,...archiveResults]=await Promise.all([
     api('/api/records/'+space).then(r=>r.json()),
     api('/api/projects/'+space).then(r=>r.json()),
     api('/api/ip/'+space).then(r=>r.json()),
     api('/api/contracts/'+space).then(r=>r.json()),
     api('/api/business-files/'+space).then(r=>r.json()),
     api('/api/trash/'+space).then(r=>r.json()),
+    api('/api/mcp').then(r=>r.json()),
     ...archiveSections.map(section=>api('/api/archives/'+space+'/'+section).then(r=>r.json()))
   ]);
     if(requestedSpace!==space||!token)return;
-    liveRows=rows;projectRows=projects;ipRows=ips;contractRows=contracts;businessFileRows=files;trashRows=trash;
+    liveRows=rows;projectRows=projects;ipRows=ips;contractRows=contracts;businessFileRows=files;trashRows=trash;mcpEnabled=!!mcpAccess.enabled;
     archiveRows={certificate:[],achievement:[],academic:[]};
     archiveSections.forEach((section,i)=>archiveRows[section]=archiveResults[i]);render();
   }catch(error){notice(error.message,true);}
@@ -922,7 +924,7 @@ function searchPage(){
  (datasets.length?datasets.map(g=>`<section class="card searchgroup"><h2 class="sectiontitle">${escapeHtml(g.n)} <small class="muted">${g.rows.length} 条</small> ${g.k==='general'?'<span class="realflag">真实数据</span>':stamp()}</h2>${g.rows.map(r=>`<div class="minirow"><button class="link" ${g.k==='general'?`data-live-id="${r.id}"`:`data-search-detail="${g.k}:${r.id}"`}>${escapeHtml(g.k==='general'?r.title:r.name)}</button><span class="muted">进入详情 →</span></div>`).join('')}</section>`).join(''):'<section class="white empty">当前工作区没有匹配的资料。</section>');
 }
 function settingsPage(){return heading('系统设置','数据库管理与已确认的维护操作','<button class="btn" data-nav="trash">查看回收站</button>')+
- `<section class="white detailsection"><div class="detailsectionhead"><h2>当前加密数据库</h2></div><div class="detailbody"><div class="minirow"><span>数据库文件</span><strong>${escapeHtml(dbName)}</strong></div><div class="minirow"><span>加密状态</span><span class="realflag">SQLCipher 已启用</span></div><div class="minirow"><span>数据库完整性检查</span><button class="btn" data-action="check">立即检查</button></div><div id="checkResult" class="hint"></div><div class="minirow"><span>关闭当前数据库</span><button class="btn" data-action="lock">关闭数据库</button></div></div></section>`+
+ `<section class="white detailsection"><div class="detailsectionhead"><h2>当前加密数据库</h2></div><div class="detailbody"><div class="minirow"><span>数据库文件</span><strong>${escapeHtml(dbName)}</strong></div><div class="minirow"><span>加密状态</span><span class="realflag">SQLCipher 已启用</span></div><div class="minirow"><span>数据库完整性检查</span><button class="btn" data-action="check">立即检查</button></div><div id="checkResult" class="hint"></div><div class="minirow"><span>本机 Codex MCP</span><span class="actions"><span class="hint">${mcpEnabled?'已开启':'默认关闭'}</span><button class="btn" data-action="mcpToggle">${mcpEnabled?'关闭 MCP':'开启 MCP'}</button></span></div><p class="hint">仅允许当前 Windows 用户通过本机 Codex MCP 操作已解锁的数据库；关库或退出自动失效。开启后 Codex 可新增项目、合同及原件。</p><div class="minirow"><span>关闭当前数据库</span><button class="btn" data-action="lock">关闭数据库</button></div></div></section>`+
  section('尚未接入的设置项','<div class="minirow"><span>修改数据库密码</span>'+stamp()+'</div><div class="minirow"><span>记录类别与标签</span>'+stamp()+'</div><p class="hint">手动备份需安全退出程序后在 Windows 资源管理器复制加密库。</p>');}
 function trashPage(){
  const names={project:'项目',contract:'合同',ip:'知识产权',archive:'资质与成果',file:'业务附件',general:'综合资料',general_file:'综合资料附件'};
@@ -1275,6 +1277,12 @@ el('content').addEventListener('click',async ev=>{
   case 'upload':el('uploadInput')?.click();break;
   case 'filter':filterName=el('filterSearch')?.value.trim()||'';filterKind=el('filterKind')?.value||'全部类型';filterState=el('filterState')?.value||'全部状态';selected.clear();render();break;
   case 'clearFilter':filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();render();break;
+  case 'mcpToggle':
+   try{
+    const updated=await(await api('/api/mcp',{method:'POST',json:{enabled:!mcpEnabled}})).json();
+    mcpEnabled=!!updated.enabled;render();
+    notice(mcpEnabled?'已启用本机 Codex MCP':'已关闭本机 Codex MCP');
+   }catch(e){notice(e.message,true);}break;
   case 'check':try{const status=await(await api('/api/check')).json();const out=el('checkResult');if(out)out.textContent='完整性：'+status.result+'；未完成附件：'+status.incomplete;notice(status.result==='ok'?'数据库完整性检查通过':'数据库检查异常',status.result!=='ok');}catch(e){notice(e.message,true);}break;
   case 'lock':await closeDb();break;
   default:notice('当前仅展示界面设计，尚未接入该业务功能');

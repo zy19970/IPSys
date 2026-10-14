@@ -331,6 +331,11 @@ assert.ok(js.includes("'/api/contracts/'+space+'/'+c.id+'/copy'"),
 assert.ok(js.includes("businessFileCount('archive',r.id,k)"),
  'Archive detail ledger must show actual attachment counts');
 
+// MCP UI is opt-in and scoped to a live unlocked database.
+assert.ok(js.includes("case 'mcpToggle'")&&js.includes("api('/api/mcp'")&&
+ js.includes("'开启 MCP'")&&js.includes("'关闭 MCP'"),
+ 'MCP settings toggle must be visible and use authenticated API');
+
 // B06 UX: latest-version-only select all, record-level multiple selection and single-version labels.
 for(const phrase of ["class=\"ledger-export-row\"","class=\"ledger-export-all\"",
  "case 'projectExportFolder'","case 'projectExportZip'",

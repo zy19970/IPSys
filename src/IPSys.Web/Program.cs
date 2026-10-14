@@ -9,6 +9,11 @@ using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.Data.Sqlite;
 using IPSys.Web;
 
+if(args.Contains("--mcp"))
+{
+    await McpLocal.RunStdioAsync();
+    return;
+}
 SQLitePCL.Batteries_V2.Init();
 var smoke = args.Contains("--smoke");
 // HTML/CSS/JS are read from managed assembly resources (works in Debug or single-file Release).
@@ -65,6 +70,17 @@ app.MapGet("/ui-preview", (HttpContext ctx) =>
         "style-src 'unsafe-inline'; img-src data:; connect-src 'none'; " +
         "object-src 'none'; base-uri 'none'; form-action 'none'";
     return Results.Bytes(previewHtml, contentType: "text/html; charset=utf-8");
+});
+
+// MCP access is deliberately disabled for every new database session.
+app.MapGet("/api/mcp", (HttpContext ctx,Vault v) =>
+    !v.Allowed(ctx)?(IResult)Results.Unauthorized():Results.Json(new {enabled=v.McpEnabled}));
+app.MapPost("/api/mcp", (HttpContext ctx,Vault v,McpAccessInput input) =>
+{
+    if(!v.Allowed(ctx))return Results.Unauthorized();
+    return v.SetMcpEnabled(input.Enabled)
+        ?Results.Json(new {enabled=v.McpEnabled})
+        :Fail("当前数据库未打开，或正在进行文件任务/退出，无法切换 MCP。",409);
 });
 
 app.MapGet("/api/status", (Vault v) => Results.Json(new
@@ -834,6 +850,9 @@ await app.StartAsync();
 string address = app.Services.GetRequiredService<IServer>().Features
     .Get<IServerAddressesFeature>()!.Addresses.Single();
 Console.WriteLine("IPSys 网页验证版：" + address);
+// Current-user-only local pipe; background lifecycle follows the web host.
+Task mcpHost=McpLocal.RunHostAsync(app.Services.GetRequiredService<Vault>(),
+    address,app.Lifetime.ApplicationStopping);
 if (smoke)
 {
     try
@@ -873,11 +892,13 @@ else
         await app.StopAsync();
     }
 }
+try{await mcpHost;}catch(OperationCanceledException){/* host has stopped */ }
 await app.DisposeAsync();
 
 static IResult Fail(string message, int status = 400) =>
     Results.Json(new { error = message }, statusCode: status);
 
+record McpAccessInput(bool Enabled);
 record ProjectInput(string? Name, string? ProjectType, string? ProjectNo, string? Leader,
     string? UndertakingOrg, string? StartDate, string? EndDate, string? ProjectStatus,
     string? Category, string? Remarks, string? Tags);
@@ -1025,6 +1046,17 @@ sealed class Vault : IDisposable
     private TaskCompletionSource<bool>? _fileTaskCompletion;
     private CancellationTokenSource? _fileTaskCancellation;
     private bool _exitRequested;
+    private bool _mcpEnabled;
+    public bool McpEnabled {get {lock(_taskSync)return _db!=null&&_mcpEnabled;}}
+    public bool SetMcpEnabled(bool enabled)
+    {
+        lock(_taskSync)
+        {
+            if(_db==null||_exitRequested||_fileTaskCompletion!=null)return false;
+            _mcpEnabled=enabled;
+            return true;
+        }
+    }
     public bool FileTaskActive { get { lock (_taskSync) return _fileTaskCompletion != null; } }
     public bool ExitRequested { get { lock (_taskSync) return _exitRequested; } }
     public bool TryBeginFileTask(HttpContext context, out CancellationToken cancellation)
@@ -1158,7 +1190,7 @@ sealed class Vault : IDisposable
         lock (_taskSync)
         {
             if (_db != null) throw new InvalidOperationException("已经打开另一数据库。");
-            _db = db; Path = path;
+            _db = db; Path = path;_mcpEnabled=false;
             _token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
             return _token;
         }
@@ -1171,6 +1203,7 @@ sealed class Vault : IDisposable
             // can report a close failure rather than silently treating it as safe.
             _db?.Dispose();
             _db = null;
+            _mcpEnabled=false;
             _token = null;
             Path = "";
         }
@@ -1257,6 +1290,84 @@ static class WebSmoke
         return (json.GetProperty("id").GetInt64(),json.GetProperty("version").GetInt32(),
             json.GetProperty("reused").GetBoolean());
     }
+    private static async Task VerifyMcpAsync(HttpClient client,string dir)
+    {
+        var disabled=await client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/mcp");
+        if(disabled.GetProperty("enabled").GetBoolean())
+            throw new IOException("重新打开加密库后 MCP 必须默认关闭。");
+        bool rejected=false;
+        try
+        {
+            await McpLocal.RunSmokeToolAsync("list_projects",
+                System.Text.Json.JsonSerializer.SerializeToElement(new {workspace="company"}));
+        }
+        catch(IOException ex)when(ex.Message.Contains("MCP 未授权")){rejected=true;}
+        if(!rejected)throw new IOException("关闭的 MCP 不得读取项目。");
+        (await client.PostAsJsonAsync("/api/mcp",new McpAccessInput(true)))
+            .EnsureSuccessStatusCode();
+        var result=await McpLocal.RunSmokeToolAsync("create_project",
+            System.Text.Json.JsonSerializer.SerializeToElement(new {
+                workspace="company",name="MCP 测试项目",project_type="科研项目"
+            }));
+        long project=result["id"]?.GetValue<long>()??throw new IOException("MCP 没有返回项目 ID");
+        var projects=await McpLocal.RunSmokeToolAsync("list_projects",
+            System.Text.Json.JsonSerializer.SerializeToElement(new {workspace="company"}));
+        if(!projects.AsArray().Any(x=>x?["id"]?.GetValue<long>()==project))
+            throw new IOException("MCP 创建项目未在真实台账出现。");
+        await McpLocal.RunSmokeToolAsync("update_project",
+            System.Text.Json.JsonSerializer.SerializeToElement(new {
+                workspace="company",project_id=project,name="MCP 修改项目"
+            }));
+        var contractResult=await McpLocal.RunSmokeToolAsync("create_contract",
+            System.Text.Json.JsonSerializer.SerializeToElement(new {
+                workspace="company",project_id=project,name="MCP 合同"
+            }));
+        long contract=contractResult["id"]?.GetValue<long>()??0;
+        if(contract<=0)throw new IOException("MCP 创建合同失败。");
+        var contracts=await McpLocal.RunSmokeToolAsync("list_contracts",
+            System.Text.Json.JsonSerializer.SerializeToElement(new {workspace="company"}));
+        if(!contracts.AsArray().Any(x=>x?["id"]?.GetValue<long>()==contract))
+            throw new IOException("MCP 合同未进入已有业务台账。");
+        var bytes=RandomNumberGenerator.GetBytes(8192);
+        string filename=System.IO.Path.Combine(dir,"mcp-test-file.bin");
+        await File.WriteAllBytesAsync(filename,bytes);
+        var upload=await McpLocal.RunSmokeToolAsync("upload_files",
+            System.Text.Json.JsonSerializer.SerializeToElement(new {
+                workspace="company",kind="contract",owner_id=contract,
+                paths=new[] {filename},on_conflict="new"
+            }));
+        if(upload["succeeded"]?.GetValue<int>()!=1)
+            throw new IOException("MCP 附件上传失败："+upload.ToJsonString());
+        var list=await McpLocal.RunSmokeToolAsync("list_files",
+            System.Text.Json.JsonSerializer.SerializeToElement(new {workspace="company"}));
+        long fileId=list.AsArray().FirstOrDefault(x=>x?["ownerId"]?.GetValue<long>()==contract&&
+                    x?["kind"]?.GetValue<string>()=="contract")?["id"]?.GetValue<long>()??0;
+        if(fileId<=0)throw new IOException("MCP 业务原件查询缺失。");
+        byte[] recovered=await client.GetByteArrayAsync(
+            $"/api/business-files/company/download/{fileId}");
+        if(!recovered.AsSpan().SequenceEqual(bytes))
+            throw new IOException("MCP 上传后解密原件字节与本地不符。");
+        await McpLocal.RunSmokeToolAsync("delete_file",
+            System.Text.Json.JsonSerializer.SerializeToElement(new {workspace="company",file_id=fileId}));
+        await McpLocal.RunSmokeToolAsync("delete_contract",
+            System.Text.Json.JsonSerializer.SerializeToElement(new {workspace="company",contract_id=contract}));
+        await McpLocal.RunSmokeToolAsync("delete_project",
+            System.Text.Json.JsonSerializer.SerializeToElement(new {workspace="company",project_id=project}));
+        var trash=await client.GetFromJsonAsync<List<RecycleItem>>("/api/trash/company");
+        if(trash==null||!trash.Any(x=>x.Kind=="project"&&x.Id==project))
+            throw new IOException("MCP 删除未进入回收站。");
+        (await client.PostAsJsonAsync("/api/mcp",new McpAccessInput(false)))
+            .EnsureSuccessStatusCode();
+        rejected=false;
+        try
+        {
+            await McpLocal.RunSmokeToolAsync("list_files",
+                System.Text.Json.JsonSerializer.SerializeToElement(new {workspace="company"}));
+        }
+        catch(IOException ex)when(ex.Message.Contains("MCP 未授权")){rejected=true;}
+        if(!rejected)throw new IOException("关闭 MCP 后 Agent 仍然能查询资料。");
+    }
+
     public static async Task Run(string address)
     {
         using var client = new HttpClient { BaseAddress = new Uri(address) };
@@ -1972,6 +2083,9 @@ static class WebSmoke
                 (await staleTab.PostAsync("/api/lock", null)).StatusCode != HttpStatusCode.Unauthorized)
                 throw new IOException("旧标签令牌不得访问或关闭新会话的数据库。");
             (await client.GetAsync("/api/check")).EnsureSuccessStatusCode();
+            // Real MCP pipe, authorization gate, CRUD and source-byte roundtrip.
+            // All writes occur in a disposable SQLCipher smoke database.
+            await VerifyMcpAsync(client,dir);
             using var finalLock = await client.PostAsync("/api/lock", null);
             finalLock.EnsureSuccessStatusCode();
 
