@@ -82,7 +82,7 @@ const renderSetup=[
  "function heading(name){return '<h1>'+escapeHtml(name)+'</h1>';}",
  "function stamp(){return '<span class=mockflag>界面示例</span>';}",
  "space='personal';",
- "liveRows=[{id:41,title:'个人<资料&测试>',files:[{id:3},{id:4}]}];",
+ "liveRows=[{id:41,title:'个人<资料&测试>',files:[{id:3,name:'a.pdf',groupId:'a'},{id:4,name:'b.pdf',groupId:'b'}]}];",
  "globalThis.__cards={",
  " personalAcademicJobs:mockCategoryTable('academic','学术兼职'),",
  " personalMeetings:mockCategoryTable('academic','会议报告'),",
