@@ -12,9 +12,11 @@ IPSys 支持本机 Codex 通过 MCP stdio 控制同一 Windows 用户已经运�
 
    也可使用本机 `~/.codex/config.toml` 配置：
 
-   `[mcp_servers.ipsys]
+   ```toml
+   [mcp_servers.ipsys]
    command = 'C:\IPSys\IPSys.Web.exe'
-   args = ["--mcp"]`
+   args = ["--mcp"]
+   ```
 
 4. 重新进入 Codex 会话，确认 MCP 工具列表，然后让 Agent 操作项目、合同和原件。任务结束后，回 IPSys 关闭 MCP。
 

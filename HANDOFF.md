@@ -1,5 +1,12 @@
 # IPSys 跨会话详细交接（2026-10-13）
 
+## 2026-10-14：本机 Codex MCP 已入 main，首版 Windows CI 全部通过
+
+用户明确要求为本机 Codex 添加 MCP，并追加允许删除项目、合同、原件。实现 `src/IPSys.Web/McpLocal.cs`：同一 `IPSys.Web.exe --mcp` 子进程使用 MCP stdio JSON-RPC，经当前 Windows 用户专用命名管道连接现有 WinForms 主进程；所有业务调用仍使用已认证 localhost API 操作同一 SQLCipher Vault。新增 `/api/mcp` 授权开关，数据库打开后默认关闭，关库/退出失效；前端「系统设置」提供开启/关闭。共十个工具：`list_projects`、`list_contracts`、`list_files`、`create_project`、`update_project`、`delete_project`、`create_contract`、`delete_contract`、`upload_files`、`delete_file`。删除均进入已有回收站，未开放永久清理。可通过 `MCP_CODEX.md` 注册本机 Codex 服务。
+
+Windows Actions run #38499596519 已通过 Debug/Release、MCP stdio 握手和工具列表、UI 静态校验、通过真实本机命名管道执行 SQLCipher 项目/合同/附件创建、上传 SHA-256 验证、回收站软删除与关闭后拒绝授权；已生成 `IPSys-Web-win-x64` 发布附件。用户本机 Codex 交互验收仍需执行，详见 `WEB_TESTING.md` 顶部。本批默认支持项目及合同附件，每文件限 64 MiB；跨工作区指定参数，默认不自动合并同名原件或物理字节。
+
+
 ## 2026-10-14：用户实测后的 B05/B06 附件交互修订
 
 根据综合资料详情截图，B05 原件组只剩一个有效版本时隐藏版本号（不重编号、不修改旧字节）。综合资料及业务附件的同名上传使用按钮弹窗，分「更新已有原件为新版本」「作为独立原件」「跳过」；两个入口均支持一次选择多文件，逐件归档并汇总失败。B06 结果面板在成功后约 9 秒、有失败时约 18 秒自动收起，仍支持手动关闭；导出全选只勾选有效最新版，历史版本手动选择。真实项目与知识产权台账增加多条记录勾选，点击「选择记录附件」后在模块选件面板预勾选所选记录的最新版，合同仍需手动补选，然后用原有文件夹或 ZIP 导出。相关 UI 与导出 smoke、人工验证步骤见 `src/IPSys.Web/tests/` 与 `WEB_TESTING.md` 顶部。待 Windows 最新 CI 与用户实机确认后，方可将该反馈修订标为正式验收通过。
