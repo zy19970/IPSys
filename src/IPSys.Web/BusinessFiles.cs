@@ -191,11 +191,12 @@ static class BusinessFileStore
         long objectId=(long)insert.ExecuteScalar()!;
         return (objectId,0,0);
     }
-    public static (long LinkId,int Version) Finish(SqliteConnection db,long objectId,
+    public static (long LinkId,int Version,bool Reused) Finish(SqliteConnection db,long objectId,
         string workspace,string kind,long ownerId,string section,string name,string category,
-        long size,string sha256,string mode,string requestedGroup)
+        long size,string sha256,string mode,string requestedGroup,string duplicateMode)
     {
-        if(mode is not ("new" or "update"))throw new IOException("无效的附件版本处理方式。");
+        if(mode is not ("new" or "update") || duplicateMode is not ("reuse" or "independent"))
+            throw new IOException("无效的附件版本或重复文件处理方式。");
         using var tx=db.BeginTransaction();
         string group=Guid.NewGuid().ToString("N");
         if(mode=="update")
@@ -234,6 +235,40 @@ static class BusinessFileStore
             update.Parameters.AddWithValue("$size",size);
             update.Parameters.AddWithValue("$hash",sha256);
             if(update.ExecuteNonQuery()!=1)throw new IOException("附件写入状态失效。");
+        }
+        // Deduplicate bytes only when explicitly requested by the caller.
+        // Never reuse objects with links across company/personal boundaries.
+        long selectedObject=objectId;
+        bool reused=false;
+        if(duplicateMode=="reuse")
+        {
+            using var candidate=db.CreateCommand();candidate.Transaction=tx;
+            candidate.CommandText="""
+                SELECT o.id FROM business_file_objects o
+                JOIN business_file_links l ON l.object_id=o.id
+                WHERE o.id<>$new AND o.state='ready' AND o.sha256=$hash AND o.size=$size
+                  AND l.workspace=$w
+                  AND NOT EXISTS(SELECT 1 FROM business_file_links other
+                    WHERE other.object_id=o.id AND other.workspace<>$w)
+                LIMIT 1;
+                """;
+            candidate.Parameters.AddWithValue("$new",objectId);
+            candidate.Parameters.AddWithValue("$hash",sha256);
+            candidate.Parameters.AddWithValue("$size",size);
+            candidate.Parameters.AddWithValue("$w",workspace);
+            var value=candidate.ExecuteScalar();
+            if(value!=null)
+            {
+                selectedObject=Convert.ToInt64(value);
+                using var clean=db.CreateCommand();clean.Transaction=tx;
+                clean.CommandText="""
+                    DELETE FROM business_file_chunks WHERE object_id=$new;
+                    DELETE FROM business_file_objects WHERE id=$new;
+                    """;
+                clean.Parameters.AddWithValue("$new",objectId);
+                clean.ExecuteNonQuery();
+                reused=true;
+            }
         }
         int version=1;
         var targets=new List<(string Kind,long OwnerId,string Section,string Filename,string Category)>();
@@ -277,7 +312,7 @@ static class BusinessFileStore
             insert.Parameters.AddWithValue("$kind",target.Kind);
             insert.Parameters.AddWithValue("$owner",target.OwnerId);
             insert.Parameters.AddWithValue("$section",target.Section);
-            insert.Parameters.AddWithValue("$object",objectId);
+            insert.Parameters.AddWithValue("$object",selectedObject);
             insert.Parameters.AddWithValue("$name",target.Filename);
             insert.Parameters.AddWithValue("$category",target.Category);
             insert.Parameters.AddWithValue("$version",version);
@@ -287,7 +322,7 @@ static class BusinessFileStore
         }
         if(primary==0)throw new IOException("更新目标与上传记录不一致。");
         tx.Commit();
-        return (primary,version);
+        return (primary,version,reused);
     }
     public static void CleanupWriting(SqliteConnection db,long objectId)
     {
@@ -607,6 +642,10 @@ static class BusinessFileEndpoints
             string mode=ctx.Request.Headers["X-Upload-Mode"].ToString();
             if(mode=="")mode="update";
             string group=ctx.Request.Headers["X-File-Group"].ToString();
+            string duplicateMode=ctx.Request.Headers["X-Duplicate-Mode"].ToString();
+            if(duplicateMode=="")duplicateMode="independent";
+            if(duplicateMode is not ("independent" or "reuse"))
+                return Fail("重复附件的存储选择无效。");
             if(mode is not ("new" or "update") || group.Length>80 || group.Any(char.IsControl))
                 return Fail("附件版本处理选项无效。");
             if(!BusinessFileStore.ScopeValid(workspace,kind,section))
@@ -683,9 +722,9 @@ static class BusinessFileEndpoints
                         if(total!=length.Value)throw new IOException("附件上传不完整。");
                         string digest=Convert.ToHexString(hash.GetHashAndReset());
                         var saved=BusinessFileStore.Finish(v.Db,objectId,workspace,kind,id,
-                            section,filename,category,total,digest,mode,group);
+                            section,filename,category,total,digest,mode,group,duplicateMode);
                         return Results.Json(new {
-                            id=saved.LinkId,version=saved.Version,size=total,sha256=digest
+                            id=saved.LinkId,version=saved.Version,reused=saved.Reused,size=total,sha256=digest
                         });
                     }
                     catch
