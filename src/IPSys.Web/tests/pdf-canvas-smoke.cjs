@@ -7,8 +7,12 @@ const path=require('node:path');
 const root=path.resolve(__dirname,'../wwwroot');
 const pdfJS=fs.readFileSync(path.join(root,'pdfjs/pdf.min.js'));
 const worker=fs.readFileSync(path.join(root,'pdfjs/pdf.worker.min.js'));
-function gitSha(bytes){return crypto.createHash('sha1').update(
- Buffer.concat([Buffer.from('blob '+bytes.length+'\0'),bytes])).digest('hex');}
+function gitSha(bytes){
+ // Windows checkout may convert the upstream LF asset to CRLF.
+ const raw=Buffer.from(bytes.toString('utf8').replace(/\r\n/g,'\n'));
+ return crypto.createHash('sha1').update(
+  Buffer.concat([Buffer.from('blob '+raw.length+'\0'),raw])).digest('hex');
+}
 assert.equal(gitSha(pdfJS),'4d430208fdaff174b880faf78aa90eb5280ce90e');
 assert.equal(gitSha(worker),'6bbfaeede7465b9270475dd9028e2b7022a2a832');
 const app=fs.readFileSync(path.join(root,'app.js'),'utf8');
