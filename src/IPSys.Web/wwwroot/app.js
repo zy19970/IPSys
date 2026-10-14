@@ -841,8 +841,10 @@ async function upload(id,file){
  const matches=[...new Map(record.files.filter(f=>f.name===file.name).map(f=>[f.groupId||'legacy-'+f.id,f])).values()];
  let mode='new',groupId='';
  if(matches.length){
-  const choice=prompt('已有 '+matches.length+' 组同名原件“'+file.name+
-   '”。输入 1-'+matches.length+' 更新对应原件；输入 N 单独归档同名新原件；输入 0 取消。','1');
+  const groupsInfo=matches.map((f,i)=>(i+1)+'. v'+f.version+' · '+fmtSize(f.size)+
+   ' · SHA-256 '+f.sha256.slice(0,12)).join('\n');
+  const choice=prompt('已有 '+matches.length+' 组同名原件“'+file.name+'”：\n'+groupsInfo+
+   '\n输入 1-'+matches.length+' 更新对应原件；N 独立归档；0 取消。','1');
   if(choice===null||choice.trim()==='0')return;
   if(choice.trim().toUpperCase()==='N')mode='new';
   else{
@@ -1109,8 +1111,10 @@ el('businessFileInput').onchange=async event=>{
   .map(f=>[f.groupId||'legacy-'+f.id,f])).values()];
  let mode=matches.length?'update':'new',groupId='';
  if(matches.length){
-  const choice=prompt('已有 '+matches.length+' 组同名原件“'+file.name+
-   '”。输入 1-'+matches.length+' 更新指定原件及其共享引用；输入 N 另建同名独立原件；输入 0 取消上传。','1');
+  const groupsInfo=matches.map((f,i)=>(i+1)+'. v'+f.version+' · '+fmtSize(f.size)+
+   ' · SHA-256 '+f.sha256.slice(0,12)).join('\n');
+  const choice=prompt('已有 '+matches.length+' 组同名原件“'+file.name+'”：\n'+groupsInfo+
+   '\n输入 1-'+matches.length+' 更新指定原件及其共享引用；N 独立归档；0 取消。','1');
   if(choice===null||choice.trim()==='0')return;
   if(choice.trim().toUpperCase()==='N')mode='new';
   else{
