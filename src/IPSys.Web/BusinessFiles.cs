@@ -523,23 +523,7 @@ static class BusinessFileStore
             already.Parameters.AddWithValue("$group",sourceGroup);
             if((long)already.ExecuteScalar()!>0)return false;
         }
-        using(var check=db.CreateCommand())
-        {
-            check.Transaction=tx;
-            check.CommandText="""
-                SELECT COALESCE(MAX(version),0) FROM business_file_links
-                WHERE workspace=$w AND kind=$kind AND owner_id=$owner AND section=$section
-                  AND filename=$name AND category=$material;
-                """;
-            check.Parameters.AddWithValue("$w",workspace);
-            check.Parameters.AddWithValue("$kind",kind);
-            check.Parameters.AddWithValue("$owner",targetOwner);
-            check.Parameters.AddWithValue("$section",section);
-            check.Parameters.AddWithValue("$name",name);
-            check.Parameters.AddWithValue("$material",destCategory);
-            next=Convert.ToInt32(check.ExecuteScalar());
-        }
-        foreach(var (objectId,_) in versions)
+        foreach(var (objectId,sourceVersion) in versions)
         {
             using var cmd=db.CreateCommand();
             cmd.Transaction=tx;
@@ -556,7 +540,7 @@ static class BusinessFileStore
             cmd.Parameters.AddWithValue("$name",name);
             cmd.Parameters.AddWithValue("$material",destCategory);
             cmd.Parameters.AddWithValue("$group",sourceGroup);
-            cmd.Parameters.AddWithValue("$version",++next);
+            cmd.Parameters.AddWithValue("$version",sourceVersion);
             if(cmd.ExecuteNonQuery()!=1)return false;
         }
         if(move)
