@@ -460,8 +460,9 @@ assert.ok(realArchiveCtx.__certEmpty.includes('暂无符合条件的资料')&&
  'Empty enterprise certificate page must display a table empty state, not a fake card');
 assert.ok(js.includes("ids=companyCertificateRows().map(r=>r.id)"),
  'Excel export must select the same rows as the certificate list');
-assert.ok(js.includes("workspace==='company'&&section==='certificate'?null:record.category"),
- 'Saved certificate detail must return to the direct company list, not the category table');
+assert.ok(js.includes("page=section;archiveGroup=simpleCertificate?null:record.category")&&
+ js.includes("detail=simpleCertificate?null:{kind:'archive',id:recordId}"),
+ 'Saved company certificate must return to the direct list without category routing');
 assert.ok(js.includes('data-nav="certificate">← 返回企业资质'),
  'Certificate detail must offer a direct list return');
 assert.ok(html.includes('id="aAttachment" type="file"')&&
