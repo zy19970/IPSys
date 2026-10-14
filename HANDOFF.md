@@ -1,5 +1,12 @@
 # IPSys 跨会话详细交接（2026-10-13）
 
+## 2026-10-14 最新进展：B05/B05b-2 源码已提交，完整验收未确认
+
+本段优先于下方历史交接快照。用户明确要求先完成 B05，不扩展 Excel/统一搜索/大文件专项。本次在 main 实施：`BusinessFiles.cs` 增加不破坏旧业务原件的 group_id 身份升级、同名独立原件、指定版本链更新、同工作区多个业务记录共享新版本同步、显式 SHA-256 重复物理字节复用、跨工作区独立对象；`GeneralStore.cs`、`Program.cs` 对既有综合资料 attachments/records 非破坏性增列，实现历史版本、新版选择、软删除、授权下载；`RecycleStore.cs` 将综合资料父记录与附件接入统一回收站及永久清理；`app.js`、HTML/CSS 将新功能纳入已冻结的详情与系统设置，增加 PDF/常见图片只读预览；Windows HTTP smoke 与 Node UI smoke 增加同名独立/共享/去重/恢复测试。
+
+正式状态：**代码已推送；本轮完整 Windows CI 是否通过尚未核实，也尚未获得用户 Windows 本机验收**。不得宣称 B05 正式通过。测试顺序见 `WEB_TESTING.md` 顶部 B05b-2 小节，测试必须采用可丢弃非敏感 SQLCipher 库；尤其先核对旧库重复打开时 group_id/version 稳定、物理对象不跨工作区复用、数据库软删除恢复正常。若 CI 失败，优先对照最新运行中的 Debug、Node UI、SQLCipher HTTP 测试并直接修复 main。大文件 64 MiB 上限未提高；M1 的超大文件、移动 SSD、手工备份，M6 导出/Excel/检索不属于本轮完成内容。
+
+
 > **B05b-1 最新交接（2026-10-14）**：新增 RecycleStore.cs 的 GET /api/trash/{workspace}、POST /api/trash/{workspace}/restore|purge（支持 1–200 条），含删除项目/所属合同/原件的恢复、单条和勾选批量永久删除、共享对象垃圾回收保护。业务文件新设 /api/business-files/{workspace}/{linkId}/associate，实现同一工作区有效业务记录间按同名同类别已有版本组复制/移动引用，源链接安全软删除，保留其它记录共享数据。业务详情文件列表按最新版/可展开历史版本分组，同名再次上传先要求明确确认；系统设置入口打开真实回收站。后续独立同名原件分组、多记录共同引用的未来新版同步、综合资料旧附件统一恢复仍待完成。前次 B05 逻辑跨工作区复用对象已改为未来操作采用独立对象，不自动迁移历史库。自动 CI 和用户实际验证状态以对应 Actions 为准。
 
 
