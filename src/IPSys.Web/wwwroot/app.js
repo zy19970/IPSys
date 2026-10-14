@@ -277,16 +277,18 @@ function ipList(){
  '<div class="field"><label>类型</label><select id="filterKind">'+options(['全部类型',...allTypes],filterKind)+'</select></div>'+
  '<div class="field"><label>状态</label><select id="filterState">'+options(['全部状态',...allStates],filterState)+'</select></div>'+
  '<button class="btn primary" data-action="filter">查询</button><button class="btn" data-action="clearFilter">重置</button></div></section>'+
- '<section class="white"><div class="tabletools"><b>业务台账 '+rows.length+' 条真实记录</b></div>'+
- '<div class="tablewrap"><table class="data"><thead><tr><th>名称</th><th>知识产权类型</th><th>申请/登记号</th><th>状态</th><th>当前权利人</th><th>申请/登记日期</th><th>附件</th></tr></thead><tbody>'+
- (rows.length?rows.map(r=>{const v=r.data;return '<tr>'+
+ '<section class="white"><div class="tabletools"><b>业务台账 '+rows.length+' 条真实记录</b>'+
+ '<div class="actions"><span id="ledgerExportCount">已选 0 条</span>'+
+ '<button class="btn" data-action="ledgerSelectAttachments">选择记录附件</button></div></div>'+
+ '<div class="tablewrap"><table class="data"><thead><tr><th><input type="checkbox" id="ledgerExportAll" class="ledger-export-all" aria-label="全选当前知识产权"></th><th>名称</th><th>知识产权类型</th><th>申请/登记号</th><th>状态</th><th>当前权利人</th><th>申请/登记日期</th><th>附件</th></tr></thead><tbody>'+
+ (rows.length?rows.map(r=>{const v=r.data;return '<tr><td><input type="checkbox" class="ledger-export-row" value="'+r.id+'" aria-label="选择知识产权 '+escapeHtml(v.name)+'"></td>'+
  '<td><button class="link" data-ip-id="'+r.id+'">'+escapeHtml(v.name)+'</button></td>'+
  '<td>'+escapeHtml(v.ipType)+'</td>'+
  '<td>'+escapeHtml(v.applicationNo||v.registrationNo||'—')+'</td>'+
  '<td>'+escapeHtml(v.status||'—')+'</td>'+
  '<td>'+escapeHtml(v.rightHolders||'—')+'</td>'+
  '<td>'+escapeHtml(v.applicationDate||v.registrationDate||'—')+'</td>'+
- '<td>'+businessFileCount('ip',r.id)+'</td></tr>';}).join(''):'<tr><td colspan="7" class="empty">暂无知识产权记录，点击新建。</td></tr>')+
+ '<td>'+businessFileCount('ip',r.id)+'</td></tr>';}).join(''):'<tr><td colspan="8" class="empty">暂无知识产权记录，点击新建。</td></tr>')+
  '</tbody></table></div><div class="tablefoot">共 '+rows.length+' 条记录 · 数据保存在当前 SQLCipher 库</div></section>'+moduleExportPanel(rows,'ip');
 }
 function ipDetail(){
@@ -412,14 +414,16 @@ function projectList(k){
  '<div class="field"><label>类型</label><select id="filterKind">'+types.map(t=>'<option value="'+t+'" '+(filterKind===t?'selected':'')+'>'+t+'</option>').join('')+'</select></div>'+
  '<div class="field"><label>状态</label><select id="filterState">'+statuses.map(t=>'<option value="'+t+'" '+(filterState===t?'selected':'')+'>'+t+'</option>').join('')+'</select></div>'+
  '<button class="btn primary" data-action="filter">查询</button><button class="btn" data-action="clearFilter">重置</button></div></section>'+
- '<section class="white"><div class="tabletools"><b>业务台账 '+visible.length+' 条真实记录</b></div>'+
- '<div class="tablewrap"><table class="data"><thead><tr><th>项目名称</th><th>项目类别</th><th>项目编号</th><th>开始日期</th><th>附件</th></tr></thead><tbody>'+
- (visible.length?visible.map(p=>'<tr>'+
+ '<section class="white"><div class="tabletools"><b>业务台账 '+visible.length+' 条真实记录</b>'+
+ '<div class="actions"><span id="ledgerExportCount">已选 0 条</span>'+
+ '<button class="btn" data-action="ledgerSelectAttachments">选择记录附件</button></div></div>'+
+ '<div class="tablewrap"><table class="data"><thead><tr><th><input type="checkbox" id="ledgerExportAll" class="ledger-export-all" aria-label="全选当前项目"></th><th>项目名称</th><th>项目类别</th><th>项目编号</th><th>开始日期</th><th>附件</th></tr></thead><tbody>'+
+ (visible.length?visible.map(p=>'<tr><td><input type="checkbox" class="ledger-export-row" value="'+p.id+'" aria-label="选择项目 '+escapeHtml(p.name)+'"></td>'+
  '<td><button class="link" data-project-id="'+p.id+'">'+escapeHtml(p.name)+'</button></td>'+
  '<td>'+escapeHtml(p.projectType)+'</td><td>'+escapeHtml(p.projectNo||'—')+'</td>'+
  '<td>'+escapeHtml(p.startDate||'—')+'</td>'+
  '<td>'+businessFileCount('project',p.id)+'</td></tr>').join(''):
- '<tr><td colspan="5" class="empty">暂无项目，点击右上角新建项目。</td></tr>')+
+ '<tr><td colspan="6" class="empty">暂无项目，点击右上角新建项目。</td></tr>')+
  '</tbody></table></div><div class="tablefoot">共 '+visible.length+' 条记录 · 数据保存在当前 SQLCipher 库</div></section>'+moduleExportPanel(visible,'project');
 }
 
