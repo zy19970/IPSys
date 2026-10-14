@@ -133,12 +133,13 @@
   <dialog id="archiveDialog" class="input-dialog project-dialog">
     <form id="archiveForm">
       <h2 id="archiveFormTitle">新建资料</h2>
-      <p class="subtle">资料名称必填，类别、备注与标签可选。</p>
+      <p class="subtle" id="archiveFormHint">资料名称必填，类别、备注与标签可选。</p>
       <div class="project-form-grid">
         <div class="form-field project-span"><label for="aName">资料名称 *</label><input id="aName" name="name" required maxlength="300"></div>
-        <div class="form-field project-span"><label for="aCategory">资料类别</label><input id="aCategory" name="category" list="archiveCategories"><datalist id="archiveCategories"></datalist></div>
-        <div class="form-field project-span"><label for="aTags">标签</label><input id="aTags" name="tags"></div>
-        <div class="form-field project-span"><label for="aRemarks">备注</label><textarea id="aRemarks" name="remarks" rows="3"></textarea></div>
+        <div class="form-field project-span" id="archiveCategoryField"><label for="aCategory">资料类别</label><input id="aCategory" name="category" list="archiveCategories"><datalist id="archiveCategories"></datalist></div>
+        <div class="form-field project-span" id="archiveTagsField"><label for="aTags">标签</label><input id="aTags" name="tags"></div>
+        <div class="form-field project-span" id="archiveAttachmentField" hidden><label for="aAttachment">附件（选填）</label><input id="aAttachment" type="file"><p class="hint">选择一个文件；以后仍可继续添加或管理附件。</p></div>
+        <div class="form-field project-span" id="archiveRemarksField"><label for="aRemarks">备注</label><textarea id="aRemarks" name="remarks" rows="3"></textarea></div>
       </div>
       <div id="archiveExcelImport" class="project-excel-entry"><div><strong>Excel 批量导入</strong><p class="hint">下载模板填写后导入，重复记录可选择处理方式。</p></div><div class="actions"><button class="btn" type="button" id="archiveExcelTemplate">下载 Excel 模板</button><button class="btn" type="button" id="archiveExcelChoose">导入 Excel</button></div><input type="file" id="archiveExcelFile" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden></div><div class="dialogactions"><button type="button" class="btn" id="archiveCancel">取消</button><button type="submit" class="btn primary" id="archiveSave">保存资料</button></div>
     </form>

@@ -266,3 +266,12 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
  .compact-ledger .recordgrid{gap:10px;padding:10px}
  .compact-ledger .archivecard{min-height:0;padding:12px}
 }
+
+/* The company certificate form has only name, optional attachment and remarks.
+   Preserve legacy category/tag inputs invisibly for non-destructive edits. */
+#archiveDialog #archiveCategoryField[hidden],
+#archiveDialog #archiveTagsField[hidden],
+#archiveDialog #archiveAttachmentField[hidden]{display:none!important}
+#archiveDialog #aAttachment{height:auto;min-height:40px;padding:7px}
+.certificate-ledger .data td:nth-child(2){max-width:380px;overflow-wrap:anywhere}
+.certificate-ledger .data td:nth-child(3){max-width:330px;white-space:normal;overflow-wrap:anywhere}

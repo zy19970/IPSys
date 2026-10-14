@@ -343,7 +343,7 @@ vm.runInContext(preamble+'\n'+js.slice(archiveFirst,archiveLast)+
  "\nfunction heading(name,subtitle,actions){return '<h1>'+name+'</h1>'+(actions||'');}"+
  "\nfunction infoRow(k,v){return k+':'+v;}"+
  "\nfunction section(name,content){return name+content;}"+
- "\nfunction businessFileCount(){return 0;}\nfunction quickExportButtons(){return 'excelExport ZIP';}\nfunction quickExportButtons(){return 'excelExport ZIP';}"+
+ "\nfunction businessFileCount(){return 0;}\nfunction businessFiles(kind,ownerId,section){return (globalThis.mockCertificateFiles||[]).filter(f=>f.kind===kind&&f.ownerId===ownerId&&f.section===section);}\nfunction quickExportButtons(){return 'excelExport ZIP';}\nfunction quickExportButtons(){return 'excelExport ZIP';}"+
  "\nspace='personal';page='academic';filterName='';filterKind='全部类型';"+
  "archiveRows={certificate:[],achievement:[],academic:["+
  "{id:21,name:'第一次兼职',category:'学术兼职',remarks:'',tags:''},"+
@@ -393,9 +393,14 @@ vm.runInContext(
  "{id:51,name:'高新技术企业证书',category:'企业认定',remarks:'2026',tags:'资质'},"+
  "{id:52,name:'质量管理体系认证',category:'体系认证',remarks:'ISO',tags:'认证'},"+
  "{id:53,name:'待分类证明',category:'',remarks:'',tags:''}];"+
+ "globalThis.mockCertificateFiles=["+
+ "{id:101,kind:'archive',ownerId:51,section:'certificate',name:'旧证书.pdf',version:1},"+
+ "{id:102,kind:'archive',ownerId:51,section:'certificate',name:'新证书.pdf',version:2},"+
+ "{id:103,kind:'archive',ownerId:52,section:'certificate',name:'认证附件.docx',version:1}];"+
  "globalThis.__certAll=realCompanyCertificateList();"+
- "filterKind='体系认证';globalThis.__certType=realCompanyCertificateList();"+
- "filterKind='全部类型';filterName='高新';globalThis.__certKeyword=realCompanyCertificateList();"+
+ "filterKind='体系认证';globalThis.__certStillAll=realCompanyCertificateList();"+
+ "filterName='高新';globalThis.__certKeyword=realCompanyCertificateList();"+
+ "filterName='ISO';globalThis.__certRemark=realCompanyCertificateList();"+
  "archiveRows.certificate=[];filterName='';globalThis.__certEmpty=realCompanyCertificateList();",
  realArchiveCtx);
 for(const label of ['高新技术企业证书','质量管理体系认证','待分类证明'])
@@ -407,7 +412,21 @@ assert.ok(realArchiveCtx.__certAll.includes('<table')&&
 assert.ok(realArchiveCtx.__certAll.includes('data-archive-id="51"')&&
  realArchiveCtx.__certAll.includes('data-archive-id="52"')&&
  realArchiveCtx.__certAll.includes('data-archive-id="53"'),
- 'Each existing certificate must have an accessible detail link');
+ 'Each existing certificate name must remain an editable detail link');
+assert.ok(realArchiveCtx.__certAll.includes('<th>资料名称</th><th>附件</th><th>备注</th><th>操作</th>')&&
+ !realArchiveCtx.__certAll.includes('<th>类别</th>')&&!realArchiveCtx.__certAll.includes('id="filterKind"'),
+ 'Company certificate table and filters must exclude the category field');
+assert.ok(realArchiveCtx.__certAll.includes('data-certificate-download="102"')&&
+ realArchiveCtx.__certAll.includes('新证书.pdf')&&
+ !realArchiveCtx.__certAll.includes('data-certificate-download="101"'),
+ 'One-click download must resolve the newest stored original for each record');
+assert.ok(realArchiveCtx.__certAll.includes('data-certificate-download="103"')&&
+ realArchiveCtx.__certAll.includes('data-certificate-download="" disabled title="该资料尚无附件"'),
+ 'Download must be disabled for records without attachments, not cause fake download');
+assert.ok(realArchiveCtx.__certAll.includes('2026')&&
+ realArchiveCtx.__certAll.includes('ISO')&&
+ !realArchiveCtx.__certAll.includes('>查看详情</button>'),
+ 'Company certificate table must show remarks and direct download actions');
 assert.ok(realArchiveCtx.__certAll.includes('certificate-toolbar-filter')&&
  realArchiveCtx.__certAll.includes('data-action="archiveAdd"')&&
  realArchiveCtx.__certAll.includes('class="certificate-export-options"'),
@@ -427,15 +446,15 @@ assert.ok(realArchiveCtx.__certAll.indexOf('certificate-toolbar-title')<
  !realArchiveCtx.__certAll.includes('class="tabletools"')&&
  !realArchiveCtx.__certAll.includes('class="certificate-filterline"'),
  'Heading, search, create and export must share one condensed toolbar, without a second header row');
-assert.ok(realArchiveCtx.__certType.includes('质量管理体系认证')&&
- !realArchiveCtx.__certType.includes('高新技术企业证书')&&
- realArchiveCtx.__certType.includes('data-export-ids="52"'),
- 'Category filter and the original-file export menu must use the same record selection');
+assert.ok(realArchiveCtx.__certStillAll.includes('高新技术企业证书')&&
+ realArchiveCtx.__certStillAll.includes('质量管理体系认证'),
+ 'Hidden legacy category values must not filter company certificate records');
 assert.ok(realArchiveCtx.__certKeyword.includes('高新技术企业证书')&&
  !realArchiveCtx.__certKeyword.includes('质量管理体系认证')&&
- realArchiveCtx.__certKeyword.includes('data-export-ids="51"'),
- 'Keyword filter and both original-file menu actions must use the same record selection');
-assert.ok(realArchiveCtx.__certEmpty.includes('暂无符合条件的资质记录')&&
+ realArchiveCtx.__certKeyword.includes('data-export-ids="51"')&&
+ realArchiveCtx.__certRemark.includes('质量管理体系认证'),
+ 'Search by name and remarks must determine the certificate export subset');
+assert.ok(realArchiveCtx.__certEmpty.includes('暂无符合条件的资料')&&
  !realArchiveCtx.__certEmpty.includes('企业资质</h3>')&&
  realArchiveCtx.__certEmpty.includes('data-export-ids=""'),
  'Empty enterprise certificate page must display a table empty state, not a fake card');
@@ -445,6 +464,24 @@ assert.ok(js.includes("workspace==='company'&&section==='certificate'?null:recor
  'Saved certificate detail must return to the direct company list, not the category table');
 assert.ok(js.includes('data-nav="certificate">← 返回企业资质'),
  'Certificate detail must offer a direct list return');
+assert.ok(html.includes('id="aAttachment" type="file"')&&
+ html.includes('id="archiveAttachmentField" hidden')&&
+ html.includes('id="archiveCategoryField"')&&html.includes('id="archiveTagsField"'),
+ 'Company certificate form needs one optional file input; other archive fields remain for legacy records');
+assert.ok(js.includes("el('archiveCategoryField').hidden=simpleCertificate")&&
+ js.includes("el('archiveTagsField').hidden=simpleCertificate")&&
+ js.includes("el('archiveAttachmentField').hidden=!simpleCertificate")&&
+ js.includes("const attachment=simpleCertificate?el('aAttachment').files?.[0]:null"),
+ 'Only company certificate hides category/tags and offers optional file input');
+assert.ok(js.includes("await uploadBusinessAttachment(attachment,")&&
+ js.includes("kind:'archive',ownerId:recordId,section:'certificate'")&&
+ js.includes("attachmentError?'资料已保存，但附件上传失败：'"),
+ 'Saved certificate must upload its optional attachment and report upload failure without losing record');
+assert.ok(js.includes("detail=simpleCertificate?null:{kind:'archive',id:recordId}")&&
+ js.includes("if(target.dataset.certificateDownload)")&&
+ js.includes("await downloadBusinessAttachment(Number(target.dataset.certificateDownload))"),
+ 'Company certificate save must return to list and download directly from existing authorized endpoint');
+
 assert.ok(css.includes('.certificate-ledger .certificate-toolbar{display:flex')&&
  css.includes('.certificate-ledger .certificate-toolbar-filter input{flex:1 1 300px;max-width:590px;min-width:160px')&&
  css.includes('.certificate-ledger .certificate-export-options{position:absolute')&&

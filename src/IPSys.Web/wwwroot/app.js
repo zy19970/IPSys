@@ -980,8 +980,7 @@ function realArchiveCategoryCard(category,count,files){
 function companyCertificateRows(){
  return (archiveRows.certificate||[]).filter(r=>{
   const category=r.category||'未分类';
-  return [r.name,category,r.remarks,r.tags].join(' ').toLowerCase().includes(filterName.toLowerCase())&&
-   (filterKind==='全部类型'||category===filterKind);
+  return [r.name,r.remarks].join(' ').toLowerCase().includes(filterName.toLowerCase());
  });
 }
 function certificateExportMenu(rows){
@@ -994,33 +993,35 @@ function certificateExportMenu(rows){
   '<button type="button" data-action="excelExport" data-excel-kind="archive" data-excel-section="certificate">导出 Excel</button>'+
   '</div></details>';
 }
+function companyCertificateAttachment(recordId){
+ // Prefer the latest uploaded original. Multiple attachments are not restricted.
+ return businessFiles('archive',recordId,'certificate').slice().sort((a,b)=>b.id-a.id)[0]||null;
+}
 function realCompanyCertificateList(){
  const all=archiveRows.certificate||[],rows=companyCertificateRows();
- const categories=[...new Set(all.map(r=>r.category||'未分类'))];
- const options=['全部类型',...categories].map(x=>
-  '<option value="'+escapeHtml(x)+'" '+(filterKind===x?'selected':'')+'>'+escapeHtml(x)+'</option>').join('');
  return '<div class="breadcrumb certificate-breadcrumb">公司资料 / 企业资质</div>'+
  '<section class="white certificate-ledger">'+
  '<div class="certificate-toolbar">'+
  '<div class="certificate-toolbar-title"><h1>企业资质</h1><span>共 '+all.length+' 条记录</span></div>'+
  '<div class="certificate-toolbar-filter">'+
- '<label class="certificate-sr-only" for="filterSearch">资质名称或关键词</label>'+
- '<input id="filterSearch" aria-label="资质名称或关键词" placeholder="搜索资质名称、类别或备注">'+
- '<label class="certificate-sr-only" for="filterKind">类别</label>'+
- '<select id="filterKind" aria-label="按类别筛选">'+options+'</select>'+
+ '<label class="certificate-sr-only" for="filterSearch">资料名称或备注</label>'+
+ '<input id="filterSearch" aria-label="资料名称或备注" placeholder="搜索资料名称或备注">'+
  '<button class="btn primary" data-action="filter">查询</button>'+
  '<button class="btn" data-action="clearFilter">重置</button></div>'+
  '<div class="certificate-toolbar-actions">'+
  '<button class="btn primary" data-action="archiveAdd">＋ 新建记录</button>'+
  certificateExportMenu(rows)+'</div></div>'+
  '<div class="tablewrap archive-tablewrap"><table class="data"><thead><tr>'+
- '<th>资质名称</th><th>类别</th><th>附件</th><th>操作</th></tr></thead><tbody>'+
- (rows.length?rows.map(r=>
-  '<tr><td><button class="link" data-archive-id="'+r.id+'">'+escapeHtml(r.name)+'</button></td>'+
-  '<td><span class="tag">'+escapeHtml(r.category||'未分类')+'</span></td>'+
-  '<td>'+businessFileCount('archive',r.id,'certificate')+' 份</td>'+
-  '<td><button class="btn btn-sm" data-archive-id="'+r.id+'">查看详情</button></td></tr>').join(''):
-  '<tr><td colspan="4" class="empty">暂无符合条件的资质记录，可点击上方新建。</td></tr>')+
+ '<th>资料名称</th><th>附件</th><th>备注</th><th>操作</th></tr></thead><tbody>'+
+ (rows.length?rows.map(r=>{
+  const original=companyCertificateAttachment(r.id);
+  return '<tr><td><button class="link" data-archive-id="'+r.id+'">'+escapeHtml(r.name)+'</button></td>'+
+   '<td>'+(original?escapeHtml(original.name):'<span class="muted">未上传</span>')+'</td>'+
+   '<td>'+escapeHtml(r.remarks||'—')+'</td>'+
+   '<td><button class="btn btn-sm" data-certificate-download="'+(original?.id||'')+'"'+
+   (original?'':' disabled title="该资料尚无附件"')+'>下载</button></td></tr>';
+ }).join(''):
+ '<tr><td colspan="4" class="empty">暂无符合条件的资料，可点击上方新建。</td></tr>')+
  '</tbody></table></div><div class="tablefoot">显示 '+rows.length+' 条 · 共 '+all.length+' 条企业资质记录</div></section>';
 }
 function realArchiveCards(k){
@@ -1073,7 +1074,8 @@ function realArchiveDetail(){
   (moveAvailable?'<button class="btn" data-action="archiveMove">转移</button>':'')+
   '<button class="btn" data-action="archiveDelete">删除</button>')+
  section('基本信息','<div class="infogrid">'+infoRow('资料名称',record.name)+
- infoRow('类别',record.category)+infoRow('备注',record.remarks)+infoRow('标签',record.tags)+'</div>')+
+ (space==='company'&&page==='certificate'?infoRow('备注',record.remarks):
+ infoRow('类别',record.category)+infoRow('备注',record.remarks)+infoRow('标签',record.tags))+'</div>')+
  section('附件资料',businessAttachmentList('archive',record.id,page));
 }
 function showArchiveForm(id=null){
@@ -1081,6 +1083,11 @@ function showArchiveForm(id=null){
  if(id!==null&&!record){notice('记录不存在。',true);return;}
  archiveEditingId=id;
  el('archiveForm').reset();
+ const simpleCertificate=space==='company'&&page==='certificate';
+ el('archiveCategoryField').hidden=simpleCertificate;
+ el('archiveTagsField').hidden=simpleCertificate;
+ el('archiveAttachmentField').hidden=!simpleCertificate;
+ el('archiveFormHint').textContent=simpleCertificate?'仅资料名称必填，附件与备注选填。':'资料名称必填，类别、备注与标签可选。';
  el('archiveFormTitle').textContent=id===null?'新建资料':'修改资料';
  el('archiveExcelImport').hidden=id!==null;
  el('aCategory').value=record?.category??(archiveGroup==='未分类'?'':archiveGroup||'');
@@ -1355,6 +1362,9 @@ el('content').addEventListener('click',async ev=>{
  if(target.dataset.liveId){openLiveRecord(Number(target.dataset.liveId));return;}
  if(target.dataset.projectId){detail={kind:'project',id:Number(target.dataset.projectId)};render();el('content').scrollTo(0,0);return;}
  if(target.dataset.ipId){detail={kind:'ip',id:Number(target.dataset.ipId)};page='ip';render();el('content').scrollTo(0,0);return;}
+ if(target.dataset.certificateDownload){
+  await downloadBusinessAttachment(Number(target.dataset.certificateDownload));return;
+ }
  if(target.dataset.archiveId){
   detail={kind:'archive',id:Number(target.dataset.archiveId)};render();
   el('content').scrollTo(0,0);return;
@@ -1683,6 +1693,8 @@ el('archiveDialog').addEventListener('close',()=>{archiveEditingId=null;});
 el('archiveForm').onsubmit=async event=>{
  event.preventDefault();
  const id=archiveEditingId,workspace=space,section=page;
+ const simpleCertificate=workspace==='company'&&section==='certificate';
+ const attachment=simpleCertificate?el('aAttachment').files?.[0]:null;
  const input=Object.fromEntries(new FormData(el('archiveForm')).entries());
  el('archiveSave').disabled=true;
  try{
@@ -1690,13 +1702,23 @@ el('archiveForm').onsubmit=async event=>{
   const response=await api(path,{method:id===null?'POST':'PUT',json:input});
   const recordId=id===null?(await response.json()).id:id;
   el('archiveDialog').close();
+  let attachmentError=null;
+  if(attachment){
+   try{
+    await uploadBusinessAttachment(attachment,{
+     kind:'archive',ownerId:recordId,section:'certificate',
+     category:'',mode:'new',duplicateMode:'independent'
+    },workspace);
+   }catch(error){attachmentError=error.message;}
+  }
   await refresh();
   const record=(archiveRows[section]||[]).find(r=>r.id===recordId);
   if(record){
-   page=section;archiveGroup=workspace==='company'&&section==='certificate'?null:record.category||'未分类';
-   detail={kind:'archive',id:recordId};render();
+   page=section;archiveGroup=simpleCertificate?null:record.category||'未分类';
+   detail=simpleCertificate?null:{kind:'archive',id:recordId};render();
   }
-  notice(id===null?'资料已创建':'资料修改已保存');
+  notice(attachmentError?'资料已保存，但附件上传失败：'+attachmentError:
+   id===null?'资料已创建'+(attachment?'并上传附件':''):'资料修改已保存'+(attachment?'并上传附件':''),!!attachmentError);
  }catch(error){notice(error.message,true);}
  finally{el('archiveSave').disabled=false;}
 };
