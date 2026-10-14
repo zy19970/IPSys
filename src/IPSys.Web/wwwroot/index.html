@@ -152,6 +152,11 @@
       <div class="dialogactions"><button class="btn" type="button" id="businessAssocCancel">取消</button><button class="btn primary" type="submit" id="businessAssocSave">确认</button></div>
     </form>
   </dialog>
+  <dialog id="filePreviewDialog" class="input-dialog preview-dialog">
+    <div class="dialogactions"><strong id="filePreviewTitle">原件预览</strong><button class="btn" type="button" id="filePreviewClose">关闭</button></div>
+    <div id="filePreviewBody" class="preview-body"></div>
+    <p class="subtle">仅预览 PDF 与常见图片；无法在浏览器预览时请下载原件。</p>
+  </dialog>
   <dialog id="exitDialog" class="input-dialog"><h2>文件任务进行中</h2><p class="subtle">上传正在进行，请选择安全退出方式。</p><div class="dialogactions wrap"><button type="button" class="btn" id="exitCancelTask">取消任务并退出</button><button type="button" class="btn primary" id="exitFinishTask">任务完成后退出</button><button type="button" class="btn" id="exitStay">暂不退出</button></div></dialog>
   <div id="toast" role="status" aria-live="polite"></div>
 </body>
