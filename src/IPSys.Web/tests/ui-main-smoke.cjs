@@ -26,8 +26,9 @@ assert.ok(js.includes('space=null')&&js.includes('selectSpace(next)'),'Explicit 
 // follow the user-supplied evidence folders without changing SQLCipher record types.
 const vm=require('node:vm');
 const preamble=js.slice(0,js.indexOf('window.addEventListener('));
+const exportDocument={createElement:()=>({}),head:{appendChild:()=>{}}};
 assert.ok(preamble.length>0,'Cannot isolate personal archive configuration');
-const context=vm.createContext({sessionStorage:{getItem:()=>null}});
+const context=vm.createContext({sessionStorage:{getItem:()=>null},document:exportDocument});
 vm.runInContext(preamble+`
 globalThis.__layout={
  companyNav:companyNav.map(x=>x[1]),
@@ -77,7 +78,7 @@ const rendererSource=[
  assert.ok(a>=0&&b>a,'Missing renderer: '+start);
  return js.slice(a,b);
 }).join('\n');
-const cardsCtx=vm.createContext({sessionStorage:{getItem:()=>null}});
+const cardsCtx=vm.createContext({sessionStorage:{getItem:()=>null},document:exportDocument});
 const renderSetup=[
  "function heading(name){return '<h1>'+escapeHtml(name)+'</h1>';}",
  "function stamp(){return '<span class=mockflag>界面示例</span>';}",
@@ -203,7 +204,7 @@ for(const name of ['pName','pType','pNo','pStatus','pLeader','pOrg','pStart','pE
 for(const route of ["'/api/projects/'+space","method:'DELETE'","method:'PUT'","method:'POST'","targetWorkspace:destination"])
  assert.ok(js.includes(route),'Missing project persistence or transfer '+route);
 assert.ok(js.includes("projectRows=projects;ipRows=ips;contractRows=contracts;"),'Projects, IP and contracts must refresh from the real database');
-const projectCtx=vm.createContext({sessionStorage:{getItem:()=>null}});
+const projectCtx=vm.createContext({sessionStorage:{getItem:()=>null},document:exportDocument});
 const projector=js.slice(js.indexOf('function projectViewRows('),js.indexOf('function archiveCard(',js.indexOf('function projectViewRows(')));
 vm.runInContext(preamble+
  '\nfunction heading(t){return t;}\nfunction infoRow(n,v){return n+v;}\nfunction section(n,v){return n+v;}\nfunction businessFileCount(){return 0;}\n'+projector+
@@ -224,7 +225,7 @@ for(const action of ['ipAdd','ipEdit','ipDelete','ipCopy','ipMove'])
 assert.ok(js.includes("ipRows=ips;contractRows=contracts;"),'IP and contracts must be loaded from real API');
 const intellectualCode=js.slice(js.indexOf('const ipStatusByType='),js.indexOf('function projectViewRows(',js.indexOf('const ipStatusByType=')));
 assert.ok(intellectualCode.length>0);
-const ipCtx=vm.createContext({sessionStorage:{getItem:()=>null}});
+const ipCtx=vm.createContext({sessionStorage:{getItem:()=>null},document:exportDocument});
 vm.runInContext(preamble+
  '\nfunction heading(t){return t;}\nfunction infoRow(n,v){return n+v;}\nfunction section(n,v){return n+v;}\nfunction businessFileCount(){return 0;}\n'+intellectualCode+
  "\nspace='company';businessFileRows=[];ipRows=[{id:32,data:{name:'真实专利',ipType:'发明专利',applicationNo:'CN-42',status:'已申请',rightHolders:'权利人甲',applicationDate:'2026-02-01'}}];globalThis.__ip=ipList();globalThis.__types=Object.keys(ipStatusByType);",ipCtx);
@@ -247,7 +248,7 @@ assert.ok(js.includes("id===null?'/api/projects/'+workspace+'/'+projectId+'/cont
 const contractFrom=js.indexOf('const contractFieldLabels=');
 const contractUntil=js.indexOf('function projectViewRows(',contractFrom);
 assert.ok(contractFrom>=0&&contractUntil>contractFrom,'Contract renderers not found');
-const contractContext=vm.createContext({sessionStorage:{getItem:()=>null}});
+const contractContext=vm.createContext({sessionStorage:{getItem:()=>null},document:exportDocument});
 vm.runInContext(preamble+
  '\nfunction heading(n,s,a){return n+(a||"");}\nfunction infoRow(n,v){return n+":"+v;}\nfunction section(n,v){return n+v;}\n'+
  js.slice(contractFrom,contractUntil)+
@@ -273,7 +274,7 @@ assert.ok(js.includes('data-archive-id='),'Real archive records must open stored
 assert.ok(js.includes("archiveRows[section]=archiveResults[i]"),'Archive records must be initialized from database');
 const archiveFirst=js.indexOf('const archiveSections=['),archiveLast=js.indexOf('function mockCardList(k){',archiveFirst);
 assert.ok(archiveFirst>=0&&archiveLast>archiveFirst,'Archive render functions missing');
-const realArchiveCtx=vm.createContext({sessionStorage:{getItem:()=>null}});
+const realArchiveCtx=vm.createContext({sessionStorage:{getItem:()=>null},document:exportDocument});
 vm.runInContext(preamble+'\n'+js.slice(archiveFirst,archiveLast)+
  "\nfunction heading(name,subtitle,actions){return '<h1>'+name+'</h1>'+(actions||'');}"+
  "\nfunction infoRow(k,v){return k+':'+v;}"+
