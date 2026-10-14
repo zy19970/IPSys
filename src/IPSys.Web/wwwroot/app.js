@@ -207,8 +207,8 @@ function realDetail(){
  if(!r)return heading('记录详情','记录不存在或当前工作区无权访问')+'<button class="btn" data-nav="general">返回台账</button>';
  const groups=new Map();
  for(const f of r.files){const key=f.groupId||f.name;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(f);}
- const fileLine=f=>'<div class="fileline"><span class="fileicon">'+escapeHtml(f.name.split('.').pop().slice(0,4).toUpperCase())+'</span>'+
- '<span class="filedesc"><strong>'+escapeHtml(f.name)+'</strong><small>v'+f.version+' · '+fmtSize(f.size)+
+ const fileLine=(f,showVersion)=>'<div class="fileline"><span class="fileicon">'+escapeHtml(f.name.split('.').pop().slice(0,4).toUpperCase())+'</span>'+
+ '<span class="filedesc"><strong>'+escapeHtml(f.name)+'</strong><small>'+(showVersion?'v'+f.version+' · ':'')+fmtSize(f.size)+
  ' · SHA-256 '+escapeHtml(f.sha256.slice(0,16))+'…</small></span>'+
  exportCheck(f,'general')+
  '<button class="btn btn-sm" data-preview-general="'+f.id+'">预览</button>'+
@@ -224,11 +224,11 @@ function realDetail(){
  '<div class="info"><label>已归档原件</label><strong>'+groups.size+' 份</strong></div></div></section>'+
  '<section class="white detailsection"><div class="detailsectionhead"><h2>附件资料</h2>'+
  '<button class="btn primary" data-action="upload">＋ 上传原件</button></div><div class="detailbody">'+
- '<input type="file" id="uploadInput" hidden><p class="hint">支持更新指定同名原件或单独归档新原件，保留可展开的历史版本。单文件上限 64 MiB。</p>'+
+ '<input type="file" id="uploadInput" multiple hidden><p class="hint">支持更新指定同名原件或单独归档新原件，保留可展开的历史版本。单文件上限 64 MiB。</p>'+
  ([...groups.values()].map(g=>{g.sort((a,b)=>b.version-a.version||b.id-a.id);
- return '<div class="business-file-group">'+fileLine(g[0])+
+ return '<div class="business-file-group">'+fileLine(g[0],g.length>1)+
  (g.length>1?'<details><summary>查看历史版本（'+(g.length-1)+'）</summary>'+
- g.slice(1).map(fileLine).join('')+'</details>':'')+'</div>';}).join('')||
+ g.slice(1).map(f=>fileLine(f,true)).join('')+'</details>':'')+'</div>';}).join('')||
  '<div class="empty">暂无附件，点击“上传原件”开始归档。</div>')+
  (r.files.length?exportButtons():'')+'</div></section>'+
  '<section class="white detailsection"><div class="detailsectionhead"><h2>关联资料</h2>'+stamp()+
@@ -444,10 +444,10 @@ function moduleExportPanel(records,source,section=''){
   total+=groups.size;
   return [...groups.values()].map(group=>{
    group.sort((a,b)=>b.version-a.version||b.id-a.id);
-   const entry=f=>'<div class="export-record-line">'+exportCheck(f,origin)+
-    '<span>'+escapeHtml(f.name)+' · v'+f.version+'</span></div>';
-   return entry(group[0])+(group.length>1?'<details><summary>历史版本（'+
-    (group.length-1)+'）</summary>'+group.slice(1).map(entry).join('')+'</details>':'');
+   const entry=(f,showVersion)=>'<div class="export-record-line">'+exportCheck(f,origin)+
+    '<span>'+escapeHtml(f.name)+(showVersion?' · v'+f.version:'')+'</span></div>';
+   return entry(group[0],group.length>1)+(group.length>1?'<details><summary>历史版本（'+
+    (group.length-1)+'）</summary>'+group.slice(1).map(f=>entry(f,true)).join('')+'</details>':'');
   }).join('');
  }
  for(const record of records){
@@ -503,10 +503,10 @@ function projectContractExport(projectId){
   return '<div class="contract-export-group"><strong>'+escapeHtml(c.name)+'</strong>'+
    [...groups.values()].map(group=>{
     group.sort((a,b)=>b.version-a.version||b.id-a.id);
-    const one=f=>'<div class="export-record-line">'+exportCheck(f)+
-      '<span>'+escapeHtml(f.name)+' · v'+f.version+'</span></div>';
-    return one(group[0])+(group.length>1?'<details><summary>历史版本</summary>'+
-      group.slice(1).map(one).join('')+'</details>':'');
+    const one=(f,showVersion)=>'<div class="export-record-line">'+exportCheck(f)+
+      '<span>'+escapeHtml(f.name)+(showVersion?' · v'+f.version:'')+'</span></div>';
+    return one(group[0],group.length>1)+(group.length>1?'<details><summary>历史版本</summary>'+
+      group.slice(1).map(f=>one(f,true)).join('')+'</details>':'');
    }).join('')+'</div>';
  }).filter(Boolean);
  return parts.length?'<p class="hint">合同原件必须单独勾选，不会因为勾选项目原件而自动包含。</p>'+
@@ -526,9 +526,9 @@ function businessAttachmentList(kind,ownerId,section=''){
  const category=kind==='ip'?'<label for="businessMaterialCategory">附件材料类别</label>'+
  '<select id="businessMaterialCategory">'+
  ['申请材料','通知文件','证书文件','其他材料'].map(x=>'<option>'+x+'</option>').join('')+'</select>':'';
- const line=f=>'<div class="fileline"><span class="fileicon">'+
+ const line=(f,showVersion)=>'<div class="fileline"><span class="fileicon">'+
  escapeHtml(f.name.split('.').pop().slice(0,4).toUpperCase())+'</span>'+
- '<span class="filedesc"><strong>'+escapeHtml(f.name)+'</strong><small>v'+f.version+
+ '<span class="filedesc"><strong>'+escapeHtml(f.name)+'</strong><small>'+(showVersion?'v'+f.version:'')+
  (f.category?' · '+escapeHtml(f.category):'')+' · '+fmtSize(f.size)+
  ' · SHA-256 '+escapeHtml(f.sha256.slice(0,12))+'…</small></span>'+
  exportCheck(f)+'<button class="btn btn-sm" data-preview-business="'+f.id+'">预览</button>'+
@@ -539,10 +539,10 @@ function businessAttachmentList(kind,ownerId,section=''){
  '<button class="btn primary" data-action="businessUpload">＋ 上传原件</button></div></div>'+
  '<p class="hint">同名原件可选择更新已有版本链，或作为独立新文件归档；同工作区共享引用自动显示新版本。单文件上限 64 MiB。</p>'+
  ([...groups.values()].map(g=>{g.sort((a,b)=>b.version-a.version||b.id-a.id);
-  return '<div class="business-file-group">'+line(g[0])+
+  return '<div class="business-file-group">'+line(g[0],g.length>1)+
    '<button class="btn btn-sm" data-business-associate="'+g[0].id+'">复制／移动关联</button>'+
    (g.length>1?'<details><summary>查看历史版本（'+(g.length-1)+'）</summary>'+
-    g.slice(1).map(line).join('')+'</details>':'')+'</div>';}).join('')||
+    g.slice(1).map(f=>line(f,true)).join('')+'</details>':'')+'</div>';}).join('')||
  '<p class="hint">暂无附件，可上传原始文件。</p>')+
  (files.length||(kind==='project'&&contractRows.some(c=>c.projectId===ownerId&&businessFiles('contract',c.id).length))?exportButtons():'');
 }
