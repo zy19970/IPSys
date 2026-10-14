@@ -273,6 +273,7 @@ static class ExcelLedger
         var ips=kind=="ip"?IpStore.List(db,workspace):new List<IpView>();
         int created=0,updated=0,skipped=0;
         var errors=new List<object>();
+        int failed=0;
         foreach(var (line,data) in rows)
         {
             try
@@ -312,10 +313,11 @@ static class ExcelLedger
             }
             catch(Exception ex)
             {
-                errors.Add(new {row=line,error=ex.Message});
-                if(errors.Count>=300)throw new InvalidDataException("错误行过多，请先修正 Excel 内容再导入。");
+                failed++;
+                if(errors.Count<300)errors.Add(new {row=line,error=ex.Message});
+                // Keep processing correct rows even when the error-report display is capped.
             }
         }
-        return new {created,updated,skipped,failed=errors.Count,errors,total=rows.Count};
+        return new {created,updated,skipped,failed,errors,omittedErrors=failed-errors.Count,total=rows.Count};
     }
 }

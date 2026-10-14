@@ -475,6 +475,7 @@ function showExcelImportReport(report){
  dialog.innerHTML='<h3>Excel 导入结果</h3>'+
   '<p>新增 '+report.created+' 条，更新 '+report.updated+' 条，跳过 '+report.skipped+
   ' 条，失败 '+report.failed+' 条。</p>'+
+  (report.omittedErrors?'<p class="hint">另有 '+report.omittedErrors+' 行错误未展开显示，请先修正已列出的错误再导入。</p>':'')+
   (details.length?'<div class="excel-errors">'+details.map(e=>
    '<p>第 '+Number(e.row)+' 行：'+escapeHtml(e.error)+'</p>').join('')+'</div>':'')+
   '<div class="dialogactions"><button class="btn primary" data-excel-close="1">关闭</button></div>';

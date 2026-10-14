@@ -1349,6 +1349,43 @@ static class WebSmoke
         return (json.GetProperty("id").GetInt64(),json.GetProperty("version").GetInt32(),
             json.GetProperty("reused").GetBoolean());
     }
+    private static byte[] MixedExcelRows(byte[] original)
+    {
+        // Duplicate a valid project row, then make the third row invalid;
+        // the second, newly numbered row must still import successfully.
+        using var stream=new MemoryStream();
+        stream.Write(original);
+        stream.Position=0;
+        using(var zip=new System.IO.Compression.ZipArchive(stream,
+            System.IO.Compression.ZipArchiveMode.Update,true))
+        {
+            var entry=zip.GetEntry("xl/worksheets/sheet1.xml")
+                ??throw new IOException("XLSX 工作表缺失。");
+            System.Xml.Linq.XDocument xml;
+            using(var body=entry.Open())xml=System.Xml.Linq.XDocument.Load(body);
+            System.Xml.Linq.XNamespace n="http://schemas.openxmlformats.org/spreadsheetml/2006/main";
+            var data=xml.Descendants(n+"sheetData").First();
+            var sample=data.Elements(n+"row").Skip(1).First();
+            var invalid=new System.Xml.Linq.XElement(sample);
+            invalid.SetAttributeValue("r","3");
+            foreach(var cell in invalid.Elements(n+"c"))
+            {
+                string reference=(string?)cell.Attribute("r")??"";
+                cell.SetAttributeValue("r",System.Text.RegularExpressions.Regex.Replace(
+                    reference,@"\d+$","3"));
+            }
+            var validNumber=sample.Elements(n+"c").First(c=>(string?)c.Attribute("r")=="C2");
+            validNumber.Descendants(n+"t").First().Value="XLSX-NEW-"+Guid.NewGuid().ToString("N");
+            var invalidType=invalid.Elements(n+"c").First(c=>(string?)c.Attribute("r")=="B3");
+            invalidType.Descendants(n+"t").First().Value="非法项目类别";
+            sample.AddAfterSelf(invalid);
+            entry.Delete();
+            var replacement=zip.CreateEntry("xl/worksheets/sheet1.xml");
+            using(var output=replacement.Open())xml.Save(output);
+        }
+        return stream.ToArray();
+    }
+
     private static async Task VerifyExcelAsync(HttpClient client)
     {
         var unique=Guid.NewGuid().ToString("N")[..8];
@@ -1415,6 +1452,19 @@ static class WebSmoke
                 var result=await imported.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
                 if(result.GetProperty("created").GetInt32()!=1)
                     throw new IOException("Excel 重复记录独立新建策略无效。");
+            }
+            if(kind=="project")
+            {
+                byte[] mixed=MixedExcelRows(workbook);
+                using var body=new ByteArrayContent(mixed);
+                body.Headers.ContentType=new System.Net.Http.Headers.MediaTypeHeaderValue(ExcelLedger.ContentType);
+                var imported=await client.PostAsync(path+"/import?policy=skip",body);
+                imported.EnsureSuccessStatusCode();
+                var result=await imported.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+                if(result.GetProperty("created").GetInt32()!=1||
+                   result.GetProperty("failed").GetInt32()!=1||
+                   result.GetProperty("errors")[0].GetProperty("row").GetInt32()!=3)
+                    throw new IOException("Excel 错误行隔离与行号报告未生效。");
             }
             using(var invalidBody=new ByteArrayContent(new byte[]{1,2,3}))
             {
