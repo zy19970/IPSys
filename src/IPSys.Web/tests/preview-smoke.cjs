@@ -42,7 +42,7 @@ const context=vm.createContext({
   const viewer={destroy(){events.push('destroy-canvas-viewer');},async open(){events.push('render-pdf')}};
   objects.push(viewer);return viewer;
  }}),
- el:id=>({filePreviewBody:body,filePreviewDialog:dialog,filePreviewTitle:title})[id],
+ el:id=>({filePreviewBody:body,filePreviewDialog:dialog,filePreviewTitle:title,filePreviewClose:{onclick:null}})[id],
  document:{createElement(tag){
   events.push('create-'+tag);
   return {tag,src:'',alt:''};
