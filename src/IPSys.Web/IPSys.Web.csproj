@@ -8,6 +8,14 @@
     <AssemblyName>IPSys.Web</AssemblyName>
     <RootNamespace>IPSys.Web</RootNamespace>
   </PropertyGroup>
+  <!-- Visual Studio Debug remains multi-file for debugging; Release Publish is a portable single EXE. -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
   <ItemGroup>
     <!-- Embed HTML/CSS/JS into the executable, no external wwwroot folder. -->
     <Content Remove="wwwroot\**\*" />

@@ -30,6 +30,18 @@ IPSys 是面向 **Windows 10/11 x64** 的离线便携式单用户资料管理系
 > **当前任务：U0 UI 已冻结；优先开发核心业务，辅助能力后置。** 公司「科研项目」「横向项目」和个人「科研与合作项目」已开始接入真实 SQLCipher 项目台账（新增、编辑、软删除、复制和转移），项目、知识产权、项目关联合同以及 B04 资质/证件/科研成果分类归档已接入 SQLCipher 真实业务台账。B05 已接入业务记录原件的加密上传/下载、同名版本及复制转移关联；附件恢复已接入测试版，但完整业务与大文件专项验收仍待完成。M1 超大附件、SSD/备份等专项验证尚未全部完成，现阶段测试请使用可丢弃资料库。详情见 [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md)。  
 > 请勿把历史 DESIGN.md 中的探索功能当作现行产品需求。
 
+## 绿色单 EXE 发布（不要使用 VS Debug 输出作为便携包）
+
+**用户拷贝和运行的发布文件只有 `IPSys.Web.exe`**。项目 Release 发布已配置 Windows x64、自包含 .NET 运行时、单文件打包以及 SQLCipher 原生库嵌入。无需目标电脑另外安装 .NET；HTML/CSS/JS 和 PDF.js 也直接嵌入程序。原生依赖可能在执行时自动解包至当前 Windows 用户的临时缓存，这不要求 EXE 旁有 `runtimes` 文件夹。
+
+在 Visual Studio 中使用**项目右键 → 发布（Publish）**，选择文件夹目标、Release 配置并发布，或在仓库根目录运行以下命令（请选用新的空输出文件夹）：
+
+```powershell
+dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 -o .\out\IPSys-SingleExe
+```
+
+发布后检查 `out/IPSys-SingleExe`，只应包含 `IPSys.Web.exe`。普通 `F5` /「生成解决方案」产生的 `bin/Debug/net8.0-windows` 是带 DLL、`runtimes` 的调试输出，**不可直接删除其中依赖文件**，也不应把该目录当作发布包。亦可从 Windows Actions 最新成功工作流下载 `IPSys-Web-win-x64` Artifact，解压后仅复制 EXE。单文件发布不等于附件数据库自动内嵌；个人资料库 `.db` 文件仍需自行保存和备份。
+
 ## 最快开始测试 WinForms 启动器与网页
 
 1. 打开 [IPSys Windows 构建工作流](https://github.com/zy19970/IPSys/actions/workflows/web-windows.yml)，选择最新成功运行，在 **Artifacts** 下载 `IPSys-Web-win-x64`。
