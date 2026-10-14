@@ -70,7 +70,8 @@ jobs:
             $listing = $line | ConvertFrom-Json
             $names = @($listing.result.tools | ForEach-Object { $_.name })
             foreach ($required in @('list_projects','create_project','update_project',
-                                    'create_contract','upload_files','delete_project','delete_contract','delete_file')) {
+                                    'create_contract','upload_files','delete_project','delete_contract','delete_file',
+                                    'list_ips','create_ip','update_ip','delete_ip')) {
               if ($names -notcontains $required) { throw "MCP tool missing: $required" }
             }
             Write-Host 'MCP stdio initialize and tool manifest: PASS'

@@ -26,6 +26,10 @@ IPSys 支持本机 Codex 通过 MCP stdio 控制同一 Windows 用户已经运�
 | --- | --- |
 | `list_projects` | 查询所选工作区的有效项目及 ID |
 | `list_contracts` | 查询有效合同及所属项目 |
+| `list_ips` | 查询专利和其他知识产权记录（含 ID、类型、状态、完整字段） |
+| `create_ip` | 新增专利和其他知识产权 |
+| `update_ip` | 修改已有知识产权，仅更新传入字段 |
+| `delete_ip` | 将知识产权移入回收站，可恢复 |
 | `list_files` | 查询附件及文件链接 ID |
 | `create_project` | 创建科研、横向或其他项目 |
 | `update_project` | 按 ID 更新指定字段 |
@@ -35,7 +39,11 @@ IPSys 支持本机 Codex 通过 MCP stdio 控制同一 Windows 用户已经运�
 | `upload_files` | 按本机绝对路径将多份原件加密入库 |
 | `delete_file` | 将业务附件的指定关联移入回收站 |
 
-所有工具均需显式指定 `workspace`：`company` 是公司，`personal` 是个人。上传支持 `kind` = `project` 或 `contract`、`owner_id`、`paths`（1–20 条本机绝对路径），可选 `on_conflict`（`new` / `update`）、`group_id` 和 `duplicate_mode`（`independent` / `reuse`）。默认独立归档而不覆盖已归档原件。单文件限 64 MiB。项目、合同、附件的所有删除均使用现有软删除 API，可在回收站恢复，不开放永久清理。
+所有工具均需显式指定 `workspace`：`company` 是公司，`personal` 是个人。上传支持 `kind` = `project`、`contract` 或 `ip`、`owner_id`、`paths`（1–20 条本机绝对路径），可选 `on_conflict`（`new` / `update`）、`group_id` 和 `duplicate_mode`（`independent` / `reuse`）。知识产权附件还可填写 `material_category`，可选「申请材料」「通知文件」「证书文件」「其他材料」，不填则归为「其他材料」；项目和合同附件不用填写该字段。
+
+`create_ip` 的必填参数为 `workspace`、`name`、`ip_type`，`update_ip` 使用 `ip_id` 查找记录。可填写 `status`、`applicants`、`right_holders`、`creators`、`application_no`、`application_date`、`publication_no`、`publication_date`、`grant_notice_no`、`grant_notice_date`、`publication_info`、`grant_date`、`registration_no`、`first_published_date`、`registration_date`、`category`、`remarks`、`tags`。支持发明、实用新型、外观设计专利等既有七种知识产权类型，状态和日期自动走原有业务校验；更新时不改变未传入的字段。
+
+默认独立归档而不覆盖已归档原件。单文件限 64 MiB。项目、合同、附件的所有删除均使用现有软删除 API，可在回收站恢复，不开放永久清理。
 
 ## Codex 提示词示例
 
@@ -44,6 +52,8 @@ IPSys 支持本机 Codex 通过 MCP stdio 控制同一 Windows 用户已经运�
 “在公司资料找到‘智能矿山工程’项目，新建‘技术合同’，把 C:\Contracts\合同.pdf 作为合同附件归档。”
 
 “先查明项目 ID，再将这个测试项目移到回收站，不永久删除。”
+
+“在公司资料中新建一项发明专利《矿山机器人自适应控制方法》，状态设为实质审查中，申请号 CN202610000001.0；把本机 D:\\专利材料\\申请文件.pdf 归档为申请材料。随后更新专利备注，但保留原申请号。”
 
 ## 安全边界
 

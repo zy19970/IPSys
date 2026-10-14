@@ -34,6 +34,60 @@ static class McpLocal
         Tool("list_projects","列出指定工作区当前有效项目。",new(){
             ["workspace"]=Field("string","工作区：company 公司；personal 个人",Workspaces)
         },["workspace"]),
+        Tool("list_ips","查询专利和其他知识产权，返回每条记录的 ID、类型、状态与详情。",new(){
+            ["workspace"]=Field("string","工作区",Workspaces)
+        },["workspace"]),
+        Tool("create_ip","创建专利或知识产权。知识产权类型和状态按 IPSys 现有约束校验。",new(){
+            ["workspace"]=Field("string","工作区",Workspaces),
+            ["name"]=Field("string","名称"),
+            ["ip_type"]=Field("string","知识产权类型",["发明专利","实用新型专利","外观设计专利","软件著作权","其他著作权","商标","集成电路布图设计"]),
+            ["status"]=Field("string","状态"),
+            ["applicants"]=Field("string","申请人"),
+            ["right_holders"]=Field("string","权利人"),
+            ["creators"]=Field("string","发明人/设计人/作者"),
+            ["application_no"]=Field("string","申请号"),
+            ["application_date"]=Field("string","申请日期 yyyy-MM-dd"),
+            ["publication_no"]=Field("string","公开号"),
+            ["publication_date"]=Field("string","公开日期 yyyy-MM-dd"),
+            ["grant_notice_no"]=Field("string","授权公告号"),
+            ["grant_notice_date"]=Field("string","公告日期 yyyy-MM-dd"),
+            ["publication_info"]=Field("string","公开信息"),
+            ["grant_date"]=Field("string","授权日期 yyyy-MM-dd"),
+            ["registration_no"]=Field("string","登记号"),
+            ["first_published_date"]=Field("string","首次发表日期 yyyy-MM-dd"),
+            ["registration_date"]=Field("string","登记日期 yyyy-MM-dd"),
+            ["category"]=Field("string","自定义分类"),
+            ["remarks"]=Field("string","备注"),
+            ["tags"]=Field("string","标签")
+        },["workspace","name","ip_type"]),
+        Tool("update_ip","按 ID 更新专利或知识产权，仅改变明确传入的字段。",new(){
+            ["workspace"]=Field("string","工作区",Workspaces),
+            ["ip_id"]=Field("integer","知识产权 ID"),
+            ["name"]=Field("string","名称"),
+            ["ip_type"]=Field("string","知识产权类型",["发明专利","实用新型专利","外观设计专利","软件著作权","其他著作权","商标","集成电路布图设计"]),
+            ["status"]=Field("string","状态"),
+            ["applicants"]=Field("string","申请人"),
+            ["right_holders"]=Field("string","权利人"),
+            ["creators"]=Field("string","发明人/设计人/作者"),
+            ["application_no"]=Field("string","申请号"),
+            ["application_date"]=Field("string","申请日期 yyyy-MM-dd"),
+            ["publication_no"]=Field("string","公开号"),
+            ["publication_date"]=Field("string","公开日期 yyyy-MM-dd"),
+            ["grant_notice_no"]=Field("string","授权公告号"),
+            ["grant_notice_date"]=Field("string","公告日期 yyyy-MM-dd"),
+            ["publication_info"]=Field("string","公开信息"),
+            ["grant_date"]=Field("string","授权日期 yyyy-MM-dd"),
+            ["registration_no"]=Field("string","登记号"),
+            ["first_published_date"]=Field("string","首次发表日期 yyyy-MM-dd"),
+            ["registration_date"]=Field("string","登记日期 yyyy-MM-dd"),
+            ["category"]=Field("string","自定义分类"),
+            ["remarks"]=Field("string","备注"),
+            ["tags"]=Field("string","标签")
+        },["workspace","ip_id"]),
+        Tool("delete_ip","将指定专利或知识产权移入回收站。",new(){
+            ["workspace"]=Field("string","工作区",Workspaces),
+            ["ip_id"]=Field("integer","知识产权 ID")
+        },["workspace","ip_id"]),
         Tool("list_contracts","查询当前工作区有效合同及其所属项目 ID。",new(){
             ["workspace"]=Field("string","工作区",Workspaces)
         },["workspace"]),
@@ -93,12 +147,13 @@ static class McpLocal
             ["workspace"]=Field("string","工作区",Workspaces),
             ["file_id"]=Field("integer","list_files 查询到的文件链接 ID")
         },["workspace","file_id"]),
-        Tool("upload_files","从本机绝对路径将一个或多个原件加密归档到项目或所属合同。单份不超过 64 MiB；默认独立原件，不自动合并同名文件。",new(){
+        Tool("upload_files","从本机绝对路径加密归档原件到项目、合同或专利。单份不超过 64 MiB；默认独立原件。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
-            ["kind"]=Field("string","原件归属类别",["project","contract"]),
-            ["owner_id"]=Field("integer","项目 ID 或合同 ID"),
+            ["kind"]=Field("string","原件归属类别",["project","contract","ip"]),
+            ["owner_id"]=Field("integer","项目、合同或知识产权 ID"),
             ["paths"]=new {type="array",minItems=1,maxItems=20,items=Field("string","本机绝对文件路径")},
             ["on_conflict"]=Field("string","new 独立原件；update 更新已有原件版本",["new","update"]),
+            ["material_category"]=Field("string","知识产权附件类别（默认其他材料）",["申请材料","通知文件","证书文件","其他材料"]),
             ["group_id"]=Field("string","存在多个同名原件时，更新指定组的身份 ID"),
             ["duplicate_mode"]=Field("string","物理字节保留独立或显式复用",["independent","reuse"])
         },["workspace","kind","owner_id","paths"])
@@ -266,6 +321,29 @@ static class McpLocal
         ["amount"]="amount",["signing_parties"]="signingParties",
         ["category"]="category",["remarks"]="remarks",["tags"]="tags"
     };
+    private static readonly Dictionary<string,string> IpFields=new()
+    {
+        ["name"]="name",
+        ["ip_type"]="ipType",
+        ["status"]="status",
+        ["applicants"]="applicants",
+        ["right_holders"]="rightHolders",
+        ["creators"]="creators",
+        ["application_no"]="applicationNo",
+        ["application_date"]="applicationDate",
+        ["publication_no"]="publicationNo",
+        ["publication_date"]="publicationDate",
+        ["grant_notice_no"]="grantNoticeNo",
+        ["grant_notice_date"]="grantNoticeDate",
+        ["publication_info"]="publicationInfo",
+        ["grant_date"]="grantDate",
+        ["registration_no"]="registrationNo",
+        ["first_published_date"]="firstPublishedDate",
+        ["registration_date"]="registrationDate",
+        ["category"]="category",
+        ["remarks"]="remarks",
+        ["tags"]="tags"
+    };
     private static JsonObject Patch(JsonObject baseline,JsonElement args,Dictionary<string,string> names)
     {
         foreach(var (argument,property) in names)
@@ -304,6 +382,35 @@ static class McpLocal
         {
             case "list_projects":
                 return await RequestAsync(client,HttpMethod.Get,baseProject);
+            case "list_ips":
+                return await RequestAsync(client,HttpMethod.Get,"/api/ip/"+workspace);
+            case "create_ip":
+            {
+                if(string.IsNullOrWhiteSpace(ReadString(args,"name"))||
+                   string.IsNullOrWhiteSpace(ReadString(args,"ip_type")))
+                    throw new IOException("name 和 ip_type 必填");
+                return await RequestAsync(client,HttpMethod.Post,"/api/ip/"+workspace,
+                    Patch(new JsonObject(),args,IpFields));
+            }
+            case "update_ip":
+            {
+                long id=ReadId(args,"ip_id");
+                JsonNode records=await RequestAsync(client,HttpMethod.Get,"/api/ip/"+workspace);
+                JsonObject stored=records.AsArray().OfType<JsonObject>()
+                    .FirstOrDefault(x=>x["id"]?.GetValue<long>()==id)
+                    ??throw new IOException("专利/知识产权不存在或不属于当前工作区。");
+                JsonObject data=stored["data"]?.AsObject()
+                    ??throw new IOException("知识产权数据格式无效。");
+                JsonObject payload=new();
+                foreach(string key in IpFields.Values)
+                    payload[key]=data[key]?.DeepClone();
+                Patch(payload,args,IpFields);
+                return await RequestAsync(client,HttpMethod.Put,
+                    "/api/ip/"+workspace+"/"+id,payload);
+            }
+            case "delete_ip":
+                return await RequestAsync(client,HttpMethod.Delete,
+                    "/api/ip/"+workspace+"/"+ReadId(args,"ip_id"));
             case "list_contracts":
                 return await RequestAsync(client,HttpMethod.Get,"/api/contracts/"+workspace);
             case "list_files":
@@ -348,9 +455,14 @@ static class McpLocal
             case "upload_files":
             {
                 string kind=ReadString(args,"kind");
-                if(kind is not ("project" or "contract"))throw new IOException("kind 只能为 project 或 contract");
+                if(kind is not ("project" or "contract" or "ip"))throw new IOException("kind 只能为 project、contract 或 ip");
                 long owner=ReadId(args,"owner_id");
                 string mode=ReadString(args,"on_conflict","new");
+                string material=ReadString(args,"material_category",kind=="ip"?"其他材料":"");
+                if(kind=="ip"&&material is not ("申请材料" or "通知文件" or "证书文件" or "其他材料"))
+                    throw new IOException("知识产权材料类别无效。");
+                if(kind!="ip"&&material.Length!=0)
+                    throw new IOException("非知识产权附件不能指定材料类别。");
                 string group=ReadString(args,"group_id");
                 string duplicate=ReadString(args,"duplicate_mode","independent");
                 if(mode is not ("new" or "update")||duplicate is not ("independent" or "reuse")||
@@ -381,6 +493,7 @@ static class McpLocal
                         msg.Content.Headers.ContentType=new MediaTypeHeaderValue("application/octet-stream");
                         msg.Content.Headers.ContentLength=file.Length;
                         msg.Headers.TryAddWithoutValidation("X-File-Name",Uri.EscapeDataString(file.Name));
+                        msg.Headers.TryAddWithoutValidation("X-Material-Category",Uri.EscapeDataString(material));
                         msg.Headers.TryAddWithoutValidation("X-Upload-Mode",mode);
                         msg.Headers.TryAddWithoutValidation("X-File-Group",group);
                         msg.Headers.TryAddWithoutValidation("X-Duplicate-Mode",duplicate);

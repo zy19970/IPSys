@@ -1347,6 +1347,78 @@ static class WebSmoke
             $"/api/business-files/company/download/{fileId}");
         if(!recovered.AsSpan().SequenceEqual(bytes))
             throw new IOException("MCP 上传后解密原件字节与本地不符。");
+        // IP tools: field preservation, legal states, workspace isolation and originals.
+        var newIp=await McpLocal.RunSmokeToolAsync("create_ip",
+            System.Text.Json.JsonSerializer.SerializeToElement(new {
+                workspace="company",name="MCP 专利",ip_type="发明专利",
+                status="实质审查中",application_no="CN202610000001.0",
+                application_date="2026-10-14",applicants="测试申请单位"
+            }));
+        long ipId=newIp["id"]?.GetValue<long>()??0;
+        if(ipId<=0)throw new IOException("MCP 专利创建未返回有效 ID。");
+        var ips=await McpLocal.RunSmokeToolAsync("list_ips",
+            System.Text.Json.JsonSerializer.SerializeToElement(new {workspace="company"}));
+        if(!ips.AsArray().Any(x=>x?["id"]?.GetValue<long>()==ipId
+           &&x?["data"]?["ipType"]?.GetValue<string>()=="发明专利"))
+            throw new IOException("MCP 专利未进入现有知识产权台账。");
+        await McpLocal.RunSmokeToolAsync("update_ip",
+            System.Text.Json.JsonSerializer.SerializeToElement(new {
+                workspace="company",ip_id=ipId,name="MCP 专利名称已修改",remarks="仅修改部分字段"
+            }));
+        var afterIpUpdate=await McpLocal.RunSmokeToolAsync("list_ips",
+            System.Text.Json.JsonSerializer.SerializeToElement(new {workspace="company"}));
+        var updatedIp=afterIpUpdate.AsArray().FirstOrDefault(x=>x?["id"]?.GetValue<long>()==ipId);
+        if(updatedIp?["data"]?["name"]?.GetValue<string>()!="MCP 专利名称已修改"||
+           updatedIp?["data"]?["applicationNo"]?.GetValue<string>()!="CN202610000001.0"||
+           updatedIp?["data"]?["status"]?.GetValue<string>()!="实质审查中")
+            throw new IOException("MCP 修改专利未保留原有申请号或审查状态。");
+        bool crossIpDenied=false;
+        try
+        {
+            await McpLocal.RunSmokeToolAsync("update_ip",
+                System.Text.Json.JsonSerializer.SerializeToElement(new {
+                    workspace="personal",ip_id=ipId,name="跨区错误修改"
+                }));
+        }
+        catch(IOException ex)when(ex.Message.Contains("不属于当前工作区"))
+        {crossIpDenied=true;}
+        if(!crossIpDenied)throw new IOException("MCP 未拦截跨工作区专利更新。");
+        bool invalidIpDenied=false;
+        try
+        {
+            await McpLocal.RunSmokeToolAsync("create_ip",
+                System.Text.Json.JsonSerializer.SerializeToElement(new {
+                    workspace="company",name="非法状态",ip_type="发明专利",status="已登记"
+                }));
+        }
+        catch(IOException ex)when(ex.Message.Contains("所选状态不适用于"))
+        {invalidIpDenied=true;}
+        if(!invalidIpDenied)throw new IOException("MCP 未使用知识产权原状态校验。");
+        var ipUpload=await McpLocal.RunSmokeToolAsync("upload_files",
+            System.Text.Json.JsonSerializer.SerializeToElement(new {
+                workspace="company",kind="ip",owner_id=ipId,
+                paths=new[]{filename},material_category="申请材料",on_conflict="new"
+            }));
+        if(ipUpload["succeeded"]?.GetValue<int>()!=1)
+            throw new IOException("MCP 专利申请材料上传失败："+ipUpload.ToJsonString());
+        var ipFiles=await McpLocal.RunSmokeToolAsync("list_files",
+            System.Text.Json.JsonSerializer.SerializeToElement(new {workspace="company"}));
+        long ipFileId=ipFiles.AsArray().FirstOrDefault(x=>
+            x?["kind"]?.GetValue<string>()=="ip"&&
+            x?["ownerId"]?.GetValue<long>()==ipId&&
+            x?["category"]?.GetValue<string>()=="申请材料")?["id"]?.GetValue<long>()??0;
+        if(ipFileId<=0)throw new IOException("MCP 专利附件分类或所有者不正确。");
+        byte[] recoveredIp=await client.GetByteArrayAsync(
+            $"/api/business-files/company/download/{ipFileId}");
+        if(!recoveredIp.AsSpan().SequenceEqual(bytes))
+            throw new IOException("MCP 专利原件字节与来源文件不一致。");
+        await McpLocal.RunSmokeToolAsync("delete_ip",
+            System.Text.Json.JsonSerializer.SerializeToElement(new {
+                workspace="company",ip_id=ipId
+            }));
+        var ipTrash=await client.GetFromJsonAsync<List<RecycleItem>>("/api/trash/company");
+        if(ipTrash==null||!ipTrash.Any(x=>x.Kind=="ip"&&x.Id==ipId))
+            throw new IOException("MCP 专利删除没有进入回收站。");
         await McpLocal.RunSmokeToolAsync("delete_file",
             System.Text.Json.JsonSerializer.SerializeToElement(new {workspace="company",file_id=fileId}));
         await McpLocal.RunSmokeToolAsync("delete_contract",

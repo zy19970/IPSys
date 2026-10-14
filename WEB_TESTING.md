@@ -1,5 +1,14 @@
 # IPSys 最小网页 + WinForms 启动器（Windows 测试）
 
+## MCP 专利与知识产权操作验收（2026-10-14）
+
+1. 在本机打开可丢弃 SQLCipher 测试库，系统设置启用 MCP。使用 Codex 或其他本机 MCP 客户端，确认工具清单包含 `list_ips`、`create_ip`、`update_ip`、`delete_ip`，此前十项工具仍可调用。
+2. 使用 `create_ip` 在公司工作区创建发明专利，填写类型、合法状态、申请号和日期；使用 `list_ips` 读取真实 ID。调用 `update_ip` 仅更改名称或备注后，确保申请号、日期、状态等未传入字段没有丢失。
+3. 使用错误工作区及相同 `ip_id` 修改，必须被拒绝；发明专利若给定软件著作权的“已登记”状态，也必须被原有知识产权校验拒绝。
+4. 调用 `upload_files`，使用 `kind=ip`、对应 `owner_id` 和 `material_category=申请材料` 上传本机原件。核实 `list_files` 返回正确专利及申请材料分类，解密下载原件字节与来源 SHA-256 一致。
+5. 使用 `delete_ip` 将测试专利移入回收站，原有效记录不再显示而可在回收站恢复。关闭 MCP 后 `list_ips` 必须拒绝访问，关库后再次打开 MCP 不得自动开启。
+
+
 ## 本机 Codex MCP：测试步骤（2026-10-14）
 
 本项与网页 UI 的登录、数据库密码、MCP 授权开关分离；使用可丢弃 SQLCipher 测试库。
