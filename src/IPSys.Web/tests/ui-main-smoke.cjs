@@ -500,8 +500,10 @@ assert.ok(realArchiveCtx.__certEmpty.includes('暂无符合条件的资料')&&
  !realArchiveCtx.__certEmpty.includes('企业资质</h3>')&&
  realArchiveCtx.__certEmpty.includes('data-export-ids=""'),
  'Empty enterprise certificate page must display a table empty state, not a fake card');
-assert.ok(js.includes("ids=companyCertificateRows().map(r=>r.id)"),
- 'Excel export must select the same rows as the certificate list');
+assert.ok(js.includes("ids=certificateExportIds();")&&
+ js.includes("const checked=rows.filter(r=>certificateSelected.has(r.id))")&&
+ js.includes("return (checked.length?checked:rows).map(r=>r.id)"),
+ 'Certificate Excel must export checked records first or all visible filtered records when unchecked');
 assert.ok(js.includes("page=section;archiveGroup=simpleCertificate?null:record.category")&&
  js.includes("detail=simpleCertificate?null:{kind:'archive',id:recordId}"),
  'Saved company certificate must return to the direct list without category routing');
