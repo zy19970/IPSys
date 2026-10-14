@@ -100,3 +100,9 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 .export-status>span{flex:1;min-width:200px}
 .export-status pre{white-space:pre-wrap;overflow:auto;max-height:130px;width:100%;margin:0;
  font:inherit;color:#647484}
+
+.module-export{border:1px solid #e0e7ed;border-radius:8px;background:#fff;padding:11px 15px;margin-top:12px}
+.module-export>summary{cursor:pointer;color:var(--ink);font-size:13px;font-weight:600}
+.module-export[open]>summary{padding-bottom:10px}
+.module-export .contract-export-group{margin:8px 0}
+.module-export-sub{margin:8px 4px 8px 20px;border-left:2px solid #d7e5e8;padding-left:10px}
