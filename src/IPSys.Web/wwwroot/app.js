@@ -534,8 +534,8 @@ function businessAttachmentList(kind,ownerId,section=''){
  ['申请材料','通知文件','证书文件','其他材料'].map(x=>'<option>'+x+'</option>').join('')+'</select>':'';
  const line=(f,showVersion,latest=false)=>'<div class="fileline"><span class="fileicon">'+
  escapeHtml(f.name.split('.').pop().slice(0,4).toUpperCase())+'</span>'+
- '<span class="filedesc"><strong>'+escapeHtml(f.name)+'</strong><small>'+(showVersion?'v'+f.version:'')+
- (f.category?' · '+escapeHtml(f.category):'')+' · '+fmtSize(f.size)+
+ '<span class="filedesc"><strong>'+escapeHtml(f.name)+'</strong><small>'+(showVersion?'v'+f.version+' · ':'')+
+ (f.category?escapeHtml(f.category)+' · ':'')+fmtSize(f.size)+
  ' · SHA-256 '+escapeHtml(f.sha256.slice(0,12))+'…</small></span>'+
  exportCheck(f,'business',latest)+'<button class="btn btn-sm" data-preview-business="'+f.id+'">预览</button>'+
  '<button class="btn btn-sm" data-business-download="'+f.id+'">下载</button>'+
