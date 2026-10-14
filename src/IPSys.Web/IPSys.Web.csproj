@@ -15,6 +15,9 @@
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <DebugType>embedded</DebugType>
+    <!-- IPSys serves embedded assets through MapGet; neither IIS nor static-web-assets manifests are used. -->
+    <StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>
+    <IsTransformWebConfigDisabled>true</IsTransformWebConfigDisabled>
   </PropertyGroup>
   <ItemGroup>
     <!-- Embed HTML/CSS/JS into the executable, no external wwwroot folder. -->
