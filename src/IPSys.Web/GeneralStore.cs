@@ -7,7 +7,7 @@ static class GeneralStore
     {
         AddColumn(db,"records","deleted","INTEGER NOT NULL DEFAULT 0");
         AddColumn(db,"attachments","deleted","INTEGER NOT NULL DEFAULT 0");
-        AddColumn(db,"attachments","version","INTEGER NOT NULL DEFAULT 1");
+        bool versionAdded=AddColumn(db,"attachments","version","INTEGER NOT NULL DEFAULT 1");
         AddColumn(db,"attachments","group_id","TEXT NOT NULL DEFAULT ''");
         using var tx=db.BeginTransaction();
         using var groups=db.CreateCommand();groups.Transaction=tx;
@@ -27,11 +27,11 @@ static class GeneralStore
                 AND x.id<=attachments.id)
             WHERE group_id LIKE 'general-legacy-%';
             """;
-        versions.ExecuteNonQuery();
+        if(versionAdded)versions.ExecuteNonQuery();
         tx.Commit();
     }
 
-    private static void AddColumn(SqliteConnection db,string table,string name,string type)
+    private static bool AddColumn(SqliteConnection db,string table,string name,string type)
     {
         bool found=false;
         using(var check=db.CreateCommand())
@@ -40,10 +40,11 @@ static class GeneralStore
             using var reader=check.ExecuteReader();
             while(reader.Read())if(reader.GetString(1)==name)found=true;
         }
-        if(found)return;
+        if(found)return false;
         using var cmd=db.CreateCommand();
         cmd.CommandText="ALTER TABLE "+table+" ADD COLUMN "+name+" "+type+";";
         cmd.ExecuteNonQuery();
+        return true;
     }
 
     public static bool OwnerExists(SqliteConnection db,string workspace,long id)
