@@ -72,8 +72,12 @@ async function api(url,{signal}={}){
   releaseLock(){}
  }}}};
 }
+const timers=new Map();let timerId=0;
+const fakeSetTimeout=(fn,delay)=>{timers.set(++timerId,{fn,delay});return timerId};
+const fakeClearTimeout=id=>timers.delete(id);
 const sandbox={document,window,TextEncoder,Uint32Array,Uint8Array,DataView,api,
- notice:(message,bad)=>notices.push({message,bad}),DOMException,AbortController,console};
+ notice:(message,bad)=>notices.push({message,bad}),DOMException,AbortController,console,
+ setTimeout:fakeSetTimeout,clearTimeout:fakeClearTimeout};
 vm.runInNewContext(code,sandbox,{filename:'export.js'});
 const exporter=sandbox.IPSysExport;
 assert.ok(exporter);
@@ -126,5 +130,10 @@ assert.deepEqual(JSON.parse(JSON.stringify(plan.map(x=>x.path))),[
  assert.ok(savedZip.bytes,'ZIP should be retained if one file succeeded');
  assert.match(elems.get('exportResult').textContent,/成功 1，失败 1/);
  assert.equal(savedZip.bytes.readUInt16LE(savedZip.bytes.length-22+10),1);
+ assert.equal(elems.get('exportStatus').hidden,false,'Export result visible briefly');
+ const lastTimer=[...timers.values()].at(-1);
+ assert.equal(lastTimer.delay,18000,'Failures should remain visible longer');
+ lastTimer.fn();
+ assert.equal(elems.get('exportStatus').hidden,true,'Export result must auto-dismiss');
  console.log('EXPORT SMOKE PASS: naming, nested contracts, repeated folders, ZIP bytes and partial failures');
 })().catch(err=>{console.error(err);process.exitCode=1});
