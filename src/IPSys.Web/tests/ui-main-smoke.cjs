@@ -147,8 +147,9 @@ for(const key of ['personal','company'])assert.ok(html.includes('data-ui-icon="'
  'Workspace selector must mount the shared icon '+key);
 assert.equal((html.match(/data-ui-icon="/g)||[]).length,4,
  'Both unlock choices and both sidebar workspace switches need matching icons');
-assert.ok(js.includes("uiIcon(key)+'</span><span class=\"nav-text\"'"),
- 'Sidebar must use shared SVG icons instead of Unicode placeholder glyphs');
+assert.ok(js.includes('class="nav-symbol"')&&js.includes('class="nav-text"')&&
+ (js.match(/uiIcon\(key\)/g)||[]).length>=3,
+ 'Sidebar and dashboard must reuse the same SVG icon renderer');
 assert.ok(css.includes('.dashboard-choice-symbol .ui-icon')&&css.includes('.nav-symbol')&&css.includes('.workspace-switch-icon .ui-icon'),
  'Unified icon sizing and alignment styles are required');
 assert.ok(!/\bfetch\s*\(\s*['"]https?:/.test(iconScript),'Icon set must stay self-contained and offline');
