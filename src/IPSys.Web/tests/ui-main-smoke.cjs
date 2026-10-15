@@ -519,7 +519,7 @@ for(const c of ["申报与认定","规划与管理","汇报与宣传","会议与
 assert.ok(realArchiveCtx.__companyCats.includes('技术成果'),'Legacy categories must remain available');
 assert.ok(realArchiveCtx.__companyCards.includes('data-archive-category="技术成果"')&&
  realArchiveCtx.__companyTable.includes('data-archive-id="31"'),'Old and new company data must be accessible');
-assert.ok(realArchiveCtx.__companyTable.includes('<table class="data ledger-archive-category-table">'),
+assert.ok(realArchiveCtx.__companyTable.includes('<table class="data ledger-archive-category-table company-business-archive">'),
  'Company archive category tables must use the same compact column sizing');
 assert.ok(realArchiveCtx.__companyTable.includes('<section class="white archive-category-ledger">')&&
  realArchiveCtx.__companyTable.includes('<b>共 1 条记录</b>'),
