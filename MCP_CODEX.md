@@ -1,6 +1,6 @@
 # IPSys 本机 Codex MCP
 
-> **2026-10-15 状态同步**：当前 `main` 已有 **14 项** MCP 工具（含专利/知识产权 CRUD 与知识产权材料分类上传），现行 Windows CI 已通过 stdio 握手、工具清单及真实 SQLCipher/本机命名管道回归；**本机 Codex 或其他平台 MCP 客户端的完整人工连接与日常操作验收仍需执行**。当前 14 项 MCP 工具仍通过旧业务 API/Store，尚未迁入 V2 `folders/files`；需等 N3 File 归属能力就绪后在 N2-03 切换并重新回归。发布程序是单 EXE，但目标电脑需预装 .NET Desktop Runtime 8 x64 与 ASP.NET Core Runtime 8 x64。MCP 是**本机 stdio** 接口，无需对外暴露网络端口；其他本机客户端可以在支持 stdio MCP 且可启动本机 EXE 时按其配置接入，未验证的平台不承诺即插即用。
+> **2026-10-15 状态同步**：当前 `main` 保留原有 **14 项旧业务 MCP 工具**，并在 N2-03-01 新增 **11 项 `v2_*` V2 原生项目/合同/IP MCP 工具**（共 25 项不同名称，旧命令暂不变），现行 Windows CI 已通过 stdio 握手、工具清单及真实 SQLCipher/本机命名管道回归；**本机 Codex 或其他平台 MCP 客户端的完整人工连接与日常操作验收仍需执行**。原 14 项命令继续通过过渡期旧业务 API/Store；新增 11 项带 `v2_` 前缀的工具明确通过 `/api/v2/folders` 只写新 `folders/attributes_json`，不同时写旧业务表。[Windows CI #38822708366](https://github.com/zy19970/IPSys/actions/runs/38822708366) 验证本机 MCP 管道、SQLCipher/HTTP 和授权隔离；后续 N2-03 将旧业务 API、附件、Excel 接入 V2 并收敛原有命名。发布程序是单 EXE，但目标电脑需预装 .NET Desktop Runtime 8 x64 与 ASP.NET Core Runtime 8 x64。MCP 是**本机 stdio** 接口，无需对外暴露网络端口；其他本机客户端可以在支持 stdio MCP 且可启动本机 EXE 时按其配置接入，未验证的平台不承诺即插即用。
 
 
 IPSys 支持本机 Codex 通过 MCP stdio 控制同一 Windows 用户已经运行且已解锁的资料库。当前 Agent 复用旧业务 API 和 SQLCipher 会话，不另外打开数据库；接入 V2 后也应保持相同的授权及隔离边界。
@@ -63,3 +63,10 @@ IPSys 支持本机 Codex 通过 MCP stdio 控制同一 Windows 用户已经运�
 Codex 通过 stdio 使用同一个 EXE 的 `--mcp` 模式，子进程仅通过当前 Windows 用户的本机命名管道向已运行的 IPSys 宿主提交操作；没有新 TCP 端口、不会向 Agent 暴露数据库密码或网页 Token。必须由用户在已解锁程序中手动授权开关，关库/退出即失效。Agent 操作属于用户明确委托，正式库建议预先手动备份，尤其删除前核对 ID。打开 MCP 后，当前 Windows 用户的本机 Agent 可以通过上述工具写入和软删除资料。不要同时运行两个 IPSys 宿主实例。
 
 更多步骤见 `WEB_TESTING.md`。
+
+## V2 原生业务 MCP 工具（N2-03-01）
+
+新增 `v2_list_projects`、`v2_create_project`、`v2_update_project`、`v2_delete_project`；`v2_list_contracts`、`v2_create_contract`、`v2_delete_contract`；`v2_list_ips`、`v2_create_ip`、`v2_update_ip`、`v2_delete_ip`。参数名继续沿用原 `workspace`、`project_id`、`ip_id` 等结构，实际结果包含原生 `FolderSnapshot`（`folder.ref.id`、`businessData`）；合同必须指定当前工作区真实有效项目的 `project_id`。
+
+`v2_*` 工具使用新库 FileId/FolderId 身份空间，不能把原有 `list_projects` 返回的旧 ID 与新 FolderId 混用。当前 `upload_files` 和其余旧工具尚属旧业务数据路径；原生 V2 文件上传/查重仍通过 `/api/v2/files`，不得误以为现有 MCP 文件上传已经切换。MCP 依然需要在已解锁的软件中手动启用，关闭后新旧工具同时拒绝访问。用户本机 Codex 客户端的实际可用性需实机验收。
+

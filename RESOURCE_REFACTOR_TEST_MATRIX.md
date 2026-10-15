@@ -37,7 +37,7 @@
 | F11 | 公司/个人不可共享同一 FileObject，跨区复制应保留独立物理内容对象 | **V2 原生后端已验证**：[CI #38762437581](https://github.com/zy19970/IPSys/actions/runs/38762437581) 验证跨区复用请求被拒绝、跨区复制分配新 FileObject、所有有效版本原件 SHA-256/字节一致 | N4 UI/MCP/Excel 完整链路仍需验证 |
 | F12 | 默认文件导出仅最新有效版本，选历史才导出旧版本 | **存在需修正风险**：`BusinessFileStore.List` 返回全部有效版本，前端部分调用可能直接全量导出 | R0 登记对比场景，R3 测试同组 v1/v2/v3 的项目/IP/档案及 ZIP |
 | F13 | 勾选父目录和子项按目标目录导出，不错误重复；共享文件在不同目录分别出现 | **部分覆盖**：`export-smoke.cjs`、业务档案 UI smoke | R3 加重叠文件夹/相同 FileId 不同路径、同名与取消用例 |
-| F14 | Excel 固定列、MCP 原接口、PDF Canvas、单 EXE 嵌入网页不回归 | **现有覆盖**：Windows CI 和 Node smoke | 每次源码变更运行适用 CI，R3/R4 做实机补充 |
+| F14 | Excel 固定列、MCP 原接口、PDF Canvas、单 EXE 嵌入网页不回归 | **N2-03-01 Windows CI 已验证 MCP 增量**：[CI #38822708366](https://github.com/zy19970/IPSys/actions/runs/38822708366) 通过真实本机 MCP 管道、11 项 `v2_*` 与原 14 项工具回归、旧资源不双写；旧 Excel/PDF/单 EXE 相关 CI 同样成功 | N2-03 继续迁移旧接口与 Excel，N4 再确认冻结前端及用户实机 |
 | F15 | 公司业务档案删除空目录时，软删除资料/回收站关系判定正确 | **部分覆盖**：`ArchiveFolderStore.DeleteEmpty` 仍需复核 | R1 构造含回收站资料的真实库测试，再决定是否改动 |
 | F16 | 综合资料在 V2 中直接通过 FolderFileLink 关联 File/版本，删除/恢复和文件对象引用安全 | **待实现**：旧综合资料迁移/断点回填已从交付范围取消 | N3/N2-03 在新建 SQLCipher V2 库核验版本、字节、SHA-256、软删恢复和附件归属，不进行旧库迁移 |
 | F17 | SQLCipher 错密、防越权、突然退出、磁盘空间不足、手工备份不破坏数据 | **部分覆盖/待实机**：安全 CI 不等于故障注入 | R4 遵循 `FREEZE_AUDIT.md` T01–T09 的可恢复性门槛 |
@@ -91,3 +91,7 @@ N1 验收：[Windows CI #38740628571](https://github.com/zy19970/IPSys/actions/r
 ## N3-04 内容查重与用户决策原生验收（2026-10-16）
 
 [功能提交 93be896f](https://github.com/zy19970/IPSys/commit/93be896f4c0d26b0bfedb64c8c766069924a77f4) 与 [Windows CI #38820367132](https://github.com/zy19970/IPSys/actions/runs/38820367132) **success**。新原生 `/api/v2/files/{workspace}/prepare` 在 SQLCipher 暂存 writing 原件并按大小与 SHA-256 查询同区有效文件最新版；显示已有 FileId、文件名和 Folder 完整父级路径，支持不同名称命中，同名不同内容不可误命中。`/prepared/{ticket}/resolve` 必须明确选择引用同一 FileId、创建独立 FileId 只复用原件或完全独立保存；取消端点删除 writing 分块。SQLCipher/HTTP 测试覆盖令牌一次性消费、鉴权、工作区隔离、冲突、回滚、关闭/重开清理及原件字节。30 分钟过期、每数据库会话仅一项待确认。**此项仅为原生 HTTP/Store；现有网页的选择弹窗、MCP/Excel 和所有旧业务附件入口仍待 N2-03/N4 切换。**
+
+## N2-03-01 原生 V2 本机 MCP 第一批（2026-10-16）
+
+[源码提交 3e7ba60a](https://github.com/zy19970/IPSys/commit/3e7ba60aad3fa1043f098178c3312e423873f745)、[Windows CI #38822708366](https://github.com/zy19970/IPSys/actions/runs/38822708366) **success**。新增 V2 命名 `v2_*` 11 项业务 CRUD，通过同一用户本机命名管道与原授权令牌访问 `/api/v2/folders`，真实 SQLCipher/HTTP 回归检查项目与合同合法父级、知识产权属性更新、跨区修改拒绝、删除/恢复、旧表不双写；保留旧 14 项工具与 UI 过渡期兼容，不将它们标记为已迁移。**下一批 N2-03-02 需要让旧项目/合同/IP HTTP/附件、旧 MCP 命名及 Excel 逐模块接入同一 V2 数据源，避免业务与附件两套身份混用。**
