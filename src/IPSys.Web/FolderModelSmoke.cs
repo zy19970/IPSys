@@ -31,7 +31,9 @@ static class FolderModelSmoke
         Check(!FolderTypePolicy.MandatoryParentRulesSatisfied(contract,personProject),"cross-workspace contract forbidden");
         Check(!FolderTypePolicy.MandatoryParentRulesSatisfied(contract,archive),"contract cannot belong to archive");
         Check(FolderTypePolicy.MandatoryParentRulesSatisfied(category,null),"archive system root");
-        Check(FolderTypePolicy.MandatoryParentRulesSatisfied(category,category),"archive folder parent type allowed");
+        var parentCategory=ResourceRef.Create("company",FolderKinds.ArchiveFolder,8,"achievement");
+        Check(FolderTypePolicy.MandatoryParentRulesSatisfied(category,parentCategory),"archive folder parent type allowed");
+        Check(!FolderTypePolicy.MandatoryParentRulesSatisfied(category,category),"folder cannot be its own parent");
         Check(FolderTypePolicy.MandatoryParentRulesSatisfied(archive,category),"archive record within archive folder");
         Check(!FolderTypePolicy.MandatoryParentRulesSatisfied(archive,project),"archive record may not enter project");
         var folder=new FolderDescriptor(project,"科研项目 A",null,0);

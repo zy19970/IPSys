@@ -12,13 +12,13 @@ static class FolderKinds
 
 readonly record struct ResourceRef(string Workspace,string Kind,long Id,string Section = "")
 {
-    public bool IsValid => Id > 0 && Vault.WorkspaceValid(Workspace) && Kind switch
+    public bool IsValid => Id > 0 && Vault.WorkspaceValid(Workspace) && (Kind switch
     {
         FolderKinds.Project or FolderKinds.Contract or FolderKinds.Ip or FolderKinds.General => Section == "",
         FolderKinds.Archive => ArchiveStore.Module(Workspace,Section) != null,
         FolderKinds.ArchiveFolder => Workspace == "company" && Section == "achievement",
         _ => false
-    };
+    });
 
     public static ResourceRef Create(string workspace,string kind,long id,string section = "")
     {
@@ -39,7 +39,7 @@ static class FolderTypePolicy
     public static bool MandatoryParentRulesSatisfied(ResourceRef child,ResourceRef? parent)
     {
         if(!child.IsValid)return false;
-        if(parent is ResourceRef p && (!p.IsValid || p.Workspace != child.Workspace))return false;
+        if(parent is ResourceRef p && (!p.IsValid || p.Workspace != child.Workspace || p == child))return false;
         if(child.Kind == FolderKinds.Contract)
             return parent is ResourceRef project && project.Kind == FolderKinds.Project;
         if(child.Kind == FolderKinds.ArchiveFolder)
