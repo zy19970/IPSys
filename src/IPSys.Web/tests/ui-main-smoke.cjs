@@ -527,6 +527,9 @@ vm.runInContext(
  "globalThis.__rootFolderZip=archiveFolderOriginals(201);"+
  "globalThis.__innerFolderZip=archiveFolderOriginals(203);"+
  "globalThis.__combinedZip=archiveChosenOriginals([201],[31]);"+
+ "archiveEntryOrders={'201':[{kind:'record',id:31},{kind:'folder',id:203}]};"+
+ "globalThis.__companyMixed=realArchiveCards('achievement');"+
+ "archiveEntryOrders={};"+
  "globalThis.__emptyCompanyZip=archiveRecordZipOriginals(32,'achievement');",
  realArchiveCtx);
 assert.equal(realArchiveCtx.__companyName,'业务档案');
@@ -559,22 +562,34 @@ assert.ok(folderRow&&
  (folderRow.match(/<td\b/g)||[]).length===6&&
  folderRow.includes('class="link" data-archive-folder-id="203">企业行标</button>')&&
  folderRow.includes('data-archive-folder-id="203"')&&
- folderRow.includes('>打开</button>')&&folderRow.includes('data-archive-folder-download="203"')&&
- folderRow.includes('>下载</button>')&&
+ folderRow.includes('>打开</button>')&&
+ !folderRow.includes('data-archive-folder-download=')&&
+ !folderRow.includes('>下载</button>')&&
  !folderRow.includes('<svg')&&!folderRow.includes('archive-folder-link')&&
  !folderRow.includes('data-archive-id=')&&!folderRow.includes('type="checkbox"'),
- 'Folder rows use a clickable name and both 打开 and 下载 without adding icons');
-assert.ok(realArchiveCtx.__companyTable.indexOf('data-archive-folder-row="203"')<
- realArchiveCtx.__companyTable.indexOf('data-archive-id="31"')&&
- realArchiveCtx.__companyNested.includes('<tbody><tr class="archive-folder-row"')&&
+ 'Nested folder rows only show 打开, preserving the clickable name');
+assert.ok(realArchiveCtx.__companyNested.includes('<tbody><tr class="archive-folder-row"')&&
  !realArchiveCtx.__companyNested.includes('当前目录暂无资料'),
- 'Directories should precede records in the SAME tbody and folder-only folders show no false empty state');
+ 'Folder-only nested lists must not display a false empty-state row');
+assert.ok(realArchiveCtx.__companyMixed.indexOf('data-archive-id="31"')<
+ realArchiveCtx.__companyMixed.indexOf('data-archive-folder-row="203"')&&
+ realArchiveCtx.__companyMixed.includes('data-archive-entry-kind="record"')&&
+ realArchiveCtx.__companyMixed.includes('data-archive-entry-kind="folder"'),
+ 'Saved per-parent mixed order must allow records to appear before folders');
 assert.ok(js.includes("body.querySelectorAll('tr[data-archive-folder-row]')")&&
  js.includes('tr.lastElementChild.before(orderCell)')&&
  css.includes('.company-business-archive .archive-folder-row')&&
  js.includes("check.className='archive-folder-check'")&&
  js.includes("check.checked=archiveSelectedFolders.has(folderId)"),
  'DOM ledger decorator must make folder rows selectable, but keep record delete/order controls separate');
+assert.ok(js.includes("items=[...body.querySelectorAll('tr[data-archive-entry-kind]')]")&&
+ js.includes("btn.dataset.archiveEntryMove=kind+':'+id;")&&
+ js.includes("await api('/api/archive-entry-order'")&&
+ js.includes("archiveEntryOrders[String(parentId)]=entries"),
+ 'Folder/record arrows must persist the single mixed order to SQLCipher');
+assert.ok(css.includes('.company-business-archive th:last-child')&&
+ css.includes('.company-business-archive td.archive-category-action{text-align:center}'),
+ 'Folder 打开 and 操作 heading must share centered alignment');
 assert.ok(js.includes("pageHeading.querySelector('[data-archive-back=\"cards\"],[data-archive-folder-back]')"),
  'Compact ledger toolbar must preserve the back-to-parent button while opening folder rows');
 assert.ok(realArchiveCtx.__companyTable.includes('data-action="archiveCreate"')&&

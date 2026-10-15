@@ -35,7 +35,7 @@ let token=sessionStorage.getItem('ip-token')||'';
 let dbName=sessionStorage.getItem('ip-db')||'';
 let mcpEnabled=false;
 let space=null,creating=false,resuming=false,localFileTaskActive=false;
-let page='dashboard',detail=null,archiveGroup=null,archiveFolderId=null,archiveFolders=[],archiveFolderEditingId=null,archiveSelectedFolders=new Set(),editingId=null,projectEditingId=null,projectRows=[],ipEditingId=null,ipRows=[],contractEditingId=null,contractProjectId=null,contractRows=[],businessFileRows=[],trashRows=[],pendingBusinessUpload=null,pendingAssocId=null,archiveRows={certificate:[],achievement:[],academic:[]},archiveEditingId=null,archiveTransferId=null,archiveTransferMode=null,liveRows=[],filterName='',filterKind='全部类型',filterState='全部状态',selected=new Set(),certificateSelected=new Set(),certificateDeleteBusy=false;
+let page='dashboard',detail=null,archiveGroup=null,archiveFolderId=null,archiveFolders=[],archiveFolderEditingId=null,archiveSelectedFolders=new Set(),archiveEntryOrders={},editingId=null,projectEditingId=null,projectRows=[],ipEditingId=null,ipRows=[],contractEditingId=null,contractProjectId=null,contractRows=[],businessFileRows=[],trashRows=[],pendingBusinessUpload=null,pendingAssocId=null,archiveRows={certificate:[],achievement:[],academic:[]},archiveEditingId=null,archiveTransferId=null,archiveTransferMode=null,liveRows=[],filterName='',filterKind='全部类型',filterState='全部状态',selected=new Set(),certificateSelected=new Set(),certificateDeleteBusy=false;
 let ledgerOrders={},ledgerMutationBusy=false;
 const companyNav=[['dashboard','工作台','▦'],['certificate','企业资质','▣'],['achievement','业务档案','▤'],['researchProject','公司项目','▤'],['ip','知识产权','◇'],['general','综合资料','▥']];
 // Personal archives are grouped by evidence type, not by the company management menu.
@@ -192,7 +192,7 @@ function selectSpace(next){
   if(!token)return;
   globalSerial++;globalHits=[];globalQuery='';globalPending=false;globalError='';
   if(space===next)return;
-  space=next;page='dashboard';detail=null;archiveGroup=null;archiveFolderId=null;archiveFolders=[];archiveSelectedFolders.clear();ledgerOrders={};projectRows=[];ipRows=[];contractRows=[];businessFileRows=[];trashRows=[];archiveRows={certificate:[],achievement:[],academic:[]};filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();certificateSelected.clear();
+  space=next;page='dashboard';detail=null;archiveGroup=null;archiveFolderId=null;archiveFolders=[];archiveSelectedFolders.clear();archiveEntryOrders={};ledgerOrders={};projectRows=[];ipRows=[];contractRows=[];businessFileRows=[];trashRows=[];archiveRows={certificate:[],achievement:[],academic:[]};filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();certificateSelected.clear();
   el('globalSearch').value='';el('sidebarDbName').textContent=dbName;
   el('chooseWorkspace').hidden=true;el('unlocked').hidden=false;
   refresh();
@@ -207,7 +207,7 @@ async function refresh(){
   if(!token||!space)return;
   const requestedSpace=space;
   try{const archiveSections=space==='personal'?['certificate','achievement','academic']:['certificate','achievement'];
-  const [rows,projects,ips,contracts,files,trash,mcpAccess,savedOrders,folders,...archiveResults]=await Promise.all([
+  const [rows,projects,ips,contracts,files,trash,mcpAccess,savedOrders,folders,mixedOrders,...archiveResults]=await Promise.all([
     api('/api/records/'+space).then(r=>r.json()),
     api('/api/projects/'+space).then(r=>r.json()),
     api('/api/ip/'+space).then(r=>r.json()),
@@ -217,10 +217,11 @@ async function refresh(){
     api('/api/mcp').then(r=>r.json()),
     api('/api/ledger/'+space+'/order').then(r=>r.json()),
     space==='company'?api('/api/archive-folders').then(r=>r.json()):Promise.resolve([]),
+    space==='company'?api('/api/archive-entry-order').then(r=>r.json()):Promise.resolve({}),
     ...archiveSections.map(section=>api('/api/archives/'+space+'/'+section).then(r=>r.json()))
   ]);
     if(requestedSpace!==space||!token)return;
-    liveRows=rows;projectRows=projects;ipRows=ips;contractRows=contracts;businessFileRows=files;trashRows=trash;archiveFolders=folders;mcpEnabled=!!mcpAccess.enabled;
+    liveRows=rows;projectRows=projects;ipRows=ips;contractRows=contracts;businessFileRows=files;trashRows=trash;archiveFolders=folders;archiveEntryOrders=mixedOrders||{};mcpEnabled=!!mcpAccess.enabled;
     archiveRows={certificate:[],achievement:[],academic:[]};
     archiveSections.forEach((section,i)=>archiveRows[section]=archiveResults[i]);ledgerOrders=savedOrders||{};sortLedgerData();render();
   }catch(error){notice(error.message,true);}
@@ -1069,20 +1070,38 @@ function archiveFolderOptions(selected){
 }
 // Folders are rows inside the SAME ledger as this directory's archive records.
 // They are navigation targets, not archive records: no selection or record ordering.
+// One stable sequence for both child categories and records, keyed by type + ID.
+// Persisted order wins; new/unordered entries join by name, not forced category-first.
+function archiveMixedEntries(folders,records){
+ const items=[
+  ...folders.map(folder=>({kind:'folder',id:folder.id,name:folder.name,folder})),
+  ...records.map(record=>({kind:'record',id:record.id,name:record.name,record}))
+ ];
+ const positions=new Map((archiveEntryOrders[String(archiveFolderId??0)]||[])
+  .map((item,index)=>[item.kind+':'+item.id,index]));
+ return items.sort((a,b)=>{
+  const ar=positions.get(a.kind+':'+a.id),br=positions.get(b.kind+':'+b.id);
+  if(ar!==undefined||br!==undefined){
+   if(ar===undefined)return 1;
+   if(br===undefined)return -1;
+   return ar-br;
+  }
+  return a.name.localeCompare(b.name,'zh-CN',{numeric:true})||
+   a.kind.localeCompare(b.kind)||a.id-b.id;
+ });
+}
 function archiveFolderTableRow(folder,index){
  const count=(archiveRows.achievement||[]).filter(r=>r.folderId===folder.id).length;
  const children=archiveFolders.filter(f=>f.parentId===folder.id).length;
  const name=escapeHtml(folder.name);
- const downloadable=archiveFolderOriginals(folder.id).length>0;
- return '<tr class="archive-folder-row" data-archive-folder-row="'+folder.id+'">'+
+ return '<tr class="archive-folder-row" data-archive-folder-row="'+folder.id+
+  '" data-archive-entry-kind="folder" data-archive-entry-id="'+folder.id+'">'+
   '<td class="ledger-record-sequence-cell">'+(index+1)+'</td>'+
   '<td><button type="button" class="link" data-archive-folder-id="'+folder.id+'">'+name+'</button></td>'+
   '<td class="archive-category-year muted">—</td>'+
   '<td class="muted">—</td>'+
   '<td class="archive-folder-summary muted">'+count+' 条资料'+(children?' · '+children+' 个下级分类':'')+'</td>'+
-  '<td class="archive-category-action"><button type="button" class="btn btn-sm" data-archive-folder-id="'+folder.id+'">打开</button> '+
-  '<button type="button" class="btn btn-sm" data-archive-folder-download="'+folder.id+'"'+
-  (downloadable?'':' disabled title="该分类暂无附件"')+'>下载</button></td></tr>';
+  '<td class="archive-category-action"><button type="button" class="btn btn-sm" data-archive-folder-id="'+folder.id+'">打开</button></td></tr>';
 }
 function openArchiveFolder(id){
  if(id&&!archiveFolders.some(f=>f.id===id))return notice('目录已变化，请刷新。',true);
@@ -1329,6 +1348,7 @@ function realArchiveTable(k,category){
  const all=(archiveRows[k]||[]).filter(r=>folderMode?
   (r.folderId??0)===(archiveFolderId??0):(r.category||'未分类')===category);
  const rows=all.filter(r=>[r.name,r.remarks,r.tags].join(' ').toLowerCase().includes(filterName.toLowerCase()));
+ const entries=folderMode?archiveMixedEntries(folderChildren,rows):[];
  return heading(folderMode?(archiveFolderId===0?'本级资料':folder?.name||'业务档案'):category,
   folderMode?'业务档案'+(folderPath.length?' / '+folderPath.map(f=>escapeHtml(f.name)).join(' / '):'')+
    ' · 本级目录与资料':archiveSectionName(k)+' / 分类台账 · 同一类别可归档多条记录',
@@ -1352,23 +1372,26 @@ function realArchiveTable(k,category){
  (companyBusiness?
  '<thead><tr><th>序号</th><th>名称</th><th>年份</th><th>附件</th><th>备注</th><th>操作</th></tr></thead><tbody>':
  '<thead><tr><th>序号</th><th>资料名称</th><th>附件</th><th>文件大小</th><th>备注</th><th>操作</th></tr></thead><tbody>')+
- (folderMode?folderChildren.map((child,i)=>archiveFolderTableRow(child,i)).join(''):'')+
- (rows.length?rows.map((r,i)=>{
-  const files=archiveTableAttachmentSummary(r.id,k);
-  return '<tr><td>'+(i+1+(folderMode?folderChildren.length:0))+'</td><td>'+
-  '<button class="link" data-archive-id="'+r.id+'">'+escapeHtml(r.name)+'</button></td>'+
-  (companyBusiness?'<td class="archive-category-year">'+escapeHtml(r.year||'—')+'</td>':'')+
-  '<td>'+(companyBusiness?files.count+' 份':
-   files.count?files.count+' 份':'<span class="muted">未上传</span>')+'</td>'+
-  (companyBusiness?'':'<td class="archive-category-file-size">'+(files.count?fmtSize(files.size):'—')+'</td>')+
-  '<td>'+escapeHtml(r.remarks||'—')+'</td>'+
-  '<td class="archive-category-action">'+(companyBusiness?
-   '<button type="button" class="btn btn-sm" data-archive-download="'+r.id+'"'+
-   (files.count?'':' disabled title="该记录尚无附件"')+'>下载</button>':
-   '<button class="btn btn-sm" data-archive-id="'+r.id+'">查看详情</button>')+'</td></tr>';
- }).join(''):
- (folderMode&&folderChildren.length?'':'<tr><td colspan="6" class="empty">'+
-  (folderMode?'当前目录暂无资料，可新增资料或下级分类。':'此类别暂无记录，点击右上角新建。')+'</td></tr>'))+
+ ((folderMode?entries:rows.map(record=>({kind:'record',record}))).length?
+  (folderMode?entries:rows.map(record=>({kind:'record',record}))).map((entry,i)=>{
+   if(entry.kind==='folder')return archiveFolderTableRow(entry.folder,i);
+   const r=entry.record,files=archiveTableAttachmentSummary(r.id,k);
+   return '<tr'+(folderMode?' data-archive-entry-kind="record" data-archive-entry-id="'+r.id+'"':'')+
+    '><td>'+(i+1)+'</td><td>'+
+    '<button class="link" data-archive-id="'+r.id+'">'+escapeHtml(r.name)+'</button></td>'+
+    (companyBusiness?'<td class="archive-category-year">'+escapeHtml(r.year||'—')+'</td>':'')+
+    '<td>'+(companyBusiness?files.count+' 份':
+     files.count?files.count+' 份':'<span class="muted">未上传</span>')+'</td>'+
+    (companyBusiness?'':'<td class="archive-category-file-size">'+(files.count?fmtSize(files.size):'—')+'</td>')+
+    '<td>'+escapeHtml(r.remarks||'—')+'</td>'+
+    '<td class="archive-category-action">'+(companyBusiness?
+     '<button type="button" class="btn btn-sm" data-archive-download="'+r.id+'"'+
+     (files.count?'':' disabled title="该记录尚无附件"')+'>下载</button>':
+     '<button class="btn btn-sm" data-archive-id="'+r.id+'">查看详情</button>')+'</td></tr>';
+  }).join(''):
+ '<tr><td colspan="6" class="empty">'+
+ (folderMode?'当前目录暂无资料，可新增资料或下级分类。':'此类别暂无记录，点击右上角新建。')+
+ '</td></tr>')+
  '</tbody></table></div><div class="tablefoot">'+
  (folderMode?'本级文件夹 '+folderChildren.length+' 个 · 资料 '+all.length+' 条':'当前类别共 '+all.length+' 条记录')+
  '</div></section>';
@@ -1685,6 +1708,7 @@ function decorateLedgerControls(content){
  }else all.closest('th').classList.add('ledger-record-check-cell');
  all.classList.add('ledger-record-all');all.setAttribute('aria-label','全选当前列表');
  const archiveSequence=scope.kind==='archive';
+ const mixedArchive=archiveSequence&&space==='company'&&scope.section==='achievement';
  if(!archiveSequence){
   const th=document.createElement('th');th.className='ledger-record-sequence-cell';th.textContent='序号';
   head.cells[0].after(th);
@@ -1707,7 +1731,7 @@ function decorateLedgerControls(content){
    td.textContent=String(index+1);tr.cells[0].after(td);
   }else tr.cells[1].classList.add('ledger-record-sequence-cell');
   const td=document.createElement('td');td.className='ledger-record-order-cell';
-  for(const direction of [-1,1]){
+  if(!mixedArchive)for(const direction of [-1,1]){
    const btn=document.createElement('button');btn.type='button';btn.className='btn btn-sm';
    btn.textContent=direction<0?'↑':'↓';btn.dataset.ledgerMove=String(id);
    btn.dataset.ledgerDirection=String(direction);
@@ -1719,7 +1743,7 @@ function decorateLedgerControls(content){
   else tr.append(td);
  });
  // Folder rows participate in archive selection/export, not record deletion/order.
- if(archiveSequence&&space==='company'&&scope.section==='achievement'){
+ if(mixedArchive){
   for(const tr of body.querySelectorAll('tr[data-archive-folder-row]')){
    const checkCell=document.createElement('td');checkCell.className='ledger-record-check-cell';
    const check=document.createElement('input');check.type='checkbox';
@@ -1731,6 +1755,22 @@ function decorateLedgerControls(content){
    const orderCell=document.createElement('td');orderCell.className='ledger-record-order-cell';
    tr.lastElementChild.before(orderCell);
   }
+  // Unified buttons act on the combined, visible order rather than separate
+  // folder/record lists. Persist a complete permutation for the current parent.
+  const items=[...body.querySelectorAll('tr[data-archive-entry-kind]')];
+  items.forEach((tr,index)=>{
+   const kind=tr.dataset.archiveEntryKind,id=Number(tr.dataset.archiveEntryId);
+   const cell=tr.querySelector('.ledger-record-order-cell');
+   for(const direction of [-1,1]){
+    const btn=document.createElement('button');btn.type='button';
+    btn.className='btn btn-sm';btn.textContent=direction<0?'↑':'↓';
+    btn.dataset.archiveEntryMove=kind+':'+id;
+    btn.dataset.archiveEntryDirection=String(direction);
+    btn.disabled=direction<0?index===0:index===items.length-1;
+    btn.setAttribute('aria-label','将第'+(index+1)+'项'+(direction<0?'上移':'下移'));
+    cell.append(btn);
+   }
+  });
  }
  const empty=body.querySelector('td[colspan]');
  if(empty&&rows.length===0)empty.colSpan+=archiveSequence?2:scope.kind==='contract'?3:2;
@@ -1787,6 +1827,41 @@ async function moveLedgerRecord(id,direction){
  finally{ledgerMutationBusy=false;syncLedgerSelection();}
 }
 
+async function moveArchiveEntry(kind,id,direction){
+ if(space!=='company'||page!=='achievement'||detail||ledgerMutationBusy||
+    archiveFolderId===null)return;
+ const table=el('content').querySelector('.company-business-archive');
+ if(!table)return;
+ const visible=[...table.querySelectorAll('tr[data-archive-entry-kind]')]
+  .map(tr=>({kind:tr.dataset.archiveEntryKind,id:Number(tr.dataset.archiveEntryId)}));
+ const at=visible.findIndex(x=>x.kind===kind&&x.id===id),next=visible[at+direction];
+ if(at<0||!next)return;
+ const parentId=archiveFolderId;
+ const fullFolders=archiveFolderId===0?[]:archiveFolders.filter(f=>f.parentId===parentId);
+ const fullRecords=(archiveRows.achievement||[]).filter(r=>(r.folderId??0)===parentId);
+ // The root-level "本级资料" pseudo-directory shares parent 0 with first-level
+ // folders in storage, even though those folders have their own card view.
+ if(parentId===0)fullFolders.push(...archiveFolders.filter(f=>f.parentId===null));
+ const entries=archiveMixedEntries(fullFolders,fullRecords)
+  .map(x=>({kind:x.kind,id:x.id}));
+ const first=entries.findIndex(x=>x.kind===kind&&x.id===id);
+ const second=entries.findIndex(x=>x.kind===next.kind&&x.id===next.id);
+ if(first<0||second<0)return;
+ [entries[first],entries[second]]=[entries[second],entries[first]];
+ const checked=[...table.querySelectorAll('.ledger-record-row:checked')]
+  .map(box=>Number(box.value));
+ ledgerMutationBusy=true;syncLedgerSelection();
+ try{
+  await api('/api/archive-entry-order',{method:'POST',json:{parentId,items:entries}});
+  archiveEntryOrders[String(parentId)]=entries;
+  render();
+  el('content').querySelectorAll('.ledger-record-row').forEach(box=>{
+   box.checked=checked.includes(Number(box.value));
+  });
+  syncLedgerSelection();notice('分类与资料的排列顺序已保存。');
+ }catch(error){notice('调整排序失败：'+error.message,true);}
+ finally{ledgerMutationBusy=false;syncLedgerSelection();}
+}
 function render(){
  if(!space||!token)return;
  refreshSidebar();
@@ -1884,6 +1959,10 @@ el('content').addEventListener('click',async ev=>{
  if(target.dataset.liveId){openLiveRecord(Number(target.dataset.liveId));return;}
  if(target.dataset.projectId){detail={kind:'project',id:Number(target.dataset.projectId)};render();el('content').scrollTo(0,0);return;}
  if(target.dataset.ipId){detail={kind:'ip',id:Number(target.dataset.ipId)};page='ip';render();el('content').scrollTo(0,0);return;}
+ if(target.dataset.archiveEntryMove){
+  const [kind,id]=target.dataset.archiveEntryMove.split(':');
+  await moveArchiveEntry(kind,Number(id),Number(target.dataset.archiveEntryDirection));return;
+ }
  if(target.dataset.ledgerMove){
   await moveLedgerRecord(Number(target.dataset.ledgerMove),Number(target.dataset.ledgerDirection));return;
  }

@@ -125,6 +125,7 @@ app.MapPost("/api/open", async (OpenInput input, Vault v) =>
             IpStore.Ensure(db);
             ContractStore.Ensure(db);
             ArchiveStore.Ensure(db);
+            ArchiveEntryOrderStore.Ensure(db);
             LedgerBatch.Ensure(db);
             BusinessFileStore.Ensure(db);
             GeneralStore.Ensure(db);
@@ -423,6 +424,32 @@ app.MapGet("/api/archive-folders",async(HttpContext ctx,Vault v)=>
     {
         if(!v.Allowed(ctx))return Results.Unauthorized();
         return Results.Json(ArchiveFolderStore.List(v.Db));
+    }
+    finally{v.Gate.Release();}
+});
+// Business archive folders and records can be interleaved in the same persisted list.
+app.MapGet("/api/archive-entry-order",async(HttpContext ctx,Vault v)=>
+{
+    if(!v.Allowed(ctx))return (IResult)Results.Unauthorized();
+    await v.Gate.WaitAsync();
+    try
+    {
+        if(!v.Allowed(ctx))return Results.Unauthorized();
+        return Results.Json(ArchiveEntryOrderStore.Orders(v.Db));
+    }
+    finally{v.Gate.Release();}
+});
+app.MapPost("/api/archive-entry-order",async(HttpContext ctx,Vault v,ArchiveEntryReorder input)=>
+{
+    if(!v.Allowed(ctx))return (IResult)Results.Unauthorized();
+    if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务进行中不能调整排序。",409);
+    await v.Gate.WaitAsync();
+    try
+    {
+        if(!v.Allowed(ctx))return Results.Unauthorized();
+        if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务进行中不能调整排序。",409);
+        return ArchiveEntryOrderStore.Reorder(v.Db,input)
+            ?Results.Ok(new{ok=true}):Fail("当前目录内容已变化，请刷新后重新排序。",409);
     }
     finally{v.Gate.Release();}
 });
@@ -2423,6 +2450,40 @@ static class WebSmoke
                 "/api/archives/company/achievement");
             if(movedArchive?.Single(a=>a.Id==companyOutputId).FolderId!=deepest)
                 throw new IOException("旧资料归入深层目录后没有保留原 ID。");
+            // A child folder and a record in the same parent can swap positions.
+            using var addedPeer=await client.PostAsJsonAsync("/api/archive-folders",
+                new ArchiveFolderInput("混排验收分类",deepest));
+            addedPeer.EnsureSuccessStatusCode();
+            long peerFolder=(await addedPeer.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
+                .GetProperty("id").GetInt64();
+            var recordFirst=new ArchiveEntryReorder(deepest,new List<ArchiveEntryOrderItem>{
+                new("record",companyOutputId),new("folder",peerFolder)});
+            using(var order=await client.PostAsJsonAsync("/api/archive-entry-order",recordFirst))
+                order.EnsureSuccessStatusCode();
+            var orderStates=await client.GetFromJsonAsync<Dictionary<string,List<ArchiveEntryOrderItem>>>(
+                "/api/archive-entry-order");
+            if(orderStates is null || !orderStates.TryGetValue(deepest.ToString(),out var entries) ||
+                entries.Count!=2 || entries[0].Kind!="record" || entries[0].Id!=companyOutputId ||
+                entries[1].Kind!="folder" || entries[1].Id!=peerFolder)
+                throw new IOException("公司业务档案目录与资料混排没有持久化。");
+            using(var wrongScope=await client.PostAsJsonAsync("/api/archive-entry-order",
+                new ArchiveEntryReorder(deepest,new List<ArchiveEntryOrderItem>{
+                    new("record",companyOutputId)})))
+                if(wrongScope.StatusCode!=HttpStatusCode.Conflict)
+                    throw new IOException("混排接口未阻止漏项覆盖。");
+            using(var wrongType=await client.PostAsJsonAsync("/api/archive-entry-order",
+                new ArchiveEntryReorder(deepest,new List<ArchiveEntryOrderItem>{
+                    new("record",companyOutputId),new("record",peerFolder)})))
+                if(wrongType.StatusCode!=HttpStatusCode.Conflict)
+                    throw new IOException("混排接口未区分目录与资料记录的 ID。");
+            using(var folderFirst=await client.PostAsJsonAsync("/api/archive-entry-order",
+                new ArchiveEntryReorder(deepest,new List<ArchiveEntryOrderItem>{
+                    new("folder",peerFolder),new("record",companyOutputId)})))
+                folderFirst.EnsureSuccessStatusCode();
+            orderStates=await client.GetFromJsonAsync<Dictionary<string,List<ArchiveEntryOrderItem>>>(
+                "/api/archive-entry-order");
+            if(orderStates is null || orderStates[deepest.ToString()][0].Id!=peerFolder)
+                throw new IOException("上移分类后混合排序没有保存。");
             using var promoted=await client.PostAsync(
                 $"/api/archive-folders/from-record/{companyOutputId}",null);
             promoted.EnsureSuccessStatusCode();
