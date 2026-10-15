@@ -35,7 +35,7 @@ let token=sessionStorage.getItem('ip-token')||'';
 let dbName=sessionStorage.getItem('ip-db')||'';
 let mcpEnabled=false;
 let space=null,creating=false,resuming=false,localFileTaskActive=false;
-let page='dashboard',detail=null,archiveGroup=null,editingId=null,projectEditingId=null,projectRows=[],ipEditingId=null,ipRows=[],contractEditingId=null,contractProjectId=null,contractRows=[],businessFileRows=[],trashRows=[],pendingBusinessUpload=null,pendingAssocId=null,archiveRows={certificate:[],achievement:[],academic:[]},archiveEditingId=null,archiveTransferId=null,archiveTransferMode=null,liveRows=[],filterName='',filterKind='全部类型',filterState='全部状态',selected=new Set(),certificateSelected=new Set(),certificateDeleteBusy=false;
+let page='dashboard',detail=null,archiveGroup=null,archiveFolderId=null,archiveFolders=[],archiveFolderEditingId=null,editingId=null,projectEditingId=null,projectRows=[],ipEditingId=null,ipRows=[],contractEditingId=null,contractProjectId=null,contractRows=[],businessFileRows=[],trashRows=[],pendingBusinessUpload=null,pendingAssocId=null,archiveRows={certificate:[],achievement:[],academic:[]},archiveEditingId=null,archiveTransferId=null,archiveTransferMode=null,liveRows=[],filterName='',filterKind='全部类型',filterState='全部状态',selected=new Set(),certificateSelected=new Set(),certificateDeleteBusy=false;
 let ledgerOrders={},ledgerMutationBusy=false;
 const companyNav=[['dashboard','工作台','▦'],['certificate','企业资质','▣'],['achievement','业务档案','▤'],['researchProject','公司项目','▤'],['ip','知识产权','◇'],['general','综合资料','▥']];
 // Personal archives are grouped by evidence type, not by the company management menu.
@@ -192,7 +192,7 @@ function selectSpace(next){
   if(!token)return;
   globalSerial++;globalHits=[];globalQuery='';globalPending=false;globalError='';
   if(space===next)return;
-  space=next;page='dashboard';detail=null;archiveGroup=null;ledgerOrders={};projectRows=[];ipRows=[];contractRows=[];businessFileRows=[];trashRows=[];archiveRows={certificate:[],achievement:[],academic:[]};filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();certificateSelected.clear();
+  space=next;page='dashboard';detail=null;archiveGroup=null;archiveFolderId=null;archiveFolders=[];ledgerOrders={};projectRows=[];ipRows=[];contractRows=[];businessFileRows=[];trashRows=[];archiveRows={certificate:[],achievement:[],academic:[]};filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();certificateSelected.clear();
   el('globalSearch').value='';el('sidebarDbName').textContent=dbName;
   el('chooseWorkspace').hidden=true;el('unlocked').hidden=false;
   refresh();
@@ -202,12 +202,12 @@ document.querySelectorAll('[data-workspace-choice]').forEach(b=>b.onclick=()=>se
 document.querySelectorAll('[data-workspace-switch]').forEach(button=>{
  button.onclick=()=>selectSpace(button.dataset.workspaceSwitch);
 });
-function setPage(next){if(space==='company'&&next==='horizontalProject')next='researchProject';globalSerial++;globalHits=[];globalQuery='';globalPending=false;globalError='';page=next;detail=null;archiveGroup=null;filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();certificateSelected.clear();el('globalSearch').value='';render();}
+function setPage(next){if(space==='company'&&next==='horizontalProject')next='researchProject';globalSerial++;globalHits=[];globalQuery='';globalPending=false;globalError='';page=next;detail=null;archiveGroup=null;archiveFolderId=null;filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();certificateSelected.clear();el('globalSearch').value='';render();}
 async function refresh(){
   if(!token||!space)return;
   const requestedSpace=space;
   try{const archiveSections=space==='personal'?['certificate','achievement','academic']:['certificate','achievement'];
-  const [rows,projects,ips,contracts,files,trash,mcpAccess,savedOrders,...archiveResults]=await Promise.all([
+  const [rows,projects,ips,contracts,files,trash,mcpAccess,savedOrders,folders,...archiveResults]=await Promise.all([
     api('/api/records/'+space).then(r=>r.json()),
     api('/api/projects/'+space).then(r=>r.json()),
     api('/api/ip/'+space).then(r=>r.json()),
@@ -216,10 +216,11 @@ async function refresh(){
     api('/api/trash/'+space).then(r=>r.json()),
     api('/api/mcp').then(r=>r.json()),
     api('/api/ledger/'+space+'/order').then(r=>r.json()),
+    space==='company'?api('/api/archive-folders').then(r=>r.json()):Promise.resolve([]),
     ...archiveSections.map(section=>api('/api/archives/'+space+'/'+section).then(r=>r.json()))
   ]);
     if(requestedSpace!==space||!token)return;
-    liveRows=rows;projectRows=projects;ipRows=ips;contractRows=contracts;businessFileRows=files;trashRows=trash;mcpEnabled=!!mcpAccess.enabled;
+    liveRows=rows;projectRows=projects;ipRows=ips;contractRows=contracts;businessFileRows=files;trashRows=trash;archiveFolders=folders;mcpEnabled=!!mcpAccess.enabled;
     archiveRows={certificate:[],achievement:[],academic:[]};
     archiveSections.forEach((section,i)=>archiveRows[section]=archiveResults[i]);ledgerOrders=savedOrders||{};sortLedgerData();render();
   }catch(error){notice(error.message,true);}
@@ -639,6 +640,9 @@ async function exportExcel(kind,scope,section=''){
   else if(kind==='archive')
    ids=(archiveRows[section]||[]).filter(r=>{
     const category=r.category||'未分类';
+    if(space==='company'&&section==='achievement')
+     return (r.folderId??0)===(archiveFolderId??0)&&
+      [r.name,r.remarks,r.tags].join(' ').toLowerCase().includes(filterName.toLowerCase());
     return archiveGroup?category===archiveGroup&&
      [r.name,r.remarks,r.tags].join(' ').toLowerCase().includes(filterName.toLowerCase()):
      (filterKind==='全部类型'||category===filterKind)&&
@@ -1038,6 +1042,57 @@ function realArchiveCategoryCard(category,count,files){
  '<div class="archivecard-actions"><span class="archivecategory-open">进入台账 →</span></div></article>';
 }
 
+function archiveFolderPath(id){
+ const path=[],seen=new Set();
+ while(id){
+  if(seen.has(id))break;
+  seen.add(id);
+  const folder=archiveFolders.find(f=>f.id===id);
+  if(!folder)break;
+  path.unshift(folder);
+  id=folder.parentId||null;
+ }
+ return path;
+}
+function archiveFolderOptions(selected){
+ return '<option value="0"'+(selected===0?' selected':'')+'>业务档案根目录</option>'+
+ archiveFolders.map(f=>'<option value="'+f.id+'"'+(selected===f.id?' selected':'')+'>'+
+  escapeHtml(archiveFolderPath(f.id).map(p=>p.name).join(' / '))+'</option>').join('');
+}
+function archiveFolderCard(folder){
+ const count=(archiveRows.achievement||[]).filter(r=>r.folderId===folder.id).length;
+ const children=archiveFolders.filter(f=>f.parentId===folder.id).length;
+ return '<article class="archivecard archivecategory archive-folder-card" data-archive-folder-id="'+folder.id+
+  '" role="button" tabindex="0" aria-label="进入'+escapeHtml(folder.name)+'">'+
+  '<div class="archivecard-head"><div class="archivecard-titlewrap">'+
+  '<span class="archivecard-symbol" aria-hidden="true">▤</span>'+
+  '<h3 class="archivecard-title">'+escapeHtml(folder.name)+'</h3></div></div>'+
+  '<div class="archivecard-meta"><span class="archivecard-type">资料 '+count+' 条 · 下级分类 '+children+' 个</span></div>'+
+  '<div class="archivecard-actions"><span class="archivecategory-open">进入分类 →</span></div></article>';
+}
+function openArchiveFolder(id){
+ if(id&&!archiveFolders.some(f=>f.id===id))return notice('目录已变化，请刷新。',true);
+ archiveFolderId=id||null;
+ archiveGroup=archiveFolders.find(f=>f.id===archiveFolderId)?.name||null;
+ detail=null;filterName='';filterKind='全部类型';selected.clear();render();
+ el('content').scrollTo(0,0);
+}
+function showArchiveFolderForm(id=null){
+ if(space!=='company'||page!=='achievement')return;
+ const folder=id?archiveFolders.find(f=>f.id===id):null;
+ if(id&&!folder)return notice('目录不存在。',true);
+ archiveFolderEditingId=id;
+ el('archiveFolderForm').reset();
+ el('archiveFolderDialogTitle').textContent=folder?'管理目录':'新建下级分类';
+ el('archiveFolderName').value=folder?.name||'';
+ const blocked=new Set(folder?[folder.id,...archiveFolders.filter(f=>archiveFolderPath(f.id).some(p=>p.id===folder.id)).map(f=>f.id)]:[]);
+ el('archiveFolderParent').innerHTML='<option value="0">业务档案根目录</option>'+
+  archiveFolders.filter(f=>!blocked.has(f.id)).map(f=>'<option value="'+f.id+'">'+
+  escapeHtml(archiveFolderPath(f.id).map(p=>p.name).join(' / '))+'</option>').join('');
+ el('archiveFolderParent').value=String(folder?.parentId??archiveFolderId??0);
+ el('archiveFolderDelete').hidden=!folder;
+ el('archiveFolderDialog').showModal();
+}
 function companyCertificateRows(){
  return (archiveRows.certificate||[]).filter(r=>{
   const category=r.category||'未分类';
@@ -1141,6 +1196,7 @@ function realCompanyCertificateList(){
  '</tbody></table></div><div class="tablefoot">显示 '+rows.length+' 条 · 共 '+all.length+' 条企业资质记录</div></section>';
 }
 function realArchiveCards(k){
+ if(space==='company'&&k==='achievement')return realArchiveTable(k,'业务档案');
  const rows=archiveRows[k]||[],categories=archiveCategories(k);
  const visible=categories.filter(category=>
   (filterKind==='全部类型'||category===filterKind)&&category.toLowerCase().includes(filterName.toLowerCase()));
@@ -1184,15 +1240,28 @@ function archiveRecordZipOriginals(recordId,section){
 }
 function realArchiveTable(k,category){
  const companyBusiness=space==='company'&&k==='achievement';
- const all=(archiveRows[k]||[]).filter(r=>(r.category||'未分类')===category);
+ const folderMode=companyBusiness&&typeof archiveFolders!=='undefined'&&archiveFolders.length>0;
+ const folder=folderMode&&archiveFolderId?archiveFolders.find(f=>f.id===archiveFolderId):null;
+ const folderChildren=folderMode?archiveFolders.filter(f=>(f.parentId??null)===(archiveFolderId??null)):[];
+ const folderPath=folderMode?archiveFolderPath(archiveFolderId):[];
+ const all=(archiveRows[k]||[]).filter(r=>folderMode?
+  (r.folderId??0)===(archiveFolderId??0):(r.category||'未分类')===category);
  const rows=all.filter(r=>[r.name,r.remarks,r.tags].join(' ').toLowerCase().includes(filterName.toLowerCase()));
- return heading(category,archiveSectionName(k)+' / 分类台账 · 同一类别可归档多条记录',
+ return heading(folderMode?(folder?.name||'业务档案'):category,
+  folderMode?'业务档案'+(folderPath.length?' / '+folderPath.map(f=>escapeHtml(f.name)).join(' / '):'')+
+   ' · 本级目录与资料':archiveSectionName(k)+' / 分类台账 · 同一类别可归档多条记录',
  '<button class="btn primary" data-action="archiveAdd">＋ 新建记录</button>',
+ folderMode?(folder?'<button type="button" class="archive-breadcrumb-back" data-archive-folder-back="1" aria-label="返回上级目录" title="返回上级目录">←</button>':''):
  '<button type="button" class="archive-breadcrumb-back" data-archive-back="cards" aria-label="返回类别卡片" title="返回类别卡片">←</button>')+
  
  '<section class="white filter"><div class="filterline"><div class="field wide"><label>资料名称</label><input id="filterSearch" placeholder="搜索此类别下的记录"></div>'+
  '<button class="btn primary" data-action="filter">查询</button><button class="btn" data-action="clearFilter">重置</button></div></section>'+
- '<section class="white archive-category-ledger"><div class="tabletools"><b>共 '+rows.length+' 条记录</b><div class="actions">'+quickExportButtons(rows,'archive',k)+'</div></div>'+
+ '<section class="white archive-category-ledger"><div class="tabletools"><b>共 '+rows.length+' 条记录</b><div class="actions">'+
+ (folderMode?'<button class="btn" data-action="archiveFolderAdd">＋ 新建下级分类</button>'+
+  (folder?'<button class="btn" data-action="archiveFolderEdit">管理当前目录</button>':''):'')+
+ quickExportButtons(rows,'archive',k)+'</div></div>'+
+ (folderMode&&folderChildren.length?'<div class="archive-folder-children"><div class="recordgrid">'+
+  folderChildren.map(child=>archiveFolderCard(child)).join('')+'</div></div>':'')+
  '<div class="tablewrap archive-tablewrap"><table class="data ledger-archive-category-table'+(companyBusiness?' company-business-archive':'')+'">'+
  '<colgroup><col class="archive-col-check"><col class="archive-col-sequence">'+
  '<col class="archive-col-name">'+(companyBusiness?'<col class="archive-col-year">':'')+
@@ -1215,7 +1284,7 @@ function realArchiveTable(k,category){
    (files.count?'':' disabled title="该记录尚无附件"')+'>下载</button>':
    '<button class="btn btn-sm" data-archive-id="'+r.id+'">查看详情</button>')+'</td></tr>';
  }).join(''):
- '<tr><td colspan="6" class="empty">此类别暂无记录，点击右上角新建。</td></tr>')+
+ '<tr><td colspan="6" class="empty">'+(folderMode?'当前目录暂无资料，可新增资料或下级分类。':'此类别暂无记录，点击右上角新建。')+'</td></tr>')+
  '</tbody></table></div><div class="tablefoot">当前类别共 '+all.length+' 条记录</div></section>';
 }
 function realArchiveDetail(){
@@ -1230,6 +1299,7 @@ function realArchiveDetail(){
   back+'<button class="btn" data-action="archiveEdit">修改</button>'+
   '<button class="btn" data-action="archiveCopy">复制</button>'+
   (moveAvailable?'<button class="btn" data-action="archiveMove">转移</button>':'')+
+  (space==='company'&&page==='achievement'?'<button class="btn" data-action="archiveExpand">作为分类继续细分</button>':'')+
   '<button class="btn" data-action="archiveDelete">删除</button>')+
  section('基本信息','<div class="infogrid">'+infoRow('资料名称',record.name)+
  (space==='company'&&page==='certificate'?infoRow('备注',record.remarks):
@@ -1245,14 +1315,20 @@ function showArchiveForm(id=null){
  el('archiveForm').reset();
  const simpleCertificate=space==='company'&&page==='certificate';
  const companyBusiness=space==='company'&&page==='achievement';
+ el('archiveFolderField').hidden=!companyBusiness;
+ el('aFolder').disabled=!companyBusiness;
+ if(companyBusiness){
+  el('aFolder').innerHTML=archiveFolderOptions(record?.folderId??archiveFolderId??0);
+  el('aCategory').disabled=true;
+ }else el('aCategory').disabled=false;
  el('archiveYearField').hidden=!companyBusiness;
  el('aYear').disabled=!companyBusiness;
  el('aYear').value=companyBusiness?(record?.year||''):'';
- el('archiveCategoryField').hidden=simpleCertificate;
+ el('archiveCategoryField').hidden=simpleCertificate||companyBusiness;
  el('archiveTagsField').hidden=simpleCertificate;
  el('archiveAttachmentField').hidden=!simpleCertificate;
  el('archiveFormHint').textContent=simpleCertificate?'仅资料名称必填，附件与备注选填。':
-  companyBusiness?'资料名称必填，年份填写四位数字；其他字段可选。':
+  companyBusiness?'资料名称必填，可选目录与四位年份；目录可继续向下扩展。':
   '资料名称必填，类别、备注与标签可选。';
  el('archiveFormTitle').textContent=id===null?'新建资料':'修改资料';
  el('archiveExcelImport').hidden=id!==null;
@@ -1373,7 +1449,13 @@ function openSearchHit(index){
  else if(kind==='project')page='researchProject';
  else if(kind==='contract')page='contract';
  else if(kind==='ip')page='ip';
- else if(kind==='archive'){page=h.section;archiveGroup=space==='company'&&page==='certificate'?null:row.category||'未分类';}
+ else if(kind==='archive'){
+  page=h.section;
+  if(space==='company'&&page==='achievement'){
+   archiveFolderId=row.folderId>0?row.folderId:null;
+   archiveGroup=archiveFolders.find(f=>f.id===archiveFolderId)?.name||null;
+  }else archiveGroup=space==='company'&&page==='certificate'?null:row.category||'未分类';
+ }
  else return;
  detail={kind,id};globalSerial++;globalPending=false;
  filterName='';filterKind='全部类型';filterState='全部状态';
@@ -1473,6 +1555,7 @@ function ledgerScope(){
  if(detail)return null;
  if(isProject(page))return {kind:'project',section:''};
  if(page==='ip'||page==='contract')return {kind:page,section:''};
+ if(space==='company'&&page==='achievement')return {kind:'archive',section:page};
  if(archiveGroup&&archiveSections.includes(page)&&!(space==='company'&&page==='certificate'))
   return {kind:'archive',section:page};
  return null;
@@ -1600,7 +1683,7 @@ function render(){
  refreshSidebar();
  const content=el('content');
  content.innerHTML=detail?(detail.kind==='general'?realDetail():detail.kind==='project'?projectDetail():detail.kind==='contract'?contractDetail():detail.kind==='ip'?ipDetail():detail.kind==='archive'?realArchiveDetail():mockDetail()):
-   archiveGroup&&archiveSections.includes(page)&&!(space==='company'&&page==='certificate')?realArchiveTable(page,archiveGroup):
+   archiveGroup&&archiveSections.includes(page)&&!(space==='company'&&(page==='certificate'||page==='achievement'))?realArchiveTable(page,archiveGroup):
    page==='dashboard'?dashboard():page==='general'?generalList():
    isProject(page)?projectList(page):page==='ip'?ipList():
    page==='contract'?contractList():
@@ -1656,6 +1739,10 @@ el('content').addEventListener('click',async ev=>{
  for(const menu of el('content').querySelectorAll('.compact-ledger-export[open]')){
   if(!ev.target.closest('.compact-ledger-export')||ev.target.closest('.compact-ledger-export-options button'))menu.removeAttribute('open');
  }
+ const folderCard=ev.target.closest('[data-archive-folder-id]');
+ if(folderCard&&space==='company'&&page==='achievement'){
+  openArchiveFolder(Number(folderCard.dataset.archiveFolderId));return;
+ }
  const categoryCard=ev.target.closest('[data-archive-category]');
  if(categoryCard){
   const category=categoryCard.dataset.archiveCategory;
@@ -1666,6 +1753,10 @@ el('content').addEventListener('click',async ev=>{
  }
  const target=ev.target.closest('button');if(!target)return;
  if(target.closest('.certificate-export-options'))target.closest('.certificate-export')?.removeAttribute('open');
+ if(target.hasAttribute('data-archive-folder-back')&&space==='company'&&page==='achievement'){
+  const current=archiveFolders.find(f=>f.id===archiveFolderId);
+  openArchiveFolder(current?.parentId??null);return;
+ }
  if(target.hasAttribute('data-archive-back')){
   if(target.dataset.archiveBack==='cards')archiveGroup=null;
   detail=null;filterName='';filterKind='全部类型';selected.clear();render();el('content').scrollTo(0,0);return;
@@ -1824,6 +1915,18 @@ el('content').addEventListener('click',async ev=>{
    };
    const chooser=el('businessFileInput');chooser.value='';chooser.click();
    break;
+  }
+  case 'archiveFolderAdd':showArchiveFolderForm();break;
+  case 'archiveFolderEdit':showArchiveFolderForm(archiveFolderId);break;
+  case 'archiveExpand':{
+   if(space!=='company'||page!=='achievement'||detail?.kind!=='archive')break;
+   const record=(archiveRows.achievement||[]).find(r=>r.id===detail.id);
+   if(!record||!confirm('以“'+record.name+'”建立下级分类？原资料和附件会保留在此分类内。'))break;
+   try{
+    const result=await(await api('/api/archive-folders/from-record/'+record.id,{method:'POST'})).json();
+    detail=null;archiveFolderId=result.id;archiveGroup=record.name;
+    await refresh();notice('已创建下级分类，原有资料及附件已保留。');
+   }catch(error){notice(error.message,true);}break;
   }
   case 'archiveAdd':showArchiveForm();break;
   case 'archiveEdit':showArchiveForm(detail?.id);break;
@@ -2063,7 +2166,7 @@ el('content').addEventListener('change',async ev=>{
 el('content').addEventListener('keydown',event=>{
  if(event.key==='Escape')el('content').querySelector('.certificate-export[open]')?.removeAttribute('open');
  if(event.key==='Escape')el('content').querySelectorAll('.compact-ledger-export[open]').forEach(menu=>menu.removeAttribute('open'));
- if((event.key==='Enter'||event.key===' ')&&event.target.matches('[data-archive-category]')){event.preventDefault();event.target.click();return;}
+ if((event.key==='Enter'||event.key===' ')&&event.target.matches('[data-archive-category],[data-archive-folder-id]')){event.preventDefault();event.target.click();return;}
  if(event.key==='Enter'&&event.target.id==='filterSearch'){event.preventDefault();el('content').querySelector('[data-action=filter]')?.click();}
 });
 el('globalSearch').onkeydown=event=>{
@@ -2071,6 +2174,33 @@ el('globalSearch').onkeydown=event=>{
 };
 el('cancelRecord').onclick=()=>{editingId=null;el('modal').close();};
 el('modal').addEventListener('close',()=>{editingId=null;});
+el('archiveFolderCancel').onclick=()=>el('archiveFolderDialog').close();
+el('archiveFolderDialog').addEventListener('close',()=>{archiveFolderEditingId=null;});
+el('archiveFolderForm').onsubmit=async event=>{
+ event.preventDefault();
+ if(space!=='company'||page!=='achievement')return;
+ const id=archiveFolderEditingId,name=el('archiveFolderName').value.trim();
+ const parentId=Number(el('archiveFolderParent').value)||null;
+ el('archiveFolderSave').disabled=true;
+ try{
+  const response=await api('/api/archive-folders'+(id?'/'+id:''),
+   {method:id?'PUT':'POST',json:{name,parentId}});
+  const newId=id||(await response.json()).id;
+  el('archiveFolderDialog').close();
+  archiveFolderId=newId;archiveGroup=name;
+  await refresh();notice(id?'目录已更新。':'下级分类已创建。');
+ }catch(error){notice(error.message,true);}
+ finally{el('archiveFolderSave').disabled=false;}
+};
+el('archiveFolderDelete').onclick=async()=>{
+ const id=archiveFolderEditingId,folder=archiveFolders.find(f=>f.id===id);
+ if(!folder||!confirm('删除空目录“'+folder.name+'”？含资料或下级目录时不会删除。'))return;
+ try{
+  await api('/api/archive-folders/'+id,{method:'DELETE'});
+  el('archiveFolderDialog').close();archiveFolderId=folder.parentId||null;
+  archiveGroup=null;await refresh();notice('空目录已删除。');
+ }catch(error){notice(error.message,true);}
+};
 el('archiveCancel').onclick=()=>el('archiveDialog').close();
 el('archiveDialog').addEventListener('close',()=>{archiveEditingId=null;});
 el('archiveForm').onsubmit=async event=>{
@@ -2079,6 +2209,7 @@ el('archiveForm').onsubmit=async event=>{
  const simpleCertificate=workspace==='company'&&section==='certificate';
  const attachment=simpleCertificate?el('aAttachment').files?.[0]:null;
  const input=Object.fromEntries(new FormData(el('archiveForm')).entries());
+ if(workspace==='company'&&section==='achievement')input.folderId=Number(input.folderId);
  el('archiveSave').disabled=true;
  try{
   const path='/api/archives/'+workspace+'/'+section+(id===null?'':'/'+id);
@@ -2097,7 +2228,11 @@ el('archiveForm').onsubmit=async event=>{
   await refresh();
   const record=(archiveRows[section]||[]).find(r=>r.id===recordId);
   if(record){
-   page=section;archiveGroup=simpleCertificate?null:record.category||'未分类';
+   page=section;
+   archiveFolderId=workspace==='company'&&section==='achievement'?
+    (record.folderId>0?record.folderId:null):archiveFolderId;
+   archiveGroup=simpleCertificate?null:workspace==='company'&&section==='achievement'?
+    (archiveFolders.find(f=>f.id===archiveFolderId)?.name||null):record.category||'未分类';
    detail=simpleCertificate?null:{kind:'archive',id:recordId};render();
   }
   notice(attachmentError?'资料已保存，但附件上传失败：'+attachmentError:

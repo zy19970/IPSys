@@ -1,9 +1,9 @@
 using Microsoft.Data.Sqlite;
 
-record ArchiveInput(string? Name, string? Category, string? Remarks, string? Tags, string? Year = null);
+record ArchiveInput(string? Name, string? Category, string? Remarks, string? Tags, string? Year = null,long? FolderId = null);
 record ArchiveTransfer(string TargetWorkspace, string TargetSection, bool Move);
 record ArchiveView(long Id, string Workspace, string Section, string Name,
-    string Category, string Remarks, string Tags, string Year = "");
+    string Category, string Remarks, string Tags, string Year = "",long? FolderId = null);
 
 // M0 minimal fields. Company credentials and personal credentials remain distinct
 // logical modules; achievement/academic are two views of research_output.
@@ -70,6 +70,7 @@ static class ArchiveStore
             alter.CommandText="ALTER TABLE business_archives ADD COLUMN year TEXT NOT NULL DEFAULT '';";
             alter.ExecuteNonQuery();
         }
+        ArchiveFolderStore.Ensure(db);
     }
     public static List<ArchiveView> List(SqliteConnection db,string workspace,string section)
     {
@@ -77,14 +78,14 @@ static class ArchiveStore
         string module=Module(workspace,section) ?? throw new ArgumentException("无效的资料模块。");
         using var cmd=db.CreateCommand();
         cmd.CommandText = workspace=="company"&&section=="certificate" ? """
-            SELECT a.id,a.workspace,a.section,a.name,a.category,a.remarks,a.tags,a.year
+            SELECT a.id,a.workspace,a.section,a.name,a.category,a.remarks,a.tags,a.year,a.folder_id
             FROM business_archives a
             LEFT JOIN company_certificate_order o ON o.archive_id=a.id
             WHERE a.workspace=$workspace AND a.section=$section AND a.module=$module AND a.deleted=0
             ORDER BY CASE WHEN o.position IS NULL THEN 1 ELSE 0 END,
                      o.position ASC,a.id DESC;
             """ : """
-            SELECT id,workspace,section,name,category,remarks,tags,year
+            SELECT id,workspace,section,name,category,remarks,tags,year,folder_id
             FROM business_archives
             WHERE workspace=$workspace AND section=$section AND module=$module AND deleted=0
             ORDER BY id DESC;
@@ -94,7 +95,8 @@ static class ArchiveStore
         cmd.Parameters.AddWithValue("$module",module);
         using var r=cmd.ExecuteReader();
         while(r.Read())list.Add(new ArchiveView(r.GetInt64(0),r.GetString(1),r.GetString(2),
-            r.GetString(3),r.GetString(4),r.GetString(5),r.GetString(6),r.GetString(7)));
+            r.GetString(3),r.GetString(4),r.GetString(5),r.GetString(6),r.GetString(7),
+            r.IsDBNull(8)?null:r.GetInt64(8)));
         return list;
     }
 
@@ -153,24 +155,40 @@ static class ArchiveStore
     }
     public static long Add(SqliteConnection db,string workspace,string section,ArchiveInput x)
     {
+        if(workspace=="company"&&section=="achievement")
+        {
+            long folder=x.FolderId??ArchiveFolderStore.DefaultRoot(db,x.Category);
+            if(!ArchiveFolderStore.Valid(db,folder))
+                throw new InvalidOperationException("资料所属目录不存在。");
+            x=x with {FolderId=folder,Category=folder>0?ArchiveFolderStore.RootName(db,folder):""};
+        }
+        else if(x.FolderId is not null)
+            throw new InvalidOperationException("当前资料类型不支持业务档案目录。");
         using var cmd=db.CreateCommand();
         cmd.CommandText = """
-            INSERT INTO business_archives(workspace,module,section,name,category,remarks,tags,year)
-            VALUES($workspace,$module,$section,$name,$category,$remarks,$tags,COALESCE($year,''));
+            INSERT INTO business_archives(workspace,module,section,name,category,remarks,tags,year,folder_id)
+            VALUES($workspace,$module,$section,$name,$category,$remarks,$tags,COALESCE($year,''),$folder);
             SELECT last_insert_rowid();
             """;
         cmd.Parameters.AddWithValue("$workspace",workspace);
         cmd.Parameters.AddWithValue("$module",Module(workspace,section)!);
         cmd.Parameters.AddWithValue("$section",section);
         AddData(cmd,x);
+        cmd.Parameters.AddWithValue("$folder",x.FolderId is long folderId?folderId:DBNull.Value);
         return (long)cmd.ExecuteScalar()!;
     }
     public static bool Update(SqliteConnection db,string workspace,string section,long id,ArchiveInput x)
     {
+        if(x.FolderId is long folder && (workspace!="company"||section!="achievement"||
+           !ArchiveFolderStore.Valid(db,folder)))
+            throw new InvalidOperationException("资料所属目录无效。");
+        if(workspace=="company"&&section=="achievement"&&x.FolderId is long selected)
+            x=x with {Category=selected>0?ArchiveFolderStore.RootName(db,selected):""};
         using var cmd=db.CreateCommand();
         cmd.CommandText = """
             UPDATE business_archives SET name=$name,category=$category,remarks=$remarks,tags=$tags,
-                year=COALESCE($year,year)
+                year=COALESCE($year,year),
+                folder_id=COALESCE($folder,folder_id)
             WHERE id=$id AND workspace=$workspace AND module=$module
                 AND section=$section AND deleted=0;
             """;
@@ -179,6 +197,7 @@ static class ArchiveStore
         cmd.Parameters.AddWithValue("$module",Module(workspace,section)!);
         cmd.Parameters.AddWithValue("$section",section);
         AddData(cmd,x);
+        cmd.Parameters.AddWithValue("$folder",x.FolderId is long folderId?folderId:DBNull.Value);
         return cmd.ExecuteNonQuery()==1;
     }
     // Atomic soft deletion: invalid, duplicate or cross-workspace IDs cancel the entire selection.
@@ -231,8 +250,10 @@ static class ArchiveStore
         {
             cmd.Transaction=tx;
             cmd.CommandText = """
-                INSERT INTO business_archives(workspace,module,section,name,category,remarks,tags,year)
-                SELECT $toWorkspace,$module,$toSection,name,category,remarks,tags,year
+                INSERT INTO business_archives(workspace,module,section,name,category,remarks,tags,year,folder_id)
+                SELECT $toWorkspace,$module,$toSection,name,category,remarks,tags,year,
+                       CASE WHEN $toWorkspace='company' AND $toSection='achievement'
+                         THEN folder_id ELSE NULL END
                 FROM business_archives
                 WHERE id=$id AND workspace=$workspace AND module=$module
                     AND section=$section AND deleted=0;

@@ -2,6 +2,10 @@
 
 > 新会话请首先读取 [AIGT-templates/AGENTS.md](https://github.com/zy19970/AIGT-templates/blob/main/AGENTS.md) 与 [GIT_OPERATIONS.md](https://github.com/zy19970/AIGT-templates/blob/main/AI_RULES/GIT_OPERATIONS.md)，然后检查 IPSys 当前 `main` 的真实源码、全部提交历史及最新 Windows CI。本文件以 `6c9ae230579e32c66e2cb04bcb46e4c86a517f97` 为文档同步前基线，不能代替之后的最新 Git 状态。
 
+## 公司业务档案可变层级目录（2026-10-15）
+
+本次确认并开始实施：公司业务档案采用独立 SQLCipher 目录表 archive_folders，business_archives 增加 nullable folder_id。默认七类及历史自定义类别迁移为根目录，不重建已有资料与附件。目录能包含子目录和本级资料，可无限扩展不同深度；旧记录可作为同名下级目录继续细分，原件保留。客户端沿用 realArchiveTable、现有多选/排序/年份/ZIP 下载逻辑，新增目录路径、新建/管理目录和资料所属目录选择器。个人归档及企业资质行为不变。先完成 Windows CI，再由用户本机验证旧库升级和目录操作。
+
 ## 最新界面名称与关闭行为（2026-10-15）
 
 面向用户的网页、WinForms 和历史预览界面统一显示「资料管理系统」；IPSys 仅作为仓库和程序集标识。网页右上角「关闭数据库」通过 `POST /api/lock` 释放数据库并返回登录界面，**不会终止 WinForms 或本地服务**；上传任务中拒绝关库。仅 WinForms 的「退出程序」按钮或窗口 X 才能结束应用，文件任务安全退出三选项继续由 WinForms 处理。**旧网页程序退出接口 `POST /api/exit` 已取消**。此前文档及旧会话中“网页安全退出也退出程序”的说明已被覆盖。

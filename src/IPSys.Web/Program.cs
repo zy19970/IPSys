@@ -413,6 +413,78 @@ app.MapPost("/api/excel/{workspace}/{kind}/import",async (
     finally{v.Gate.Release();}
 });
 
+// Hierarchical directories are limited to the company business archives. All
+// operations reuse the existing unlocked SQLCipher session and the shared gate.
+app.MapGet("/api/archive-folders",async(HttpContext ctx,Vault v)=>
+{
+    if(!v.Allowed(ctx))return (IResult)Results.Unauthorized();
+    await v.Gate.WaitAsync();
+    try
+    {
+        if(!v.Allowed(ctx))return Results.Unauthorized();
+        return Results.Json(ArchiveFolderStore.List(v.Db));
+    }
+    finally{v.Gate.Release();}
+});
+app.MapPost("/api/archive-folders",async(HttpContext ctx,Vault v,ArchiveFolderInput input)=>
+{
+    if(!v.Allowed(ctx))return (IResult)Results.Unauthorized();
+    if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务进行中不能调整目录。",409);
+    await v.Gate.WaitAsync();
+    try
+    {
+        if(!v.Allowed(ctx))return Results.Unauthorized();
+        if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务进行中不能调整目录。",409);
+        try{return Results.Json(new {id=ArchiveFolderStore.Create(v.Db,input)});}
+        catch(InvalidOperationException ex){return Fail(ex.Message,409);}
+    }
+    finally{v.Gate.Release();}
+});
+app.MapPut("/api/archive-folders/{id:long}",async(HttpContext ctx,Vault v,long id,ArchiveFolderInput input)=>
+{
+    if(!v.Allowed(ctx))return (IResult)Results.Unauthorized();
+    if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务进行中不能调整目录。",409);
+    await v.Gate.WaitAsync();
+    try
+    {
+        if(!v.Allowed(ctx))return Results.Unauthorized();
+        if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务进行中不能调整目录。",409);
+        try{return ArchiveFolderStore.Update(v.Db,id,input)
+            ?Results.Ok(new {ok=true}):Results.NotFound();}
+        catch(InvalidOperationException ex){return Fail(ex.Message,409);}
+    }
+    finally{v.Gate.Release();}
+});
+app.MapDelete("/api/archive-folders/{id:long}",async(HttpContext ctx,Vault v,long id)=>
+{
+    if(!v.Allowed(ctx))return (IResult)Results.Unauthorized();
+    if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务进行中不能调整目录。",409);
+    await v.Gate.WaitAsync();
+    try
+    {
+        if(!v.Allowed(ctx))return Results.Unauthorized();
+        if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务进行中不能调整目录。",409);
+        try{return ArchiveFolderStore.DeleteEmpty(v.Db,id)
+            ?Results.Ok(new {ok=true}):Results.NotFound();}
+        catch(InvalidOperationException ex){return Fail(ex.Message,409);}
+    }
+    finally{v.Gate.Release();}
+});
+app.MapPost("/api/archive-folders/from-record/{id:long}",async(HttpContext ctx,Vault v,long id)=>
+{
+    if(!v.Allowed(ctx))return (IResult)Results.Unauthorized();
+    if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务进行中不能调整目录。",409);
+    await v.Gate.WaitAsync();
+    try
+    {
+        if(!v.Allowed(ctx))return Results.Unauthorized();
+        if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务进行中不能调整目录。",409);
+        try{return Results.Json(new {id=ArchiveFolderStore.ExpandRecord(v.Db,id)});}
+        catch(InvalidOperationException ex){return Fail(ex.Message,409);}
+    }
+    finally{v.Gate.Release();}
+});
+
 // Contract creation requires an existing, active project in the same workspace.
 // "All contracts" is a read-only aggregation; it cannot create orphan records.
 // B04 minimal archives: the section is a validated view inside a fixed M0 module.
@@ -475,7 +547,8 @@ app.MapPost("/api/archives/{workspace}/{section}", async (
     {
         if (!v.Allowed(ctx)) return Results.Unauthorized();
         if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务或退出期间不可更改资料。",409);
-        return Results.Json(new {id=ArchiveStore.Add(v.Db,workspace,section,input)});
+        try{return Results.Json(new {id=ArchiveStore.Add(v.Db,workspace,section,input)});}
+        catch(InvalidOperationException ex){return Fail(ex.Message,409);}
     }
     finally { v.Gate.Release(); }
 });
@@ -492,8 +565,9 @@ app.MapPut("/api/archives/{workspace}/{section}/{id:long}", async (
     {
         if (!v.Allowed(ctx)) return Results.Unauthorized();
         if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务或退出期间不可更改资料。",409);
-        return ArchiveStore.Update(v.Db,workspace,section,id,input)
-            ? Results.Ok(new {ok=true}) : Results.NotFound();
+        try{return ArchiveStore.Update(v.Db,workspace,section,id,input)
+            ? Results.Ok(new {ok=true}) : Results.NotFound();}
+        catch(InvalidOperationException ex){return Fail(ex.Message,409);}
     }
     finally { v.Gate.Release(); }
 });
@@ -2312,6 +2386,52 @@ static class WebSmoke
             if((await client.GetFromJsonAsync<List<ArchiveView>>(
                 "/api/archives/company/achievement"))?.SingleOrDefault(a=>a.Id==companyOutputId)?.Year!="2026")
                 throw new IOException("公司业务档案修改年份后未持久化。");
+            // An existing company archive record may live under any folder depth.
+            var roots=await client.GetFromJsonAsync<List<ArchiveFolderView>>("/api/archive-folders");
+            if(roots is null || !roots.Any(f=>f.Name=="申报与认定"&&f.ParentId is null) ||
+               !roots.Any(f=>f.Name=="技术成果"&&f.ParentId is null))
+                throw new IOException("历史分类目录没有安全迁移或默认分类缺失。");
+            var technology=roots.Single(f=>f.Name=="技术成果"&&f.ParentId is null);
+            long parent=technology.Id;
+            foreach(string part in new[]{"企业行标","评审材料","2026年度"})
+            {
+                using var createFolder=await client.PostAsJsonAsync("/api/archive-folders",
+                    new ArchiveFolderInput(part,parent));
+                createFolder.EnsureSuccessStatusCode();
+                parent=(await createFolder.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
+                    .GetProperty("id").GetInt64();
+            }
+            long deepest=parent;
+            var deepFolders=await client.GetFromJsonAsync<List<ArchiveFolderView>>("/api/archive-folders");
+            if(deepFolders is null || deepFolders.Count!=roots.Count+3 ||
+               deepFolders.Single(f=>f.Id==deepest).Name!="2026年度")
+                throw new IOException("第四、五级目录树没有持久化。");
+            using(var rejectCycle=await client.PutAsJsonAsync(
+                $"/api/archive-folders/{technology.Id}",
+                new ArchiveFolderInput(technology.Name,deepest)))
+                if(rejectCycle.StatusCode!=HttpStatusCode.Conflict)
+                    throw new IOException("目录树不能允许移动到自身子目录形成循环。");
+            using(var rejectNonempty=await client.DeleteAsync(
+                $"/api/archive-folders/{technology.Id}"))
+                if(rejectNonempty.StatusCode!=HttpStatusCode.Conflict)
+                    throw new IOException("非空目录不应被直接删除。");
+            using(var moveIntoFolder=await client.PutAsJsonAsync(
+                $"/api/archives/company/achievement/{companyOutputId}",
+                new ArchiveInput("企业科研成果","技术成果","研发表现","","2026",deepest)))
+                moveIntoFolder.EnsureSuccessStatusCode();
+            var movedArchive=await client.GetFromJsonAsync<List<ArchiveView>>(
+                "/api/archives/company/achievement");
+            if(movedArchive?.Single(a=>a.Id==companyOutputId).FolderId!=deepest)
+                throw new IOException("旧资料归入深层目录后没有保留原 ID。");
+            using var promoted=await client.PostAsync(
+                $"/api/archive-folders/from-record/{companyOutputId}",null);
+            promoted.EnsureSuccessStatusCode();
+            var promotionId=(await promoted.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
+                .GetProperty("id").GetInt64();
+            var retainedRecord=await client.GetFromJsonAsync<List<ArchiveView>>(
+                "/api/archives/company/achievement");
+            if(retainedRecord?.Single(a=>a.Id==companyOutputId).FolderId!=promotionId)
+                throw new IOException("从已有资料建立下级分类时未保留资料记录。");
             var copyToPersonalAcademic=await client.PostAsJsonAsync(
                 $"/api/archives/company/achievement/{companyOutputId}/transfer",
                 new ArchiveTransfer("personal","academic",false));
