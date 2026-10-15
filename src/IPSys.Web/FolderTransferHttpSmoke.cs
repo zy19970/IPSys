@@ -132,12 +132,15 @@ static class FolderTransferHttpSmoke
               personalProjects!.Any(x=>x.Id==movedProject),
             "cross-workspace move hides source and creates target");
         var personalContracts=await client.GetFromJsonAsync<List<ContractView>>("/api/contracts/personal");
-        var transferredContract=personalContracts!.Single(x=>x.ProjectId==movedProject &&
-            x.ContractNo=="CTR-"+token);
+        var transferredContracts=personalContracts!.Where(x=>x.ProjectId==movedProject &&
+            x.ContractNo=="CTR-"+token).ToArray();
+        Check(transferredContracts.Length==2,
+            "project move copies every original and duplicated child contract");
         await CheckVersions(client,"personal","project",movedProject,
             "project-"+token+".bin",[first,second]);
-        await CheckVersions(client,"personal","contract",transferredContract.Id,
-            "contract-"+token+".bin",[contractBytes]);
+        foreach(var movedChild in transferredContracts)
+            await CheckVersions(client,"personal","contract",movedChild.Id,
+                "contract-"+token+".bin",[contractBytes]);
         Check((await Files(client,"company")).All(x=>x.OwnerId!=projectId ||
               x.Kind!="project"),
             "moved project source attachment inaccessible in old workspace");
