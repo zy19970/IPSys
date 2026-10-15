@@ -168,8 +168,10 @@ static class FolderTransferHttpSmoke
             new ProjectTransfer("company",false)));
         await CheckVersions(client,"company","project",oldCopy,
             "project-"+token+".bin",[first,second]);
+        // The original project's contracts are hidden after move; legacy copy must
+        // target an active child of the independently copied project.
         long oldContractCopy=await NewId(await client.PostAsync(
-            $"/api/contracts/company/{copiedContract}/copy",null));
+            $"/api/contracts/company/{cloneChildren[0].Id}/copy",null));
         await CheckVersions(client,"company","contract",oldContractCopy,
             "contract-"+token+".bin",[contractBytes]);
 
