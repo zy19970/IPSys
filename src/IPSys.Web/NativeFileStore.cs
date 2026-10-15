@@ -33,7 +33,7 @@ static class NativeFileStore
             throw new ArgumentException(label+"包含无效字符或过长。");
         return value.Length==0?null:value;
     }
-    private static NativeFileMetadataInput Normalize(NativeFileMetadataInput input)
+    internal static NativeFileMetadataInput Normalize(NativeFileMetadataInput input)
     {
         string? date=Optional(input.FileDate,32,"文件日期");
         if(date!=null && (!DateOnly.TryParseExact(date,"yyyy-MM-dd",System.Globalization.CultureInfo.InvariantCulture,System.Globalization.DateTimeStyles.None,out _)))

@@ -57,6 +57,8 @@ static class SessionEndpoints
                     LedgerBatch.Ensure(db);
                     BusinessFileStore.Ensure(db);
                     GeneralStore.Ensure(db);
+                    // Remove only incomplete V2 writing objects abandoned by a crash.
+                    NativeFileChoiceStore.CleanupWriting(db);
                     string token = v.SetOpen(db, path);
                     db = null;
                     return Results.Json(new { token, name = Path.GetFileName(path) });

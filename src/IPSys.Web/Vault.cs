@@ -5,6 +5,8 @@ using Microsoft.Data.Sqlite;
 sealed class Vault : IDisposable
 {
     public SemaphoreSlim Gate { get; } = new(1, 1);
+    // Protected by Gate: a single unconfirmed encrypted N3-04 upload per vault.
+    internal NativeFilePreparation? PendingFile { get; set; }
     private readonly object _taskSync = new();
     private TaskCompletionSource<bool>? _fileTaskCompletion;
     private CancellationTokenSource? _fileTaskCancellation;
@@ -154,6 +156,8 @@ sealed class Vault : IDisposable
     {
         lock (_taskSync)
         {
+            if (_db != null) NativeFileChoiceStore.CleanupWriting(_db);
+            PendingFile = null;
             // Keep the existing connection state if disposal fails so the caller
             // can report a close failure rather than silently treating it as safe.
             _db?.Dispose();
