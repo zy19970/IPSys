@@ -171,8 +171,8 @@ for(const cls of ['.recordgrid','.archivecard','.archivecard-real','.archivecard
 }
 assert.ok(js.includes("archiveSections.includes(page)?(space==='company'&&page==='certificate'?realCompanyCertificateList():realArchiveCards(page))"),
  'Company certificate routes directly to its real list; other archives keep category cards');
-assert.ok(js.includes("archiveGroup&&archiveSections.includes(page)&&!(space==='company'&&page==='certificate')?realArchiveTable(page,archiveGroup)"),
- 'Card-based archive categories must retain their existing drill-down, except company certificate');
+assert.ok(js.includes("archiveGroup&&archiveSections.includes(page)&&!(space==='company'&&(page==='certificate'||page==='achievement'))?realArchiveTable(page,archiveGroup)"),
+ 'Personal archives retain category-card drill-down; company business archives use the folder tree');
 assert.ok(js.includes("detail.kind==='archive'?realArchiveDetail()"),'Archive records must open real detail');
 assert.ok(js.includes("page==='general'?generalList()"),'Real general records must retain their route');
 assert.ok(js.includes("isProject(page)?projectList(page)"),'Project pages must use real SQLCipher records');
@@ -764,9 +764,9 @@ assert.ok(js.includes("ids=certificateExportIds();")&&
  js.includes("const checked=rows.filter(r=>certificateSelected.has(r.id))")&&
  js.includes("return (checked.length?checked:rows).map(r=>r.id)"),
  'Certificate Excel must export checked records first or all visible filtered records when unchecked');
-assert.ok(js.includes("page=section;archiveGroup=simpleCertificate?null:record.category")&&
+assert.ok(js.includes("archiveGroup=simpleCertificate?null:workspace==='company'&&section==='achievement'?")&&
  js.includes("detail=simpleCertificate?null:{kind:'archive',id:recordId}"),
- 'Saved company certificate must return to the direct list without category routing');
+ 'Saved enterprise certificates retain the direct list and company archives retain selected folders');
 assert.ok(js.includes('data-nav="certificate">← 返回企业资质'),
  'Certificate detail must offer a direct list return');
 assert.ok(html.includes('id="aAttachment" type="file"')&&
