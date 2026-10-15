@@ -1169,9 +1169,21 @@ function archiveTableAttachmentSummary(recordId,section){
   if(!old||file.version>old.version||(file.version===old.version&&file.id>old.id))
    current.set(key,file);
  }
- return {count:current.size,size:[...current.values()].reduce((sum,file)=>sum+file.size,0)};
+ const files=[...current.values()];
+ return {count:files.length,size:files.reduce((sum,file)=>sum+file.size,0),files};
+}
+// A row download contains the current version of each distinct original, not
+// duplicate historical versions. Reuse the existing browser ZIP export engine.
+function archiveRecordZipOriginals(recordId,section){
+ const record=(archiveRows[section]||[]).find(r=>r.id===recordId);
+ if(!record)return [];
+ return archiveTableAttachmentSummary(recordId,section).files.map(file=>({
+  source:'business',workspace:space,id:file.id,name:file.name,size:file.size,
+  kind:'archive',ownerId:recordId,section,ownerName:record.name
+ }));
 }
 function realArchiveTable(k,category){
+ const companyBusiness=space==='company'&&k==='achievement';
  const all=(archiveRows[k]||[]).filter(r=>(r.category||'未分类')===category);
  const rows=all.filter(r=>[r.name,r.remarks,r.tags].join(' ').toLowerCase().includes(filterName.toLowerCase()));
  return heading(category,archiveSectionName(k)+' / 分类台账 · 同一类别可归档多条记录',
@@ -1181,19 +1193,27 @@ function realArchiveTable(k,category){
  '<section class="white filter"><div class="filterline"><div class="field wide"><label>资料名称</label><input id="filterSearch" placeholder="搜索此类别下的记录"></div>'+
  '<button class="btn primary" data-action="filter">查询</button><button class="btn" data-action="clearFilter">重置</button></div></section>'+
  '<section class="white archive-category-ledger"><div class="tabletools"><b>共 '+rows.length+' 条记录</b><div class="actions">'+quickExportButtons(rows,'archive',k)+'</div></div>'+
- '<div class="tablewrap archive-tablewrap"><table class="data ledger-archive-category-table">'+
+ '<div class="tablewrap archive-tablewrap"><table class="data ledger-archive-category-table'+(companyBusiness?' company-business-archive':'')+'">'+
  '<colgroup><col class="archive-col-check"><col class="archive-col-sequence">'+
- '<col class="archive-col-name"><col class="archive-col-attachment"><col class="archive-col-size">'+
+ '<col class="archive-col-name">'+(companyBusiness?'<col class="archive-col-year">':'')+
+ '<col class="archive-col-attachment">'+(companyBusiness?'':'<col class="archive-col-size">')+
  '<col class="archive-col-remarks"><col class="archive-col-order"><col class="archive-col-action"></colgroup>'+
- '<thead><tr><th>序号</th><th>资料名称</th><th>附件</th><th>文件大小</th><th>备注</th><th>操作</th></tr></thead><tbody>'+
+ (companyBusiness?
+ '<thead><tr><th>序号</th><th>名称</th><th>年份</th><th>附件</th><th>备注</th><th>操作</th></tr></thead><tbody>':
+ '<thead><tr><th>序号</th><th>资料名称</th><th>附件</th><th>文件大小</th><th>备注</th><th>操作</th></tr></thead><tbody>')+
  (rows.length?rows.map((r,i)=>{
   const files=archiveTableAttachmentSummary(r.id,k);
   return '<tr><td>'+(i+1)+'</td><td>'+
   '<button class="link" data-archive-id="'+r.id+'">'+escapeHtml(r.name)+'</button></td>'+
-  '<td>'+(files.count?files.count+' 份':'<span class="muted">未上传</span>')+'</td>'+
-  '<td class="archive-category-file-size">'+(files.count?fmtSize(files.size):'—')+'</td>'+
+  (companyBusiness?'<td class="archive-category-year">'+escapeHtml(r.year||'—')+'</td>':'')+
+  '<td>'+(companyBusiness?files.count+' 份':
+   files.count?files.count+' 份':'<span class="muted">未上传</span>')+'</td>'+
+  (companyBusiness?'':'<td class="archive-category-file-size">'+(files.count?fmtSize(files.size):'—')+'</td>')+
   '<td>'+escapeHtml(r.remarks||'—')+'</td>'+
-  '<td class="archive-category-action"><button class="btn btn-sm" data-archive-id="'+r.id+'">查看详情</button></td></tr>';
+  '<td class="archive-category-action">'+(companyBusiness?
+   '<button type="button" class="btn btn-sm" data-archive-download="'+r.id+'"'+
+   (files.count?'':' disabled title="该记录尚无附件"')+'>下载</button>':
+   '<button class="btn btn-sm" data-archive-id="'+r.id+'">查看详情</button>')+'</td></tr>';
  }).join(''):
  '<tr><td colspan="6" class="empty">此类别暂无记录，点击右上角新建。</td></tr>')+
  '</tbody></table></div><div class="tablefoot">当前类别共 '+all.length+' 条记录</div></section>';
@@ -1213,7 +1233,9 @@ function realArchiveDetail(){
   '<button class="btn" data-action="archiveDelete">删除</button>')+
  section('基本信息','<div class="infogrid">'+infoRow('资料名称',record.name)+
  (space==='company'&&page==='certificate'?infoRow('备注',record.remarks):
- infoRow('类别',record.category)+infoRow('备注',record.remarks)+infoRow('标签',record.tags))+'</div>')+
+ infoRow('类别',record.category)+
+ (space==='company'&&page==='achievement'?infoRow('年份',record.year):'')+
+ infoRow('备注',record.remarks)+infoRow('标签',record.tags))+'</div>')+
  section('附件资料',businessAttachmentList('archive',record.id,page));
 }
 function showArchiveForm(id=null){
@@ -1222,10 +1244,16 @@ function showArchiveForm(id=null){
  archiveEditingId=id;
  el('archiveForm').reset();
  const simpleCertificate=space==='company'&&page==='certificate';
+ const companyBusiness=space==='company'&&page==='achievement';
+ el('archiveYearField').hidden=!companyBusiness;
+ el('aYear').disabled=!companyBusiness;
+ el('aYear').value=companyBusiness?(record?.year||''):'';
  el('archiveCategoryField').hidden=simpleCertificate;
  el('archiveTagsField').hidden=simpleCertificate;
  el('archiveAttachmentField').hidden=!simpleCertificate;
- el('archiveFormHint').textContent=simpleCertificate?'仅资料名称必填，附件与备注选填。':'资料名称必填，类别、备注与标签可选。';
+ el('archiveFormHint').textContent=simpleCertificate?'仅资料名称必填，附件与备注选填。':
+  companyBusiness?'资料名称必填，年份填写四位数字；其他字段可选。':
+  '资料名称必填，类别、备注与标签可选。';
  el('archiveFormTitle').textContent=id===null?'新建资料':'修改资料';
  el('archiveExcelImport').hidden=id!==null;
  el('aCategory').value=record?.category??(archiveGroup==='未分类'?'':archiveGroup||'');
@@ -1655,6 +1683,14 @@ el('content').addEventListener('click',async ev=>{
  }
  if(target.dataset.certificateDownload){
   await downloadBusinessAttachment(Number(target.dataset.certificateDownload));return;
+ }
+ if(target.dataset.archiveDownload){
+  if(space!=='company'||page!=='achievement')return;
+  const originals=archiveRecordZipOriginals(Number(target.dataset.archiveDownload),page);
+  if(!originals.length)return notice('该记录尚无可下载的附件。',true);
+  if(!globalThis.IPSysExport)return notice('导出模块仍在初始化，请稍后重试。',true);
+  await globalThis.IPSysExport.start('zip',originals);
+  return;
  }
  if(target.dataset.archiveId){
   detail={kind:'archive',id:Number(target.dataset.archiveId)};render();

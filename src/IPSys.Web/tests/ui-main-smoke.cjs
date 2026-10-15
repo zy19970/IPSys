@@ -432,7 +432,7 @@ assert.ok(contractContext.__owned.includes('data-contract-id="31"'),'Project det
 assert.deepEqual(Array.from(contractContext.__display),['—','0.00','12.30']);
 
 // B04 minimal archives reuse frozen category cards -> ledger -> detail layout.
-for(const id of ['archiveDialog','archiveForm','aName','aCategory','aRemarks','aTags',
+for(const id of ['archiveDialog','archiveForm','aName','aCategory','aYear','archiveYearField','aRemarks','aTags',
  'archiveTransferDialog','archiveTransferForm','archiveDestination'])
  assert.ok(html.includes('id="'+id+'"'),'Archive form or transfer control missing: '+id);
 for(const action of ['archiveAdd','archiveEdit','archiveCopy','archiveMove','archiveDelete'])
@@ -499,12 +499,19 @@ assert.ok(realArchiveCtx.__possibleTargets.some(x=>x.workspace==='company'&&x.ki
  'Company and personal certificates must remain different logical kinds');
 vm.runInContext(
  "space='company';page='achievement';archiveRows.achievement=["+
- "{id:31,name:'首台套申报',category:'申报与认定',remarks:'',tags:''},"+
+ "{id:31,name:'首台套申报',category:'申报与认定',year:'2026',remarks:'',tags:''},"+
  "{id:32,name:'历史成果资料',category:'技术成果',remarks:'',tags:''}];"+
  "globalThis.__companyName=archiveSectionName('achievement');"+
  "globalThis.__companyCats=archiveCategories('achievement');"+
+ "globalThis.mockCertificateFiles.push("+ 
+ "{kind:'archive',ownerId:31,section:'achievement',id:301,groupId:'zA',version:1,size:100,name:'申报.pdf',category:''},"+
+ "{kind:'archive',ownerId:31,section:'achievement',id:302,groupId:'zA',version:2,size:200,name:'申报.pdf',category:''},"+
+ "{kind:'archive',ownerId:31,section:'achievement',id:303,groupId:'zB',version:1,size:300,name:'证明.docx',category:''}"+
+ ");"+
  "globalThis.__companyCards=realArchiveCards('achievement');"+
- "globalThis.__companyTable=realArchiveTable('achievement','申报与认定');",
+ "globalThis.__companyTable=realArchiveTable('achievement','申报与认定');"+
+ "globalThis.__companyZip=archiveRecordZipOriginals(31,'achievement');"+
+ "globalThis.__emptyCompanyZip=archiveRecordZipOriginals(32,'achievement');",
  realArchiveCtx);
 assert.equal(realArchiveCtx.__companyName,'业务档案');
 for(const c of ["申报与认定","规划与管理","汇报与宣传","会议与活动","专项工作与合作","政策与行业资料","其他业务资料"])
@@ -517,6 +524,27 @@ assert.ok(realArchiveCtx.__companyTable.includes('<table class="data ledger-arch
 assert.ok(realArchiveCtx.__companyTable.includes('<section class="white archive-category-ledger">')&&
  realArchiveCtx.__companyTable.includes('<b>共 1 条记录</b>'),
  'Company category tables must share enterprise-certificate-style compact header');
+assert.ok(realArchiveCtx.__companyTable.includes('company-business-archive')&&
+ realArchiveCtx.__companyTable.includes('<th>序号</th><th>名称</th><th>年份</th><th>附件</th><th>备注</th><th>操作</th>')&&
+ !realArchiveCtx.__companyTable.includes('<th>文件大小</th>'),
+ 'Every company business-archive table uses name, year, count, notes, sort and ZIP action');
+assert.ok(realArchiveCtx.__companyTable.includes('archive-col-year')&&
+ realArchiveCtx.__companyTable.includes('archive-category-year">2026</td>')&&
+ realArchiveCtx.__companyTable.includes('<td>2 份</td>')&&
+ realArchiveCtx.__companyTable.includes('data-archive-download="31"')&&
+ !realArchiveCtx.__companyTable.includes('>查看详情</button>'),
+ 'Company row shows persisted year, distinct current attachments and direct ZIP button');
+assert.deepEqual(Array.from(realArchiveCtx.__companyZip.map(f=>f.id)),[302,303],
+ 'Company record ZIP must include each current attachment once and omit old versions');
+assert.ok(realArchiveCtx.__companyZip.every(f=>f.workspace==='company'&&f.section==='achievement'&&f.ownerId===31),
+ 'ZIP source must be restricted to the current company record');
+assert.equal(realArchiveCtx.__emptyCompanyZip.length,0,'Unrelated categories must not leak into record ZIP');
+assert.ok(js.includes("await globalThis.IPSysExport.start('zip',originals)")&&
+ js.includes("target.dataset.archiveDownload")&&
+ js.includes('el(\'aYear\').disabled=!companyBusiness'),
+ 'Company business archive year editor and row ZIP action must be wired');
+assert.ok(css.includes('ledger-archive-category-table.company-business-archive col.archive-col-year'),
+ 'Company business archive should dedicate a narrow year column');
 for(const view of [realArchiveCtx.__realTable,realArchiveCtx.__companyTable]){
  assert.ok(view.includes('<div class="heading"><div><div class="heading-title-row"><button type="button" class="archive-breadcrumb-back" data-archive-back="cards" aria-label="返回类别卡片" title="返回类别卡片">←</button>'),
   'Category back arrow should be beside the title, with an accessible label');

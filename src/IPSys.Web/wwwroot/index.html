@@ -137,6 +137,7 @@
       <div class="project-form-grid">
         <div class="form-field project-span"><label for="aName">资料名称 *</label><input id="aName" name="name" required maxlength="300"></div>
         <div class="form-field project-span" id="archiveCategoryField"><label for="aCategory">资料类别</label><input id="aCategory" name="category" list="archiveCategories"><datalist id="archiveCategories"></datalist></div>
+        <div class="form-field project-span" id="archiveYearField" hidden><label for="aYear">年份</label><input id="aYear" name="year" type="text" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="例如：2026" disabled></div>
         <div class="form-field project-span" id="archiveTagsField"><label for="aTags">标签</label><input id="aTags" name="tags"></div>
         <div class="form-field project-span" id="archiveAttachmentField" hidden><label for="aAttachment">附件（选填）</label><input id="aAttachment" type="file"><p class="hint">选择一个文件；以后仍可继续添加或管理附件。</p></div>
         <div class="form-field project-span" id="archiveRemarksField"><label for="aRemarks">备注</label><textarea id="aRemarks" name="remarks" rows="3"></textarea></div>

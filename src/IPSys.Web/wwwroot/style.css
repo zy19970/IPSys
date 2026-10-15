@@ -391,6 +391,19 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
  .data.ledger-record-table.ledger-archive-category-table col.archive-col-remarks{width:130px}
 }
 
+/* Company business archives: name first, narrow year/count, and direct ZIP action. */
+.data.ledger-record-table.ledger-archive-category-table.company-business-archive col.archive-col-name{width:auto}
+.data.ledger-record-table.ledger-archive-category-table.company-business-archive col.archive-col-year{width:94px}
+.data.ledger-record-table.ledger-archive-category-table.company-business-archive col.archive-col-attachment{width:100px}
+.data.ledger-record-table.ledger-archive-category-table.company-business-archive col.archive-col-remarks{width:210px}
+.data.ledger-record-table.ledger-archive-category-table.company-business-archive col.archive-col-order{width:105px}
+.data.ledger-record-table.ledger-archive-category-table.company-business-archive col.archive-col-action{width:90px}
+.data.ledger-record-table.ledger-archive-category-table.company-business-archive .archive-category-year{font-variant-numeric:tabular-nums;white-space:nowrap}
+@media(max-width:1100px){
+ .data.ledger-record-table.ledger-archive-category-table.company-business-archive{min-width:850px}
+ .data.ledger-record-table.ledger-archive-category-table.company-business-archive col.archive-col-remarks{width:150px}
+}
+
 /* Align live category-ledger headers with the enterprise-certificate header. */
 .archive-category-ledger>.compact-ledger-toolbar{display:flex;align-items:center;gap:24px}
 .archive-category-ledger .compact-ledger-title{flex:0 0 230px;max-width:230px;min-width:0;gap:10px}

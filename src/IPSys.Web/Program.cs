@@ -2292,10 +2292,26 @@ static class WebSmoke
             personalAcademic.EnsureSuccessStatusCode();
             var companyOutput=await client.PostAsJsonAsync(
                 "/api/archives/company/achievement",
-                new ArchiveInput("企业科研成果","技术成果","研发表现",""));
+                new ArchiveInput("企业科研成果","技术成果","研发表现","","2025"));
             companyOutput.EnsureSuccessStatusCode();
             long companyOutputId=(await companyOutput.Content
                 .ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("id").GetInt64();
+            var firstCompanyOutput=await client.GetFromJsonAsync<List<ArchiveView>>(
+                "/api/archives/company/achievement");
+            if(firstCompanyOutput?.SingleOrDefault(a=>a.Id==companyOutputId)?.Year!="2025")
+                throw new IOException("公司业务档案年份未正确写入或读取。");
+            using(var badYear=await client.PutAsJsonAsync(
+                $"/api/archives/company/achievement/{companyOutputId}",
+                new ArchiveInput("企业科研成果","技术成果","研发表现","","20XX")))
+                if(badYear.StatusCode!=HttpStatusCode.BadRequest)
+                    throw new IOException("业务档案必须拒绝非法年份。");
+            (await client.PutAsJsonAsync(
+                $"/api/archives/company/achievement/{companyOutputId}",
+                new ArchiveInput("企业科研成果","技术成果","研发表现","","2026")))
+                .EnsureSuccessStatusCode();
+            if((await client.GetFromJsonAsync<List<ArchiveView>>(
+                "/api/archives/company/achievement"))?.SingleOrDefault(a=>a.Id==companyOutputId)?.Year!="2026")
+                throw new IOException("公司业务档案修改年份后未持久化。");
             var copyToPersonalAcademic=await client.PostAsJsonAsync(
                 $"/api/archives/company/achievement/{companyOutputId}/transfer",
                 new ArchiveTransfer("personal","academic",false));
@@ -2318,7 +2334,8 @@ static class WebSmoke
             if(companyAfterMove?.Count!=0 || personalAwards?.Count!=2 ||
                 personalAcademics?.Count!=2 ||
                 !personalAcademics.Any(a=>a.Name=="学术任职证明"&&a.Category=="学术兼职") ||
-                !personalAcademics.Any(a=>a.Name=="企业科研成果"&&a.Category=="技术成果"))
+                !personalAcademics.Any(a=>a.Name=="企业科研成果"&&a.Category=="技术成果"&&a.Year=="2026") ||
+                !personalAwards.Any(a=>a.Name=="企业科研成果"&&a.Year=="2026"))
                 throw new IOException("科研成果跨工作区复制/转移或多条学术记录不正确。");
             // B05b: recover a removed attachment link without removing another
             // active reference to the same immutable bytes.

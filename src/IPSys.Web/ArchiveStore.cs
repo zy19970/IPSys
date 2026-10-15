@@ -1,9 +1,9 @@
 using Microsoft.Data.Sqlite;
 
-record ArchiveInput(string? Name, string? Category, string? Remarks, string? Tags);
+record ArchiveInput(string? Name, string? Category, string? Remarks, string? Tags, string? Year = null);
 record ArchiveTransfer(string TargetWorkspace, string TargetSection, bool Move);
 record ArchiveView(long Id, string Workspace, string Section, string Name,
-    string Category, string Remarks, string Tags);
+    string Category, string Remarks, string Tags, string Year = "");
 
 // M0 minimal fields. Company credentials and personal credentials remain distinct
 // logical modules; achievement/academic are two views of research_output.
@@ -15,6 +15,11 @@ static class ArchiveStore
         if (Clean(value.Name).Length is 0 or > 300) return "资料名称必填，最多 300 字。";
         foreach (var s in new[] {value.Category, value.Remarks, value.Tags})
             if (Clean(s).Length > 4000) return "字段内容过长。";
+        // The year is optional. Empty old records stay blank rather than guessing from notes.
+        if(value.Year is not null && Clean(value.Year).Length>0 &&
+           (!int.TryParse(Clean(value.Year),out int year) || year<1000 || year>9999 ||
+            Clean(value.Year).Length!=4))
+            return "年份应为四位数字，或留空。";
         return null;
     }
     public static string? Module(string workspace, string section) => (workspace,section) switch
@@ -40,6 +45,7 @@ static class ArchiveStore
               category TEXT NOT NULL DEFAULT '',
               remarks TEXT NOT NULL DEFAULT '',
               tags TEXT NOT NULL DEFAULT '',
+              year TEXT NOT NULL DEFAULT '',
               deleted INTEGER NOT NULL DEFAULT 0 CHECK(deleted IN (0,1)));
             CREATE INDEX IF NOT EXISTS idx_business_archives_scope
               ON business_archives(workspace,section,deleted,category);
@@ -49,6 +55,21 @@ static class ArchiveStore
               FOREIGN KEY(archive_id) REFERENCES business_archives(id));
             """;
         cmd.ExecuteNonQuery();
+        // Existing encrypted databases may predate the year column. Add it in place
+        // without touching records or their attachment links.
+        using var columns=db.CreateCommand();
+        columns.CommandText="PRAGMA table_info(business_archives);";
+        bool hasYear=false;
+        using(var reader=columns.ExecuteReader())
+            while(reader.Read())
+                if(string.Equals(reader.GetString(1),"year",StringComparison.OrdinalIgnoreCase))
+                    hasYear=true;
+        if(!hasYear)
+        {
+            using var alter=db.CreateCommand();
+            alter.CommandText="ALTER TABLE business_archives ADD COLUMN year TEXT NOT NULL DEFAULT '';";
+            alter.ExecuteNonQuery();
+        }
     }
     public static List<ArchiveView> List(SqliteConnection db,string workspace,string section)
     {
@@ -56,14 +77,14 @@ static class ArchiveStore
         string module=Module(workspace,section) ?? throw new ArgumentException("无效的资料模块。");
         using var cmd=db.CreateCommand();
         cmd.CommandText = workspace=="company"&&section=="certificate" ? """
-            SELECT a.id,a.workspace,a.section,a.name,a.category,a.remarks,a.tags
+            SELECT a.id,a.workspace,a.section,a.name,a.category,a.remarks,a.tags,a.year
             FROM business_archives a
             LEFT JOIN company_certificate_order o ON o.archive_id=a.id
             WHERE a.workspace=$workspace AND a.section=$section AND a.module=$module AND a.deleted=0
             ORDER BY CASE WHEN o.position IS NULL THEN 1 ELSE 0 END,
                      o.position ASC,a.id DESC;
             """ : """
-            SELECT id,workspace,section,name,category,remarks,tags
+            SELECT id,workspace,section,name,category,remarks,tags,year
             FROM business_archives
             WHERE workspace=$workspace AND section=$section AND module=$module AND deleted=0
             ORDER BY id DESC;
@@ -73,7 +94,7 @@ static class ArchiveStore
         cmd.Parameters.AddWithValue("$module",module);
         using var r=cmd.ExecuteReader();
         while(r.Read())list.Add(new ArchiveView(r.GetInt64(0),r.GetString(1),r.GetString(2),
-            r.GetString(3),r.GetString(4),r.GetString(5),r.GetString(6)));
+            r.GetString(3),r.GetString(4),r.GetString(5),r.GetString(6),r.GetString(7)));
         return list;
     }
 
@@ -128,13 +149,14 @@ static class ArchiveStore
         cmd.Parameters.AddWithValue("$category",Clean(x.Category));
         cmd.Parameters.AddWithValue("$remarks",Clean(x.Remarks));
         cmd.Parameters.AddWithValue("$tags",Clean(x.Tags));
+        cmd.Parameters.AddWithValue("$year",x.Year is null?DBNull.Value:Clean(x.Year));
     }
     public static long Add(SqliteConnection db,string workspace,string section,ArchiveInput x)
     {
         using var cmd=db.CreateCommand();
         cmd.CommandText = """
-            INSERT INTO business_archives(workspace,module,section,name,category,remarks,tags)
-            VALUES($workspace,$module,$section,$name,$category,$remarks,$tags);
+            INSERT INTO business_archives(workspace,module,section,name,category,remarks,tags,year)
+            VALUES($workspace,$module,$section,$name,$category,$remarks,$tags,COALESCE($year,''));
             SELECT last_insert_rowid();
             """;
         cmd.Parameters.AddWithValue("$workspace",workspace);
@@ -147,7 +169,8 @@ static class ArchiveStore
     {
         using var cmd=db.CreateCommand();
         cmd.CommandText = """
-            UPDATE business_archives SET name=$name,category=$category,remarks=$remarks,tags=$tags
+            UPDATE business_archives SET name=$name,category=$category,remarks=$remarks,tags=$tags,
+                year=COALESCE($year,year)
             WHERE id=$id AND workspace=$workspace AND module=$module
                 AND section=$section AND deleted=0;
             """;
@@ -208,8 +231,8 @@ static class ArchiveStore
         {
             cmd.Transaction=tx;
             cmd.CommandText = """
-                INSERT INTO business_archives(workspace,module,section,name,category,remarks,tags)
-                SELECT $toWorkspace,$module,$toSection,name,category,remarks,tags
+                INSERT INTO business_archives(workspace,module,section,name,category,remarks,tags,year)
+                SELECT $toWorkspace,$module,$toSection,name,category,remarks,tags,year
                 FROM business_archives
                 WHERE id=$id AND workspace=$workspace AND module=$module
                     AND section=$section AND deleted=0;
