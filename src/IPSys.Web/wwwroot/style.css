@@ -372,3 +372,18 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 .archive-breadcrumb-back{font:inherit;font-weight:650;color:var(--primary);background:transparent;border:0;padding:2px 0;cursor:pointer;white-space:nowrap}
 .archive-breadcrumb-back:hover{text-decoration:underline}
 .archive-breadcrumb-back:focus-visible{outline:2px solid var(--primary);outline-offset:3px;border-radius:3px}
+
+/* Every live company/personal archive category table: fit short fields and prioritize long names. */
+.data.ledger-record-table.ledger-archive-category-table th:nth-child(4){width:170px}
+.data.ledger-record-table.ledger-archive-category-table th:nth-child(5){width:106px}
+.data.ledger-record-table.ledger-archive-category-table th:nth-child(6){width:116px}
+.data.ledger-record-table.ledger-archive-category-table th:nth-child(5),
+.data.ledger-record-table.ledger-archive-category-table td:nth-child(5),
+.data.ledger-record-table.ledger-archive-category-table th:nth-child(6),
+.data.ledger-record-table.ledger-archive-category-table td:nth-child(6){text-align:center}
+@media(max-width:1100px){
+ .data.ledger-record-table.ledger-archive-category-table{min-width:850px}
+ .data.ledger-record-table.ledger-archive-category-table th:nth-child(4){width:142px}
+ .data.ledger-record-table.ledger-archive-category-table th:nth-child(5){width:92px}
+ .data.ledger-record-table.ledger-archive-category-table th:nth-child(6){width:104px}
+}
