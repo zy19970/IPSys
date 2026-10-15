@@ -101,6 +101,7 @@ NativeFileLinkEndpoints.Map(app, Fail);
 NativeFileCopyEndpoints.Map(app, Fail);
 NativeFileChoiceEndpoints.Map(app, Fail);
 NativeIpFileEndpoints.Map(app, Fail);
+NativeIpExcelEndpoints.Map(app, Fail);
 
 GeneralRecordEndpoints.MapChanges(app, Fail);
 

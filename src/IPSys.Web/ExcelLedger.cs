@@ -7,7 +7,7 @@ using System.Xml.Linq;
 using Microsoft.Data.Sqlite;
 
 // Fixed, offline XLSX ledgers (M0). No macros, formulas or arbitrary field mapping.
-static class ExcelLedger
+static partial class ExcelLedger
 {
     internal const string ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     internal const int MaxWorkbookBytes=8*1024*1024;
