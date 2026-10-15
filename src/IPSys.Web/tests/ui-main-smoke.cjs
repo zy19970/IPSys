@@ -622,7 +622,8 @@ assert.deepEqual(Array.from(realArchiveCtx.__innerFolderZip[0].archiveFolderPath
  ['企业行标','2026年度'],'Recursive ZIP must preserve hierarchy relative to selected directory');
 assert.ok(js.includes("archiveSelectedFolders.add(folderId)")&&
  js.includes("el('content').querySelectorAll('.archive-folder-check').forEach(")&&
- js.includes("archiveChosenOriginals(selectedAnything?folders:archiveVisibleFolderIds()"),
+ js.includes("archiveChosenOriginals(selectedAnything?folders:visibleFolders,")&&
+ js.includes("const visibleFolders=archiveVisibleFolderIds();"),
  'Folder and record multi-selection must be included in toolbar ZIP export without using record deletion');
 assert.ok(js.includes("if(ev.target.closest('.archive-folder-card-check'))return;")&&
  js.includes("const folderDownload=ev.target.closest('[data-archive-folder-download]')"),
