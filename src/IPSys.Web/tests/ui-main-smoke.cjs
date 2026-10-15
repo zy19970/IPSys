@@ -6,7 +6,7 @@ const dir=path.resolve(__dirname,'../wwwroot');
 const html=fs.readFileSync(path.join(dir,'index.html'),'utf8');
 const js=fs.readFileSync(path.join(dir,'app.js'),'utf8');
 const css=fs.readFileSync(path.join(dir,'style.css'),'utf8');
-const requiredIds=['locked','chooseWorkspace','unlocked','openForm','newMode','oldMode','dbPathWrap','dbPath','resumeHint','password','confirmWrap','confirm','submitOpen','sidebar','bottomnav','projectExcelImport','projectExcelTemplate','projectExcelChoose','projectExcelFile','sidebarDbName','globalSearch','content','dbNameChoice','closeDbFromChoice','modal','newRecordForm','title','saveRecord','cancelRecord','exit','exitDialog','exitCancelTask','exitFinishTask','exitStay','toast'];
+const requiredIds=['locked','chooseWorkspace','unlocked','openForm','newMode','oldMode','dbPathWrap','dbPath','resumeHint','password','confirmWrap','confirm','submitOpen','sidebar','bottomnav','projectExcelImport','projectExcelTemplate','projectExcelChoose','projectExcelFile','sidebarDbName','globalSearch','content','dbNameChoice','closeDbFromChoice','modal','newRecordForm','title','saveRecord','cancelRecord','closeDbButton','toast'];
 for(const id of requiredIds)assert.match(html,new RegExp(`id="${id}"`),`Missing real page element ${id}`);
 for(const phrase of ['选择一个工作区','个人资料','公司资料','app.js','style.css'])assert.ok(html.includes(phrase),'Missing '+phrase);
 // Personal files are the primary workflow; both entry points must show personal first.
@@ -19,9 +19,20 @@ for(const [area,name] of [[choiceArea,'login workspace choice'],[sideSwitches,'s
 }
 assert.ok(html.includes('以个人资料管理为主，公司资料用于集中归纳'),'Workspace copy must reflect personal-data focus');
 assert.ok(html.includes('两个工作区独立保存记录与原始附件'),'Reordering must not weaken workspace isolation');
-for(const phrase of ['科研项目','横向项目','知识产权','项目基本信息','所属合同','全部附件汇总','申请与登记信息','/api/records/','/api/resume','/api/exit','/api/files/','/api/task','/api/check','localFileTaskActive','sessionStorage','mockflag','data-workspace-switch'])assert.ok(js.includes(phrase),'Missing UI/API design anchor '+phrase);
+for(const phrase of ['科研项目','横向项目','知识产权','项目基本信息','所属合同','全部附件汇总','申请与登记信息','/api/records/','/api/resume','/api/lock','/api/files/','/api/task','/api/check','localFileTaskActive','sessionStorage','mockflag','data-workspace-switch'])assert.ok(js.includes(phrase),'Missing UI/API design anchor '+phrase);
 for(const style of ['.shell','.sidebar','.tablewrap','.data','.detailsection','.auth-screen','.workspace-screen'])assert.ok(css.includes(style),'Missing UI style '+style);
 assert.ok(!html.includes('onclick='),'No inline script handlers may be added to real HTTP page');
+assert.ok(html.includes('<title>资料管理系统</title>')&&
+ (html.match(/<strong>资料管理系统<\/strong>/g)||[]).length===3,
+ 'App-facing title and brand must use the new 资料管理系统 name');
+assert.ok(!html.includes('知识产权与资料管理系统'),
+ 'The old product name must not appear anywhere in the web UI');
+assert.ok(html.includes('id="closeDbButton"')&&html.includes('>关闭数据库</button>'),
+ 'Web header must close the database, not exit the WinForms application');
+assert.ok(!html.includes('id="exitDialog"')&&!js.includes("api('/api/exit'")&&
+ !js.includes("sendExit(")&&js.includes("el('closeDbButton').onclick=closeDb"),
+ 'The browser must not expose program-level exit options or API calls');
+
 assert.ok(!/\bfetch\s*\(\s*['"]https?:/.test(js),'No external service access');
 assert.ok(js.includes('escapeHtml('),'Untrusted record and attachment names must be escaped');
 // UI is frozen: the first real business edit reuses the existing record dialog.

@@ -982,26 +982,12 @@ app.MapGet("/api/check", async (HttpContext ctx, Vault v) =>
     finally { v.Gate.Release(); }
 });
 
-// The web page and WinForms launcher share one exit coordinator.
+// Browser clients may inspect task state but must never stop the WinForms host.
+// Only LauncherForm schedules application exit; /api/lock closes the database.
 app.MapGet("/api/task", (HttpContext ctx, Vault v) =>
 {
     if (!v.Allowed(ctx)) return (IResult)Results.Unauthorized();
     return Results.Json(new { active = v.FileTaskActive, exiting = v.ExitRequested });
-});
-
-app.MapPost("/api/exit", async (HttpContext ctx, Vault v, IHostApplicationLifetime life) =>
-{
-    if (v.Unlocked && !v.Allowed(ctx)) return Results.Unauthorized();
-    // JSON requests may be chunked and have no Content-Length.
-    ExitInput? input = ctx.Request.ContentType?.StartsWith(
-        "application/json", StringComparison.OrdinalIgnoreCase) == true
-        ? await ctx.Request.ReadFromJsonAsync<ExitInput>() : null;
-    string choice = input?.Choice ?? "normal";
-    if (choice is not ("normal" or "cancel" or "wait" or "stay"))
-        return Fail("无效的退出选项。");
-    if (!v.TryScheduleExit(choice, life, out string error, ctx))
-        return Fail(error, 409);
-    return Results.Json(new { ok = true, exiting = choice != "stay" });
 });
 
 await app.StartAsync();
@@ -1195,7 +1181,6 @@ static class ProjectStore
 
 record OpenInput(string? Path, string? Password, bool Create);
 record ResumeInput(string? Password);
-record ExitInput(string? Choice);
 record TitleInput(string? Title);
 record FileView(long Id, string Name, long Size, string Sha256,int Version=1,string GroupId="");
 record RecordView(long Id, string Title, List<FileView> Files);
@@ -1249,19 +1234,11 @@ sealed class Vault : IDisposable
         completion?.TrySetResult(true);
         cancellation?.Dispose();
     }
-    public bool TryScheduleExit(string choice, IHostApplicationLifetime life, out string error,
-        HttpContext? context = null)
+    public bool TryScheduleExit(string choice, IHostApplicationLifetime life, out string error)
     {
         Task pending;
         lock (_taskSync)
         {
-            // Authentication must be rechecked atomically with exit scheduling:
-            // the old tab cannot terminate a newly opened database.
-            if (context != null && _db != null && !Allowed(context))
-            {
-                error = "会话已经失效，不能退出当前数据库。";
-                return false;
-            }
             if (choice == "stay")
             {
                 error = "";
@@ -2689,7 +2666,7 @@ static class WebSmoke
             using var finalLock = await client.PostAsync("/api/lock", null);
             finalLock.EnsureSuccessStatusCode();
 
-            // A paused HTTP upload exercises Q153 without relying on GUI timing.
+            // A paused HTTP upload verifies browser close-db safety without GUI timing.
             var lastOpen = await client.PostAsJsonAsync("/api/open", new OpenInput(dbPath, password, false));
             lastOpen.EnsureSuccessStatusCode();
             string lastToken = (await lastOpen.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
@@ -2711,20 +2688,28 @@ static class WebSmoke
                 await Task.Delay(50);
             }
             if (!active) throw new IOException("慢速上传未被标识为进行中的文件任务。");
-            var missingChoice = await client.PostAsJsonAsync("/api/exit", new ExitInput("normal"));
-            if (missingChoice.StatusCode != HttpStatusCode.Conflict)
-                throw new IOException("上传进行中不应绕过退出三选项。");
-            var stay = await client.PostAsJsonAsync("/api/exit", new ExitInput("stay"));
-            stay.EnsureSuccessStatusCode();
-            var prematureLock = await client.PostAsync("/api/lock", null);
+            // The browser must not have any program-exit endpoint, even during upload.
+            using var deniedWebExit = await client.PostAsync("/api/exit", null);
+            if (deniedWebExit.StatusCode != HttpStatusCode.NotFound)
+                throw new IOException("网页不得调用退出 WinForms 程序的 HTTP 接口。");
+            using var prematureLock = await client.PostAsync("/api/lock", null);
             if (prematureLock.StatusCode != HttpStatusCode.Conflict)
-                throw new IOException("上传期间不得直接关库。");
-            var cancel = await client.PostAsJsonAsync("/api/exit", new ExitInput("cancel"));
-            cancel.EnsureSuccessStatusCode();
+                throw new IOException("上传期间不得直接关闭数据库。");
+            var stillOpen = await client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/task");
+            if (!stillOpen.GetProperty("active").GetBoolean() ||
+                stillOpen.GetProperty("exiting").GetBoolean())
+                throw new IOException("网页尝试关库不得中止任务或触发程序退出。");
             paused.Release();
-            try { using var cancelledResponse = await runningUpload.WaitAsync(TimeSpan.FromSeconds(10)); }
-            catch (HttpRequestException) { /* Cancellation may close an in-flight request. */ }
-            catch (OperationCanceledException) { /* Host exit may cancel the test HTTP client. */ }
+            using var uploadResult = await runningUpload.WaitAsync(TimeSpan.FromSeconds(10));
+            uploadResult.EnsureSuccessStatusCode();
+            using var closed = await client.PostAsync("/api/lock", null);
+            closed.EnsureSuccessStatusCode();
+            var hostStatus = await client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/status");
+            if (hostStatus.GetProperty("unlocked").GetBoolean())
+                throw new IOException("关闭数据库后仍处于解锁状态。");
+            using var noExit = await client.PostAsync("/api/exit", null);
+            if (noExit.StatusCode != HttpStatusCode.NotFound)
+                throw new IOException("关库后网页仍不应拥有程序退出接口。");
         }
         finally { try { Directory.Delete(dir, true); } catch { } }
     }

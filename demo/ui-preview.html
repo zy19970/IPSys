@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>IPSys · UI 设计预览 V0.1</title>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>资料管理系统 · UI 设计预览 V0.1</title>
 <style>
 :root{--ink:#273747;--muted:#8995a3;--line:#e7ebef;--bg:#f5f7fa;--primary:#247982;--pale:#e9f4f3;--shadow:0 5px 24px #27374709}
 *{box-sizing:border-box}body{margin:0;font:14px/1.6 "Microsoft YaHei UI","Segoe UI",sans-serif;background:var(--bg);color:var(--ink)}
@@ -22,8 +22,8 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:25px;box-shadow:0
 @media(max-width:650px){.sidebar{width:64px;padding:14px 5px}.brand{padding:0 4px 16px}.brand div:not(.logo),.nav span,.navlabel,.sidehint{display:none}.nav{justify-content:center}.top{gap:8px}.searchglobal input{width:90px}.content{padding:15px}.heading{align-items:flex-start;flex-direction:column}.cards{gap:9px}.card{padding:12px}.infogrid{grid-template-columns:repeat(2,1fr)}}
 </style></head><body>
 <div class="shell">
-<aside class="sidebar"><div class="brand"><div class="logo">IP</div><div><b>IPSys</b><small>知识产权与资料管理系统</small></div></div><div class="navlabel">工作空间</div><div id="sidebar"></div><div class="sidebottom"><div id="bottomnav"></div><div class="sidehint">界面设计 V0.1<br>本原型全部为模拟数据<br>不连接真实数据库</div></div></aside>
-<div class="main"><header class="top"><button class="workspace" id="workspaceBtn">▣ <span id="workspacelabel">公司资料</span> <span style="color:#9aabb1">⌄</span></button><div class="searchglobal">⌕ <input id="globalSearch" placeholder="搜索当前工作区资料" title="回车搜索模拟数据"></div><span class="topbadge">● 离线界面演示</span><button class="topbutton" id="exitDemo">安全退出</button></header><main class="content" id="content"></main></div></div>
+<aside class="sidebar"><div class="brand"><div class="logo">IP</div><div><b>资料管理系统</b><small>离线界面示例</small></div></div><div class="navlabel">工作空间</div><div id="sidebar"></div><div class="sidebottom"><div id="bottomnav"></div><div class="sidehint">界面设计 V0.1<br>本原型全部为模拟数据<br>不连接真实数据库</div></div></aside>
+<div class="main"><header class="top"><button class="workspace" id="workspaceBtn">▣ <span id="workspacelabel">公司资料</span> <span style="color:#9aabb1">⌄</span></button><div class="searchglobal">⌕ <input id="globalSearch" placeholder="搜索当前工作区资料" title="回车搜索模拟数据"></div><span class="topbadge">● 离线界面演示</span><button class="topbutton" id="closeDbDemo">关闭数据库</button></header><main class="content" id="content"></main></div></div>
 <div class="previewmark">UI 预览 V0.1 · 模拟数据</div><div class="toast" id="toast"></div>
 <dialog id="dialog"><h3 id="dialogTitle">操作演示</h3><div id="dialogBody"></div><div class="dialogactions"><button class="btn" id="dialogClose">关闭</button><button class="btn primary" id="dialogConfirm">确认</button></div></dialog>
 <script>
@@ -85,7 +85,7 @@ function chooseWorkspace(){modal('切换工作区','<p>两个工作区数据相�
 function changeWorkspace(w){workspace=w;document.getElementById('dialog').close();setPage('dashboard')}
 document.getElementById('workspaceBtn').onclick=chooseWorkspace;
 document.getElementById('globalSearch').onkeydown=e=>{if(e.key==='Enter'){search=e.target.value.trim();page='search';detail=null;render()}};
-document.getElementById('exitDemo').onclick=()=>modal('安全退出','<p>当前为独立 UI 演示，不持有数据库连接。正式软件由 WinForms 托管退出流程。</p>');
+document.getElementById('closeDbDemo').onclick=()=>modal('关闭数据库','<p>当前为独立 UI 演示，不持有数据库连接。实际关闭数据库请使用正式网页按钮，退出程序只能在 WinForms 窗口操作。</p>');
 function refreshSidebar(){document.documentElement.dataset.workspace=workspace;document.getElementById('workspacelabel').textContent=workspace==='company'?'公司资料':'个人资料';document.getElementById('sidebar').innerHTML=navs().map(([k,n])=>'<button class="nav '+(page===k?'active':'')+'" onclick="setPage(\''+k+'\')"><span style="font-size:17px;width:18px;text-align:center">'+icons[k]+'</span><span>'+n+'</span></button>').join('');document.getElementById('bottomnav').innerHTML=[['trash','回收站'],['settings','系统设置']].map(([k,n])=>'<button class="nav '+(page===k?'active':'')+'" onclick="setPage(\''+k+'\')"><span style="font-size:17px;width:18px;text-align:center">'+icons[k]+'</span><span>'+n+'</span></button>').join('')}
 function status(s){let cl=s==='已授权'||s==='已登记'||s==='已完成'?'green':s==='实质审查'||s==='进行中'?'orange':'';return '<span class="tag '+cl+'">'+(s||'—')+'</span>'}
 function head(name,sub,actions=''){return '<div class="breadcrumb">'+(workspace==='company'?'公司资料':'个人资料')+' / '+name+'</div><div class="heading"><div><h1>'+name+'</h1><div class="subtitle">'+sub+'</div></div><div class="actions">'+actions+'</div></div>'}

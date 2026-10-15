@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>IPSys · 知识产权与资料管理系统</title>
+  <title>资料管理系统</title>
   <link rel="stylesheet" href="/style.css">
   <script src="/app.js" defer></script>
 </head>
 <body>
   <section id="locked" class="auth-screen">
-    <div class="auth-brand"><span class="logo">IP</span><span><strong>IPSys</strong><small>知识产权与资料管理系统</small></span></div>
+    <div class="auth-brand"><span class="logo">IP</span><span><strong>资料管理系统</strong><small>本地加密 · 离线管理</small></span></div>
     <div class="auth-panel">
       <div class="eyebrow">LOCAL DATABASE · SQLCIPHER</div>
       <h1>打开已有资料库</h1>
@@ -27,7 +27,7 @@
     </div>
   </section>
   <section id="chooseWorkspace" class="workspace-screen" hidden>
-    <div class="auth-brand"><span class="logo">IP</span><span><strong>IPSys</strong><small>选择工作空间</small></span></div>
+    <div class="auth-brand"><span class="logo">IP</span><span><strong>资料管理系统</strong><small>选择工作空间</small></span></div>
     <div class="workspace-choice">
       <div class="eyebrow">SELECT WORKSPACE</div><h1>选择一个工作区</h1>
       <p class="subtle">以个人资料管理为主，公司资料用于集中归纳；两个工作区独立保存记录与原始附件。</p>
@@ -40,7 +40,7 @@
   </section>
   <div id="unlocked" class="shell" hidden>
     <aside class="sidebar">
-      <div class="brand"><span class="logo">IP</span><span><strong>IPSys</strong><small>知识产权与资料管理系统</small></span></div>
+      <div class="brand"><span class="logo">IP</span><span><strong>资料管理系统</strong><small>本地加密 · 离线管理</small></span></div>
       <div class="navlabel">工作空间</div>
       <div class="workspace-switches" role="group" aria-label="工作区切换">
         <button type="button" class="workspace-switch" data-workspace-switch="personal" aria-label="个人资料"><span class="workspace-switch-icon" data-ui-icon="personal" aria-hidden="true"></span><span class="workspace-switch-name">个人资料</span></button>
@@ -54,7 +54,7 @@
       <header class="top">
         <div class="searchglobal"><span>⌕</span><input id="globalSearch" type="search" placeholder="搜索当前工作区资料" aria-label="搜索当前工作区"></div>
         <span class="topbadge">● 本地加密</span>
-        <button id="exit" type="button" class="btn topbutton">安全退出</button>
+        <button id="closeDbButton" type="button" class="btn topbutton">关闭数据库</button>
       </header>
       <main class="content" id="content" aria-live="polite"></main>
     </div>
@@ -167,7 +167,6 @@
     <div id="filePreviewBody" class="preview-body"></div>
     <p class="subtle">仅预览 PDF 与常见图片；无法在浏览器预览时请下载原件。</p>
   </dialog>
-  <dialog id="exitDialog" class="input-dialog"><h2>文件任务进行中</h2><p class="subtle">上传正在进行，请选择安全退出方式。</p><div class="dialogactions wrap"><button type="button" class="btn" id="exitCancelTask">取消任务并退出</button><button type="button" class="btn primary" id="exitFinishTask">任务完成后退出</button><button type="button" class="btn" id="exitStay">暂不退出</button></div></dialog>
   <div id="toast" role="status" aria-live="polite"></div>
 </body>
 </html>

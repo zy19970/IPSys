@@ -25,7 +25,7 @@ internal sealed class LauncherForm : Form
         _vault = vault;
         _lifetime = lifetime;
         _stopping = stopping;
-        Text = "IPSys · 本地管理系统";
+        Text = "资料管理系统";
         StartPosition = FormStartPosition.CenterScreen;
         FormBorderStyle = FormBorderStyle.FixedSingle;
         MaximizeBox = false;
@@ -40,7 +40,7 @@ internal sealed class LauncherForm : Form
 
         var heading = new Label
         {
-            Text = "IPSys",
+            Text = "资料管理系统",
             Font = new Font(Font.FontFamily, 22F, FontStyle.Bold),
             ForeColor = Color.FromArgb(29, 88, 99),
             Location = new Point(28, 25),
@@ -48,7 +48,7 @@ internal sealed class LauncherForm : Form
         };
         var summary = new Label
         {
-            Text = "本地知识产权与资料管理 · 试运行",
+            Text = "本地加密资料管理 · 试运行",
             Location = new Point(32, 83),
             ForeColor = Color.FromArgb(105, 119, 131),
             AutoSize = true
@@ -206,7 +206,7 @@ internal static class LauncherHost
 {
     /// <summary>
     /// Run WinForms on its own STA thread. The ASP.NET host uses the async main thread.
-    /// ApplicationStopping (including the web page's Safe Exit button) closes the form.
+    /// ApplicationStopping closes the form after WinForms schedules safe exit.
     /// </summary>
     internal static Task WaitForExitAsync(string address, CancellationToken stopping,
         Vault vault, IHostApplicationLifetime lifetime)

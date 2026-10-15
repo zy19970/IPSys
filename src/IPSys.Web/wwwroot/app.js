@@ -2190,25 +2190,19 @@ el('newRecordForm').onsubmit=async ev=>{
  }catch(e){notice(e.message,true);}finally{el('saveRecord').disabled=false;}
 };
 async function closeDb(){
- if(!confirm('关闭当前数据库？再次打开时需要输入数据库密码。'))return;
- try{await api('/api/lock',{method:'POST'});token='';dbName='';space=null;liveRows=[];projectRows=[];ipRows=[];contractRows=[];businessFileRows=[];trashRows=[];archiveRows={certificate:[],achievement:[],academic:[]};sessionStorage.clear();recoveryMode(false);mode(false);screen(false);notice('已安全关闭数据库');}catch(e){notice(e.message,true);}
+ if(localFileTaskActive)return notice('文件任务进行中，请等待任务完成后再关闭数据库。',true);
+ if(!confirm('关闭当前数据库？本地程序将继续运行，再次打开需要输入数据库密码。'))return;
+ try{
+  await api('/api/lock',{method:'POST'});
+  token='';dbName='';space=null;page='dashboard';detail=null;archiveGroup=null;
+  liveRows=[];projectRows=[];ipRows=[];contractRows=[];businessFileRows=[];trashRows=[];
+  archiveRows={certificate:[],achievement:[],academic:[]};globalHits=[];globalQuery='';
+  sessionStorage.clear();el('password').value='';el('confirm').value='';
+  recoveryMode(false);mode(false);screen(false);notice('数据库已关闭，程序仍在运行');
+ }catch(e){notice(e.message,true);}
 }
 el('closeDbFromChoice').onclick=closeDb;
-async function sendExit(choice){
- el('exitDialog').close();if(choice==='stay')return;
- try{const response=await(await api('/api/exit',{method:'POST',json:{choice}})).json();
-  if(response.exiting){el('exit').disabled=true;sessionStorage.clear();notice(choice==='wait'?'文件任务完成后将安全退出。':choice==='cancel'?'正在取消文件任务并安全退出…':'正在安全退出…');}
- }catch(e){if(choice==='normal'&&e.message.includes('文件任务'))el('exitDialog').showModal();else notice(e.message,true);}
-}
-el('exit').onclick=async()=>{
- try{let active=false;if(token){const task=await(await api('/api/task')).json();active=task.active;if(task.exiting){notice('程序已进入安全退出流程。');return;}}
-  if(active){el('exitDialog').showModal();return;}
-  if(confirm('安全退出本地服务并关闭数据库？'))await sendExit('normal');
- }catch(e){notice(e.message,true);}
-};
-el('exitCancelTask').onclick=()=>sendExit('cancel');
-el('exitFinishTask').onclick=()=>sendExit('wait');
-el('exitStay').onclick=()=>el('exitDialog').close();
+el('closeDbButton').onclick=closeDb;
 (async()=>{
  mode(false);
  try{const status=await(await api('/api/status')).json();el('dbPath').value=status.suggestion;
