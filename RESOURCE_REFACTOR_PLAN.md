@@ -115,7 +115,7 @@ C# 后端划分：
 | R1-02 项目/合同/IP Folder Provider | **完成（代码与 Windows CI）** | [提交 a3762240](https://github.com/zy19970/IPSys/commit/a3762240f43ac2d7f300105fdbb456ee21f47bd0)，[Windows CI #38729428320](https://github.com/zy19970/IPSys/actions/runs/38729428320) **success**；只读身份、合同父级、业务属性与工作区/软删 SQLCipher 回归通过，旧接口/Schema 未改。 |
 | R1-03 档案/综合资料/普通目录 Folder Provider | **完成（代码与 Windows CI）** | [提交 af084739](https://github.com/zy19970/IPSys/commit/af0847392e106cf3bcb4cf028137d359aeda811b)，[Windows CI #38730348327](https://github.com/zy19970/IPSys/actions/runs/38730348327) **success**；公司档案根层/子目录、资料归属及企业/个人资料和综合记录均通过临时 SQLCipher 只读适配回归。 |
 | R1-04-01 公共树导航与只读 HTTP | **完成（代码与 Windows CI）** | [提交 535bcfe5](https://github.com/zy19970/IPSys/commit/535bcfe5b9dccdeb8973516568848d8258ab097a)，[Windows CI #38731911752](https://github.com/zy19970/IPSys/actions/runs/38731911752) **success**。`FolderBrowserService` 统一六类业务的虚拟根/真实父级导航，`FolderBrowserEndpoints` 提供 `/api/folders/{workspace}/children` 和 `/detail/{kind}/{id}` 只读 HTTP；公司档案混排继承 `archive_entry_order`。`FolderBrowserSmoke` 已通过会话权限、工作区隔离、非法/删除父级、混排排序、原业务属性与真实 SQLCipher HTTP 检验。未替换旧页面或修改数据表。 |
-| R1-04-02 公共 Folder CRUD 与业务规则适配 | **待开始** | 在已通过的只读层基础上逐类代理旧 Store 写入，保护合同必须属于项目、系统根不可删、软删/恢复；现有旧接口不破坏。 |
+| R1-04-02 公共 Folder CRUD 与业务规则适配 | **进行中（项目/合同/IP 首批 CRUD 已提交待 CI）** | 新增 `FolderCommandService` 和 `FolderCommandEndpoints`，统一项目/合同/IP 的 create/update/soft-delete/restore，保留旧 `*Store` 的业务验证、合同有效父项目限制和 `RecycleStore` 事务恢复；`FolderCommandSmoke` 在真实临时 SQLCipher HTTP 中验证与旧 API 读写互通及跨工作区隔离。业务档案目录/归档/综合资料待下一批。 |
 | R1-04-03 公共移动复制排序与旧 API 适配 | **待开始** | 保留业务跨工作区复制约束、目录不可成环、真实排序与批量操作；真实旧库回归后再评估切入 R2。 |
 | R2-01～R2-05 File/版本/共享 | **待开始** | R1 后实施 |
 | R3-01～R3-04 前端与导出 | **待开始** | R2 后实施 |
