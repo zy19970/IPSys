@@ -625,7 +625,7 @@ function projectList(k){
  '<div class="actions"><span id="ledgerExportCount">已选 0 条</span>'+
  '<button class="btn" data-action="projectExportFolder">导出附件文件夹</button>'+
  '<button class="btn primary" data-action="projectExportZip">导出附件 ZIP</button>'+excelExportButton('project')+'</div></div>'+
- '<div class="tablewrap"><table class="data"><thead><tr><th><input type="checkbox" id="ledgerExportAll" class="ledger-export-all" aria-label="全选当前项目"></th><th>项目名称</th><th>项目类型</th><th>项目编号</th><th>开始日期</th><th>附件</th></tr></thead><tbody>'+
+ '<div class="tablewrap"><table class="data ledger-project-table"><thead><tr><th><input type="checkbox" id="ledgerExportAll" class="ledger-export-all" aria-label="全选当前项目"></th><th>项目名称</th><th>项目类型</th><th>项目编号</th><th>开始日期</th><th>附件</th></tr></thead><tbody>'+
  (visible.length?visible.map(p=>'<tr><td><input type="checkbox" class="ledger-export-row" value="'+p.id+'" aria-label="选择项目 '+escapeHtml(p.name)+'"></td>'+
  '<td><button class="link" data-project-id="'+p.id+'">'+escapeHtml(p.name)+'</button></td>'+
  '<td>'+pill(p.projectType)+'</td><td>'+escapeHtml(p.projectNo||'—')+'</td>'+
