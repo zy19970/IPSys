@@ -264,15 +264,34 @@ function heading(name,subtitle,actions='',breadcrumbBack=''){
 function pill(text){return `<span class="pill">${escapeHtml(text)}</span>`;}
 function stamp(){return '<span class="mockflag">界面示例 · 未接入业务</span>';}
 function dashboard(){
- const mods=labels().filter(x=>x[0]!=='dashboard');
-  const general=liveRows.length;const fileCount=liveRows.reduce((n,r)=>n+r.files.length,0);
- const counts=space==='personal'
-  ? [['其他资料',general,'条记录'],['已归档原件',fileCount,'份附件'],['身份与资质',archiveRows.certificate.length,'条记录'],['成果与奖励',archiveRows.achievement.length,'条记录']]
-  : [['综合资料',general,'条记录'],['已归档原件',fileCount,'份附件'],['知识产权',ipRows.length,'条记录'],['公司项目',projectRows.length,'条记录']];
- return heading(title('dashboard'),'当前工作区 · 业务台账与分类资料')+
- '<div class="cards">'+counts.map(([name,num,s])=>`<div class="card"><div class="metriclabel">${name}</div><div class="metric">${num}</div><div class="metricfoot">${s}</div></div>`).join('')+'</div>'+
- '<div class="panels"><section class="card"><h2 class="sectiontitle">'+(space==='personal'?'个人资料分类入口':'业务模块快捷入口')+'</h2><div class="modulegrid">'+mods.map(([key,name])=>`<button class="modulelink" data-nav="${key}"><span><b>${name}</b><small>${key==='general'?general+' 条记录':key==='ip'?ipRows.length+' 条记录':key==='contract'?contractRows.length+' 条记录':isProject(key)?projectViewRows(key).length+' 条记录':archiveSections.includes(key)?(archiveRows[key]||[]).length+' 条记录':(sample(key).length||0)+' 条演示记录'}</small></span><span class="arrow">→</span></button>`).join('')+'</div></section>'+
- '<section class="card"><h2 class="sectiontitle">当前工作区资料概况</h2><div class="minirow"><span>公司 / 个人隔离</span><strong>已启用</strong></div><div class="minirow"><span>'+ (space==='personal'?'其他资料':'综合资料') +'存储</span><strong>真实 SQLCipher</strong></div><div class="minirow"><span>'+ (space==='personal'?'分类资料':'知识产权、项目与合同') +'</span>'+pill('界面设计')+'</div><div class="minirow"><span>当前数据库</span><span class="muted">'+escapeHtml(dbName)+'</span></div><p class="hint">证件和成果及原件均已接入真实加密台账；可在“'+(space==='personal'?'其他资料':'综合资料')+'”以及各业务详情中管理原件。</p></section></div>';
+ const modules=labels().filter(item=>item[0]!=='dashboard');
+ const descriptions=space==='personal'
+  ? {
+    certificate:'身份证明、学历学位、职称及任职证明',
+    ip:'专利、软件著作权及其他著作材料',
+    researchProject:'科研项目、合作项目及所属合同',
+    achievement:'技术成果、各类奖励与评价材料',
+    academic:'论文论著、学术兼职及社会活动',
+    general:'其他个人资料与原始附件'
+   }
+  : {
+    certificate:'企业资质、证书及有关材料',
+    achievement:'申报与认定、业务档案及证明材料',
+    researchProject:'科研项目、横向项目及所属合同',
+    ip:'专利、软件著作权及其他知识产权',
+    general:'综合资料与其他业务文件'
+   };
+ return '<section class="dashboard-home">'+
+  '<div class="dashboard-eyebrow">'+(space==='personal'?'个人资料':'公司资料')+'</div>'+
+  '<h1>'+escapeHtml(title('dashboard'))+'</h1>'+
+  '<p class="dashboard-description">选择资料类别，进入对应管理页面。</p>'+
+  '<div class="choice-grid dashboard-choice-grid">'+modules.map(([key,name,symbol])=>
+    '<button type="button" class="choice dashboard-choice" data-nav="'+key+'">'+
+    '<span class="choice-symbol dashboard-choice-symbol" aria-hidden="true">'+escapeHtml(symbol)+'</span>'+
+    '<strong>'+escapeHtml(name)+'</strong>'+
+    '<small>'+escapeHtml(descriptions[key]||'查看与管理资料')+'</small>'+
+    '<span class="choice-arrow">进入管理 →</span></button>'
+  ).join('')+'</div></section>';
 }
 function generalList(){
  const rows=liveRows.filter(r=>r.title.toLowerCase().includes(filterName.toLowerCase()));

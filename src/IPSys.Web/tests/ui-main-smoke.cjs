@@ -69,6 +69,65 @@ assert.deepEqual(Array.from(v.projectTypes).sort(),['横向项目','科研项目
 assert.equal(v.foreignProjects.length,2,'Company project lookup must remain unchanged');
 for(const k of ['certificate','ip','researchProject','achievement','academic'])assert.ok(v.noteKeys.includes(k),'Personal category note missing '+k);
 
+// The two workbenches use the original workspace chooser's large card layout,
+// with direct business links rather than duplicated stats or database-status panels.
+const dashboardBegin=js.indexOf('function dashboard(){');
+const dashboardEnd=js.indexOf('function generalList(){',dashboardBegin);
+assert.ok(dashboardBegin>=0&&dashboardEnd>dashboardBegin,'Dashboard renderer missing');
+const dashboardScript=js.slice(dashboardBegin,dashboardEnd);
+const dashboardContext=vm.createContext({});
+vm.runInContext(`
+ let space='personal';
+ const personalNav=[
+  ['dashboard','个人工作台','▦'],
+  ['certificate','身份与资质','▣'],
+  ['ip','知识产权与著作','◇'],
+  ['researchProject','科研与合作项目','▤'],
+  ['achievement','成果与奖励','★'],
+  ['academic','学术与社会活动','▥'],
+  ['general','其他资料','▧']
+ ];
+ const companyNav=[
+  ['dashboard','工作台','▦'],
+  ['certificate','企业资质','▣'],
+  ['achievement','业务档案','▤'],
+  ['researchProject','公司项目','▤'],
+  ['ip','知识产权','◇'],
+  ['general','综合资料','▥']
+ ];
+ function labels(){return space==='personal'?personalNav:companyNav;}
+ function title(key){return labels().find(x=>x[0]===key)?.[1]||key;}
+ function escapeHtml(s){return String(s);}
+ `+dashboardScript+`
+ globalThis.personalDashboard=dashboard();
+ space='company';
+ globalThis.companyDashboard=dashboard();
+ `,dashboardContext);
+const personalHome=dashboardContext.personalDashboard;
+const companyHome=dashboardContext.companyDashboard;
+assert.ok(personalHome.includes('<h1>个人工作台</h1>')&&companyHome.includes('<h1>工作台</h1>'),
+ 'Dashboard heading must match the current workspace');
+assert.equal((personalHome.match(/class="choice dashboard-choice"/g)||[]).length,6,
+ 'Personal workbench should show six direct category cards');
+assert.equal((companyHome.match(/class="choice dashboard-choice"/g)||[]).length,5,
+ 'Company workbench should show five direct category cards');
+for(const key of ['certificate','ip','researchProject','achievement','academic','general'])
+ assert.ok(personalHome.includes('data-nav="'+key+'"'),'Personal workbench lost '+key);
+for(const key of ['certificate','achievement','researchProject','ip','general'])
+ assert.ok(companyHome.includes('data-nav="'+key+'"'),'Company workbench lost '+key);
+for(const home of [personalHome,companyHome]){
+ assert.ok(home.includes('class="choice-grid dashboard-choice-grid"')&&home.includes('进入管理 →'),
+  'Dashboard must retain workspace-chooser-style cards and navigation labels');
+ assert.ok(!home.includes('class="cards"')&&!home.includes('class="panels"')&&
+  !home.includes('当前工作区资料概况')&&!home.includes('metriclabel'),
+  'Remove the redundant statistics and workspace-status panels');
+}
+for(const rule of ['.dashboard-home{width:100%;max-width:1050px;margin:0 auto;',
+ '.dashboard-choice-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}',
+ '.dashboard-choice{min-height:184px;padding:23px 24px;gap:8px}',
+ '.dashboard-choice-grid{grid-template-columns:1fr;gap:12px}'])
+ assert.ok(css.includes(rule),'Simple workbench card CSS missing: '+rule);
+
 /* Document archives are cards, business ledgers are tables. Browserless render checks. */
 for(const cls of ['.recordgrid','.archivecard','.archivecard-real','.archivecard-meta','.archivecard-actions','.archivecategory','.archive-tablewrap']){
  assert.ok(css.includes(cls),'Missing archive card style '+cls);

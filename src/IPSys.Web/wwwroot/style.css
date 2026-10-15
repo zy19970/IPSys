@@ -410,3 +410,21 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 /* Trash: destructive batch action is red only for a nonempty selection. */
 .btn.trash-purge-selected.is-active:not(:disabled){background:#bd3446;border-color:#bd3446;color:#fff}
 .btn.trash-purge-selected.is-active:not(:disabled):hover{background:#9e2537;border-color:#9e2537}
+
+/* Workbenches reuse the original workspace chooser's simple two-column card pattern. */
+.dashboard-home{width:100%;max-width:1050px;margin:0 auto;padding:20px 0 36px}
+.dashboard-eyebrow{font-size:11px;font-weight:750;letter-spacing:1.2px;color:var(--primary);margin-bottom:8px}
+.dashboard-home h1{font-size:27px;line-height:1.35;margin:0 0 8px}
+.dashboard-description{font-size:13px;color:var(--muted);margin:0 0 25px}
+.dashboard-choice-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.dashboard-choice{min-height:184px;padding:23px 24px;gap:8px}
+.dashboard-choice-symbol{width:40px;height:40px;font-size:20px}
+.dashboard-choice strong{font-size:19px;line-height:1.45}
+.dashboard-choice small{font-size:12px;line-height:1.65;overflow-wrap:anywhere}
+.dashboard-choice .choice-arrow{font-size:13px}
+.dashboard-choice:focus-visible{outline:2px solid var(--primary);outline-offset:3px}
+@media(max-width:780px){
+ .dashboard-home{padding-top:4px}
+ .dashboard-choice-grid{grid-template-columns:1fr;gap:12px}
+ .dashboard-choice{min-height:165px;padding:18px 20px}
+}
