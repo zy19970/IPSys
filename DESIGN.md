@@ -1,12 +1,12 @@
 # IPSys 技术设计：现行实现与待验收边界（2026-10-15）
 
-> 本文已从 2026-10-13 的跨平台探索方案改为**当前 `main@6c9ae23057` 代码的实现说明**。它不等于 M2 技术设计已完成全项评审，也不代表 T01–T09 全部通过。业务规范仍以 [REQUIREMENTS.md](./REQUIREMENTS.md) 和 [M0_DATA_DICTIONARY.md](./M0_DATA_DICTIONARY.md) 为准；被撤销的早期方案可在 Git 历史追溯。
+> 本文描述已落地的技术结构，以 2026-10-15 main@ba4fc6b0 的源码为审查基线；项目逻辑定位是**业务化文件夹式本地资料管理器**，但物理实现仍以各业务表和原件关联表为主，不要求统一表重构。业务约束见 [REQUIREMENTS.md](./REQUIREMENTS.md)，界面规范见 [UI_BASELINE.md](./UI_BASELINE.md)，字段见 [M0_DATA_DICTIONARY.md](./M0_DATA_DICTIONARY.md)。尚未完成 M2 全项设计评审与 T01–T09 技术验收。
 
 > **2026-10-15 用户界面与退出职责修订**：用户可见名称为「资料管理系统」（IPSys 继续作为技术标识）。网页 `POST /api/lock` 仅关库和撤销会话，WinForms 及 HTTP 服务继续运行；程序退出只有原生 WinForms 窗口能够调用 `Vault.TryScheduleExit`，不向浏览器开放 `POST /api/exit`。上传进行时网页关库返回冲突，WinForms 程序退出继续支持原生三选项。
 
 ## 1. 产品与部署边界
 
-IPSys 为 Windows 10/11 x64、离线、单用户本机资料管理系统。个人工作区优先，公司工作区独立；两个工作区在同一个加密 SQLite 主库中按 `workspace=personal/company` 隔离业务记录和原件。所有文件均需依附记录，不设置待整理文件池；项目可独立存在，合同必须属于某个有效项目。
+IPSys 是 Windows 10/11 x64、离线、单用户的本地资料管理器。逻辑上由「资料库—工作区—分类容器/业务模块—业务记录—附件」组成；分类和业务记录向用户呈现类似文件夹的打开、管理与导出体验。**现有物理 Schema 不统一为一种文件夹实体**：个人工作区优先，公司工作区独立，二者在单个 SQLCipher 主库中按 workspace 隔离，文件必须依附记录。项目可独立存在，合同必须属于有效项目。
 
 程序的 WinForms `LauncherForm` 负责本机 HTTP 服务生命周期，浏览器是客户端；点击按钮打开 Edge/Chrome，关闭标签页不终止 WinForms。本机 `Program.cs` 创建 ASP.NET Core/Kestrel，仅使用 `http://127.0.0.1:0` 临时端口，不暴露外网 API。嵌入式网页资源通过 `MapGet` 从 EXE 程序集提供，`demo/ui-preview.html` 仅供历史对照。
 
@@ -23,19 +23,25 @@ Release：`net8.0-windows` + `win-x64` + `SelfContained=false` + `PublishSingleF
 | `business_contracts` | 合同：`project_id` 关联 `business_projects.id`；工作区、金额、日期、签约方、软删除 |
 | `business_ips` | 知识产权：工作区、`ip_type`、`status`、`payload` JSON 承载 M0 可选字段 |
 | `business_archives` | 公司证书、个人资质、科研成果/学术活动；`module`、`section`、`category` 表示业务范围 |
+| `archive_folders` | 仅公司业务档案使用的可变层级目录；parent_id 表示父目录，根层保留系统预设及兼容历史类别；business_archives.folder_id 将资料归属目录 |
+| `archive_entry_order` | 仅公司业务档案目录内的混合排序映射；kind=folder/record、item_id 与 parent_id 共同区分目录/资料及所在层级 |
 | `company_certificate_order` | 公司企业资质全量持久顺序映射，保留旧业务数据 |
 | `business_file_objects` | 业务原件物理对象：预期/实际大小、SHA-256、`writing/ready` 状态 |
 | `business_file_chunks` | 业务原件字节分块，`object_id` 对应物理对象 |
 | `business_file_links` | 工作区、业务种类、归属 ID、对象 ID、文件名、材料类别、版本、分组、软删除 |
 | `ledger_record_order` 通用排序映射 | 通用台账持久显示顺序，以 `LedgerBatch.Ensure` 当前 SQL 定义为准 |
 
-不要把旧 `DESIGN.md` 曾提及的多公司、跨平台发行、目录树或自定义字段实现当作现行 Schema。涉及具体字段变更时必须以仓库对应 `Ensure` / DDL 与 M0 字典重新核实，不能仅依据本文表格改库。
+旧版跨平台、多公司、无归属文件池和自定义字段不是现行 Schema。**2026-10-15 的公司业务档案目录树已经存在，不能再按旧“排除目录树”的注释理解**；但该专用目录树不是项目、合同、知识产权或个人资料的统一通用父子表。具体字段变更以各 Store 的 Ensure / DDL、当前代码和 M0 字典为准。
 
 ## 3. 业务规则与操作边界
 
 `ProjectStore` 支持「科研项目／横向项目／其他项目」；合同只能挂到有效项目，在项目详情创建，复制/移动项目时保留有效子合同并重新关联。知识产权固定七类，每类状态和日期由服务端验证。公司企业资质、个人身份与资质、公司业务档案、个人成果与学术通过 `ArchiveStore` 和 `section` 约束对应业务归属。企业资质表单最小字段为名称、可选附件和备注，隐藏的旧 `category/tags` 元数据必须保留；Excel 固定模板的历史字段仍独立于可见表单。综合资料由 `GeneralStore` 维护旧表非破坏性升级。
 
 删除以软删除/回收站为默认；`RecycleStore` 处理恢复、批量永久清理以及共享对象被其他有效记录引用时的保护。持久排序由企业资质专用映射和通用 `LedgerBatch` 接口完成，接口按工作区和完整 ID 集合校验，防止仅对筛选子集重排时破坏全量序列。
+
+### 公司业务档案目录与混合排序
+
+`ArchiveFolderStore` 维护公司业务档案目录，可无限定固定深度分层、创建、更名、移动和安全删除空目录；现有记录通过 `business_archives.folder_id` 关联目录，原件仍关联业务记录，不直接附属于目录。目录改名/转移须保持资料与原件身份不变，并维护历史根分类兼容语义。`ArchiveEntryOrderStore` 按当前上级目录保存 folder/record 类型化组合的完整顺序，接口校验全量排列、拒绝重复、漏项及跨目录项。UI 根层只渲染导航卡片；进入目录后渲染子目录与记录混合表格，目录可勾选批量递归导出但不参与业务记录软删除。导出引擎按目录、记录和附件构造 ZIP/文件夹层级；根层不提供下载入口，内层目录行也只保留「打开」。
 
 ## 4. 原件生命周期
 
@@ -57,9 +63,9 @@ Release：`net8.0-windows` + `win-x64` + `SelfContained=false` + `PublishSingleF
 
 ## 6. UI 和测试证据
 
-公司导航：工作台、企业资质、业务档案、公司项目、知识产权、综合资料；个人入口参见 [UI_BASELINE.md](./UI_BASELINE.md)。分类档案一般采用「类别卡片→分类表格→记录详情」，企业资质例外直达列表。2026-10-15 增量为工作台 3×2、无多余面包屑、紧凑工具栏与表头、长名称优先列宽、项目类型位于序号之后、序号/多选/持久排序、回收站选中时永久删除按钮变红。
+公司导航：工作台、企业资质、业务档案、公司项目、知识产权、综合资料；个人导航与各模块的卡片/表格例外见 [UI_BASELINE.md](./UI_BASELINE.md)。公司业务档案根层仅分类导航卡片（不勾选/不下载），进入后目录与资料混排、可持久排序；目录行「打开」、资料行「下载」。企业资质直达表格，个人分类档案仍是卡片→台账→详情，项目/IP 为台账→详情，综合资料保持既有卡片。工作台 3×2、紧凑工具栏、长名称优先、回收站选中永久删除变红。
 
-Windows 工作流 `.github/workflows/web-windows.yml` 对 Debug/Release、真 SQLCipher HTTP、MCP stdio/管道、JS 语法、UI/搜索、ZIP/PDF 等执行自动回归并发布单 EXE Artifact。2026-10-15 既有基线 [#38673474396](https://github.com/zy19970/IPSys/actions/runs/38673474396) 为成功状态；人工 Edge/Chrome 与故障注入结论需独立记录在 [WEB_TESTING.md](./WEB_TESTING.md)。
+Windows 工作流 .github/workflows/web-windows.yml 对 Debug/Release、SQLCipher HTTP、MCP、本机 JS、UI/搜索、ZIP/PDF 等执行自动回归并发布单 EXE。当前代码基线对应 [#38707956606](https://github.com/zy19970/IPSys/actions/runs/38707956606) 成功；本次 Markdown 统一不代表重新运行代码测试，实机 Edge/Chrome 与故障注入状态仍由 [WEB_TESTING.md](./WEB_TESTING.md) 单独记录。
 
 ## 7. 技术验证缺口与设计定稿门槛
 
