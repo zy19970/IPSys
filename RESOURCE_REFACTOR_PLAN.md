@@ -117,8 +117,10 @@ C# 后端划分：
 | R1-04-01 公共树导航与只读 HTTP | **完成（代码与 Windows CI）** | [提交 535bcfe5](https://github.com/zy19970/IPSys/commit/535bcfe5b9dccdeb8973516568848d8258ab097a)，[Windows CI #38731911752](https://github.com/zy19970/IPSys/actions/runs/38731911752) **success**。`FolderBrowserService` 统一六类业务的虚拟根/真实父级导航，`FolderBrowserEndpoints` 提供 `/api/folders/{workspace}/children` 和 `/detail/{kind}/{id}` 只读 HTTP；公司档案混排继承 `archive_entry_order`。`FolderBrowserSmoke` 已通过会话权限、工作区隔离、非法/删除父级、混排排序、原业务属性与真实 SQLCipher HTTP 检验。未替换旧页面或修改数据表。 |
 | R1-04-02-01 项目/合同/IP 公共 CRUD | **完成（代码与 Windows CI）** | [提交 89e965f8](https://github.com/zy19970/IPSys/commit/89e965f84d24491f80807f85bac68db64090d890)、[Windows CI #38733267975](https://github.com/zy19970/IPSys/actions/runs/38733267975) **success**；`FolderCommandService` 统一 create/update/delete/restore，`FolderCommandSmoke` 在真实 SQLCipher HTTP 中验证与旧 API 互通、合同合法父级、权限、删除及恢复。旧接口/物理表未变。 |
 | R1-04-02-02 业务档案目录与各类档案资料公共 CRUD | **完成（代码与 Windows CI）** | [提交 c4626d36](https://github.com/zy19970/IPSys/commit/c4626d3613e08fa5ca1ebb52ca6efa6766517ab2)，[Windows CI #38734563500](https://github.com/zy19970/IPSys/actions/runs/38734563500) **success**； 复用 `ArchiveFolderStore` 与 `ArchiveStore`，保留公司七类系统根不可删除、目录非空不可删除、资料软删/回收站以及工作区/section 隔离；目录永久删除与归档资料恢复要区分，补真实 SQLCipher HTTP 回归。 |
-| R1-04-02-03 综合资料公共 CRUD 和旧写接口适配 | **已提交，等待 Windows CI** | 衔接 records 的名称 CRUD、软删/恢复；逐步使原业务 API 委托公共写入层，保持原响应码、上传任务拦截与现有 UI，不重复实现业务验证。 |
-| R1-04-03 公共移动复制排序与旧 API 适配 | **待开始** | 保留业务跨工作区复制约束、目录不可成环、真实排序与批量操作；真实旧库回归后再评估切入 R2。 |
+| R1-04-02-03 综合资料公共 CRUD 和旧写接口适配 | **完成（代码与 Windows CI）** | [提交 a1d4815e](https://github.com/zy19970/IPSys/commit/a1d4815e4ce191b6d8f2df1263eebec3b09137b0)，[Windows CI #38735174204](https://github.com/zy19970/IPSys/actions/runs/38735174204) **success**；`GeneralFolderCommands` 集中原有 records 名称校验与 insert/update/soft-delete SQL，旧 `/api/records` 与新 Folder API 共用；真实 SQLCipher HTTP 验证双向读写、权限、工作区和回收站，附件存储不变。 |
+| R1-04-03-01 统一复制/跨工作区转移业务适配 | **待开始（下一项）** | 先统一项目、知识产权和合同的现有复制/转移业务操作，严格保持项目合同父子关系、工作区隔离和原件版本引用逻辑；沿用旧 Store 的事务。 |
+| R1-04-03-02 档案目录/资料移动及跨模块复制适配 | **待开始** | 以现有 ArchiveFolderStore/ArchiveStore 为权威；禁止目录成环、合同脱离项目、任意跨 section 移动；逐一验收归档目录与附件关系。 |
+| R1-04-03-03 混排持久排序/旧接口归一与 R1 收尾 | **待开始** | 以 archive_entry_order 与原有业务台账排序为真值，新增公共操作的 SQLCipher HTTP 回归，汇总完整旧库与 Windows CI 门槛后切入 R2。 |
 | R2-01～R2-05 File/版本/共享 | **待开始** | R1 后实施 |
 | R3-01～R3-04 前端与导出 | **待开始** | R2 后实施 |
 | R4-01～R4-05 存储迁移/验收 | **待开始** | 满足安全迁移门槛后实施 |
