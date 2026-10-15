@@ -404,14 +404,14 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
  .data.ledger-record-table.ledger-archive-category-table.company-business-archive col.archive-col-remarks{width:150px}
 }
 
-/* Nested company business archives reuse existing folder cards and ledger rows. */
-.archive-folder-children{padding:12px 16px;border-bottom:1px solid var(--line)}
-.archive-folder-children .recordgrid{padding:0;gap:12px}
-.archive-folder-card{cursor:pointer;min-height:126px}
-.archive-folder-card:hover,.archive-folder-card:focus-visible{border-color:#91c4c8;box-shadow:0 6px 18px #12464c12;outline:none}
-.archive-folder-card:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
-.archive-folder-children + .archive-tablewrap{max-height:calc(100vh - 340px)}
-@media(max-width:740px){.archive-folder-children{padding:10px}.archive-folder-children .recordgrid{gap:9px}}
+/* Explorer-like directory rows share the exact company archive ledger. */
+.company-business-archive .archive-folder-row{background:#f7fbfb}
+.company-business-archive .archive-folder-row:hover{background:#edf6f6}
+.company-business-archive .archive-folder-link{display:inline-flex;align-items:center;gap:9px;max-width:100%;text-align:left;font-weight:600}
+.company-business-archive .archive-folder-link .ui-icon{width:19px;height:19px;flex:none;color:var(--primary)}
+.company-business-archive .archive-folder-link span{overflow-wrap:anywhere}
+.company-business-archive .archive-folder-summary{font-size:13px;white-space:normal}
+.company-business-archive .archive-folder-row .archive-category-action{white-space:nowrap}
 /* Align live category-ledger headers with the enterprise-certificate header. */
 .archive-category-ledger>.compact-ledger-toolbar{display:flex;align-items:center;gap:24px}
 .archive-category-ledger .compact-ledger-title{flex:0 0 230px;max-width:230px;min-width:0;gap:10px}
