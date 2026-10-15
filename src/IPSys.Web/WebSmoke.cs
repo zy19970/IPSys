@@ -1389,6 +1389,7 @@ static class WebSmoke
             await FolderArchiveCommandSmoke.VerifyAsync(client);
             await GeneralFolderCommandSmoke.VerifyAsync(client);
             await FolderTransferHttpSmoke.VerifyAsync(client);
+            await NativeFolderHttpSmoke.VerifyAsync(client);
             using var finalLock = await client.PostAsync("/api/lock", null);
             finalLock.EnsureSuccessStatusCode();
 

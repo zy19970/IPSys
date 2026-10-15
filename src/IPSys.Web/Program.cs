@@ -95,6 +95,7 @@ ArchiveEndpoints.Map(app, Fail);
 ProjectContractEndpoints.Map(app, Fail);
 FolderBrowserEndpoints.Map(app, Fail);
 FolderCommandEndpoints.Map(app, Fail);
+NativeFolderEndpoints.Map(app, Fail);
 
 GeneralRecordEndpoints.MapChanges(app, Fail);
 

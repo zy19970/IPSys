@@ -125,7 +125,8 @@ C# 后端划分：
 | 子任务 | 当前状态 | 完成依据 / 下一步 |
 | --- | --- | --- |
 | N1 新 SQLCipher v2 资源 Schema | **完成（代码与 Windows CI）** | [初版 ca924d55](https://github.com/zy19970/IPSys/commit/ca924d559d76d642414c20410f4457fc7faaeb42)、[内容保护 abc2a95d](https://github.com/zy19970/IPSys/commit/abc2a95d406192ad155f6b7412dd3dc7189bc542)、[DDL 顺序修正 e16ad1be](https://github.com/zy19970/IPSys/commit/e16ad1be01f8ede92afc7d4dcb153d057191952b)；[Windows CI #38740628571](https://github.com/zy19970/IPSys/actions/runs/38740628571) **success**。验证真实新建/重开 SQLCipher v2、文件夹合法父级/循环/工作区隔离、七系统根保护、同 FileId 多目录关联、独立 FileId 复用物理内容但版本独立、文件版本/完成内容不可改写；旧业务 UI/Store 切换属 N2/N3。 |
-| N2 新 Folder 唯一业务 Store | **待开始（下一项）** | 直接读写 folders；把项目、合同、IP、档案、综合等 API/MCP/Excel 逐步统一，避免历史业务表双写。 |
+| N2 新 Folder 唯一业务 Store | **进行中** | 从 N2-01 开始实现直接读写新版 folders，后续依次接入归档、综合资料和原有业务 HTTP/MCP/Excel，禁止同一操作双写。 |
+| N2-01 项目/合同/IP 原生 CRUD | **代码已提交，待 Windows CI** | NativeFolderStore 直接读写 folders/attributes_json，包含类型验证、合法合同父项目、公司个人隔离、软删与恢复；新 /api/v2/folders 原生接口经会话认证和文件任务锁；真实 SQLCipher HTTP smoke 验证父级/隔离/读写和无旧表双写。原有 UI、旧附件与旧业务 API 需等文件服务切换后统一接入。 |
 | N3 新 File 唯一存储与版本/共享 | **待开始** | 使用 files/file_versions/file_objects/file_chunks/folder_file_links；不再在双附件表上做旧库迁移。 |
 | N4 新库完整 UI/搜索/导出及清理 | **待开始** | 实际所有业务全走统一新库后删除停用旧表，执行完整 Windows CI 与实机验收。 |
 | R0-01 方案 MD + README 入口 | **完成：本方案入库** | 以本次 Git commit 为准 |
