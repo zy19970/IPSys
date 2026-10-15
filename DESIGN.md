@@ -2,6 +2,8 @@
 
 > 本文已从 2026-10-13 的跨平台探索方案改为**当前 `main@6c9ae23057` 代码的实现说明**。它不等于 M2 技术设计已完成全项评审，也不代表 T01–T09 全部通过。业务规范仍以 [REQUIREMENTS.md](./REQUIREMENTS.md) 和 [M0_DATA_DICTIONARY.md](./M0_DATA_DICTIONARY.md) 为准；被撤销的早期方案可在 Git 历史追溯。
 
+> **2026-10-15 用户界面与退出职责修订**：用户可见名称为「资料管理系统」（IPSys 继续作为技术标识）。网页 `POST /api/lock` 仅关库和撤销会话，WinForms 及 HTTP 服务继续运行；程序退出只有原生 WinForms 窗口能够调用 `Vault.TryScheduleExit`，不向浏览器开放 `POST /api/exit`。上传进行时网页关库返回冲突，WinForms 程序退出继续支持原生三选项。
+
 ## 1. 产品与部署边界
 
 IPSys 为 Windows 10/11 x64、离线、单用户本机资料管理系统。个人工作区优先，公司工作区独立；两个工作区在同一个加密 SQLite 主库中按 `workspace=personal/company` 隔离业务记录和原件。所有文件均需依附记录，不设置待整理文件池；项目可独立存在，合同必须属于某个有效项目。

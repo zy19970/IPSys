@@ -2,6 +2,10 @@
 
 > 新会话请首先读取 [AIGT-templates/AGENTS.md](https://github.com/zy19970/AIGT-templates/blob/main/AGENTS.md) 与 [GIT_OPERATIONS.md](https://github.com/zy19970/AIGT-templates/blob/main/AI_RULES/GIT_OPERATIONS.md)，然后检查 IPSys 当前 `main` 的真实源码、全部提交历史及最新 Windows CI。本文件以 `6c9ae230579e32c66e2cb04bcb46e4c86a517f97` 为文档同步前基线，不能代替之后的最新 Git 状态。
 
+## 最新界面名称与关闭行为（2026-10-15）
+
+面向用户的网页、WinForms 和历史预览界面统一显示「资料管理系统」；IPSys 仅作为仓库和程序集标识。网页右上角「关闭数据库」通过 `POST /api/lock` 释放数据库并返回登录界面，**不会终止 WinForms 或本地服务**；上传任务中拒绝关库。仅 WinForms 的「退出程序」按钮或窗口 X 才能结束应用，文件任务安全退出三选项继续由 WinForms 处理。**旧网页程序退出接口 `POST /api/exit` 已取消**。此前文档及旧会话中“网页安全退出也退出程序”的说明已被覆盖。
+
 ## 一、任务与最终产品取向
 
 IPSys 是**以个人资料为核心、公司资料分区管理**的 Windows 单机离线系统。个人和公司使用同一 SQLCipher 加密库的两个隔离工作区。每个附件必须归属于已有业务记录；数据库保存加密的原件内容，不仅是本机磁盘路径。

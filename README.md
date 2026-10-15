@@ -1,4 +1,4 @@
-# IPSys — 个人与公司资料管理系统
+# IPSys — 资料管理系统
 
 > 当前基线：2026-10-15，`main` 提交 `6c9ae23057`。**V1.0 核心业务功能已接入并通过相应自动回归，当前处于综合实机验收、数据安全专项和发布准备阶段；未宣布 V1.0 正式验收完成。** 本页为现行状态入口，历史修改请查看 Git 提交记录和 [HANDOFF.md](./HANDOFF.md)。
 
@@ -6,7 +6,7 @@ IPSys 面向 Windows 10/11 x64 单用户离线使用，以个人资料、知识�
 
 ## 1. 运行与发布
 
-程序架构为 **WinForms 启动器 → 127.0.0.1 本地 ASP.NET Core 服务 → Edge/Chrome 网页**。网页 HTML、CSS、JavaScript 和离线 PDF.js 均编译进 EXE；关闭浏览器标签页不等于退出宿主，退出 WinForms 或在网页执行安全退出才结束服务。登录默认显示「打开已有资料库」，首次创建入口单独提供；解锁后先选择个人或公司工作区。
+程序架构为 **WinForms 启动器 → 127.0.0.1 本地 ASP.NET Core 服务 → Edge/Chrome 网页**。网页 HTML、CSS、JavaScript 和离线 PDF.js 均编译进 EXE；网页「关闭数据库」只关闭加密库并返回登录页，WinForms 窗口和本地服务继续运行；关闭浏览器标签页也不结束程序。仅 WinForms 的「退出程序」或窗口 X 才能停止服务。上传任务期间网页关闭数据库会被拒绝，WinForms 退出仍采用安全三选项。登录默认显示「打开已有资料库」，首次创建入口单独提供；解锁后先选择个人或公司工作区。
 
 Visual Studio 可直接打开 `src/IPSys.Web/IPSys.Web.csproj` 调试。Release 发布为 **仅一个 `IPSys.Web.exe` 的依赖框架单文件包**，不会捆绑 .NET 运行时；目标电脑须预装 **.NET Desktop Runtime 8 x64** 和 **ASP.NET Core Runtime 8 x64**。编译生成的 Debug 目录与便携 Release 发布目录不是同一种交付形式。
 
