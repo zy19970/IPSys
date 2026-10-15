@@ -115,6 +115,13 @@ static class ResourceSchemaV2
               WHEN OLD.state='ready' BEGIN
               SELECT RAISE(ABORT,'completed content object is immutable');
             END;
+            CREATE TABLE file_chunks(
+              object_id INTEGER NOT NULL,workspace TEXT NOT NULL,
+              idx INTEGER NOT NULL CHECK(idx>=0),bytes BLOB NOT NULL,
+              PRIMARY KEY(object_id,idx),
+              FOREIGN KEY(object_id,workspace) REFERENCES file_objects(id,workspace)
+                ON DELETE RESTRICT);
+
             CREATE TRIGGER chunk_insert_ready BEFORE INSERT ON file_chunks
               WHEN EXISTS(SELECT 1 FROM file_objects
                 WHERE id=NEW.object_id AND workspace=NEW.workspace AND state='ready')
@@ -127,13 +134,6 @@ static class ResourceSchemaV2
               WHEN EXISTS(SELECT 1 FROM file_objects
                 WHERE id=OLD.object_id AND workspace=OLD.workspace AND state='ready')
               BEGIN SELECT RAISE(ABORT,'completed content bytes are immutable'); END;
-
-            CREATE TABLE file_chunks(
-              object_id INTEGER NOT NULL,workspace TEXT NOT NULL,
-              idx INTEGER NOT NULL CHECK(idx>=0),bytes BLOB NOT NULL,
-              PRIMARY KEY(object_id,idx),
-              FOREIGN KEY(object_id,workspace) REFERENCES file_objects(id,workspace)
-                ON DELETE RESTRICT);
 
             CREATE TABLE file_versions(
               id INTEGER PRIMARY KEY,file_id INTEGER NOT NULL,
