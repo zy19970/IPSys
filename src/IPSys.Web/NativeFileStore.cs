@@ -50,7 +50,7 @@ static class NativeFileStore
         cmd.Parameters.AddWithValue("$w",workspace);
         cmd.Parameters.AddWithValue("$id",id);
     }
-    private static bool FolderActive(SqliteConnection db,string workspace,long folderId)
+    internal static bool FolderActive(SqliteConnection db,string workspace,long folderId)
     {
         if(folderId<=0)return false;
         long current=folderId;
@@ -67,7 +67,7 @@ static class NativeFileStore
         }
         return true;
     }
-    private static bool Accessible(SqliteConnection db,string workspace,long fileId)
+    internal static bool Accessible(SqliteConnection db,string workspace,long fileId)
     {
         using var cmd=db.CreateCommand();
         cmd.CommandText="""
