@@ -291,13 +291,14 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 .certificate-ledger .data td:nth-child(4){max-width:380px;overflow-wrap:anywhere}
 .certificate-ledger .data td:nth-child(6){max-width:330px;white-space:normal;overflow-wrap:anywhere}
 
-/* Company certificate table: narrow control columns, flexible name and attachment. */
+/* Company certificates: keep remarks compact so long titles take leftover width. */
 .certificate-ledger .data{width:100%;min-width:0;table-layout:fixed}
 .certificate-ledger .data col.certificate-col-check{width:42px}
 .certificate-ledger .data col.certificate-col-sequence{width:54px}
-.certificate-ledger .data col.certificate-col-name{width:25%}
-.certificate-ledger .data col.certificate-col-file{width:25%}
+.certificate-ledger .data col.certificate-col-name{width:auto}
+.certificate-ledger .data col.certificate-col-file{width:26%}
 .certificate-ledger .data col.certificate-col-size{width:110px}
+.certificate-ledger .data col.certificate-col-remarks{width:160px}
 .certificate-ledger .data col.certificate-col-order{width:96px}
 .certificate-ledger .data col.certificate-col-action{width:82px}
 .certificate-ledger .data .certificate-check{width:42px;min-width:0;padding-left:4px;padding-right:4px;text-align:center}

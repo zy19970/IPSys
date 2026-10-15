@@ -477,6 +477,9 @@ assert.ok(realArchiveCtx.__certAll.includes('data-action="certificateBatchDelete
  !realArchiveCtx.__certSelected.includes('data-action="certificateBatchDelete" hidden')&&
  realArchiveCtx.__certAll.includes('<colgroup>')&&
  realArchiveCtx.__certAll.includes('certificate-col-action')&&
+ css.includes('.certificate-ledger .data col.certificate-col-name{width:auto}')&&
+ css.includes('.certificate-ledger .data col.certificate-col-file{width:26%}')&&
+ css.includes('.certificate-ledger .data col.certificate-col-remarks{width:160px}')&&
  css.includes('.certificate-ledger .archive-tablewrap .data td:nth-child(2){min-width:0')&&
  css.includes('table-layout:fixed'),
  'Certificate batch delete and fixed utility columns must render correctly');
