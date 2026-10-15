@@ -51,19 +51,14 @@ static class GeneralRecordEndpoints
         {
             if (!v.Allowed(ctx)) return Results.Unauthorized();
             if (!Vault.WorkspaceValid(workspace)) return Fail("无效工作区。");
-            if (string.IsNullOrWhiteSpace(input.Title)) return Fail("名称不能为空。");
-            if (input.Title.Length > 300) return Fail("名称不能超过 300 字。");
+            if (GeneralFolderCommands.Validate(input) is string invalid) return Fail(invalid);
             if (v.FileTaskActive || v.ExitRequested) return Fail("文件任务执行中，暂不能修改资料。", 409);
             await v.Gate.WaitAsync();
             try
             {
                 if (!v.Allowed(ctx)) return Results.Unauthorized();
                 if (v.FileTaskActive || v.ExitRequested) return Fail("文件任务执行中，暂不能修改资料。", 409);
-                using var cmd = v.Db.CreateCommand();
-                cmd.CommandText = "INSERT INTO records(workspace,title) VALUES($w,$n); SELECT last_insert_rowid();";
-                cmd.Parameters.AddWithValue("$w", workspace);
-                cmd.Parameters.AddWithValue("$n", input.Title.Trim());
-                long id = (long)cmd.ExecuteScalar()!;
+                long id = GeneralFolderCommands.Create(v.Db, workspace, input);
                 return Results.Json(new { id });
             }
             catch (Exception e) { return Fail(e.Message, 500); }
@@ -77,8 +72,7 @@ static class GeneralRecordEndpoints
         {
             if (!v.Allowed(ctx)) return Results.Unauthorized();
             if (!Vault.WorkspaceValid(workspace)) return Fail("无效工作区。");
-            if (string.IsNullOrWhiteSpace(input.Title)) return Fail("名称不能为空。");
-            if (input.Title.Length > 300) return Fail("名称不能超过 300 字。");
+            if (GeneralFolderCommands.Validate(input) is string invalid) return Fail(invalid);
             if (v.FileTaskActive || v.ExitRequested)
                 return Fail("文件任务执行中或程序正在退出，暂不能修改资料。", 409);
             await v.Gate.WaitAsync();
@@ -88,12 +82,9 @@ static class GeneralRecordEndpoints
                 if (!v.Allowed(ctx)) return Results.Unauthorized();
                 if (v.FileTaskActive || v.ExitRequested)
                     return Fail("文件任务执行中或程序正在退出，暂不能修改资料。", 409);
-                using var cmd = v.Db.CreateCommand();
-                cmd.CommandText = "UPDATE records SET title=$title WHERE id=$id AND workspace=$workspace AND deleted=0;";
-                cmd.Parameters.AddWithValue("$title", input.Title.Trim());
-                cmd.Parameters.AddWithValue("$id", id);
-                cmd.Parameters.AddWithValue("$workspace", workspace);
-                if (cmd.ExecuteNonQuery() != 1) return Results.NotFound();
+                if (!GeneralFolderCommands.Update(v.Db,
+                    ResourceRef.Create(workspace, FolderKinds.General, id), input))
+                    return Results.NotFound();
                 return Results.Ok(new { ok = true });
             }
             catch (Exception e) { return Fail(e.Message, 500); }
@@ -112,11 +103,9 @@ static class GeneralRecordEndpoints
             {
                 if(!v.Allowed(ctx))return Results.Unauthorized();
                 if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务执行中，不可删除。",409);
-                using var cmd=v.Db.CreateCommand();
-                cmd.CommandText="UPDATE records SET deleted=1 WHERE id=$id AND workspace=$w AND deleted=0;";
-                cmd.Parameters.AddWithValue("$id",id);
-                cmd.Parameters.AddWithValue("$w",workspace);
-                return cmd.ExecuteNonQuery()==1?Results.Ok(new{ok=true}):Results.NotFound();
+                return GeneralFolderCommands.Delete(v.Db,
+                    new ResourceRef(workspace, FolderKinds.General, id))
+                    ? Results.Ok(new { ok=true }) : Results.NotFound();
             }
             finally{v.Gate.Release();}
         });
