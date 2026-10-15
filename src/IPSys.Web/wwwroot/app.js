@@ -1111,7 +1111,7 @@ function realArchiveTable(k,category){
  '<section class="white filter"><div class="filterline"><div class="field wide"><label>资料名称</label><input id="filterSearch" placeholder="搜索此类别下的记录"></div>'+
  '<button class="btn primary" data-action="filter">查询</button><button class="btn" data-action="clearFilter">重置</button></div></section>'+
  '<section class="white"><div class="tabletools"><b>'+escapeHtml(category)+'台账 · '+rows.length+' 条记录</b><div class="actions">'+quickExportButtons(rows,'archive',k)+'</div></div>'+
- '<div class="tablewrap archive-tablewrap"><table class="data"><thead><tr><th>序号</th><th>资料名称</th><th>资料类别</th><th>附件数量</th><th>操作</th></tr></thead><tbody>'+
+ '<div class="tablewrap archive-tablewrap"><table class="data ledger-archive-category-table"><thead><tr><th>序号</th><th>资料名称</th><th>资料类别</th><th>附件数量</th><th>操作</th></tr></thead><tbody>'+
  (rows.length?rows.map((r,i)=>'<tr><td>'+(i+1)+'</td><td>'+
  '<button class="link" data-archive-id="'+r.id+'">'+escapeHtml(r.name)+'</button></td>'+
  '<td>'+escapeHtml(r.category||'未分类')+'</td><td>'+businessFileCount('archive',r.id,k)+' 份</td><td><button class="btn btn-sm" data-archive-id="'+r.id+'">查看详情</button></td></tr>').join(''):
