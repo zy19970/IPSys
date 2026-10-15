@@ -1183,8 +1183,10 @@ assert.ok(js.includes("if(detail?.kind==='project')return {kind:'contract',secti
    card=new CompactNode(),tools=new CompactNode(),line=new CompactNode();
   card.className='white';filter.className='white filter';
   const title=new CompactNode('h1'),count=new CompactNode('b');
-  const back=new CompactNode('button');back.dataset.archiveBack='cards';
-  title.textContent=recordMode==='cards'?'业务档案':'公司项目';
+  const back=new CompactNode('button');
+  if(recordMode==='folders')back.dataset.archiveFolderBack='1';
+  else back.dataset.archiveBack='cards';
+  title.textContent=recordMode==='cards'||recordMode==='folders'?'业务档案':'公司项目';
   count.textContent=recordMode==='cards'?'资料类别 7 类':'业务台账 3 条记录';
   const headActions=new CompactNode(),listActions=new CompactNode();
   const create=new CompactNode('button');create.dataset.action='projectAdd';
@@ -1198,7 +1200,9 @@ assert.ok(js.includes("if(detail?.kind==='project')return {kind:'contract',secti
   const input=new CompactNode('input');
   field.lookup={label,'input,select':input};line.append(field);
   const search=new CompactNode('button');search.dataset.action='filter';line.append(search);
-  header.lookup={h1:title,'.actions':headActions,'[data-archive-back="cards"]':recordMode==='cards'?back:null};
+  header.lookup={h1:title,'.actions':headActions,
+   '[data-archive-back="cards"],[data-archive-folder-back]':
+    (recordMode==='cards'||recordMode==='folders')?back:null};
   filter.lookup={'.filterline':line};filter.nextElementSibling=card;
   tools.lookup={b:count,'.actions':listActions};
   card.lookup={':scope > .tabletools':tools};
@@ -1214,7 +1218,7 @@ assert.ok(js.includes("if(detail?.kind==='project')return {kind:'contract',secti
   assert.equal(input.getAttribute('aria-label'),'名称 / 编号','Moved search must have accessible label');
   const [titleBox,filters,actions]=card.children[0].children;
   assert.ok(titleBox.children.some(x=>x.tag==='h1'),'Original page title must survive');
-  if(recordMode==='cards')assert.ok(titleBox.children.includes(back)&&
+  if(recordMode==='cards'||recordMode==='folders')assert.ok(titleBox.children.includes(back)&&
    titleBox.children.indexOf(back)<titleBox.children.indexOf(title),
    'Category back arrow must stay to the left of its title after toolbar compaction');
   assert.ok(filters.children.includes(field)&&filters.children.includes(search),'Original filters/buttons must survive');
@@ -1227,6 +1231,7 @@ assert.ok(js.includes("if(detail?.kind==='project')return {kind:'contract',secti
  }
  compactFixture('table');
  compactFixture('cards');
+ compactFixture('folders');
 
  // Shared ledger layout: both sides of the query group should receive equal free space,
  // with title and business actions anchored to their own grid tracks.
