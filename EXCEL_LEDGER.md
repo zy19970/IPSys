@@ -1,6 +1,6 @@
 # IPSys P1 Excel 台账：当前实现与验收（2026-10-15）
 
-> **两批源码与 Windows 自动回归已经完成**：第一批 [CI #38512444768](https://github.com/zy19970/IPSys/actions/runs/38512444768)、第二批 [CI #38514681983](https://github.com/zy19970/IPSys/actions/runs/38514681983) 显示成功；2026-10-15 最新 [CI #38673474396](https://github.com/zy19970/IPSys/actions/runs/38673474396) 亦成功。用户表示 Excel 使用频率较低，**尚未单独确认桌面 Excel 全量实机验收**。这些是**旧业务 API 下的实现与 CI 证据**，当前 V2 已有 N1/N2 原生 Folder，但 Excel 尚未切入新库。须等 N3 File 归属服务可用后在 N2-03 切换到唯一 V2 数据源，并于 N4 进行端到端及桌面 Excel 实机验收。
+> **两批源码与 Windows 自动回归已经完成**：第一批 [CI #38512444768](https://github.com/zy19970/IPSys/actions/runs/38512444768)、第二批 [CI #38514681983](https://github.com/zy19970/IPSys/actions/runs/38514681983) 显示成功；2026-10-15 最新 [CI #38673474396](https://github.com/zy19970/IPSys/actions/runs/38673474396) 亦成功。用户表示 Excel 使用频率较低，**尚未单独确认桌面 Excel 全量实机验收**。这些是**旧业务 API 下的实现与 CI 证据**，当前 V2 已有 N1/N2/N3 原生 Folder/File，N2-03-03 已新增知识产权 XLSX 的 V2 FolderId 独立接入并通过 [Windows CI #38825202078](https://github.com/zy19970/IPSys/actions/runs/38825202078)，**旧网页所用 Excel 路由尚未切换**；后续 N2-03-04 联动业务页面、附件和旧 MCP 身份，再完成其他 Excel 模块的统一，并于 N4 进行端到端及桌面 Excel 实机验收。
 
 ## 1. 已接入范围
 
@@ -25,3 +25,6 @@
 ## 3. 本机人工验收要求
 
 在**可丢弃加密测试库**分别验证公司/个人各模块：下载模板，填入中文、长名称、带前导零编号、空金额/0.00 金额、合法和错误日期；在桌面 Excel 打开、保存、导入，确认新增/更新/跳过/失败数与数据库一致。核对错误行继续处理、跨工作区隔离、筛选/勾选导出完整覆盖匹配记录。校验公司资质旧资料 `category/tags` 在简化编辑表单下不丢失，合同只读导出而不能经 API 导入。实际结果记入 [WEB_TESTING.md](./WEB_TESTING.md)，未验证前仍为「自动通过/人工未测」。
+## N2-03-03 知识产权 V2 原生 Excel 接口（2026-10-16）
+
+[功能提交 7a7d98a5](https://github.com/zy19970/IPSys/commit/7a7d98a54283174f94f3e7fb67bef2483cc0faf3)、[Windows CI #38825202078](https://github.com/zy19970/IPSys/actions/runs/38825202078) **success**。`/api/v2/excel/{workspace}/ip/template`、`export`、`import?policy=skip|update|create` 与旧 Excel 固定20列工作簿兼容，直接访问 V2 `folders.kind=ip/attributes_json`，导出 `all` 或以 V2 FolderId 作为 `filtered` 的 `ids`；8 MiB/5000 行上限与原申请号/登记号/名称+类型去重策略保持。HTTP/SQLCipher 验证来源固定 Excel 文件导入、V2 原地更新不改变 IP FolderId 或已关联 FileId/版本/原件字节、个人工作区独立导入属性不复制公司附件、无旧表双写、异常工作簿拒绝。**旧 `/api/excel/{workspace}/ip/*`、冻结网页台账仍属旧业务过渡期，不能与新版 FolderId 混用；当前仍需 N2-03-04 统一旧入口、N4 桌面 Excel 与 UI 实机验收。**

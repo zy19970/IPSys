@@ -99,3 +99,7 @@ N1 验收：[Windows CI #38740628571](https://github.com/zy19970/IPSys/actions/r
 ## N2-03-02 知识产权 FolderId 与附件 FileId 垂直闭环（2026-10-16）
 
 [功能提交 e88b1b82](https://github.com/zy19970/IPSys/commit/e88b1b8256731a1f95dfeda6f6e00cd61b7aff76)、[测试构造修复 02c45ece](https://github.com/zy19970/IPSys/commit/02c45ece23863935098e80567e2e055922fd0e7b)，最终 [Windows CI #38824119576](https://github.com/zy19970/IPSys/actions/runs/38824119576) **success**。`NativeIpFileStore` 和 `NativeIpFileEndpoints` 在原生 V2 `folders.kind=ip` 的实际业务 FolderId 上接入 `files/file_versions/file_objects/file_chunks/folder_file_links`，提供上传/分类、列表、原件详情、追加与下载历史版本、复用同 FileId、单条解绑与恢复。SQLCipher HTTP 回归验证有效 IP 父级、材料类别、共享 IP 最新版本同步、解绑后不复活、业务属性修改不生成文件版本、删除恢复、跨 IP 与跨区拒绝访问、首版字节往返及旧附件不双写。首轮 CI #38823818064 编译失败仅因新 Smoke 创建 IpInput 未传 Tags；补齐后最终 CI 成功。**原有旧业务 HTTP、网页 UI、Excel、14 项旧 MCP 还未切换；本批不能代替 V2 全应用验收。下一批 N2-03-03 继续模块级旧业务入口、附件及 Excel/MCP 身份收敛。**
+
+## N2-03-03 知识产权固定 Excel 同源 V2 FolderId 回归（2026-10-16）
+
+[功能提交 7a7d98a5](https://github.com/zy19970/IPSys/commit/7a7d98a54283174f94f3e7fb67bef2483cc0faf3)、[Windows CI #38825202078](https://github.com/zy19970/IPSys/actions/runs/38825202078) **success**。新 `/api/v2/excel/{workspace}/ip` 三接口沿用固定 20 列 OpenXML、行号错误报告、8 MiB/5000 行、申请号优先的重复记录策略，仅读写 `NativeFolderStore` 与 V2 FolderId/attributes_json。真实 SQLCipher HTTP 测试以旧固定模板导出产生可导入工作簿，验证 V2 创建、skip、update、以 FolderId 筛选导出、修改知识产权属性后原文件 FileId 与版本和真实下载字节保留、跨工作区只导入台账属性不串联物理原件、损坏工作簿拒绝，旧专利表没有自动双写。**旧网页 `/api/excel`、旧 MCP/HTTP/附件和其他 Excel 模块未统一；下一批 N2-03-04 应整合现有 IP 业务及附件入口，避免旧新业务身份交叉，最终 N4 再做桌面 Excel 实机。**

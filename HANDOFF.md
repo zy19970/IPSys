@@ -31,6 +31,7 @@ IPSys 用户界面名称是「资料管理系统」，以**个人资料长期归
 | **N3-04** | 原生 SQLCipher 文件准备/异名查重/三选一或取消、writing 清理与一次性票据通过 [CI #38820367132](https://github.com/zy19970/IPSys/actions/runs/38820367132)，旧前端尚未接入 |
 | **N2-03-01** | 原生 V2 项目/合同/IP MCP 11 项 `v2_*` 命令已通过真实本机管道→HTTP→SQLCipher [CI #38822708366](https://github.com/zy19970/IPSys/actions/runs/38822708366)，仅写 V2 `folders`；旧 14 项工具暂保留 |
 | **N2-03-02** | 知识产权 FolderId→V2 File/Link/Version 原生端到端业务 API 与文件分类、共享/解绑/恢复已通过 Windows CI #38824119576；旧原生 UI 入口暂不变 |
+| **N2-03-03** | 知识产权固定 XLSX 导入/导出已接入 V2 `folders.kind=ip` 身份，原申请号重复判断、筛选 FolderId、8 MiB/5000 行校验、更新保留附件字节，经真实 SQLCipher/HTTP [CI #38825202078](https://github.com/zy19970/IPSys/actions/runs/38825202078) 验收；旧 Excel 路由仍属过渡期 |
 | **N2-03 其余接口、N4** | 未完成，旧业务 HTTP/附件/Excel/UI 尚未迁移到 V2 |
 
 **源码切换边界**：`Vault.CreateSchema` 仍为旧综合资料创建 `records/attachments/chunks` 再建 V2；`Program.cs` 同时注册旧路由和 `/api/v2/folders`；`app.js` 仍调用 `/api/projects`、`/api/contracts`、`/api/archives` 等；`BusinessFiles.cs` 仍使用旧 `business_file_*` 表。此时新 Folder API 可单独测试，但原有前端/附件/MCP/Excel 尚未接入；不得提前删旧 Store 或做同一操作双写。
@@ -43,7 +44,8 @@ IPSys 用户界面名称是「资料管理系统」，以**个人资料长期归
 4. **N3-04 已通过原生 Store/HTTP CI**：`NativeFileChoiceStore/Resolve/Endpoints` 在 `prepare` 暂存 SQLCipher writing 块并计算 SHA-256，返回同区最新版已有文件名与 Folder 路径。用户明确选择 `share-file`、`reuse-content`、`independent` 或取消；已完成原件不自动合并，取消、关库/重开清理未确认块，30 分钟票据有效期、当前一个待确认上传。[CI #38820367132](https://github.com/zy19970/IPSys/actions/runs/38820367132) 已通过。
 5. **N2-03-01 已完成**：`McpLocalV2.cs` 借助既有手动 MCP 开关、当前 Windows 用户的命名管道与会话令牌调用原生 `/api/v2/folders`，将项目、合同、知识产权查询、创建、修改和删除注册为 11 项独立 `v2_*` 工具。合同父项目、工作区、属性更新及软删恢复经真实 SQLCipher 通过 [CI #38822708366](https://github.com/zy19970/IPSys/actions/runs/38822708366)，保证不写旧业务表。
 6. **N2-03-02 已完成**：`NativeIpFileStore` 和 `NativeIpFileEndpoints` 将知识产权 `folders.kind=ip` 的真实 FolderId 绑定 V2 附件列表、分类原件上传、文件详情、追加版本、历史字节下载、共享关联与单条解绑/恢复。原生 IP CRUD 使用 `/api/v2/folders`；经过 SQLCipher/HTTP 真实回归验证有效归属、同区共享最新版本、目录属性变更不产生文件版本、跨 IP/跨区隔离、删除/恢复及旧表不双写。[CI #38824119576](https://github.com/zy19970/IPSys/actions/runs/38824119576) 成功（首轮编译因测试遗漏 Tags，占位修复后通过）。
-7. **当前下一项 N2-03-03**：继续把旧业务 HTTP、旧附件/原件下载、Excel/MCP 的默认业务身份切换至统一 V2；每次以一个模块的完整 API 与附件/导出链路验收，旧页面尚未接入前不得直接淘汰原路径或混用两种 FileId。
+7. **N2-03-03 已完成**：`ExcelLedger` 的 V2 IP 分层适配和 `NativeIpExcelEndpoints` 提供 `/api/v2/excel/{workspace}/ip/template`、`export`、`import`；固定 20 列、跳过/更新/另建策略继续有效，但实际使用 V2 FolderId 和 `attributes_json`，导入不碰旧专利表，不复制跨工作区附件。CI #38825202078 测试真实 Excel 旧格式兼容导入、V2 筛选导出/更新、附件链接及历史原件保持不变。
+8. **当前下一项 N2-03-04**：以现有 IP 网页所需旧 HTTP 路由、文件归属、Excel、原有 MCP 为整体依赖单元实施入口收敛，确认当前网页已改走新版数据后才能移除/修改旧入口；不得仅将新 V2 API 的 CI 宣称为旧 UI 已迁移。
 3. **然后 N2-03**，在新文件归属能力完整后，分模块切换旧业务 API、MCP、Excel 到 V2 数据源；旧 API 形状可保留，不能双写。
 4. **最后 N4**，接通现有 UI、搜索 File 属性与 Folder 祖先信息、递归导出、默认最新版本、PDF/回收站，删除不再引用的旧表/兼容代码，完成 Windows CI、Edge/Chrome 用户实机和 T01–T09 安全验收。
 
