@@ -93,6 +93,10 @@ static class NativeArchiveHttpSmoke
             Check(invalid.StatusCode==HttpStatusCode.BadRequest,
                 "archive edit cannot silently move parent");
 
+        using(var rootRejected=await client.PostAsJsonAsync(
+            archive+$"/{doc}/move?section=achievement",new NativeFolderMoveInput(null)))
+            Check(rootRejected.StatusCode==HttpStatusCode.BadRequest,
+                "company archive cannot be moved outside all categories");
         using(var move=await client.PostAsJsonAsync(
             archive+$"/{doc}/move?section=achievement",new NativeFolderMoveInput(b)))
             move.EnsureSuccessStatusCode();

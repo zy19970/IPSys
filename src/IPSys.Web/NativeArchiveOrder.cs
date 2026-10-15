@@ -77,6 +77,8 @@ static class NativeArchiveOrder
         if(!r.IsValid || r.Workspace!="company" || r.Section!="achievement" ||
             r.Kind is not (FolderKinds.ArchiveFolder or FolderKinds.Archive))
             throw new ArgumentException("移动只适用于公司业务档案目录与资料。");
+        if(r.Kind==FolderKinds.Archive && targetParent is null)
+            throw new ArgumentException("公司业务档案资料必须归属具体目录。");
         if(targetParent is <=0)throw new ArgumentException("无效的目标目录。");
         if(targetParent is long p && NativeArchiveStore.Get(db,
             ResourceRef.Create("company",FolderKinds.ArchiveFolder,p,"achievement")) is null)
