@@ -24,7 +24,7 @@
 
 | 编号 | 场景与期望 | 当前情况 | 下一步需要的回归证据 |
 | --- | --- | --- | --- |
-| F01 | 所有模块读取统一 Folder 身份，`workspace+kind+section+id` 不串号 | **部分覆盖**：R1-01 `ResourceRef` 与 `FolderModelSmoke` 已通过 Windows CI；真正统一业务 Provider/HTTP 尚未实现 | R1-02/R1-03 接入旧 SQLCipher 各业务表的只读 Folder Provider，再添加真实 HTTP/数据库回归 |
+| F01 | 所有模块读取统一 Folder 身份，`workspace+kind+section+id` 不串号 | **部分覆盖**：R1-02 项目/合同/IP Provider 和临时 SQLCipher smoke 已由 [CI #38729428320](https://github.com/zy19970/IPSys/actions/runs/38729428320) 验证；R1-03 归档/综合资料 Provider 已提交待验收 | R1-03 通过 CI 后确认全业务类型的只读映射；R1-04 增加统一 HTTP/浏览导航与旧接口适配 |
 | F02 | 项目可以无合同；合同仅挂唯一合法项目，复制/移动不失关联 | **现有覆盖**：`WebSmoke`、`ContractStore` | R1 验证统一 Folder 移动接口不能绕过合同父子约束 |
 | F03 | 公司业务档案根分类只导航、自建空类别可删；内层目录/资料混排排序 | **现有覆盖**：UI smoke、`ArchiveFolderStore`、`ArchiveEntryOrderStore` | R1/R3 验证新 Folder 查询与原 UI 完全一致 |
 | F04 | 同工作区共享**同一逻辑文件**，上传 v2 两处见新版，一处解绑后 v3 不复活 | **部分覆盖**：`BusinessFileStore.Associate`、`group_id`/版本逻辑 | R2 增加跨 Folder FileId、解除关联和历史一致性测试 |

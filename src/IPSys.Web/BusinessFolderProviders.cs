@@ -20,7 +20,10 @@ static class BusinessFolderProviders
         {
             [FolderKinds.Project] = new ProjectFolderProvider(),
             [FolderKinds.Contract] = new ContractFolderProvider(),
-            [FolderKinds.Ip] = new IpFolderProvider()
+            [FolderKinds.Ip] = new IpFolderProvider(),
+            [FolderKinds.ArchiveFolder] = new ArchiveFolderProvider(),
+            [FolderKinds.Archive] = new ArchiveRecordProvider(),
+            [FolderKinds.General] = new GeneralFolderProvider()
         };
 
     public static IFolderProvider? Resolve(string kind) =>
