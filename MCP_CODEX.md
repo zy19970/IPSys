@@ -1,5 +1,8 @@
 # IPSys 本机 Codex MCP
 
+> **2026-10-15 状态同步**：当前 `main` 已有 **14 项** MCP 工具（含专利/知识产权 CRUD 与知识产权材料分类上传），现行 Windows CI 已通过 stdio 握手、工具清单及真实 SQLCipher/本机命名管道回归；**本机 Codex 或其他平台 MCP 客户端的完整人工连接与日常操作验收仍需执行**。发布程序是单 EXE，但目标电脑需预装 .NET Desktop Runtime 8 x64 与 ASP.NET Core Runtime 8 x64。MCP 是**本机 stdio** 接口，无需对外暴露网络端口；其他本机客户端可以在支持 stdio MCP 且可启动本机 EXE 时按其配置接入，未验证的平台不承诺即插即用。
+
+
 IPSys 支持本机 Codex 通过 MCP stdio 控制同一 Windows 用户已经运行且已解锁的资料库。Agent 复用原有业务 API 和 SQLCipher 会话，不另外打开数据库。
 
 ## 使用步骤
