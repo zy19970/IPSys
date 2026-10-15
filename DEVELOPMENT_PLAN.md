@@ -18,21 +18,22 @@ IPSys 用户可见名称为「资料管理系统」，采用 Windows WinForms �
 | **N2-01** | **Windows CI 通过** | 项目、合同、知识产权在新 `folders` 上的原生 CRUD、软删恢复；[CI #38743939004](https://github.com/zy19970/IPSys/actions/runs/38743939004) |
 | **N2-02** | **Windows CI 通过** | 档案目录/资料、综合资料原生 CRUD，目录/资料混排排序与移动；[CI #38747066932](https://github.com/zy19970/IPSys/actions/runs/38747066932) |
 | **N3-01** | **Windows CI 通过** | 新 File 原生分块/属性/版本/初始归属/下载及事务回滚， [CI #38754995418](https://github.com/zy19970/IPSys/actions/runs/38754995418)；旧 UI 未接入 |
-| **N3-02/03/04、N2-03、N4** | **未开始** | 多 Folder 关联解绑、独立 File 物理复用、查重用户选择、旧接口切换及最终验收 |
+| **N3-02** | **Windows CI 通过** | 同 FileId 多 Folder 关联/解绑/恢复、历史版本和字节保护 [CI #38759311477](https://github.com/zy19970/IPSys/actions/runs/38759311477) |
+| **N3-03/04、N2-03、N4** | **未开始** | 独立 File 内容复用、查重决策、新旧接口切换和最终验收 |
 
 N2 原生 API 与旧 UI/API 目前并存，不能据此声称新库整套业务完成。当前 `Vault` 仍初始化旧综合资料表，`app.js`、`BusinessFiles.cs` 和原有业务接口仍访问旧表；在切换前不得删除旧 Store 或对两套物理表同时写入。
 
 ## 3. 下一步实际施工顺序
 
 1. **N3-01（已完成）**：新 `files/file_versions/file_objects/file_chunks` 创建、选填属性、加密分块、SHA-256、文件版本与原件校验；独立新上传时第一条 Folder 关联同事务写入，Windows CI 已通过。
-2. **N3-02**：`folder_file_links` 多对多归属、共享同一 FileId、解除单一关联、回收站和历史引用保护。
+2. **N3-02（已完成）**：同区多 Folder 关联 FileId、软解绑及显式恢复；共享版本在各位置同步，解除一处不删除原件，Windows CI 已通过；完整回收站 UI 后续 N4 验收。
 3. **N3-03**：独立 FileId 只复用同工作区 FileObject、版本保持独立；跨公司/个人复制必须是独立物理对象。
 4. **N3-04**：按大小与 SHA-256 检测同内容（包括异名），展示已有文件名及所在目录供用户三选一或取消，安全清理暂存对象。
 5. **N2-03**：**等 N3 提供完整附件归属接口后**，分模块将旧业务 API、MCP、Excel 转到唯一 V2 Folder/File 数据源，不做旧新表双写。
 6. **N4**：保持冻结 UI，接通新库的前端、File 选填属性和 Folder 祖先字段搜索、递归导出、默认最新版本、回收站；确认无调用后清除旧业务/附件表及兼容代码。
 7. **N4 整体验收和发布判断**：Windows Debug/Release/单 EXE、SQLCipher HTTP、Node UI/PDF/ZIP、MCP、Excel，以及 Edge/Chrome 实机和 T01–T09 数据安全专项。
 
-因 N2-03 依赖 N3，**当前实际下一项为 N3-02**，不能机械按 N2-03 在进度表中的位置执行。
+因 N2-03 依赖 N3，**当前实际下一项为 N3-03**，不能机械按 N2-03 在进度表中的位置执行。
 
 ## 4. 安全、兼容和发布边界
 
