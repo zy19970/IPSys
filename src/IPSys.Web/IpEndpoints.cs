@@ -81,7 +81,9 @@ static class IpEndpoints
             {
                 if (!v.Allowed(ctx)) return Results.Unauthorized();
                 if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务或退出期间暂不能修改资料。",409);
-                long? copied=IpStore.Transfer(v.Db,workspace,id,input.TargetWorkspace,input.Move);
+                long? copied=FolderTransferService.Apply(v.Db,
+                    new ResourceRef(workspace,FolderKinds.Ip,id),
+                    new FolderTransferInput(input.TargetWorkspace,input.Move))?.Id;
                 return copied.HasValue?Results.Json(new {id=copied.Value}):Results.NotFound();
             }
             finally { v.Gate.Release(); }

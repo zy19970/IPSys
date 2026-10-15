@@ -81,6 +81,32 @@ static class FolderCommandEndpoints
             finally { v.Gate.Release(); }
         });
 
+        app.MapPost("/api/folders/{workspace}/{kind}/{id:long}/transfer", async (
+            HttpContext ctx, Vault v, string workspace, string kind, long id, FolderTransferInput input) =>
+        {
+            if (!v.Allowed(ctx)) return (IResult)Results.Unauthorized();
+            if (!Vault.WorkspaceValid(workspace)) return Fail("无效工作区。");
+            if (v.FileTaskActive || v.ExitRequested)
+                return Fail("文件任务或退出期间不能复制或转移文件夹。", 409);
+            await v.Gate.WaitAsync(ctx.RequestAborted);
+            try
+            {
+                if (!v.Allowed(ctx)) return Results.Unauthorized();
+                if (v.FileTaskActive || v.ExitRequested)
+                    return Fail("文件任务或退出期间不能复制或转移文件夹。", 409);
+                try
+                {
+                    var source = new ResourceRef(workspace, kind, id);
+                    var copied = FolderTransferService.Apply(v.Db, source, input);
+                    return copied is ResourceRef reference
+                        ? Results.Json(new { id = reference.Id, reference })
+                        : Results.NotFound();
+                }
+                catch (ArgumentException ex) { return Fail(ex.Message); }
+            }
+            finally { v.Gate.Release(); }
+        });
+
         app.MapPost("/api/folders/{workspace}/{kind}/{id:long}/restore", async (
             HttpContext ctx, Vault v, string workspace, string kind, long id, string? section) =>
         {

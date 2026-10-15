@@ -49,7 +49,9 @@ static class ProjectContractEndpoints
             {
                 if(!v.Allowed(ctx))return Results.Unauthorized();
                 if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务进行中或程序正在退出。",409);
-                var copied=ContractStore.Duplicate(v.Db,workspace,id);
+                var copied=FolderTransferService.Apply(v.Db,
+                    new ResourceRef(workspace,FolderKinds.Contract,id),
+                    new FolderTransferInput(workspace,false))?.Id;
                 return copied.HasValue?Results.Json(new{id=copied.Value}):Results.NotFound();
             }
             finally{v.Gate.Release();}
@@ -165,7 +167,9 @@ static class ProjectContractEndpoints
             {
                 if (!v.Allowed(ctx)) return Results.Unauthorized();
                 if (v.FileTaskActive || v.ExitRequested) return Fail("文件任务进行中。", 409);
-                var newId = ProjectStore.Transfer(v.Db, workspace, id, input.TargetWorkspace, input.Move);
+                var newId = FolderTransferService.Apply(v.Db,
+                    new ResourceRef(workspace,FolderKinds.Project,id),
+                    new FolderTransferInput(input.TargetWorkspace,input.Move))?.Id;
                 return newId.HasValue ? Results.Json(new { id = newId.Value }) : Results.NotFound();
             }
             finally { v.Gate.Release(); }
