@@ -349,7 +349,7 @@ const archiveFirst=js.indexOf('const archiveSections=['),archiveLast=js.indexOf(
 assert.ok(archiveFirst>=0&&archiveLast>archiveFirst,'Archive render functions missing');
 const realArchiveCtx=vm.createContext({sessionStorage:{getItem:()=>null},document:exportDocument});
 vm.runInContext(preamble+'\n'+js.slice(archiveFirst,archiveLast)+
- "\nfunction heading(name,subtitle,actions){return '<h1>'+name+'</h1>'+(actions||'');}"+
+ "\nfunction heading(name,subtitle,actions,breadcrumbBack){return '<div class=\"breadcrumb\">'+(breadcrumbBack||'')+'</div><h1>'+name+'</h1>'+(actions||'');}"+
  "\nfunction infoRow(k,v){return k+':'+v;}"+
  "\nfunction section(name,content){return name+content;}"+
  "\nfunction businessFileCount(){return 0;}\nfunction businessFiles(kind,ownerId,section){return (globalThis.mockCertificateFiles||[]).filter(f=>f.kind===kind&&f.ownerId===ownerId&&f.section===section);}\nfunction quickExportButtons(){return 'excelExport ZIP';}\nfunction quickExportButtons(){return 'excelExport ZIP';}"+
@@ -393,6 +393,17 @@ for(const c of ["申报与认定","规划与管理","汇报与宣传","会议与
 assert.ok(realArchiveCtx.__companyCats.includes('技术成果'),'Legacy categories must remain available');
 assert.ok(realArchiveCtx.__companyCards.includes('data-archive-category="技术成果"')&&
  realArchiveCtx.__companyTable.includes('data-archive-id="31"'),'Old and new company data must be accessible');
+for(const view of [realArchiveCtx.__realTable,realArchiveCtx.__companyTable]){
+ assert.ok(view.includes('<div class="breadcrumb"><button type="button" class="archive-breadcrumb-back" data-archive-back="cards">← 返回类别卡片</button>'),
+  'Category return button must appear inside the top-left breadcrumb');
+ assert.equal(view.split('data-archive-back="cards"').length-1,1,
+  'The category return control must not also appear in the right-side toolbar');
+ assert.ok(view.includes('data-action="archiveAdd"'),
+  'New-record action must remain available in the category toolbar');
+}
+assert.ok(css.includes('.archive-table-breadcrumb{display:flex;align-items:center;gap:12px;')&&
+ css.includes('.archive-breadcrumb-back:focus-visible'),
+ 'Category breadcrumb return must remain aligned and keyboard accessible');
 assert.ok(js.includes("label:'公司资料 / 业务档案'"));
 assert.ok(!v.personalNav.includes('业务档案'),'Personal achievements should not change');
 // Company enterprise certificates skip category cards and use the original stored records as table rows.

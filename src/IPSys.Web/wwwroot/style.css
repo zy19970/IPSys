@@ -366,3 +366,9 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 @media(max-width:1200px){
  .data.ledger-record-table.ledger-project-table{min-width:1050px}
 }
+
+/* Category drill-down: navigate back next to the page path, not among create/export actions. */
+.archive-table-breadcrumb{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.archive-breadcrumb-back{font:inherit;font-weight:650;color:var(--primary);background:transparent;border:0;padding:2px 0;cursor:pointer;white-space:nowrap}
+.archive-breadcrumb-back:hover{text-decoration:underline}
+.archive-breadcrumb-back:focus-visible{outline:2px solid var(--primary);outline-offset:3px;border-radius:3px}

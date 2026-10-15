@@ -258,8 +258,8 @@ function compactBusinessListToolbar(content){
  ledger.classList.add('compact-ledger');ledger.prepend(toolbar);
 }
 
-function heading(name,subtitle,actions=''){
- return `<div class="breadcrumb">${space==='company'?'公司资料':'个人资料'} / ${escapeHtml(name)}</div><div class="heading"><div><h1>${escapeHtml(name)}</h1><div class="subtitle">${subtitle}</div></div><div class="actions">${actions}</div></div>`;
+function heading(name,subtitle,actions='',breadcrumbBack=''){
+ return `<div class="breadcrumb${breadcrumbBack?' archive-table-breadcrumb':''}">${breadcrumbBack}${space==='company'?'公司资料':'个人资料'} / ${escapeHtml(name)}</div><div class="heading"><div><h1>${escapeHtml(name)}</h1><div class="subtitle">${subtitle}</div></div><div class="actions">${actions}</div></div>`;
 }
 function pill(text){return `<span class="pill">${escapeHtml(text)}</span>`;}
 function stamp(){return '<span class="mockflag">界面示例 · 未接入业务</span>';}
@@ -1105,8 +1105,8 @@ function realArchiveTable(k,category){
  const all=(archiveRows[k]||[]).filter(r=>(r.category||'未分类')===category);
  const rows=all.filter(r=>[r.name,r.remarks,r.tags].join(' ').toLowerCase().includes(filterName.toLowerCase()));
  return heading(category,archiveSectionName(k)+' / 分类台账 · 同一类别可归档多条记录',
- '<button class="btn" data-archive-back="cards">← 返回类别卡片</button>'+
- '<button class="btn primary" data-action="archiveAdd">＋ 新建记录</button>')+
+ '<button class="btn primary" data-action="archiveAdd">＋ 新建记录</button>',
+ '<button type="button" class="archive-breadcrumb-back" data-archive-back="cards">← 返回类别卡片</button>')+
  
  '<section class="white filter"><div class="filterline"><div class="field wide"><label>资料名称</label><input id="filterSearch" placeholder="搜索此类别下的记录"></div>'+
  '<button class="btn primary" data-action="filter">查询</button><button class="btn" data-action="clearFilter">重置</button></div></section>'+
