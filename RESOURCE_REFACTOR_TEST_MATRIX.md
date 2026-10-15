@@ -24,7 +24,7 @@
 
 | 编号 | 场景与期望 | 当前情况 | 下一步需要的回归证据 |
 | --- | --- | --- | --- |
-| F01 | 所有模块读取统一 Folder 身份，`workspace+kind+section+id` 不串号 | **部分覆盖**：项目/合同/IP Provider [CI #38729428320](https://github.com/zy19970/IPSys/actions/runs/38729428320) success，目录/归档/综合资料 Provider [CI #38730348327](https://github.com/zy19970/IPSys/actions/runs/38730348327) success，六类只读映射均通过临时 SQLCipher 回归；尚未接入统一 HTTP/前端导航 | R1-04-01 验证真实会话认证、跨区禁止、非法/已删除父级及混合排序；R1-04-02/03 再接公共写操作 |
+| F01 | 所有模块读取统一 Folder 身份，`workspace+kind+section+id` 不串号 | **已覆盖只读后端与真实 HTTP**：项目/合同/IP [CI #38729428320](https://github.com/zy19970/IPSys/actions/runs/38729428320)、目录/归档/综合 [CI #38730348327](https://github.com/zy19970/IPSys/actions/runs/38730348327)、统一树导航及 HTTP [CI #38731911752](https://github.com/zy19970/IPSys/actions/runs/38731911752) 均 success；冻结的前端展示仍调用旧接口 | R1-04-02/03 继续逐类接入统一写接口与旧 API 适配；R3 再切换公共前端，不能因只读 API 通过就宣称整体资源管理器已重构完成 |
 | F02 | 项目可以无合同；合同仅挂唯一合法项目，复制/移动不失关联 | **现有覆盖**：`WebSmoke`、`ContractStore` | R1 验证统一 Folder 移动接口不能绕过合同父子约束 |
 | F03 | 公司业务档案根分类只导航、自建空类别可删；内层目录/资料混排排序 | **现有覆盖**：UI smoke、`ArchiveFolderStore`、`ArchiveEntryOrderStore` | R1/R3 验证新 Folder 查询与原 UI 完全一致 |
 | F04 | 同工作区共享**同一逻辑文件**，上传 v2 两处见新版，一处解绑后 v3 不复活 | **部分覆盖**：`BusinessFileStore.Associate`、`group_id`/版本逻辑 | R2 增加跨 Folder FileId、解除关联和历史一致性测试 |
