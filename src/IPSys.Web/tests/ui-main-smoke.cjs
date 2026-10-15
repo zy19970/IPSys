@@ -367,6 +367,11 @@ vm.runInContext(preamble+'\n'+js.slice(archiveFirst,archiveLast)+
 assert.ok(realArchiveCtx.__realCards.includes('data-archive-category="学术兼职"'),
  'Even with real data, the category cards must be separate from records');
 assert.ok(!realArchiveCtx.__realCards.includes('<table'),'Archive top level cannot turn into a table');
+assert.ok(realArchiveCtx.__realTable.includes('<section class="white archive-category-ledger">')&&
+ realArchiveCtx.__realTable.includes('<b>共 2 条记录</b>'),
+ 'Personal category tables must use enterprise-certificate-style compact header and count');
+assert.ok(!realArchiveCtx.__realCards.includes('archive-category-ledger'),
+ 'Category cards must retain their existing header layout');
 assert.ok(realArchiveCtx.__realTable.includes('<table class="data ledger-archive-category-table">'),
  'Personal archive category tables must use the shared compact column sizing');
 assert.ok(realArchiveCtx.__realTable.includes('data-archive-id="21"')&&
@@ -397,6 +402,9 @@ assert.ok(realArchiveCtx.__companyCards.includes('data-archive-category="技术�
  realArchiveCtx.__companyTable.includes('data-archive-id="31"'),'Old and new company data must be accessible');
 assert.ok(realArchiveCtx.__companyTable.includes('<table class="data ledger-archive-category-table">'),
  'Company archive category tables must use the same compact column sizing');
+assert.ok(realArchiveCtx.__companyTable.includes('<section class="white archive-category-ledger">')&&
+ realArchiveCtx.__companyTable.includes('<b>共 1 条记录</b>'),
+ 'Company category tables must share enterprise-certificate-style compact header');
 for(const view of [realArchiveCtx.__realTable,realArchiveCtx.__companyTable]){
  assert.ok(view.includes('<div class="breadcrumb"><button type="button" class="archive-breadcrumb-back" data-archive-back="cards">← 返回类别卡片</button>'),
   'Category return button must appear inside the top-left breadcrumb');
@@ -795,6 +803,15 @@ for(const rule of ['.data.ledger-record-table','.ledger-record-order-cell .btn',
  '.archive-tablewrap .data.ledger-record-table td:nth-child(2)',
  '.ledger-batch-delete[hidden]'])
  assert.ok(css.includes(rule),'Record table sizing / hidden delete missing '+rule);
+// Category table toolbars follow enterprise certificates: title at left, growing search and separate right actions.
+for(const rule of [
+ '.archive-category-ledger>.compact-ledger-toolbar{display:flex;align-items:center;gap:24px}',
+ '.archive-category-ledger .compact-ledger-title{flex:0 0 230px;max-width:230px;',
+ '.archive-category-ledger .compact-ledger-filters{flex:1 1 auto;width:auto;max-width:none;',
+ '.archive-category-ledger .compact-ledger-filters>.field.wide{flex:1 1 300px;max-width:590px;',
+ '.archive-category-ledger .compact-ledger-actions{flex:0 0 auto;justify-self:auto;margin-left:auto;',
+ '.archive-category-ledger .compact-ledger-filters{order:3;flex:1 1 100%;width:100%;'
+])assert.ok(css.includes(rule),'Certificate-style category header layout missing: '+rule);
 // Live archive category lists fix type, attachment count and action width, leaving long names flexible.
 for(const rule of [
  '.data.ledger-record-table.ledger-archive-category-table th:nth-child(4){width:170px}',
