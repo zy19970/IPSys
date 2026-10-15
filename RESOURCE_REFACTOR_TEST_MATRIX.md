@@ -25,12 +25,12 @@
 | 编号 | 场景与期望 | 当前情况 | 下一步需要的回归证据 |
 | --- | --- | --- | --- |
 | F01 | 所有模块读取统一 Folder 身份，`workspace+kind+section+id` 不串号 | **已覆盖只读后端与真实 HTTP**：项目/合同/IP [CI #38729428320](https://github.com/zy19970/IPSys/actions/runs/38729428320)、目录/归档/综合 [CI #38730348327](https://github.com/zy19970/IPSys/actions/runs/38730348327)、统一树导航及 HTTP [CI #38731911752](https://github.com/zy19970/IPSys/actions/runs/38731911752) 均 success；冻结的前端展示仍调用旧接口 | R1-04-02/03 继续逐类接入统一写接口与旧 API 适配；R3 再切换公共前端，不能因只读 API 通过就宣称整体资源管理器已重构完成 |
-| F02 | 项目可以无合同；合同仅挂唯一合法项目，复制/移动不失关联 | **现有覆盖 + 公共 CRUD 首批已验收**：`WebSmoke`、`ContractStore` | R1-04-02-01 [Windows CI #38733267975](https://github.com/zy19970/IPSys/actions/runs/38733267975) 验证公共 create/update/delete/restore；R1-04-03 再测试跨目录移动约束 |
+| F02 | 项目可以无合同；合同仅挂唯一合法项目，复制/移动不失关联 | **公共 CRUD/复制转移已验证**：R1-04-02 [CI #38733267975](https://github.com/zy19970/IPSys/actions/runs/38733267975) 验证合同创建必须合法父级；R1-04-03-01 [CI #38737211398](https://github.com/zy19970/IPSys/actions/runs/38737211398) 验证项目同区复制、跨工作区迁移时两份同编号合同都重新关联目标项目，旧合同单独跨区转移被拒绝且其附件版本保留 | R1-04-03-02 仍需测试归档目录成环、资料目标类别；项目/合同更广泛的任意目录迁移不应擅自开放 |
 | F03 | 公司业务档案根分类只导航、自建空类别可删；内层目录/资料混排排序 | **已有统一读写覆盖**：原有 UI smoke 和目录/资料 Store，R1-04-01 [CI #38731911752](https://github.com/zy19970/IPSys/actions/runs/38731911752) 验证统一混排树浏览，R1-04-02-02 [CI #38734563500](https://github.com/zy19970/IPSys/actions/runs/38734563500) 验证系统根保护、空目录删除及资料软删恢复 | R1-04-03 验证真正的统一移动/排序写接口；R3 再接公共前端 |
 | F04 | 同工作区共享**同一逻辑文件**，上传 v2 两处见新版，一处解绑后 v3 不复活 | **部分覆盖**：`BusinessFileStore.Associate`、`group_id`/版本逻辑 | R2 增加跨 Folder FileId、解除关联和历史一致性测试 |
 | F05 | 两个独立 FileId 内容相同时可只共享加密字节，属性和版本各自独立 | **部分覆盖**：`BusinessFileStore.Finish` 的 hash/size 用户指定复用 | R2 对比 FileId、版本、FileObject 与跨区复制 |
 | F06 | 内容相同但名称不同，也显示已有文件名和所在文件夹，让用户三选一或取消 | **待实现**：现有选项不等于先查重再弹窗 | R2 模拟内容检测/提示、三种决定、取消暂存清理 |
-| F07 | 版本只属于 File；Folder 改名/金额编辑不产生版本；历史 FileVersion 原件不丢 | **部分覆盖**：原件版本已有，统一身份未接入 | R1/R2 验证更新 Folder 与 FileVersions 相互独立 |
+| F07 | 版本只属于 File；Folder 改名/金额编辑不产生版本；历史 FileVersion 原件不丢 | **部分覆盖**：现有原件版本及 R1-04-03-01 [CI #38737211398](https://github.com/zy19970/IPSys/actions/runs/38737211398) 已核对项目/合同/IP 复制与跨工作区转移后的版本号、完整原件字节和 SHA-256；没有给 Folder 建版本记录 | R2 新统一 FileId/FileVersion 模型继续验证 Folder 元数据更新不创建 FileVersion，以及共享逻辑文件的版本同步 |
 | F08 | 只选文件可上传；说明/标签/编号/日期与版本说明全选填、以后可补 | **待实现**：系统级可选 File 属性尚未统一 | R2 测试空元数据、补充、共享 FileId 同步/内容复用独立 |
 | F09 | 附件按自己名称、选填属性、直属/祖先 Folder 的业务属性能被搜索 | **部分覆盖**：`SearchStore` 已检索当前记录/附件名 | R2/R3 增加祖先字段、可选属性、权限、跳转测试 |
 | F10 | 仅解除一个 FolderFileLink，不能删掉别处文件及需要保留的版本字节 | **部分覆盖**：已有业务链接及回收站逻辑 | R2 关联计数/恢复/永久清理压力测试 |
