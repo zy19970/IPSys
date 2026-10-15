@@ -36,6 +36,37 @@ const IPSysExport=(()=>{
  function makePlan(files){
   const roots=new Map(),children=new Map(),fileNames=new Map(),usedRoots=new Set();
   return files.map(file=>{
+   // Archive folder exports preserve the full selected directory hierarchy.
+   // Stable IDs distinguish same-named records from child directories.
+   if(Array.isArray(file.archiveFolderPath)&&file.archiveFolderPath.length){
+    const chain=file.archiveFolderPath;
+    const rootKey='archive-folder:'+chain[0].id;
+    if(!roots.has(rootKey))roots.set(rootKey,distinctName(cleanName(chain[0].name),usedRoots,true));
+    const parts=[roots.get(rootKey)];
+    let directoryKey=rootKey;
+    for(const entry of chain.slice(1)){
+     const childKey='archive-folder:'+entry.id;
+     if(!children.has(directoryKey))children.set(directoryKey,new Map());
+     const group=children.get(directoryKey);
+     if(!group.has(childKey)){
+      const used=new Set([...group.values()].map(x=>x.toLowerCase()));
+      group.set(childKey,distinctName(cleanName(entry.name),used,true));
+     }
+     parts.push(group.get(childKey));
+     directoryKey=childKey;
+    }
+    const recordKey='archive-record:'+file.ownerId+':'+file.section;
+    if(!children.has(directoryKey))children.set(directoryKey,new Map());
+    const records=children.get(directoryKey);
+    if(!records.has(recordKey)){
+     const used=new Set([...records.values()].map(x=>x.toLowerCase()));
+     records.set(recordKey,distinctName(cleanName(file.ownerName),used,true));
+    }
+    parts.push(records.get(recordKey));
+    if(!fileNames.has(recordKey))fileNames.set(recordKey,new Set());
+    parts.push(distinctName(cleanName(file.name,true),fileNames.get(recordKey)));
+    return {...file,parts,path:parts.join('/')};
+   }
    const where=owner(file);
    const rootKey=where.parentKey||where.recordKey;
    if(!roots.has(rootKey))roots.set(rootKey,distinctName(cleanName(where.root),usedRoots,true));

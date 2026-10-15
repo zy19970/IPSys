@@ -167,5 +167,36 @@ assert.deepEqual(JSON.parse(JSON.stringify(exporter.makePlan(projectFiles).map(x
  assert.equal(lastTimer.delay,18000,'Failures should remain visible longer');
  lastTimer.fn();
  assert.equal(elems.get('exportStatus').hidden,true,'Export result must auto-dismiss');
+ // Directory exports use folder identities and keep arbitrary depth in the ZIP.
+ const archiveFiles=[
+  {source:'business',kind:'archive',section:'achievement',workspace:'company',
+   ownerId:31,ownerName:'申报资料',id:401,name:'申报.pdf',size:3,
+   archiveFolderPath:[{id:201,name:'认定申报'},{id:203,name:'企业行标'}]},
+  {source:'business',kind:'archive',section:'achievement',workspace:'company',
+   ownerId:33,ownerName:'评审资料',id:402,name:'证明.docx',size:4,
+   archiveFolderPath:[{id:201,name:'认定申报'},{id:203,name:'企业行标'},{id:204,name:'2026年度'}]},
+  {source:'business',kind:'archive',section:'achievement',workspace:'company',
+   ownerId:34,ownerName:'申报资料',id:403,name:'申报.pdf',size:5,
+   archiveFolderPath:[{id:201,name:'认定申报'},{id:205,name:'技术认证'}]}
+ ];
+ const archivePlan=exporter.makePlan(archiveFiles);
+ assert.deepEqual(JSON.parse(JSON.stringify(archivePlan.map(x=>x.path))),[
+  '认定申报/企业行标/申报资料/申报.pdf',
+  '认定申报/企业行标/2026年度/评审资料/证明.docx',
+  '认定申报/技术认证/申报资料/申报.pdf'
+ ],'Archive folder download must retain all nested directory/record levels');
+ for(const [index,file] of archiveFiles.entries())
+  data.set('/api/business-files/company/download/'+file.id,Buffer.from(['abc','defg','12345'][index]));
+ await exporter.start('zip',archiveFiles);
+ const directoryZip=savedZip.bytes;
+ assert.ok(directoryZip&&directoryZip.length>22,'Nested directory ZIP must be generated');
+ let centralOffset=directoryZip.readUInt32LE(directoryZip.length-22+16);
+ for(const entry of archivePlan){
+  assert.equal(directoryZip.readUInt32LE(centralOffset),0x02014b50);
+  const len=directoryZip.readUInt16LE(centralOffset+28);
+  assert.equal(directoryZip.subarray(centralOffset+46,centralOffset+46+len).toString(),entry.path);
+  centralOffset+=46+len;
+ }
+ console.log('ARCHIVE DIRECTORY EXPORT PASS: recursive path hierarchy in ZIP');
  console.log('EXPORT SMOKE PASS: naming, nested contracts, repeated folders, ZIP bytes and partial failures');
 })().catch(err=>{console.error(err);process.exitCode=1});

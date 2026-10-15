@@ -432,7 +432,7 @@ assert.ok(contractContext.__owned.includes('data-contract-id="31"'),'Project det
 assert.deepEqual(Array.from(contractContext.__display),['—','0.00','12.30']);
 
 // B04 minimal archives reuse frozen category cards -> ledger -> detail layout.
-for(const id of ['archiveDialog','archiveForm','aName','aCategory','aYear','archiveYearField','archiveFolderField','aFolder','archiveFolderDialog','archiveFolderName','archiveFolderParent','aRemarks','aTags',
+for(const id of ['archiveDialog','archiveForm','aName','aCategory','aYear','archiveYearField','archiveFolderField','aFolder','archiveFolderDialog','archiveCreateDialog','archiveCreateRecord','archiveCreateFolder','archiveFolderName','archiveFolderParent','aRemarks','aTags',
  'archiveTransferDialog','archiveTransferForm','archiveDestination'])
  assert.ok(html.includes('id="'+id+'"'),'Archive form or transfer control missing: '+id);
 for(const action of ['archiveAdd','archiveEdit','archiveCopy','archiveMove','archiveDelete'])
@@ -500,7 +500,8 @@ assert.ok(realArchiveCtx.__possibleTargets.some(x=>x.workspace==='company'&&x.ki
 vm.runInContext(
  "space='company';page='achievement';archiveRows.achievement=["+
  "{id:31,name:'首台套申报',category:'申报与认定',folderId:201,year:'2026',remarks:'',tags:''},"+
- "{id:32,name:'历史成果资料',category:'技术成果',folderId:202,remarks:'',tags:''}];"+
+ "{id:32,name:'历史成果资料',category:'技术成果',folderId:202,remarks:'',tags:''},"+
+ "{id:33,name:'下级评审报告',category:'申报与认定',folderId:204,remarks:'',tags:''}];"+
  "archiveFolders=["+
  "{id:201,parentId:null,name:'申报与认定',position:0},"+
  "{id:202,parentId:null,name:'技术成果',position:1},"+
@@ -512,7 +513,8 @@ vm.runInContext(
  "globalThis.mockCertificateFiles.push("+ 
  "{kind:'archive',ownerId:31,section:'achievement',id:301,groupId:'zA',version:1,size:100,name:'申报.pdf',category:''},"+
  "{kind:'archive',ownerId:31,section:'achievement',id:302,groupId:'zA',version:2,size:200,name:'申报.pdf',category:''},"+
- "{kind:'archive',ownerId:31,section:'achievement',id:303,groupId:'zB',version:1,size:300,name:'证明.docx',category:''}"+
+ "{kind:'archive',ownerId:31,section:'achievement',id:303,groupId:'zB',version:1,size:300,name:'证明.docx',category:''},"+
+ "{kind:'archive',ownerId:33,section:'achievement',id:304,groupId:'zC',version:1,size:400,name:'报告.pdf',category:''}"+
  ");"+
  "globalThis.__companyCards=realArchiveCards('achievement');"+
  "archiveFolderId=201;"+
@@ -522,6 +524,9 @@ vm.runInContext(
  "globalThis.__companyPath=archiveFolderPath(203).map(x=>x.name);"+
  "archiveFolderId=201;"+
  "globalThis.__companyZip=archiveRecordZipOriginals(31,'achievement');"+
+ "globalThis.__rootFolderZip=archiveFolderOriginals(201);"+
+ "globalThis.__innerFolderZip=archiveFolderOriginals(203);"+
+ "globalThis.__combinedZip=archiveChosenOriginals([201],[31]);"+
  "globalThis.__emptyCompanyZip=archiveRecordZipOriginals(32,'achievement');",
  realArchiveCtx);
 assert.equal(realArchiveCtx.__companyName,'业务档案');
@@ -539,7 +544,9 @@ assert.ok(realArchiveCtx.__companyTable.includes('data-archive-folder-id="203"')
 assert.ok(realArchiveCtx.__companyCards.includes('class="recordgrid"')&&
  realArchiveCtx.__companyCards.includes('class="archivecard archivecategory"')&&
  !realArchiveCtx.__companyCards.includes('<table')&&
- realArchiveCtx.__companyCards.includes('＋ 新建分类'),
+ realArchiveCtx.__companyCards.includes('data-action="archiveCreate"')&&
+ realArchiveCtx.__companyCards.includes('class="archive-folder-check"')&&
+ realArchiveCtx.__companyCards.includes('data-archive-folder-download="201"'),
  'Business archive landing page must show first-level category cards, never the directory table');
 for(const view of [realArchiveCtx.__companyTable,realArchiveCtx.__companyNested]){
  assert.ok(view.includes('<table class="data ledger-archive-category-table company-business-archive">')&&
@@ -550,12 +557,13 @@ for(const view of [realArchiveCtx.__companyTable,realArchiveCtx.__companyNested]
 const folderRow=realArchiveCtx.__companyTable.match(/<tr class="archive-folder-row"[^>]*>(.*?)<\/tr>/)?.[1];
 assert.ok(folderRow&&
  (folderRow.match(/<td\b/g)||[]).length===6&&
- folderRow.includes('<td>企业行标</td>')&&
+ folderRow.includes('class="link" data-archive-folder-id="203">企业行标</button>')&&
  folderRow.includes('data-archive-folder-id="203"')&&
- folderRow.includes('>打开</button>')&&
+ folderRow.includes('>打开</button>')&&folderRow.includes('data-archive-folder-download="203"')&&
+ folderRow.includes('>下载</button>')&&
  !folderRow.includes('<svg')&&!folderRow.includes('archive-folder-link')&&
  !folderRow.includes('data-archive-id=')&&!folderRow.includes('type="checkbox"'),
- 'Folder rows use plain text and the 打开 action, with no file icon or record controls');
+ 'Folder rows use a clickable name and both 打开 and 下载 without adding icons');
 assert.ok(realArchiveCtx.__companyTable.indexOf('data-archive-folder-row="203"')<
  realArchiveCtx.__companyTable.indexOf('data-archive-id="31"')&&
  realArchiveCtx.__companyNested.includes('<tbody><tr class="archive-folder-row"')&&
@@ -563,11 +571,15 @@ assert.ok(realArchiveCtx.__companyTable.indexOf('data-archive-folder-row="203"')
  'Directories should precede records in the SAME tbody and folder-only folders show no false empty state');
 assert.ok(js.includes("body.querySelectorAll('tr[data-archive-folder-row]')")&&
  js.includes('tr.lastElementChild.before(orderCell)')&&
- css.includes('.company-business-archive .archive-folder-row'),
- 'DOM ledger decorator must align folder rows without record checkbox, sorting or ZIP actions');
+ css.includes('.company-business-archive .archive-folder-row')&&
+ js.includes("check.className='archive-folder-check'")&&
+ js.includes("check.checked=archiveSelectedFolders.has(folderId)"),
+ 'DOM ledger decorator must make folder rows selectable, but keep record delete/order controls separate');
 assert.ok(js.includes("pageHeading.querySelector('[data-archive-back=\"cards\"],[data-archive-folder-back]')"),
  'Compact ledger toolbar must preserve the back-to-parent button while opening folder rows');
-assert.ok(realArchiveCtx.__companyTable.includes('＋ 新建下级分类')&&
+assert.ok(realArchiveCtx.__companyTable.includes('data-action="archiveCreate"')&&
+ !realArchiveCtx.__companyTable.includes('data-action="archiveFolderAdd"')&&
+ !realArchiveCtx.__companyTable.includes('data-action="archiveAdd"')&&
  realArchiveCtx.__companyTable.includes('管理当前目录')&&
  JSON.stringify(Array.from(realArchiveCtx.__companyPath))==='["申报与认定","企业行标"]',
  'Arbitrary-depth navigation must preserve directory controls and full path');
@@ -600,6 +612,26 @@ assert.deepEqual(Array.from(realArchiveCtx.__companyZip.map(f=>f.id)),[302,303],
 assert.ok(realArchiveCtx.__companyZip.every(f=>f.workspace==='company'&&f.section==='achievement'&&f.ownerId===31),
  'ZIP source must be restricted to the current company record');
 assert.equal(realArchiveCtx.__emptyCompanyZip.length,0,'Unrelated categories must not leak into record ZIP');
+assert.deepEqual(Array.from(realArchiveCtx.__rootFolderZip.map(f=>f.id)),[302,303,304],
+ 'A root directory download must recursively include both its own and nested archive originals, latest only');
+assert.deepEqual(Array.from(realArchiveCtx.__innerFolderZip.map(f=>f.id)),[304],
+ 'A nested directory download must exclude originals directly owned by its parent');
+assert.deepEqual(Array.from(realArchiveCtx.__combinedZip.map(f=>f.id)),[302,303,304],
+ 'Selecting a directory and one of its records must not duplicate attachments');
+assert.deepEqual(Array.from(realArchiveCtx.__innerFolderZip[0].archiveFolderPath.map(f=>f.name)),
+ ['企业行标','2026年度'],'Recursive ZIP must preserve hierarchy relative to selected directory');
+assert.ok(js.includes("archiveSelectedFolders.add(folderId)")&&
+ js.includes("el('content').querySelectorAll('.archive-folder-check').forEach(")&&
+ js.includes("archiveChosenOriginals(selectedAnything?folders:archiveVisibleFolderIds()"),
+ 'Folder and record multi-selection must be included in toolbar ZIP export without using record deletion');
+assert.ok(js.includes("if(ev.target.closest('.archive-folder-card-check'))return;")&&
+ js.includes("const folderDownload=ev.target.closest('[data-archive-folder-download]')"),
+ 'Selecting or downloading an archive category card must never navigate into it');
+assert.ok(html.includes('id="archiveCreateDialog"')&&
+ js.includes("el('archiveCreateRecord').onclick")&&
+ js.includes("el('archiveCreateFolder').onclick")&&
+ js.includes("case 'archiveCreate':"),
+ 'One new-action dialog must offer new record or new subcategory in the current directory');
 assert.ok(js.includes("await globalThis.IPSysExport.start('zip',originals)")&&
  js.includes("target.dataset.archiveDownload")&&
  js.includes('el(\'aYear\').disabled=!companyBusiness'),
@@ -611,10 +643,9 @@ assert.ok(realArchiveCtx.__realTable.includes('data-archive-back="cards"'),
 assert.ok(realArchiveCtx.__companyTable.includes('data-archive-folder-back="1"')&&
  !realArchiveCtx.__companyCards.includes('data-archive-folder-back="1"'),
  'Nested business archives use a back-to-parent control; root has no parent');
-for(const view of [realArchiveCtx.__realTable,realArchiveCtx.__companyTable]){
- assert.ok(view.includes('data-action="archiveAdd"'),
-  'New-record action must remain available in the category toolbar');
-}
+assert.ok(realArchiveCtx.__realTable.includes('data-action="archiveAdd"')&&
+ realArchiveCtx.__companyTable.includes('data-action="archiveCreate"'),
+ 'Personal archives retain direct new record; company business archives choose the new item type');
 assert.ok(css.includes('.heading-title-row{display:flex;align-items:center;gap:8px;')&&
  css.includes('.archive-breadcrumb-back:focus-visible'),
  'Category back arrow must remain aligned and keyboard accessible');

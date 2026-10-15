@@ -146,6 +146,15 @@
       <div id="archiveExcelImport" class="project-excel-entry"><div><strong>Excel 批量导入</strong><p class="hint">下载模板填写后导入，重复记录可选择处理方式。</p></div><div class="actions"><button class="btn" type="button" id="archiveExcelTemplate">下载 Excel 模板</button><button class="btn" type="button" id="archiveExcelChoose">导入 Excel</button></div><input type="file" id="archiveExcelFile" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden></div><div class="dialogactions"><button type="button" class="btn" id="archiveCancel">取消</button><button type="submit" class="btn primary" id="archiveSave">保存资料</button></div>
     </form>
   </dialog>
+  <dialog id="archiveCreateDialog" class="input-dialog">
+    <h2>新建</h2>
+    <p class="subtle">请选择在当前分类下创建的内容。</p>
+    <div class="dialogactions wrap">
+      <button type="button" class="btn primary" id="archiveCreateRecord">新建资料</button>
+      <button type="button" class="btn" id="archiveCreateFolder">新建下级分类</button>
+      <button type="button" class="btn" id="archiveCreateCancel">取消</button>
+    </div>
+  </dialog>
   <dialog id="archiveFolderDialog" class="input-dialog project-dialog">
     <form id="archiveFolderForm">
       <h2 id="archiveFolderDialogTitle">新建下级分类</h2>
