@@ -352,7 +352,7 @@ vm.runInContext(preamble+'\n'+js.slice(archiveFirst,archiveLast)+
  "\nfunction heading(name,subtitle,actions,breadcrumbBack){return '<div class=\"breadcrumb\">'+(breadcrumbBack||'')+'</div><h1>'+name+'</h1>'+(actions||'');}"+
  "\nfunction infoRow(k,v){return k+':'+v;}"+
  "\nfunction section(name,content){return name+content;}"+
- "\nfunction businessFileCount(){return 0;}\nfunction businessFiles(kind,ownerId,section){return (globalThis.mockCertificateFiles||[]).filter(f=>f.kind===kind&&f.ownerId===ownerId&&f.section===section);}\nfunction fmtSize(size){return size+' B';}\nfunction quickExportButtons(){return 'excelExport ZIP';}\nfunction quickExportButtons(){return 'excelExport ZIP';}"+
+ "\nfunction businessFileCount(){return 0;}\nfunction businessFiles(kind,ownerId,section){return (globalThis.mockCertificateFiles||[]).filter(f=>f.kind===kind&&f.ownerId===ownerId&&f.section===section);}\nfunction quickExportButtons(){return 'excelExport ZIP';}\nfunction quickExportButtons(){return 'excelExport ZIP';}"+
  "\nspace='personal';page='academic';filterName='';filterKind='全部类型';"+
  "archiveRows={certificate:[],achievement:[],academic:["+
  "{id:21,name:'第一次兼职',category:'学术兼职',remarks:'',tags:''},"+
@@ -386,7 +386,7 @@ for(const rendered of [realArchiveCtx.__realTable,realArchiveCtx.__companyTable|
  assert.ok(rendered.includes('archive-col-order')&&rendered.includes('archive-col-action'),
   'Sort and action must have dedicated columns, in that order');
 }
-assert.ok(realArchiveCtx.__realTable.includes('<td>2 份</td><td class="archive-category-file-size">6144 B</td>'),
+assert.ok(realArchiveCtx.__realTable.includes('<td>2 份</td><td class="archive-category-file-size">6.0 KiB</td>'),
  'Category table must count each original once and total only its latest version sizes');
 assert.ok(realArchiveCtx.__realTable.includes('<span class="muted">未上传</span>'),
  'Category table should clearly show records without any attachment');
