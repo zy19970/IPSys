@@ -290,6 +290,8 @@ assert.ok(ipCtx.__ip.includes('data-ip-id="32"'),'Real IP rows must link to stor
 assert.ok(ipCtx.__ip.includes('excelExport')&&!ipCtx.__ip.includes('ledger-excel'),'One Excel button beside IP ZIP');
 assert.ok(ipCtx.__ip.includes('data-action="ipExportFolder"')&&ipCtx.__ip.includes('data-action="ipExportZip"'),'IP ledger must directly export selected records');
 assert.ok(!ipCtx.__ip.includes('选择记录附件')&&!ipCtx.__ip.includes('module-export'),'IP ledger must not render a second selection panel');
+assert.ok(ipCtx.__ip.includes('<table class="data ledger-ip-table">'),
+ 'Knowledge-property ledger needs a separate long-name-friendly column layout');
 assert.ok(ipCtx.__ip.includes('class="ledger-export-row"')&&ipCtx.__ip.includes('ledgerExportAll'),
  'IP ledger must allow selecting multiple actual records');
 assert.ok(!ipCtx.__ip.includes('仅演示'),'Real IP ledger must not use mock labels');
@@ -768,6 +770,14 @@ for(const rule of ['.data.ledger-record-table','.ledger-record-order-cell .btn',
  '.archive-tablewrap .data.ledger-record-table td:nth-child(2)',
  '.ledger-batch-delete[hidden]'])
  assert.ok(css.includes(rule),'Record table sizing / hidden delete missing '+rule);
+// Narrow the sparse IP status, right-holder and attachment columns; give name a wider track.
+for(const token of [
+ '.data.ledger-record-table.ledger-ip-table th:nth-child(3){width:30%}',
+ '.data.ledger-record-table.ledger-ip-table th:nth-child(6){width:92px}',
+ '.data.ledger-record-table.ledger-ip-table th:nth-child(7){width:128px}',
+ '.data.ledger-record-table.ledger-ip-table th:nth-child(9){width:76px}',
+ '@media(max-width:1400px)', '.data.ledger-record-table.ledger-ip-table{min-width:1060px}'
+])assert.ok(css.includes(token),'Missing IP ledger width allocation: '+token);
 // All business ledgers should show their final controls without horizontal overflow on desktop.
 assert.ok(css.includes('.data.ledger-record-table{width:100%;min-width:0;table-layout:fixed;white-space:normal}'),
  'Record tables should fill the desktop pane rather than reserve a rigid 850px width');
