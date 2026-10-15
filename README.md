@@ -1,14 +1,14 @@
 # IPSys — 资料管理系统
 
-> 当前产品/代码审查基线：2026-10-15，main@ba4fc6b0；最近成功的 Windows CI 为 [#38707956606](https://github.com/zy19970/IPSys/actions/runs/38707956606)。**V1.0 核心功能已接入并有自动回归，但仍需综合实机、数据安全和发布验收，尚未宣布正式完成。** 历史演变见 Git 提交及 [HANDOFF.md](./HANDOFF.md)。
+> **当前开发状态（2026-10-15，main@3ef17bd5）**：N1 新 SQLCipher V2 Schema、N2-01 项目/合同/IP 原生 Folder、N2-02 档案/综合资料原生 Folder 已通过对应 Windows CI（最新 [#38747066932](https://github.com/zy19970/IPSys/actions/runs/38747066932)）；N3 File、N2-03 旧业务接入、N4 前端/检索/导出尚未完成。原有 B01–P2 功能是旧 API 数据路径的过渡期基线，不表示新库全链路或 V1.0 正式验收完成。
 
-IPSys 定位为**业务化文件夹式本地资料管理器**：以个人资料长期归档为优先使用场景，公司资料独立管理；保留项目、合同、知识产权等业务字段和必要约束。系统在**同一个 SQLCipher 加密 SQLite 文件**中隔离公司/个人工作区，原件字节加密入库而非仅保存磁盘路径。使用界面是本机浏览器，文件夹体验由业务记录、分类及导出路径构成，不表示数据库已统一成文件夹表或硬盘上存在明文镜像目录。
+IPSys 定位为**业务化文件夹式本地资料管理器**，个人资料长期归档优先、公司资料独立工作区。程序采用 WinForms + 127.0.0.1 本机网页，一个 SQLCipher 加密库保存真实原件字节。2026-10-15 用户已确认 **Folder/File 统一资源物理模型**：所有业务条目及分类为带业务属性的 Folder（无版本），只有附件为 File（独立 FileId、选填属性和历史版本）。同区多个 Folder 可引用同一个 FileId，两个独立文件也可仅复用物理原件内容；查重时显示已有文件名与路径，由用户决定；公司/个人不共享物理原件。
 
-**目标架构与后续重构进度**：请先阅读 [统一资源内核重构方案](./RESOURCE_REFACTOR_PLAN.md)。该文档冻结 Folder/File 的新模型、R0–R4 小步实施、验收门槛及进度记录；不代表目标已全部落地。
+**唯一架构和开发进度依据**：[RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)。旧资料库全是测试数据，不迁移、不回填、不支持旧库兼容打开，不自动覆盖旧文件。当前新 `folders/files` Schema 与 N2 原生 Folder API 已建立，但旧页面/API/附件/MCP/Excel/搜索尚未转入 V2，后续按 N3 → N2-03 → N4 实施。
 
 ## 产品模型与页面规则（当前统一口径）
 
-从使用者角度，资料按 **资料库 → 个人/公司工作区 → 分类容器或业务模块 → 业务记录 → 附件原件** 组织；这是逻辑层级，不意味着每一级都存在相同的物理数据库表。
+从使用者角度，资料按 **资料库 → 个人/公司工作区 → 分类容器或业务模块 → 业务记录 → 附件原件** 组织。V2 将分类及业务记录统一映射到 `folders`，附件则由 `files/file_versions/file_objects/file_chunks/folder_file_links` 管理；当前旧 UI 和业务 API 尚未完成新库切换。
 
 | 概念 | 用途 | 现行表现 |
 | --- | --- | --- |
@@ -20,7 +20,7 @@ IPSys 定位为**业务化文件夹式本地资料管理器**：以个人资料�
 
 **卡片用于入口导航，表格用于多条资料管理。** 公司业务档案根层卡片只允许进入、创建一级分类、删除自建空分类，不显示选择或下载；进入后各级子目录与资料混排、持久排序，目录行名称/「打开」进入下级，资料行名称进入详情/「下载」导出原件，目录通过勾选后工具栏递归导出。公司企业资质直接进入表格；个人分类资料仍为卡片→表格→详情；项目/知识产权为业务台账→详情；综合资料维持现有记录卡片。详见 [UI_BASELINE.md](./UI_BASELINE.md)。
 
-项目可独立存在，合同只能在项目内创建；文件须依附已建业务记录；公司/个人不跨区共享原件对象。统一的是操作理解，不是取消业务字段或要求立即把所有表重构为通用文件夹表。
+项目可独立存在，合同只能在项目内创建；文件必须归属有效 Folder；公司/个人不跨区共享原件对象。统一物理 Folder 不取消各业务类型专属字段，也不意味着所有 UI 统一为一种表格或创建硬盘明文目录。
 
 ## 1. 运行与发布
 
@@ -35,6 +35,8 @@ dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-conta
 从 [Windows Actions](https://github.com/zy19970/IPSys/actions/workflows/web-windows.yml) 下载最新成功的 `IPSys-Web-win-x64` Artifact，或自行发布。2026-10-15 的基线 [CI #38673474396](https://github.com/zy19970/IPSys/actions/runs/38673474396) 显示通过。CI 结果不等于用户本机完整验收。
 
 ## 2. 当前实现的业务
+
+> 本节是**旧 UI/API 已实现的过渡期功能清单**，不表示相关业务已完整迁入 V2。N1/N2 的原生服务仅有各自独立自动测试证据。
 
 | 范围 | 已接入的真实能力 | 证据/限制 |
 | --- | --- | --- |
@@ -53,13 +55,15 @@ dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-conta
 
 现行 `BusinessFileStore.MaxFileLength` 为 **64 MiB/单文件**；用户此前的大文件本机场景反馈通过，但未记录确切字节数，**不可视为超过 2 GiB 的验证通过**。文件夹/ZIP 导出使用 Edge/Chrome 的 File System Access API；ZIP 不支持 ZIP64，需小于 4 GiB。Excel 固定模板单文件输入限制 8 MiB、最多 5000 行；合同仅能导出，不能通过 Excel 导入。无论是否复用重复字节，跨公司/个人工作区不得共享同一个物理附件对象。
 
-**数据安全验收尚未全部完成**：磁盘不足、SSD 异常拔出、退出过程、手工备份副本一致性、旧库兼容升级和超大文件的完整往返。密码修改等设置页项目尚有未接入入口。不要将这些项目写成「已支持/已验收」，不要在未取得新有效备份前删除来源文件。
+**数据安全验收尚未全部完成**：磁盘不足、SSD 异常拔出、退出过程、手工备份副本一致性、V2 版本识别/未来受控升级和超大文件的完整往返。密码修改等设置页项目尚有未接入入口。不要将这些项目写成「已支持/已验收」，不要在未取得新有效备份前删除来源文件。
 
 ## 4. 下一步与验收状态
 
-1. **产品模型与综合验收**：以本页及 [UI_BASELINE.md](./UI_BASELINE.md) 为现行交互口径，使用可丢弃 SQLCipher 库逐模块验证业务记录、目录/资料混排、点击导航、CRUD、复制转移、排序、选择和导出，以及 Excel、搜索、MCP。
-2. **数据安全专项**：按 [FREEZE_AUDIT.md](./FREEZE_AUDIT.md) 的 T01–T09 逐项验证，尤其是 64 MiB 限制与目标 2 GiB+ 的差距、SSD 故障、备份与升级。
-3. **设计/发布收尾**：将通过/失败/未测记录到 [WEB_TESTING.md](./WEB_TESTING.md)，据实完善 [DESIGN.md](./DESIGN.md)，再决定 V1.0 发布。参见 [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md)。
+1. **N3（当前下一项 N3-01）**：统一 File 上传、选填属性、历史版本、加密分块、FolderFileLink 多归属、同区身份共享/仅字节复用、同内容提示及删除引用保护。
+2. **N2-03**：等新 File 归属接口具备后，将旧业务 API、MCP、Excel 转到 V2 唯一数据源，避免旧新表双写和无归属附件。
+3. **N4**：保留冻结 UI，接通新搜索（File 属性/祖先 Folder 字段）、递归导出和默认最新版本、回收站；确认无引用后清理旧表及兼容层，完成 Windows CI、Edge/Chrome 和 T01–T09 安全实机验收，再评估发布。
+
+旧库迁移/回填已经取消，勿沿旧 R4 或直接发布路线推进。实际子任务状态和证据见 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)。
 
 ## 5. 文档索引（按职责维护）
 
@@ -69,10 +73,10 @@ dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-conta
 | [M0_DATA_DICTIONARY.md](./M0_DATA_DICTIONARY.md) | 已确认字段、类型、状态与固定 Excel 列 |
 | [UI_BASELINE.md](./UI_BASELINE.md) | 当前生效的卡片/表格、目录、导航与操作规则（历史版式见 Git 历史） |
 | [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md) | 开发进度、剩余阶段与门槛 |
-| [DESIGN.md](./DESIGN.md) | 按当前代码归纳的技术设计及未验证边界 |
-| [HANDOFF.md](./HANDOFF.md) | 新会话衔接的当前快照、运行与风险 |
+| [DESIGN.md](./DESIGN.md) | V2 新 Schema、N2 原生服务、旧业务过渡态及风险边界 |
+| [HANDOFF.md](./HANDOFF.md) | 当前 N1/N2 状态、N3 下一项与跨会话接续风险 |
 | [WEB_TESTING.md](./WEB_TESTING.md) | 人工/自动验收依据及测试记录 |
 | [EXCEL_LEDGER.md](./EXCEL_LEDGER.md)、[SEARCH.md](./SEARCH.md)、[MCP_CODEX.md](./MCP_CODEX.md) | 三个专项功能使用及验收说明 |
-| [FREEZE_AUDIT.md](./FREEZE_AUDIT.md) | 历史需求冲突与 T01–T09 技术门槛 |
+| [FREEZE_AUDIT.md](./FREEZE_AUDIT.md) | 历史需求冲突与持续有效的 T01–T09 安全门槛 |
 
 **项目真实代码和最新用户确认优先于历史说明。** 开发以 `main` 为目标分支，遵守 [AIGT-templates](https://github.com/zy19970/AIGT-templates) 的 `AGENTS.md` 与 `AI_RULES/GIT_OPERATIONS.md`。

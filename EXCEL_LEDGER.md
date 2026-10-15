@@ -1,6 +1,6 @@
 # IPSys P1 Excel 台账：当前实现与验收（2026-10-15）
 
-> **两批源码与 Windows 自动回归已经完成**：第一批 [CI #38512444768](https://github.com/zy19970/IPSys/actions/runs/38512444768)、第二批 [CI #38514681983](https://github.com/zy19970/IPSys/actions/runs/38514681983) 显示成功；2026-10-15 最新 [CI #38673474396](https://github.com/zy19970/IPSys/actions/runs/38673474396) 亦成功。用户表示 Excel 使用频率较低，**尚未单独确认桌面 Excel 全量实机验收**。项目不再「等待 Excel 第二批开发」，下一步纳入 V1.0 综合验收。
+> **两批源码与 Windows 自动回归已经完成**：第一批 [CI #38512444768](https://github.com/zy19970/IPSys/actions/runs/38512444768)、第二批 [CI #38514681983](https://github.com/zy19970/IPSys/actions/runs/38514681983) 显示成功；2026-10-15 最新 [CI #38673474396](https://github.com/zy19970/IPSys/actions/runs/38673474396) 亦成功。用户表示 Excel 使用频率较低，**尚未单独确认桌面 Excel 全量实机验收**。这些是**旧业务 API 下的实现与 CI 证据**，当前 V2 已有 N1/N2 原生 Folder，但 Excel 尚未切入新库。须等 N3 File 归属服务可用后在 N2-03 切换到唯一 V2 数据源，并于 N4 进行端到端及桌面 Excel 实机验收。
 
 ## 1. 已接入范围
 

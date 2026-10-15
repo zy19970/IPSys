@@ -12,7 +12,7 @@
 
 **物理数据模型一次定型**：folders 统一资源身份、父级、类型、section、业务属性 JSON、排序、系统根保护；files 为独立逻辑 FileId 与选填属性；file_versions 只属于 File、保留原始名称和所有版本；file_objects/file_chunks 存储实际 SQLCipher 加密字节，可在同工作区依据明确用户选择复用；folder_file_links 为 Folder 与 File 多对多。数据库使用组合外键、工作区约束、合同父项目限制、目录防环、不可覆写的历史版本，以及七个公司业务档案系统分类。
 
-**开发顺序调整为 N1 → N2 → N3 → N4**：
+**总体阶段为 N1 → N2 → N3 → N4；因 N2-03 依赖文件归属服务，当前实际剩余实施顺序为 N3 → N2-03 → N4**：
 
 1. N1 新 SQLCipher v2 Schema 与原生数据关系自动测试；新版数据库创建/打开进行版本校验。
 2. N2 让所有项目、合同、知识产权、业务档案目录及资料、综合资料直接读写 folders 及其业务属性；实现复制/移动/排序/删除恢复、合同从属业务规则，并将已有 HTTP/MCP/Excel 逐步切换到唯一数据源。
@@ -128,8 +128,8 @@ C# 后端划分：
 | N2 新 Folder 唯一业务 Store | **进行中** | 从 N2-01 开始实现直接读写新版 folders，后续依次接入归档、综合资料和原有业务 HTTP/MCP/Excel，禁止同一操作双写。 |
 | N2-01 项目/合同/IP 原生 CRUD | **完成（代码与 Windows CI）** | [功能提交 daca2561](https://github.com/zy19970/IPSys/commit/daca2561f0cd6c4d76bc5054ae61b8f22e46f48d)、[测试修正 8264e6ce](https://github.com/zy19970/IPSys/commit/8264e6ceb14b39ece60322fb767357ef4251a1bd)；[Windows CI #38743939004](https://github.com/zy19970/IPSys/actions/runs/38743939004) **success**。NativeFolderStore/NativeFolderEndpoints 直接读写 SQLCipher v2 `folders` 与 `attributes_json`，支持项目/合同/IP CRUD、软删/恢复，验证合同父项目、会话授权、跨工作区、业务属性、父级隐藏及不双写旧表。第一次 CI #38743561769 因测试构造 IpInput 少一个 Tags 参数编译失败，补齐后全通过。**旧 UI、MCP、Excel 及附件 API 尚未切换。** |
 | N2-02 业务档案目录/资料及综合资料原生 Folder CRUD | **完成（代码与 Windows CI）** | [功能提交 340102b3](https://github.com/zy19970/IPSys/commit/340102b3cb6e28a1f8882236115bc7e82beb874c)、[分类归属约束 265123fb](https://github.com/zy19970/IPSys/commit/265123fb15124ee04d73f338997d3d423088a91f)，[Windows CI #38747066932](https://github.com/zy19970/IPSys/actions/runs/38747066932) **success**。`NativeArchiveStore` 在新版 `folders` 上实现 archive_folder/archive/general 原生 CRUD；`NativeArchiveOrder` 提供目录和资料的混排持久排序、显式移动、防循环；`/api/v2/folders` 增加 section、parentId、entries/reorder/move。七个系统根、非空目录、删除恢复、资料必须属于分类、工作区和资料类别隔离及旧表不双写均有真实 SQLCipher HTTP 验收。**尚未切换旧 UI、附件/MCP/Excel；见 N2-03/N3。** |
-| N2-03 原有业务 API/MCP/Excel 与新库统一 | **待开始** | 待 N2 原生业务覆盖和 N3 文件引用接口就绪后将旧业务入口完整切换，不在旧 business_* 与正式 folders 上双写，不让新创建文件夹的附件失去归属。 |
-| N3 新 File 唯一存储与版本/共享 | **待开始** | 使用 files/file_versions/file_objects/file_chunks/folder_file_links；不再在双附件表上做旧库迁移。 |
+| N2-03 原有业务 API/MCP/Excel 与新库统一 | **待开始（依赖 N3）** | 待 N3 文件写入/引用/版本接口可用后切换旧业务入口，保证正式 `folders/files` 唯一数据源，不双写旧表，也不产生无归属附件。 |
+| N3 新 File 唯一存储与版本/共享 | **下一项：N3-01 待开始** | 按 N3-01 File 属性/加密分块/版本，N3-02 FolderFileLink 多归属/解除，N3-03 同 FileId 共享/独立 FileId 仅字节复用与跨区隔离，N3-04 同内容提示用户选择/取消清理分批开发，并增加真实 SQLCipher 回归。 |
 | N4 新库完整 UI/搜索/导出及清理 | **待开始** | 实际所有业务全走统一新库后删除停用旧表，执行完整 Windows CI 与实机验收。 |
 | R0-01 方案 MD + README 入口 | **完成：本方案入库** | 以本次 Git commit 为准 |
 | R0-02 现有/目标行为回归矩阵 | **完成（用例静态盘点）** | [测试与差异矩阵](./RESOURCE_REFACTOR_TEST_MATRIX.md) F01–F17；新 CI 尚未运行，未来目标行为在 R1–R4 验证 |
@@ -148,6 +148,6 @@ C# 后端划分：
 | R3-01～R3-04 前端与导出 | **待开始** | R2 后实施 |
 | R4-01～R4-05 存储迁移/验收 | **待开始** | 满足安全迁移门槛后实施 |
 
-每次继续：读取本文件→读取 main 和相关源码及提交历史→选进度表**第一项未完成工作**→最小改动与针对性回归→检查 CI、commit 和 main 的实际 diff→更新状态、证据与遗留问题。**有代码不等于有验收；未测不可写成通过。**
+每次继续：读取本文件→读取 main 和相关源码及提交历史→选**依赖已满足的第一项未完成工作（当前 N3-01，而非 N2-03）**→最小改动与针对性回归→检查 CI、commit 和 main 的实际 diff→更新状态、证据与遗留问题。**有代码不等于有验收；未测不可写成通过。**
 
 **最终冻结：Folder 无版本并承载业务；File 有独立版本和全部选填的检索属性；同工作区跨文件夹可共享逻辑文件；同内容必须展示文件名与已有位置并由用户决定是否复用；工作区之间不共享实际原件对象。**

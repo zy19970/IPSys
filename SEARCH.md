@@ -1,6 +1,6 @@
 # IPSys P2 当前工作区统一搜索（2026-10-15）
 
-> P2 已通过真实 SQLCipher 后端和浏览器入口实现，2026-10-15 基线 [Windows CI #38673474396](https://github.com/zy19970/IPSys/actions/runs/38673474396) 成功；**用户本机 Edge/Chrome 搜索与跳转尚未单独完成全项验收**，应纳入 [WEB_TESTING.md](./WEB_TESTING.md) 的综合验收。
+> P2 已通过真实 SQLCipher 后端和浏览器入口实现，2026-10-15 基线 [Windows CI #38673474396](https://github.com/zy19970/IPSys/actions/runs/38673474396) 成功；**用户本机 Edge/Chrome 搜索与跳转尚未单独完成全项验收**，应在 N4 切换 V2 `folders/files` 后按 [WEB_TESTING.md](./WEB_TESTING.md) 进行端到端验收。当前旧搜索 CI 不代表 V2 检索通过；新搜索需覆盖 File 选填属性及所属/祖先 Folder 的业务信息，仍不做正文 OCR。
 
 在顶部「搜索当前工作区资料」输入关键词并按 Enter。后端 `GET /api/search/{workspace}?q=...` 在**已解锁且认证通过的当前公司或个人工作区**内查询真实数据；工作区切换或页面切换后丢弃过期搜索结果。
 

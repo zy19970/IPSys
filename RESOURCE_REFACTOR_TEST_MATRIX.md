@@ -1,6 +1,6 @@
 # IPSys 统一资源内核重构：R0-02 回归与差异矩阵
 
-> 编制：2026-10-15；审查的源码基线为重构方案之前的 `main@0b70bbe4`，其后仅增加方案 Markdown 与 README。此表是**用例与现状盘点**，不代表本次已经运行 Windows 实机测试，也不代表目标功能已经实现。
+> **现行用法（2026-10-15）**：矩阵起初基于重构前 `main@0b70bbe4` 编制，R0/R1 属历史方案；当前唯一路线是全新 SQLCipher V2，N1/N2-01/N2-02 已通过各自 Windows CI，下一项是 N3-01，随后 N2-03 与 N4。旧测试库迁移、兼容、回填用例被取消，不得拿旧 API 通过作为 V2 全链路通过。历史用例内容保留供追溯，但以本文末尾 N1/N2 验收与 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md) 最新进度为准。
 > 
 > 权威目标与逐步计划见 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)，界面约束见 [UI_BASELINE.md](./UI_BASELINE.md)，历史 Windows 安全/旧库验收见 [WEB_TESTING.md](./WEB_TESTING.md)。
 
@@ -34,17 +34,17 @@
 | F08 | 只选文件可上传；说明/标签/编号/日期与版本说明全选填、以后可补 | **待实现**：系统级可选 File 属性尚未统一 | R2 测试空元数据、补充、共享 FileId 同步/内容复用独立 |
 | F09 | 附件按自己名称、选填属性、直属/祖先 Folder 的业务属性能被搜索 | **部分覆盖**：`SearchStore` 已检索当前记录/附件名 | R2/R3 增加祖先字段、可选属性、权限、跳转测试 |
 | F10 | 仅解除一个 FolderFileLink，不能删掉别处文件及需要保留的版本字节 | **部分覆盖**：已有业务链接及回收站逻辑 | R2 关联计数/恢复/永久清理压力测试 |
-| F11 | 公司/个人不可共享同一 FileObject，旧记录跨区复制仍保持独立 | **现有覆盖**：旧附件 clone 与 HTTP 检验 | R2 共享/去重及 R4 迁移后再次确认对象 ID/哈希 |
+| F11 | 公司/个人不可共享同一 FileObject，跨区复制应保留独立物理内容对象 | **旧业务 API 部分覆盖**：旧附件 clone 与 HTTP 测试 | N3/N4 在新库核验两区的 FileObject ID、原件哈希与跨区隔离，不再安排 R4 旧库迁移 |
 | F12 | 默认文件导出仅最新有效版本，选历史才导出旧版本 | **存在需修正风险**：`BusinessFileStore.List` 返回全部有效版本，前端部分调用可能直接全量导出 | R0 登记对比场景，R3 测试同组 v1/v2/v3 的项目/IP/档案及 ZIP |
 | F13 | 勾选父目录和子项按目标目录导出，不错误重复；共享文件在不同目录分别出现 | **部分覆盖**：`export-smoke.cjs`、业务档案 UI smoke | R3 加重叠文件夹/相同 FileId 不同路径、同名与取消用例 |
 | F14 | Excel 固定列、MCP 原接口、PDF Canvas、单 EXE 嵌入网页不回归 | **现有覆盖**：Windows CI 和 Node smoke | 每次源码变更运行适用 CI，R3/R4 做实机补充 |
 | F15 | 公司业务档案删除空目录时，软删除资料/回收站关系判定正确 | **部分覆盖**：`ArchiveFolderStore.DeleteEmpty` 仍需复核 | R1 构造含回收站资料的真实库测试，再决定是否改动 |
-| F16 | 旧综合资料 `attachments/chunks` 迁移到统一 File/版本，失败可中断恢复 | **待实现**：已有旧表版本补丁，不是统一文件体系 | R2/R4 用可丢弃旧库逐项对照 SHA、版本和恢复 |
+| F16 | 综合资料在 V2 中直接通过 FolderFileLink 关联 File/版本，删除/恢复和文件对象引用安全 | **待实现**：旧综合资料迁移/断点回填已从交付范围取消 | N3/N2-03 在新建 SQLCipher V2 库核验版本、字节、SHA-256、软删恢复和附件归属，不进行旧库迁移 |
 | F17 | SQLCipher 错密、防越权、突然退出、磁盘空间不足、手工备份不破坏数据 | **部分覆盖/待实机**：安全 CI 不等于故障注入 | R4 遵循 `FREEZE_AUDIT.md` T01–T09 的可恢复性门槛 |
 
-## 三、R0-03 可以开始的前提
+## 三、R0-03 历史执行前提（已经完成，并非当前入口）
 
-R0-02 的**用例盘点和现有/目标差异登记已完成**。尚未执行新 CI，未来功能对应的新行为测试要在 R1–R4 分批增加，不能一口气启用并造成旧代码 CI 假失败。
+以下是当时制定 R0-02 后的历史推进建议。R0/R1 已有相应独立 CI，后续不得按这里的旧步骤再次开始重构 Program；未完成的新 File 与前端行为按 N3/N2-03/N4 分批实施。
 
 R0-03 的首个小任务推荐**只从 `Program.cs` 抽出 `WebSmoke` 为独立的 `WebSmoke.cs`**，保持类名、路由、SQL、HTTP 报文和方法体不变；仅补齐相同 using。再在对应 Windows CI 的新提交中核对 Debug、Release、HTTP/SQLCipher、MCP 和单 EXE；CI 未完成前不能在主计划中声称 R0-03 已通过。
 
@@ -71,5 +71,7 @@ N1 验收：[Windows CI #38740628571](https://github.com/zy19970/IPSys/actions/r
 
 
 ## N2-02 原生业务档案与综合资料验收（2026-10-15）
+
+> **当前下一项**：N3-01 新 File 的选填属性、分块字节与版本读写，然后 N3-02 FolderFileLink 关联与解除、N3-03 同区 FileId 共享和独立文件仅内容复用、N3-04 查重选项及取消清理；随后 N2-03 旧业务 API/MCP/Excel 改为唯一 V2 存储，再做 N4 UI/搜索/导出/回收站。F04–F13、F16 等涉及新文件层的测试仍是未完成目标，不能因 N1 的 Schema 约束测试或旧业务功能通过而提前记为全项通过。
 
 [Windows CI #38747066932](https://github.com/zy19970/IPSys/actions/runs/38747066932) success；[功能提交 340102b3](https://github.com/zy19970/IPSys/commit/340102b3cb6e28a1f8882236115bc7e82beb874c)，[边界收尾 265123fb](https://github.com/zy19970/IPSys/commit/265123fb15124ee04d73f338997d3d423088a91f)。真实临时 SQLCipher v2 HTTP 回归覆盖七个公司业务档案系统根、目录/资料混排持久排序及陈旧列表重排拒绝、任意层级目录与成环移动拒绝、目录非空拒删与空目录删除不可恢复、档案/综合资料软删恢复、公司/个人及 section 隔离、业务档案资料禁止移至无分类虚拟根，以及原生接口不向旧表双写。此项只证明原生 Folder 业务层；旧 UI、附件、MCP、Excel 及搜索仍需 N2-03/N3/N4 统一接入。

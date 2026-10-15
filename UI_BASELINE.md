@@ -1,10 +1,10 @@
 # IPSys 资料管理系统：现行 UI 与文件夹交互基线（2026-10-15）
 
-> 当前实现参照 main@ba4fc6b0 和 [Windows CI #38707956606](https://github.com/zy19970/IPSys/actions/runs/38707956606)。本文件只描述**现在生效的界面规则和明确的操作理念**；历次 U0、10 月 14–15 日被覆盖的布局细节可从 Git 历史追溯，不再并列作为实施指令。CI 通过不等于用户本机全项验收。
+> 本文件仍是当前生效的 UI 约束。2026-10-15 新决定是全业务统一 V2 `folders/files` 数据模型，N1/N2 原生业务有独立 Windows CI；**正式网页仍沿用旧业务 API**，不能以物理存储统一为由更改已冻结的卡片/表格特例。进度见 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)。
 
 ## 1. 产品交互模型
 
-IPSys 是业务化文件夹式本地资料管理器。用户面对的是「加密资料库 → 个人/公司工作区 → 分类容器或模块 → 业务记录 → 附件」。分类容器负责分层与导航，业务记录承载属性、原件及版本；项目、合同、知识产权仍保留原来的业务数据和关系。
+IPSys 是业务化文件夹式本地资料管理器。用户面对的是「加密资料库 → 个人/公司工作区 → 分类容器或模块 → 业务记录 → 附件」。分类容器负责分层与导航，业务记录承载业务属性和附件归属；在 V2 中它们统一为 Folder，**Folder 无版本，版本只属于附件 File**；项目、合同、知识产权仍保留原来的业务数据和关系。
 
 **卡片负责较少的入口或分类导航，表格负责多条资料的查找、选择、排序与操作。** 卡片/表格是展示方式，不决定附件存在哪里；数据库仍为 SQLCipher，附件通过业务记录关联，不生成硬盘明文文件夹树。
 
@@ -49,5 +49,5 @@ IPSys 是业务化文件夹式本地资料管理器。用户面对的是「加�
 
 ## 6. 代码与验收分界
 
-公司业务档案目录及混排已有专用 SQLCipher 表和相关前后端实现；**其它业务模块的文件夹式操作是统一产品理解，不代表已改为通用文件夹 Schema**。UI 行为核对以 wwwroot/app.js、style.css 和 Windows CI 为证据；实机验收项目以 [WEB_TESTING.md](./WEB_TESTING.md) 为准。业务范围见 [REQUIREMENTS.md](./REQUIREMENTS.md)，字段见 [M0_DATA_DICTIONARY.md](./M0_DATA_DICTIONARY.md)，技术结构见 [DESIGN.md](./DESIGN.md)。
+公司业务档案混排和现有业务界面目前仍经旧 API/Store 实现；V2 已建立统一 `folders` 表和 N2 原生 Folder 操作，附件和旧前端尚待 N3/N2-03/N4 切换。统一物理资源不意味着统一更改这些业务的展示方式。UI 核对以 `wwwroot/app.js`、`style.css` 和 Windows CI 为证据；V2 端到端与用户实机验收以 [WEB_TESTING.md](./WEB_TESTING.md) 为准。业务范围见 [REQUIREMENTS.md](./REQUIREMENTS.md)，字段见 [M0_DATA_DICTIONARY.md](./M0_DATA_DICTIONARY.md)，技术结构见 [DESIGN.md](./DESIGN.md)。
 

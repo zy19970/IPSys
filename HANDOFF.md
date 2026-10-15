@@ -1,64 +1,45 @@
-# IPSys 跨会话交接（2026-10-15 最新基线）
+# IPSys 跨会话交接（2026-10-15，V2 新库主线）
 
- > 本次统一产品文档以 2026-10-15 main@ba4fc6b0 为基线；最新成功的 [Windows CI #38707956606](https://github.com/zy19970/IPSys/actions/runs/38707956606)。后续继续开发时仍需检查最新主分支提交与状态，不能把本快照当作永久最新。
+> 检查快照为 `main@3ef17bd5f7fae90c79778c066935948d11dfa18d`。继续工作时应重新检查最新 `main` 与完整提交历史；进度和权威新库架构以 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md) 为准。本交接不再要求沿旧库迁移或直接进入 V1.0 发布验收。
 
-## 产品定位与现行文件夹式交互（2026-10-15）
+## 1. 用户最终意图和冻结规则
 
-IPSys 对用户的统一理解是**带业务属性的本地文件夹管理器**，逻辑层次为「单份加密资料库 → 个人/公司工作区 → 分类容器或模块 → 业务记录 → 原件」。目录与记录分工不同：目录用于导航和下级分类，记录保存业务字段及版本原件；合同必须属于项目，知识产权保持固定类型/状态。文件夹式使用体验并不要求立即将各业务表重构成通用目录表，也不意味着在磁盘建立明文目录。
+IPSys 用户界面名称是「资料管理系统」，以**个人资料长期归档**为优先，公司资料独立工作区；单用户本地 WinForms + 127.0.0.1 Web/Edge/Chrome，单个加密 SQLCipher 资料库保存真实文件字节。Release 为依赖系统安装 .NET Desktop Runtime 8 x64 和 ASP.NET Core Runtime 8 x64 的单 EXE。
 
-公司业务档案已实现 SQLCipher 专用 archive_folders / archive_entry_order：根层为只导航的分类卡片，无勾选/下载，顶部只新建一级分类，自建空根类可安全删除；进入后所有层级均为一张**目录与资料混排表格**，统一序号、勾选、持久排序；目录行仅「打开」，资料行仅「下载」，名称均可进入；勾选目录可经工具栏递归导出全部下级原件，内层「＋ 新建」在资料/下级分类之间选择。个人档案沿用类别卡片→台账→详情，企业资质直达列表，项目/IP 直接台账，综合资料维持当前记录卡片。权威界面口径见 [UI_BASELINE.md](./UI_BASELINE.md)。
+所有分类、项目、合同、知识产权、证书、个人经历/成果和综合资料统一为 **Folder**，业务字段按类型区分；只有附件是 **File**。Folder 有业务属性与排序、没有版本；File 有稳定身份、可选属性、独立版本历史。一个 FileId 可关联同区多个 Folder，升级版本时各处同步；两个独立 FileId 可只共用加密字节而各持版本；哈希/内容相同须展示已有文件名和文件夹路径，由用户选择共享文件身份、仅复用字节、独立保存或取消。公司与个人不共享实际 FileObject，文件不可长期无归属。取消旧测试数据库迁移/兼容/回填，不覆盖旧文件。
 
-## 最新界面名称与关闭行为（2026-10-15）
+项目三类型；合同必须属于有效项目且只能从项目详情新增；知识产权七类型等结构化字段、金额显示 `0.00` 按 [M0_DATA_DICTIONARY.md](./M0_DATA_DICTIONARY.md)。不恢复自动备份、无归属文件池、正文 OCR、材料清单或自动提醒。
 
-面向用户的网页、WinForms 和历史预览界面统一显示「资料管理系统」；IPSys 仅作为仓库和程序集标识。网页右上角「关闭数据库」通过 `POST /api/lock` 释放数据库并返回登录界面，**不会终止 WinForms 或本地服务**；上传任务中拒绝关库。仅 WinForms 的「退出程序」按钮或窗口 X 才能结束应用，文件任务安全退出三选项继续由 WinForms 处理。**旧网页程序退出接口 `POST /api/exit` 已取消**。此前文档及旧会话中“网页安全退出也退出程序”的说明已被覆盖。
+## 2. 已冻结 UI
 
-## 一、任务与最终产品取向
+个人优先；公司侧栏为企业资质、业务档案、公司项目、知识产权、综合资料；个人侧栏按身份与资质、知识产权与著作、科研与合作项目、成果与奖励、学术与社会活动、其他资料划分。工作台 **3×2** 入口卡片、紧凑表格、长名称优先、勾选/序号/持久排序。公司资质直接表格；公司业务档案**根层七系统分类纯导航卡片**（无下载/勾选，自建空分类可删），内层分类与资料任意混排表格、目录仅「打开」、资料「下载」、选目录后工具栏递归导出；个人分类卡片→台账→详情；项目/IP 台账→详情；综合资料保留原卡片视图。详情与名称点击和项目合同关系遵守 [UI_BASELINE.md](./UI_BASELINE.md)。
 
-IPSys 以**个人资料长期归档和便捷取出原件**为核心，公司资料单独工作区；用户面对统一的文件夹式导航/台账/详情/原件操作，内部按需要保留不同业务模型。公司与个人使用同一个 SQLCipher 加密库的两个隔离工作区。附件必须归属业务记录，数据库保存加密的原件字节。
+网页「关闭数据库」只关库并返回登录，不结束 WinForms 和本地 HTTP 服务；仅原生窗口 X/退出按钮关闭程序，上传过程中按安全三选项处理。
 
-用户的重点是能长期管理项目、所属合同、七类知识产权、资质/证件、业务档案、个人成果/学术兼职及综合资料，完成实际增删改复制转移、原件管理、搜索、选件导出，同时允许本机 Agent 经 MCP 操作。**不要提出重复需求访谈或擅自恢复被撤销的自动提醒、多公司、材料清单、自动备份、正文 OCR 等功能。**
+## 3. 已实现的代码与尚存过渡态
 
-## 二、当前技术运行基线
+| 部分 | 实际状态 |
+| --- | --- |
+| 旧业务版本 | 真实项目/合同/IP/分类档案、业务文件版本与回收站、PDF.js Canvas、文件夹/ZIP、Excel、搜索、本机 MCP 14 项和现行 UI 均已接入旧业务 API；曾有自动回归及部分用户实机确认 |
+| R0/R1 | `Program.cs` 职责拆分及旧表 Folder 抽象/读写/复制转移已通过相应历史 CI，属临时兼容层 |
+| **N1** | `ResourceSchemaV2.cs` 创建 Folder/File/版本/物理字节/关联新库及约束， [CI #38740628571](https://github.com/zy19970/IPSys/actions/runs/38740628571) 通过 |
+| **N2-01** | `NativeFolderStore.cs`、`NativeFolderEndpoints.cs` 实现新表项目/合同/IP CRUD， [CI #38743939004](https://github.com/zy19970/IPSys/actions/runs/38743939004) 通过 |
+| **N2-02** | `NativeArchiveStore.cs`、`NativeArchiveOrder.cs` 实现新表档案/综合资料 CRUD、混排排序/移动， [CI #38747066932](https://github.com/zy19970/IPSys/actions/runs/38747066932) 通过 |
+| **N3 / N2-03 / N4** | 尚未开始，不能称作已切到唯一新库 |
 
-| 层次 | 文件/实现 | 现状 |
-| --- | --- | --- |
-| WinForms 宿主 | `LauncherForm.cs` | 用户点击按钮打开 Edge/Chrome，本地服务仅监听 `127.0.0.1`，关闭浏览器不关闭程序 |
-| Web/API | `Program.cs` | ASP.NET Core、本机临时端口、Host/Origin 校验、数据库认证 Token、会话恢复、安全退出、SQLCipher 冒烟 |
-| 数据库 | `Program.cs` 的 `Vault`、多个 `*Store.cs` | SQLCipher 真实加密，项目/合同/IP/档案/综合资料真实业务表，原件分块存入库 |
-| 主前端 | `wwwroot/index.html`、`app.js`、`style.css` | HTML/CSS/JS 作为程序集资源内嵌；`demo/ui-preview.html` 是旧预览参考 |
-| 原件 | `BusinessFiles.cs`、`GeneralStore.cs`、`RecycleStore.cs` | SHA-256、同名/版本、关联共享、回收站恢复与永久清理，B05 用户所测范围已确认 |
-| PDF | `pdf-preview.js` + 离线 `pdfjs/` | 完全替换失败的浏览器 iframe，Canvas 翻页缩放，用户反馈修复成功 |
-| 导出 | `export.js` | Edge/Chrome 目录或 ZIP，项目连同所有所属合同原件直接导出 |
-| Excel/搜索 | `ExcelLedger.cs`、`SearchStore.cs`、前端入口 | P1 两批和 P2 均已接入并经相应自动回归 |
-| MCP | `McpLocal.cs`、`MCP_CODEX.md` | 同 EXE `--mcp`、当前用户管道、14 项工具、默认需用户在系统设置手动启用 |
-| CI/发行 | `.github/workflows/web-windows.yml` | Debug + Release、SQLCipher HTTP、Node UI/导出/PDF、MCP stdio/管道测试；Release 单个 EXE、依赖外置 .NET 8 两类运行时 |
+**源码切换边界**：`Vault.CreateSchema` 仍为旧综合资料创建 `records/attachments/chunks` 再建 V2；`Program.cs` 同时注册旧路由和 `/api/v2/folders`；`app.js` 仍调用 `/api/projects`、`/api/contracts`、`/api/archives` 等；`BusinessFiles.cs` 仍使用旧 `business_file_*` 表。此时新 Folder API 可单独测试，但原有前端/附件/MCP/Excel 尚未接入；不得提前删旧 Store 或做同一操作双写。
 
-2026-10-15 最近源码基线 `6c9ae23057` 对应 [Actions #38673474396](https://github.com/zy19970/IPSys/actions/runs/38673474396) 成功。运行库需要 Windows x64 的 `Microsoft.WindowsDesktop.App 8.0.x` 和 `Microsoft.AspNetCore.App 8.0.x`。Visual Studio 可直接生成；不要把 Debug 多文件目录冒充发布包。
+## 4. 接续开发的唯一顺序
 
-## 三、确定的业务及界面规则
+1. **当前下一项：N3-01**，新 FileId、选填属性、加密字节分块与 SHA-256、原生 FileVersion/下载及原件完整性测试。
+2. N3-02 处理同区 FolderFileLink 多关联、解除关联、软删/回收站引用保护；N3-03 处理不同 FileId 仅内容复用与跨区隔离；N3-04 处理同内容包括异名查重提示、三选一与取消清理。
+3. **然后 N2-03**，在新文件归属能力完整后，分模块切换旧业务 API、MCP、Excel 到 V2 数据源；旧 API 形状可保留，不能双写。
+4. **最后 N4**，接通现有 UI、搜索 File 属性与 Folder 祖先信息、递归导出、默认最新版本、PDF/回收站，删除不再引用的旧表/兼容代码，完成 Windows CI、Edge/Chrome 用户实机和 T01–T09 安全验收。
 
-1. 公司侧栏：工作台、企业资质、业务档案、公司项目、知识产权、综合资料。公司项目统一显示科研/横向/其他类别，全部合同经公司项目页进入，只能从所属项目详情创建合同。
-2. 个人侧栏：个人工作台、身份与资质、知识产权与著作、科研与合作项目、成果与奖励、学术与社会活动、其他资料。个人优先展示；个人分类档案使用「类别卡片 → 多记录台账 → 记录详情」。
-3. 公司业务档案默认七类：申报与认定、规划与管理、汇报与宣传、会议与活动、专项工作与合作、政策与行业资料、其他业务资料，旧 company/achievement 记录仍要保留。
-4. 公司企业资质直接进入列表，编辑仅呈现名称（必填）、附件（选填）、备注（选填）；表格提供附件数量、最新附件大小和直接下载。既有 `category/tags` 旧字段不应因页面隐藏而丢失。
-5. 最新 2026-10-15 UI：工作台 3×2 简洁入口；全部业务页移除额外的顶部面包屑行；台账紧凑工具栏和表头统一；项目类型置于序号与长项目名称之间；长 IP/项目名称优先扩展；分类表头/列宽统一；批量勾选、序号与持久排序；回收站有选中项时批量永久删除变红。
-6. 导出：项目列表或详情一键导出项目及其全部合同有效附件，无需二次逐项选择；其它模块按当前勾选/筛选记录或附件导出。文件夹/ZIP 分开于 XLSX 结构化台账。历史版本在详情中显式选择。
-7. 知识产权七类型、项目三类型、合同金额 CNY `0.00` 与空值不同等模型约束均以 [M0](./M0_DATA_DICTIONARY.md) 为准。业务删除通常进入回收站，永久清理另需确认。
+旧测试数据全可丢弃，旧库不做迁移，拒绝打开旧库且不能覆盖源文件。**T08 是新版库版本识别和未来升级安全，而不是旧测试数据升级。**
 
-## 四、哪些真正通过，哪些仍然待验收
+## 5. 验收与执行规则
 
-**已有用户实机确认**：最初 WinForms 网页可上传/下载；B05 所测附件生命周期；PDF.js 预览修复；用户所测大文件场景无异常（没有提供确切大小）。
+N1/N2 通过 Windows CI 不等于整个 V2 应用已验证。旧单文件上传上限仍 64 MiB；2 GiB+ 目标、SSD 故障、磁盘耗尽、手工备份一致性、密码修改与压缩尚未完整验收，不能声称正式发布完成。不在没有包含新数据的有效外部备份时删除来源文件。
 
-**源码和自动回归已通过但未独立完成人工验收**：B06 文件夹/ZIP 边界导出、P1 Excel 两批桌面 Excel、P2 统一搜索真实浏览器、Codex MCP 完整日常交互、最近一轮 UI 细节。
-
-**不能声称已完成**：超过 2 GiB 的原件导入/导出、移动 SSD 异常拔出、磁盘耗尽、手工复制备份恢复闭环、兼容升级矩阵、密码修改入口、V1.0 正式发布验收。目前单文件上限仍为 **64 MiB**；ZIP 不支持 ZIP64（小于 4 GiB），Excel 输入 8 MiB/5000 行；不检索 PDF/Office 正文。
-
-## 五、下一次开发从哪里开始
-
-**本轮已统一产品文档与 UI 口径；下一步是 V1.0 综合验收而非增加业务模块或全面重构 Schema。** 按 [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md) 的 A→B→C 顺序，用可丢弃 SQLCipher 库覆盖根层卡片限制、目录/资料混排、旧库兼容、全模块数据往返与隔离、导出/Excel/搜索/MCP；随后验证 T01–T09，最后据实判定能否发布。详细步骤见 [WEB_TESTING.md](./WEB_TESTING.md)。
-
-处理缺陷时只修改影响文件并增加回归用例；正常默认直接推送 `main`，不为安全感额外建分支或 PR。每一项完成都要核查 Git 实际 ref 和 Actions 结果。用户明确要求操作时可直接进行代码修改，不再重复询问已经冻结的设计选项。
-
-## 六、文件与历史入口
-
-当前项目入口 [README](./README.md)，需求 [REQUIREMENTS](./REQUIREMENTS.md)，字段 [M0](./M0_DATA_DICTIONARY.md)，最新 UI [UI_BASELINE](./UI_BASELINE.md)，现行结构 [DESIGN](./DESIGN.md)，执行计划 [DEVELOPMENT_PLAN](./DEVELOPMENT_PLAN.md)，验收 [WEB_TESTING](./WEB_TESTING.md)，专项 [Excel](./EXCEL_LEDGER.md) / [Search](./SEARCH.md) / [MCP](./MCP_CODEX.md)。旧版跨平台探索方案、旧阶段进度与界面预览保存在 Git 历史或 `demo/ui-preview.html`，不要当成当下已批准的工作项。
+按 AIGT-templates 的 `AGENTS.md` 与 `AI_RULES/GIT_OPERATIONS.md` 工作，先核对主分支完整提交历史和当前源码，明确子任务后最小改动、针对性测试、直接提交 `main`、检查 CI 和 ref，并更新 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md) 的进度证据与 [RESOURCE_REFACTOR_TEST_MATRIX.md](./RESOURCE_REFACTOR_TEST_MATRIX.md) 的状态。需求与 UI 分别见 [REQUIREMENTS.md](./REQUIREMENTS.md)、[UI_BASELINE.md](./UI_BASELINE.md)，实机记录见 [WEB_TESTING.md](./WEB_TESTING.md)。
