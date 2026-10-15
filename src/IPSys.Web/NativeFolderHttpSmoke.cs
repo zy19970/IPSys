@@ -45,7 +45,7 @@ static class NativeFolderHttpSmoke
         Check(details.GetProperty("businessData").GetProperty("amount")
             .GetString()=="20.00","contract metadata");
         var ip=new IpInput("V2专利"+suffix,"发明专利","已申请",
-            null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null);
+            null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null);
         long patent=await Created(await client.PostAsJsonAsync("/api/v2/folders/personal/ip",
             new FolderMutationInput(Ip:ip)));
         Check(patent>0,"IP");
