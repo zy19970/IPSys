@@ -112,6 +112,7 @@ if (smoke)
 {
     try
     {
+        FolderModelSmoke.Run();
         await WebSmoke.Run(address);
         string? smokeReport = Environment.GetEnvironmentVariable("IPSYS_SMOKE_REPORT");
         if (!string.IsNullOrWhiteSpace(smokeReport))
