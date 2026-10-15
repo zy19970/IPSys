@@ -137,7 +137,7 @@ static class NativeIpFileHttpSmoke
             $"/api/v2/folders/company/ip/{ip}",
             new FolderMutationInput(Ip:new IpInput("修改的IP原件"+key,
                 "发明专利","已申请",null,null,null,null,null,null,null,null,
-                null,null,null,null,null,null,null,null))))
+                null,null,null,null,null,null,null,null,null))))
             edit.EnsureSuccessStatusCode();
         Check((await client.GetFromJsonAsync<JsonElement>(fileUrl))
                  .GetProperty("versions").GetArrayLength()==3,
