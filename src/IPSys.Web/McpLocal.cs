@@ -10,7 +10,7 @@ using System.Net.Http.Headers;
 // over stdio. Only the already running WinForms host can execute operations.
 // The pipe is restricted to the current Windows user; no password, HTTP token,
 // decrypted database, or static TCP listener is exposed to the MCP process.
-static class McpLocal
+static partial class McpLocal
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private static readonly string PipeName = "IPSys-MCP-" +
@@ -29,8 +29,10 @@ static class McpLocal
             type="object",properties,required,additionalProperties=false
         }};
     private static readonly string[] Workspaces=["company","personal"];
-    internal static object[] Tools()=>
-    [
+    internal static object[] Tools()
+    {
+        object[] legacy=
+        [
         Tool("list_projects","列出指定工作区当前有效项目。",new(){
             ["workspace"]=Field("string","工作区：company 公司；personal 个人",Workspaces)
         },["workspace"]),
@@ -157,7 +159,31 @@ static class McpLocal
             ["group_id"]=Field("string","存在多个同名原件时，更新指定组的身份 ID"),
             ["duplicate_mode"]=Field("string","物理字节保留独立或显式复用",["independent","reuse"])
         },["workspace","kind","owner_id","paths"])
-    ];
+        ];
+        // Keep legacy tool contracts intact until N2-03 endpoint migration.
+        // Add explicitly named V2 tools with the same field schemas; never
+        // direct one agent action to both the old and the new resource tables.
+        var supported=new HashSet<string>(StringComparer.Ordinal)
+        {
+            "list_projects","create_project","update_project","delete_project",
+            "list_contracts","create_contract","delete_contract",
+            "list_ips","create_ip","update_ip","delete_ip"
+        };
+        var native=legacy.Where(tool=>supported.Contains((string)tool.GetType()
+                .GetProperty("name")!.GetValue(tool)!))
+            .Select(tool=>
+            {
+                var type=tool.GetType();
+                return (object)new
+                {
+                    name="v2_"+(string)type.GetProperty("name")!.GetValue(tool)!,
+                    description="SQLCipher V2 新库操作，仅写入 folders，不写旧业务表。 "+
+                        (string)type.GetProperty("description")!.GetValue(tool)!,
+                    inputSchema=type.GetProperty("inputSchema")!.GetValue(tool)!
+                };
+            }).ToArray();
+        return [..legacy,..native];
+    }
 
     private static object Success(JsonElement id,object value)=>new {jsonrpc="2.0",id,result=value};
     private static object Error(JsonElement id,int code,string msg)=>new {
@@ -378,6 +404,8 @@ static class McpLocal
         using var client=new HttpClient {BaseAddress=new Uri(address),Timeout=TimeSpan.FromMinutes(10)};
         client.DefaultRequestHeaders.TryAddWithoutValidation("X-IPSys-Token",vault.SessionToken);
         string baseProject="/api/projects/"+workspace;
+        if(name.StartsWith("v2_",StringComparison.Ordinal))
+            return await ExecuteNativeAsync(client,workspace,name[3..],args);
         switch(name)
         {
             case "list_projects":

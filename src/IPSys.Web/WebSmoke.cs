@@ -402,6 +402,8 @@ static class WebSmoke
         var trash=await client.GetFromJsonAsync<List<RecycleItem>>("/api/trash/company");
         if(trash==null||!trash.Any(x=>x.Kind=="project"&&x.Id==project))
             throw new IOException("MCP 删除未进入回收站。");
+        // V2 MCP tools are separate from legacy names: no dual-write on mutation.
+        await NativeMcpSmoke.VerifyAsync(client);
         (await client.PostAsJsonAsync("/api/mcp",new McpAccessInput(false)))
             .EnsureSuccessStatusCode();
         rejected=false;
@@ -412,6 +414,14 @@ static class WebSmoke
         }
         catch(IOException ex)when(ex.Message.Contains("MCP 未授权")){rejected=true;}
         if(!rejected)throw new IOException("关闭 MCP 后 Agent 仍然能查询资料。");
+        rejected=false;
+        try
+        {
+            await McpLocal.RunSmokeToolAsync("v2_list_projects",
+                System.Text.Json.JsonSerializer.SerializeToElement(new {workspace="company"}));
+        }
+        catch(IOException ex)when(ex.Message.Contains("MCP 未授权")){rejected=true;}
+        if(!rejected)throw new IOException("MCP 关闭后不得读取 V2 资料。");
     }
 
     public static async Task Run(string address)
