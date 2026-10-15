@@ -108,9 +108,9 @@ const companyHome=dashboardContext.companyDashboard;
 assert.ok(personalHome.includes('<h1>个人工作台</h1>')&&companyHome.includes('<h1>工作台</h1>'),
  'Dashboard heading must match the current workspace');
 assert.equal((personalHome.match(/class="choice dashboard-choice"/g)||[]).length,6,
- 'Personal workbench should show six direct category cards');
+ 'Personal workbench should show six direct category cards (desktop 3 columns × 2 rows)');
 assert.equal((companyHome.match(/class="choice dashboard-choice"/g)||[]).length,5,
- 'Company workbench should show five direct category cards');
+ 'Company workbench should show five direct category cards (desktop 3 + 2)');
 for(const key of ['certificate','ip','researchProject','achievement','academic','general'])
  assert.ok(personalHome.includes('data-nav="'+key+'"'),'Personal workbench lost '+key);
 for(const key of ['certificate','achievement','researchProject','ip','general'])
@@ -122,9 +122,12 @@ for(const home of [personalHome,companyHome]){
   !home.includes('当前工作区资料概况')&&!home.includes('metriclabel'),
   'Remove the redundant statistics and workspace-status panels');
 }
-for(const rule of ['.dashboard-home{width:100%;max-width:1050px;margin:0 auto;',
- '.dashboard-choice-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}',
- '.dashboard-choice{min-height:184px;padding:23px 24px;gap:8px}',
+for(const rule of ['.dashboard-home{width:100%;max-width:1180px;margin:0 auto;',
+ '.dashboard-choice-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}',
+ '.dashboard-choice{min-height:164px;padding:19px 22px;gap:8px}',
+ '@media(max-width:1150px){',
+ '.dashboard-choice-grid{grid-template-columns:repeat(2,minmax(0,1fr))}',
+ '@media(max-width:780px){',
  '.dashboard-choice-grid{grid-template-columns:1fr;gap:12px}'])
  assert.ok(css.includes(rule),'Simple workbench card CSS missing: '+rule);
 
