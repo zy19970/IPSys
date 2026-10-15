@@ -110,7 +110,7 @@ C# 后端划分：
 | --- | --- | --- |
 | R0-01 方案 MD + README 入口 | **完成：本方案入库** | 以本次 Git commit 为准 |
 | R0-02 现有/目标行为回归矩阵 | **完成（用例静态盘点）** | [测试与差异矩阵](./RESOURCE_REFACTOR_TEST_MATRIX.md) F01–F17；新 CI 尚未运行，未来目标行为在 R1–R4 验证 |
-| R0-03 不改行为的代码拆分 | **进行中（首批已提交，待新 CI 验证）** | 先将 `WebSmoke` 与 `PausedUploadContent` 从 `Program.cs` 移入独立的 `WebSmoke.cs`，保持原方法不变；后续继续按测试结果细分 |
+| R0-03 不改行为的代码拆分 | **进行中（首批拆分已通过新 CI）** | [提交 14d453fd](https://github.com/zy19970/IPSys/commit/14d453fd6766e9b624c224e867bb67c6d65b6760)：`WebSmoke`、`PausedUploadContent` 移入独立文件，原方法逐字一致；[Windows CI #38722481324](https://github.com/zy19970/IPSys/actions/runs/38722481324) **success**（Debug/Release、SQLCipher HTTP、Node、MCP、单 EXE）。**下一步：R0-03 第二批按职责抽取 Store/路由，仍不改接口** |
 | R1-01～R1-04 Folder 统一 | **待开始** | R0 阶段通过后实施 |
 | R2-01～R2-05 File/版本/共享 | **待开始** | R1 后实施 |
 | R3-01～R3-04 前端与导出 | **待开始** | R2 后实施 |
