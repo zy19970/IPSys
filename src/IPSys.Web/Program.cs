@@ -96,6 +96,7 @@ ProjectContractEndpoints.Map(app, Fail);
 FolderBrowserEndpoints.Map(app, Fail);
 FolderCommandEndpoints.Map(app, Fail);
 NativeFolderEndpoints.Map(app, Fail);
+NativeFileEndpoints.Map(app, Fail);
 
 GeneralRecordEndpoints.MapChanges(app, Fail);
 
@@ -117,6 +118,7 @@ if (smoke)
     {
         FolderModelSmoke.Run();
         ResourceSchemaV2Smoke.Run();
+        NativeFileStoreSmoke.Run();
         FolderProviderSmoke.Run();
         ArchiveFolderProviderSmoke.Run();
         await WebSmoke.Run(address);
