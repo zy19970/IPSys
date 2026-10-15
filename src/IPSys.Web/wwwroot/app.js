@@ -1321,7 +1321,7 @@ function trashPage(){
  '<button class="btn" data-nav="settings">返回设置</button>')+
  '<section class="white"><div class="tabletools"><b>已删除 '+trashRows.length+' 条</b><div class="actions">'+
  '<button class="btn" data-action="trashRestoreSelected">恢复勾选</button>'+
- '<button class="btn" data-action="trashPurgeSelected">永久删除勾选</button></div></div>'+
+ '<button type="button" class="btn trash-purge-selected" data-action="trashPurgeSelected" disabled>永久删除</button></div></div>'+
  '<p class="hint">恢复项目将一并恢复其所属合同与关联附件；永久删除不可撤销。仅支持逐条或勾选多条，不提供一键清空。</p>'+
  '<div class="tablewrap"><table class="data"><thead><tr><th><input type="checkbox" id="trashAll"></th>'+
  '<th>类别</th><th>名称</th><th>原归属</th><th>操作</th></tr></thead><tbody>'+
@@ -1331,6 +1331,22 @@ function trashPage(){
  '<button class="btn btn-sm" data-trash-restore="'+i+'">恢复</button>'+
  '<button class="btn btn-sm" data-trash-purge="'+i+'">永久删除</button></td></tr>').join(''):
  '<tr><td colspan="5" class="empty">回收站为空</td></tr>')+'</tbody></table></div></section>';
+}
+// The irreversible action is highlighted only when one or more rows are selected.
+function syncTrashPurgeSelection(){
+ const content=el('content');
+ const checks=[...content.querySelectorAll('.trashcheck')];
+ const selected=checks.filter(box=>box.checked).length;
+ const purge=content.querySelector('[data-action="trashPurgeSelected"]');
+ if(purge){
+  purge.disabled=selected===0;
+  purge.classList.toggle('is-active',selected>0);
+ }
+ const all=content.querySelector('#trashAll');
+ if(all){
+  all.checked=checks.length>0&&selected===checks.length;
+  all.indeterminate=selected>0&&selected<checks.length;
+ }
 }
 async function changeTrash(operation,indices){
  const items=[...new Set(indices)].map(i=>trashRows[i]).filter(Boolean)
@@ -1942,7 +1958,8 @@ el('content').addEventListener('change',async ev=>{
  }
  if(ev.target.matches('.ledger-record-row,.ledger-record-all'))syncLedgerSelection();
  if(ev.target.id==='trashAll')
-  document.querySelectorAll('.trashcheck').forEach(c=>c.checked=ev.target.checked);
+  el('content').querySelectorAll('.trashcheck').forEach(c=>c.checked=ev.target.checked);
+ if(ev.target.id==='trashAll'||ev.target.matches('.trashcheck'))syncTrashPurgeSelection();
  if(ev.target.id==='checkAll')document.querySelectorAll('.rowcheck').forEach(c=>c.checked=ev.target.checked);
  if(ev.target.matches('.rowcheck')||ev.target.id==='checkAll'){
   selected=new Set([...document.querySelectorAll('.rowcheck:checked')].map(x=>x.value));

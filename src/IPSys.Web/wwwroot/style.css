@@ -406,3 +406,7 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
  .archive-category-ledger .compact-ledger-filters>.field.wide{flex:1 1 100%;max-width:none}
  .archive-category-ledger .compact-ledger-actions{padding-left:12px}
 }
+
+/* Trash: destructive batch action is red only for a nonempty selection. */
+.btn.trash-purge-selected.is-active:not(:disabled){background:#bd3446;border-color:#bd3446;color:#fff}
+.btn.trash-purge-selected.is-active:not(:disabled):hover{background:#9e2537;border-color:#9e2537}

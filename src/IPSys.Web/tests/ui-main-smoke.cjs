@@ -714,6 +714,47 @@ vm.runInContext(preamble+
 assert.ok(!fileListCtx.__onlyVersion.includes('<small>v2'),'Single surviving revision must not show v2');
 assert.ok(fileListCtx.__history.includes('<small>v2'),'Two effective revisions must show version history');
 
+// Trash bulk purge becomes red only when records are selected; no selection is inert.
+assert.ok(js.includes('data-action="trashPurgeSelected" disabled>永久删除</button>'),
+ 'Trash bulk purge must use the concise label and start disabled');
+assert.ok(!js.includes('永久删除勾选'),'Outdated trash purge label must not remain');
+assert.ok(css.includes('.btn.trash-purge-selected.is-active:not(:disabled){background:#bd3446;'),
+ 'Selected trash purge must use a red destructive style');
+assert.ok(css.includes('.btn.trash-purge-selected.is-active:not(:disabled):hover{'),
+ 'Selected trash purge should have its own hover style');
+assert.ok(js.includes("if(ev.target.id==='trashAll'||ev.target.matches('.trashcheck'))syncTrashPurgeSelection()"),
+ 'Both row selection and select-all must update the purge state');
+// Exercise the actual selection helper with a small DOM-like fixture.
+const trashFunctionStart=js.indexOf('function syncTrashPurgeSelection(){');
+const trashFunctionEnd=js.indexOf('async function changeTrash(',trashFunctionStart);
+assert.ok(trashFunctionStart>0&&trashFunctionEnd>trashFunctionStart,'Missing trash selection helper');
+const trashChecks=[{checked:false},{checked:false}];
+const trashHeader={checked:false,indeterminate:false};
+const trashPurge={disabled:true,classes:new Set(),classList:{toggle(name,on){
+ if(on)trashPurge.classes.add(name);else trashPurge.classes.delete(name);
+}}};
+const trashContent={
+ querySelectorAll(selector){return selector==='.trashcheck'?trashChecks:[]},
+ querySelector(selector){return selector==='#trashAll'?trashHeader:
+  selector==='[data-action="trashPurgeSelected"]'?trashPurge:null}
+};
+const trashContext=vm.createContext({content:trashContent});
+vm.runInContext('function el(){return content;}\n'+js.slice(trashFunctionStart,trashFunctionEnd),trashContext);
+function verifyTrashSelection(){vm.runInContext('syncTrashPurgeSelection()',trashContext);}
+verifyTrashSelection();
+assert.equal(trashPurge.disabled,true,'No trash selection disables the irreversible action');
+assert.equal(trashPurge.classes.has('is-active'),false,'Unselected purge must not turn red');
+trashChecks[0].checked=true;verifyTrashSelection();
+assert.equal(trashPurge.disabled,false,'Selecting one trash row enables purge');
+assert.equal(trashPurge.classes.has('is-active'),true,'Selecting one trash row makes purge red');
+assert.equal(trashHeader.indeterminate,true,'A partial selection should make the header indeterminate');
+trashChecks[1].checked=true;verifyTrashSelection();
+assert.equal(trashHeader.checked,true,'Selecting all trash rows should check the header');
+assert.equal(trashHeader.indeterminate,false);
+trashChecks.forEach(box=>box.checked=false);verifyTrashSelection();
+assert.equal(trashPurge.disabled,true,'Clearing selection disables purge again');
+assert.equal(trashPurge.classes.has('is-active'),false,'Clearing selection restores neutral styling');
+assert.equal(trashHeader.checked,false);
 // B05b: real trash and same-workspace attachment association.
 assert.ok(html.includes('id="businessAssocDialog"'));
 assert.ok(html.includes('id="businessAssocForm"'));
