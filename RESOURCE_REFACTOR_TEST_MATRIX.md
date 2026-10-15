@@ -61,3 +61,6 @@ R0-03 第二步才考虑提取 `ProjectStore`/`Vault` 与端点注册。涉及 `
 ## 2026-10-15 新库方向更新
 
 用户确认旧库只有测试数据，无需迁移或兼容。F01–F17 测试目标继续保留，但旧表迁移与断点恢复检查不再作为新库交付门槛。新增 N1：新 SQLCipher v2 Folders/Files/FileVersions/FileObjects/FolderFileLinks 外键、工作区隔离、父级防环及系统根保护；N2/N3 按新物理库直接读写，全量 API/MCP/Excel/前端验证后再淘汰旧 Store。
+
+
+N1 验收：[Windows CI #38740628571](https://github.com/zy19970/IPSys/actions/runs/38740628571) success。已通过的只是新库真实 SQLCipher 资源关系约束与封存原件不可变保护；F01–F17 原业务切换、新共享文件工作流和搜索/导出仍按 N2～N4 继续验收。
