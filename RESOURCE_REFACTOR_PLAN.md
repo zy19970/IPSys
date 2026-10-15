@@ -114,7 +114,7 @@ C# 后端划分：
 | R1-01 ResourceRef / Folder DTO / 全局类型策略 | **完成（代码与 Windows CI）** | [模型提交 65136317](https://github.com/zy19970/IPSys/commit/65136317dd01ff8226f117315ffb248faa5a29fd)、[修正提交 2447df8e](https://github.com/zy19970/IPSys/commit/2447df8e35f5fddeeea317881b715d4a65ad6987)，[Windows CI #38728218664](https://github.com/zy19970/IPSys/actions/runs/38728218664) **success**；`FolderModelSmoke` 覆盖身份隔离、工作区、档案分段、项目/合同强制父级、自父级禁止。未迁移 Schema 或重写 API。 |
 | R1-02 项目/合同/IP Folder Provider | **完成（代码与 Windows CI）** | [提交 a3762240](https://github.com/zy19970/IPSys/commit/a3762240f43ac2d7f300105fdbb456ee21f47bd0)，[Windows CI #38729428320](https://github.com/zy19970/IPSys/actions/runs/38729428320) **success**；只读身份、合同父级、业务属性与工作区/软删 SQLCipher 回归通过，旧接口/Schema 未改。 |
 | R1-03 档案/综合资料/普通目录 Folder Provider | **完成（代码与 Windows CI）** | [提交 af084739](https://github.com/zy19970/IPSys/commit/af0847392e106cf3bcb4cf028137d359aeda811b)，[Windows CI #38730348327](https://github.com/zy19970/IPSys/actions/runs/38730348327) **success**；公司档案根层/子目录、资料归属及企业/个人资料和综合记录均通过临时 SQLCipher 只读适配回归。 |
-| R1-04-01 公共树导航与只读 HTTP | **待开始（下一项）** | 将六类 Provider 组合为树浏览服务；实现统一文件夹读取入口，按 workspace/type/parent 校验，沿用档案混排排序；增加授权、无效父级、跨工作区 HTTP 回归。 |
+| R1-04-01 公共树导航与只读 HTTP | **已提交，等待新 Windows CI** | 新增 `FolderBrowserService` 按虚拟模块根/真实父级导航六类 Folder；公司业务档案目录/资料混排复用 `ArchiveEntryOrderStore`。新增 `/api/folders/{workspace}/children` 和 `/detail/{kind}/{id}` 只读 HTTP、会话/工作区/父级检查；`FolderBrowserSmoke` 用临时真实 SQLCipher HTTP 往返测试授权、跨区、非法父级、排序及删除后不可导航。旧接口不变。 |
 | R1-04-02 公共 Folder CRUD 与业务规则适配 | **待开始** | 在已通过的只读层基础上逐类代理旧 Store 写入，保护合同必须属于项目、系统根不可删、软删/恢复；现有旧接口不破坏。 |
 | R1-04-03 公共移动复制排序与旧 API 适配 | **待开始** | 保留业务跨工作区复制约束、目录不可成环、真实排序与批量操作；真实旧库回归后再评估切入 R2。 |
 | R2-01～R2-05 File/版本/共享 | **待开始** | R1 后实施 |

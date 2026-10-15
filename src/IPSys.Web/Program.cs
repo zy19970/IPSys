@@ -93,6 +93,7 @@ ExcelEndpoints.Map(app, Fail);
 ArchiveEndpoints.Map(app, Fail);
 
 ProjectContractEndpoints.Map(app, Fail);
+FolderBrowserEndpoints.Map(app, Fail);
 
 GeneralRecordEndpoints.MapChanges(app, Fail);
 

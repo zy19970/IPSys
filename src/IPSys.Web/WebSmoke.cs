@@ -1384,6 +1384,7 @@ static class WebSmoke
             await VerifyExcelAsync(client);
             await VerifySecondExcelBatchAsync(client);
             await SearchSmoke.VerifyAsync(client);
+            await FolderBrowserSmoke.VerifyAsync(client);
             using var finalLock = await client.PostAsync("/api/lock", null);
             finalLock.EnsureSuccessStatusCode();
 
