@@ -350,3 +350,18 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 @media(max-width:1200px){
  .data.ledger-record-table.ledger-ip-table{min-width:1060px}
 }
+
+/* Project register: names can be very long; short fields should not reserve equal-width tracks. */
+.data.ledger-record-table.ledger-project-table th:nth-child(4){width:116px}
+.data.ledger-record-table.ledger-project-table th:nth-child(5){width:160px}
+.data.ledger-record-table.ledger-project-table th:nth-child(6){width:126px}
+.data.ledger-record-table.ledger-project-table th:nth-child(7){width:74px}
+@media(max-width:1300px){
+ .data.ledger-record-table.ledger-project-table th:nth-child(4){width:108px}
+ .data.ledger-record-table.ledger-project-table th:nth-child(5){width:145px}
+ .data.ledger-record-table.ledger-project-table th:nth-child(6){width:120px}
+ .data.ledger-record-table.ledger-project-table th:nth-child(7){width:68px}
+}
+@media(max-width:1200px){
+ .data.ledger-record-table.ledger-project-table{min-width:1050px}
+}
