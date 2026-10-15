@@ -98,6 +98,7 @@ FolderCommandEndpoints.Map(app, Fail);
 NativeFolderEndpoints.Map(app, Fail);
 NativeFileEndpoints.Map(app, Fail);
 NativeFileLinkEndpoints.Map(app, Fail);
+NativeFileCopyEndpoints.Map(app, Fail);
 
 GeneralRecordEndpoints.MapChanges(app, Fail);
 
@@ -121,6 +122,7 @@ if (smoke)
         ResourceSchemaV2Smoke.Run();
         NativeFileStoreSmoke.Run();
         NativeFileLinkStoreSmoke.Run();
+        NativeFileCopyStoreSmoke.Run();
         FolderProviderSmoke.Run();
         ArchiveFolderProviderSmoke.Run();
         await WebSmoke.Run(address);

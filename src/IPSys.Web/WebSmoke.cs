@@ -1393,6 +1393,7 @@ static class WebSmoke
             await NativeArchiveHttpSmoke.VerifyAsync(client);
             await NativeFileHttpSmoke.VerifyAsync(client);
             await NativeFileLinkHttpSmoke.VerifyAsync(client);
+            await NativeFileCopyHttpSmoke.VerifyAsync(client);
             using var finalLock = await client.PostAsync("/api/lock", null);
             finalLock.EnsureSuccessStatusCode();
 

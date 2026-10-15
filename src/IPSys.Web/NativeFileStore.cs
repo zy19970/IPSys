@@ -17,7 +17,7 @@ static class NativeFileStore
     public const long MaxFileLength=64L*1024*1024;
     private const int ChunkSize=1024*1024;
 
-    private static string ValidName(string? name)
+    internal static string ValidName(string? name)
     {
         name=name?.Trim()??"";
         if(name.Length is 0 or >240 || name is "." or ".." ||
