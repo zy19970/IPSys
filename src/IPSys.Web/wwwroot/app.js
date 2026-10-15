@@ -221,6 +221,8 @@ function compactBusinessListToolbar(content){
  if(!pageHeading||!filterPanel||!ledger?.classList.contains('white')||!ledgerTools||!filterLine||!title)return;
  const toolbar=document.createElement('div');toolbar.className='compact-ledger-toolbar';
  const titleGroup=document.createElement('div');titleGroup.className='compact-ledger-title';
+ const back=pageHeading.querySelector('[data-archive-back="cards"]');
+ if(back)titleGroup.append(back);
  titleGroup.append(title);
  const count=ledgerTools.querySelector('b');
  if(count){
@@ -259,7 +261,9 @@ function compactBusinessListToolbar(content){
 }
 
 function heading(name,subtitle,actions='',breadcrumbBack=''){
- return `<div class="breadcrumb${breadcrumbBack?' archive-table-breadcrumb':''}">${breadcrumbBack}${space==='company'?'公司资料':'个人资料'} / ${escapeHtml(name)}</div><div class="heading"><div><h1>${escapeHtml(name)}</h1><div class="subtitle">${subtitle}</div></div><div class="actions">${actions}</div></div>`;
+ const nameHtml='<h1>'+escapeHtml(name)+'</h1>';
+ const titleHtml=breadcrumbBack?'<div class="heading-title-row">'+breadcrumbBack+nameHtml+'</div>':nameHtml;
+ return '<div class="heading"><div>'+titleHtml+'<div class="subtitle">'+subtitle+'</div></div><div class="actions">'+actions+'</div></div>';
 }
 function pill(text){return `<span class="pill">${escapeHtml(text)}</span>`;}
 function stamp(){return '<span class="mockflag">界面示例 · 未接入业务</span>';}
@@ -1060,8 +1064,7 @@ function companyCertificateAttachment(recordId){
 function realCompanyCertificateList(){
  const all=archiveRows.certificate||[],rows=companyCertificateRows();
  const checkedCount=rows.filter(r=>certificateSelected.has(r.id)).length;
- return '<div class="breadcrumb certificate-breadcrumb">公司资料 / 企业资质</div>'+
- '<section class="white certificate-ledger">'+
+ return '<section class="white certificate-ledger">'+
  '<div class="certificate-toolbar">'+
  '<div class="certificate-toolbar-title"><h1>企业资质</h1><span>共 '+all.length+' 条记录</span></div>'+
  '<div class="certificate-toolbar-filter">'+
@@ -1137,7 +1140,7 @@ function realArchiveTable(k,category){
  const rows=all.filter(r=>[r.name,r.remarks,r.tags].join(' ').toLowerCase().includes(filterName.toLowerCase()));
  return heading(category,archiveSectionName(k)+' / 分类台账 · 同一类别可归档多条记录',
  '<button class="btn primary" data-action="archiveAdd">＋ 新建记录</button>',
- '<button type="button" class="archive-breadcrumb-back" data-archive-back="cards">← 返回类别卡片</button>')+
+ '<button type="button" class="archive-breadcrumb-back" data-archive-back="cards" aria-label="返回类别卡片" title="返回类别卡片">←</button>')+
  
  '<section class="white filter"><div class="filterline"><div class="field wide"><label>资料名称</label><input id="filterSearch" placeholder="搜索此类别下的记录"></div>'+
  '<button class="btn primary" data-action="filter">查询</button><button class="btn" data-action="clearFilter">重置</button></div></section>'+

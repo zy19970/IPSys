@@ -411,7 +411,7 @@ const archiveFirst=js.indexOf('const archiveSections=['),archiveLast=js.indexOf(
 assert.ok(archiveFirst>=0&&archiveLast>archiveFirst,'Archive render functions missing');
 const realArchiveCtx=vm.createContext({sessionStorage:{getItem:()=>null},document:exportDocument});
 vm.runInContext(preamble+'\n'+js.slice(archiveFirst,archiveLast)+
- "\nfunction heading(name,subtitle,actions,breadcrumbBack){return '<div class=\"breadcrumb\">'+(breadcrumbBack||'')+'</div><h1>'+name+'</h1>'+(actions||'');}"+
+ "\nfunction heading(name,subtitle,actions,breadcrumbBack){return '<div class=\"heading\"><div><div class=\"heading-title-row\">'+(breadcrumbBack||'')+'<h1>'+name+'</h1></div></div></div>'+(actions||'');}"+
  "\nfunction infoRow(k,v){return k+':'+v;}"+
  "\nfunction section(name,content){return name+content;}"+
  "\nfunction businessFileCount(){return 0;}\nfunction businessFiles(kind,ownerId,section){return (globalThis.mockCertificateFiles||[]).filter(f=>f.kind===kind&&f.ownerId===ownerId&&f.section===section);}\nfunction quickExportButtons(){return 'excelExport ZIP';}\nfunction quickExportButtons(){return 'excelExport ZIP';}"+
@@ -484,16 +484,16 @@ assert.ok(realArchiveCtx.__companyTable.includes('<section class="white archive-
  realArchiveCtx.__companyTable.includes('<b>共 1 条记录</b>'),
  'Company category tables must share enterprise-certificate-style compact header');
 for(const view of [realArchiveCtx.__realTable,realArchiveCtx.__companyTable]){
- assert.ok(view.includes('<div class="breadcrumb"><button type="button" class="archive-breadcrumb-back" data-archive-back="cards">← 返回类别卡片</button>'),
-  'Category return button must appear inside the top-left breadcrumb');
+ assert.ok(view.includes('<div class="heading"><div><div class="heading-title-row"><button type="button" class="archive-breadcrumb-back" data-archive-back="cards" aria-label="返回类别卡片" title="返回类别卡片">←</button>'),
+  'Category back arrow should be beside the title, with an accessible label');
  assert.equal(view.split('data-archive-back="cards"').length-1,1,
   'The category return control must not also appear in the right-side toolbar');
  assert.ok(view.includes('data-action="archiveAdd"'),
   'New-record action must remain available in the category toolbar');
 }
-assert.ok(css.includes('.archive-table-breadcrumb{display:flex;align-items:center;gap:12px;')&&
+assert.ok(css.includes('.heading-title-row{display:flex;align-items:center;gap:8px;')&&
  css.includes('.archive-breadcrumb-back:focus-visible'),
- 'Category breadcrumb return must remain aligned and keyboard accessible');
+ 'Category back arrow must remain aligned and keyboard accessible');
 assert.ok(js.includes("label:'公司资料 / 业务档案'"));
 assert.ok(!v.personalNav.includes('业务档案'),'Personal achievements should not change');
 // Company enterprise certificates skip category cards and use the original stored records as table rows.
@@ -817,6 +817,29 @@ trashChecks.forEach(box=>box.checked=false);verifyTrashSelection();
 assert.equal(trashPurge.disabled,true,'Clearing selection disables purge again');
 assert.equal(trashPurge.classes.has('is-active'),false,'Clearing selection restores neutral styling');
 assert.equal(trashHeader.checked,false);
+// No page should reserve a separate row for paths like 公司资料 / 企业资质.
+const headingSlice=js.slice(js.indexOf('function heading('),js.indexOf('function pill('));
+const headingVM=vm.createContext({escapeHtml:value=>String(value)});
+vm.runInContext(headingSlice+
+ '\nglobalThis.plain=heading("知识产权","资料管理");'+
+ '\nglobalThis.archive=heading("身份资质","分类台账","",'+
+ '"<button data-archive-back=\\"cards\\">←</button>");',
+ headingVM);
+assert.ok(headingVM.plain.startsWith('<div class="heading">')&&
+ !headingVM.plain.includes('breadcrumb')&&!headingVM.plain.includes('公司资料 /'),
+ 'Common page heading must not contain a separate breadcrumb row');
+assert.ok(headingVM.archive.includes('<div class="heading-title-row">')&&
+ headingVM.archive.includes('data-archive-back="cards"'),
+ 'Category heading must retain its return control alongside the title');
+const certificateStart=js.indexOf('function realCompanyCertificateList(){');
+const certificateEnd=js.indexOf('function realArchiveCards(',certificateStart);
+assert.ok(certificateStart>=0&&certificateEnd>certificateStart&&
+ !js.slice(certificateStart,certificateEnd).includes('certificate-breadcrumb')&&
+ !js.slice(certificateStart,certificateEnd).includes('公司资料 / 企业资质'),
+ 'Company certificates must not output a separate path row');
+assert.ok(!css.includes('.content>.breadcrumb{')&&!css.includes('.certificate-breadcrumb{'),
+ 'Unused breadcrumb-specific CSS must be removed');
+
 // B05b: real trash and same-workspace attachment association.
 assert.ok(html.includes('id="businessAssocDialog"'));
 assert.ok(html.includes('id="businessAssocForm"'));
@@ -1048,6 +1071,7 @@ assert.ok(js.includes("if(detail?.kind==='project')return {kind:'contract',secti
    card=new CompactNode(),tools=new CompactNode(),line=new CompactNode();
   card.className='white';filter.className='white filter';
   const title=new CompactNode('h1'),count=new CompactNode('b');
+  const back=new CompactNode('button');back.dataset.archiveBack='cards';
   title.textContent=recordMode==='cards'?'业务档案':'公司项目';
   count.textContent=recordMode==='cards'?'资料类别 7 类':'业务台账 3 条记录';
   const headActions=new CompactNode(),listActions=new CompactNode();
@@ -1062,7 +1086,7 @@ assert.ok(js.includes("if(detail?.kind==='project')return {kind:'contract',secti
   const input=new CompactNode('input');
   field.lookup={label,'input,select':input};line.append(field);
   const search=new CompactNode('button');search.dataset.action='filter';line.append(search);
-  header.lookup={h1:title,'.actions':headActions};
+  header.lookup={h1:title,'.actions':headActions,'[data-archive-back="cards"]':recordMode==='cards'?back:null};
   filter.lookup={'.filterline':line};filter.nextElementSibling=card;
   tools.lookup={b:count,'.actions':listActions};
   card.lookup={':scope > .tabletools':tools};
@@ -1078,6 +1102,9 @@ assert.ok(js.includes("if(detail?.kind==='project')return {kind:'contract',secti
   assert.equal(input.getAttribute('aria-label'),'名称 / 编号','Moved search must have accessible label');
   const [titleBox,filters,actions]=card.children[0].children;
   assert.ok(titleBox.children.some(x=>x.tag==='h1'),'Original page title must survive');
+  if(recordMode==='cards')assert.ok(titleBox.children.includes(back)&&
+   titleBox.children.indexOf(back)<titleBox.children.indexOf(title),
+   'Category back arrow must stay to the left of its title after toolbar compaction');
   assert.ok(filters.children.includes(field)&&filters.children.includes(search),'Original filters/buttons must survive');
   assert.ok(actions.children.includes(create),'Original add-record command must survive');
   const exportMenu=actions.children.find(x=>x.tag==='details');
