@@ -1,6 +1,6 @@
 # IPSys 开发计划与验收进度（2026-10-15，V2 新库执行版）
 
-> **当前唯一执行依据**：[RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md) 的新 SQLCipher V2 路线（N1、N2、N3、N4）。2026-10-15 用户明确旧资料库全为测试数据，取消迁移、回填和旧库兼容；当前进度 `main@3ef17bd5`。本计划取代此前“先做 V1.0 综合验收”和旧 R4 迁移的施工顺序，但不取消正式发布前的安全验收门槛。
+> **当前唯一执行依据**：[RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md) 的新 SQLCipher V2 路线（N1、N2、N3、N4）。2026-10-15 用户明确旧资料库全为测试数据，取消迁移、回填和旧库兼容；当前实施证据截至 `main@78e33d55`。本计划取代此前“先做 V1.0 综合验收”和旧 R4 迁移的施工顺序，但不取消正式发布前的安全验收门槛。
 
 ## 1. 产品和已确认架构
 
@@ -17,13 +17,14 @@ IPSys 用户可见名称为「资料管理系统」，采用 Windows WinForms �
 | **N1 新 Schema** | **Windows CI 通过** | V2 六张核心资源表、版本识别、工作区/父子约束、历史对象写后保护；[CI #38740628571](https://github.com/zy19970/IPSys/actions/runs/38740628571) |
 | **N2-01** | **Windows CI 通过** | 项目、合同、知识产权在新 `folders` 上的原生 CRUD、软删恢复；[CI #38743939004](https://github.com/zy19970/IPSys/actions/runs/38743939004) |
 | **N2-02** | **Windows CI 通过** | 档案目录/资料、综合资料原生 CRUD，目录/资料混排排序与移动；[CI #38747066932](https://github.com/zy19970/IPSys/actions/runs/38747066932) |
-| **N3、N2-03、N4** | **未开始** | V2 File 业务、新旧接口与外围统一、旧表清理、最终验收 |
+| **N3-01** | **Windows CI 通过** | 新 File 原生分块/属性/版本/初始归属/下载及事务回滚， [CI #38754995418](https://github.com/zy19970/IPSys/actions/runs/38754995418)；旧 UI 未接入 |
+| **N3-02/03/04、N2-03、N4** | **未开始** | 多 Folder 关联解绑、独立 File 物理复用、查重用户选择、旧接口切换及最终验收 |
 
 N2 原生 API 与旧 UI/API 目前并存，不能据此声称新库整套业务完成。当前 `Vault` 仍初始化旧综合资料表，`app.js`、`BusinessFiles.cs` 和原有业务接口仍访问旧表；在切换前不得删除旧 Store 或对两套物理表同时写入。
 
 ## 3. 下一步实际施工顺序
 
-1. **N3-01**：新 `files/file_versions/file_objects/file_chunks` 的创建、选填属性、加密分块上传下载、SHA-256、文件版本与原件校验。
+1. **N3-01（已完成）**：新 `files/file_versions/file_objects/file_chunks` 创建、选填属性、加密分块、SHA-256、文件版本与原件校验；独立新上传时第一条 Folder 关联同事务写入，Windows CI 已通过。
 2. **N3-02**：`folder_file_links` 多对多归属、共享同一 FileId、解除单一关联、回收站和历史引用保护。
 3. **N3-03**：独立 FileId 只复用同工作区 FileObject、版本保持独立；跨公司/个人复制必须是独立物理对象。
 4. **N3-04**：按大小与 SHA-256 检测同内容（包括异名），展示已有文件名及所在目录供用户三选一或取消，安全清理暂存对象。
@@ -31,7 +32,7 @@ N2 原生 API 与旧 UI/API 目前并存，不能据此声称新库整套业务�
 6. **N4**：保持冻结 UI，接通新库的前端、File 选填属性和 Folder 祖先字段搜索、递归导出、默认最新版本、回收站；确认无调用后清除旧业务/附件表及兼容代码。
 7. **N4 整体验收和发布判断**：Windows Debug/Release/单 EXE、SQLCipher HTTP、Node UI/PDF/ZIP、MCP、Excel，以及 Edge/Chrome 实机和 T01–T09 数据安全专项。
 
-因 N2-03 依赖 N3，**当前实际下一项为 N3-01**，不能机械按 N2-03 在进度表中的位置执行。
+因 N2-03 依赖 N3，**当前实际下一项为 N3-02**，不能机械按 N2-03 在进度表中的位置执行。
 
 ## 4. 安全、兼容和发布边界
 

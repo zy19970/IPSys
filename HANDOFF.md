@@ -25,14 +25,15 @@ IPSys 用户界面名称是「资料管理系统」，以**个人资料长期归
 | **N1** | `ResourceSchemaV2.cs` 创建 Folder/File/版本/物理字节/关联新库及约束， [CI #38740628571](https://github.com/zy19970/IPSys/actions/runs/38740628571) 通过 |
 | **N2-01** | `NativeFolderStore.cs`、`NativeFolderEndpoints.cs` 实现新表项目/合同/IP CRUD， [CI #38743939004](https://github.com/zy19970/IPSys/actions/runs/38743939004) 通过 |
 | **N2-02** | `NativeArchiveStore.cs`、`NativeArchiveOrder.cs` 实现新表档案/综合资料 CRUD、混排排序/移动， [CI #38747066932](https://github.com/zy19970/IPSys/actions/runs/38747066932) 通过 |
-| **N3 / N2-03 / N4** | 尚未开始，不能称作已切到唯一新库 |
+| **N3-01** | 独立原生 File 上传/属性/历史版本/下载/初始归属已完成，[CI #38754995418](https://github.com/zy19970/IPSys/actions/runs/38754995418) 成功；旧 UI 尚未切换 |
+| **N3-02/03/04、N2-03、N4** | 未开始，不能称作已切到唯一新库 |
 
 **源码切换边界**：`Vault.CreateSchema` 仍为旧综合资料创建 `records/attachments/chunks` 再建 V2；`Program.cs` 同时注册旧路由和 `/api/v2/folders`；`app.js` 仍调用 `/api/projects`、`/api/contracts`、`/api/archives` 等；`BusinessFiles.cs` 仍使用旧 `business_file_*` 表。此时新 Folder API 可单独测试，但原有前端/附件/MCP/Excel 尚未接入；不得提前删旧 Store 或做同一操作双写。
 
 ## 4. 接续开发的唯一顺序
 
-1. **当前下一项：N3-01**，新 FileId、选填属性、加密字节分块与 SHA-256、原生 FileVersion/下载及原件完整性测试。
-2. N3-02 处理同区 FolderFileLink 多关联、解除关联、软删/回收站引用保护；N3-03 处理不同 FileId 仅内容复用与跨区隔离；N3-04 处理同内容包括异名查重提示、三选一与取消清理。
+1. **N3-01 已完成**：独立 `/api/v2/files` 支持 FileId、选填属性、加密字节分块与 SHA-256、原生 FileVersion/历史下载，上传与初次 Folder 归属同事务；[CI #38754995418](https://github.com/zy19970/IPSys/actions/runs/38754995418) 已通过。
+2. **当前下一项 N3-02**：处理同区 FolderFileLink 多关联、解除关联、软删/回收站引用保护；N3-03 处理不同 FileId 仅内容复用与跨区隔离；N3-04 处理同内容包括异名查重提示、三选一与取消清理。
 3. **然后 N2-03**，在新文件归属能力完整后，分模块切换旧业务 API、MCP、Excel 到 V2 数据源；旧 API 形状可保留，不能双写。
 4. **最后 N4**，接通现有 UI、搜索 File 属性与 Folder 祖先信息、递归导出、默认最新版本、PDF/回收站，删除不再引用的旧表/兼容代码，完成 Windows CI、Edge/Chrome 用户实机和 T01–T09 安全验收。
 
