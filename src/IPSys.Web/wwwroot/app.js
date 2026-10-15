@@ -1101,6 +1101,18 @@ function realArchiveCards(k){
  }).join('')+'</div>'+
  '<div class="tablefoot">记录 '+rows.length+' 条 · 可在每一类别下归档多条独立记录</div></section>';
 }
+// Archive records can contain multiple original files and multiple historical versions.
+// Display one current version per file group, consistent with the record detail page.
+function archiveTableAttachmentSummary(recordId,section){
+ const current=new Map();
+ for(const file of businessFiles('archive',recordId,section)){
+  const key=file.groupId||file.name+'\u0000'+file.category;
+  const old=current.get(key);
+  if(!old||file.version>old.version||(file.version===old.version&&file.id>old.id))
+   current.set(key,file);
+ }
+ return {count:current.size,size:[...current.values()].reduce((sum,file)=>sum+file.size,0)};
+}
 function realArchiveTable(k,category){
  const all=(archiveRows[k]||[]).filter(r=>(r.category||'未分类')===category);
  const rows=all.filter(r=>[r.name,r.remarks,r.tags].join(' ').toLowerCase().includes(filterName.toLowerCase()));
@@ -1111,11 +1123,21 @@ function realArchiveTable(k,category){
  '<section class="white filter"><div class="filterline"><div class="field wide"><label>资料名称</label><input id="filterSearch" placeholder="搜索此类别下的记录"></div>'+
  '<button class="btn primary" data-action="filter">查询</button><button class="btn" data-action="clearFilter">重置</button></div></section>'+
  '<section class="white archive-category-ledger"><div class="tabletools"><b>共 '+rows.length+' 条记录</b><div class="actions">'+quickExportButtons(rows,'archive',k)+'</div></div>'+
- '<div class="tablewrap archive-tablewrap"><table class="data ledger-archive-category-table"><thead><tr><th>序号</th><th>资料名称</th><th>资料类别</th><th>附件数量</th><th>操作</th></tr></thead><tbody>'+
- (rows.length?rows.map((r,i)=>'<tr><td>'+(i+1)+'</td><td>'+
- '<button class="link" data-archive-id="'+r.id+'">'+escapeHtml(r.name)+'</button></td>'+
- '<td>'+escapeHtml(r.category||'未分类')+'</td><td>'+businessFileCount('archive',r.id,k)+' 份</td><td><button class="btn btn-sm" data-archive-id="'+r.id+'">查看详情</button></td></tr>').join(''):
- '<tr><td colspan="5" class="empty">此类别暂无记录，点击右上角新建。</td></tr>')+
+ '<div class="tablewrap archive-tablewrap"><table class="data ledger-archive-category-table">'+
+ '<colgroup><col class="archive-col-check"><col class="archive-col-sequence">'+
+ '<col class="archive-col-name"><col class="archive-col-attachment"><col class="archive-col-size">'+
+ '<col class="archive-col-remarks"><col class="archive-col-order"><col class="archive-col-action"></colgroup>'+
+ '<thead><tr><th>序号</th><th>资料名称</th><th>附件</th><th>文件大小</th><th>备注</th><th>操作</th></tr></thead><tbody>'+
+ (rows.length?rows.map((r,i)=>{
+  const files=archiveTableAttachmentSummary(r.id,k);
+  return '<tr><td>'+(i+1)+'</td><td>'+
+  '<button class="link" data-archive-id="'+r.id+'">'+escapeHtml(r.name)+'</button></td>'+
+  '<td>'+(files.count?files.count+' 份':'<span class="muted">未上传</span>')+'</td>'+
+  '<td class="archive-category-file-size">'+(files.count?fmtSize(files.size):'—')+'</td>'+
+  '<td>'+escapeHtml(r.remarks||'—')+'</td>'+
+  '<td class="archive-category-action"><button class="btn btn-sm" data-archive-id="'+r.id+'">查看详情</button></td></tr>';
+ }).join(''):
+ '<tr><td colspan="6" class="empty">此类别暂无记录，点击右上角新建。</td></tr>')+
  '</tbody></table></div><div class="tablefoot">当前类别共 '+all.length+' 条记录</div></section>';
 }
 function realArchiveDetail(){
@@ -1397,7 +1419,8 @@ function decorateLedgerControls(content){
   head.cells[0].after(th);
  }else head.cells[1].classList.add('ledger-record-sequence-cell');
  const last=document.createElement('th');last.className='ledger-record-order-cell';last.textContent='排序';
- head.append(last);
+ if(archiveSequence)head.lastElementChild.before(last);
+ else head.append(last);
  rows.forEach(({tr,id},index)=>{
   tr.dataset.ledgerRecordId=String(id);
   let check=tr.querySelector('.ledger-export-row');
@@ -1421,7 +1444,8 @@ function decorateLedgerControls(content){
    btn.setAttribute('aria-label','将第'+(index+1)+'条记录'+(direction<0?'上移':'下移'));
    td.append(btn);
   }
-  tr.append(td);
+  if(archiveSequence)tr.lastElementChild.before(td);
+  else tr.append(td);
  });
  const empty=body.querySelector('td[colspan]');
  if(empty&&rows.length===0)empty.colSpan+=archiveSequence?2:scope.kind==='contract'?3:2;

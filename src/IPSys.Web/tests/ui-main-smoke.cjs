@@ -352,13 +352,18 @@ vm.runInContext(preamble+'\n'+js.slice(archiveFirst,archiveLast)+
  "\nfunction heading(name,subtitle,actions,breadcrumbBack){return '<div class=\"breadcrumb\">'+(breadcrumbBack||'')+'</div><h1>'+name+'</h1>'+(actions||'');}"+
  "\nfunction infoRow(k,v){return k+':'+v;}"+
  "\nfunction section(name,content){return name+content;}"+
- "\nfunction businessFileCount(){return 0;}\nfunction businessFiles(kind,ownerId,section){return (globalThis.mockCertificateFiles||[]).filter(f=>f.kind===kind&&f.ownerId===ownerId&&f.section===section);}\nfunction quickExportButtons(){return 'excelExport ZIP';}\nfunction quickExportButtons(){return 'excelExport ZIP';}"+
+ "\nfunction businessFileCount(){return 0;}\nfunction businessFiles(kind,ownerId,section){return (globalThis.mockCertificateFiles||[]).filter(f=>f.kind===kind&&f.ownerId===ownerId&&f.section===section);}\nfunction fmtSize(size){return size+' B';}\nfunction quickExportButtons(){return 'excelExport ZIP';}\nfunction quickExportButtons(){return 'excelExport ZIP';}"+
  "\nspace='personal';page='academic';filterName='';filterKind='全部类型';"+
  "archiveRows={certificate:[],achievement:[],academic:["+
  "{id:21,name:'第一次兼职',category:'学术兼职',remarks:'',tags:''},"+
  "{id:22,name:'第二次兼职',category:'学术兼职',remarks:'',tags:''},"+
  "{id:23,name:'会议报告',category:'会议报告',remarks:'',tags:''}"+
  "]};archiveGroup='学术兼职';"+
+ "globalThis.mockCertificateFiles=["+
+ "{kind:'archive',ownerId:21,section:'academic',id:101,groupId:'gA',version:1,size:1024,name:'first.pdf',category:''},"+
+ "{kind:'archive',ownerId:21,section:'academic',id:102,groupId:'gA',version:2,size:2048,name:'first.pdf',category:''},"+
+ "{kind:'archive',ownerId:21,section:'academic',id:103,groupId:'gB',version:1,size:4096,name:'second.pdf',category:''}"+
+ "];"+
  "globalThis.__realCards=realArchiveCards('academic');"+
  "globalThis.__realTable=realArchiveTable('academic','学术兼职');"+
  "globalThis.__realOther=realArchiveTable('academic','会议报告');"+
@@ -374,6 +379,17 @@ assert.ok(!realArchiveCtx.__realCards.includes('archive-category-ledger'),
  'Category cards must retain their existing header layout');
 assert.ok(realArchiveCtx.__realTable.includes('<table class="data ledger-archive-category-table">'),
  'Personal archive category tables must use the shared compact column sizing');
+for(const rendered of [realArchiveCtx.__realTable,realArchiveCtx.__companyTable||'']){
+ if(!rendered)continue;
+ assert.ok(rendered.includes('<th>序号</th><th>资料名称</th><th>附件</th><th>文件大小</th><th>备注</th><th>操作</th>'),
+  'Archive category table must use company-certificate column headings');
+ assert.ok(rendered.includes('archive-col-order')&&rendered.includes('archive-col-action'),
+  'Sort and action must have dedicated columns, in that order');
+}
+assert.ok(realArchiveCtx.__realTable.includes('<td>2 份</td><td class="archive-category-file-size">6144 B</td>'),
+ 'Category table must count each original once and total only its latest version sizes');
+assert.ok(realArchiveCtx.__realTable.includes('<span class="muted">未上传</span>'),
+ 'Category table should clearly show records without any attachment');
 assert.ok(realArchiveCtx.__realTable.includes('data-archive-id="21"')&&
  realArchiveCtx.__realTable.includes('data-archive-id="22"'),
  'A category must support multiple independently persisted records');
@@ -812,15 +828,20 @@ for(const rule of [
  '.archive-category-ledger .compact-ledger-actions{flex:0 0 auto;justify-self:auto;margin-left:auto;',
  '.archive-category-ledger .compact-ledger-filters{order:3;flex:1 1 100%;width:100%;'
 ])assert.ok(css.includes(rule),'Certificate-style category header layout missing: '+rule);
-// Live archive category lists fix type, attachment count and action width, leaving long names flexible.
+// Category archive column tracks match enterprise certificates, with one flexible name track.
 for(const rule of [
- '.data.ledger-record-table.ledger-archive-category-table th:nth-child(4){width:170px}',
- '.data.ledger-record-table.ledger-archive-category-table th:nth-child(5){width:106px}',
- '.data.ledger-record-table.ledger-archive-category-table th:nth-child(6){width:116px}',
- '.data.ledger-record-table.ledger-archive-category-table{min-width:850px}'
-])assert.ok(css.includes(rule),'Compact archive category width missing: '+rule);
-assert.ok(!css.includes('.data.ledger-record-table.ledger-archive-category-table th:nth-child(3){width:'),
- 'Archive record name must use remaining table width');
+ '.data.ledger-record-table.ledger-archive-category-table col.archive-col-check{width:42px}',
+ '.data.ledger-record-table.ledger-archive-category-table col.archive-col-sequence{width:58px}',
+ '.data.ledger-record-table.ledger-archive-category-table col.archive-col-name{width:auto}',
+ '.data.ledger-record-table.ledger-archive-category-table col.archive-col-attachment{width:24%}',
+ '.data.ledger-record-table.ledger-archive-category-table col.archive-col-size{width:110px}',
+ '.data.ledger-record-table.ledger-archive-category-table col.archive-col-remarks{width:160px}',
+ '.data.ledger-record-table.ledger-archive-category-table col.archive-col-order{width:100px}',
+ '.data.ledger-record-table.ledger-archive-category-table col.archive-col-action{width:112px}'
+])assert.ok(css.includes(rule),'Certificate-style category table column missing: '+rule);
+assert.ok(js.includes('if(archiveSequence)head.lastElementChild.before(last);')&&
+ js.includes('if(archiveSequence)tr.lastElementChild.before(td);'),
+ 'Category order controls must appear before the row action column');
 // Project title takes all flexible width; short columns are fixed and the ordering actions stay visible.
 for(const rule of [
  '.data.ledger-record-table.ledger-project-table th:nth-child(3){width:116px}',

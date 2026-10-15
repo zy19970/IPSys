@@ -373,19 +373,22 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 .archive-breadcrumb-back:hover{text-decoration:underline}
 .archive-breadcrumb-back:focus-visible{outline:2px solid var(--primary);outline-offset:3px;border-radius:3px}
 
-/* Every live company/personal archive category table: fit short fields and prioritize long names. */
-.data.ledger-record-table.ledger-archive-category-table th:nth-child(4){width:170px}
-.data.ledger-record-table.ledger-archive-category-table th:nth-child(5){width:106px}
-.data.ledger-record-table.ledger-archive-category-table th:nth-child(6){width:116px}
-.data.ledger-record-table.ledger-archive-category-table th:nth-child(5),
-.data.ledger-record-table.ledger-archive-category-table td:nth-child(5),
-.data.ledger-record-table.ledger-archive-category-table th:nth-child(6),
-.data.ledger-record-table.ledger-archive-category-table td:nth-child(6){text-align:center}
+/* Category archives use the same eight-column order as company certificates.
+   Attachment count/size summarize each original's current version. */
+.data.ledger-record-table.ledger-archive-category-table col.archive-col-check{width:42px}
+.data.ledger-record-table.ledger-archive-category-table col.archive-col-sequence{width:58px}
+.data.ledger-record-table.ledger-archive-category-table col.archive-col-name{width:auto}
+.data.ledger-record-table.ledger-archive-category-table col.archive-col-attachment{width:24%}
+.data.ledger-record-table.ledger-archive-category-table col.archive-col-size{width:110px}
+.data.ledger-record-table.ledger-archive-category-table col.archive-col-remarks{width:160px}
+.data.ledger-record-table.ledger-archive-category-table col.archive-col-order{width:100px}
+.data.ledger-record-table.ledger-archive-category-table col.archive-col-action{width:112px}
+.data.ledger-record-table.ledger-archive-category-table .archive-category-file-size{font-variant-numeric:tabular-nums;white-space:nowrap}
+.data.ledger-record-table.ledger-archive-category-table .archive-category-action{text-align:center;white-space:nowrap}
 @media(max-width:1100px){
- .data.ledger-record-table.ledger-archive-category-table{min-width:850px}
- .data.ledger-record-table.ledger-archive-category-table th:nth-child(4){width:142px}
- .data.ledger-record-table.ledger-archive-category-table th:nth-child(5){width:92px}
- .data.ledger-record-table.ledger-archive-category-table th:nth-child(6){width:104px}
+ .data.ledger-record-table.ledger-archive-category-table{min-width:900px}
+ .data.ledger-record-table.ledger-archive-category-table col.archive-col-attachment{width:22%}
+ .data.ledger-record-table.ledger-archive-category-table col.archive-col-remarks{width:130px}
 }
 
 /* Align live category-ledger headers with the enterprise-certificate header. */
