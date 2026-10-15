@@ -101,6 +101,37 @@ const mock={
     ]
   }
 };
+
+/* Shared, offline-only 24px outline SVG set for workbenches and side navigation. */
+const iconArt={
+ grid:'<rect x="3.5" y="3.5" width="7" height="7" rx="1.4"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.4"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.4"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.4"/>',
+ certificate:'<rect x="5" y="2" width="14" height="17" rx="2"/><path d="M8.5 6.5h7M8.5 10h5"/><circle cx="12" cy="17" r="3"/><path d="m10 19.2-1.2 3 3.2-1.4 3.2 1.4-1.2-3"/>',
+ folder:'<path d="M3 8V5.8A2 2 0 0 1 5 3.8h5l2 2h7a2 2 0 0 1 2 2v2"/><path d="M4.5 10h15.7a1.5 1.5 0 0 1 1.4 2l-2.5 7a2 2 0 0 1-1.9 1.3H3.7a2 2 0 0 1-1.9-2.6l2-6.5A1.8 1.8 0 0 1 4.5 10Z"/>',
+ briefcase:'<rect x="2.5" y="7" width="19" height="14" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M2.5 12.5c5.5 3.1 13.5 3.1 19 0M10 14.1v2.2h4v-2.2"/>',
+ shield:'<path d="M12 2.5 19 6v6c0 4.6-3 7.6-7 9.5-4-1.9-7-4.9-7-9.5V6l7-3.5Z"/><path d="M10 11a2 2 0 1 1 4 0c0 1-.6 1.5-1.2 2.1V15h-1.6v-1.9C10.6 12.5 10 12 10 11Z"/><path d="M11.2 17h1.6"/>',
+ library:'<rect x="3" y="3" width="5" height="18" rx="1"/><rect x="9.5" y="3" width="5" height="18" rx="1"/><path d="m17 4 4 1 0 16-4-1V4ZM5 7v10M12 7v10"/>',
+ person:'<circle cx="12" cy="7.5" r="3.4"/><path d="M4.5 21v-2a7.5 7.5 0 0 1 15 0v2"/>',
+ company:'<path d="M4 21V6l8-3 8 3v15M2.5 21h19M9 21v-5h6v5M8 9h1M15 9h1M8 12.5h1M15 12.5h1"/>',
+ identity:'<rect x="2.5" y="4.5" width="19" height="15" rx="2"/><circle cx="8.5" cy="10" r="2.2"/><path d="M5 16a3.5 3.5 0 0 1 7 0M15 9h4M15 12h4M15 15h3"/>',
+ trophy:'<path d="M7 3h10v8a5 5 0 0 1-10 0V3ZM7 5H4v3a4 4 0 0 0 4 4M17 5h3v3a4 4 0 0 1-4 4M12 16v4M8 21h8"/>',
+ book:'<path d="M12 6c-2.4-1.7-5.3-2.2-9-1.5v14c3.7-.7 6.6-.2 9 1.5 2.4-1.7 5.3-2.2 9-1.5v-14c-3.7-.7-6.6-.2-9 1.5ZM12 6v14"/>',
+ trash:'<path d="M3.5 6h17M9 6V4h6v2M6 6l1 15h10l1-15M10 10v7M14 10v7"/>',
+ settings:'<path d="M9.7 3.2h4.6l.6 2.1 1.7 1 2.1-.5 2.3 4-.5 1.5v1.9l.5 1.5-2.3 4-2.1-.5-1.7 1-.6 2.1H9.7l-.6-2.1-1.7-1-2.1.5-2.3-4 .5-1.5v-1.9L3 9.8l2.3-4 2.1.5 1.7-1 .6-2.1Z"/><circle cx="12" cy="12" r="3"/>'
+};
+const moduleIconNames={
+ company:{dashboard:'grid',certificate:'certificate',achievement:'folder',researchProject:'briefcase',ip:'shield',general:'library'},
+ personal:{dashboard:'grid',certificate:'identity',achievement:'trophy',academic:'book',researchProject:'briefcase',ip:'shield',general:'library'}
+};
+function uiIcon(key,workspace=space){
+ const iconName=key==='personal'?'person':key==='company'?'company':
+  key==='trash'||key==='settings'?key:(moduleIconNames[workspace]||moduleIconNames.company)[key];
+ return '<svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false" aria-hidden="true">'+(iconArt[iconName]||iconArt.grid)+'</svg>';
+}
+function mountStaticIcons(){
+ document.querySelectorAll('[data-ui-icon]').forEach(holder=>{
+  holder.innerHTML=uiIcon(holder.dataset.uiIcon);
+ });
+}
 const labels=()=>space==='personal'?personalNav:companyNav;
 const title=k=>(labels().find(x=>x[0]===k)||[])[1]||({search:'统一搜索',trash:'回收站',settings:'系统设置'}[k]||'记录详情');
 const sample=k=>{
@@ -166,6 +197,7 @@ function selectSpace(next){
   el('chooseWorkspace').hidden=true;el('unlocked').hidden=false;
   refresh();
 }
+mountStaticIcons();
 document.querySelectorAll('[data-workspace-choice]').forEach(b=>b.onclick=()=>selectSpace(b.dataset.workspaceChoice));
 document.querySelectorAll('[data-workspace-switch]').forEach(button=>{
  button.onclick=()=>selectSpace(button.dataset.workspaceSwitch);
@@ -200,12 +232,16 @@ function refreshSidebar(){
    button.setAttribute('aria-pressed',String(active));
   });
   const nav=el('sidebar');nav.replaceChildren();
-  for(const [key,name,ico] of labels()){
-    const b=document.createElement('button');b.type='button';b.className='nav'+(page===key?' active':'');b.textContent=ico+'   '+name;b.onclick=()=>setPage(key);nav.append(b);
+  for(const [key,name] of labels()){
+    const b=document.createElement('button');b.type='button';b.className='nav'+(page===key?' active':'');
+    b.innerHTML='<span class="nav-symbol" aria-hidden="true">'+uiIcon(key)+'</span><span class="nav-text">'+escapeHtml(name)+'</span>';
+    b.onclick=()=>setPage(key);nav.append(b);
   }
   const bottom=el('bottomnav');bottom.replaceChildren();
-  for(const [key,name,ico] of [['trash','回收站','♺'],['settings','系统设置','⚙']]){
-    const b=document.createElement('button');b.type='button';b.className='nav'+(page===key?' active':'');b.textContent=ico+'   '+name;b.onclick=()=>setPage(key);bottom.append(b);
+  for(const [key,name] of [['trash','回收站'],['settings','系统设置']]){
+    const b=document.createElement('button');b.type='button';b.className='nav'+(page===key?' active':'');
+    b.innerHTML='<span class="nav-symbol" aria-hidden="true">'+uiIcon(key)+'</span><span class="nav-text">'+escapeHtml(name)+'</span>';
+    b.onclick=()=>setPage(key);bottom.append(b);
   }
 }
 
@@ -289,9 +325,9 @@ function dashboard(){
   '<div class="dashboard-eyebrow">'+(space==='personal'?'个人资料':'公司资料')+'</div>'+
   '<h1>'+escapeHtml(title('dashboard'))+'</h1>'+
   '<p class="dashboard-description">选择资料类别，进入对应管理页面。</p>'+
-  '<div class="choice-grid dashboard-choice-grid">'+modules.map(([key,name,symbol])=>
+  '<div class="choice-grid dashboard-choice-grid">'+modules.map(([key,name])=>
     '<button type="button" class="choice dashboard-choice" data-nav="'+key+'">'+
-    '<span class="choice-symbol dashboard-choice-symbol" aria-hidden="true">'+escapeHtml(symbol)+'</span>'+
+    '<span class="choice-symbol dashboard-choice-symbol" aria-hidden="true">'+uiIcon(key)+'</span>'+
     '<strong>'+escapeHtml(name)+'</strong>'+
     '<small>'+escapeHtml(descriptions[key]||'查看与管理资料')+'</small>'+
     '<span class="choice-arrow">进入管理 →</span></button>'

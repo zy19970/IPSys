@@ -432,3 +432,13 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
  .dashboard-choice-grid{grid-template-columns:1fr;gap:12px}
  .dashboard-choice{min-height:165px;padding:18px 20px}
 }
+
+
+/* One crisp, CSP-safe icon language across workspace entry, sidebar and dashboard. */
+.ui-icon{display:block;width:22px;height:22px;flex:none}
+.nav-symbol{display:inline-flex;align-items:center;justify-content:center;flex:none;width:23px;height:23px;color:var(--primary)}
+.nav-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.workspace-switch-icon .ui-icon{width:18px;height:18px}
+.choice-symbol .ui-icon{width:26px;height:26px}
+.dashboard-choice-symbol .ui-icon{width:27px;height:27px}
+@media(max-width:740px){.nav{font-size:inherit}.nav-text{display:none}.nav-symbol{width:24px;height:24px}}

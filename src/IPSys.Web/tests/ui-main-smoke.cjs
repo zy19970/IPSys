@@ -75,6 +75,10 @@ const dashboardBegin=js.indexOf('function dashboard(){');
 const dashboardEnd=js.indexOf('function generalList(){',dashboardBegin);
 assert.ok(dashboardBegin>=0&&dashboardEnd>dashboardBegin,'Dashboard renderer missing');
 const dashboardScript=js.slice(dashboardBegin,dashboardEnd);
+const iconBegin=js.indexOf('const iconArt=');
+const iconEnd=js.indexOf('const labels=',iconBegin);
+assert.ok(iconBegin>=0&&iconEnd>iconBegin,'Central offline SVG icons missing');
+const iconScript=js.slice(iconBegin,iconEnd);
 const dashboardContext=vm.createContext({});
 vm.runInContext(`
  let space='personal';
@@ -98,7 +102,7 @@ vm.runInContext(`
  function labels(){return space==='personal'?personalNav:companyNav;}
  function title(key){return labels().find(x=>x[0]===key)?.[1]||key;}
  function escapeHtml(s){return String(s);}
- `+dashboardScript+`
+ `+iconScript+dashboardScript+`
  globalThis.personalDashboard=dashboard();
  space='company';
  globalThis.companyDashboard=dashboard();
@@ -118,6 +122,10 @@ for(const key of ['certificate','achievement','researchProject','ip','general'])
 for(const home of [personalHome,companyHome]){
  assert.ok(home.includes('class="choice-grid dashboard-choice-grid"')&&home.includes('进入管理 →'),
   'Dashboard must retain workspace-chooser-style cards and navigation labels');
+ assert.equal((home.match(/class="ui-icon"/g)||[]).length,(home===personalHome?6:5),
+  'Each dashboard tile must render one shared SVG icon');
+ assert.ok(!home.includes('▦')&&!home.includes('▣')&&!home.includes('◇'),
+  'Dashboard must not render placeholder glyphs as icons');
  assert.ok(!home.includes('class="cards"')&&!home.includes('class="panels"')&&
   !home.includes('当前工作区资料概况')&&!home.includes('metriclabel'),
   'Remove the redundant statistics and workspace-status panels');
@@ -130,6 +138,20 @@ for(const rule of ['.dashboard-home{width:100%;max-width:1180px;margin:0 auto;',
  '@media(max-width:780px){',
  '.dashboard-choice-grid{grid-template-columns:1fr;gap:12px}'])
  assert.ok(css.includes(rule),'Simple workbench card CSS missing: '+rule);
+
+
+// The same icon family must be reused in sidebar, workspaces and the workbench.
+for(const key of ['grid','certificate','folder','briefcase','shield','library','person','company','identity','trophy','book','trash','settings'])
+ assert.ok(iconScript.includes(key+':'),'Missing SVG drawing '+key);
+for(const key of ['personal','company'])assert.ok(html.includes('data-ui-icon="'+key+'"'),
+ 'Workspace selector must mount the shared icon '+key);
+assert.equal((html.match(/data-ui-icon="/g)||[]).length,4,
+ 'Both unlock choices and both sidebar workspace switches need matching icons');
+assert.ok(js.includes("uiIcon(key)+'</span><span class=\"nav-text\"'"),
+ 'Sidebar must use shared SVG icons instead of Unicode placeholder glyphs');
+assert.ok(css.includes('.dashboard-choice-symbol .ui-icon')&&css.includes('.nav-symbol')&&css.includes('.workspace-switch-icon .ui-icon'),
+ 'Unified icon sizing and alignment styles are required');
+assert.ok(!/\bfetch\s*\(\s*['"]https?:/.test(iconScript),'Icon set must stay self-contained and offline');
 
 /* Document archives are cards, business ledgers are tables. Browserless render checks. */
 for(const cls of ['.recordgrid','.archivecard','.archivecard-real','.archivecard-meta','.archivecard-actions','.archivecategory','.archive-tablewrap']){
