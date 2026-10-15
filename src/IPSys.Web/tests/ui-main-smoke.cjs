@@ -225,6 +225,8 @@ vm.runInContext(preamble+
  '\nfunction heading(t,s,actions){return t+(actions||"");}\nfunction infoRow(n,v){return n+v;}\nfunction section(n,v){return n+v;}\nfunction businessFileCount(){return 0;}\nfunction excelExportButton(){return "excelExport";}\nfunction pill(v){return "<span class="+String.fromCharCode(34)+"pill"+String.fromCharCode(34)+">"+escapeHtml(v)+"</span>";}\n'+projector+
  "\nspace='company';projectRows=[{id:12,name:'真实项目',projectType:'科研项目',projectNo:'X-1',startDate:'2026-01-02',projectStatus:'进行中',leader:'负责人甲'}];globalThis.__project=projectList('researchProject');",projectCtx);
 assert.ok(projectCtx.__project.includes('data-project-id="12"'),'Real project ledger must open persisted IDs');
+assert.ok(projectCtx.__project.includes('<table class="data ledger-project-table">'),
+ 'Project lists must opt into the long-name-first column sizing');
 assert.ok(projectCtx.__project.includes('data-nav="contract"')&&projectCtx.__project.includes('查看全部合同'),
  'Contract aggregate remains accessible from the company project ledger');
 assert.ok(projectCtx.__project.includes('class="pill"')&&projectCtx.__project.includes('科研项目'),
@@ -770,6 +772,16 @@ for(const rule of ['.data.ledger-record-table','.ledger-record-order-cell .btn',
  '.archive-tablewrap .data.ledger-record-table td:nth-child(2)',
  '.ledger-batch-delete[hidden]'])
  assert.ok(css.includes(rule),'Record table sizing / hidden delete missing '+rule);
+// Project title takes all flexible width; short columns are fixed and the ordering actions stay visible.
+for(const rule of [
+ '.data.ledger-record-table.ledger-project-table th:nth-child(4){width:116px}',
+ '.data.ledger-record-table.ledger-project-table th:nth-child(5){width:160px}',
+ '.data.ledger-record-table.ledger-project-table th:nth-child(6){width:126px}',
+ '.data.ledger-record-table.ledger-project-table th:nth-child(7){width:74px}',
+ '.data.ledger-record-table.ledger-project-table{min-width:1050px}'
+])assert.ok(css.includes(rule),'Project register compact column sizing missing: '+rule);
+assert.ok(!css.includes('.data.ledger-record-table.ledger-project-table th:nth-child(3){width:'),
+ 'Project title must receive the remaining available width instead of a fixed narrow track');
 // Narrow the sparse IP status, right-holder and attachment columns; give name a wider track.
 for(const token of [
  '.data.ledger-record-table.ledger-ip-table th:nth-child(3){width:30%}',
