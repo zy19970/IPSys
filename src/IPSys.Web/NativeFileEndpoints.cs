@@ -10,8 +10,9 @@ static class NativeFileEndpoints
         return new(Header("X-File-Name"),Header("X-File-Description"),
             Header("X-File-Tags"),Header("X-File-Number"),Header("X-File-Date"));
     }
-    private static async Task<IResult> Upload(HttpContext ctx,Vault v,string workspace,
-        long? folderId,long? fileId,Func<string,int,IResult> fail)
+    internal static async Task<IResult> Upload(HttpContext ctx,Vault v,string workspace,
+        long? folderId,long? fileId,Func<string,int,IResult> fail,
+        long? requiredIpId=null,string? materialCategory=null)
     {
         if(!v.Allowed(ctx))return Results.Unauthorized();
         if(!Vault.WorkspaceValid(workspace))return fail("无效工作区。",400);
@@ -41,12 +42,20 @@ static class NativeFileEndpoints
                 if(!v.Allowed(ctx))return Results.Unauthorized();
                 try
                 {
+                    // Typed V2 IP routes require the FileId to be actively
+                    // linked to the exact requested IP, even if another folder
+                    // still grants generic file access.
+                    if(requiredIpId is long ip &&
+                       (!NativeIpFileStore.IpActive(v.Db,workspace,ip) ||
+                        folderId.HasValue && folderId.Value!=ip ||
+                        fileId.HasValue && !NativeIpFileStore.Linked(v.Db,workspace,ip,fileId.Value)))
+                        return Results.NotFound();
                     long reserve=Math.Max(128L*1024*1024,length.Value/3);
                     long free=new DriveInfo(Path.GetPathRoot(v.Path)!).AvailableFreeSpace;
                     if(free<length.Value+reserve)return fail("数据库所在磁盘剩余空间不足。",507);
                     var result=await NativeFileStore.UploadAsync(v.Db,workspace,
                         folderId,fileId,input,note,length.Value,
-                        ctx.Request.Body,linked.Token);
+                        ctx.Request.Body,linked.Token,materialCategory);
                     return Results.Json(result);
                 }
                 catch(ArgumentException ex){return fail(ex.Message,400);}

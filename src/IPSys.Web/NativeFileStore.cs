@@ -101,13 +101,18 @@ static class NativeFileStore
     public static async Task<NativeFileUploadResult> UploadAsync(
         SqliteConnection db,string workspace,long? folderId,long? fileId,
         NativeFileMetadataInput input,string? versionNote,long expectedLength,
-        Stream body,CancellationToken cancellation)
+        Stream body,CancellationToken cancellation,string? materialCategory=null)
     {
         Scope(workspace);
         if(expectedLength<0 || expectedLength>MaxFileLength)
             throw new ArgumentException("本阶段单文件限制 64 MiB 且必须声明准确长度。");
         var data=Normalize(input);
         versionNote=Optional(versionNote,500,"版本说明");
+        if(materialCategory!=null && materialCategory is not
+            ("申请材料" or "通知文件" or "证书文件" or "其他材料"))
+            throw new ArgumentException("知识产权材料类别无效。");
+        if(materialCategory!=null && !folderId.HasValue)
+            throw new ArgumentException("新增文件版本不能改变文件夹材料类别。");
         if((folderId is null)==(fileId is null))
             throw new ArgumentException("新文件须指定 FolderId，新增版本须指定 FileId。");
         if(folderId.HasValue && !FolderActive(db,workspace,folderId.Value))
@@ -184,11 +189,12 @@ static class NativeFileStore
         if(folderId.HasValue)
         {
             NewId(db,tx,
-                "INSERT INTO folder_file_links(workspace,folder_id,file_id) VALUES($w,$folder,$file)",
+                "INSERT INTO folder_file_links(workspace,folder_id,file_id,material_category) VALUES($w,$folder,$file,$category)",
                 cmd=>{
                     cmd.Parameters.AddWithValue("$w",workspace);
                     cmd.Parameters.AddWithValue("$folder",folderId.Value);
                     cmd.Parameters.AddWithValue("$file",id);
+                    cmd.Parameters.AddWithValue("$category",(object?)materialCategory??DBNull.Value);
                 });
         }
         tx.Commit();
