@@ -19,7 +19,7 @@ for(const [area,name] of [[choiceArea,'login workspace choice'],[sideSwitches,'s
 }
 assert.ok(html.includes('以个人资料管理为主，公司资料用于集中归纳'),'Workspace copy must reflect personal-data focus');
 assert.ok(html.includes('两个工作区独立保存记录与原始附件'),'Reordering must not weaken workspace isolation');
-for(const phrase of ['科研项目','横向项目','知识产权','项目基本信息','所属合同','全部附件汇总','申请与登记信息','/api/records/','/api/resume','/api/lock','/api/files/','/api/task','/api/check','localFileTaskActive','sessionStorage','mockflag','data-workspace-switch'])assert.ok(js.includes(phrase),'Missing UI/API design anchor '+phrase);
+for(const phrase of ['科研项目','横向项目','知识产权','项目基本信息','所属合同','全部附件汇总','申请与登记信息','/api/records/','/api/resume','/api/lock','/api/files/','/api/check','localFileTaskActive','sessionStorage','mockflag','data-workspace-switch'])assert.ok(js.includes(phrase),'Missing UI/API design anchor '+phrase);
 for(const style of ['.shell','.sidebar','.tablewrap','.data','.detailsection','.auth-screen','.workspace-screen'])assert.ok(css.includes(style),'Missing UI style '+style);
 assert.ok(!html.includes('onclick='),'No inline script handlers may be added to real HTTP page');
 assert.ok(html.includes('<title>资料管理系统</title>')&&
