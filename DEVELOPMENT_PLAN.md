@@ -1,6 +1,6 @@
 # IPSys 开发计划与验收进度（2026-10-15，V2 新库执行版）
 
-> **当前唯一执行依据**：[RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md) 的新 SQLCipher V2 路线（N1、N2、N3、N4）。2026-10-15 用户明确旧资料库全为测试数据，取消迁移、回填和旧库兼容；当前实施证据截至 `main@944312d0`。本计划取代此前“先做 V1.0 综合验收”和旧 R4 迁移的施工顺序，但不取消正式发布前的安全验收门槛。
+> **当前唯一执行依据**：[RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md) 的新 SQLCipher V2 路线（N1、N2、N3、N4）。2026-10-15 用户明确旧资料库全为测试数据，取消迁移、回填和旧库兼容；当前实施证据截至 `main@93be896f`。本计划取代此前“先做 V1.0 综合验收”和旧 R4 迁移的施工顺序，但不取消正式发布前的安全验收门槛。
 
 ## 1. 产品和已确认架构
 
@@ -20,7 +20,8 @@ IPSys 用户可见名称为「资料管理系统」，采用 Windows WinForms �
 | **N3-01** | **Windows CI 通过** | 新 File 原生分块/属性/版本/初始归属/下载及事务回滚， [CI #38754995418](https://github.com/zy19970/IPSys/actions/runs/38754995418)；旧 UI 未接入 |
 | **N3-02** | **Windows CI 通过** | 同 FileId 多 Folder 关联/解绑/恢复、历史版本和字节保护 [CI #38759311477](https://github.com/zy19970/IPSys/actions/runs/38759311477) |
 | **N3-03** | **Windows CI 通过** | 不同 FileId 同区复用物理内容、跨区重新写入原件，通过 [CI #38762437581](https://github.com/zy19970/IPSys/actions/runs/38762437581) |
-| **N3-04、N2-03、N4** | **未开始** | 同内容用户确认、旧接口与 UI 切换及完整验收 |
+| **N3-04** | **Windows CI 通过** | SQLCipher writing 暂存、同内容含异名查重、原件名/目录路径提示、明确选择与取消清理；[CI #38820367132](https://github.com/zy19970/IPSys/actions/runs/38820367132) |
+| **N2-03、N4** | **未开始** | 原有业务 API/MCP/Excel 与 V2 接入、冻结 UI/搜索/导出及正式实机验收 |
 
 N2 原生 API 与旧 UI/API 目前并存，不能据此声称新库整套业务完成。当前 `Vault` 仍初始化旧综合资料表，`app.js`、`BusinessFiles.cs` 和原有业务接口仍访问旧表；在切换前不得删除旧 Store 或对两套物理表同时写入。
 
@@ -29,12 +30,12 @@ N2 原生 API 与旧 UI/API 目前并存，不能据此声称新库整套业务�
 1. **N3-01（已完成）**：新 `files/file_versions/file_objects/file_chunks` 创建、选填属性、加密分块、SHA-256、文件版本与原件校验；独立新上传时第一条 Folder 关联同事务写入，Windows CI 已通过。
 2. **N3-02（已完成）**：同区多 Folder 关联 FileId、软解绑及显式恢复；共享版本在各位置同步，解除一处不删除原件，Windows CI 已通过；完整回收站 UI 后续 N4 验收。
 3. **N3-03（已完成）**：独立 FileId 可显式复用同区 FileObject，属性和版本历史独立；跨公司/个人复制产生独立物理字节，CI 已通过。
-4. **N3-04**：按大小与 SHA-256 检测同内容（包括异名），展示已有文件名及所在目录供用户三选一或取消，安全清理暂存对象。
+4. **N3-04（原生 V2 API 已完成）**：按大小、SHA-256 匹配同区最新原件（含异名），返回原件名与 Folder 路径，用户决定共享 FileId、只复用内容、独立保存或取消，writing 分块安全清理并按会话约束票据；CI 已通过。可视化弹窗仍归 N4。
 5. **N2-03**：**等 N3 提供完整附件归属接口后**，分模块将旧业务 API、MCP、Excel 转到唯一 V2 Folder/File 数据源，不做旧新表双写。
 6. **N4**：保持冻结 UI，接通新库的前端、File 选填属性和 Folder 祖先字段搜索、递归导出、默认最新版本、回收站；确认无调用后清除旧业务/附件表及兼容代码。
 7. **N4 整体验收和发布判断**：Windows Debug/Release/单 EXE、SQLCipher HTTP、Node UI/PDF/ZIP、MCP、Excel，以及 Edge/Chrome 实机和 T01–T09 数据安全专项。
 
-因 N2-03 依赖 N3，**当前实际下一项为 N3-04**，不能机械按 N2-03 在进度表中的位置执行。
+因 N2-03 依赖 N3，**当前实际下一项为 N2-03**，不能机械按 N2-03 在进度表中的位置执行。
 
 ## 4. 安全、兼容和发布边界
 

@@ -1,6 +1,6 @@
 # IPSys 统一资源内核重构：R0-02 回归与差异矩阵
 
-> **现行用法（2026-10-15）**：矩阵起初基于重构前 `main@0b70bbe4` 编制，R0/R1 属历史方案；当前唯一路线是全新 SQLCipher V2，N1/N2-01/N2-02 已通过各自 Windows CI，N3-01 已通过 Windows CI，N3-02/N3-03 已通过 Windows CI，下一项 N3-04 同内容提示及用户确认，随后 N2-03、N4。旧测试库迁移、兼容、回填用例被取消，不得拿旧 API 通过作为 V2 全链路通过。历史用例内容保留供追溯，但以本文末尾 N1/N2 验收与 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md) 最新进度为准。
+> **现行用法（2026-10-15）**：矩阵起初基于重构前 `main@0b70bbe4` 编制，R0/R1 属历史方案；当前唯一路线是全新 SQLCipher V2，N1/N2-01/N2-02 已通过各自 Windows CI，N3-01 已通过 Windows CI，N3-01～N3-04 原生 V2 流程已通过 Windows CI，下一项 N2-03 旧 API/MCP/Excel 接入，后续 N4 冻结 UI 与完整实机验收。旧测试库迁移、兼容、回填用例被取消，不得拿旧 API 通过作为 V2 全链路通过。历史用例内容保留供追溯，但以本文末尾 N1/N2 验收与 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md) 最新进度为准。
 > 
 > 权威目标与逐步计划见 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)，界面约束见 [UI_BASELINE.md](./UI_BASELINE.md)，历史 Windows 安全/旧库验收见 [WEB_TESTING.md](./WEB_TESTING.md)。
 
@@ -29,7 +29,7 @@
 | F03 | 公司业务档案根分类只导航、自建空类别可删；内层目录/资料混排排序 | **已有统一读写覆盖**：原有 UI smoke 和目录/资料 Store，R1-04-01 [CI #38731911752](https://github.com/zy19970/IPSys/actions/runs/38731911752) 验证统一混排树浏览，R1-04-02-02 [CI #38734563500](https://github.com/zy19970/IPSys/actions/runs/38734563500) 验证系统根保护、空目录删除及资料软删恢复 | R1-04-03 验证真正的统一移动/排序写接口；R3 再接公共前端 |
 | F04 | 同工作区共享**同一逻辑文件**，上传 v2 两处见新版，一处解绑后 v3 不复活 | **V2 后端 CI 已通过**：[Windows #38759311477](https://github.com/zy19970/IPSys/actions/runs/38759311477) 已验证不同 Folder 共享 FileId、同步版本和属性、解绑后 v3 不复活 | N4 需验证旧 UI 全量切换及用户实机操作 |
 | F05 | 两个独立 FileId 内容相同时可只共享加密字节，属性和版本各自独立 | **V2 原生后端已验证**：[CI #38762437581](https://github.com/zy19970/IPSys/actions/runs/38762437581) 验证不同 FileId/独立版本及属性、同区复用 FileObject ID 而不增加加密块 | N3-04 实现用户对同内容/异名内容的复用选择，N4 验证冻结 UI 流程 |
-| F06 | 内容相同但名称不同，也显示已有文件名和所在文件夹，让用户三选一或取消 | **待实现**：现有选项不等于先查重再弹窗 | R2 模拟内容检测/提示、三种决定、取消暂存清理 |
+| F06 | 内容相同但名称不同，也显示已有文件名和所在文件夹，让用户三选一或取消 | **V2 原生后端已验证**：[CI #38820367132](https://github.com/zy19970/IPSys/actions/runs/38820367132) 验证 SQLCipher 暂存、同大小/SHA-256 异名匹配、返回原文件名和 Folder 路径、三种选择/取消清理，另核对同名不同字节不误匹配 | N2-03/N4 将此 API 接至旧业务流程与冻结 UI；CI 不等于前端弹窗已实现 |
 | F07 | 版本只属于 File；Folder 改名/金额编辑不产生版本；历史 FileVersion 原件不丢 | **V2 N3-01 部分覆盖**：原生 File v1/v2、文件元数据编辑不产生新版本、历史原名/真实字节与 SHA-256 往返 [CI #38754995418](https://github.com/zy19970/IPSys/actions/runs/38754995418) 通过；共享版本同步已通过 N3-02 CI | N4 验证 UI/导出历史版本 |
 | F08 | 只选文件可上传；说明/标签/编号/日期与版本说明全选填、以后可补 | **V2 原生后端部分覆盖（N3-01 CI 已通过）**：文件可无额外属性上传，后续更新 File 元数据且不生成新版本；UI 尚未切换 | N3-02 验证多 Folder 同一 FileId 的属性同步；N4 验证 UI 可选项/上传流程，现有用户工作流不能提前标记完成 |
 | F09 | 附件按自己名称、选填属性、直属/祖先 Folder 的业务属性能被搜索 | **部分覆盖**：`SearchStore` 已检索当前记录/附件名 | R2/R3 增加祖先字段、可选属性、权限、跳转测试 |
@@ -72,7 +72,7 @@ N1 验收：[Windows CI #38740628571](https://github.com/zy19970/IPSys/actions/r
 
 ## N2-02 原生业务档案与综合资料验收（2026-10-15）
 
-> **当前下一项**：N3-01/N3-02 已通过 CI，接着实施 N3-04 查重选项及取消清理；随后 N2-03 旧业务 API/MCP/Excel 改为唯一 V2 存储，再做 N4 UI/搜索/导出/回收站。F04–F13、F16 等涉及新文件层的测试仍是未完成目标，不能因 N1 的 Schema 约束测试或旧业务功能通过而提前记为全项通过。
+> **当前下一项**：N3-01/N3-02 已通过 CI，N3-04 查重选项及取消清理已通过 CI；随后实施 N2-03 旧业务 API/MCP/Excel 改为唯一 V2 存储，再做 N4 UI/搜索/导出/回收站。F04–F13、F16 等涉及新文件层的测试仍是未完成目标，不能因 N1 的 Schema 约束测试或旧业务功能通过而提前记为全项通过。
 
 [Windows CI #38747066932](https://github.com/zy19970/IPSys/actions/runs/38747066932) success；[功能提交 340102b3](https://github.com/zy19970/IPSys/commit/340102b3cb6e28a1f8882236115bc7e82beb874c)，[边界收尾 265123fb](https://github.com/zy19970/IPSys/commit/265123fb15124ee04d73f338997d3d423088a91f)。真实临时 SQLCipher v2 HTTP 回归覆盖七个公司业务档案系统根、目录/资料混排持久排序及陈旧列表重排拒绝、任意层级目录与成环移动拒绝、目录非空拒删与空目录删除不可恢复、档案/综合资料软删恢复、公司/个人及 section 隔离、业务档案资料禁止移至无分类虚拟根，以及原生接口不向旧表双写。此项只证明原生 Folder 业务层；旧 UI、附件、MCP、Excel 及搜索仍需 N2-03/N3/N4 统一接入。
 
@@ -87,3 +87,7 @@ N1 验收：[Windows CI #38740628571](https://github.com/zy19970/IPSys/actions/r
 ## N3-03 独立 FileId 仅内容复用与跨区物理隔离验收（2026-10-15）
 
 [功能提交 944312d0](https://github.com/zy19970/IPSys/commit/944312d08f80d6baac7ab7fc614942441bfa880f)、[Windows CI #38762437581](https://github.com/zy19970/IPSys/actions/runs/38762437581) **success**。新原生复制接口按明确模式创建独立 FileId、独立 FileVersion/属性：同一工作区 `reuse-content` 保留原 FileObject ID、只增加文件身份与版本；`independent-content` 为所有有效历史版本独立写入新加密原件块，跨公司/个人只允许此模式。真实 SQLCipher/HTTP 自动测试比较工作区、FileId、FileObject 数量与 ID、版本/元数据独立性、SHA-256 和实际原件字节，并检查权限、目标归属、跨区复用拒绝、取消事务无残留。该批没有内容哈希查重列表/异名提醒及用户三选一，仍由 N3-04 实现。
+
+## N3-04 内容查重与用户决策原生验收（2026-10-16）
+
+[功能提交 93be896f](https://github.com/zy19970/IPSys/commit/93be896f4c0d26b0bfedb64c8c766069924a77f4) 与 [Windows CI #38820367132](https://github.com/zy19970/IPSys/actions/runs/38820367132) **success**。新原生 `/api/v2/files/{workspace}/prepare` 在 SQLCipher 暂存 writing 原件并按大小与 SHA-256 查询同区有效文件最新版；显示已有 FileId、文件名和 Folder 完整父级路径，支持不同名称命中，同名不同内容不可误命中。`/prepared/{ticket}/resolve` 必须明确选择引用同一 FileId、创建独立 FileId 只复用原件或完全独立保存；取消端点删除 writing 分块。SQLCipher/HTTP 测试覆盖令牌一次性消费、鉴权、工作区隔离、冲突、回滚、关闭/重开清理及原件字节。30 分钟过期、每数据库会话仅一项待确认。**此项仅为原生 HTTP/Store；现有网页的选择弹窗、MCP/Excel 和所有旧业务附件入口仍待 N2-03/N4 切换。**

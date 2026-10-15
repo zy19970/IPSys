@@ -1,6 +1,6 @@
 # IPSys 技术设计：SQLCipher V2 与过渡态（2026-10-15）
 
-> 本文区分 V2 **已实现的新 Schema、原生 Folder API 及 N3-01 File 基础层**、**仍使用旧业务表的现有 UI/接口**和 N3-04、N2-03/N4 **尚未实现的目标**。审查基线 `main@944312d0`；最新架构/进度和执行依据以 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md) 为准。
+> 本文区分 V2 **已实现的新 Schema、原生 Folder API 及 N3-01 File 基础层**、**仍使用旧业务表的现有 UI/接口**和 N2-03/N4 **尚未实现的集成目标**。审查基线 `main@93be896f`；最新架构/进度和执行依据以 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md) 为准。
 
 ## 1. 运行与安全边界
 
@@ -36,7 +36,7 @@ V2 强制工作区组合约束、合同有效父项目、合法 Folder 父级/�
 
 ### N3-01 原生 File 基础服务（2026-10-15 已通过 CI）
 
-`NativeFileStore.cs` / `NativeFileEndpoints.cs` 通过独立 `/api/v2/files` 接口实现 FileId 创建（必须绑定有效 FolderId）、原件加密分块上传与 SHA-256/长度校验、同事务版本和首条 FolderFileLink 写入；文件名必填、说明/标签/编号/日期/版本说明选填，可编辑属性且不修改历史版本。历史版本保留原始文件名并按版本下载。上传不完整、取消时事务回滚，无残留有效文件。独立 `NativeFileStoreSmoke` 和 `NativeFileHttpSmoke` 在真实 SQLCipher 与 HTTP 中通过身份/跨区隔离、原件往返、版本、事务回滚及数据库重开，[Windows CI #38754995418](https://github.com/zy19970/IPSys/actions/runs/38754995418) 成功。**N3-02 关联与 N3-03 独立 FileId 的同区内容复用/跨区字节独立复制已通过 CI；查重三选一及旧业务 UI 切换仍属于 N3-04 与 N2-03/N4。** 旧单文件 64 MiB 上限在此基础链路继续适用。
+`NativeFileStore.cs` / `NativeFileEndpoints.cs` 通过独立 `/api/v2/files` 接口实现 FileId 创建（必须绑定有效 FolderId）、原件加密分块上传与 SHA-256/长度校验、同事务版本和首条 FolderFileLink 写入；文件名必填、说明/标签/编号/日期/版本说明选填，可编辑属性且不修改历史版本。历史版本保留原始文件名并按版本下载。上传不完整、取消时事务回滚，无残留有效文件。独立 `NativeFileStoreSmoke` 和 `NativeFileHttpSmoke` 在真实 SQLCipher 与 HTTP 中通过身份/跨区隔离、原件往返、版本、事务回滚及数据库重开，[Windows CI #38754995418](https://github.com/zy19970/IPSys/actions/runs/38754995418) 成功。**N3-02 关联、N3-03 独立 FileId 内容复用、N3-04 原生查重与用户确认 API 均已通过 CI；尚需 N2-03 接通旧业务入口和 N4 冻结 UI 的选择弹窗与实机验收。** 旧单文件 64 MiB 上限在此基础链路继续适用。
 
 ### N3-02 同一 FileId 的多位置关联（已通过 CI）
 
@@ -45,6 +45,10 @@ V2 强制工作区组合约束、合同有效父项目、合法 Folder 父级/�
 ### N3-03 独立 FileId 和物理原件复用（已通过 Windows CI）
 
 `NativeFileCopyStore` 和 `NativeFileCopyEndpoints` 以显式 `reuse-content`（同工作区）或 `independent-content` 模式复制一个 File 的有效历史版本到新的 FileId 和目标 Folder。前者为独立文件/版本记录引用原来已完成的不可变 FileObject；后者在 SQLCipher 中创建新的 FileObject/加密分块，跨公司与个人工作区必须采用后者。副本属性、显示名称及后续版本独立；文件、版本、物理对象及目标目录首条关联同事务提交，取消时全部回滚。真实 SQLCipher 和 HTTP 通过 [CI #38762437581](https://github.com/zy19970/IPSys/actions/runs/38762437581)。N3-04 仍需提供内容哈希匹配、既有文件名和文件夹位置提示，以及明确的用户复用/独立保存/取消选择。
+
+### N3-04 SHA-256 查重、待确认原件与选择接口（已通过 Windows CI）
+
+`NativeFileChoiceStore`、`NativeFileChoiceResolve` 和 `NativeFileChoiceEndpoints` 增加 `POST /api/v2/files/{workspace}/prepare?folderId=...`（原始字节和可选 X-File 属性，返回 ticket、sha256、size、matches：已有 FileId/文件名/版本/完整有效 Folder 路径），以及 `POST /api/v2/files/{workspace}/prepared/{ticket}/resolve`（显式 `share-file`、`reuse-content`、`independent`）、`DELETE /api/v2/files/{workspace}/prepared/{ticket}`（取消）。上传先按块写入 SQLCipher `writing` 对象；只有明确独立保存才转成不可变 `ready`。引用相同 FileId 或独立 FileId 仅内容复用时删除暂存块，不删已有 ready 对象；只查同工作区最新有效版本，异名相同内容仍可匹配，同名不同字节不会匹配。一个数据库会话同时仅有一份待确认原件，票据不可重放，30 分钟过期；关闭数据库和下一次打开清理遗留 writing 对象。权限、工作区、SHA-256/大小、目录有效性、失败回滚由服务端校验。[Windows CI #38820367132](https://github.com/zy19970/IPSys/actions/runs/38820367132) 真实 SQLCipher/HTTP 通过。可视化对话框和旧业务 API 尚未切到此协议，分别由 N4/N2-03 完成。
 
 ## 4. 过渡期旧代码（N3/N2-03/N4 后才可移除）
 
