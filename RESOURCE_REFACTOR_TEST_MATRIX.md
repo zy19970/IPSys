@@ -68,3 +68,8 @@ N1 验收：[Windows CI #38740628571](https://github.com/zy19970/IPSys/actions/r
 ## N2-01 原生 Folder 验收（2026-10-15）
 
 [Windows CI #38743939004](https://github.com/zy19970/IPSys/actions/runs/38743939004) success，原生 `/api/v2/folders` 项目/合同/IP HTTP 在临时真实 SQLCipher v2 库上通过：公司/个人隔离、必须有效项目才能创建合同、项目删除时隐藏其合同、项目恢复后合同可再读取，以及新版存储不向旧 `business_projects` 表双写。本项仅验证新原生入口；旧业务 API、MCP、Excel、业务文件归属和原页面切换仍按 N2-02/N2-03/N3 继续实施。
+
+
+## N2-02 原生业务档案与综合资料验收（2026-10-15）
+
+[Windows CI #38747066932](https://github.com/zy19970/IPSys/actions/runs/38747066932) success；[功能提交 340102b3](https://github.com/zy19970/IPSys/commit/340102b3cb6e28a1f8882236115bc7e82beb874c)，[边界收尾 265123fb](https://github.com/zy19970/IPSys/commit/265123fb15124ee04d73f338997d3d423088a91f)。真实临时 SQLCipher v2 HTTP 回归覆盖七个公司业务档案系统根、目录/资料混排持久排序及陈旧列表重排拒绝、任意层级目录与成环移动拒绝、目录非空拒删与空目录删除不可恢复、档案/综合资料软删恢复、公司/个人及 section 隔离、业务档案资料禁止移至无分类虚拟根，以及原生接口不向旧表双写。此项只证明原生 Folder 业务层；旧 UI、附件、MCP、Excel 及搜索仍需 N2-03/N3/N4 统一接入。
