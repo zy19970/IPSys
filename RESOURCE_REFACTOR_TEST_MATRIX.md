@@ -95,3 +95,7 @@ N1 验收：[Windows CI #38740628571](https://github.com/zy19970/IPSys/actions/r
 ## N2-03-01 原生 V2 本机 MCP 第一批（2026-10-16）
 
 [源码提交 3e7ba60a](https://github.com/zy19970/IPSys/commit/3e7ba60aad3fa1043f098178c3312e423873f745)、[Windows CI #38822708366](https://github.com/zy19970/IPSys/actions/runs/38822708366) **success**。新增 V2 命名 `v2_*` 11 项业务 CRUD，通过同一用户本机命名管道与原授权令牌访问 `/api/v2/folders`，真实 SQLCipher/HTTP 回归检查项目与合同合法父级、知识产权属性更新、跨区修改拒绝、删除/恢复、旧表不双写；保留旧 14 项工具与 UI 过渡期兼容，不将它们标记为已迁移。**下一批 N2-03-02 需要让旧项目/合同/IP HTTP/附件、旧 MCP 命名及 Excel 逐模块接入同一 V2 数据源，避免业务与附件两套身份混用。**
+
+## N2-03-02 知识产权 FolderId 与附件 FileId 垂直闭环（2026-10-16）
+
+[功能提交 e88b1b82](https://github.com/zy19970/IPSys/commit/e88b1b8256731a1f95dfeda6f6e00cd61b7aff76)、[测试构造修复 02c45ece](https://github.com/zy19970/IPSys/commit/02c45ece23863935098e80567e2e055922fd0e7b)，最终 [Windows CI #38824119576](https://github.com/zy19970/IPSys/actions/runs/38824119576) **success**。`NativeIpFileStore` 和 `NativeIpFileEndpoints` 在原生 V2 `folders.kind=ip` 的实际业务 FolderId 上接入 `files/file_versions/file_objects/file_chunks/folder_file_links`，提供上传/分类、列表、原件详情、追加与下载历史版本、复用同 FileId、单条解绑与恢复。SQLCipher HTTP 回归验证有效 IP 父级、材料类别、共享 IP 最新版本同步、解绑后不复活、业务属性修改不生成文件版本、删除恢复、跨 IP 与跨区拒绝访问、首版字节往返及旧附件不双写。首轮 CI #38823818064 编译失败仅因新 Smoke 创建 IpInput 未传 Tags；补齐后最终 CI 成功。**原有旧业务 HTTP、网页 UI、Excel、14 项旧 MCP 还未切换；本批不能代替 V2 全应用验收。下一批 N2-03-03 继续模块级旧业务入口、附件及 Excel/MCP 身份收敛。**
