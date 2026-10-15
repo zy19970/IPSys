@@ -519,6 +519,7 @@ vm.runInContext(
  "globalThis.__companyTable=realArchiveTable('achievement','申报与认定');"+
  "archiveFolderId=203;"+
  "globalThis.__companyNested=realArchiveTable('achievement','企业行标');"+
+ "globalThis.__companyPath=archiveFolderPath(203).map(x=>x.name);"+
  "archiveFolderId=201;"+
  "globalThis.__companyZip=archiveRecordZipOriginals(31,'achievement');"+
  "globalThis.__emptyCompanyZip=archiveRecordZipOriginals(32,'achievement');",
@@ -537,7 +538,7 @@ assert.ok(realArchiveCtx.__companyTable.includes('data-archive-folder-id="203"')
  'Nested directory cards should show direct child folders and only their own records');
 assert.ok(realArchiveCtx.__companyTable.includes('＋ 新建下级分类')&&
  realArchiveCtx.__companyTable.includes('管理当前目录')&&
- realArchiveCtx.__companyNested.includes('业务档案 / 申报与认定 / 企业行标'),
+ JSON.stringify(Array.from(realArchiveCtx.__companyPath))==='["申报与认定","企业行标"]',
  'Arbitrary-depth navigation must preserve directory controls and full path');
 assert.ok(js.includes("await api('/api/archive-folders")&&
  js.includes("el('archiveFolderForm').onsubmit")&&
