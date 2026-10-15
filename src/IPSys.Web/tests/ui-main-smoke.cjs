@@ -367,6 +367,8 @@ vm.runInContext(preamble+'\n'+js.slice(archiveFirst,archiveLast)+
 assert.ok(realArchiveCtx.__realCards.includes('data-archive-category="学术兼职"'),
  'Even with real data, the category cards must be separate from records');
 assert.ok(!realArchiveCtx.__realCards.includes('<table'),'Archive top level cannot turn into a table');
+assert.ok(realArchiveCtx.__realTable.includes('<table class="data ledger-archive-category-table">'),
+ 'Personal archive category tables must use the shared compact column sizing');
 assert.ok(realArchiveCtx.__realTable.includes('data-archive-id="21"')&&
  realArchiveCtx.__realTable.includes('data-archive-id="22"'),
  'A category must support multiple independently persisted records');
@@ -393,6 +395,8 @@ for(const c of ["申报与认定","规划与管理","汇报与宣传","会议与
 assert.ok(realArchiveCtx.__companyCats.includes('技术成果'),'Legacy categories must remain available');
 assert.ok(realArchiveCtx.__companyCards.includes('data-archive-category="技术成果"')&&
  realArchiveCtx.__companyTable.includes('data-archive-id="31"'),'Old and new company data must be accessible');
+assert.ok(realArchiveCtx.__companyTable.includes('<table class="data ledger-archive-category-table">'),
+ 'Company archive category tables must use the same compact column sizing');
 for(const view of [realArchiveCtx.__realTable,realArchiveCtx.__companyTable]){
  assert.ok(view.includes('<div class="breadcrumb"><button type="button" class="archive-breadcrumb-back" data-archive-back="cards">← 返回类别卡片</button>'),
   'Category return button must appear inside the top-left breadcrumb');
@@ -791,6 +795,15 @@ for(const rule of ['.data.ledger-record-table','.ledger-record-order-cell .btn',
  '.archive-tablewrap .data.ledger-record-table td:nth-child(2)',
  '.ledger-batch-delete[hidden]'])
  assert.ok(css.includes(rule),'Record table sizing / hidden delete missing '+rule);
+// Live archive category lists fix type, attachment count and action width, leaving long names flexible.
+for(const rule of [
+ '.data.ledger-record-table.ledger-archive-category-table th:nth-child(4){width:170px}',
+ '.data.ledger-record-table.ledger-archive-category-table th:nth-child(5){width:106px}',
+ '.data.ledger-record-table.ledger-archive-category-table th:nth-child(6){width:116px}',
+ '.data.ledger-record-table.ledger-archive-category-table{min-width:850px}'
+])assert.ok(css.includes(rule),'Compact archive category width missing: '+rule);
+assert.ok(!css.includes('.data.ledger-record-table.ledger-archive-category-table th:nth-child(3){width:'),
+ 'Archive record name must use remaining table width');
 // Project title takes all flexible width; short columns are fixed and the ordering actions stay visible.
 for(const rule of [
  '.data.ledger-record-table.ledger-project-table th:nth-child(3){width:116px}',
