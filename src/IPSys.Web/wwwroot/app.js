@@ -1037,17 +1037,19 @@ function realArchiveCategoryCard(category,count,files,folderId=null){
  const companyFolder=folderId!==null;
  const target=companyFolder?'data-archive-folder-id="'+folderId+'"':
   'data-archive-category="'+escapeHtml(category)+'"';
- const check=companyFolder?'<label class="archive-folder-card-check" title="勾选分类"><input type="checkbox" class="archive-folder-check" data-folder-id="'+folderId+'" aria-label="选择分类 '+
-  escapeHtml(category)+'"'+(archiveSelectedFolders.has(folderId)?' checked':'')+'> 选择</label>':'';
- const download=companyFolder?'<button type="button" class="btn btn-sm" data-archive-folder-download="'+folderId+'"'+
-  (archiveFolderOriginals(folderId).length?'':' disabled title="该分类暂无附件"')+'>下载</button>':'';
+ // The landing page is navigation only. System roots and the virtual root
+ // category cannot be removed; user-created empty roots may be deleted.
+ const defaults=["申报与认定","规划与管理","汇报与宣传","会议与活动",
+  "专项工作与合作","政策与行业资料","其他业务资料"];
+ const canDelete=companyFolder&&folderId>0&&!defaults.includes(category);
+ const remove=canDelete?'<button type="button" class="btn btn-sm archive-root-delete" '+
+  'data-archive-folder-delete="'+folderId+'" aria-label="删除分类 '+escapeHtml(category)+'">删除</button>':'';
  return '<article class="archivecard archivecategory" '+target+' role="button" tabindex="0" aria-label="查看'+escapeHtml(category)+'台账">'+
  '<div class="archivecard-head"><div class="archivecard-titlewrap">'+
- '<span class="archivecard-symbol" aria-hidden="true">▤</span><h3 class="archivecard-title">'+escapeHtml(category)+'</h3></div>'+
- check+'</div>'+
+ '<span class="archivecard-symbol" aria-hidden="true">▤</span><h3 class="archivecard-title">'+escapeHtml(category)+'</h3></div></div>'+
  '<div class="archivecard-meta"><span class="archivecard-type">'+count+' 条归档记录</span>'+
  '<span class="archivecard-count">附件 <strong>'+files+'</strong> 份</span></div>'+
- '<div class="archivecard-actions">'+download+
+ '<div class="archivecard-actions">'+remove+
  '<span class="archivecategory-open">进入台账 →</span></div></article>';
 }
 
@@ -1237,13 +1239,13 @@ function realArchiveCards(k){
   const all=archiveRows.achievement||[];
   const unfiled=all.filter(r=>!r.folderId);
   return heading('业务档案','选择分类进入对应资料台账',
-   '<button class="btn primary" data-action="archiveCreate">＋ 新建</button>')+
+   '<button class="btn primary" data-action="archiveFolderAdd">＋ 新建</button>')+
    '<section class="white filter"><div class="filterline"><div class="field wide">'+
    '<label>分类名称</label><input id="filterSearch" placeholder="查找业务档案分类"></div>'+
    '<button class="btn primary" data-action="filter">查询</button>'+
    '<button class="btn" data-action="clearFilter">重置</button></div></section>'+
    '<section class="white archive-category-root"><div class="tabletools"><b>资料类别 · '+roots.length+' 类</b>'+
-   '<div class="actions">'+quickExportButtons(all,'archive',k)+'</div></div>'+
+   '<div class="actions"></div></div>'+
    '<div class="recordgrid">'+roots.map(f=>{
     const members=all.filter(r=>archiveFolderPath(r.folderId).some(p=>p.id===f.id));
     return realArchiveCategoryCard(f.name,members.length,
@@ -1923,15 +1925,18 @@ el('content').addEventListener('click',async ev=>{
  for(const menu of el('content').querySelectorAll('.compact-ledger-export[open]')){
   if(!ev.target.closest('.compact-ledger-export')||ev.target.closest('.compact-ledger-export-options button'))menu.removeAttribute('open');
  }
- // A folder card also contains its selection checkbox and download action.
- // They must not trigger navigation to that folder.
- if(ev.target.closest('.archive-folder-card-check'))return;
- const folderDownload=ev.target.closest('[data-archive-folder-download]');
- if(folderDownload&&space==='company'&&page==='achievement'){
-  const originals=archiveFolderOriginals(Number(folderDownload.dataset.archiveFolderDownload));
-  if(!originals.length)return notice('该分类及下级分类暂无附件可下载。',true);
-  if(!globalThis.IPSysExport)return notice('导出模块仍在初始化，请稍后重试。',true);
-  await globalThis.IPSysExport.start('zip',originals);return;
+ // Root category cards only navigate; deletion is separate and never opens a card.
+ const deleteFolderButton=ev.target.closest('[data-archive-folder-delete]');
+ if(deleteFolderButton&&space==='company'&&page==='achievement'&&archiveFolderId===null){
+  const id=Number(deleteFolderButton.dataset.archiveFolderDelete);
+  const folder=archiveFolders.find(f=>f.id===id&&f.parentId===null);
+  if(!folder)return notice('分类不存在，请刷新。',true);
+  if(!confirm('确定删除空分类“'+folder.name+'”？分类中含资料或下级分类时不会删除。'))return;
+  try{
+   await api('/api/archive-folders/'+id,{method:'DELETE'});
+   await refresh();notice('分类已删除。');
+  }catch(error){notice('删除分类失败：'+error.message,true);}
+  return;
  }
  const folderCard=ev.target.closest('[data-archive-folder-id]');
  if(folderCard&&space==='company'&&page==='achievement'){
@@ -2410,6 +2415,7 @@ el('archiveFolderForm').onsubmit=async event=>{
  event.preventDefault();
  if(space!=='company'||page!=='achievement')return;
  const id=archiveFolderEditingId,name=el('archiveFolderName').value.trim();
+ const createAtRoot=id===null&&archiveFolderId===null;
  const parentId=id?(Number(el('archiveFolderParent').value)||null):(archiveFolderId||null);
  el('archiveFolderSave').disabled=true;
  try{
@@ -2417,8 +2423,8 @@ el('archiveFolderForm').onsubmit=async event=>{
    {method:id?'PUT':'POST',json:{name,parentId}});
   const newId=id||(await response.json()).id;
   el('archiveFolderDialog').close();
-  archiveFolderId=newId;archiveGroup=name;
-  await refresh();notice(id?'目录已更新。':'下级分类已创建。');
+  archiveFolderId=createAtRoot?null:newId;archiveGroup=createAtRoot?null:name;
+  await refresh();notice(id?'目录已更新。':createAtRoot?'分类已创建。':'下级分类已创建。');
  }catch(error){notice(error.message,true);}
  finally{el('archiveFolderSave').disabled=false;}
 };

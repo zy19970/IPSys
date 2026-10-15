@@ -506,7 +506,8 @@ vm.runInContext(
  "{id:201,parentId:null,name:'申报与认定',position:0},"+
  "{id:202,parentId:null,name:'技术成果',position:1},"+
  "{id:203,parentId:201,name:'企业行标',position:0},"+
- "{id:204,parentId:203,name:'2026年度',position:0}];"+
+ "{id:204,parentId:203,name:'2026年度',position:0},"+
+ "{id:205,parentId:null,name:'自建分类',position:2}];"+
  "archiveFolderId=null;"+
  "globalThis.__companyName=archiveSectionName('achievement');"+
  "globalThis.__companyCats=archiveCategories('achievement');"+
@@ -547,10 +548,15 @@ assert.ok(realArchiveCtx.__companyTable.includes('data-archive-folder-id="203"')
 assert.ok(realArchiveCtx.__companyCards.includes('class="recordgrid"')&&
  realArchiveCtx.__companyCards.includes('class="archivecard archivecategory"')&&
  !realArchiveCtx.__companyCards.includes('<table')&&
- realArchiveCtx.__companyCards.includes('data-action="archiveCreate"')&&
- realArchiveCtx.__companyCards.includes('class="archive-folder-check"')&&
- realArchiveCtx.__companyCards.includes('data-archive-folder-download="201"'),
- 'Business archive landing page must show first-level category cards, never the directory table');
+ realArchiveCtx.__companyCards.includes('data-action="archiveFolderAdd"')&&
+ !realArchiveCtx.__companyCards.includes('data-action="archiveCreate"')&&
+ !realArchiveCtx.__companyCards.includes('archive-folder-check')&&
+ !realArchiveCtx.__companyCards.includes('data-archive-folder-download=')&&
+ !realArchiveCtx.__companyCards.includes('compact-ledger-export')&&
+ realArchiveCtx.__companyCards.includes('data-archive-folder-delete="205"')&&
+ !realArchiveCtx.__companyCards.includes('data-archive-folder-delete="201"')&&
+ !realArchiveCtx.__companyCards.includes('data-archive-folder-delete="202"'),
+ 'Business archive root keeps cards, creates folders only, hides selection/export, and can delete custom roots only');
 for(const view of [realArchiveCtx.__companyTable,realArchiveCtx.__companyNested]){
  assert.ok(view.includes('<table class="data ledger-archive-category-table company-business-archive">')&&
   !view.includes('class="recordgrid"')&&!view.includes('archive-folder-card')&&
@@ -640,14 +646,18 @@ assert.ok(js.includes("archiveSelectedFolders.add(folderId)")&&
  js.includes("archiveChosenOriginals(selectedAnything?folders:visibleFolders,")&&
  js.includes("const visibleFolders=archiveVisibleFolderIds();"),
  'Folder and record multi-selection must be included in toolbar ZIP export without using record deletion');
-assert.ok(js.includes("if(ev.target.closest('.archive-folder-card-check'))return;")&&
- js.includes("const folderDownload=ev.target.closest('[data-archive-folder-download]')"),
- 'Selecting or downloading an archive category card must never navigate into it');
+assert.ok(js.includes("const deleteFolderButton=ev.target.closest('[data-archive-folder-delete]')")&&
+ js.includes("await api('/api/archive-folders/'+id,{method:'DELETE'})")&&
+ js.indexOf("const deleteFolderButton=ev.target.closest(")<
+ js.indexOf("const folderCard=ev.target.closest(")&&
+ js.includes("const createAtRoot=id===null&&archiveFolderId===null;")&&
+ js.includes("archiveFolderId=createAtRoot?null:newId"),
+ 'Custom root deletion must be a separate confirmed action and root creation must stay on the landing page');
 assert.ok(html.includes('id="archiveCreateDialog"')&&
  js.includes("el('archiveCreateRecord').onclick")&&
  js.includes("el('archiveCreateFolder').onclick")&&
  js.includes("case 'archiveCreate':"),
- 'One new-action dialog must offer new record or new subcategory in the current directory');
+ 'Nested category new-action dialog must still offer record or subcategory, while root creates only a folder');
 assert.ok(js.includes("await globalThis.IPSysExport.start('zip',originals)")&&
  js.includes("target.dataset.archiveDownload")&&
  js.includes('el(\'aYear\').disabled=!companyBusiness'),

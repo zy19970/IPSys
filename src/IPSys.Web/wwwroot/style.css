@@ -413,14 +413,17 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 .company-business-archive .archive-folder-summary{font-size:13px;white-space:normal}
 .company-business-archive .archive-folder-row .archive-category-action{white-space:nowrap}
 /* Folder and record selection share export scope; folder rows are never record deletions. */
-.archive-folder-card-check{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);cursor:pointer;white-space:nowrap}
-.archive-folder-card-check input,.company-business-archive .archive-folder-check{width:16px;height:16px;accent-color:var(--primary);cursor:pointer}
+.company-business-archive .archive-folder-check{width:16px;height:16px;accent-color:var(--primary);cursor:pointer}
 .archive-folder-row .archive-category-action{white-space:nowrap}
 .archive-folder-row .archive-category-action .btn{margin:0}
 .company-business-archive th:last-child,
 .company-business-archive td.archive-category-action{text-align:center}
 .company-business-archive .archive-folder-row .archive-category-action .btn{display:inline-flex;align-items:center;justify-content:center;min-width:48px}
 .archivecategory .archivecard-actions{display:flex;align-items:center;justify-content:flex-end;gap:12px}
+/* Custom root categories expose a low-emphasis, independently clickable delete action. */
+.archivecategory .archive-root-delete{min-width:54px;padding:5px 10px;color:#a64e4e}
+.archivecategory .archive-root-delete:hover{border-color:#cf8787;background:#fff7f7}
+.archivecategory .archive-root-delete:focus-visible{outline:2px solid #bd6666;outline-offset:2px}
 #archiveCreateDialog .dialogactions{justify-content:flex-start}
 /* Align live category-ledger headers with the enterprise-certificate header. */
 .archive-category-ledger>.compact-ledger-toolbar{display:flex;align-items:center;gap:24px}

@@ -2418,6 +2418,25 @@ static class WebSmoke
             if(roots is null || !roots.Any(f=>f.Name=="申报与认定"&&f.ParentId is null) ||
                !roots.Any(f=>f.Name=="技术成果"&&f.ParentId is null))
                 throw new IOException("历史分类目录没有安全迁移或默认分类缺失。");
+            // A user-created empty first-level archive category may be deleted from
+            // the landing card, while the seven default root categories stay protected.
+            using(var temporary=await client.PostAsJsonAsync("/api/archive-folders",
+                new ArchiveFolderInput("临时自建分类",null)))
+            {
+                temporary.EnsureSuccessStatusCode();
+                long temporaryId=(await temporary.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
+                    .GetProperty("id").GetInt64();
+                using(var deleted=await client.DeleteAsync($"/api/archive-folders/{temporaryId}"))
+                    deleted.EnsureSuccessStatusCode();
+                var afterDelete=await client.GetFromJsonAsync<List<ArchiveFolderView>>("/api/archive-folders");
+                if(afterDelete is null || afterDelete.Any(f=>f.Id==temporaryId))
+                    throw new IOException("业务档案首页删除自建空分类后没有真正移除目录。");
+            }
+            var protectedDefault=roots.Single(f=>f.Name=="申报与认定"&&f.ParentId is null);
+            using(var rejectDefaultDelete=await client.DeleteAsync(
+                $"/api/archive-folders/{protectedDefault.Id}"))
+                if(rejectDefaultDelete.StatusCode!=HttpStatusCode.Conflict)
+                    throw new IOException("预设根分类不得从首页删除。");
             var technology=roots.Single(f=>f.Name=="技术成果"&&f.ParentId is null);
             long parent=technology.Id;
             foreach(string part in new[]{"企业行标","评审材料","2026年度"})
