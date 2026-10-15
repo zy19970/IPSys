@@ -102,7 +102,7 @@ static class FolderCommandSmoke
             Check(wrongScope.StatusCode == HttpStatusCode.NotFound,
                 "IP delete workspace isolated");
         using (var unsupported = await client.PostAsJsonAsync(
-            prefix+"archive", new FolderMutationInput(Project: projectInput)))
+            prefix+"general", new FolderMutationInput(Project: projectInput)))
             Check(unsupported.StatusCode == HttpStatusCode.BadRequest,
                 "archive writes wait for next batch");
 
