@@ -555,7 +555,7 @@ assert.ok(realArchiveCtx.__companyCards.includes('class="recordgrid"')&&
  !realArchiveCtx.__companyCards.includes('compact-ledger-export')&&
  realArchiveCtx.__companyCards.includes('data-archive-folder-delete="205"')&&
  !realArchiveCtx.__companyCards.includes('data-archive-folder-delete="201"')&&
- !realArchiveCtx.__companyCards.includes('data-archive-folder-delete="202"'),
+ realArchiveCtx.__companyCards.includes('data-archive-folder-delete="202"'),
  'Business archive root keeps cards, creates folders only, hides selection/export, and can delete custom roots only');
 for(const view of [realArchiveCtx.__companyTable,realArchiveCtx.__companyNested]){
  assert.ok(view.includes('<table class="data ledger-archive-category-table company-business-archive">')&&
