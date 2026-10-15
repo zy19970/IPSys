@@ -211,12 +211,14 @@ sealed class Vault : IDisposable
                 PRIMARY KEY(attachment_id,idx));
             """;
         cmd.ExecuteNonQuery();
+        ResourceSchemaV2.Create(db);
     }
     public static void ValidateSchema(SqliteConnection db)
     {
         using var cmd = db.CreateCommand();
         cmd.CommandText = "SELECT count(*) FROM sqlite_master WHERE type='table' AND name IN ('records','attachments','chunks');";
         if ((long)cmd.ExecuteScalar()! != 3L)
-            throw new IOException("不支持该数据库的表结构；请使用独立的网页版测试库。");
+            throw new IOException("不支持该数据库的表结构；请新建新版资料库。");
+        ResourceSchemaV2.Validate(db);
     }
 }

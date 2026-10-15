@@ -106,9 +106,9 @@ static class FolderProviderSmoke
 
                 // Folder adapters only call existing Store.List; no physical schema changes.
                 using var count = db.CreateCommand();
-                count.CommandText = "SELECT count(*) FROM sqlite_master WHERE type='table';";
+                count.CommandText = "SELECT count(*) FROM sqlite_master WHERE type='table' AND name IN ('records','attachments','chunks','business_projects','business_contracts','business_ips');";
                 Check((long)count.ExecuteScalar()! == 6,
-                    "read-only providers must not create any new tables");
+                    "existing business providers do not create unexpected legacy tables");
             }
         }
         finally

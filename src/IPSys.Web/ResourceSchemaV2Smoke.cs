@@ -1,0 +1,126 @@
+using Microsoft.Data.Sqlite;
+
+// Exercise the v2 model in a disposable, encrypted database.
+static class ResourceSchemaV2Smoke
+{
+    public static void Run()
+    {
+        static void Check(bool value,string name)
+        {
+            if(!value)throw new IOException("V2 SCHEMA SMOKE FAIL: "+name);
+        }
+        static long ExecuteId(SqliteConnection db,string sql)
+        {
+            using var cmd=db.CreateCommand();
+            cmd.CommandText=sql+"; SELECT last_insert_rowid();";
+            return (long)cmd.ExecuteScalar()!;
+        }
+        static void Reject(SqliteConnection db,string sql,string name)
+        {
+            try
+            {
+                using var cmd=db.CreateCommand();
+                cmd.CommandText=sql;
+                cmd.ExecuteNonQuery();
+                throw new IOException("Invalid mutation accepted: "+name);
+            }
+            catch(SqliteException) { }
+        }
+        string path=Path.Combine(Path.GetTempPath(),
+            "ipsys-v2-"+Guid.NewGuid().ToString("N")+".db");
+        try
+        {
+            long folderId,fileId,linkFolder,objectId;
+            using(var db=Vault.Connect(path,"v2-temporary-key",create:true))
+            {
+                Vault.CreateSchema(db);
+                Vault.ValidateSchema(db);
+                using(var count=db.CreateCommand())
+                {
+                    count.CommandText="SELECT count(*) FROM folders WHERE is_system=1;";
+                    Check((long)count.ExecuteScalar()! == 7,"seven protected archive roots");
+                }
+                folderId=ExecuteId(db,
+                    "INSERT INTO folders(workspace,kind,name) VALUES('company','project','项目')");
+                var contract=ExecuteId(db,
+                    $"INSERT INTO folders(workspace,kind,name,parent_id) VALUES('company','contract','合同',{folderId})");
+                Check(contract>0,"project-contract parent");
+                Reject(db,"INSERT INTO folders(workspace,kind,name) VALUES('company','contract','孤立合同')",
+                    "orphan contract");
+                Reject(db,$"INSERT INTO folders(workspace,kind,name,parent_id) VALUES('personal','contract','跨区合同',{folderId})",
+                    "cross-workspace parent");
+                Reject(db,$"INSERT INTO folders(workspace,kind,name,parent_id) VALUES('company','ip','非法父级',{folderId})",
+                    "invalid parent kind");
+                linkFolder=ExecuteId(db,
+                    "INSERT INTO folders(workspace,kind,section,name) VALUES('company','archive_folder','achievement','自建分类')");
+                var child=ExecuteId(db,
+                    $"INSERT INTO folders(workspace,kind,section,name,parent_id) VALUES('company','archive_folder','achievement','下级分类',{linkFolder})");
+                Reject(db,$"UPDATE folders SET parent_id={child} WHERE id={linkFolder}",
+                    "cycle detection");
+                Reject(db,"UPDATE folders SET deleted=1 WHERE is_system=1 AND name='申报与认定'",
+                    "system root protection");
+
+                fileId=ExecuteId(db,"INSERT INTO files(workspace,name) VALUES('company','原件.pdf')");
+                objectId=ExecuteId(db,
+                    "INSERT INTO file_objects(workspace,state,expected_size,size,sha256) VALUES('company','ready',3,3,'"+
+                    new string('A',64)+"')");
+                ExecuteId(db,
+                    $"INSERT INTO file_versions(file_id,workspace,version,object_id,original_name) VALUES({fileId},'company',1,{objectId},'原件.pdf')");
+                ExecuteId(db,
+                    $"INSERT INTO folder_file_links(workspace,folder_id,file_id) VALUES('company',{folderId},{fileId})");
+                ExecuteId(db,
+                    $"INSERT INTO folder_file_links(workspace,folder_id,file_id) VALUES('company',{linkFolder},{fileId})");
+                Reject(db,$"INSERT INTO folder_file_links(workspace,folder_id,file_id) VALUES('personal',{folderId},{fileId})",
+                    "cross workspace file link");
+                Reject(db,$"INSERT INTO folder_file_links(workspace,folder_id,file_id) VALUES('company',{folderId},{fileId})",
+                    "duplicate active file link");
+                var secondFile=ExecuteId(db,
+                    "INSERT INTO files(workspace,name) VALUES('company','独立文件.pdf')");
+                ExecuteId(db,
+                    $"INSERT INTO file_versions(file_id,workspace,version,object_id,original_name) VALUES({secondFile},'company',1,{objectId},'独立文件.pdf')");
+                ExecuteId(db,
+                    $"INSERT INTO file_versions(file_id,workspace,version,object_id,original_name) VALUES({fileId},'company',2,{objectId},'原件第二版.pdf')");
+                using(var count=db.CreateCommand())
+                {
+                    count.CommandText=$"SELECT count(*) FROM file_versions WHERE file_id={fileId};";
+                    Check((long)count.ExecuteScalar()! == 2,"shared logical file has two versions");
+                    count.CommandText=$"SELECT count(*) FROM file_versions WHERE file_id={secondFile};";
+                    Check((long)count.ExecuteScalar()! == 1,
+                        "same byte content does not merge different file histories");
+                }
+                Reject(db,$"UPDATE file_versions SET original_name='伪造原名' WHERE file_id={fileId}",
+                    "immutable version identity");
+                var otherObject=ExecuteId(db,
+                    "INSERT INTO file_objects(workspace,state,expected_size,size,sha256) VALUES('personal','ready',3,3,'"+
+                    new string('A',64)+"')");
+                Reject(db,$"INSERT INTO file_versions(file_id,workspace,version,object_id,original_name) VALUES({fileId},'company',3,{otherObject},'越区.pdf')",
+                    "physical object workspace isolation");
+                var writing=ExecuteId(db,
+                    "INSERT INTO file_objects(workspace,state,expected_size) VALUES('company','writing',3)");
+                Reject(db,$"INSERT INTO file_versions(file_id,workspace,version,object_id,original_name) VALUES({fileId},'company',3,{writing},'暂存.pdf')",
+                    "unfinished content");
+                using(var unlink=db.CreateCommand())
+                {
+                    unlink.CommandText=$"UPDATE folder_file_links SET deleted=1 WHERE folder_id={folderId} AND file_id={fileId};";
+                    Check(unlink.ExecuteNonQuery()==1,"unlink one association");
+                    unlink.CommandText=$"SELECT count(*) FROM folder_file_links WHERE folder_id={linkFolder} AND file_id={fileId} AND deleted=0;";
+                    Check((long)unlink.ExecuteScalar()! == 1,
+                        "other folder retains shared FileId");
+                }
+            }
+            using(var reopen=Vault.Connect(path,"v2-temporary-key",create:false))
+            {
+                Vault.ValidateSchema(reopen);
+                using var cmd=reopen.CreateCommand();
+                cmd.CommandText="SELECT count(*) FROM files;";
+                Check((long)cmd.ExecuteScalar()! == 2,"encrypted files survive reopen");
+            }
+        }
+        finally
+        {
+            foreach(var suffix in new[]{"","-wal","-shm","-journal"})
+                if(File.Exists(path+suffix))File.Delete(path+suffix);
+        }
+        Console.WriteLine("RESOURCE V2 SQLCIPHER SMOKE PASS");
+    }
+}

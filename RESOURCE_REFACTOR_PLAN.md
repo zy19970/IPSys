@@ -6,6 +6,22 @@
 >
 > 每次后续实质开发均先重新阅读 `https://github.com/zy19970/AIGT-templates/main/AGENTS.md` 和 `AI_RULES/GIT_OPERATIONS.md`、IPSys 当前主分支的完整 Git 历史、本文件与相关源码。不得只凭聊天上下文判断进度。
 
+## 2026-10-15 新决定：不迁移旧测试库，直接启用全新统一数据库
+
+**用户明确确认：所有现有数据库都是测试数据，无需兼容、迁移、回填或保存旧数据。** IPSys 后续采用 SQLCipher v2 新资料库；旧文件不会被软件自动覆盖，也不提供自动迁移。打开旧版测试库时必须提示创建新库。此前各阶段为了旧表兼容而规划的 R1-04-03-02、R1-04-03-03、R4 数据迁移环节停止执行，相关历史记录仅用于追溯。
+
+**物理数据模型一次定型**：folders 统一资源身份、父级、类型、section、业务属性 JSON、排序、系统根保护；files 为独立逻辑 FileId 与选填属性；file_versions 只属于 File、保留原始名称和所有版本；file_objects/file_chunks 存储实际 SQLCipher 加密字节，可在同工作区依据明确用户选择复用；folder_file_links 为 Folder 与 File 多对多。数据库使用组合外键、工作区约束、合同父项目限制、目录防环、不可覆写的历史版本，以及七个公司业务档案系统分类。
+
+**开发顺序调整为 N1 → N2 → N3 → N4**：
+
+1. N1 新 SQLCipher v2 Schema 与原生数据关系自动测试；新版数据库创建/打开进行版本校验。
+2. N2 让所有项目、合同、知识产权、业务档案目录及资料、综合资料直接读写 folders 及其业务属性；实现复制/移动/排序/删除恢复、合同从属业务规则，并将已有 HTTP/MCP/Excel 逐步切换到唯一数据源。
+3. N3 让所有附件走 files、file_versions、file_objects/chunks、folder_file_links；实现文件可选属性、共享逻辑 FileId、独立文件内容复用、跨工作区物理隔离、同内容提示用户三选一和版本历史。
+4. N4 接入前端/检索/导出，跑完整业务、MCP、Excel、PDF 预览、回收站、Windows 单 EXE 测试，清理已停用的旧业务及附件表和兼容代码。
+
+**过渡期限制**：N1 完成只说明新的真实资源 Schema 可以使用，仍使用旧表的界面和业务 Store 尚未切换；不能将其描述为新库业务全部完成。旧分表暂留作为当前程序执行入口，N2/N3 切换后必须移除，最终只保留一套正式物理资源存储。旧数据迁移已从交付范围删除。
+
+---
 ## 1. 冻结的资源模型
 
 **Folder（文件夹）**：所有业务对象从统一资源管理器角度都是文件夹，包括项目、合同、知识产权、企业资质、证书、论文/兼职等个人资料、业务档案分类及资料、综合资料。文件夹拥有身份、父子关系、工作区、业务类型、名称、排序、删除状态、类型专属业务属性和操作约束。部分模块的顶层导航可以是虚拟根。**文件夹没有版本。** 修改业务属性或移动目录不会产生文件夹版本。
@@ -67,9 +83,9 @@
 | `FileVersions` | 文件所有历史版本及内容引用 | 现有 `version` 与 `group_id` |
 | `FileObjects` + `FileChunks` | 实际加密字节、大小、哈希和写入状态 | 现有 `business_file_objects` / `business_file_chunks` 与旧 `attachments/chunks` |
 
-这是逻辑设计，**不是立即执行的 SQL DDL**。优先引入类型化 `ResourceRef(workspace,kind,section,id)`，解决不同旧业务表的整数 ID 碰撞和跨模块导航；之后再研究统一物理 FolderId 映射。不能仅按数值 id 定位附件归属或文件夹父级。
+上表记录了原开发阶段的旧表映射，仅用于历史参考。**正式新库实际 DDL 现已由 ResourceSchemaV2.cs 定义，旧表映射不再是施工目标。**优先引入类型化 `ResourceRef(workspace,kind,section,id)`，解决不同旧业务表的整数 ID 碰撞和跨模块导航；之后再研究统一物理 FolderId 映射。不能仅按数值 id 定位附件归属或文件夹父级。
 
-R1/R2 先使用适配器实现统一接口，并保证单一明确的写入来源；R4 才评估物理迁移。不得提前删除旧业务表或覆盖历史字节，不得在缺少事务保证时让两套物理表随意双写。数据库迁移前须备份、校验旧库、设计幂等迁移/失败重入机制及旧版读取限制。**未经验证不承诺旧版程序可打开新版库。**
+此前 R1/R2 适配器和 R4 迁移策略已被上方新库决策取代，后续 N2/N3 应直接改用正式新表。不得提前删除旧业务表或覆盖历史字节，不得在缺少事务保证时让两套物理表随意双写。新库不提供旧表迁移；须保证新建资料库路径不会覆盖已存在文件。**未经验证不承诺旧版程序可打开新版库。**
 
 ## 3. 代码层次和职责
 
@@ -82,7 +98,7 @@ C# 后端划分：
 
 原生 JavaScript 前端将 `wwwroot/app.js` 中的导航、卡片/表格、混合排序、多选、上传/版本历史、文件属性、搜索和导出分为共用组件；业务模块提供字段与表格列的配置。**不换前端技术栈，不取消内嵌单 EXE 的交付模式**。
 
-## 4. R0–R4 阶段计划：每一步独立提交并验收
+## 4. 历史 R0–R4 阶段计划（由 N1–N4 新库顺序取代）
 
 | 阶段 | 子任务（按顺序执行） | 阶段门槛 |
 | --- | --- | --- |
@@ -108,6 +124,10 @@ C# 后端划分：
 
 | 子任务 | 当前状态 | 完成依据 / 下一步 |
 | --- | --- | --- |
+| N1 新 SQLCipher v2 资源 Schema | **已提交，待 Windows CI** | ResourceSchemaV2.cs、新库创建/打开版本校验和 ResourceSchemaV2Smoke.cs。此阶段仅验证真实新库数据关系，不表示旧业务读写已切换。 |
+| N2 新 Folder 唯一业务 Store | **待开始（下一项）** | 直接读写 folders；把项目、合同、IP、档案、综合等 API/MCP/Excel 逐步统一，避免历史业务表双写。 |
+| N3 新 File 唯一存储与版本/共享 | **待开始** | 使用 files/file_versions/file_objects/file_chunks/folder_file_links；不再在双附件表上做旧库迁移。 |
+| N4 新库完整 UI/搜索/导出及清理 | **待开始** | 实际所有业务全走统一新库后删除停用旧表，执行完整 Windows CI 与实机验收。 |
 | R0-01 方案 MD + README 入口 | **完成：本方案入库** | 以本次 Git commit 为准 |
 | R0-02 现有/目标行为回归矩阵 | **完成（用例静态盘点）** | [测试与差异矩阵](./RESOURCE_REFACTOR_TEST_MATRIX.md) F01–F17；新 CI 尚未运行，未来目标行为在 R1–R4 验证 |
 | R0-03 不改行为的代码拆分 | **完成（10 批代码提交及 Windows CI 均通过；用户实机未单独验收）** | **首四批** WebSmoke、ProjectStore、Vault、项目合同路由分别通过 [CI #38722481324](https://github.com/zy19970/IPSys/actions/runs/38722481324)、[#38723350666](https://github.com/zy19970/IPSys/actions/runs/38723350666)、[#38723730765](https://github.com/zy19970/IPSys/actions/runs/38723730765)、[#38724245349](https://github.com/zy19970/IPSys/actions/runs/38724245349)；**第五批** [7bfe8dcf](https://github.com/zy19970/IPSys/commit/7bfe8dcf02f09d22d7c132c86c41978103c59540) 归档 14 路由，[CI #38725471725](https://github.com/zy19970/IPSys/actions/runs/38725471725) success；**第六批** [48ccae53](https://github.com/zy19970/IPSys/commit/48ccae53a411248108c379ca1f4f120f0ab9cc1c) IP 5 路由，[CI #38725783469](https://github.com/zy19970/IPSys/actions/runs/38725783469) success；**第七批** [d2ad74f8](https://github.com/zy19970/IPSys/commit/d2ad74f8b5e215870c62d398d72ec3eaf88e7936) Excel 3 路由，[CI #38726119086](https://github.com/zy19970/IPSys/actions/runs/38726119086) success；**第八批** [ee3d6d34](https://github.com/zy19970/IPSys/commit/ee3d6d34f2fb8aa3eab08042bc5f3e969b68827f) 综合资料/文件 7 路由，[CI #38726478629](https://github.com/zy19970/IPSys/actions/runs/38726478629) success；**第九批** [68fe6002](https://github.com/zy19970/IPSys/commit/68fe6002c9ac6e48325173c1f3340d4747a73ac9) 搜索/台账 4 路由，[CI #38726808097](https://github.com/zy19970/IPSys/actions/runs/38726808097) success；**第十批** [71c6e54f](https://github.com/zy19970/IPSys/commit/71c6e54fe1ceab5dae2aaabb66dc2490132d52c8) 会话/诊断 8 路由，[CI #38727268885](https://github.com/zy19970/IPSys/actions/runs/38727268885) success。原 Program 约 2973 行，拆分后约 178 行，接口/业务逻辑/Schema 未主动改动。**接下来 R1-01。** |
@@ -119,8 +139,8 @@ C# 后端划分：
 | R1-04-02-02 业务档案目录与各类档案资料公共 CRUD | **完成（代码与 Windows CI）** | [提交 c4626d36](https://github.com/zy19970/IPSys/commit/c4626d3613e08fa5ca1ebb52ca6efa6766517ab2)，[Windows CI #38734563500](https://github.com/zy19970/IPSys/actions/runs/38734563500) **success**； 复用 `ArchiveFolderStore` 与 `ArchiveStore`，保留公司七类系统根不可删除、目录非空不可删除、资料软删/回收站以及工作区/section 隔离；目录永久删除与归档资料恢复要区分，补真实 SQLCipher HTTP 回归。 |
 | R1-04-02-03 综合资料公共 CRUD 和旧写接口适配 | **完成（代码与 Windows CI）** | [提交 a1d4815e](https://github.com/zy19970/IPSys/commit/a1d4815e4ce191b6d8f2df1263eebec3b09137b0)，[Windows CI #38735174204](https://github.com/zy19970/IPSys/actions/runs/38735174204) **success**；`GeneralFolderCommands` 集中原有 records 名称校验与 insert/update/soft-delete SQL，旧 `/api/records` 与新 Folder API 共用；真实 SQLCipher HTTP 验证双向读写、权限、工作区和回收站，附件存储不变。 |
 | R1-04-03-01 统一复制/跨工作区转移业务适配 | **完成（代码与 Windows CI）** | [功能提交 557587c7](https://github.com/zy19970/IPSys/commit/557587c7914e469bbe4a3d3a4b50732d97e344b7)、[测试修正 1fbad247](https://github.com/zy19970/IPSys/commit/1fbad247a8e3c5880c0a074fa5a9bb6df24d8483)、[测试修正 f606f1ea](https://github.com/zy19970/IPSys/commit/f606f1ea5360185f9823f5626bdee70d927ad891)，[Windows CI #38737211398](https://github.com/zy19970/IPSys/actions/runs/38737211398) **success**。`FolderTransferService` 统一项目/IP 跨工作区复制转移及合同合法项目内复制，原有 transfer/copy HTTP 改为复用公共服务；真实 SQLCipher HTTP 已核对项目子合同完整复制、附件每个有效版本、SHA-256/原始字节、源删除可见性、跨区约束及旧接口一致性。跨工作区 FileObject 物理隔离仍由原 `BusinessFileStore.CloneLinks` 执行；未迁移旧库。首两轮 CI 分别因测试误设同编号合同唯一、误复制已移动项目下的失活合同而失败，已修正且最终 CI 全通过。 |
-| R1-04-03-02 档案目录/资料移动及跨模块复制适配 | **待开始** | 以现有 ArchiveFolderStore/ArchiveStore 为权威；禁止目录成环、合同脱离项目、任意跨 section 移动；逐一验收归档目录与附件关系。 |
-| R1-04-03-03 混排持久排序/旧接口归一与 R1 收尾 | **待开始** | 以 archive_entry_order 与原有业务台账排序为真值，新增公共操作的 SQLCipher HTTP 回归，汇总完整旧库与 Windows CI 门槛后切入 R2。 |
+| R1-04-03-02 档案目录/资料移动及跨模块复制适配 | **已由新 N2 取代** | 以现有 ArchiveFolderStore/ArchiveStore 为权威；禁止目录成环、合同脱离项目、任意跨 section 移动；逐一验收归档目录与附件关系。 |
+| R1-04-03-03 混排持久排序/旧接口归一与 R1 收尾 | **已由新 N2/N4 取代** | 以 archive_entry_order 与原有业务台账排序为真值，新增公共操作的 SQLCipher HTTP 回归，汇总完整旧库与 Windows CI 门槛后切入 R2。 |
 | R2-01～R2-05 File/版本/共享 | **待开始** | R1 后实施 |
 | R3-01～R3-04 前端与导出 | **待开始** | R2 后实施 |
 | R4-01～R4-05 存储迁移/验收 | **待开始** | 满足安全迁移门槛后实施 |

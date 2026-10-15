@@ -115,6 +115,7 @@ if (smoke)
     try
     {
         FolderModelSmoke.Run();
+        ResourceSchemaV2Smoke.Run();
         FolderProviderSmoke.Run();
         ArchiveFolderProviderSmoke.Run();
         await WebSmoke.Run(address);
