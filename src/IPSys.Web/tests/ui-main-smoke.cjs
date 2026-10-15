@@ -516,9 +516,9 @@ vm.runInContext(
  ");"+
  "globalThis.__companyCards=realArchiveCards('achievement');"+
  "archiveFolderId=201;"+
- "globalThis.__companyTable=realArchiveTable('achievement','申报与认定');"+
+ "globalThis.__companyTable=realArchiveCards('achievement');"+
  "archiveFolderId=203;"+
- "globalThis.__companyNested=realArchiveTable('achievement','企业行标');"+
+ "globalThis.__companyNested=realArchiveCards('achievement');"+
  "globalThis.__companyPath=archiveFolderPath(203).map(x=>x.name);"+
  "archiveFolderId=201;"+
  "globalThis.__companyZip=archiveRecordZipOriginals(31,'achievement');"+
@@ -531,23 +531,31 @@ assert.ok(realArchiveCtx.__companyCats.includes('技术成果'),'Legacy categori
 assert.ok(realArchiveCtx.__companyCards.includes('data-archive-folder-id="202"')&&
  realArchiveCtx.__companyCards.includes('data-archive-folder-id="201"')&&
  realArchiveCtx.__companyTable.includes('data-archive-id="31"'),
- 'Legacy category rows must be reachable through top-level folder rows');
+ 'Business archive root must expose legacy first-level categories as clickable cards');
 assert.ok(realArchiveCtx.__companyTable.includes('data-archive-folder-id="203"')&&
  realArchiveCtx.__companyNested.includes('data-archive-folder-id="204"')&&
  !realArchiveCtx.__companyNested.includes('data-archive-id="31"'),
  'Nested directory table rows should show direct child folders and only their own records');
-for(const view of [realArchiveCtx.__companyCards,realArchiveCtx.__companyTable,realArchiveCtx.__companyNested]){
+assert.ok(realArchiveCtx.__companyCards.includes('class="recordgrid"')&&
+ realArchiveCtx.__companyCards.includes('class="archivecard archivecategory"')&&
+ !realArchiveCtx.__companyCards.includes('<table')&&
+ realArchiveCtx.__companyCards.includes('＋ 新建分类'),
+ 'Business archive landing page must show first-level category cards, never the directory table');
+for(const view of [realArchiveCtx.__companyTable,realArchiveCtx.__companyNested]){
  assert.ok(view.includes('<table class="data ledger-archive-category-table company-business-archive">')&&
   !view.includes('class="recordgrid"')&&!view.includes('archive-folder-card')&&
   view.includes('<tr class="archive-folder-row" data-archive-folder-row="'),
-  'All company archive folder levels must render as rows INSIDE the common ledger, not cards');
+  'After entering any category, all deeper levels must share one ledger table');
 }
 const folderRow=realArchiveCtx.__companyTable.match(/<tr class="archive-folder-row"[^>]*>(.*?)<\/tr>/)?.[1];
 assert.ok(folderRow&&
  (folderRow.match(/<td\b/g)||[]).length===6&&
- folderRow.includes('archive-folder-link')&&folderRow.includes('aria-label="打开文件夹 企业行标"')&&
+ folderRow.includes('<td>企业行标</td>')&&
+ folderRow.includes('data-archive-folder-id="203"')&&
+ folderRow.includes('>打开</button>')&&
+ !folderRow.includes('<svg')&&!folderRow.includes('archive-folder-link')&&
  !folderRow.includes('data-archive-id=')&&!folderRow.includes('type="checkbox"'),
- 'Folder row must be clickable, occupy all six original cells and never act as a record');
+ 'Folder rows use plain text and the 打开 action, with no file icon or record controls');
 assert.ok(realArchiveCtx.__companyTable.indexOf('data-archive-folder-row="203"')<
  realArchiveCtx.__companyTable.indexOf('data-archive-id="31"')&&
  realArchiveCtx.__companyNested.includes('<tbody><tr class="archive-folder-row"')&&
@@ -555,7 +563,7 @@ assert.ok(realArchiveCtx.__companyTable.indexOf('data-archive-folder-row="203"')
  'Directories should precede records in the SAME tbody and folder-only folders show no false empty state');
 assert.ok(js.includes("body.querySelectorAll('tr[data-archive-folder-row]')")&&
  js.includes('tr.lastElementChild.before(orderCell)')&&
- css.includes('.company-business-archive .archive-folder-link'),
+ css.includes('.company-business-archive .archive-folder-row'),
  'DOM ledger decorator must align folder rows without record checkbox, sorting or ZIP actions');
 assert.ok(js.includes("pageHeading.querySelector('[data-archive-back=\"cards\"],[data-archive-folder-back]')"),
  'Compact ledger toolbar must preserve the back-to-parent button while opening folder rows');
@@ -568,6 +576,10 @@ assert.ok(js.includes("await api('/api/archive-folders")&&
  js.includes('function archiveFolderOptions(')&&
  js.includes("case 'archiveExpand'"),
  'Directory management, record assignment and safe record expansion must be wired');
+assert.ok(html.includes('id="archiveFolderParentField"')&&
+ js.includes("el('archiveFolderParentField').hidden=!folder")&&
+ js.includes("const parentId=id?(Number(el('archiveFolderParent').value)||null):(archiveFolderId||null);"),
+ 'New subcategory must use the active parent without asking users to choose a parent directory');
 assert.ok(realArchiveCtx.__companyTable.includes('<table class="data ledger-archive-category-table company-business-archive">'),
  'Company archive category tables must use the same compact column sizing');
 assert.ok(realArchiveCtx.__companyTable.includes('<section class="white archive-category-ledger">')&&

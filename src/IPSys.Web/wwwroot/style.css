@@ -407,9 +407,9 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 /* Explorer-like directory rows share the exact company archive ledger. */
 .company-business-archive .archive-folder-row{background:#f7fbfb}
 .company-business-archive .archive-folder-row:hover{background:#edf6f6}
-.company-business-archive .archive-folder-link{display:inline-flex;align-items:center;gap:9px;max-width:100%;text-align:left;font-weight:600}
-.company-business-archive .archive-folder-link .ui-icon{width:19px;height:19px;flex:none;color:var(--primary)}
-.company-business-archive .archive-folder-link span{overflow-wrap:anywhere}
+/* Folder rows use the same text alignment as record rows; the action says 打开. */
+.company-business-archive .archive-folder-row td:nth-child(3){font-weight:600}
+#archiveFolderParentField[hidden]{display:none!important}
 .company-business-archive .archive-folder-summary{font-size:13px;white-space:normal}
 .company-business-archive .archive-folder-row .archive-category-action{white-space:nowrap}
 /* Align live category-ledger headers with the enterprise-certificate header. */
