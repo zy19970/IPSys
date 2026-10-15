@@ -111,6 +111,22 @@ static class ResourceSchemaV2
                 (size IS NOT NULL AND length(sha256)=64 AND size=expected_size)));
             CREATE INDEX idx_object_content ON file_objects(workspace,size,sha256)
               WHERE state='ready';
+            CREATE TRIGGER object_immutable_ready BEFORE UPDATE ON file_objects
+              WHEN OLD.state='ready' BEGIN
+              SELECT RAISE(ABORT,'completed content object is immutable');
+            END;
+            CREATE TRIGGER chunk_insert_ready BEFORE INSERT ON file_chunks
+              WHEN EXISTS(SELECT 1 FROM file_objects
+                WHERE id=NEW.object_id AND workspace=NEW.workspace AND state='ready')
+              BEGIN SELECT RAISE(ABORT,'completed content bytes are immutable'); END;
+            CREATE TRIGGER chunk_update_ready BEFORE UPDATE ON file_chunks
+              WHEN EXISTS(SELECT 1 FROM file_objects
+                WHERE id=OLD.object_id AND workspace=OLD.workspace AND state='ready')
+              BEGIN SELECT RAISE(ABORT,'completed content bytes are immutable'); END;
+            CREATE TRIGGER chunk_delete_ready BEFORE DELETE ON file_chunks
+              WHEN EXISTS(SELECT 1 FROM file_objects
+                WHERE id=OLD.object_id AND workspace=OLD.workspace AND state='ready')
+              BEGIN SELECT RAISE(ABORT,'completed content bytes are immutable'); END;
 
             CREATE TABLE file_chunks(
               object_id INTEGER NOT NULL,workspace TEXT NOT NULL,
