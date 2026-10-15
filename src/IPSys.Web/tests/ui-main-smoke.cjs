@@ -1094,7 +1094,7 @@ for(const name of ['ledgerScope','ledgerSourceRows','sortLedgerData','decorateLe
  assert.ok(js.includes('function '+name+'('),'Shared table helper missing '+name);
 for(const token of ["api('/api/ledger/'+space+'/order')","case 'ledgerBatchDelete':",
  "dataset.ledgerMove","del.dataset.action='ledgerBatchDelete'","'序号'","'排序'",
- ".ledger-record-row:checked","all.indeterminate=count>0&&count<checks.length",
+ ".ledger-record-row:checked","all.indeterminate=count>0&&count<total",
  "ledgerOrders[scope.kind+':'+scope.section]=ids"])
  assert.ok(js.includes(token),'Shared table operation missing '+token);
 for(const rule of ['.data.ledger-record-table','.ledger-record-order-cell .btn',
