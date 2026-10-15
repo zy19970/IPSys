@@ -64,3 +64,7 @@ R0-03 第二步才考虑提取 `ProjectStore`/`Vault` 与端点注册。涉及 `
 
 
 N1 验收：[Windows CI #38740628571](https://github.com/zy19970/IPSys/actions/runs/38740628571) success。已通过的只是新库真实 SQLCipher 资源关系约束与封存原件不可变保护；F01–F17 原业务切换、新共享文件工作流和搜索/导出仍按 N2～N4 继续验收。
+
+## N2-01 原生 Folder 验收（2026-10-15）
+
+[Windows CI #38743939004](https://github.com/zy19970/IPSys/actions/runs/38743939004) success，原生 `/api/v2/folders` 项目/合同/IP HTTP 在临时真实 SQLCipher v2 库上通过：公司/个人隔离、必须有效项目才能创建合同、项目删除时隐藏其合同、项目恢复后合同可再读取，以及新版存储不向旧 `business_projects` 表双写。本项仅验证新原生入口；旧业务 API、MCP、Excel、业务文件归属和原页面切换仍按 N2-02/N2-03/N3 继续实施。

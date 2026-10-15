@@ -126,7 +126,9 @@ C# 后端划分：
 | --- | --- | --- |
 | N1 新 SQLCipher v2 资源 Schema | **完成（代码与 Windows CI）** | [初版 ca924d55](https://github.com/zy19970/IPSys/commit/ca924d559d76d642414c20410f4457fc7faaeb42)、[内容保护 abc2a95d](https://github.com/zy19970/IPSys/commit/abc2a95d406192ad155f6b7412dd3dc7189bc542)、[DDL 顺序修正 e16ad1be](https://github.com/zy19970/IPSys/commit/e16ad1be01f8ede92afc7d4dcb153d057191952b)；[Windows CI #38740628571](https://github.com/zy19970/IPSys/actions/runs/38740628571) **success**。验证真实新建/重开 SQLCipher v2、文件夹合法父级/循环/工作区隔离、七系统根保护、同 FileId 多目录关联、独立 FileId 复用物理内容但版本独立、文件版本/完成内容不可改写；旧业务 UI/Store 切换属 N2/N3。 |
 | N2 新 Folder 唯一业务 Store | **进行中** | 从 N2-01 开始实现直接读写新版 folders，后续依次接入归档、综合资料和原有业务 HTTP/MCP/Excel，禁止同一操作双写。 |
-| N2-01 项目/合同/IP 原生 CRUD | **代码已提交，待 Windows CI** | NativeFolderStore 直接读写 folders/attributes_json，包含类型验证、合法合同父项目、公司个人隔离、软删与恢复；新 /api/v2/folders 原生接口经会话认证和文件任务锁；真实 SQLCipher HTTP smoke 验证父级/隔离/读写和无旧表双写。原有 UI、旧附件与旧业务 API 需等文件服务切换后统一接入。 |
+| N2-01 项目/合同/IP 原生 CRUD | **完成（代码与 Windows CI）** | [功能提交 daca2561](https://github.com/zy19970/IPSys/commit/daca2561f0cd6c4d76bc5054ae61b8f22e46f48d)、[测试修正 8264e6ce](https://github.com/zy19970/IPSys/commit/8264e6ceb14b39ece60322fb767357ef4251a1bd)；[Windows CI #38743939004](https://github.com/zy19970/IPSys/actions/runs/38743939004) **success**。NativeFolderStore/NativeFolderEndpoints 直接读写 SQLCipher v2 `folders` 与 `attributes_json`，支持项目/合同/IP CRUD、软删/恢复，验证合同父项目、会话授权、跨工作区、业务属性、父级隐藏及不双写旧表。第一次 CI #38743561769 因测试构造 IpInput 少一个 Tags 参数编译失败，补齐后全通过。**旧 UI、MCP、Excel 及附件 API 尚未切换。** |
+| N2-02 业务档案目录/资料及综合资料原生 Folder CRUD | **待开始（下一项）** | 直接使用 v2 `folders`/`attributes_json` 存储对应 section 与分类业务属性，保持七个系统根保护、目录防循环、空目录删除与资料软删除、混排持久顺序；真实 SQLCipher HTTP 回归。 |
+| N2-03 原有业务 API/MCP/Excel 与新库统一 | **待开始** | 待 N2 原生业务覆盖和 N3 文件引用接口就绪后将旧业务入口完整切换，不在旧 business_* 与正式 folders 上双写，不让新创建文件夹的附件失去归属。 |
 | N3 新 File 唯一存储与版本/共享 | **待开始** | 使用 files/file_versions/file_objects/file_chunks/folder_file_links；不再在双附件表上做旧库迁移。 |
 | N4 新库完整 UI/搜索/导出及清理 | **待开始** | 实际所有业务全走统一新库后删除停用旧表，执行完整 Windows CI 与实机验收。 |
 | R0-01 方案 MD + README 入口 | **完成：本方案入库** | 以本次 Git commit 为准 |
