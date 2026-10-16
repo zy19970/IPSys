@@ -67,13 +67,15 @@ static partial class McpLocal
     private static async Task<JsonNode> DeleteBusinessFile(HttpClient client,
         string workspace,JsonElement args)
     {
-        long link=ReadId(args,"file_id");
-        var all=(await ListBusinessFiles(client,workspace)).AsArray();
-        var record=all.FirstOrDefault(x=>x?["id"]?.GetValue<long>()==link);
-        if(record is null)
-            throw new IOException("V2 文件关联不存在或已解除。file_id 须为 list_files 中的链接 id。");
-        long file=record["fileId"]?.GetValue<long>()??0;
-        if(file<=0)throw new IOException("V2 文件关联缺少有效 FileId。");
+        long folder=ReadId(args,"owner_id"),
+            file=ReadId(args,"file_id"),
+            link=ReadId(args,"link_id");
+        var links=await RequestAsync(client,HttpMethod.Get,
+            $"/api/v2/files/{workspace}/folders/{folder}/links");
+        if(links is not JsonArray found || !found.Any(x=>
+            x?["id"]?.GetValue<long>()==link &&
+            x?["fileId"]?.GetValue<long>()==file))
+            throw new IOException("FolderId、FileId、LinkId 不一致或文件已解除；拒绝删除。");
         return await RequestAsync(client,HttpMethod.Delete,
             $"/api/v2/files/{workspace}/{file}/links/{link}");
     }
@@ -150,13 +152,14 @@ static partial class McpLocal
         long? source=choice is "reuse" or "share"
             ?ReadId(args,"source_file_id"):null;
         JsonArray outcomes=new();
+        bool interrupted=false;
         foreach(var element in files.EnumerateArray())
         {
-            stop.ThrowIfCancellationRequested();
             string path=element.ValueKind==JsonValueKind.String?element.GetString()??"":"";
             string? ticket=null;
             try
             {
+                stop.ThrowIfCancellationRequested();
                 if(!Path.IsPathFullyQualified(path))
                     throw new IOException("必须使用绝对路径。");
                 var local=new FileInfo(Path.GetFullPath(path));
@@ -216,7 +219,13 @@ static partial class McpLocal
                         ["result"]=result});
                 }
             }
-            catch(Exception ex)when(ex is not OperationCanceledException)
+            catch(OperationCanceledException)
+            {
+                interrupted=true;
+                outcomes.Add(new JsonObject{["path"]=path,["ok"]=false,
+                    ["error"]="已取消或撤销 MCP 授权；之前成功的文件不会自动回滚。"});
+            }
+            catch(Exception ex)
             {
                 outcomes.Add(new JsonObject{["path"]=path,["ok"]=false,
                     ["error"]=ex.Message});
@@ -231,11 +240,17 @@ static partial class McpLocal
                     }catch(Exception){/* closing vault also discards writing rows */}
                 }
             }
+            if(interrupted)break;
         }
+        int succeeded=outcomes.Count(x=>x?["ok"]?.GetValue<bool>()==true);
+        int failed=outcomes.Count(x=>x?["ok"]?.GetValue<bool>()!=true);
         return new JsonObject{
-            ["files"]=outcomes,
-            ["succeeded"]=outcomes.Count(x=>x?["ok"]?.GetValue<bool>()==true),
-            ["failed"]=outcomes.Count(x=>x?["ok"]?.GetValue<bool>()!=true)
+            ["files"]=outcomes,["succeeded"]=succeeded,["failed"]=failed,
+            ["requested"]=files.GetArrayLength(),
+            ["status"]=interrupted?"interrupted":failed>0?
+                (succeeded>0?"partial_success":"failed"):"success",
+            ["retryAdvice"]=failed>0 || interrupted?
+                "仅按返回的失败路径进行人工核对；已成功文件不应盲目重传。":null
         };
     }
     private static string DescribeUploadFailure(HttpResponseMessage response,string raw)

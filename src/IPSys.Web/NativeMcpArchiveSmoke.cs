@@ -151,11 +151,11 @@ static class NativeMcpArchiveSmoke
                 .AsArray().Any(x=>x?["id"]?.GetValue<long>()==generalLink &&
                   x?["kind"]?.GetValue<string>()=="general"),
                 "global list_files includes general");
-            await Run("delete_file",new{workspace="company",file_id=generalLink});
+            await Run("delete_file",new{workspace="company",owner_id=general,file_id=generalUpload["files"]?[0]?["result"]?["fileId"]?.GetValue<long>()??0,link_id=generalLink});
             Check(!(await Run("list_files",new{workspace="company"}))
                 .AsArray().Any(x=>x?["id"]?.GetValue<long>()==generalLink),
                 "deleting general LinkId does not erase FileId");
-            await Run("delete_file",new{workspace="company",file_id=link});
+            await Run("delete_file",new{workspace="company",owner_id=archive,file_id=file,link_id=link});
             Check(!(await Run("list_files",new{workspace="company"}))
                 .AsArray().Any(x=>x?["id"]?.GetValue<long>()==link),
                 "archive unlink removed just selected link");

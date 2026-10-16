@@ -180,6 +180,20 @@ static class ResourceSchemaV2
                   AND workspace=NEW.workspace AND deleted=0);
             END;
 
+            -- MCP retry ledger lives inside the encrypted V2 vault. A pending row
+            -- after abnormal shutdown is intentionally not re-executed automatically.
+            CREATE TABLE mcp_operations(
+              workspace TEXT NOT NULL CHECK(workspace IN ('company','personal')),
+              request_id TEXT NOT NULL CHECK(length(request_id) BETWEEN 8 AND 128),
+              tool_name TEXT NOT NULL,
+              arguments_hash TEXT NOT NULL CHECK(length(arguments_hash)=64),
+              state TEXT NOT NULL CHECK(state IN ('pending','done','uncertain')),
+              result_json TEXT,
+              created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              PRIMARY KEY(workspace,request_id));
+            CREATE INDEX idx_mcp_operations_created ON mcp_operations(workspace,created_at DESC);
+
             INSERT INTO folders(workspace,kind,section,name,position,is_system)
             VALUES('company','archive_folder','achievement','申报与认定',0,1),
                   ('company','archive_folder','achievement','规划与管理',1,1),
@@ -202,7 +216,7 @@ static class ResourceSchemaV2
             if (Convert.ToInt64(cmd.ExecuteScalar())!=Version)
                 throw new IOException("资料库不是新版统一资源数据库，请新建资料库。");
             foreach(var table in new[]{"folders","files","file_versions","file_objects",
-                "file_chunks","folder_file_links"})
+                "file_chunks","folder_file_links","mcp_operations"})
             {
                 cmd.CommandText="SELECT count(*) FROM sqlite_master WHERE type='table' AND name=$table;";
                 cmd.Parameters.Clear();

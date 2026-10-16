@@ -12,13 +12,30 @@ sealed class Vault : IDisposable
     private CancellationTokenSource? _fileTaskCancellation;
     private bool _exitRequested;
     private bool _mcpEnabled;
+    private CancellationTokenSource _mcpCancellation = new();
+    private readonly List<CancellationTokenSource> _retiredMcpTokens = new();
+    public CancellationToken McpCancellation
+    {
+        get { lock(_taskSync)return _mcpCancellation.Token; }
+    }
     public bool McpEnabled {get {lock(_taskSync)return _db!=null&&_mcpEnabled;}}
     public bool SetMcpEnabled(bool enabled)
     {
         lock(_taskSync)
         {
-            if(_db==null||_exitRequested||_fileTaskCompletion!=null)return false;
-            _mcpEnabled=enabled;
+            if(_db==null||_exitRequested)return false;
+            if(enabled && _fileTaskCompletion!=null)return false;
+            if(!enabled)
+            {
+                _mcpEnabled=false;
+                _mcpCancellation.Cancel();
+            }
+            else if(!_mcpEnabled)
+            {
+                _retiredMcpTokens.Add(_mcpCancellation);
+                _mcpCancellation=new CancellationTokenSource();
+                _mcpEnabled=true;
+            }
             return true;
         }
     }
@@ -148,6 +165,8 @@ sealed class Vault : IDisposable
         {
             if (_db != null) throw new InvalidOperationException("已经打开另一数据库。");
             _db = db; Path = path;_mcpEnabled=false;
+            _retiredMcpTokens.Add(_mcpCancellation);
+            _mcpCancellation=new CancellationTokenSource();
             _token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
             return _token;
         }
@@ -163,6 +182,7 @@ sealed class Vault : IDisposable
             _db?.Dispose();
             _db = null;
             _mcpEnabled=false;
+            _mcpCancellation.Cancel();
             _token = null;
             Path = "";
         }
@@ -171,6 +191,8 @@ sealed class Vault : IDisposable
     {
         Close();
         _fileTaskCancellation?.Dispose();
+        _mcpCancellation.Dispose();
+        foreach(var token in _retiredMcpTokens)token.Dispose();
         Gate.Dispose();
     }
     public static bool WorkspaceValid(string work) => work is "company" or "personal";

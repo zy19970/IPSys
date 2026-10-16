@@ -15,6 +15,18 @@ IPSys 支持本机 Codex 通过 MCP stdio 操作同一 Windows 用户已解锁�
 
 **回归重点**：确认单实例重复占用检测、一个闲置管道连接期间第二客户端仍可查询、MCP 工具 Schema 不再声明 `group_id`、数字金额及数字年份正常写入、`null` 保留与空串清空、旧 `group_id` 明确报错、既有原件/工作区隔离测试不回退。Windows CI 及本机 Codex/WorkBuddy 实机需分别留证。
 
+## MCP P1 第一批：安全写入与恢复语义（2026-10-16）
+
+MCP 写操作（新增、修改、删除、上传，以及已有 `v2_*` 写操作）可传入 `request_id`（8–128 字符，推荐 UUID，每一项业务写操作唯一）；重试同一业务动作必须使用相同编号和相同参数。V2 SQLCipher 数据库内的 `mcp_operations` 记录状态：`done` 表示结果已保存、相同请求返回同一结果，`pending`/`uncertain` 表示执行结果尚未得到确认，系统**拒绝盲目重做**。新增 `get_operation_result(workspace,request_id)` 只读工具，查询 `not_found/pending/done/uncertain` 和已记录结果。请求参数不一致或重复编号挪作其他操作会报错。本机原始 V2 测试库可重新创建；不进行旧数据库迁移。
+
+**安全边界**：正常执行和已保存结果可防止多数断线重试重复写入；服务进程在 HTTP 实际写入成功而结果尚未写入操作日志时崩溃，仍可能留下 `pending`，因此不能声称跨崩溃严格 exactly-once。发生 `pending/uncertain` 时应检查对应 Folder/File/版本后人工决定后续动作，不能换新编号立即重做同一业务动作。省略 `request_id` 仍兼容旧客户端，但不提供写入重试记录的保护。
+
+**文件解绑**：通用 `delete_file` 现在必须提供 `workspace`、`owner_id=FolderId`、`file_id=真实 FileId`、`link_id=LinkId`，三个身份须来自同一条 `list_files` 结果。旧版只传 `file_id=LinkId` 的调用已不再允许。专用项目/合同/IP 文件删除工具原先已核对 FileId+LinkId 与所属资料。
+
+**批量上传**：`upload_files` 返回 `requested/succeeded/failed/status/files[]`；状态有 `success`、`partial_success`、`failed`、`interrupted`。每个文件包含独立的成功/错误明细。只要存在失败，MCP `tools/call` 设置 `isError=true`，同时保留完整 JSON 结果供 Agent 逐项核对。已成功文件不会自动回滚；不要因为一次返回失败就把所有文件重新上传。撤销 MCP 授权可在文件任务执行期间立即阻止新的 MCP 请求，并触发正在进行的 MCP HTTP 操作取消；已提交的文件可能保留，需核对后续操作。
+
+**入参与等待**：工具 Schema 中未声明的参数、参数类型不符、缺少必填项、错误枚举或无效数组长度均直接返回错误，不再静默忽略。业务字段 `year/amount` 支持数字或字符串，可选字段 `null` 保留、空串明确清空。MCP 管道连接等待 15 秒，已连接后的响应等待上限 12 分钟；若等待超时，写操作结果可能不确定，应查询原 `request_id` 而不是直接重试。
+
 ## 使用步骤
 
 1. 从 Actions 的最新成功构建解压 IPSys-Web-win-x64 到固定文件夹。
@@ -50,7 +62,7 @@ IPSys 支持本机 Codex 通过 MCP stdio 操作同一 Windows 用户已解锁�
 | `create_contract` | 在有效项目下创建合同 |
 | `delete_contract` | 将合同移入回收站 |
 | `upload_files` | 按本机绝对路径上传项目、合同、知识产权、档案或综合资料原件，支持 SHA-256 显式选择和历史版本追加 |
-| `delete_file` | 按 `list_files` 返回的 `id` 解除单个 V2 LinkId（参数仍为 `file_id`），不删其它关联及历史原件 |
+| `delete_file` | 必须同时指定 owner_id（FolderId）、file_id（真实 FileId）及 link_id（LinkId），只解除经过三重校验的一处关联 |
 
 所有工具均需显式指定 `workspace`（`company` 公司、`personal` 个人）。`upload_files` 支持 `kind=project/contract/ip/archive/general`、归属 `owner_id=FolderId` 和本机绝对路径数组 `paths`（1–20 条）；`kind=archive` 必须填写所属分类 `section`（公司 certificate/achievement；个人 certificate/achievement/academic），且所选 FolderId 及 section 必须一致。`on_conflict=new/update`；更新需指定目标 `file_id=FileId` 且同 Folder 有效关联；同内容已有候选必须明确 `duplicate_mode=independent/reuse/share`，复用/共享还须正确 `source_file_id`。IP 的 `material_category` 可设为申请材料/通知文件/证书文件/其他材料，其他类型不可传此专用类别。
 
@@ -91,8 +103,8 @@ Codex 通过 stdio 使用同一个 EXE 的 `--mcp` 模式，子进程仅通过�
 
 调用 `upload_files` 指定 `workspace=company/personal`、`kind=ip`、`owner_id=V2 FolderId`、`paths=[绝对路径]`、可选 `material_category`（申请材料/通知文件/证书文件/其他材料）。无重复内容时生成新 FileId；有 SHA-256 重复内容时，若未明确给出 `duplicate_mode`，返回已有文件的名称/位置/FileId 并撤销暂存，不自动合并。确认后可设置 `duplicate_mode=independent` 独立保存、`duplicate_mode=reuse` 且 `source_file_id=已有 FileId` 仅复用物理内容，或 `duplicate_mode=share` 加上 `source_file_id` 共享同一 FileId。服务端复核匹配哈希与工作区归属。为原 FileId 追加版本时使用 `on_conflict=update` 和 `file_id=目标 FileId`，不得同时提供内容复用选项。查询用 `list_ip_files(ip_id=...)`；解除用 `delete_ip_file(ip_id=...,file_id=...,link_id=...)`。这些操作均使用原有手动启用的 MCP 授权、仅本机用户管道和 SQLCipher，不开放外部网络访问。
 
-[Windows CI #38833862535](https://github.com/zy19970/IPSys/actions/runs/38833862535) 已验证原知识产权 V2 原件。项目合同专用与通用链接命令见 N2-03-07-02 首批提交；`list_files` 的 `id` 是 **LinkId**，不是 FileId，`delete_file(file_id=...)` 只解除这一条链接，不删除其它 Folder 中共用的原件，也不删除 FileVersion。开发测试数据库不迁移、兼容或回填。
+[Windows CI #38833862535](https://github.com/zy19970/IPSys/actions/runs/38833862535) 已验证原知识产权 V2 原件。项目合同专用与通用链接命令见 N2-03-07-02 首批提交；`list_files` 的 `id` 是 **LinkId**，不是 FileId，`delete_file(owner_id=...,file_id=FileId,link_id=LinkId)` 只解除核验过的一条链接，不删除其它 Folder 中共用的原件，也不删除 FileVersion。开发测试数据库不迁移、兼容或回填。
 
 ## 项目/合同 N2-03-07-02 首批 MCP（2026-10-16）
 
-现有项目/合同网页已通过 [CI #38836041449](https://github.com/zy19970/IPSys/actions/runs/38836041449) 接入 V2。原名项目合同 `list_projects/create_project/update_project/delete_project`、`list_contracts/create_contract/delete_contract` 现在均使用相同 V2 FolderId；`upload_files(kind=project/contract)` 复用 V2 暂存查重/用户选择协议（不直接写旧 business-files 表），历史版通过 `on_conflict=update + file_id` 追加。`list_project_files(project_id)` / `list_contract_files(contract_id)` 返回目标 Folder 有效文件 LinkId/FileId；`delete_project_file` / `delete_contract_file` 必须提供 FolderId、FileId、LinkId，单处软解绑。通用 `list_files` 汇总 V2 的项目/合同/IP 有效链接，`delete_file(file_id=LinkId)` 不影响共享历史。下一项为项目合同 V2 固定列 Excel，随后统一搜索/回收站、跨工作区携所属合同及全部文件版本原子复制，最后再对用户本机 Codex 与 Edge/Chrome 实机验收。
+现有项目/合同网页已通过 [CI #38836041449](https://github.com/zy19970/IPSys/actions/runs/38836041449) 接入 V2。原名项目合同 `list_projects/create_project/update_project/delete_project`、`list_contracts/create_contract/delete_contract` 现在均使用相同 V2 FolderId；`upload_files(kind=project/contract)` 复用 V2 暂存查重/用户选择协议（不直接写旧 business-files 表），历史版通过 `on_conflict=update + file_id` 追加。`list_project_files(project_id)` / `list_contract_files(contract_id)` 返回目标 Folder 有效文件 LinkId/FileId；`delete_project_file` / `delete_contract_file` 必须提供 FolderId、FileId、LinkId，单处软解绑。通用 `list_files` 汇总 V2 的项目/合同/IP 有效链接，`delete_file(owner_id=FolderId,file_id=FileId,link_id=LinkId)` 只解除一处共享位置。下一项为项目合同 V2 固定列 Excel，随后统一搜索/回收站、跨工作区携所属合同及全部文件版本原子复制，最后再对用户本机 Codex 与 Edge/Chrome 实机验收。

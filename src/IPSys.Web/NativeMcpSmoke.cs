@@ -176,6 +176,43 @@ static class NativeMcpSmoke
         catch(IOException ex)when(ex.Message.Contains("group_id")){obsoleteRejected=true;}
         Check(obsoleteRejected,"obsolete group_id yields an explicit rejection");
 
+        // The encrypted MCP retry ledger must return a durable result for
+        // repeated request IDs without creating another folder.
+        string operationId=Guid.NewGuid().ToString("N");
+        var firstWrite=await Original("create_general",new{
+            workspace="personal",title="MCP幂等验证"+suffix,request_id=operationId
+        });
+        var secondWrite=await Original("create_general",new{
+            request_id=operationId,title="MCP幂等验证"+suffix,workspace="personal"
+        });
+        Check(Id(firstWrite)==Id(secondWrite),
+            "same request_id returns the stored response despite parameter order");
+        var journal=await Original("get_operation_result",new{
+            workspace="personal",request_id=operationId
+        });
+        Check(journal["state"]?.GetValue<string>()=="done" &&
+              journal["result"]?["id"]?.GetValue<long>()==Id(firstWrite),
+            "MCP operation result is queryable in encrypted V2 vault");
+        bool reusedIdDenied=false;
+        try { await Original("create_general",new{
+            workspace="personal",title="错误复用编号",request_id=operationId
+        }); }
+        catch(IOException){reusedIdDenied=true;}
+        Check(reusedIdDenied,"request_id cannot be reused with different arguments");
+        await Original("delete_general",new{
+            workspace="personal",general_id=Id(firstWrite)
+        });
+
+        bool unknownParamDenied=false;
+        try { await Original("create_project",new{
+            workspace="company",name="拼错字段"+suffix,project_type="科研项目",
+            project_n0="wrong"
+        }); }
+        catch(IOException ex)when(ex.Message.Contains("未声明的 MCP 参数")){
+            unknownParamDenied=true;
+        }
+        Check(unknownParamDenied,"unknown and misspelled MCP parameters are rejected");
+
         var originalContract=await Original("create_contract",new{
             workspace="company",project_id=originalProject,
             name="原名MCP合同"+suffix,contract_no="ORIG-C-"+suffix
@@ -197,6 +234,14 @@ static class NativeMcpSmoke
             });
             Check(uploaded["succeeded"]?.GetValue<int>()==1,
                 "project original upload_files saved a native V2 FileId");
+            var failedUpload=await Original("upload_files",new{
+                workspace="company",kind="project",owner_id=originalProject,
+                paths=new[]{"C:\\IPSys_missing_"+suffix+".bin"}
+            });
+            Check(failedUpload["status"]?.GetValue<string>()=="failed" &&
+                failedUpload["failed"]?.GetValue<int>()==1 &&
+                failedUpload["files"]?[0]?["ok"]?.GetValue<bool>()==false,
+                "failed upload reports explicit per-file failure and status");
             var result=uploaded["files"]?[0]?["result"]??throw new IOException(
                 "原名 MCP 上传缺少原件结果。");
             long file=result["fileId"]?.GetValue<long>()??0,
@@ -262,7 +307,17 @@ static class NativeMcpSmoke
             })).AsArray();
             long renewed=relinked.Single()["id"]?.GetValue<long>()??0;
             Check(renewed>0,"contract re-association creates a new link");
-            await Original("delete_file",new{workspace="company",file_id=renewed});
+            bool wrongDeleteDenied=false;
+            try { await Original("delete_file",new{
+                workspace="company",owner_id=originalContractId,
+                file_id=file,link_id=link
+            }); }
+            catch(IOException){wrongDeleteDenied=true;}
+            Check(wrongDeleteDenied,"delete_file requires all three matching identities");
+            await Original("delete_file",new{
+                workspace="company",owner_id=originalContractId,
+                file_id=file,link_id=renewed
+            });
             Check((await Original("list_contract_files",new{
                 workspace="company",contract_id=originalContractId
             })).AsArray().Count==0 &&

@@ -33,6 +33,9 @@ static partial class McpLocal
     private static object Tool(string name,string description,
         Dictionary<string,object> properties,string[] required)
     {
+        if(IsWriteTool(name))
+            properties["request_id"]=Field("string",
+                "写操作幂等请求编号（8–128 字符），重试必须复用原编号；强烈建议始终提供");
         // Optional null means unspecified; year and amount can be strings or numbers.
         foreach(var (key,value) in properties)
         {
@@ -165,10 +168,12 @@ static partial class McpLocal
             ["workspace"]=Field("string","工作区",Workspaces),
             ["contract_id"]=Field("integer","合同 ID")
         },["workspace","contract_id"]),
-        Tool("delete_file","使用 list_files 的 id (LinkId) 只解除该位置的 V2 文件关联，不删除 FileId、历史版本或共享物理字节。",new(){
+        Tool("delete_file","解除一处 V2 文件关联；必须同时校验 FolderId、FileId、LinkId，误用旧参数将被拒绝。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
-            ["file_id"]=Field("integer","list_files 中返回的链接 id (LinkId)，不是逻辑 FileId")
-        },["workspace","file_id"]),
+            ["owner_id"]=Field("integer","list_files 中的 ownerId（所属 FolderId）"),
+            ["file_id"]=Field("integer","list_files 中的 fileId（真实 FileId）"),
+            ["link_id"]=Field("integer","list_files 中的 id（关联 LinkId）")
+        },["workspace","owner_id","file_id","link_id"]),
         Tool("list_project_files","查询 V2 项目 FolderId 下的有效 FileId、LinkId 与最新版本。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
             ["project_id"]=Field("integer","项目 FolderId")
@@ -234,7 +239,11 @@ static partial class McpLocal
                     inputSchema=type.GetProperty("inputSchema")!.GetValue(tool)!
                 };
             }).ToArray();
-        return [..legacy,..native,..ArchiveTools()];
+        return [..legacy,..native,..ArchiveTools(),
+            Tool("get_operation_result","通过 request_id 查询加密库记录的写操作状态；pending/uncertain 不可自动重试。",new(){
+                ["workspace"]=Field("string","工作区",Workspaces),
+                ["request_id"]=Field("string","此前写操作的幂等编号")
+            },["workspace","request_id"])];
     }
 
     private static object Success(JsonElement id,object value)=>new {jsonrpc="2.0",id,result=value};
@@ -299,8 +308,14 @@ static partial class McpLocal
         JsonElement fields=args.TryGetProperty("arguments",out var a)&&a.ValueKind==JsonValueKind.Object?a:default;
         try
         {
+            ValidateToolArguments(name,fields);
             JsonNode response=await CallHostAsync(name,fields);
-            return Success(id,new {content=new[] {new {type="text",text=response.ToJsonString(Json)}}});
+            bool partial=name=="upload_files" && response["failed"] is JsonNode failed &&
+                failed.GetValue<int>()>0;
+            return Success(id,new {
+                content=new[] {new {type="text",text=response.ToJsonString(Json)}},
+                isError=partial
+            });
         }
         catch(Exception ex)
         {
@@ -345,8 +360,15 @@ static partial class McpLocal
         using var writer=new StreamWriter(pipe,new UTF8Encoding(false),1024,true){AutoFlush=true};
         using var reader=new StreamReader(pipe,new UTF8Encoding(false),false,1024,true);
         await writer.WriteLineAsync(JsonSerializer.Serialize(new {name,arguments=fields},Json));
-        string? line=await reader.ReadLineAsync();
-        if(line==null)throw new IOException("IPSys 本机 MCP 管道已断开。");
+        string? line;
+        try { line=await reader.ReadLineAsync().WaitAsync(TimeSpan.FromMinutes(12)); }
+        catch(TimeoutException ex)
+        {
+            throw new IOException("MCP 请求等待超过 12 分钟，执行结果可能不确定。"+
+                "请通过相同 request_id 查询 get_operation_result，切勿盲目重试写操作。",ex);
+        }
+        if(line==null)throw new IOException("IPSys 本机 MCP 管道已断开；"+
+            "写入结果若不确定，请根据 request_id 查询后再决定是否重试。");
         JsonNode? response=JsonNode.Parse(line);
         if(response?["ok"]?.GetValue<bool>()!=true)
             throw new IOException(response?["error"]?.GetValue<string>()??"MCP 操作失败");
@@ -420,10 +442,18 @@ static partial class McpLocal
                 var args=doc.RootElement;
                 var name=ReadString(args,"name","");
                 var fields=args.TryGetProperty("arguments",out var value)?value:default;
-                var data=await ExecuteAsync(vault,address,name,fields,stop);
+                ValidateToolArguments(name,fields);
+                using var linked=CancellationTokenSource.CreateLinkedTokenSource(
+                    stop,vault.McpCancellation);
+                var data=await ExecuteProtectedAsync(vault,address,name,fields,linked.Token);
                 response=new {ok=true,data};
             }
             catch(OperationCanceledException)when(stop.IsCancellationRequested){return;}
+            catch(OperationCanceledException)
+            {
+                response=new {ok=false,error="MCP 操作已取消或授权已撤销；"+
+                    "写操作结果可能不确定，请先核对 request_id。"};
+            }
             catch(Exception ex){response=new {ok=false,error=ex.Message};}
             await writer.WriteLineAsync(JsonSerializer.Serialize(response,Json));
         }

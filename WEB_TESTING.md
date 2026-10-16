@@ -5,6 +5,21 @@
 用户确认旧数据库均为可丢弃测试数据，不迁移。N2-04 全业务 V2、N4 第一批新库物理表/API/回收站收敛以及第二批删除 31 份旧 Store/Provider/HTTP/历史测试源码已通过自动验收：最新源码 `b3c8f3b` 对应 [Windows CI #38911635273](https://github.com/zy19970/IPSys/actions/runs/38911635273) **completed/success**。本机 Edge/Chrome、真实 Codex、桌面 XLSX、故障注入和 T01–T09 仍未完全验证。
 
 
+### MCP P1 第一批写入安全/幂等/撤权/错误处理（2026-10-16）
+
+基于新建 V2 SQLCipher 测试库和 MCP 原生命名管道。以下场景列为本轮验收目标，待 GitHub Actions 返回实际成功后再登记 CI ID；WorkBuddy/Codex 长时间实机与进程崩溃故障注入另行验证。
+
+| 编号 | 核验点 | 预期 |
+| --- | --- | --- |
+| MCP-P1-01 | 同一 `request_id` 及相同业务参数（JSON 字段次序变化）两次调用 `create_general` | 只创建一个 Folder；返回相同 ID；`get_operation_result` 记录状态 `done` |
+| MCP-P1-02 | 重复 `request_id` 但变更名称或工具 | 明确拒绝；`pending/uncertain` 状态禁止自动重做 |
+| MCP-P1-03 | `upload_files` 中含不存在的绝对路径 | 返回 `status=failed`、`failed=1` 和该路径错误；MCP `tools/call` 将 `isError=true` |
+| MCP-P1-04 | `delete_file` 提供错误的 FolderId/FileId/LinkId 三元组，然后提供正确三元组 | 错误三元组拒绝，正确请求仅解绑目标位置且保留其它共享原件 |
+| MCP-P1-05 | 未知字段、错误类型、缺少必填/数组越界 | 协议层与宿主管道均拒绝，不静默容错 |
+| MCP-P1-06 | 业务请求进行中撤销授权 | 拒绝新 MCP 请求并通知在途任务取消；已提交的文件需通过查询核对，不误称回滚 |
+| MCP-P1-07 | HTTP 已产生副作用后宿主崩溃 / 丢失响应 | 加密请求日志保留 `pending` 并要求人工核对；并非严格 exactly-once |
+| MCP-P1-08 | 12 分钟 MCP 已建立连接后超时 | 返回不确定结果提示，要求查询 `request_id`；禁止盲目再写 |
+
 ### MCP P0 专项修复验证矩阵（2026-10-16）
 
 以新建的可丢弃 SQLCipher 测试库执行，不在唯一正式资料库中测试删除。源码已针对以下场景新增真实 MCP 管道和 V2 SQLCipher 的自动回归；新提交的 Windows CI 结果另行登记，不能将待执行场景直接标记为通过。
