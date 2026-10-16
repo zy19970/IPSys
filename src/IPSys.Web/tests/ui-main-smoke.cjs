@@ -43,6 +43,12 @@ assert.ok(js.includes('escapeHtml('),'Untrusted record and attachment names must
 // UI is frozen: the first real business edit reuses the existing record dialog.
 assert.ok(js.includes('data-action="editRecord"'),'Real record detail must offer edit title');
 assert.ok(js.includes("case 'editRecord'"),'Title editor must only start from the real record view');
+assert.ok(js.includes("case 'generalCopy':")&&
+ js.includes("case 'generalMove':")&&
+ js.includes("'/api/v2/ui/general/'+space+'/'+record.id+'/transfer'")&&
+ js.includes('data-action="generalCopy"')&&
+ js.includes('data-action="generalMove"'),
+ 'General record copy and transfer must preserve FolderId/FileVersion history');
 assert.ok(js.includes("method:'PUT'"),'Existing records must use the authorized update endpoint');
 assert.ok(js.includes("if(target===null)setPage('general')"),'Editing a record should retain the detail view');
 assert.ok(js.includes("editingId=null"),'Record editor mode must be reset after use');

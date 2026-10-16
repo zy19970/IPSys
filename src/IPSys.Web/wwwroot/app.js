@@ -367,6 +367,8 @@ function realDetail(){
  return heading(r.title,title('general')+' / 记录详情 · 当前加密库真实数据',
  '<button class="btn" data-nav="general">← 返回台账</button>'+
  '<button class="btn" data-action="editRecord">修改名称</button>'+
+ '<button class="btn" data-action="generalCopy">复制</button>'+
+ '<button class="btn" data-action="generalMove">转移</button>'+
  '<button class="btn" data-action="deleteRecord">删除资料</button>')+
  '<section class="white detailsection"><div class="detailsectionhead"><h2>基本信息</h2></div>'+
  '<div class="detailbody infogrid"><div class="info"><label>资料名称</label><strong>'+escapeHtml(r.title)+'</strong></div>'+
@@ -2315,6 +2317,28 @@ el('content').addEventListener('click',async ev=>{
    el('newRecordForm').querySelector('h2').textContent='修改资料名称';
    el('generalExcelImport').hidden=true;
    el('modal').showModal();break;
+  }
+  case 'generalCopy':
+  case 'generalMove':{
+   const record=liveRows.find(r=>r.id===detail?.id);
+   if(!record)break;
+   const move=target.dataset.action==='generalMove';
+   const other=space==='company'?'personal':'company';
+   const destination=move?other:
+    (confirm('复制到另一个工作区？取消则在当前工作区复制。')?other:space);
+   if(!confirm((move?'转移':'复制')+'综合资料“'+record.title+
+      '”及所有原件版本至'+(destination==='company'?'公司':'个人')+'工作区？'))break;
+   try{
+    const response=await api('/api/v2/ui/general/'+space+'/'+record.id+'/transfer',
+     {method:'POST',json:{targetWorkspace:destination,move}});
+    const result=await response.json();
+    if(move)detail=null;
+    await refresh();
+    if(!move&&destination===space){detail={kind:'general',id:result.id};render();}
+    notice((move?'资料已转移':'资料已复制')+
+      '：'+result.files+' 份原件，'+result.versions+' 个文件版本。');
+   }catch(error){notice('综合资料复制或转移失败：'+error.message,true);}
+   break;
   }
   case 'deleteRecord':{
    const record=liveRows.find(r=>r.id===detail?.id);

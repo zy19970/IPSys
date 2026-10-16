@@ -116,9 +116,19 @@ static class NativeArchiveUiHttpSmoke
             .SequenceEqual(historyB),
             "independent cross-workspace FileId and full version bytes");
 
+        byte[] generalOriginal=RandomNumberGenerator.GetBytes(117);
+        byte[] generalRevision=RandomNumberGenerator.GetBytes(269);
         long generalFile=await Upload(client,
             $"/api/v2/files/company/upload?folderId={general}",
-            RandomNumberGenerator.GetBytes(117),marker+"综合附件.txt");
+            generalOriginal,marker+"综合附件.txt");
+        using(var revision=new HttpRequestMessage(HttpMethod.Post,
+            $"/api/v2/files/company/{generalFile}/versions")
+            {Content=new ByteArrayContent(generalRevision)})
+        {
+            revision.Headers.Add("X-File-Name",
+                Uri.EscapeDataString(marker+"综合附件新版本.txt"));
+            await Json(await client.SendAsync(revision));
+        }
         v=await client.GetFromJsonAsync<JsonElement>("/api/v2/ui/archive/company");
         var row=v.GetProperty("general").EnumerateArray().First(x=>
             x.GetProperty("id").GetInt64()==general);
@@ -126,6 +136,46 @@ static class NativeArchiveUiHttpSmoke
             x.GetProperty("fileId").GetInt64()==generalFile&&
             x.GetProperty("kind").GetString()=="general"),
             "general detail links use native FileId/LinkId");
+
+        // A duplicate in the same workspace gets a separate FileId and retains
+        // both versions. Cross-workspace move copies independent physical bytes.
+        var same=await Json(await client.PostAsJsonAsync(
+            $"/api/v2/ui/general/company/{general}/transfer",
+            new {targetWorkspace="company",move=false}));
+        long duplicatedGeneral=same.GetProperty("id").GetInt64();
+        Assert(duplicatedGeneral!=general &&
+            same.GetProperty("versions").GetInt32()==2,
+            "same-workspace general duplicate retains two revisions");
+        var sameLinks=await client.GetFromJsonAsync<JsonElement>(
+            $"/api/v2/files/company/folders/{duplicatedGeneral}/links");
+        long duplicateFile=sameLinks[0].GetProperty("fileId").GetInt64();
+        Assert(duplicateFile!=generalFile &&
+            (await client.GetByteArrayAsync(
+            $"/api/v2/files/company/{duplicateFile}/versions/2/download"))
+                .SequenceEqual(generalRevision),
+            "general clone has independent logical file history");
+        var moved=await Json(await client.PostAsJsonAsync(
+            $"/api/v2/ui/general/company/{general}/transfer",
+            new {targetWorkspace="personal",move=true}));
+        long movedId=moved.GetProperty("id").GetInt64();
+        Assert(moved.GetProperty("versions").GetInt32()==2 &&
+            moved.GetProperty("newObjects").GetInt32()==2,
+            "cross-workspace general move must clone every immutable object");
+        using(var missing=await client.GetAsync(
+            $"/api/v2/folders/company/general/{general}"))
+            Assert(missing.StatusCode==System.Net.HttpStatusCode.NotFound,
+                "moving general record soft-deletes only the source record");
+        var movedLinks=await client.GetFromJsonAsync<JsonElement>(
+            $"/api/v2/files/personal/folders/{movedId}/links");
+        long movedFile=movedLinks[0].GetProperty("fileId").GetInt64();
+        Assert(movedFile!=generalFile &&
+            (await client.GetByteArrayAsync(
+            $"/api/v2/files/personal/{movedFile}/versions/1/download"))
+                .SequenceEqual(generalOriginal) &&
+            (await client.GetByteArrayAsync(
+            $"/api/v2/files/personal/{movedFile}/versions/2/download"))
+                .SequenceEqual(generalRevision),
+            "general cross-workspace copy is isolated and preserves full history");
 
         var certificateIds=v.GetProperty("archives").EnumerateArray()
             .Where(x=>x.GetProperty("section").GetString()=="certificate")
