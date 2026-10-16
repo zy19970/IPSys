@@ -794,7 +794,7 @@ function businessAttachmentList(kind,ownerId,section=''){
  return '<div class="tabletools"><b>原件附件 '+groups.size+' 份</b><div class="actions">'+category+
  (kind==='ip'?'':'<label class="file-dedup-choice"><input type="checkbox" id="businessReuseExisting"> 同内容复用存储</label>')+
  '<button class="btn primary" data-action="businessUpload">＋ 上传原件</button></div></div>'+
- '<p class="hint">'+(kind==='ip'?'按内容摘要查重并由你明确选择共享身份、复用内容、独立保存或取消；可对现有文件上传新版。':'同名原件可选择更新已有版本链，或作为独立新文件归档；同工作区共享引用自动显示新版本。')+' 单文件上限 64 MiB。</p+'
+ '<p class="hint">'+(kind==='ip'?'按内容摘要查重并由你明确选择共享身份、复用内容、独立保存或取消；可对现有文件上传新版。':'同名原件可选择更新已有版本链，或作为独立新文件归档；同工作区共享引用自动显示新版本。')+' 单文件上限 64 MiB。</p>'+
  ([...groups.values()].map(g=>{g.sort((a,b)=>b.version-a.version||b.id-a.id);
   return '<div class="business-file-group">'+line(g[0],g.length>1,true)+
    (kind==='ip'?'<button class="btn btn-sm" data-v2-ip-version="'+g[0].id+'">上传新版本</button>':'')+
