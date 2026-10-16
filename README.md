@@ -1,10 +1,10 @@
 # IPSys — 资料管理系统
 
-> **当前开发状态（2026-10-16）**：知识产权业务和附件/Excel/MCP/搜索回收站/跨区复制已使用 SQLCipher V2；项目合同现有网页 CRUD、版本与导出已经切 V2，[CI #38836041449](https://github.com/zy19970/IPSys/actions/runs/38836041449) success。N2-03-07-02 首批 [Windows CI #38845050570](https://github.com/zy19970/IPSys/actions/runs/38845050570) 已通过，项目合同原名 MCP CRUD、附件上传/版本与专用文件列表、删除，以及通用 `list_files/delete_file` 链接操作切 V2；后续继续项目合同 Excel、搜索回收站与跨区完整复制，再接归档/综合资料。旧库均为开发测试数据，不迁移/回填/兼容。完整 Edge/Chrome 实机验收未完成。
+> **当前开发状态（2026-10-16，N2-03 主链路收敛，进入 N2-04）**：知识产权全链路、项目合同现有网页/原件/MCP/Excel/搜索/回收站及项目连所属合同和所有 FileVersion 的跨工作区事务复制已使用 V2 FolderId/FileId/LinkId。[集中功能提交 59f7614](https://github.com/zy19970/IPSys/commit/59f7614ed2fb90d3bf3d6f56533240555874b6f1)、[旧适配修复 e59acc3](https://github.com/zy19970/IPSys/commit/e59acc37d6cfd3c3f27673bda996aa74ef3cb839)、[Windows CI #38848010379](https://github.com/zy19970/IPSys/actions/runs/38848010379) **success**。**现在按 N2-04 大里程碑集中接入业务档案、企业/个人分类资料及综合资料的现有网页、附件和外围接口**；上述模块目前仍使用旧 Store，N2-04 尚未验收完成。旧库都是测试数据，不迁移、回填或兼容，用户 Edge/Chrome 全面实机测试仍需完成。
 
 IPSys 定位为**业务化文件夹式本地资料管理器**，个人资料长期归档优先、公司资料独立工作区。程序采用 WinForms + 127.0.0.1 本机网页，一个 SQLCipher 加密库保存真实原件字节。2026-10-15 用户已确认 **Folder/File 统一资源物理模型**：所有业务条目及分类为带业务属性的 Folder（无版本），只有附件为 File（独立 FileId、选填属性和历史版本）。同区多个 Folder 可引用同一个 FileId，两个独立文件也可仅复用物理原件内容；查重时显示已有文件名与路径，由用户决定；公司/个人不共享物理原件。
 
-**唯一架构和开发进度依据**：[RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)。现有 IP 全链路、项目合同现有网页及 MCP 原名 CRUD/附件已切 V2；**项目合同 Excel、搜索/回收站和跨区整个项目/所属合同与原件历史的事务复制仍待 N2-03-07-02 后续批次**，然后转换归档/综合资料与 N4 验收。不做旧测试库迁移、回填或兼容，也不自动覆盖现存文件。
+**唯一架构和开发进度依据**：[RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)。N2-03 项目合同及 IP 新库主链路已通过对应 Windows CI，当前直接进入 N2-04（档案、资质、个人分类与综合资料 V2 全入口接入）。只有代码、HTTP/SQLCipher、MCP/Excel/搜索/回收站、文件分享导出和 UI 测试一致通过，才标记 N2-04 完成；之后 N4 旧表清理和正式实机验收。
 
 ## 产品模型与页面规则（当前统一口径）
 
@@ -40,14 +40,14 @@ dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-conta
 
 | 范围 | 已接入的真实能力 | 证据/限制 |
 | --- | --- | --- |
-| 项目 | 科研/横向/其他项目，现有网页 CRUD、排序、附件版本/ZIP 导出和原名 MCP CRUD/原件均用 V2 | [CI #38836041449](https://github.com/zy19970/IPSys/actions/runs/38836041449) 验证网页；N2-03-07-02 MCP 代码已提交；Excel、搜索回收站、跨区整项目复制待继续 |
-| 合同 | 必须从属于项目；现有网页 CRUD、附件版本、共享/合同复制及原名 MCP CRUD/原件已用 V2 | 网页原件 CI 已通过；合同 Excel 仅规划只读导出，跨区项目携合同完整复制待继续 |
+| 项目 | 科研/横向/其他项目，V2 网页 CRUD、MCP、Excel、排序、原件版本和全项目事务转移 | [CI #38848010379](https://github.com/zy19970/IPSys/actions/runs/38848010379) 通过；项目带子合同历史原件跨区复制独立 FileObject |
+| 合同 | 随项目从属，V2 网页、MCP、共享原件，Excel 只读导出和项目整组转移 | [CI #38848010379](https://github.com/zy19970/IPSys/actions/runs/38848010379) 覆盖项目合同父级、共享与两个文件版本字节往返 |
 | 知识产权 | 七类知识产权 CRUD、原件版本、Excel、原名 MCP、搜索回收站和跨区完整复制已接 V2 | 对应 N2-03-04～06 Windows CI 成功；完整 Edge/Chrome 实机仍待验收 |
 | 分类档案 | 公司企业资质/业务档案；个人身份与资质/成果与奖励/学术与社会活动；业务档案可变层级、目录与资料混排 | 企业资质直达表格；公司业务档案根层入口不多选、不下载，内层可勾选并递归导出 |
 | 综合/其他资料 | 独立记录、原件上传下载、版本、回收站 | 公司与个人分别显示对应资料 |
 | 原件 | SQLCipher 分块存储、SHA-256、历史版本、同名独立文件、受控共享/复制、软删除恢复、PDF/图片预览 | B05 与 PDF.js 预览已有用户通过反馈 |
-| 导出 | 文件夹、ZIP、项目及全部所属合同原件、固定列 Excel | IP 与项目合同现有原件导出已使用 V2；项目合同新版 Excel 未接，桌面 Excel 人工验证待做 |
-| 搜索 | 当前工作区结构化字段及附件名称检索、详情跳转，IP 已使用 V2 身份 | 项目合同及档案/综合资料仍涉及旧 Store，File 选填属性和祖先 Folder 检索待 N4，暂不做 OCR |
+| 导出 | 文件夹、ZIP、最新/选定历史原件、项目与全部所属合同、固定列 XLSX | IP、项目合同附件及 Excel 已走 V2；归档/分类及综合资料 Excel/附件接入待 N2-04 |
+| 搜索 | 已按 V2 FolderId 查 IP、项目、合同及其 FileId 原件，仍保留旧归档/综合过渡查询 | N2-04 需接入分类与综合资料的 V2 属性/祖先字段并统一真实详情跳转 |
 | MCP | 现有 IP、项目/合同原名 CRUD、附件版本/链接与通用文件操作均已切 V2；新增 11 项 `v2_*` 仍保留 | 本机手动授权、同用户管道；正式 Codex 客户端实机待验收，LinkId 与 FileId 不可混用 |
 | UI | 个人优先入口、公司五个业务栏目、工作台 3×2、紧凑台账、多选与持久排序 | 最新公司业务档案根层卡片、内层混合表格均有相应自动回归；仍待本机视觉验收 |
 
@@ -59,8 +59,8 @@ dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-conta
 
 ## 4. 下一步与验收状态
 
-1. **N2-03-07-02（持续推进）**：项目合同原名 MCP 与附件工具已接 V2；下一批按固定 Excel、统一搜索/回收站、跨工作区整项目及合同全部原件版本的单事务复制移动执行并验证。
-2. **后续模块接入**：转换公司业务档案、企业/个人分类资料、综合/其他资料的现有页面、附件、Excel、搜索/回收站等，使所有业务使用 V2 唯一数据源。
+1. **N2-04（当前大里程碑）**：集中完成企业资质/业务档案/个人分类/综合资料的实际网页及附件读写、排序复制、Excel、搜索回收站和共享版本导出 V2 归一；统一回归验收后整体交付，不再为每个接口单独定义小交付阶段。
+2. **N2-04 验收门槛**：同一 SQLCipher V2 身份、Folder/File 多对多与工作区隔离、全部模块的网页/HTTP/Excel/检索/回收站/下载及 Node/Windows 自动回归一致；本机 Edge/Chrome 再单独实测。
 3. **N4 清理与整体验收**：完成 File 选填属性和祖先 Folder 检索、最新版本与递归导出边界，引用清零后删除旧表/过渡 Store，进行 Windows、Edge/Chrome 及 T01–T09 安全验收再决定发布。
 
 旧库迁移/回填已经取消，勿沿旧 R4 或直接发布路线推进。实际子任务状态和证据见 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)。
@@ -74,7 +74,7 @@ dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-conta
 | [UI_BASELINE.md](./UI_BASELINE.md) | 当前生效的卡片/表格、目录、导航与操作规则（历史版式见 Git 历史） |
 | [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md) | 开发进度、剩余阶段与门槛 |
 | [DESIGN.md](./DESIGN.md) | V2 新 Schema、N2 原生服务、旧业务过渡态及风险边界 |
-| [HANDOFF.md](./HANDOFF.md) | 当前 N2-03-07-02 接续点及 V2 各模块状态与风险 |
+| [HANDOFF.md](./HANDOFF.md) | N2-04 接续点、最近成功 CI、剩余模块入口及数据安全边界 |
 | [WEB_TESTING.md](./WEB_TESTING.md) | 人工/自动验收依据及测试记录 |
 | [EXCEL_LEDGER.md](./EXCEL_LEDGER.md)、[SEARCH.md](./SEARCH.md)、[MCP_CODEX.md](./MCP_CODEX.md) | 三个专项功能使用及验收说明 |
 | [FREEZE_AUDIT.md](./FREEZE_AUDIT.md) | 历史需求冲突与持续有效的 T01–T09 安全门槛 |

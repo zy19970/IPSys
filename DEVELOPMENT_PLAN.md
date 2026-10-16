@@ -1,6 +1,6 @@
 # IPSys 开发计划与验收进度（2026-10-15，V2 新库执行版）
 
-> **当前唯一执行依据**：[RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md) 的 SQLCipher V2 N1～N4 路线。截至 2026-10-16，项目合同现有网页 [CI #38836041449](https://github.com/zy19970/IPSys/actions/runs/38836041449) 已通过，N2-03-07-02 首批原名 MCP 与原件代码 [00e9c87](https://github.com/zy19970/IPSys/commit/00e9c87ab4dfec9cd702c3dd2f08f60f5becb935)、[60c3692](https://github.com/zy19970/IPSys/commit/60c36926945c9bb4d660b25212dbf5f23f23f95a) 已通过 [CI #38844746654](https://github.com/zy19970/IPSys/actions/runs/38844746654)，通用文件命令又于 `6fe6474` 接入 V2。下一项项目合同 V2 Excel，后续搜索回收站及整项目跨区复制。用户没有正式旧库要迁移、回填或兼容，最终安全验收仍需完成。
+> **当前唯一执行依据**：[RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)。用户要求跳过细碎子批次、直接进入 N2-04。2026-10-16 集中完成项目合同 V2 固定 Excel（合同只读）、项目/合同搜索与回收站和跨区完整项目/所属合同/历史原件事务复制，功能 [59f7614](https://github.com/zy19970/IPSys/commit/59f7614ed2fb90d3bf3d6f56533240555874b6f1)、旧接口身份修复 [e59acc3](https://github.com/zy19970/IPSys/commit/e59acc37d6cfd3c3f27673bda996aa74ef3cb839)，最终 [Windows CI #38848010379](https://github.com/zy19970/IPSys/actions/runs/38848010379) success。当前 N2-04 要把业务档案、企业/个人分类和综合资料的实际网页与外围能力整体切 V2，尚未完成；没有正式旧库需要迁移。
 
 ## 1. 产品和已确认架构
 
@@ -29,9 +29,10 @@ IPSys 用户可见名称为「资料管理系统」，采用 Windows WinForms �
 | **N2-03-03** | **Windows CI 通过** | V2 知识产权 XLSX 沿用固定20列与重复记录策略，仅读写新版 FolderId/attributes_json，Excel 更新不改变原 IP/附件身份；真实 SQLCipher/HTTP [CI #38825202078](https://github.com/zy19970/IPSys/actions/runs/38825202078) 通过 |
 | **N2-03-07-01** | **Windows CI 通过** | 项目/合同现有网页 CRUD、合同从属项目、排序、原生附件/版本/共享/解除、文件夹/ZIP 导出已接入 V2 FolderId/FileId；[CI #38836041449](https://github.com/zy19970/IPSys/actions/runs/38836041449)。原名 MCP/Excel/搜索及跨区整项目复制尚待收敛 |
 | **N2-03-07-02-01 原名 MCP/原件** | **完整 Windows CI #38845050570 已通过** | 原名项目合同 CRUD、`upload_files`、专用文件查删、通用 `list_files/delete_file` 均已使用 V2 FolderId/FileId/LinkId；[#38844746654](https://github.com/zy19970/IPSys/actions/runs/38844746654) 已通过，[#38845050570](https://github.com/zy19970/IPSys/actions/runs/38845050570) **success** 核验通用命令 |
-| **N2-03-07-02 后续～N4** | **待继续** | 项目合同固定 Excel（先项目导入导出、合同只读导出），统一搜索/回收站和跨区项目携所有合同历史原件的原子复制；随后归档/综合资料、N4 旧表收敛与完整 Windows/Edge/Chrome 安全验收 |
+| **N2-03 项目合同完整业务链路** | **Windows CI 已通过** | Excel 项目导入/导出、合同只读导出，搜索结果采用真实 V2 FolderId/FileId；V2 项目/合同回收站与共享 LinkId 的保护；完整项目携全部合同和多版原件的单 SQLCipher 事务复制移动，跨区独立 FileObject；[CI #38848010379](https://github.com/zy19970/IPSys/actions/runs/38848010379) success。 |
+| **N2-04 分类档案与综合资料统一接入** | **已进入，未完成** | 将公司业务档案及企业资质、个人分类、综合/其他资料的现有网页、附件、Excel、搜索回收站、复制/导出接入原生 V2 Folder/File；保持根层卡片/内部混排及个人分类 UI 冻结；之后再 N4 清理旧表 |
 
-N2/N3 原生 API 与旧路由并存；**IP 全链路、项目合同网页/原件及原名 MCP CRUD/附件工具均已 V2 化**。`Vault` 仍建旧综合资料表，档案/综合资料网页依然使用部分旧 API，`SearchStore` 的项目合同查询和旧 Excel 台账仍使用旧业务身份，`BusinessFiles.cs` 仅在仍有引用时保留。禁止一个操作双写、旧数字 ID 与 V2 FolderId/LinkId 混用。
+N2/N3 原生 API 与旧路由目前并存；IP 和项目合同的实际网页/MCP/Excel/搜索/回收站及原件跨区复制已使用 V2，**企业资质/业务档案/个人分类/综合资料仍有旧 Store 和网页读写入口**，这是 N2-04 真实实施范围。不能让同一操作双写、错配两套数字 ID；旧表仅在尚有调用时保留。
 
 ## 3. 下一步实际施工顺序
 
@@ -39,11 +40,11 @@ N2/N3 原生 API 与旧路由并存；**IP 全链路、项目合同网页/原件
 2. **N3-02（已完成）**：同区多 Folder 关联 FileId、软解绑及显式恢复；共享版本在各位置同步，解除一处不删除原件，Windows CI 已通过；完整回收站 UI 后续 N4 验收。
 3. **N3-03（已完成）**：独立 FileId 可显式复用同区 FileObject，属性和版本历史独立；跨公司/个人复制产生独立物理字节，CI 已通过。
 4. **N3-04（原生 V2 API 已完成）**：按大小、SHA-256 匹配同区最新原件（含异名），返回原件名与 Folder 路径，用户决定共享 FileId、只复用内容、独立保存或取消，writing 分块安全清理并按会话约束票据；CI 已通过。可视化弹窗仍归 N4。
-5. **N2-03（分批进行中）**：N2-03-01～06、07-01 已通过 CI，07-02 首批已完成项目合同原名 MCP CRUD/原件和通用文件命令的 V2 代码接入；后续先完成项目合同固定 Excel，再统一搜索/回收站和跨区全项目+合同+历史附件事务复制，最后转换归档综合资料。旧测试数据库直接弃用，不迁移、回填或兼容，不覆盖任意现存文件。
-6. **N4**：保持冻结 UI，接通新库的前端、File 选填属性和 Folder 祖先字段搜索、递归导出、默认最新版本、回收站；确认无调用后清除旧业务/附件表及兼容代码。
+5. **N2-03 已完成主要原生业务接入并通过专项 CI**：知识产权与项目合同的现有网页和原件、MCP、Excel、搜索回收站以及跨区整记录历史复制已经统一至 V2；最新 [Windows CI #38848010379](https://github.com/zy19970/IPSys/actions/runs/38848010379) success。
+6. **N2-04 直接推进**：剩余企业资质、公司业务档案、个人分类资料与综合资料，按一个综合里程碑完成原 UI/附件/Excel/搜索/回收站/复制导出接入 V2 和跨模块自动验收。
 7. **N4 整体验收和发布判断**：Windows Debug/Release/单 EXE、SQLCipher HTTP、Node UI/PDF/ZIP、MCP、Excel，以及 Edge/Chrome 实机和 T01–T09 数据安全专项。
 
-因 N2-03 依赖 N3，**当前实际下一项为 N2-03**，不能机械按 N2-03 在进度表中的位置执行。
+当前下一项已确定为 **N2-04 业务档案与综合资料全部实际入口接入 V2**，不再按 N2-03-xx 逐项拆分小交付；正式完成仍以源代码、Windows/SQLCipher/Node 回归和用户实机证据为准。
 
 ## 4. 安全、兼容和发布边界
 

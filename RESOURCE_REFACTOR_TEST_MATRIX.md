@@ -1,6 +1,6 @@
 # IPSys 统一资源内核重构：R0-02 回归与差异矩阵
 
-> **现行用法（2026-10-16，N2-03-07-02 首批）**：旧 R0/R1 与各早期阶段的“下一步”保留历史追溯；当前知识产权全链路、项目合同现有网页/附件和原名 MCP CRUD/附件均采用 V2，通用文件列表/解绑也已改为 V2 LinkId；项目合同 Excel、搜索回收站与跨区整项目复制仍待 N2-03-07-02 后续批次，其后归档/综合资料与 N4 验收。旧库只有开发测试数据，不迁移/兼容/回填；各项 CI 与实机结果不得混淆。
+> **现行用法（2026-10-16，N2-04 大里程碑推进）**：N1/N3 原生服务、知识产权全链路、项目合同现有网页/附件/MCP/Excel/搜索回收站/跨区整项目及全部子合同和 FileVersion 的事务复制已通过对应 Windows CI，最新 [#38848010379](https://github.com/zy19970/IPSys/actions/runs/38848010379) success。**N2-04 是剩余业务档案、企业资质、个人分类、综合资料实际网页及附件/Excel/搜索回收站全面使用 V2 的整体集成验收阶段，当前尚未完成。**旧 R0/R1、早期各阶段的“下一步”仅作历史追溯；全部旧库是测试数据，无迁移、回填或旧库兼容。
 > 
 > 权威目标与逐步计划见 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)，界面约束见 [UI_BASELINE.md](./UI_BASELINE.md)，历史 Windows 安全/旧库验收见 [WEB_TESTING.md](./WEB_TESTING.md)。
 
@@ -37,7 +37,7 @@
 | F11 | 公司/个人不可共享同一 FileObject，跨区复制应保留独立物理内容对象 | **V2 原生后端已验证**：[CI #38762437581](https://github.com/zy19970/IPSys/actions/runs/38762437581) 验证跨区复用请求被拒绝、跨区复制分配新 FileObject、所有有效版本原件 SHA-256/字节一致 | N4 UI/MCP/Excel 完整链路仍需验证 |
 | F12 | 默认仅导出最新有效文件版本；显式选历史才带旧版本 | 旧 `BusinessFileStore.List` 仍可返回历史版本；IP 和项目合同已有 V2 FileVersion 导出路径，复杂混合范围仍需验证 | N4 覆盖 v1/v2/v3、同一 FileId 多路径、父子目录重叠、同名与 ZIP 取消 |
 | F13 | 勾选父目录和子项按目标目录导出，不错误重复；共享文件在不同目录分别出现 | **部分覆盖**：`export-smoke.cjs`、业务档案 UI smoke | R3 加重叠文件夹/相同 FileId 不同路径、同名与取消用例 |
-| F14 | Excel 固定列、原名 MCP、PDF.js Canvas、单 EXE 不回归 | 原 `v2_*` 与 IP 原名 MCP CI 已通过，项目合同原名 MCP/附件 [CI #38844746654](https://github.com/zy19970/IPSys/actions/runs/38844746654) success，通用 `list_files/delete_file` 已通过 [CI #38845050570](https://github.com/zy19970/IPSys/actions/runs/38845050570) | N2-03-07-02 后续接入项目合同固定 Excel、搜索/回收站、跨区复制；继续做 Windows 与本机浏览器验收 |
+| F14 | Excel 固定列、MCP 原名、PDF.js Canvas、单 EXE 不回归 | IP、项目合同原名 MCP 和附件、项目固定 XLSX 导入导出与合同只读导出已通过 [CI #38848010379](https://github.com/zy19970/IPSys/actions/runs/38848010379)，跨区整体项目复制含合同及历史版本亦通过回归 | N2-04 补齐档案/分类及综合资料全部 V2 Excel 与业务接口，再 N4 完整 Windows/Edge/Chrome 实机 |
 | F15 | 公司业务档案删除空目录时，软删除资料/回收站关系判定正确 | **部分覆盖**：`ArchiveFolderStore.DeleteEmpty` 仍需复核 | R1 构造含回收站资料的真实库测试，再决定是否改动 |
 | F16 | 综合资料在 V2 中直接通过 FolderFileLink 关联 File/版本，删除/恢复和文件对象引用安全 | **待实现**：旧综合资料迁移/断点回填已从交付范围取消 | N3/N2-03 在新建 SQLCipher V2 库核验版本、字节、SHA-256、软删恢复和附件归属，不进行旧库迁移 |
 | F17 | SQLCipher 错密、权限、异常退出、磁盘不足及手工备份完整性 | 部分专项 CI 已通过，故障注入与全量实机尚未完成 | N4 按 `FREEZE_AUDIT.md` T01–T09 执行，不做旧库迁移专项 |
@@ -125,3 +125,7 @@ N1 验收：[Windows CI #38740628571](https://github.com/zy19970/IPSys/actions/r
 ## N2-03-07-02 首批项目合同原名 MCP 与原件（2026-10-16）
 
 [功能 00e9c87](https://github.com/zy19970/IPSys/commit/00e9c87ab4dfec9cd702c3dd2f08f60f5becb935) 将项目合同原名 MCP CRUD 与 `upload_files(kind=project/contract)`、专用文件查询/解绑接至现有 V2 Folder/File；首轮 [CI #38844491828](https://github.com/zy19970/IPSys/actions/runs/38844491828) Debug 编译通过，但 WebSmoke 仍查旧 business-files 导致失败；[修复 60c3692](https://github.com/zy19970/IPSys/commit/60c36926945c9bb4d660b25212dbf5f23f23f95a) 改为按 V2 FileId/LinkId 下载并检验项目删除，[CI #38844746654](https://github.com/zy19970/IPSys/actions/runs/38844746654) 已成功。后续 [6fe6474](https://github.com/zy19970/IPSys/commit/6fe647437128635f0751b5edfe8795d13c74e0fc) 将通用 `list_files/delete_file` 也收敛 V2，有效列表返回 LinkId 和 FileId、解除不删除共享版本；其对应 [CI #38845050570](https://github.com/zy19970/IPSys/actions/runs/38845050570) **success**。项目合同固定 Excel、搜索回收站及跨区项目与全部合同附件历史事务复制仍未开发完毕。
+
+## N2-03 主链路收尾与 N2-04 综合验收起点（2026-10-16）
+
+[59f7614](https://github.com/zy19970/IPSys/commit/59f7614ed2fb90d3bf3d6f56533240555874b6f1) 集中实现项目合同 V2 Excel、统一搜索与回收站和整个项目携全部合同及历史文件版本的事务复制；首轮 [CI #38847749169](https://github.com/zy19970/IPSys/actions/runs/38847749169) 因旧测试恢复身份冲突失败，修复 [e59acc3](https://github.com/zy19970/IPSys/commit/e59acc37d6cfd3c3f27673bda996aa74ef3cb839) 后 [Windows CI #38848010379](https://github.com/zy19970/IPSys/actions/runs/38848010379) **success**。N2-04 后续集中把企业资质、公司业务档案及个人分类、综合资料的实际网页 CRUD、原件、排序、Excel、搜索回收站与导出统一 V2；当前旧 Store 仍在实际调用，此项未通过里程碑验收。无旧测试数据库迁移任务。

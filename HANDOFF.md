@@ -1,6 +1,6 @@
-# IPSys 跨会话交接（2026-10-16，V2 N2-03-07-02 接续）
+# IPSys 跨会话交接（2026-10-16，直接续作 N2-04 大里程碑）
 
-> 当前基线：N2-03-07-02 首批 MCP 提交 `00e9c87`、历史测试修正 `60c3692`、通用文件工具收敛 `6fe6474`，最终 [Windows CI #38845050570](https://github.com/zy19970/IPSys/actions/runs/38845050570) **success**。IP 全链路、项目合同网页和原名 MCP CRUD/原件及通用文件链接已使用 V2，项目合同 Excel/搜索回收站/整项目跨区复制未完成。权威架构和阶段进度仍见 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)。用户所有旧库均为可丢弃测试库，不迁移、不兼容。
+> 当前基线：`main@e59acc3`；项目/合同与知识产权现有网页、V2 原件、MCP、Excel、搜索回收站和带全部子合同与历史文件版本的跨区事务复制均已实现。集中功能 [59f7614](https://github.com/zy19970/IPSys/commit/59f7614ed2fb90d3bf3d6f56533240555874b6f1) 和旧适配修复 [e59acc3](https://github.com/zy19970/IPSys/commit/e59acc37d6cfd3c3f27673bda996aa74ef3cb839)，[Windows CI #38848010379](https://github.com/zy19970/IPSys/actions/runs/38848010379) **success**。按用户要求，不再拆更小子编号，直接以 **N2-04** 完成公司业务档案、企业资质、个人分类与综合资料的现有网页和附件/Excel/搜索回收站/导出统一接入。N2-04 当前尚未完成，不能声称已验收。用户没有旧数据库需要迁移。
 
 ## 1. 用户最终意图和冻结规则
 
@@ -37,9 +37,10 @@ IPSys 用户界面名称是「资料管理系统」，以**个人资料长期归
 | **N2-03-06** | MCP `upload_files(kind=ip)` 写 V2、`list_ip_files/delete_ip_file` 查询/解除关联、查重显式选择、追加版本已通过 [CI #38833862535](https://github.com/zy19970/IPSys/actions/runs/38833862535) | 
 | **N2-03-07-01** | 项目/合同现有网页、真实父项目合同、原件 FileId/LinkId/版本、用户决定内容复用、排序、合同及链接同事务复制、下载与文件夹 ZIP 已对齐 V2，Windows CI #38836041449 成功 |
 | **N2-03-07-02-01 MCP** | 首批已提交：原名项目合同 CRUD、`upload_files(kind=project/contract)`、项目/合同专用文件查询与解除，以及通用 `list_files/delete_file` 均使用 V2 Folder/File/Link，[Windows CI #38845050570](https://github.com/zy19970/IPSys/actions/runs/38845050570) success；仍需本机实机验收；后续依次进行 Excel、搜索回收站及整项目跨区事务复制 |
-| **N2-03-07-02 后续～N4** | 项目/合同 Excel、搜索回收站、跨区含所有合同与历史原件的原子复制，随后归档综合资料、N4 旧表清理和最终验收；不迁移旧测试库 |
+| **N2-03 项目合同全链路** | 项目固定 XLSX V2 导入导出、合同只读导出、搜索结果与回收站身份统一、完整项目及所属合同全部原件历史跨区事务复制/移动已通过 [Windows CI #38848010379](https://github.com/zy19970/IPSys/actions/runs/38848010379)；失败测试后旧适配类型隔离已修复 |
+| **N2-04（当前大里程碑）** | 原生 `NativeArchiveStore`/`NativeArchiveOrder` 已有 V2 原语，但现有业务档案/企业资质/个人分类/综合资料网页仍走旧 Store，须合并接通 Folder/File 及 Excel、搜索回收站、附件共享版本和递归导出，整体回归后标记完成 |
 
-**源码切换边界**：`Vault.CreateSchema` 仍包含开发期旧表与 V2 Schema；`Program.cs` 注册过渡和新版路由。IP、项目和合同现有网页及原名 MCP CRUD/附件均已统一 V2 FolderId/FileId/LinkId，MCP 的通用 `list_files/delete_file` 也只读写 V2 有效链接。`SearchStore` 的项目合同查询、旧 `ExcelLedger` 项目合同及档案/综合资料业务 Store 仍访问旧身份，项目合同新版 Excel、跨区复制已有保护性禁用；未清零前不删旧表或兼容 Store，不双写。
+**源码切换边界**：IP 与项目合同的现有网页、MCP、Excel 和搜索/回收站已按真实 V2 FolderId/FileId/LinkId 接入；`NativeProjectExcelLedger`、`NativeProjectTransferStore` 和 `SearchStore`/`RecycleStore` 的项目合同新库路径通过 CI #38848010379。`Vault.CreateSchema` 仍建开发期旧表，业务档案/企业资质/个人分类/综合资料现有 `app.js` 及 `/api/archives`、`/api/records`、旧 Excel/业务附件 Store 仍读写旧表。这是 **N2-04** 的集中实施缺口；旧 Store 不能在引用未清零前删除，禁止新旧同业务双写。
 
 ## 4. 接续开发的唯一顺序
 
@@ -54,7 +55,7 @@ IPSys 用户界面名称是「资料管理系统」，以**个人资料长期归
 9. **N2-03-05 完成**：原有 MCP 的 `list_ips/create_ip/update_ip/delete_ip`、知识产权全局搜索/原件 FileId 与回收站、整记录含所有原件版本的跨公司/个人复制移动已通过 Windows [CI #38831972597](https://github.com/zy19970/IPSys/actions/runs/38831972597)。跨区物理 FileObject 必须独立，复制失败整体回滚。
 10. **N2-03-06 完成**：新增 `McpLocalIpFiles.cs`；`upload_files(kind=ip)`、`list_ip_files`、`delete_ip_file` 均通过已授权本机 V2 HTTP，不再混用旧链接；同内容时必须由调用方显式确认复用选项，原件更新仍保留所有版本。[CI #38833862535](https://github.com/zy19970/IPSys/actions/runs/38833862535) 已成功。
 11. **N2-03-07-01 已完成**：`NativeProjectContractUiEndpoints.cs` 将现有项目与合同台账、项目所属合同、文件列表/历史版本映射到新库 FolderId/FileId，并提供原生排序及合同复制时同事务关联现有原件；`app.js` 项目合同 CRUD、附件内容查重与用户选择、版本上传、共享/解绑、预览下载及 ZIP/文件夹导出已切 V2。`ip-v2.js` 共用文件确认流程，`export.js` 提供原生 FileId 下载。[CI #38836041449](https://github.com/zy19970/IPSys/actions/runs/38836041449) 真实 SQLCipher HTTP、Node UI、Windows Debug/Release 通过。**项目 Excel 和项目跨工作区复制当前禁止调用旧表**。
-12. **当前 N2-03-07-02 首批 MCP 已提交，后续接续顺序**：项目合同原名 MCP CRUD、附件上传/查询/解绑、通用文件列表/解绑均切 V2，重点保持单位置 LinkId 与真实 FileId 的区别；后续先做固定 Excel、再统一搜索回收站、最后实现跨区项目携全部合同和历史文件的原子复制移动，再转换归档/综合资料。所有旧数据库均为测试数据，不执行迁移/回填/兼容。
+12. **当前 N2-04 集中交付目标**：不用继续拆项目合同的 MCP/Excel/搜索/复制小批次，这些主链路已通过 CI。直接把公司七类业务档案分类/企业资质、个人多分类资料、综合资料现有 UI 与 V2 Folder/File 真实归属、附件版本共享、Excel、搜索回收站和导出接成一个可验收系统；完成以后再进入 N4 旧表清理与 Edge/Chrome、T01–T09 正式安全测试。
 3. **然后 N2-03**，在新文件归属能力完整后，分模块切换旧业务 API、MCP、Excel 到 V2 数据源；旧 API 形状可保留，不能双写。
 4. **最后 N4**，接通现有 UI、搜索 File 属性与 Folder 祖先信息、递归导出、默认最新版本、PDF/回收站，删除不再引用的旧表/兼容代码，完成 Windows CI、Edge/Chrome 用户实机和 T01–T09 安全验收。
 

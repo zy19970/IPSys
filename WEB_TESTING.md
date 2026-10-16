@@ -2,7 +2,7 @@
 
 ## 当前优先：SQLCipher V2 新库分阶段验收（2026-10-16）
 
-用户确认旧库都是开发测试数据，不迁移、回填或兼容。IP 全链路及项目合同网页/原件已通过对应 V2 CI；N2-03-07-02 首批将项目合同原名 MCP CRUD、`upload_files`、专用附件查询/解绑以及通用 `list_files/delete_file` 切 V2，修复历史 WebSmoke 测试后 [CI #38844746654](https://github.com/zy19970/IPSys/actions/runs/38844746654) 成功，通用文件工具 [CI #38845050570](https://github.com/zy19970/IPSys/actions/runs/38845050570) 已通过。下一项项目合同 V2 Excel，随后搜索回收站、跨区整个项目包含全部合同文件版本的事务复制，再转档案综合资料与 N4。旧专项文字保留开发阶段语境；自动测试不等于真实 Edge/Chrome 与磁盘故障专项已验收。
+用户确认旧数据库均为可丢弃开发测试数据，不迁移、回填或兼容。知识产权全链路和项目合同现有网页、原名 MCP、固定 XLSX、统一搜索/回收站及带全部所属合同与原件历史的跨工作区事务复制均已通过对应 V2 Windows CI，最新 [#38848010379](https://github.com/zy19970/IPSys/actions/runs/38848010379) **success**。用户要求直接推进大里程碑 **N2-04**：企业资质、业务档案、个人分类与综合资料的实际网页/附件/Excel/搜索回收站仍依赖旧 Store，尚未统一验收；之后进入 N4 全模块及 Edge/Chrome 实机和 T01–T09。以下历史分项保留当时语境，自动 CI 不等于全面实机验收。
 
 1. **N1 已通过对应自动测试**：V2 Schema、版本检查与拒绝旧库、七系统根、有效合同父项目/Folder 防环/工作区隔离、文件对象和分块 ready 后不可改写；[CI #38740628571](https://github.com/zy19970/IPSys/actions/runs/38740628571)。新建不得覆盖旧文件。
 2. **N2-01 已通过对应自动测试**：项目/合同/IP 原生 `folders` CRUD、软删恢复、合同父级、真实 SQLCipher HTTP 授权和不双写旧表；[CI #38743939004](https://github.com/zy19970/IPSys/actions/runs/38743939004)。
@@ -390,3 +390,7 @@ dotnet publish .\src\IPSys.Web\IPSys.Web.csproj -c Release -r win-x64 --self-con
 ## N2-03-07-02 首批项目合同本机 MCP 自动验收（2026-10-16）
 
 [功能提交 00e9c87](https://github.com/zy19970/IPSys/commit/00e9c87ab4dfec9cd702c3dd2f08f60f5becb935) 与 [WebSmoke 断言修复 60c3692](https://github.com/zy19970/IPSys/commit/60c36926945c9bb4d660b25212dbf5f23f23f95a) 已通过 [Windows CI #38844746654](https://github.com/zy19970/IPSys/actions/runs/38844746654)。覆盖原名项目合同 CRUD 使用 V2 FolderId，合同父项目一致、真实文件版本字节往返、同一 FileId 不同 Folder 共享、单条 LinkId 解绑、错误归属拒绝。追加 [6fe6474](https://github.com/zy19970/IPSys/commit/6fe647437128635f0751b5edfe8795d13c74e0fc) 将通用 `list_files/delete_file` 改为 V2 链接汇总/单位置解除；[CI #38845050570](https://github.com/zy19970/IPSys/actions/runs/38845050570) **completed/success**。客户端 Codex 手工连接、项目/合同 Excel、搜索与回收站、跨区整项目复制以及 Edge/Chrome 实机仍待验收。
+
+## N2-03 项目/合同全链路集中验收与 N2-04 门槛（2026-10-16）
+
+[集中功能提交 59f7614](https://github.com/zy19970/IPSys/commit/59f7614ed2fb90d3bf3d6f56533240555874b6f1) 新增项目/合同 V2 XLSX、搜索和回收站、新版网页复制/移动整项目及所有子合同和历史原件。首轮 [CI #38847749169](https://github.com/zy19970/IPSys/actions/runs/38847749169) Debug 编译成功，旧 Folder 命令测试因恢复类型与 V2 回收站新旧 ID 冲突返回 404；[修复 e59acc3](https://github.com/zy19970/IPSys/commit/e59acc37d6cfd3c3f27673bda996aa74ef3cb839) 后 [CI #38848010379](https://github.com/zy19970/IPSys/actions/runs/38848010379) **completed/success**。新 SQLCipher HTTP 集成验证项目带有效合同、一个 FileId 在两个 Folder 中共享、多版本原件字节跨区复制与物理独立、Excel 只读合同导出/项目导入、搜索 V2 身份、软删/恢复完整历史。N2-04 尚未覆盖档案/企业个人分类/综合资料的现有旧 Store 接入，不得提前宣布该里程碑完成。完整 Edge/Chrome 和 T01–T09 安全实机仍待执行。

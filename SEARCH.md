@@ -1,6 +1,6 @@
 # IPSys P2 当前工作区统一搜索（2026-10-15）
 
-> P2 旧业务统一搜索曾通过 [Windows CI #38673474396](https://github.com/zy19970/IPSys/actions/runs/38673474396)；**N2-03-05 已将 IP 搜索命中及原件关联切到 V2 FolderId/FileId**，[CI #38831972597](https://github.com/zy19970/IPSys/actions/runs/38831972597) success。`SearchStore.cs` 当前项目、合同、档案/综合资料仍有旧 Store 结果和旧 ID，不能认为其结果已与实际项目合同 V2 页面身份统一。下一项 N2-03-07-02 先完成项目合同的搜索/跳转，后续归档综合资料和 File 选填属性/祖先 Folder 检索再由 N4 整体验收。本机 Edge/Chrome 全项实机尚未完成；不做 OCR 或正文全文检索。
+> **2026-10-16 最新进展**：项目、合同及其原件的统一搜索已改为真实 V2 FolderId/FileId，知识产权继续使用 V2 身份；有效父项目、工作区隔离和文件名称/可选属性通过真实 SQLCipher/HTTP 回归。[功能 59f7614](https://github.com/zy19970/IPSys/commit/59f7614ed2fb90d3bf3d6f56533240555874b6f1)、[Windows CI #38848010379](https://github.com/zy19970/IPSys/actions/runs/38848010379) **success**。**N2-04 仍需把企业资质、业务档案、个人分类及综合资料搜索从旧 Store 迁入 V2**，增加完整祖先 Folder 结构化字段与实机跳转；不做 OCR 或正文全文检索。
 
 在顶部「搜索当前工作区资料」输入关键词并按 Enter。后端 `GET /api/search/{workspace}?q=...` 在**已解锁且认证通过的当前公司或个人工作区**内查询真实数据；工作区切换或页面切换后丢弃过期搜索结果。
 
