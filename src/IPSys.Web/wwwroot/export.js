@@ -26,7 +26,7 @@ const IPSysExport=(()=>{
   return candidate;
  }
  function owner(file){
-  if(file.source==='general')return {recordKey:'g:'+file.ownerId,root:file.ownerName};
+  if(file.kind==='general')return {recordKey:'g:'+file.ownerId,root:file.ownerName};
   if(file.kind==='project')return {recordKey:'p:'+file.ownerId,root:file.ownerName};
   if(file.kind==='contract')return {recordKey:'c:'+file.ownerId,root:file.projectName,
    parentKey:'p:'+file.projectId,sub:file.ownerName};
@@ -116,13 +116,20 @@ const IPSysExport=(()=>{
   return /quota|space|disk|no space|空间不足|容量不足|存储空间/i.test(err?.message||'')||
    err?.name==='QuotaExceededError'||err?.fatal===true;
  }
+ function validOriginal(file){
+  return file&&(file.source==='v2file'||file.source==='v2ip')&&
+   (file.workspace==='company'||file.workspace==='personal')&&
+   Number.isSafeInteger(file.fileId)&&file.fileId>0&&
+   Number.isSafeInteger(file.version)&&file.version>0&&
+   Number.isSafeInteger(file.size)&&file.size>=0&&
+   (file.source!=='v2ip'||Number.isSafeInteger(file.ownerId)&&file.ownerId>0);
+ }
  async function openResponse(file,signal){
-  const url=file.source==='general'?'/api/files/'+file.workspace+'/'+file.id:
-   file.source==='v2ip'?'/api/v2/ip/'+file.workspace+'/'+file.ownerId+'/files/'+
+  if(!validOriginal(file))throw Error('原件缺少有效 V2 FileId 或历史版本，请刷新后重试。');
+  const url=file.source==='v2ip'?'/api/v2/ip/'+file.workspace+'/'+file.ownerId+'/files/'+
     file.fileId+'/versions/'+file.version+'/download':
-   file.source==='v2file'?'/api/v2/files/'+file.workspace+'/'+file.fileId+
-    '/versions/'+file.version+'/download':
-   '/api/business-files/'+file.workspace+'/download/'+file.id;
+    '/api/v2/files/'+file.workspace+'/'+file.fileId+
+    '/versions/'+file.version+'/download';
   const response=await api(url,{signal});
   if(!response.body)throw Error('浏览器未提供流式读取能力');
   return response;
@@ -286,6 +293,8 @@ const IPSysExport=(()=>{
   if(active)return notice('已有导出任务，请先完成或取消。',true);
   if(!selected.length)return notice('请先勾选需要导出的原件。',true);
   if(!['folder','zip'].includes(format))throw Error('无效导出格式');
+  if(selected.some(file=>!validOriginal(file)))
+   return notice('选择的原件缺少有效 V2 FileId 或版本号，请刷新资料列表后重新导出。',true);
   if(format==='zip'){
    const bytes=selected.reduce((n,f)=>n+f.size+200+encoder.encode(f.name).length,0);
    if(bytes>=MAX32)return notice('本版 ZIP 不支持超过 4 GiB，请分批导出。',true);

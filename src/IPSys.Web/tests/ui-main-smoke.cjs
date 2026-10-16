@@ -7,6 +7,23 @@ const html=fs.readFileSync(path.join(dir,'index.html'),'utf8');
 const js=fs.readFileSync(path.join(dir,'app.js'),'utf8');
 const css=fs.readFileSync(path.join(dir,'style.css'),'utf8');
 const v2IpJs=fs.readFileSync(path.join(dir,'ip-v2.js'),'utf8');
+const exportJs=fs.readFileSync(path.join(dir,'export.js'),'utf8');
+const programCs=fs.readFileSync(path.resolve(__dirname,'../Program.cs'),'utf8');
+const searchEndpointsCs=fs.readFileSync(path.resolve(__dirname,'../SearchLedgerEndpoints.cs'),'utf8');
+assert.ok(!js.includes("'/api/business-files/'")&&!exportJs.includes('/api/business-files/')&&
+ !exportJs.includes("'/api/files/'"),
+ 'Production V2 business pages and all original exports must never use legacy attachment URLs');
+assert.ok(js.includes("source:'v2file'")&&js.includes("source:'v2ip'")&&
+ !js.includes(":'business'")&&
+ exportJs.includes("if(selected.some(file=>!validOriginal(file)))"),
+ 'All module/selected ZIP exports require a real V2 FileId and FileVersion');
+assert.ok(programCs.includes('if(smoke)')&&
+ programCs.includes('BusinessFileEndpoints.Map(app);')&&
+ programCs.includes('ExcelEndpoints.Map(app, Fail);')&&
+ programCs.includes('SearchLedgerEndpoints.Map(app, Fail, smoke);')&&
+ searchEndpointsCs.includes('if(includeLegacy)'),
+ 'Legacy HTTP business mutations and identity search must be registered in smoke only');
+
 new (require('node:vm').Script)(v2IpJs);
 assert.ok(html.includes('src="/ip-v2.js" defer'),'Frozen IP page must load embedded V2 adapter before app.js');
 for(const apiName of ['IPSysNativeIp','/api/v2/ui/ip/','/api/v2/files/','/api/v2/ip/'])

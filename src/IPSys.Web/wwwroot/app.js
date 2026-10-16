@@ -577,8 +577,8 @@ function moduleOriginals(records,kind,section=''){
    fileId:f.fileId,version:f.version,kind:'general',ownerId:r.id,ownerName:r.title
  })));
  return records.flatMap(r=>businessFiles(kind,r.id,section).map(f=>({
-  source:f.v2?'v2file':'business',workspace:space,id:f.id,name:f.name,size:f.size,
-  ...(f.v2?{fileId:f.fileId,version:f.version}:{}),kind,ownerId:r.id,
+  source:'v2file',workspace:space,id:f.id,name:f.name,size:f.size,
+  fileId:f.fileId,version:f.version,kind,ownerId:r.id,
   section:kind==='archive'?section:'',ownerName:r.name,
   ...(kind==='contract'?{projectId:r.projectId,projectName:r.projectName}:{})
  })));
@@ -713,7 +713,7 @@ function businessFiles(kind,ownerId,section=''){
  return businessFileRows.filter(f=>f.kind===kind&&f.ownerId===ownerId&&
   (kind!=='archive'||f.section===section));
 }
-function exportCheck(file,source='business',latest=false){
+function exportCheck(file,source='v2file',latest=false){
  return '<label class="export-check"><input type="checkbox" class="export-filecheck"'+
   ' data-export-source="'+source+'" data-export-id="'+file.id+'"'+
   (latest?' data-export-latest="1"':'')+'> 导出此版</label>';
@@ -743,8 +743,8 @@ function selectedOriginals(){
    f.kind==='contract'?parent?.name:
    archiveRows[f.section]?.find(x=>x.id===f.ownerId)?.name;
   if(!ownerName)continue;
-  items.push({source:f.v2?(f.kind==='ip'?'v2ip':'v2file'):'business',workspace:space,id:f.id,
-   name:f.name,size:f.size,...(f.v2?{fileId:f.fileId,version:f.version}:{}),
+  items.push({source:f.kind==='ip'?'v2ip':'v2file',workspace:space,id:f.id,
+   name:f.name,size:f.size,fileId:f.fileId,version:f.version,
    kind:f.kind,ownerId:f.ownerId,section:f.section,ownerName,
    ...(parent?{projectId:parent.projectId,projectName:parent.projectName}:{})});
  }
@@ -763,8 +763,8 @@ function projectOriginals(projectIds){
    const contract=f.kind==='contract'?contracts.get(f.ownerId):null;
    const project=projects.get(contract?contract.projectId:f.ownerId);
    return {
-    source:f.v2?'v2file':'business',workspace:space,id:f.id,name:f.name,size:f.size,
-    ...(f.v2?{fileId:f.fileId,version:f.version}:{}),
+    source:'v2file',workspace:space,id:f.id,name:f.name,size:f.size,
+    fileId:f.fileId,version:f.version,
     kind:f.kind,ownerId:f.ownerId,section:f.section,
     ownerName:contract?contract.name:project.name,
     ...(contract?{projectId:contract.projectId,projectName:project.name}:{})
@@ -775,8 +775,8 @@ function ipOriginals(ids){
  const chosen=new Set(ids.map(Number));
  const names=new Map(ipRows.filter(r=>chosen.has(r.id)).map(r=>[r.id,r.data.name]));
  return businessFileRows.filter(f=>f.kind==='ip'&&names.has(f.ownerId)).map(f=>({
-  source:f.v2?'v2ip':'business',workspace:space,id:f.id,name:f.name,size:f.size,
-  ...(f.v2?{fileId:f.fileId,version:f.version}:{}),
+  source:'v2ip',workspace:space,id:f.id,name:f.name,size:f.size,
+  fileId:f.fileId,version:f.version,
   kind:'ip',ownerId:f.ownerId,section:f.section||'',ownerName:names.get(f.ownerId)
  }));
 }
@@ -799,7 +799,7 @@ function businessAttachmentList(kind,ownerId,section=''){
  '<span class="filedesc"><strong>'+escapeHtml(f.name)+'</strong><small>'+(showVersion?'v'+f.version+' · ':'')+
  (f.category?escapeHtml(f.category)+' · ':'')+fmtSize(f.size)+
  ' · SHA-256 '+escapeHtml(f.sha256.slice(0,12))+'…</small></span>'+
- (kind==='project'?'':exportCheck(f,kind==='archive'?'v2file':'business',latest))+'<button class="btn btn-sm" data-preview-business="'+f.id+'">预览</button>'+
+ (kind==='project'?'':exportCheck(f,kind==='ip'?'v2ip':'v2file',latest))+'<button class="btn btn-sm" data-preview-business="'+f.id+'">预览</button>'+
  '<button class="btn btn-sm" data-business-download="'+f.id+'">下载</button>'+
  '<button class="btn btn-sm" data-business-delete="'+f.id+'">移除</button></div>';
  return '<div class="tabletools"><b>原件附件 '+groups.size+' 份</b><div class="actions">'+category+
@@ -1307,8 +1307,8 @@ function archiveRecordZipOriginals(recordId,section){
  const record=(archiveRows[section]||[]).find(r=>r.id===recordId);
  if(!record)return [];
  return archiveTableAttachmentSummary(recordId,section).files.map(file=>({
-  source:file.v2?'v2file':'business',workspace:space,id:file.id,name:file.name,size:file.size,
-  ...(file.v2?{fileId:file.fileId,version:file.version}:{}),
+  source:'v2file',workspace:space,id:file.id,name:file.name,size:file.size,
+  fileId:file.fileId,version:file.version,
   kind:'archive',ownerId:recordId,section,ownerName:record.name
  }));
 }

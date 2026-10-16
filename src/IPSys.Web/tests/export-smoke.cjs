@@ -83,17 +83,20 @@ const exporter=sandbox.IPSysExport;
 assert.ok(exporter);
 assert.equal(exporter.cleanName('CON.pdf'),'_CON.pdf');
 const selected=[
- {source:'business',kind:'project',ownerId:1,ownerName:'研发:项目',id:1,
+ {source:'v2file',kind:'project',ownerId:1,ownerName:'研发:项目',id:1,fileId:1,version:1,
   name:'方案.pdf',size:6,workspace:'company'},
- {source:'business',kind:'project',ownerId:2,ownerName:'研发:项目',id:2,
+ {source:'v2file',kind:'project',ownerId:2,ownerName:'研发:项目',id:2,fileId:2,version:1,
   name:'方案.pdf',size:5,workspace:'company'},
- {source:'business',kind:'contract',ownerId:11,ownerName:'合同A',projectId:1,
-  projectName:'研发:项目',id:3,name:'附件.txt',size:7,workspace:'company'},
- {source:'business',kind:'contract',ownerId:12,ownerName:'合同A',projectId:1,
-  projectName:'研发:项目',id:4,name:'附件.txt',size:8,workspace:'company'}
+ {source:'v2file',kind:'contract',ownerId:11,ownerName:'合同A',projectId:1,
+  projectName:'研发:项目',id:3,fileId:3,version:1,name:'附件.txt',size:7,workspace:'company'},
+ {source:'v2file',kind:'contract',ownerId:12,ownerName:'合同A',projectId:1,
+  projectName:'研发:项目',id:4,fileId:4,version:1,name:'附件.txt',size:8,workspace:'company'}
 ];
-const urls=selected.map(x=>'/api/business-files/company/download/'+x.id);
+const urls=selected.map(x=>'/api/v2/files/company/'+x.fileId+
+ '/versions/'+x.version+'/download');
 ['123456','abcde','aFile01','aFile002'].forEach((v,i)=>data.set(urls[i],Buffer.from(v)));
+assert.ok(selected.every(x=>x.source==='v2file'&&x.fileId>0&&x.version===1),
+ 'Current export fixtures must use real V2 version identities');
 const plan=exporter.makePlan(selected);
 assert.deepEqual(JSON.parse(JSON.stringify(plan.map(x=>x.path))),[
  '研发_项目/方案.pdf','研发_项目 (2)/方案.pdf',
@@ -103,6 +106,8 @@ assert.deepEqual(JSON.parse(JSON.stringify(plan.map(x=>x.path))),[
  await exporter.start('folder',selected);
  assert.match(elems.get('exportResult').textContent,/成功 4，失败 0/);
  assert.equal((await (await root.getDirectoryHandle('研发_项目')).getFileHandle('方案.pdf')).bytes.toString(),'123456');
+ await exporter.start('folder',[{...selected[0],fileId:0}]);
+ assert.match(notices.at(-1).message,/V2 FileId/,'Missing native file identity must fail closed before folder writes');
  assert.equal((await (await root.getDirectoryHandle('研发_项目')).getDirectoryHandle('合同A')).children.get('附件.txt').bytes.toString(),'aFile01');
  
 // Project export must include all active project and linked-contract file versions,
@@ -116,13 +121,13 @@ const projectContext={
  contractRows:[{id:11,name:'合同A',projectId:1},{id:12,name:'合同A',projectId:2},
   {id:13,name:'无关合同',projectId:3}],
  businessFileRows:[
-  {id:101,name:'报告.pdf',size:3,kind:'project',ownerId:1,version:1},
-  {id:102,name:'报告.pdf',size:5,kind:'project',ownerId:1,version:2},
-  {id:103,name:'合同.pdf',size:8,kind:'contract',ownerId:11,version:1},
-  {id:104,name:'合同.pdf',size:9,kind:'contract',ownerId:12,version:1},
-  {id:105,name:'忽略.pdf',size:6,kind:'contract',ownerId:13,version:1},
-  {id:106,name:'忽略.pdf',size:6,kind:'project',ownerId:3,version:1},
-  {id:107,name:'其他专利.pdf',size:3,kind:'ip',ownerId:1,version:1}
+  {id:101,fileId:101,v2:true,name:'报告.pdf',size:3,kind:'project',ownerId:1,version:1},
+  {id:102,fileId:102,v2:true,name:'报告.pdf',size:5,kind:'project',ownerId:1,version:2},
+  {id:103,fileId:103,v2:true,name:'合同.pdf',size:8,kind:'contract',ownerId:11,version:1},
+  {id:104,fileId:104,v2:true,name:'合同.pdf',size:9,kind:'contract',ownerId:12,version:1},
+  {id:105,fileId:105,v2:true,name:'忽略.pdf',size:6,kind:'contract',ownerId:13,version:1},
+  {id:106,fileId:106,v2:true,name:'忽略.pdf',size:6,kind:'project',ownerId:3,version:1},
+  {id:107,fileId:107,v2:true,name:'其他专利.pdf',size:3,kind:'ip',ownerId:1,version:1}
  ],
  space:'personal'
 };
@@ -154,11 +159,12 @@ assert.deepEqual(JSON.parse(JSON.stringify(exporter.makePlan(projectFiles).map(x
   assert.equal(name,item.path);
   const local=zip.readUInt32LE(offset+42),nameBytes=zip.readUInt16LE(local+26);
   const content=zip.subarray(local+30+nameBytes,local+30+nameBytes+item.size);
-  assert.equal(content.toString(),data.get('/api/business-files/company/download/'+item.id).toString());
+  assert.equal(content.toString(),data.get('/api/v2/files/company/'+item.fileId+
+    '/versions/'+item.version+'/download').toString());
   offset+=46+length;
  }
  // Individual missing file is skipped and the rest of the ZIP remains complete.
- await exporter.start('zip',[...selected.slice(0,1),{...selected[1],id:999}]);
+ await exporter.start('zip',[...selected.slice(0,1),{...selected[1],id:999,fileId:999}]);
  assert.ok(savedZip.bytes,'ZIP should be retained if one file succeeded');
  assert.match(elems.get('exportResult').textContent,/成功 1，失败 1/);
  assert.equal(savedZip.bytes.readUInt16LE(savedZip.bytes.length-22+10),1);
@@ -169,14 +175,14 @@ assert.deepEqual(JSON.parse(JSON.stringify(exporter.makePlan(projectFiles).map(x
  assert.equal(elems.get('exportStatus').hidden,true,'Export result must auto-dismiss');
  // Directory exports use folder identities and keep arbitrary depth in the ZIP.
  const archiveFiles=[
-  {source:'business',kind:'archive',section:'achievement',workspace:'company',
-   ownerId:31,ownerName:'申报资料',id:401,name:'申报.pdf',size:3,
+  {source:'v2file',kind:'archive',section:'achievement',workspace:'company',
+   ownerId:31,ownerName:'申报资料',id:401,fileId:401,version:1,name:'申报.pdf',size:3,
    archiveFolderPath:[{id:201,name:'认定申报'},{id:203,name:'企业行标'}]},
-  {source:'business',kind:'archive',section:'achievement',workspace:'company',
-   ownerId:33,ownerName:'评审资料',id:402,name:'证明.docx',size:4,
+  {source:'v2file',kind:'archive',section:'achievement',workspace:'company',
+   ownerId:33,ownerName:'评审资料',id:402,fileId:402,version:1,name:'证明.docx',size:4,
    archiveFolderPath:[{id:201,name:'认定申报'},{id:203,name:'企业行标'},{id:204,name:'2026年度'}]},
-  {source:'business',kind:'archive',section:'achievement',workspace:'company',
-   ownerId:34,ownerName:'申报资料',id:403,name:'申报.pdf',size:5,
+  {source:'v2file',kind:'archive',section:'achievement',workspace:'company',
+   ownerId:34,ownerName:'申报资料',id:403,fileId:403,version:1,name:'申报.pdf',size:5,
    archiveFolderPath:[{id:201,name:'认定申报'},{id:205,name:'技术认证'}]}
  ];
  const archivePlan=exporter.makePlan(archiveFiles);
@@ -186,7 +192,8 @@ assert.deepEqual(JSON.parse(JSON.stringify(exporter.makePlan(projectFiles).map(x
   '认定申报/技术认证/申报资料/申报.pdf'
  ],'Archive folder download must retain all nested directory/record levels');
  for(const [index,file] of archiveFiles.entries())
-  data.set('/api/business-files/company/download/'+file.id,Buffer.from(['abc','defg','12345'][index]));
+  data.set('/api/v2/files/company/'+file.fileId+'/versions/'+file.version+'/download',
+   Buffer.from(['abc','defg','12345'][index]));
  await exporter.start('zip',archiveFiles);
  const directoryZip=savedZip.bytes;
  assert.ok(directoryZip&&directoryZip.length>22,'Nested directory ZIP must be generated');

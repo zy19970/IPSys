@@ -4,10 +4,12 @@ using Microsoft.AspNetCore.Http;
 // R0-03: existing workspace-scoped unified search and ledger ordering endpoints.
 static class SearchLedgerEndpoints
 {
-    public static void Map(WebApplication app,Func<string,int,IResult> fail)
+    public static void Map(WebApplication app,Func<string,int,IResult> fail,bool includeLegacy)
     {
         IResult Fail(string message,int status=400)=>fail(message,status);
-        // P2 workspace-scoped SQLCipher search across real records and attachment metadata.
+        // Old identity search exists only for disposable --smoke fixtures.
+        // The actual desktop UI has used /api/v2/search since N2-04.
+        if(includeLegacy)
         app.MapGet("/api/search/{workspace}",async (HttpContext ctx,Vault v,string workspace,string? q)=>
         {
             if(!v.Allowed(ctx))return (IResult)Results.Unauthorized();
@@ -39,7 +41,10 @@ static class SearchLedgerEndpoints
             finally{v.Gate.Release();}
         });
 
-        // Scoped row ordering and atomic soft delete for all non-certificate record ledgers.
+        // Legacy ledger APIs only serve old regression fixtures. Production
+        // exposes the native V2 folder order and soft-delete endpoints instead.
+        if(includeLegacy)
+        {
         app.MapGet("/api/ledger/{workspace}/order",async(HttpContext ctx,Vault v,string workspace)=>
         {
             if(!v.Allowed(ctx))return (IResult)Results.Unauthorized();
@@ -85,5 +90,6 @@ static class SearchLedgerEndpoints
             }
             finally{v.Gate.Release();}
         });
+        }
     }
 }

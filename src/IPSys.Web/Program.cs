@@ -84,19 +84,21 @@ app.MapGet("/ui-preview", (HttpContext ctx) =>
 
 SessionEndpoints.Map(app, Fail);
 
-SearchLedgerEndpoints.Map(app, Fail);
+SearchLedgerEndpoints.Map(app, Fail, smoke);
 
-GeneralRecordEndpoints.MapList(app, Fail);
-
-IpEndpoints.Map(app, Fail);
-
-ExcelEndpoints.Map(app, Fail);
-
-ArchiveEndpoints.Map(app, Fail);
-
-ProjectContractEndpoints.Map(app, Fail);
-FolderBrowserEndpoints.Map(app, Fail);
-FolderCommandEndpoints.Map(app, Fail);
+// V1 endpoints exist only to run historical --smoke regression scenarios.
+// Current UI, MCP, Excel, ZIP and search must have exactly one production
+// business identity: the native V2 FolderId, FileId and LinkId.
+if(smoke)
+{
+    GeneralRecordEndpoints.MapList(app, Fail);
+    IpEndpoints.Map(app, Fail);
+    ExcelEndpoints.Map(app, Fail);
+    ArchiveEndpoints.Map(app, Fail);
+    ProjectContractEndpoints.Map(app, Fail);
+    FolderBrowserEndpoints.Map(app, Fail);
+    FolderCommandEndpoints.Map(app, Fail);
+}
 NativeFolderEndpoints.Map(app, Fail);
 NativeFileEndpoints.Map(app, Fail);
 NativeFileLinkEndpoints.Map(app, Fail);
@@ -116,9 +118,11 @@ NativeGeneralTransferEndpoints.Map(app, Fail);
 NativeIpTransferEndpoints.Map(app, Fail);
 NativeProjectTransferEndpoints.Map(app, Fail);
 
-GeneralRecordEndpoints.MapChanges(app, Fail);
-
-BusinessFileEndpoints.Map(app);
+if(smoke)
+{
+    GeneralRecordEndpoints.MapChanges(app, Fail);
+    BusinessFileEndpoints.Map(app);
+}
 RecycleEndpoints.Map(app);
 
 SessionEndpoints.MapDiagnostics(app);
