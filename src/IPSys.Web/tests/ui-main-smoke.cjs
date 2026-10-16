@@ -1045,8 +1045,16 @@ assert.ok(js.includes("case 'trashRestoreSelected'")&&js.includes("case 'trashPu
 assert.ok(js.includes("'/api/trash/'+space+'/'+operation"));
 assert.ok(v2IpJs.includes('"/api/v2/files/"+workspace+"/"+record.fileId+"/links'),
  'Same-workspace association must use native V2 FolderFileLinks');
-assert.ok(js.includes("IPSysNativeIp.associateGeneric(api,f,space"),
- 'Active attachment association must use V2 FileId and target FolderId');
+assert.ok(js.includes("api('/api/v2/files/'+space+'/'+file.fileId+'/associate'") &&
+ js.includes("targetFolderId:target.id,move") &&
+ js.includes("linkId:file.linkId") &&
+ js.includes("openBusinessAssoc(Number(target.dataset.businessAssociate))"),
+ 'Active attachment association must use native V2 FileId/LinkId/FolderId atomic copy/move dialog');
+assert.ok(js.includes("kind:'general',id:x.id") &&
+ js.includes("kind:'archive',id:x.id") &&
+ js.includes("kind:'contract',id:x.id") &&
+ js.includes("kind:'project',id:x.id"),
+ 'Native association must offer current-workspace project, contract, archive and general folders');
 assert.ok(js.includes("function chooseVersionAction(file,matches)")&&
  js.includes('data-upload-choice="new"')&&js.includes("if(choice==='new')"),
  'Same-name originals must use explicit action buttons');
