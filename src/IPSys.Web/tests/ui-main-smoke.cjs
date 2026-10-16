@@ -1195,8 +1195,8 @@ vm.runInContext(
  helpers+"sortLedgerData();"+
  "globalThis.ids=[projectRows.map(x=>x.id),ipRows.map(x=>x.id),"+
  "contractRows.map(x=>x.id),archiveRows.certificate.map(x=>x.id)];",orderVm);
-assert.deepEqual(JSON.parse(JSON.stringify(orderVm.ids)),[[3,1,2],[5,4],[7,6],[9,8]],
- 'Saved order must apply to project, IP, contract and personal archive independently');
+assert.deepEqual(JSON.parse(JSON.stringify(orderVm.ids)),[[3,1,2],[4,5],[7,6],[9,8]],
+ 'Projects, contracts and archives respect legacy order; native IP stays in V2 Folder.position order');
 // Other categories remain untouched by a different section's ordering.
 assert.ok(js.includes("if(detail?.kind==='project')return {kind:'contract',section:''}")&&
  js.includes("if(archiveGroup&&archiveSections.includes(page)")&&
