@@ -30,6 +30,16 @@ MCP 写操作（新增、修改、删除、上传，以及已有 `v2_*` 写操�
 
 **入参与等待**：工具 Schema 中未声明的参数、参数类型不符、缺少必填项、错误枚举或无效数组长度均直接返回错误，不再静默忽略。业务字段 `year/amount` 支持数字或字符串，可选字段 `null` 保留、空串明确清空。MCP 管道连接等待 15 秒，已连接后的响应等待上限 12 分钟；若等待超时，写操作结果可能不确定，应查询原 `request_id` 而不是直接重试。
 
+## MCP P1 第二批：全局文件查询、分页与兼容接口（2026-10-16）
+
+`list_files` 现直接调用同一 SQLCipher V2 数据库中的本机只读批量查询，仅执行一次 SQL 查询，不再先列出全部项目/合同/知识产权/档案/综合资料，再对每个 Folder 各发一个 HTTP 请求。保留该旧名工具的原返回格式（数组），`id` 是 LinkId、`fileId` 是 FileId、`ownerId` 是所属 FolderId，避免破坏现有 Codex/WorkBuddy 配置。服务端通过递归有效目录校验隐藏已删除的业务条目及其上级目录，确保不泄露不可见文件关联。
+
+**日常大量文件查询建议使用 `list_files_page`**：必填 `workspace`，可选 `kind`（project/contract/ip/archive/general）、`owner_id`、`name`（位置显示名或原件名的部分匹配）、`offset`（起始 0）和 `limit`（1–200，默认 100）。返回 `items` 数组以及 `offset/limit/hasMore/nextOffset`；仅当 `hasMore=true` 时使用 `nextOffset` 取下一页。可按 `owner_id` 准确定位。底层只读 URL `/api/v2/mcp/files/{workspace}` 继续执行本机会话 Token 鉴权，不暴露对外端口。分页使用 LinkId 顺序；在多个 Agent 同时插入或删除链接时，基于 offset 的页间数据可能变化，跨页汇总应再次核验。
+
+**兼容范围**：现有 11 项 `v2_*` 项目/合同/IP 工具与原名工具均实际访问相同 V2 Folder 业务数据，仍保留老名称，防止旧客户端因工具移除而失败。原名 `list_projects/list_contracts/list_ips` 返回网页友好的列表投影，`v2_*` 列表返回原生 FolderSnapshot，两者响应形态不同；建议 Agent 一次任务固定选择一个系列，不混合解析。未来如统一响应契约，应设计新版本并经过客户端兼容验收，而不直接改变既有返回格式。
+
+**本批专项回归**：检查 V2 文件查询中跨工作区隔离、同一 FileId 多位置、合同父级删除后的可见性、档案目录层级、分页前后 LinkId 不重复、名称与 Folder 筛选、非法页大小拒绝；验证发布版 stdio 的真实 `tools/call` 能严格拒绝未知字段。Windows CI 和真实 Codex/WorkBuddy 大型资料库负载分别留证。
+
 ## 使用步骤
 
 1. 从 Actions 的最新成功构建解压 IPSys-Web-win-x64 到固定文件夹。
@@ -59,6 +69,7 @@ MCP 写操作（新增、修改、删除、上传，以及已有 `v2_*` 写操�
 | `update_ip` | 修改已有知识产权，仅更新传入字段 |
 | `delete_ip` | 将知识产权移入回收站，可恢复 |
 | `list_files` | 列出工作区项目、合同、知识产权、档案、综合资料的 V2 有效附件；`id=LinkId`、`fileId=FileId`、`ownerId=FolderId`、`kind`，档案还包含 `section` |
+| `list_files_page` | 同一 V2 FileId/LinkId 模型的高效分页查询；支持 kind、owner_id、name 筛选及 hasMore/nextOffset 分页标志 |
 | `create_project` | 创建科研、横向或其他项目 |
 | `update_project` | 按 ID 更新指定字段 |
 | `delete_project` | 将项目及其合同移入回收站 |

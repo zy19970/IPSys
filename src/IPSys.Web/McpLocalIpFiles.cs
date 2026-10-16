@@ -23,45 +23,36 @@ static partial class McpLocal
             $"/api/v2/ip/{workspace}/{folder}/files/{file}/links/{link}");
     }
 
-    // General legacy-name listing is now a V2-only projection. Its historical
-    // 'id' column remains the link identity, not the logical FileId.
-    private static async Task<JsonNode> ListBusinessFiles(HttpClient client,
-        string workspace)
+    // A single parameterized native V2 SQL query replaces the former per-Folder
+    // HTTP loop. The original list_files shape remains a JSON array for agents.
+    private static Task<JsonNode> ListBusinessFiles(HttpClient client,string workspace)=>
+        RequestAsync(client,HttpMethod.Get,
+            "/api/v2/mcp/files/"+workspace);
+
+    private static async Task<JsonNode> PageBusinessFiles(HttpClient client,
+        string workspace,JsonElement args)
     {
-        JsonArray rows=new();
-        foreach(string kind in new[]{"project","contract","ip","archive","general"})
-        foreach(string section in kind=="archive"
-            ?workspace=="company"?new[]{"certificate","achievement"}:
-                new[]{"certificate","achievement","academic"}
-            :new[]{""})
+        int offset=0,limit=100;
+        if(args.TryGetProperty("offset",out var start)&&
+            start.ValueKind!=JsonValueKind.Null)
         {
-            var folders=await RequestAsync(client,HttpMethod.Get,
-                V2Url(workspace,kind)+(kind=="archive"?"?section="+section:""));
-            foreach(var resource in folders.AsArray())
-            {
-                long folder=resource?["folder"]?["ref"]?["id"]?.GetValue<long>()??0;
-                if(folder<=0)continue;
-                var links=await RequestAsync(client,HttpMethod.Get,
-                    $"/api/v2/files/{workspace}/folders/{folder}/links");
-                foreach(var link in links.AsArray())
-                {
-                    if(link is null)continue;
-                    rows.Add(new JsonObject{
-                        ["id"]=link["id"]?.DeepClone(),
-                        ["fileId"]=link["fileId"]?.DeepClone(),
-                        ["ownerId"]=folder,
-                        ["kind"]=kind,
-                        ["section"]=section,
-                        ["name"]=link["displayName"]?.DeepClone() ??
-                            link["fileName"]?.DeepClone(),
-                        ["latestVersion"]=link["latestVersion"]?.DeepClone(),
-                        ["size"]=link["size"]?.DeepClone(),
-                        ["sha256"]=link["sha256"]?.DeepClone()
-                    });
-                }
-            }
+            if(!start.TryGetInt32(out offset)||offset<0)
+                throw new IOException("offset 必须是非负整数。");
         }
-        return rows;
+        if(args.TryGetProperty("limit",out var size)&&
+            size.ValueKind!=JsonValueKind.Null)
+        {
+            if(!size.TryGetInt32(out limit)||limit is <1 or >200)
+                throw new IOException("limit 必须介于 1–200。");
+        }
+        string kind=ReadString(args,"kind"),name=ReadString(args,"name");
+        long ownerId=args.TryGetProperty("owner_id",out var owner)&&
+            owner.ValueKind!=JsonValueKind.Null?ReadId(args,"owner_id"):0;
+        var query=$"?paged=true&offset={offset}&limit={limit}&ownerId={ownerId}"+
+            "&kind="+Uri.EscapeDataString(kind)+
+            "&name="+Uri.EscapeDataString(name);
+        return await RequestAsync(client,HttpMethod.Get,
+            "/api/v2/mcp/files/"+workspace+query);
     }
 
     private static async Task<JsonNode> DeleteBusinessFile(HttpClient client,

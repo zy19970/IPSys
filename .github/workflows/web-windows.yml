@@ -94,6 +94,16 @@ jobs:
               if ($names -notcontains $required) { throw "MCP tool missing: $required" }
             }
             Write-Host 'MCP stdio initialize and tool manifest: PASS'
+            # Exercise the actual published stdio tools/call dispatch and schema
+            # validation. The GUI host is not running in this separate stage.
+            $process.StandardInput.WriteLine('{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"list_files_page","arguments":{"workspace":"company","unexpected_parameter":"reject"}}}')
+            $line = $process.StandardOutput.ReadLineAsync().WaitAsync([TimeSpan]::FromSeconds(12)).GetAwaiter().GetResult()
+            $validation = $line | ConvertFrom-Json
+            if ($validation.id -ne 3 -or $validation.result.isError -ne $true -or
+                $validation.result.content[0].text -notmatch '未声明的 MCP 参数') {
+              throw 'MCP stdio tools/call failed to reject unknown input properties'
+            }
+            Write-Host 'MCP stdio tool dispatch and strict JSON Schema: PASS'
           }
           finally {
             try { $process.StandardInput.Close() } catch {}

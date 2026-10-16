@@ -5,6 +5,21 @@
 用户确认旧数据库均为可丢弃测试数据，不迁移。N2-04 全业务 V2、N4 第一批新库物理表/API/回收站收敛以及第二批删除 31 份旧 Store/Provider/HTTP/历史测试源码已通过自动验收：最新源码 `b3c8f3b` 对应 [Windows CI #38911635273](https://github.com/zy19970/IPSys/actions/runs/38911635273) **completed/success**。本机 Edge/Chrome、真实 Codex、桌面 XLSX、故障注入和 T01–T09 仍未完全验证。
 
 
+### MCP 第二批：一次 SQL 全局文件查询与有界分页（2026-10-16）
+
+本轮增加 `NativeMcpFileQuery`：只读本机 Token 鉴权的 `/api/v2/mcp/files/{workspace}`，使用递归有效资料目录与当前 FileId/LinkId/FileVersion SQL 投影，无 N+1 每资料 HTTP 调用。兼容 `list_files` 数组响应，新增 `list_files_page`（1–200 条、kind/owner_id/name/offset/limit）；原名与 v2_* 工具继续并存，不改变旧列表 JSON 协议。自动验收以**本次代码提交对应的新 Windows CI**为准，不能沿用上一批 CI；仍需 Codex/WorkBuddy 多 Agent 大资料库实际体验。
+
+| 测试号 | 场景 | 预期 |
+| --- | --- | --- |
+| MCP-P2-01 | 原名 `list_files` 查询项目/合同/知识产权/档案/综合资料原件 | 一次 SQL 查询，结果为原有数组结构和 LinkId/FileId/ownerId、kind/section |
+| MCP-P2-02 | `list_files_page(limit=1,offset=0)`，再按 `nextOffset` 查询下一页 | 一次返回恰好一条；`hasMore=true` 时翻页无重复 LinkId |
+| MCP-P2-03 | 按 `kind`、`owner_id`、`name` 筛选 | 仅命中当前资料的原件，工作区隔离、归档 section 信息保持准确 |
+| MCP-P2-04 | 查询 `limit=201` 或无效 offset | 明确拒绝，不返回无上限的数据 |
+| MCP-P2-05 | 项目/合同共用 FileId、软删目录及其后代 | 只展示有效 Folder 下的链接，关联 IDs 不串扰 |
+| MCP-P2-06 | 发布版 `--mcp` 进程接收工具 `tools/call` + 未声明字段 | 通过真实 stdio JSON-RPC 返回 `isError=true` 且说明参数错误 |
+| MCP-P2-07 | `list_ip_files` 与 `delete_ip_file` 完整业务往返 | MCP 直接调用 IP 文件接口，数据与 V2 SQLCipher 文件关联一致 |
+| MCP-P2-08 | 两个 Agent 在分页期间并发增删记录 | 记录实机分页一致性与重试行为；这是人工验收，offset 分页不承诺跨修改时的稳定快照 |
+
 ### MCP P1 第一批写入安全/幂等/撤权/错误处理（2026-10-16）
 
 **已验证**：[`a6d5bf4`](https://github.com/zy19970/IPSys/commit/a6d5bf43274368f421fd578c5a69f9cfc27e5337) 的 [Windows CI #38923795350](https://github.com/zy19970/IPSys/actions/runs/38923795350) **completed/success**；Debug/Release、stdio MCP、原生 SQLCipher/HTTP/MCP、Node 全部通过。新添的幂等、三重关联核验、未知参数与失败状态测试通过。P1-06～P1-08 的长时间实机、异常退出、12 分钟超时仍待实际故障注入。
@@ -246,7 +261,7 @@ Windows 实机检查：在 Chrome、Edge 分别打开 PDF 测试原件（含几�
 1. 启动最新 Release 版 `IPSys.Web.exe`，先打开并解锁测试数据库，确认「系统设置」显示「本机 Codex MCP：默认关闭」。未经启用时，Codex 的 `list_projects` 应报告未授权。
 2. 在「系统设置」点击「开启 MCP」，使用同 Windows 用户的 Codex 注册配置（见 `MCP_CODEX.md`）。确认工具列表包括查询项目、创建/修改/删除项目、新建/删除合同、查询/上传/删除附件。
 3. 让 Codex 在个人工作区创建项目、修改项目名、为该项目创建合同。返回网页核对数据、归属及 ID。再传入两条本机绝对路径调用 `upload_files`，检查成功条数、原件字节与 SHA-256；单文件上限仍为 64 MiB。
-4. 使用 `list_files` 获取文件链接 ID，再让 Codex 调用 `delete_file`、`delete_contract` 和 `delete_project`。检查工作区回收站可找到删除的记录或附件，且未执行永久物理删除。
+4. 使用 `list_files` 或 `list_files_page` 获取 ownerId/FileId/LinkId 三元组，再让 Codex 调用 `delete_file(owner_id=FolderId,file_id=FileId,link_id=LinkId)`、`delete_contract` 和 `delete_project`。检查工作区回收站可找到删除的记录或附件，且未执行永久物理删除。
 5. 将「开启 MCP」切换为关闭后再次查询，必须失败；正常关库并重新打开后仍必须关闭 MCP。手动开启后也不得操作另一 Windows 用户的宿主或其他工作区未经明确传入的记录。
 6. 使用 Windows 构建工作流检查 stdio `initialize`、`tools/list`，以及 SQLCipher HTTP + 本机命名管道的项目/合同/附件往返与可恢复删除测试均通过。
 

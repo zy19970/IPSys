@@ -119,6 +119,36 @@ static class NativeMcpSmoke
               =="CN202610000002.0" &&
               Find(ips,ip)?["businessData"]?["remarks"]?.GetValue<string>()=="新备注",
               "IP updates preserve application number");
+        // The MCP IP-file actions previously lacked direct MCP coverage.
+        string ipPath=Path.Combine(Path.GetTempPath(),"IPSys-MCP-IP-"+suffix+".bin");
+        await File.WriteAllBytesAsync(ipPath,Guid.NewGuid().ToByteArray());
+        try
+        {
+            var uploadedIp=await Original("upload_files",new{
+                workspace="company",kind="ip",owner_id=ip,
+                material_category="申请材料",paths=new[]{ipPath}
+            });
+            Check(uploadedIp["succeeded"]?.GetValue<int>()==1,
+                "IP MCP uploads a V2 file");
+            long ipFile=uploadedIp["files"]?[0]?["result"]?["fileId"]?.GetValue<long>()??0;
+            long ipLink=uploadedIp["files"]?[0]?["result"]?["linkId"]?.GetValue<long>()??0;
+            var ipLinks=await Original("list_ip_files",new{
+                workspace="company",ip_id=ip
+            });
+            Check(ipFile>0 && ipLink>0 && ipLinks is JsonArray ipRows &&
+                ipRows.Any(x=>x?["id"]?.GetValue<long>()==ipLink &&
+                    x?["fileId"]?.GetValue<long>()==ipFile),
+                "list_ip_files returns the new native link");
+            await Original("delete_ip_file",new{
+                workspace="company",ip_id=ip,file_id=ipFile,link_id=ipLink
+            });
+            Check(!(await Original("list_ip_files",new{
+                workspace="company",ip_id=ip
+            })).AsArray().Any(x=>x?["id"]?.GetValue<long>()==ipLink),
+                "delete_ip_file only removes the selected IP link");
+        }
+        finally { File.Delete(ipPath); }
+
         await Call("delete_project",new{workspace="company",project_id=project});
         Check(Find(await Call("list_contracts",new{workspace="company"}),contract)==null,
               "project delete hides its V2 contracts");
@@ -307,6 +337,35 @@ static class NativeMcpSmoke
             })).AsArray();
             long renewed=relinked.Single()["id"]?.GetValue<long>()??0;
             Check(renewed>0,"contract re-association creates a new link");
+            var pageOne=await Original("list_files_page",new{
+                workspace="company",offset=0,limit=1
+            });
+            Check(pageOne["items"] is JsonArray pageRows && pageRows.Count==1 &&
+                pageOne["hasMore"]?.GetValue<bool>()==true &&
+                pageOne["nextOffset"]?.GetValue<int>()==1,
+                "global V2 file list returns a bounded first page");
+            var pageTwo=await Original("list_files_page",new{
+                workspace="company",offset=1,limit=1
+            });
+            Check(pageTwo["items"] is JsonArray secondRows && secondRows.Count==1 &&
+                pageRows[0]?["id"]?.GetValue<long>()!=
+                    secondRows[0]?["id"]?.GetValue<long>(),
+                "file page offset advances to another link");
+            var projectPage=await Original("list_files_page",new{
+                workspace="company",kind="project",owner_id=originalProject,
+                name=Path.GetFileName(path),offset=0,limit=10
+            });
+            Check(projectPage["items"] is JsonArray projectMatches &&
+                projectMatches.Any(x=>x?["id"]?.GetValue<long>()==link &&
+                    x?["fileId"]?.GetValue<long>()==file &&
+                    x?["ownerId"]?.GetValue<long>()==originalProject &&
+                    x?["kind"]?.GetValue<string>()=="project"),
+                "filtered file query preserves LinkId/FileId/FolderId identity");
+            bool invalidPage=false;
+            try{await Original("list_files_page",new{
+                workspace="company",offset=0,limit=201
+            });}catch(IOException){invalidPage=true;}
+            Check(invalidPage,"file page size limit 1–200 is enforced");
             bool wrongDeleteDenied=false;
             try { await Original("delete_file",new{
                 workspace="company",owner_id=originalContractId,

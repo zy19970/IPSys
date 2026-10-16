@@ -119,6 +119,14 @@ static partial class McpLocal
         Tool("list_files","列出工作区全部 V2 项目、合同、知识产权、档案和综合资料有效原件；id 是 LinkId，fileId 是逻辑文件身份。",new(){
             ["workspace"]=Field("string","工作区",Workspaces)
         },["workspace"]),
+        Tool("list_files_page","分页查询同一工作区 V2 文件关联；返回 items/offset/limit/hasMore/nextOffset，支持按资料类别、所属 FolderId 和名称过滤。建议代替不分页的 list_files。",new(){
+            ["workspace"]=Field("string","工作区",Workspaces),
+            ["kind"]=Field("string","业务资料类别",["project","contract","ip","archive","general"]),
+            ["owner_id"]=Field("integer","仅返回指定所属 FolderId 的关联"),
+            ["name"]=Field("string","文件位置显示名或文件名的部分匹配"),
+            ["offset"]=Field("integer","从零开始的偏移量（默认 0）"),
+            ["limit"]=Field("integer","每页 1–200 条（默认 100）")
+        },["workspace"]),
         Tool("create_project","在已解锁的 IPSys 中创建项目。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
             ["name"]=Field("string","项目名称"),
@@ -234,7 +242,7 @@ static partial class McpLocal
                 return (object)new
                 {
                     name="v2_"+(string)type.GetProperty("name")!.GetValue(tool)!,
-                    description="SQLCipher V2 新库操作，仅写入 folders，不写旧业务表。 "+
+                    description="V2 Folder 原生响应；旧名列表返回网页友好结构，写操作共用同一业务源，保留别名仅为兼容已有 Agent。 "+
                         (string)type.GetProperty("description")!.GetValue(tool)!,
                     inputSchema=type.GetProperty("inputSchema")!.GetValue(tool)!
                 };
@@ -595,6 +603,8 @@ static partial class McpLocal
         {
             case "list_files":
                 return await ListBusinessFiles(client,workspace);
+            case "list_files_page":
+                return await PageBusinessFiles(client,workspace,args);
             case "list_project_files":
                 return await ProjectContractLinks(client,workspace,"project",args);
             case "list_contract_files":

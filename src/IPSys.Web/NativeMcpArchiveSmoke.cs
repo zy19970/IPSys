@@ -115,6 +115,19 @@ static class NativeMcpArchiveSmoke
                   x?["kind"]?.GetValue<string>()=="archive" &&
                   x?["section"]?.GetValue<string>()=="achievement"),
                 "global list_files includes archive with valid section and ownership");
+            var archivePage=await Run("list_files_page",new{
+                workspace="company",kind="archive",owner_id=archive,
+                name=Path.GetFileName(path),offset=0,limit=5
+            });
+            Check(archivePage["items"] is JsonArray archiveRows &&
+                archiveRows.Count==1 &&
+                archiveRows[0]?["id"]?.GetValue<long>()==link &&
+                archiveRows[0]?["fileId"]?.GetValue<long>()==file &&
+                archiveRows[0]?["kind"]?.GetValue<string>()=="archive" &&
+                archiveRows[0]?["section"]?.GetValue<string>()=="achievement" &&
+                archivePage["hasMore"]?.GetValue<bool>()==false,
+                "paged SQL query returns only the archive's active file link");
+
             byte[] revised=RandomNumberGenerator.GetBytes(971);
             await File.WriteAllBytesAsync(path,revised);
             var version=await Run("upload_files",new{
