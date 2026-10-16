@@ -95,6 +95,14 @@ static partial class McpLocal
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(normalized)));
     }
 
+    private static bool BusinessResultOk(string raw)
+    {
+        var node=JsonNode.Parse(raw);
+        var status=node?["status"]?.GetValue<string>();
+        return status is not ("failed" or "partial_success" or "interrupted") &&
+            node?["ok"]?.ToJsonString()!="false";
+    }
+
     private static async Task<JsonNode> ReadOperationAsync(Vault vault,string workspace,
         string requestId,CancellationToken stop)
     {
@@ -111,7 +119,9 @@ static partial class McpLocal
             string? raw=rd.IsDBNull(2)?null:rd.GetString(2);
             return new JsonObject{
                 ["requestId"]=requestId,["state"]=state,["tool"]=name,
-                ["result"]=raw is null?null:JsonNode.Parse(raw)
+                ["result"]=raw is null?null:JsonNode.Parse(raw),
+                ["businessOk"]=state=="done" && raw is not null
+                    ? BusinessResultOk(raw) : null
             };
         }
         finally { vault.Gate.Release(); }
@@ -173,6 +183,16 @@ static partial class McpLocal
         await vault.Gate.WaitAsync(CancellationToken.None);
         try
         {
+            if(failure is McpPreflightBusyException)
+            {
+                using var undo=vault.Db.CreateCommand();
+                undo.CommandText="DELETE FROM mcp_operations WHERE workspace=$w AND request_id=$id AND state='pending';";
+                undo.Parameters.AddWithValue("$w",workspace);
+                undo.Parameters.AddWithValue("$id",requestId);
+                undo.ExecuteNonQuery();
+            }
+            else
+            {
             using var update=vault.Db.CreateCommand();
             update.CommandText="""
                 UPDATE mcp_operations SET state=$state,result_json=$result,
@@ -185,8 +205,11 @@ static partial class McpLocal
             update.Parameters.AddWithValue("$w",workspace);
             update.Parameters.AddWithValue("$id",requestId);
             update.ExecuteNonQuery();
+            }
         }
         finally { vault.Gate.Release(); }
+        if(failure is McpPreflightBusyException)
+            throw new IOException("MCP 请求在写入前因数据库忙被拒绝，可等待后使用相同 request_id 重试："+failure.Message,failure);
         if(failure!=null)throw new IOException("写操作返回异常，执行结果可能不确定；"+
             "禁止盲目重试。请用 get_operation_result 查询 request_id="+requestId+
             " 并检查对应业务记录。原始错误："+failure.Message,failure);

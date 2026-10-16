@@ -51,6 +51,14 @@ MCP 写操作（新增、修改、删除、上传，以及已有 `v2_*` 写操�
 
 写操作使用可选 `request_id` 幂等日志；回收站恢复必须提供 `list_trash` 原样返回的 kind/id/section。下载路径是 **运行 IPSys 的本机 Windows 电脑**上的绝对路径，仅新建文件、不覆盖已有文件。跨工作区复制文件必须使用 `independent-content`，共享关联只允许同工作区。单个文件上限仍为 64 MiB；所有操作需要当前数据库解锁和手动 MCP 授权。
 
+## MCP 黑盒问题整改说明（2026-10-17）
+
+依照本机多客户端实测后的独立审查处理 ISS-1～ISS-10：Windows 管道通过实际 TokenUser SID 显式 ACL 限定同用户，客户端核对服务端管道 Owner SID，修复相同用户不同提升级别导致的误拒绝；**不能把管理员进程授予的宿主文件权限误认为普通 Agent 本身具备的权限**，建议 IPSys 尽量以普通用户身份运行。Windows 可执行文件目录本身的 NTFS 权限与管道 ACL 属不同检查项。不同 Windows 用户不能跨用户连接；管理员/非管理员、沙箱和跨用户拒绝仍需用户电脑实测。
+
+`list_files_page` 纯读使用最多 5 秒的有界数据库等待，不再因短暂锁竞争直接 409。对服务端明确证实“尚未执行”的 409 前置拒绝，仅在本次调用中做最多 3 次短等待；耗尽时允许复用原 `request_id`，不产生 uncertain 操作记录；请求已发出后断线或结果不明绝不自动重试写入。若长任务持续占库仍可能返回明确繁忙信息，不能承诺长时写任务与读请求完全无等待。
+
+stdio 初始化只声明真正支持的 `2025-06-18` 协议版本；空行静默跳过，stderr 使用 UTF-8；无响应正文的 HTTP 404 补充操作资源和 ID；文件历史版本 UTC `createdAt` 输出 `yyyy-MM-ddTHH:mm:ssZ`。跨工作区 `transfer_*(move=true)` 会生成目标新 ID、源资料软删除进入原工作区回收站，恢复旧记录可能形成两份并存资料。日志 `state=done` 只代表“请求处理结束并已记录”，必须再看 `businessOk` 与 `result.status` 判断业务成功。搜索结果 `kind=file` 不等于回收站 `kind=v2_file/v2_ip_file`，恢复前先查询 `list_trash` 并原样使用返回 ID/kind/section。初始化文案不再仅提 Codex。
+
 ## 使用步骤
 
 1. 从 Actions 的最新成功构建解压 IPSys-Web-win-x64 到固定文件夹。

@@ -221,7 +221,7 @@ static class NativeFileStore
         {
             cmd.CommandText="""
                 SELECT v.id,v.version,v.original_name,v.version_note,
-                       o.size,o.sha256,v.created_at
+                       o.size,o.sha256,strftime('%Y-%m-%dT%H:%M:%SZ',v.created_at)
                 FROM file_versions v JOIN file_objects o
                   ON o.id=v.object_id AND o.workspace=v.workspace
                 WHERE v.file_id=$id AND v.workspace=$w AND v.deleted=0

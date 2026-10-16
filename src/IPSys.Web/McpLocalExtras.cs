@@ -60,19 +60,19 @@ static partial class McpLocal
             ["file_id"]=Field("integer","FileId"),
             ["link_id"]=Field("integer","待恢复的已删除 LinkId")
         },["workspace","owner_id","file_id","link_id"]),
-        Tool("transfer_project","整体复制或移动项目及合同、全部有效原件版本至目标工作区。",new(){
+        Tool("transfer_project","复制/移动整个项目与合同及有效原件版本。move=true 会在目标工作区新建身份和 ID，源工作区旧记录软删除并进入回收站；恢复来源会形成并存副本。",new(){
             ["workspace"]=Field("string","来源工作区",Workspaces),
             ["project_id"]=Field("integer","项目 FolderId"),
             ["target_workspace"]=Field("string","目标工作区",Workspaces),
             ["move"]=new Dictionary<string,object>{{"type","boolean"},{"description","true 移动，false 复制"}}
         },["workspace","project_id","target_workspace"]),
-        Tool("transfer_ip","整体复制或移动知识产权及其原件、历史版本至目标工作区。",new(){
+        Tool("transfer_ip","复制/移动知识产权及版本。move=true 返回目标新 ID，来源软删除入原工作区回收站；恢复来源会形成并存副本。",new(){
             ["workspace"]=Field("string","来源工作区",Workspaces),
             ["ip_id"]=Field("integer","知识产权 FolderId"),
             ["target_workspace"]=Field("string","目标工作区",Workspaces),
             ["move"]=new Dictionary<string,object>{{"type","boolean"},{"description","true 移动，false 复制"}}
         },["workspace","ip_id","target_workspace"]),
-        Tool("transfer_archive","复制或移动档案及全部原件版本，仅允许语义兼容的分类。",new(){
+        Tool("transfer_archive","在语义兼容类别间复制/移动档案与版本。move=true 返回目标新 ID，来源软删除入原工作区回收站；恢复来源会形成并存副本。",new(){
             ["workspace"]=Field("string","来源工作区",Workspaces),
             ["section"]=Field("string","来源资料类别"),
             ["archive_id"]=Field("integer","档案 FolderId"),
@@ -80,17 +80,17 @@ static partial class McpLocal
             ["target_section"]=Field("string","目标档案类别"),
             ["move"]=new Dictionary<string,object>{{"type","boolean"},{"description","true 移动，false 复制"}}
         },["workspace","section","archive_id","target_workspace","target_section"]),
-        Tool("transfer_general","整体复制或移动综合资料及全部有效文件版本至目标工作区。",new(){
+        Tool("transfer_general","复制/移动综合资料及历史文件。move=true 返回目标新 ID，来源软删除入原工作区回收站；恢复来源会形成并存副本。",new(){
             ["workspace"]=Field("string","来源工作区",Workspaces),
             ["general_id"]=Field("integer","综合资料 FolderId"),
             ["target_workspace"]=Field("string","目标工作区",Workspaces),
             ["move"]=new Dictionary<string,object>{{"type","boolean"},{"description","true 移动，false 复制"}}
         },["workspace","general_id","target_workspace"]),
-        Tool("search_records","跨资料模块统一搜索 V2 记录，单工作区查询；结果含种类和 FolderId。",new(){
+        Tool("search_records","工作区统一搜索；文件命中 kind=file 只是搜索结果种类，不等于回收站 kind=v2_file/v2_ip_file。恢复前必须 list_trash。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
             ["query"]=Field("string","检索词，最长 100 字")
         },["workspace","query"]),
-        Tool("list_trash","查询当前工作区回收站中的可恢复条目及其 kind/id/section。",new(){
+        Tool("list_trash","查询工作区回收站；文件关联 kind=v2_file 或 v2_ip_file，与搜索结果 kind=file 不同。恢复必须采用本工具返回原值。",new(){
             ["workspace"]=Field("string","工作区",Workspaces)
         },["workspace"]),
         Tool("restore_trash","按 list_trash 返回的 kind/id/section 精确恢复一条回收站记录。",new(){

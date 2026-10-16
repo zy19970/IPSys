@@ -37,6 +37,8 @@ static class NativeMcpSmoke
               "project and contract file MCP actions are available");
         // One idle client must never block an independent Agent's request.
         await McpLocal.VerifyConcurrentClientsAsync();
+        var parallel=await Task.WhenAll(Enumerable.Range(0,12).Select(_=>Original("list_files_page",new{workspace="company",limit=10})));
+        Check(parallel.All(x=>x["items"] is JsonArray),"concurrent file-page reads complete without 409");
         var schemas=JsonSerializer.SerializeToElement(McpLocal.Tools());
         JsonElement Properties(string tool)=>schemas.EnumerateArray().First(x=>
             x.GetProperty("name").GetString()==tool)
@@ -49,6 +51,15 @@ static class NativeMcpSmoke
               Accepts(Properties("update_project").GetProperty("leader"),"null") &&
               Accepts(Properties("create_archive").GetProperty("year"),"number"),
             "schemas expose numeric year/amount and optional null semantics");
+
+        bool meaningful404=false;
+        try { await Original("get_file_details",new{
+            workspace="company",file_id=999999999
+        }); }
+        catch(IOException ex)when(ex.Message.StartsWith("IPSys 404：") &&
+            ex.Message.Contains("文件不存在") && ex.Message.Contains("999999999"))
+        { meaningful404=true; }
+        Check(meaningful404,"MCP 404 reports the missing entity and FileId");
 
         string suffix=Guid.NewGuid().ToString("N")[..8];
         string name="原生MCP项目"+suffix;
@@ -321,14 +332,23 @@ static class NativeMcpSmoke
             });
             Check(uploaded["succeeded"]?.GetValue<int>()==1,
                 "project original upload_files saved a native V2 FileId");
+            string failedRequestId=Guid.NewGuid().ToString("N");
             var failedUpload=await Original("upload_files",new{
                 workspace="company",kind="project",owner_id=originalProject,
-                paths=new[]{"C:\\IPSys_missing_"+suffix+".bin"}
+                paths=new[]{"C:\\IPSys_missing_"+suffix+".bin"},request_id=failedRequestId
             });
             Check(failedUpload["status"]?.GetValue<string>()=="failed" &&
                 failedUpload["failed"]?.GetValue<int>()==1 &&
                 failedUpload["files"]?[0]?["ok"]?.GetValue<bool>()==false,
                 "failed upload reports explicit per-file failure and status");
+            var recordedFailure=await Original("get_operation_result",new{
+                workspace="company",request_id=failedRequestId
+            });
+            Check(recordedFailure["state"]?.GetValue<string>()=="done" &&
+                  recordedFailure["businessOk"]?.GetValue<bool>()==false &&
+                  recordedFailure["result"]?["status"]?.GetValue<string>()=="failed",
+                  "finished request journal distinguishes logged failure from business success");
+
             var result=uploaded["files"]?[0]?["result"]??throw new IOException(
                 "原名 MCP 上传缺少原件结果。");
             long file=result["fileId"]?.GetValue<long>()??0,
@@ -347,6 +367,11 @@ static class NativeMcpSmoke
             Check(detail["id"]?.GetValue<long>()==file &&
                 detail["versions"] is JsonArray versions && versions.Count==1,
                 "get_file_details exposes V2 file metadata and version history");
+            string utcTime=detail["versions"]?[0]?["createdAt"]?.GetValue<string>()??"";
+            Check(utcTime.EndsWith("Z",StringComparison.Ordinal) &&
+                DateTimeOffset.TryParse(utcTime,out _),
+                "file version timestamp is explicit ISO 8601 UTC");
+
             await Original("update_file_metadata",new{
                 workspace="company",file_id=file,
                 description="MCP选填说明",tags="合同,原件",

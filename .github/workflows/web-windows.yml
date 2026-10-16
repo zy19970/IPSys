@@ -80,10 +80,15 @@ jobs:
           $info.RedirectStandardError = $true
           $process = [System.Diagnostics.Process]::Start($info)
           try {
+            $process.StandardInput.WriteLine('   ')
             $process.StandardInput.WriteLine('{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"ci","version":"1"}}}')
             $line = $process.StandardOutput.ReadLineAsync().WaitAsync([TimeSpan]::FromSeconds(12)).GetAwaiter().GetResult()
             $initialized = $line | ConvertFrom-Json
             if ($initialized.id -ne 1 -or $initialized.result.serverInfo.name -ne 'ipsys-local') { throw 'MCP initialize response mismatch' }
+            if ($initialized.result.protocolVersion -ne '2025-06-18') { throw 'Unexpected MCP protocol version' }
+            $process.StandardInput.WriteLine('{"jsonrpc":"2.0","id":99,"method":"initialize","params":{"protocolVersion":"9999-99-99","capabilities":{}}}')
+            $versionReply = ($process.StandardOutput.ReadLineAsync().WaitAsync([TimeSpan]::FromSeconds(12)).GetAwaiter().GetResult()) | ConvertFrom-Json
+            if ($versionReply.result.protocolVersion -ne '2025-06-18') { throw 'Unsupported protocol version echoed to client' }
             $process.StandardInput.WriteLine('{"jsonrpc":"2.0","id":2,"method":"tools/list"}')
             $line = $process.StandardOutput.ReadLineAsync().WaitAsync([TimeSpan]::FromSeconds(12)).GetAwaiter().GetResult()
             $listing = $line | ConvertFrom-Json

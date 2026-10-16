@@ -85,8 +85,8 @@ static class NativeMcpFileQuery
             string? name,long? ownerId,int? offset,int? limit,bool paged=false)=>
         {
             if(!vault.Allowed(ctx))return (IResult)Results.Unauthorized();
-            if(!await vault.Gate.WaitAsync(0,ctx.RequestAborted))
-                return fail("资料库正在执行其他操作，请稍后重试。",409);
+            if(!await vault.Gate.WaitAsync(TimeSpan.FromSeconds(5),ctx.RequestAborted))
+                return fail("文件列表查询等待数据库超过 5 秒；请稍后重试只读查询。",409);
             try
             {
                 if(!vault.Allowed(ctx))return Results.Unauthorized();

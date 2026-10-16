@@ -7,6 +7,18 @@
 
 **现行 MCP 本机验收入口（2026-10-17）**：启动最新成功的 Windows 构建并新建可丢弃 SQLCipher V2 库；开启 MCP 后分别让 Codex 与 WorkBuddy 连接同一 Windows 用户的唯一宿主并刷新 tools/list。依次验证 14 项新增业务工具、单 SQL 分页、大量资料查询、合同局部修改、文件元数据/完整历史/下载到不存在的本机绝对路径、关联解绑恢复与跨区转移、统一搜索及回收站恢复。记录每项写入 request_id、返回 IDs 和最终资料库状态；长上传期间关闭授权、响应丢失/进程崩溃与 2 GiB+ 大文件均列为人工安全实验，不因 CI 通过而标为实机通过。历史阶段章节中「待开发」或早期 MCP 工具总数不再作为当前事实。
 
+### MCP 黑盒 ISS-1～10 专项复测（2026-10-17）
+
+Windows CI 必须验证显式同用户管道 ACL/owner 校验、12 路以上并发 list_files_page 纯读、虚构 initialize protocolVersion 协商、空白行不触发 JSON stderr 错误、缺失 FileId 的 404 包含身份、文件版本 createdAt UTC Z、写操作成功/失败业务状态 businessOk。保留既有 v2_*、59 项工具名称、参数与 error 前缀。不能简单以自动源码 CI 替代 **WorkBuddy Bash/PowerShell、管理员/非管理员同一用户、不同 Windows 用户隔离**实机检查。原测试脚本位于用户电脑的 WorkBuddy 项目目录，GitHub CI 未连接该目录。
+
+| 项目 | 验收方式 | 目标 |
+| --- | --- | --- |
+| ISS-1 | 同用户提升/非提升、WorkBuddy Bash/PowerShell、不同用户 | 同一用户跨权限级别可连接，其他用户必须拒绝；程序目录 ACL 独立检查 |
+| ISS-2 | 12～24 次同时 list_files_page，四读加一文件任务 | 纯读不因短时 Gate 竞争立刻 409；繁忙等待有界；仅明确未执行的写请求可有限重试 |
+| ISS-3/5/10 | 发布版 `--mcp` 发送空白行、虚构版本、正常握手 | UTF-8、空行安静、返回服务器实际支持版本，客户端文案中立 |
+| ISS-4/6 | 不存在文件 404 与新文件版本时间 | 错误含类型/ID；UTC 带 Z 标注 |
+| ISS-7～9 | 跨工作区 move、failed 上传后日志查询、搜索与回收站 kind | 目标新 ID 与源软删；done 不代表业务成功；kind 使用原始回收站结果 |
+
 ### MCP 第三批：完整业务能力回归（2026-10-17）
 
 **自动验收结果**：源码 `080a599` 对应 [Windows CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431) **completed/success**。Windows Debug、Release 单 EXE、stdio、Node 与真实 SQLCipher/HTTP/MCP 冒烟通过。本机 Codex/WorkBuddy 下载绝对路径权限、跨工作区大体量原件和长耗时异常中断仍需人工验证。

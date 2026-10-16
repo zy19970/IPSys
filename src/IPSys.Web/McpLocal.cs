@@ -248,7 +248,7 @@ static partial class McpLocal
                 };
             }).ToArray();
         return [..legacy,..native,..ArchiveTools(),..ExtraTools(),
-            Tool("get_operation_result","通过 request_id 查询加密库记录的写操作状态；pending/uncertain 不可自动重试。",new(){
+            Tool("get_operation_result","查询 request_id 日志：state=done 仅表示请求已完成并存档，实际成功需检查 businessOk 和 result.status；pending/uncertain 不可自动重试。",new(){
                 ["workspace"]=Field("string","工作区",Workspaces),
                 ["request_id"]=Field("string","此前写操作的幂等编号")
             },["workspace","request_id"])];
@@ -261,12 +261,14 @@ static partial class McpLocal
 
     public static async Task RunStdioAsync()
     {
+        Console.SetError(new StreamWriter(Console.OpenStandardError(),new UTF8Encoding(false)){AutoFlush=true});
         using var input=new StreamReader(Console.OpenStandardInput(),new UTF8Encoding(false));
         using var output=new StreamWriter(Console.OpenStandardOutput(),new UTF8Encoding(false)) {AutoFlush=true,NewLine="\n"};
         while(true)
         {
             string? line=await input.ReadLineAsync();
             if(line==null)break;
+            if(string.IsNullOrWhiteSpace(line))continue;
             try
             {
                 using var envelope=JsonDocument.Parse(line);
@@ -282,11 +284,10 @@ static partial class McpLocal
                     reply=method switch
                     {
                         "initialize"=>Success(id,new {
-                            protocolVersion=ReadString(root.TryGetProperty("params",out var initialize)?initialize:default,
-                                "protocolVersion","2025-06-18"),
+                            protocolVersion="2025-06-18",
                             capabilities=new {tools=new {listChanged=false}},
                             serverInfo=new {name="ipsys-local",version="1.0.0"},
-                            instructions="请先在已解锁的 IPSys 系统设置中开启本机 Codex MCP。仅可操作本机当前数据库。"
+                            instructions="请在已解锁的 IPSys 系统设置中开启本机 MCP 授权。仅可操作本机当前数据库。"
                         }),
                         "ping"=>Success(id,new {}),
                         "tools/list"=>Success(id,new {tools=Tools()}),
@@ -338,10 +339,10 @@ static partial class McpLocal
         using var guard=new EventWaitHandle(false,EventResetMode.ManualReset,
             HostInstanceName,out bool createdNew);
         if(createdNew)throw new IOException("MCP 单宿主命名事件未保持运行期占用。");
-        using var idle=new NamedPipeClientStream(".",PipeName,PipeDirection.InOut,
-            PipeOptions.Asynchronous|PipeOptions.CurrentUserOnly);
+        using var idle=McpPipeSecurity.CreateClient(PipeName);
         using var timeout=new CancellationTokenSource(TimeSpan.FromSeconds(10));
         await idle.ConnectAsync(timeout.Token);
+        McpPipeSecurity.VerifyServerOwner(idle);
         await Task.Delay(120,timeout.Token);
         var list=await CallHostAsync("v2_list_projects",
             JsonSerializer.SerializeToElement(new{workspace="company"}))
@@ -354,10 +355,9 @@ static partial class McpLocal
         CallHostAsync(name,fields);
     private static async Task<JsonNode> CallHostAsync(string name,JsonElement fields)
     {
-        using var pipe=new NamedPipeClientStream(".",
-            PipeName,PipeDirection.InOut,PipeOptions.Asynchronous|PipeOptions.CurrentUserOnly);
+        using var pipe=McpPipeSecurity.CreateClient(PipeName);
         using var timeout=new CancellationTokenSource(TimeSpan.FromSeconds(15));
-        try{await pipe.ConnectAsync(timeout.Token);}
+        try{await pipe.ConnectAsync(timeout.Token); McpPipeSecurity.VerifyServerOwner(pipe);}
         catch(Exception ex)when(ex is IOException or OperationCanceledException or TimeoutException)
         {
             string message=IsHostRunning()
@@ -400,9 +400,7 @@ static partial class McpLocal
                 NamedPipeServerStream? listener=null;
                 try
                 {
-                    listener=new NamedPipeServerStream(PipeName,PipeDirection.InOut,
-                        MaxMcpClients,PipeTransmissionMode.Byte,
-                        PipeOptions.Asynchronous|PipeOptions.CurrentUserOnly);
+                    listener=McpPipeSecurity.CreateServer(PipeName,MaxMcpClients);
                     await listener.WaitForConnectionAsync(stop);
                     var connected=listener;
                     listener=null;
@@ -546,24 +544,64 @@ static partial class McpLocal
         }
         return baseline;
     }
+    private static string ExplainNotFound(string path)
+    {
+        var p=path.Split('?',2)[0].Split('/',StringSplitOptions.RemoveEmptyEntries);
+        if(p.Length>=5 && p[0]=="api" && p[1]=="v2" && p[2]=="folders")
+        {
+            string kind=p[4] switch {
+                "project"=>"项目","contract"=>"合同","ip"=>"知识产权",
+                "archive"=>"档案","general"=>"综合资料",_=>"资料"
+            };
+            return kind+"不存在或当前工作区无权访问（id="+
+                (p.Length>5?p[5]:"未知")+"）";
+        }
+        if(p.Length>=5 && p[0]=="api" && p[1]=="v2" && p[2]=="files")
+            return "文件不存在或当前工作区无权访问（FileId="+p[4]+"）";
+        return "目标资源不存在（接口 "+path+"）";
+    }
+
+    private sealed class McpPreflightBusyException(string reason) : IOException(reason);
+
     private static async Task<JsonNode> RequestAsync(HttpClient client,HttpMethod method,string url,JsonNode? body=null)
     {
-        using var msg=new HttpRequestMessage(method,url);
-        if(body!=null)msg.Content=new StringContent(body.ToJsonString(Json),Encoding.UTF8,"application/json");
-        using var result=await client.SendAsync(msg);
-        string text=await result.Content.ReadAsStringAsync();
-        if(!result.IsSuccessStatusCode)
+        // Retry only known pre-execution busy rejections. A timeout or network
+        // failure after dispatch is *never* safe to automatically retry writes.
+        for(int attempt=0;attempt<3;attempt++)
         {
-            string reason=text;
-            try{reason=JsonNode.Parse(text)?["error"]?.GetValue<string>()??text;}catch{}
-            throw new IOException("IPSys "+(int)result.StatusCode+"："+reason);
+            using var msg=new HttpRequestMessage(method,url);
+            if(body!=null)msg.Content=new StringContent(body.ToJsonString(Json),Encoding.UTF8,"application/json");
+            using var result=await client.SendAsync(msg);
+            string content=await result.Content.ReadAsStringAsync();
+            if(result.IsSuccessStatusCode)
+                return JsonNode.Parse(content)??new JsonObject();
+            string reason=content;
+            try{reason=JsonNode.Parse(content)?["error"]?.GetValue<string>()??content;}catch{}
+            bool preflightBusy=result.StatusCode==System.Net.HttpStatusCode.Conflict &&
+                (reason.Contains("数据库忙",StringComparison.Ordinal) ||
+                 reason.Contains("正在处理文件或程序退出",StringComparison.Ordinal) ||
+                 reason.Contains("文件任务或退出",StringComparison.Ordinal) ||
+                 reason.Contains("资料库正在执行其他操作",StringComparison.Ordinal));
+            if(preflightBusy&&attempt<2)
+            {
+                await Task.Delay(120*(attempt+1));
+                continue;
+            }
+            if(preflightBusy)
+                throw new McpPreflightBusyException("IPSys "+(int)result.StatusCode+
+                    "："+reason+"；请求尚未开始执行，可使用原 request_id 稍后重试。");
+            throw new IOException("IPSys "+(int)result.StatusCode+"："+
+                (string.IsNullOrWhiteSpace(reason)?
+                    (result.StatusCode==System.Net.HttpStatusCode.NotFound
+                        ?ExplainNotFound(url):"操作未完成（"+method.Method+" "+url+"）"):
+                    reason)+(preflightBusy?"；retryAdvice=资料库繁忙，等待后以相同 request_id 重试（如先前结果未知须查询操作日志）。":""));
         }
-        return JsonNode.Parse(text)??new JsonObject();
+        throw new IOException("MCP 请求超过有限重试次数。");
     }
     private static async Task<JsonNode> ExecuteAsync(Vault vault,string address,
         string name,JsonElement args,CancellationToken stop)
     {
-        if(!vault.McpEnabled)throw new IOException("MCP 未授权：请在 IPSys 的系统设置中手动开启 Codex MCP。");
+        if(!vault.McpEnabled)throw new IOException("MCP 未授权：请在 IPSys 的系统设置中手动开启本机 MCP。");
         string workspace=Workspace(args);
         using var client=new HttpClient {BaseAddress=new Uri(address),Timeout=TimeSpan.FromMinutes(10)};
         using var cancelOnExit=stop.Register(static state=>
