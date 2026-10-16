@@ -2,7 +2,7 @@
 
 ## 当前优先：SQLCipher V2 新库分阶段验收（2026-10-16）
 
-用户确认旧库全是测试数据，取消旧库迁移、回填及旧版互开。IP 现有网页/附件/Excel/MCP/搜索回收站/跨区复制和项目合同现有网页/原件均已分批使用 V2 且有相应 CI；**当前下一项 N2-03-07-02** 继续项目合同原名 MCP、Excel、搜索/回收站和跨区整项目复制，然后转换档案/综合资料、N4 全量验收。下面早期原生专项记录保留各阶段当时的边界，不能把它们的“仍待切换”当成当前状态。异常/破坏性操作仅用可丢弃新库，旧 API CI 不等于 V2 全应用实机通过。
+用户确认旧库都是开发测试数据，不迁移、回填或兼容。IP 全链路及项目合同网页/原件已通过对应 V2 CI；N2-03-07-02 首批将项目合同原名 MCP CRUD、`upload_files`、专用附件查询/解绑以及通用 `list_files/delete_file` 切 V2，修复历史 WebSmoke 测试后 [CI #38844746654](https://github.com/zy19970/IPSys/actions/runs/38844746654) 成功，通用文件工具 [CI #38845050570](https://github.com/zy19970/IPSys/actions/runs/38845050570) 已通过。下一项项目合同 V2 Excel，随后搜索回收站、跨区整个项目包含全部合同文件版本的事务复制，再转档案综合资料与 N4。旧专项文字保留开发阶段语境；自动测试不等于真实 Edge/Chrome 与磁盘故障专项已验收。
 
 1. **N1 已通过对应自动测试**：V2 Schema、版本检查与拒绝旧库、七系统根、有效合同父项目/Folder 防环/工作区隔离、文件对象和分块 ready 后不可改写；[CI #38740628571](https://github.com/zy19970/IPSys/actions/runs/38740628571)。新建不得覆盖旧文件。
 2. **N2-01 已通过对应自动测试**：项目/合同/IP 原生 `folders` CRUD、软删恢复、合同父级、真实 SQLCipher HTTP 授权和不双写旧表；[CI #38743939004](https://github.com/zy19970/IPSys/actions/runs/38743939004)。
@@ -386,3 +386,7 @@ dotnet publish .\src\IPSys.Web\IPSys.Web.csproj -c Release -r win-x64 --self-con
 ## N2-03-07-01 项目合同现有网页与 V2 File/Folder 自动验收（2026-10-16）
 
 [功能提交 f13d185c](https://github.com/zy19970/IPSys/commit/f13d185cbedb40f5bf842a1c674453bdfddbe229) 及 [Windows CI #38836041449](https://github.com/zy19970/IPSys/actions/runs/38836041449) **completed/success**。原有项目/合同网页已改用 `/api/v2/ui/projects`、`/api/v2/ui/contracts`、`/api/v2/ui/project-files` 和原生 `/api/v2/folders` 新建/修改/软删除；合同从真实 V2 项目 FolderId 创建。业务附件复用 V2 prepare/resolve SHA-256 内容匹配与用户显式选择、FileId 历史版本、同区共享/单处解绑、预览/下载及文件夹/ZIP 导出。项目合同排序按 V2 folders.position；合同复制新增独立 FolderId，并在一事务中引用原 FileId。SQLCipher/HTTP 验证公司/个人隔离、父级合同约束、原件初始版/新版实际字节、合同复制后同 FileId 两版本、项目删/恢复后合同与原件历史完整；Node UI、Windows Debug/Release/单 EXE 回归均通过。**未验收**：原名 MCP 项目合同身份、旧搜索回收站、项目/合同固定 Excel、跨区完整项目+合同+所有文件版本的原子复制/移动及用户 Edge/Chrome 实机；此类旧路由已在 UI 上暂时禁用或留待 N2-03-07-02，不能用旧库 ID 操作新版记录。旧测试库不需迁移、回填或兼容。
+
+## N2-03-07-02 首批项目合同本机 MCP 自动验收（2026-10-16）
+
+[功能提交 00e9c87](https://github.com/zy19970/IPSys/commit/00e9c87ab4dfec9cd702c3dd2f08f60f5becb935) 与 [WebSmoke 断言修复 60c3692](https://github.com/zy19970/IPSys/commit/60c36926945c9bb4d660b25212dbf5f23f23f95a) 已通过 [Windows CI #38844746654](https://github.com/zy19970/IPSys/actions/runs/38844746654)。覆盖原名项目合同 CRUD 使用 V2 FolderId，合同父项目一致、真实文件版本字节往返、同一 FileId 不同 Folder 共享、单条 LinkId 解绑、错误归属拒绝。追加 [6fe6474](https://github.com/zy19970/IPSys/commit/6fe647437128635f0751b5edfe8795d13c74e0fc) 将通用 `list_files/delete_file` 改为 V2 链接汇总/单位置解除；[CI #38845050570](https://github.com/zy19970/IPSys/actions/runs/38845050570) **completed/success**。客户端 Codex 手工连接、项目/合同 Excel、搜索与回收站、跨区整项目复制以及 Edge/Chrome 实机仍待验收。

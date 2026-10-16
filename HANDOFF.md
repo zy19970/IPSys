@@ -1,6 +1,6 @@
 # IPSys 跨会话交接（2026-10-16，V2 N2-03-07-02 接续）
 
-> 续作检查基线截至 N2-03-07-01 功能提交 `main@f13d185c`，真实 Windows CI [#38836041449](https://github.com/zy19970/IPSys/actions/runs/38836041449) **success**。最终权威架构及完整进度以 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md) 为准；用户确认全部旧数据库均属开发测试数据，不需迁移、回填或兼容。
+> 当前基线：N2-03-07-02 首批 MCP 提交 `00e9c87`、历史测试修正 `60c3692`、通用文件工具收敛 `6fe6474`，最终 [Windows CI #38845050570](https://github.com/zy19970/IPSys/actions/runs/38845050570) **success**。IP 全链路、项目合同网页和原名 MCP CRUD/原件及通用文件链接已使用 V2，项目合同 Excel/搜索回收站/整项目跨区复制未完成。权威架构和阶段进度仍见 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)。用户所有旧库均为可丢弃测试库，不迁移、不兼容。
 
 ## 1. 用户最终意图和冻结规则
 
@@ -36,9 +36,10 @@ IPSys 用户界面名称是「资料管理系统」，以**个人资料长期归
 | **N2-03-05** | 旧名 IP MCP CRUD 与 V2 FolderId、统一搜索与 V2 回收站、完整原件版本跨区单事务复制移动已通过 [CI #38831972597](https://github.com/zy19970/IPSys/actions/runs/38831972597)。跨区 FileObject 独立；不可安全回收的共享物理历史禁止冒险永久清理 | 
 | **N2-03-06** | MCP `upload_files(kind=ip)` 写 V2、`list_ip_files/delete_ip_file` 查询/解除关联、查重显式选择、追加版本已通过 [CI #38833862535](https://github.com/zy19970/IPSys/actions/runs/38833862535) | 
 | **N2-03-07-01** | 项目/合同现有网页、真实父项目合同、原件 FileId/LinkId/版本、用户决定内容复用、排序、合同及链接同事务复制、下载与文件夹 ZIP 已对齐 V2，Windows CI #38836041449 成功 |
-| **N2-03-07-02～N4** | 下一批继续项目合同原名 MCP、搜索/回收站、Excel、项目跨区含全部合同和文件版本原子复制；其后归档/综合资料，最后清理开发期旧表，不迁移旧测试库 |
+| **N2-03-07-02-01 MCP** | 首批已提交：原名项目合同 CRUD、`upload_files(kind=project/contract)`、项目/合同专用文件查询与解除，以及通用 `list_files/delete_file` 均使用 V2 Folder/File/Link，[Windows CI #38845050570](https://github.com/zy19970/IPSys/actions/runs/38845050570) success；仍需本机实机验收；后续依次进行 Excel、搜索回收站及整项目跨区事务复制 |
+| **N2-03-07-02 后续～N4** | 项目/合同 Excel、搜索回收站、跨区含所有合同与历史原件的原子复制，随后归档综合资料、N4 旧表清理和最终验收；不迁移旧测试库 |
 
-**源码切换边界**：`Vault.CreateSchema` 仍建开发期旧表并初始化 V2，`Program.cs` 并存旧/V2 路由。IP 与项目合同现有网页已通过 `app.js`/`ip-v2.js` 访问 V2 FolderId/FileId/LinkId；归档/综合资料仍调用 `/api/archives`、`/api/records`。`McpLocal.cs` 的项目合同原名工具、`SearchStore.cs` 的项目合同查询、原 `ExcelLedger` 的项目合同入口仍引用 `ProjectStore/ContractStore` 旧身份；新版项目合同 Excel、项目跨区完整复制已阻止误调旧表。`BusinessFiles.cs` 与档案/综合资料 Store 仍有实际调用，确认引用清零后再删，不得双写。
+**源码切换边界**：`Vault.CreateSchema` 仍包含开发期旧表与 V2 Schema；`Program.cs` 注册过渡和新版路由。IP、项目和合同现有网页及原名 MCP CRUD/附件均已统一 V2 FolderId/FileId/LinkId，MCP 的通用 `list_files/delete_file` 也只读写 V2 有效链接。`SearchStore` 的项目合同查询、旧 `ExcelLedger` 项目合同及档案/综合资料业务 Store 仍访问旧身份，项目合同新版 Excel、跨区复制已有保护性禁用；未清零前不删旧表或兼容 Store，不双写。
 
 ## 4. 接续开发的唯一顺序
 
@@ -53,7 +54,7 @@ IPSys 用户界面名称是「资料管理系统」，以**个人资料长期归
 9. **N2-03-05 完成**：原有 MCP 的 `list_ips/create_ip/update_ip/delete_ip`、知识产权全局搜索/原件 FileId 与回收站、整记录含所有原件版本的跨公司/个人复制移动已通过 Windows [CI #38831972597](https://github.com/zy19970/IPSys/actions/runs/38831972597)。跨区物理 FileObject 必须独立，复制失败整体回滚。
 10. **N2-03-06 完成**：新增 `McpLocalIpFiles.cs`；`upload_files(kind=ip)`、`list_ip_files`、`delete_ip_file` 均通过已授权本机 V2 HTTP，不再混用旧链接；同内容时必须由调用方显式确认复用选项，原件更新仍保留所有版本。[CI #38833862535](https://github.com/zy19970/IPSys/actions/runs/38833862535) 已成功。
 11. **N2-03-07-01 已完成**：`NativeProjectContractUiEndpoints.cs` 将现有项目与合同台账、项目所属合同、文件列表/历史版本映射到新库 FolderId/FileId，并提供原生排序及合同复制时同事务关联现有原件；`app.js` 项目合同 CRUD、附件内容查重与用户选择、版本上传、共享/解绑、预览下载及 ZIP/文件夹导出已切 V2。`ip-v2.js` 共用文件确认流程，`export.js` 提供原生 FileId 下载。[CI #38836041449](https://github.com/zy19970/IPSys/actions/runs/38836041449) 真实 SQLCipher HTTP、Node UI、Windows Debug/Release 通过。**项目 Excel 和项目跨工作区复制当前禁止调用旧表**。
-12. **当前下一项 N2-03-07-02**：继续实现项目合同原名 MCP、统一搜索和回收站、固定 Excel、合同随项目跨工作区复制/移动及全部原件版本的事务化处理；随后归档和综合资料。整个项目处于新库开发阶段，无需迁移、保留或兼容旧测试数据库。
+12. **当前 N2-03-07-02 首批 MCP 已提交，后续接续顺序**：项目合同原名 MCP CRUD、附件上传/查询/解绑、通用文件列表/解绑均切 V2，重点保持单位置 LinkId 与真实 FileId 的区别；后续先做固定 Excel、再统一搜索回收站、最后实现跨区项目携全部合同和历史文件的原子复制移动，再转换归档/综合资料。所有旧数据库均为测试数据，不执行迁移/回填/兼容。
 3. **然后 N2-03**，在新文件归属能力完整后，分模块切换旧业务 API、MCP、Excel 到 V2 数据源；旧 API 形状可保留，不能双写。
 4. **最后 N4**，接通现有 UI、搜索 File 属性与 Folder 祖先信息、递归导出、默认最新版本、PDF/回收站，删除不再引用的旧表/兼容代码，完成 Windows CI、Edge/Chrome 用户实机和 T01–T09 安全验收。
 
