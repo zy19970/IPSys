@@ -312,13 +312,18 @@ static class WebSmoke
             }));
         if(upload["succeeded"]?.GetValue<int>()!=1)
             throw new IOException("MCP 附件上传失败："+upload.ToJsonString());
-        var list=await McpLocal.RunSmokeToolAsync("list_files",
-            System.Text.Json.JsonSerializer.SerializeToElement(new {workspace="company"}));
-        long fileId=list.AsArray().FirstOrDefault(x=>x?["ownerId"]?.GetValue<long>()==contract&&
-                    x?["kind"]?.GetValue<string>()=="contract")?["id"]?.GetValue<long>()??0;
-        if(fileId<=0)throw new IOException("MCP 业务原件查询缺失。");
+        var list=await McpLocal.RunSmokeToolAsync("list_contract_files",
+            System.Text.Json.JsonSerializer.SerializeToElement(new {
+                workspace="company",contract_id=contract
+            }));
+        var contractFile=list.AsArray().FirstOrDefault(x=>
+            x?["folderId"]?.GetValue<long>()==contract);
+        long fileId=contractFile?["fileId"]?.GetValue<long>()??0,
+             linkId=contractFile?["id"]?.GetValue<long>()??0;
+        if(fileId<=0||linkId<=0)
+            throw new IOException("MCP 合同 V2 原件 FileId/LinkId 查询缺失。");
         byte[] recovered=await client.GetByteArrayAsync(
-            $"/api/business-files/company/download/{fileId}");
+            $"/api/v2/files/company/{fileId}/versions/1/download");
         if(!recovered.AsSpan().SequenceEqual(bytes))
             throw new IOException("MCP 上传后解密原件字节与本地不符。");
         // IP tools: field preservation, legal states, workspace isolation and originals.
@@ -374,7 +379,7 @@ static class WebSmoke
         var nativeUpload=await McpLocal.RunSmokeToolAsync("upload_files",
             System.Text.Json.JsonSerializer.SerializeToElement(new{
                 workspace="company",kind="ip",owner_id=ipId,paths=new[]{filename},
-                material_category="申请材料"
+                material_category="申请材料",duplicate_mode="independent"
             }));
         if(nativeUpload["succeeded"]?.GetValue<int>()!=1)
             throw new IOException("MCP V2 知识产权上传失败："+nativeUpload.ToJsonString());
@@ -425,11 +430,16 @@ static class WebSmoke
         if(versionUpload["succeeded"]?.GetValue<int>()!=1 ||
            versionUpload["files"]?[0]?["result"]?["version"]?.GetValue<int>()!=2)
             throw new IOException("MCP V2 原件追加版本失败。");
-        var wrongOwner=await McpLocal.RunSmokeToolAsync("upload_files",
-            System.Text.Json.JsonSerializer.SerializeToElement(new{
-                workspace="personal",kind="ip",owner_id=ipId,paths=new[]{filename}
-            }));
-        if(wrongOwner["failed"]?.GetValue<int>()!=1)
+        bool wrongOwnerRejected=false;
+        try{
+            await McpLocal.RunSmokeToolAsync("upload_files",
+                System.Text.Json.JsonSerializer.SerializeToElement(new{
+                    workspace="personal",kind="ip",owner_id=ipId,paths=new[]{filename}
+                }));
+        }
+        catch(IOException ex)when(ex.Message.Contains("404"))
+        {wrongOwnerRejected=true;}
+        if(!wrongOwnerRejected)
             throw new IOException("MCP 不允许将公司知识产权文件归属到个人工作区。");
         await McpLocal.RunSmokeToolAsync("delete_ip_file",
             System.Text.Json.JsonSerializer.SerializeToElement(new {
@@ -456,15 +466,18 @@ static class WebSmoke
         var ipTrash=await client.GetFromJsonAsync<List<RecycleItem>>("/api/trash/company");
         if(ipTrash==null||!ipTrash.Any(x=>x.Kind=="ip"&&x.Id==ipId))
             throw new IOException("MCP 专利删除没有进入回收站。");
-        await McpLocal.RunSmokeToolAsync("delete_file",
-            System.Text.Json.JsonSerializer.SerializeToElement(new {workspace="company",file_id=fileId}));
+        await McpLocal.RunSmokeToolAsync("delete_contract_file",
+            System.Text.Json.JsonSerializer.SerializeToElement(new {
+                workspace="company",contract_id=contract,file_id=fileId,link_id=linkId
+            }));
         await McpLocal.RunSmokeToolAsync("delete_contract",
             System.Text.Json.JsonSerializer.SerializeToElement(new {workspace="company",contract_id=contract}));
         await McpLocal.RunSmokeToolAsync("delete_project",
             System.Text.Json.JsonSerializer.SerializeToElement(new {workspace="company",project_id=project}));
-        var trash=await client.GetFromJsonAsync<List<RecycleItem>>("/api/trash/company");
-        if(trash==null||!trash.Any(x=>x.Kind=="project"&&x.Id==project))
-            throw new IOException("MCP 删除未进入回收站。");
+        using(var deletedProject=await client.GetAsync(
+            $"/api/v2/folders/company/project/{project}"))
+            if(deletedProject.StatusCode!=System.Net.HttpStatusCode.NotFound)
+                throw new IOException("MCP 删除的 V2 项目仍可从有效资源端点访问。");
         // V2 MCP tools are separate from legacy names: no dual-write on mutation.
         await NativeMcpSmoke.VerifyAsync(client);
         (await client.PostAsJsonAsync("/api/mcp",new McpAccessInput(false)))
