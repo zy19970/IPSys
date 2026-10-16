@@ -9,6 +9,10 @@
 
 ### MCP 黑盒 ISS-1～10 专项复测（2026-10-17）
 
+**最新 ACL 防回归结果**：源码 `1fa0d27` 对应 [Windows CI #38941986213](https://github.com/zy19970/IPSys/actions/runs/38941986213) **completed/success**，Debug、Release、正式 stdio、Node 和 SQLCipher/HTTP 全部通过。新增真实管道连接后的 TokenUser Owner 与 DACL 白名单断言，仅允许当前用户或 SYSTEM；MCP 权限被拒绝时输出可操作的中文诊断。该项自动验收不涉及不同用户账户的真实负面连接，也无法证明管理员宿主＋非提升 Bash/WorkBuddy 已联通；后者仍应依据用户提供的 ISS-1 脚本单独验收，必要时先检查 Windows MIC 与 EXE NTFS 权限。
+
+
+
 **管道权限专项补充**：Windows CI 追加连接后检查实际命名管道 ACL 的允许账户仅为当前 TokenUser 与 LocalSystem，且 Owner SID 为 TokenUser；若 ACL/安全策略阻止连接，MCP 子进程应返回带具体排查方向的中文错误。这个测试在当前 CI 用户权限内进行，**不等于**非提升 WorkBuddy 可以访问管理员宿主。Windows MIC 可能禁止跨完整性级别写入，用户测试应分别记录双方 TokenUser、完整性级别、Windows 管道拒绝码及 EXE NTFS 权限；默认方案是运行普通权限宿主，不降低权限标签、不开放不同用户访问。
 
 

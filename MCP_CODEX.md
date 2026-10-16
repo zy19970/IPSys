@@ -51,6 +51,10 @@ MCP 写操作（新增、修改、删除、上传，以及已有 `v2_*` 写操�
 
 写操作使用可选 `request_id` 幂等日志；回收站恢复必须提供 `list_trash` 原样返回的 kind/id/section。下载路径是 **运行 IPSys 的本机 Windows 电脑**上的绝对路径，仅新建文件、不覆盖已有文件。跨工作区复制文件必须使用 `independent-content`，共享关联只允许同工作区。单个文件上限仍为 64 MiB；所有操作需要当前数据库解锁和手动 MCP 授权。
 
+## MCP 管道安全补强验收（2026-10-17）
+
+代码 `1fa0d27` 对应 [Windows CI #38941986213](https://github.com/zy19970/IPSys/actions/runs/38941986213) **completed/success**：真实管道连接后核验 TokenUser Owner 和 DACL 的允许账户仅为当前用户与 SYSTEM；权限拒绝时提供明确的中文诊断和普通权限宿主建议，未放宽跨用户 ACL，也未降低 Windows 完整性级别。此项测试仅覆盖当前 CI 用户权限；**管理员宿主与普通权限 WorkBuddy/Bash 实际可否连接仍需在你的 Windows 电脑上重测**。同用户不同权限级别不一定意味着相同 Windows 完整性级别，默认建议以普通用户身份运行 IPSys，避免把提升进程变成低权限 Agent 的代理操作入口。
+
 ## MCP 黑盒问题整改说明（2026-10-17）
 
 **自动验收证据**：代码 [`6cb1e6b`](https://github.com/zy19970/IPSys/commit/6cb1e6b0d30031d2c1e55f5e34de720ad0fa0e62)，[CI #38939165516](https://github.com/zy19970/IPSys/actions/runs/38939165516) completed/success；对纯读有界等待、缺失资源 404、ISO UTC、日志业务成败和虚构版本/空白 stdio 回归已加入自动测试。跨权限连接矩阵需要同机测试，不能凭 CI 宣称已通过。
