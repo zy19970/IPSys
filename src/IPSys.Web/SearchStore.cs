@@ -6,7 +6,7 @@ record SearchHit(string Kind,long Id,string Section,string Title,string Descript
     string OwnerKind="",long OwnerId=0);
 record SearchResponse(string Query,List<SearchHit> Results,bool Truncated);
 
-static partial class SearchStore
+static class SearchStore
 {
     private const int MaxPerGroup=60;
     private static bool Has(string? text,string query)=>

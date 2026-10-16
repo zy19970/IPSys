@@ -10,7 +10,7 @@ static class NativeArchiveUiOrderEndpoints
             NativeIpUiOrderInput input)=>
         {
             if(!v.Allowed(ctx))return (IResult)Results.Unauthorized();
-            if(ArchiveStore.Module(workspace,section)==null)
+            if(ArchiveRules.Module(workspace,section)==null)
                 return fail("无效的工作区或资料类别。",400);
             if(v.FileTaskActive||v.ExitRequested)return fail("文件任务正在执行。",409);
             await v.Gate.WaitAsync(ctx.RequestAborted);

@@ -21,7 +21,7 @@ static class NativeArchiveStore
             if(!string.IsNullOrEmpty(section))throw new ArgumentException("综合资料没有分段。");
             return "";
         }
-        if(kind==FolderKinds.Archive && ArchiveStore.Module(workspace,section??"")!=null)
+        if(kind==FolderKinds.Archive && ArchiveRules.Module(workspace,section??"")!=null)
             return section!;
         throw new ArgumentException("当前工作区不支持该资料类别。");
     }
@@ -52,7 +52,7 @@ static class NativeArchiveStore
             case FolderKinds.Archive when input.Archive is not null &&
                 input.ArchiveFolder is null && input.General is null:
                 var archive=input.Archive;
-                if(ArchiveStore.Validate(archive) is string error)
+                if(ArchiveRules.Validate(archive) is string error)
                     throw new ArgumentException(error);
                 if(scope=="achievement" && workspace=="company")
                 {
@@ -67,7 +67,7 @@ static class NativeArchiveStore
 
             case FolderKinds.General when input.General is not null &&
                 input.Archive is null && input.ArchiveFolder is null:
-                if(GeneralFolderCommands.Validate(input.General) is string bad)
+                if(GeneralRules.Validate(input.General) is string bad)
                     throw new ArgumentException(bad);
                 string title=input.General.Title!.Trim();
                 return (title,JsonSerializer.Serialize(new TitleInput(title)),null,scope);

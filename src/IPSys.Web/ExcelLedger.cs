@@ -47,7 +47,7 @@ static partial class ExcelLedger
     internal static bool ValidKind(string kind)=>kind is "project" or "ip" or "archive" or "general" or "contract";
     internal static bool SupportsImport(string kind)=>kind is "project" or "ip" or "archive" or "general";
     internal static bool ValidScope(string workspace,string kind,string? section)=>
-        ValidKind(kind)&&(kind!="archive"||ArchiveStore.Module(workspace,section??"")!=null);
+        ValidKind(kind)&&(kind!="archive"||ArchiveRules.Module(workspace,section??"")!=null);
 
     private static Column[] Columns(string kind)=>kind switch
     {
@@ -66,68 +66,6 @@ static partial class ExcelLedger
     {
         if(!SupportsImport(kind))throw new InvalidDataException("此模块仅支持 Excel 导出。");
         return Build(Columns(kind),[]);
-    }
-    internal static byte[] Export(SqliteConnection db,string workspace,string kind,string mode,long[]? selected,
-        string section="")
-    {
-        if(mode is not ("all" or "filtered"))throw new InvalidDataException("必须选择当前筛选或全部记录。");
-        if(mode=="filtered"&&(selected?.Length??0)>10000)
-            throw new InvalidDataException("筛选结果超过 10000 条，请缩小范围。");
-        var allowed=mode=="filtered"?new HashSet<long>(selected??[]):null;
-        var columns=Columns(kind);
-        var data=new List<string[]>();
-        if(kind=="project")
-        {
-            foreach(var row in ProjectStore.List(db,workspace))
-            {
-                if(allowed!=null&&!allowed.Contains(row.Id))continue;
-                var json=JsonOf(row);
-                data.Add(columns.Select(c=>Text(json,c.Property)).ToArray());
-            }
-        }
-        else if(kind=="ip")
-        {
-            foreach(var row in IpStore.List(db,workspace))
-            {
-                if(allowed!=null&&!allowed.Contains(row.Id))continue;
-                var json=JsonOf(row.Data);
-                data.Add(columns.Select(c=>Text(json,c.Property)).ToArray());
-            }
-        }
-        else if(kind=="archive")
-        {
-            if(ArchiveStore.Module(workspace,section)==null)
-                throw new InvalidDataException("资料分类工作区无效。");
-            foreach(var row in ArchiveStore.List(db,workspace,section))
-            {
-                if(allowed!=null&&!allowed.Contains(row.Id))continue;
-                var json=JsonOf(row);
-                data.Add(columns.Select(c=>Text(json,c.Property)).ToArray());
-            }
-        }
-        else if(kind=="contract")
-        {
-            foreach(var row in ContractStore.List(db,workspace))
-            {
-                if(allowed!=null&&!allowed.Contains(row.Id))continue;
-                var json=JsonOf(row);
-                string[] values=columns.Select(c=>Text(json,c.Property)).ToArray();
-                if(decimal.TryParse(values[4],NumberStyles.AllowDecimalPoint|NumberStyles.AllowLeadingSign,
-                    CultureInfo.InvariantCulture,out decimal amount))
-                    values[4]=amount.ToString("0.00",CultureInfo.InvariantCulture);
-                data.Add(values);
-            }
-        }
-        else if(kind=="general")
-        {
-            foreach(var row in GeneralRows(db,workspace))
-            {
-                if(allowed!=null&&!allowed.Contains(row.Id))continue;
-                data.Add([row.Title]);
-            }
-        }
-        if(data.Count>20000)throw new InvalidDataException("单次 XLSX 导出最多 20000 条记录。");
-        return Build(columns,data);
     }
     private static readonly XNamespace Main="http://schemas.openxmlformats.org/spreadsheetml/2006/main";
     private static readonly XNamespace Rel="http://schemas.openxmlformats.org/officeDocument/2006/relationships";
@@ -302,17 +240,6 @@ static partial class ExcelLedger
         }
         return output;
     }
-    private sealed record GeneralRow(long Id,string Title);
-    private static List<GeneralRow> GeneralRows(SqliteConnection db,string workspace)
-    {
-        var data=new List<GeneralRow>();
-        using var cmd=db.CreateCommand();
-        cmd.CommandText="SELECT id,title FROM records WHERE workspace=$workspace AND deleted=0 ORDER BY id DESC;";
-        cmd.Parameters.AddWithValue("$workspace",workspace);
-        using var reader=cmd.ExecuteReader();
-        while(reader.Read())data.Add(new GeneralRow(reader.GetInt64(0),reader.GetString(1)));
-        return data;
-    }
     private static ArchiveInput Archive(string[] v)=>new(v[0],v[1],v[2],v[3]);
     private static string? ValidateGeneral(string? title)=>
         string.IsNullOrWhiteSpace(title)||title.Trim().Length>300
@@ -342,108 +269,4 @@ static partial class ExcelLedger
         v[0],v[1],v[2],v[3],v[4],v[5],v[6],v[7],v[8],v[9],v[10],
         v[11],v[12],v[13],v[14],v[15],v[16],v[17],v[18],v[19]);
     private static bool Same(string a,string b)=>string.Equals(a.Trim(),b.Trim(),StringComparison.OrdinalIgnoreCase);
-    private static ProjectView? Matching(ProjectInput x,IEnumerable<ProjectView> source)=>
-        source.FirstOrDefault(r=>!string.IsNullOrWhiteSpace(x.ProjectNo)
-            ?Same(r.ProjectNo,x.ProjectNo!)
-            :Same(r.Name,x.Name??"")&&Same(r.ProjectType,x.ProjectType??""));
-    private static IpView? Matching(IpInput x,IEnumerable<IpView> source)=>
-        source.FirstOrDefault(r=>
-          !string.IsNullOrWhiteSpace(x.ApplicationNo)?Same(r.Data.ApplicationNo??"",x.ApplicationNo!):
-          !string.IsNullOrWhiteSpace(x.RegistrationNo)?Same(r.Data.RegistrationNo??"",x.RegistrationNo!):
-          Same(r.Data.Name??"",x.Name??"")&&Same(r.Data.IpType??"",x.IpType??""));
-
-    internal static object Import(SqliteConnection db,string workspace,string kind,string policy,byte[] bytes,
-        string section="")
-    {
-        if(!SupportsImport(kind)||!ValidScope(workspace,kind,section))
-            throw new InvalidDataException("此 Excel 模块不允许导入或分类无效。");
-        if(policy is not ("skip" or "update" or "create"))
-            throw new InvalidDataException("重复记录处理方式必须选择跳过、更新已有或另建。");
-        var rows=ReadSheet(bytes,Columns(kind));
-        var projects=kind=="project"?ProjectStore.List(db,workspace):new List<ProjectView>();
-        var ips=kind=="ip"?IpStore.List(db,workspace):new List<IpView>();
-        var archives=kind=="archive"?ArchiveStore.List(db,workspace,section):new List<ArchiveView>();
-        var general=kind=="general"?GeneralRows(db,workspace):new List<GeneralRow>();
-        int created=0,updated=0,skipped=0;
-        var errors=new List<object>();
-        int failed=0;
-        foreach(var (line,data) in rows)
-        {
-            try
-            {
-                if(kind=="project")
-                {
-                    var input=Project(data);
-                    string? error=ProjectStore.Check(input);
-                    if(error!=null)throw new InvalidDataException(error);
-                    var match=Matching(input,projects);
-                    if(match!=null&&policy=="skip"){skipped++;continue;}
-                    if(match!=null&&policy=="update")
-                    {
-                        if(!ProjectStore.Update(db,workspace,match.Id,input))
-                            throw new IOException("已有项目已发生变化。");
-                        updated++;
-                    }
-                    else{ProjectStore.Insert(db,workspace,input);created++;}
-                    projects=ProjectStore.List(db,workspace);
-                }
-                else if(kind=="ip")
-                {
-                    var input=Ip(data);
-                    string? error=IpStore.Validate(input);
-                    if(error!=null)throw new InvalidDataException(error);
-                    var match=Matching(input,ips);
-                    if(match!=null&&policy=="skip"){skipped++;continue;}
-                    if(match!=null&&policy=="update")
-                    {
-                        if(!IpStore.Update(db,workspace,match.Id,input))
-                            throw new IOException("已有知识产权已发生变化。");
-                        updated++;
-                    }
-                    else{IpStore.Add(db,workspace,input);created++;}
-                    ips=IpStore.List(db,workspace);
-                }
-                else if(kind=="archive")
-                {
-                    var input=Archive(data);
-                    string? error=ArchiveStore.Validate(input);
-                    if(error!=null)throw new InvalidDataException(error);
-                    var match=archives.FirstOrDefault(r=>Same(r.Name,input.Name??"")
-                        &&Same(r.Category,input.Category??""));
-                    if(match!=null&&policy=="skip"){skipped++;continue;}
-                    if(match!=null&&policy=="update")
-                    {
-                        if(!ArchiveStore.Update(db,workspace,section,match.Id,input))
-                            throw new IOException("已有资料已发生变化。");
-                        updated++;
-                    }
-                    else{ArchiveStore.Add(db,workspace,section,input);created++;}
-                    archives=ArchiveStore.List(db,workspace,section);
-                }
-                else if(kind=="general")
-                {
-                    string name=data[0].Trim();
-                    string? error=ValidateGeneral(name);
-                    if(error!=null)throw new InvalidDataException(error);
-                    var match=general.FirstOrDefault(r=>Same(r.Title,name));
-                    if(match!=null&&policy=="skip"){skipped++;continue;}
-                    if(match!=null&&policy=="update")
-                    {
-                        if(!UpdateGeneral(db,workspace,match.Id,name))
-                            throw new IOException("已有资料已发生变化。");
-                        updated++;
-                    }
-                    else{InsertGeneral(db,workspace,name);created++;}
-                    general=GeneralRows(db,workspace);
-                }
-            }
-            catch(Exception ex)
-            {
-                failed++;
-                if(errors.Count<300)errors.Add(new {row=line,error=ex.Message});
-                // Keep processing correct rows even when the error-report display is capped.
-            }
-        }
-        return new {created,updated,skipped,failed,errors,omittedErrors=failed-errors.Count,total=rows.Count};
-    }
 }

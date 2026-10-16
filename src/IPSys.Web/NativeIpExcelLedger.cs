@@ -66,7 +66,7 @@ static partial class ExcelLedger
             try
             {
                 var input=Ip(fields);
-                if(IpStore.Validate(input) is string validation)
+                if(IpRules.Validate(input) is string validation)
                     throw new InvalidDataException(validation);
                 var existing=NativeMatch(input,ips);
                 if(existing is not null && policy=="skip")

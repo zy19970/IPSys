@@ -51,7 +51,7 @@ static partial class ExcelLedger
             try
             {
                 var input=Project(fields);
-                if(ProjectStore.Check(input) is string err)
+                if(ProjectRules.Check(input) is string err)
                     throw new InvalidDataException(err);
                 var current=NativeFolderStore.List(db,w,FolderKinds.Project);
                 var existing=current.FirstOrDefault(x=>{

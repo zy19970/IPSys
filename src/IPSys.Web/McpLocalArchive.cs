@@ -13,7 +13,7 @@ static partial class McpLocal
     private static string ArchiveSection(string workspace,JsonElement args)
     {
         string section=ReadString(args,"section");
-        if(ArchiveStore.Module(workspace,section) is null)
+        if(ArchiveRules.Module(workspace,section) is null)
             throw new IOException("section 与当前工作区不匹配。");
         return section;
     }

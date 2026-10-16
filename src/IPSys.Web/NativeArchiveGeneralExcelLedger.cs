@@ -16,7 +16,7 @@ static partial class ExcelLedger
            mode is not ("all" or "filtered") ||
            mode=="filtered" && (ids?.Length??0)>10000)
             throw new InvalidDataException("Excel 工作区、类型或筛选无效。");
-        if(kind=="archive"&&ArchiveStore.Module(workspace,section)==null ||
+        if(kind=="archive"&&ArchiveRules.Module(workspace,section)==null ||
            kind=="general"&&section.Length!=0)
             throw new InvalidDataException("资料分类与工作区不匹配。");
         HashSet<long>? chosen=mode=="filtered"?new(ids??[]):null;
@@ -55,7 +55,7 @@ static partial class ExcelLedger
     {
         if(!Vault.WorkspaceValid(workspace) ||
            kind is not ("archive" or "general") ||
-           kind=="archive"&&ArchiveStore.Module(workspace,section)==null ||
+           kind=="archive"&&ArchiveRules.Module(workspace,section)==null ||
            kind=="general"&&section.Length!=0)
             throw new InvalidDataException("Excel 工作区或资料分类无效。");
         if(policy is not ("skip" or "update" or "create"))
@@ -70,7 +70,7 @@ static partial class ExcelLedger
                 if(kind=="archive")
                 {
                     var input=Archive(fields);
-                    if(ArchiveStore.Validate(input) is string error)
+                    if(ArchiveRules.Validate(input) is string error)
                         throw new InvalidDataException(error);
                     var existing=NativeArchives(db,workspace,section).FirstOrDefault(x=>{
                         var a=(ArchiveInput)x.BusinessData;
@@ -102,7 +102,7 @@ static partial class ExcelLedger
                 else
                 {
                     var title=new TitleInput(fields[0]);
-                    if(GeneralFolderCommands.Validate(title) is string error)
+                    if(GeneralRules.Validate(title) is string error)
                         throw new InvalidDataException(error);
                     var existing=NativeArchiveStore.List(db,workspace,
                         FolderKinds.General,null).FirstOrDefault(x=>

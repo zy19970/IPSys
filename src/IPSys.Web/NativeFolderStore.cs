@@ -20,7 +20,7 @@ static class NativeFolderStore
         {
             case FolderKinds.Project when x.Project is not null && x.Ip is null &&
                 x.Contract is null && x.ParentId is null:
-                if (ProjectStore.Check(x.Project) is string pe) throw new ArgumentException(pe);
+                if (ProjectRules.Check(x.Project) is string pe) throw new ArgumentException(pe);
                 var p=x.Project with {Name=x.Project.Name!.Trim(),
                     ProjectType=x.Project.ProjectType!.Trim(),
                     ProjectStatus=string.IsNullOrWhiteSpace(x.Project.ProjectStatus)
@@ -28,14 +28,14 @@ static class NativeFolderStore
                 return (p.Name!,JsonSerializer.Serialize(p));
             case FolderKinds.Contract when x.Contract is not null && x.Project is null &&
                 x.Ip is null && (create ? x.ParentId is > 0 : x.ParentId is null):
-                if (ContractStore.Validate(x.Contract) is string ce) throw new ArgumentException(ce);
+                if (ContractRules.Validate(x.Contract) is string ce) throw new ArgumentException(ce);
                 var c=x.Contract with {Name=x.Contract.Name!.Trim(),
                     Amount=x.Contract.Amount?.Trim()};
                 return (c.Name!,JsonSerializer.Serialize(c));
             case FolderKinds.Ip when x.Ip is not null && x.Project is null &&
                 x.Contract is null && x.ParentId is null:
-                if (IpStore.Validate(x.Ip) is string ie) throw new ArgumentException(ie);
-                var ip=IpStore.Normalize(x.Ip);
+                if (IpRules.Validate(x.Ip) is string ie) throw new ArgumentException(ie);
+                var ip=IpRules.Normalize(x.Ip);
                 return (ip.Name!,JsonSerializer.Serialize(ip));
             default:
                 throw new ArgumentException("文件夹业务属性或合同父级不符合要求。");

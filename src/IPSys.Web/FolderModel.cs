@@ -15,7 +15,7 @@ readonly record struct ResourceRef(string Workspace,string Kind,long Id,string S
     public bool IsValid => Id > 0 && Vault.WorkspaceValid(Workspace) && (Kind switch
     {
         FolderKinds.Project or FolderKinds.Contract or FolderKinds.Ip or FolderKinds.General => Section == "",
-        FolderKinds.Archive => ArchiveStore.Module(Workspace,Section) != null,
+        FolderKinds.Archive => ArchiveRules.Module(Workspace,Section) != null,
         FolderKinds.ArchiveFolder => Workspace == "company" && Section == "achievement",
         _ => false
     });
@@ -31,6 +31,8 @@ readonly record struct ResourceRef(string Workspace,string Kind,long Id,string S
 // Stable shared DTO: specific project, contract, IP and archive properties stay with the provider.
 // The position and deletion marker belong to the folder, never to file versions.
 record FolderDescriptor(ResourceRef Ref,string Name,ResourceRef? Parent,int Position,bool Deleted = false);
+
+record FolderSnapshot(FolderDescriptor Folder,object BusinessData);
 
 static class FolderTypePolicy
 {

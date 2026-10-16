@@ -76,5 +76,5 @@ static class NativeArchiveGeneralExcelEndpoints
     private static bool Valid(string workspace,string kind,string? section)=>
         Vault.WorkspaceValid(workspace) &&
         (kind=="general"?string.IsNullOrEmpty(section):
-          kind=="archive"&&ArchiveStore.Module(workspace,section??"")!=null);
+          kind=="archive"&&ArchiveRules.Module(workspace,section??"")!=null);
 }

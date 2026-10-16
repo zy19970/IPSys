@@ -72,8 +72,8 @@ static class NativeArchiveActionsEndpoints
             ArchiveTransfer input)=>
         {
             if(!v.Allowed(ctx))return (IResult)Results.Unauthorized();
-            var from=ArchiveStore.Module(workspace,section);
-            var to=ArchiveStore.Module(input.TargetWorkspace,input.TargetSection);
+            var from=ArchiveRules.Module(workspace,section);
+            var to=ArchiveRules.Module(input.TargetWorkspace,input.TargetSection);
             if(from is null||from!=to)return fail("目标资料类别不兼容。",400);
             if(input.Move&&workspace==input.TargetWorkspace&&
                 section==input.TargetSection)
