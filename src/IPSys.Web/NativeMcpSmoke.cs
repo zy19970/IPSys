@@ -340,7 +340,8 @@ static class NativeMcpSmoke
             var pageOne=await Original("list_files_page",new{
                 workspace="company",offset=0,limit=1
             });
-            Check(pageOne["items"] is JsonArray pageRows && pageRows.Count==1 &&
+            var pageRows=pageOne["items"] as JsonArray;
+            Check(pageRows is {Count:1} &&
                 pageOne["hasMore"]?.GetValue<bool>()==true &&
                 pageOne["nextOffset"]?.GetValue<int>()==1,
                 "global V2 file list returns a bounded first page");
