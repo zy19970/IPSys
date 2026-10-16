@@ -1,6 +1,6 @@
 # IPSys P2 当前工作区统一搜索（2026-10-15）
 
-> **2026-10-16 最新进展**：项目/合同/IP 全链路按 V2 FolderId/FileId 检索。N2-04 已新增**全部 V2 业务档案、公司资质、个人分类和综合资料**的搜索，包括自身业务属性、公司分类祖先目录名称、原件名称与可选 File 属性；原生 API 为 `/api/v2/search/{workspace}?q=...`。因当前 `app.js` 归档/综合资料仍是旧记录 ID，[c941bda](https://github.com/zy19970/IPSys/commit/c941bda2ca63a3fb64948bb3d99df5ab1f6d2794) 将原 `/api/search/{workspace}` 保留为当前页面可用的旧 archive/general ID 投影，**不混用旧 ID 与原生 FolderId**，其余模块仍用 V2。经 [CI #38852697271](https://github.com/zy19970/IPSys/actions/runs/38852697271) **success** 验证新旧接口隔离、软删除过滤与授权。后续 N2-04 页面迁入新数据源后再删除过渡投影；尚无 OCR/正文全文检索，Edge/Chrome 实机跳转待验收。
+> **2026-10-16 最新进展（N2-04 正式环境统一 V2）**：工作区内项目、合同、IP、公司资质/业务档案、个人多分类与综合资料均从 `/api/v2/search/{workspace}?q=...` 检索，命中使用真实 FolderId、FileId、所属 Link 与业务目录祖先名称和文件可选属性。现有页面在 02619b2 后已直接调用 V2；[6a7b1ff](https://github.com/zy19970/IPSys/commit/6a7b1ffe882aaa114c9d90af7011068cad7fd330) 已将过渡的 `/api/search` 旧身份投影限制在 --smoke 旧用例，正式运行不再开放。[Windows CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) **success**。N4 清理旧表、旧投影与旧自动用例；Edge/Chrome 人工跳转、OCR/正文全文检索不属于已验收范围。
 
 在顶部「搜索当前工作区资料」输入关键词并按 Enter。后端 `GET /api/search/{workspace}?q=...` 在**已解锁且认证通过的当前公司或个人工作区**内查询真实数据；工作区切换或页面切换后丢弃过期搜索结果。
 

@@ -1,6 +1,6 @@
 # IPSys 跨会话交接（2026-10-16，直接续作 N2-04 大里程碑）
 
-> 当前基线（2026-10-16）：N2-03 知识产权/项目合同现有网页、MCP、Excel、原件、搜索、回收站与跨区复制已通过 Windows CI #38848010379。N2-04 正集中处理公司档案、企业个人分类和综合资料。后端 [48bdd4a](https://github.com/zy19970/IPSys/commit/48bdd4a62cb8232619fa381007103ee1b065da80)、[1133653](https://github.com/zy19970/IPSys/commit/11336537185dde127b4efe2221d98d784565cbd4) 已接 V2 档案/综合资料 Excel、原生搜索与回收站；[c941bda](https://github.com/zy19970/IPSys/commit/c941bda2ca63a3fb64948bb3d99df5ab1f6d2794) 保证现有旧档案页面 `/api/search` 不误用新 FolderId，原生数据统一通过 `/api/v2/search`；测试修正 [2ce1c2a](https://github.com/zy19970/IPSys/commit/2ce1c2a62d124b4715852ba8b5e54afad8476878) 后 [Windows CI #38852697271](https://github.com/zy19970/IPSys/actions/runs/38852697271) **success**。**现有业务档案、资质、个人分类和综合资料网页、原件及外围调用仍未完成 V2 转换，N2-04 整体未验收。**没有旧数据库迁移任务。
+> **当前基线（2026-10-16，N2-04 主链路自动验收通过）**：公司资质/业务档案、个人多分类、综合资料与项目合同/IP 均已使用统一 V2 Folder/File。原生 MCP 档案/目录/综合资料工具和全五类附件已在 [db79b82](https://github.com/zy19970/IPSys/commit/db79b825a3b7fb1ab384a70da69575d55e653b80) 接入；[6a7b1ff](https://github.com/zy19970/IPSys/commit/6a7b1ffe882aaa114c9d90af7011068cad7fd330) 将文件夹/ZIP 导出全部 V2 化并让旧业务 API 只在 --smoke 注册；[Windows CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) **success**。下一步 N4 清理仍编译的旧 Store/表/历史回归入口，Edge/Chrome 实机和 T01–T09 尚未完成。所有旧库都只是开发测试数据，不迁移。
 
 ## 1. 用户最终意图和冻结规则
 
@@ -38,9 +38,9 @@ IPSys 用户界面名称是「资料管理系统」，以**个人资料长期归
 | **N2-03-07-01** | 项目/合同现有网页、真实父项目合同、原件 FileId/LinkId/版本、用户决定内容复用、排序、合同及链接同事务复制、下载与文件夹 ZIP 已对齐 V2，Windows CI #38836041449 成功 |
 | **N2-03-07-02-01 MCP** | 首批已提交：原名项目合同 CRUD、`upload_files(kind=project/contract)`、项目/合同专用文件查询与解除，以及通用 `list_files/delete_file` 均使用 V2 Folder/File/Link，[Windows CI #38845050570](https://github.com/zy19970/IPSys/actions/runs/38845050570) success；仍需本机实机验收；后续依次进行 Excel、搜索回收站及整项目跨区事务复制 |
 | **N2-03 项目合同全链路** | 项目固定 XLSX V2 导入导出、合同只读导出、搜索结果与回收站身份统一、完整项目及所属合同全部原件历史跨区事务复制/移动已通过 [Windows CI #38848010379](https://github.com/zy19970/IPSys/actions/runs/38848010379)；失败测试后旧适配类型隔离已修复 |
-| **N2-04（当前大里程碑）** | 现有 SQLCipher V2 原生 archive_folder/archive/general CRUD、分类混排、档案和综合资料固定 XLSX、`/api/v2/search`（含祖先目录和可选 File 属性）、`v2_archive`/`v2_general`/`v2_file` 回收站与原件保护已备；**现有 app.js 归档/资质/个人分类/综合资料仍读写旧 Store**，必须整体切换网页、上传/下载、共享版本、导出、排序、回收站及 Excel 后才能结束 N2-04。 |
+| **N2-04（正式 V2 主链路自动验收完成）** | 企业资质、个人分类、公司业务档案与综合资料现有网页、原件历史、共享、归档 Excel、搜索、回收站、整记录转移都已用 V2；db79b82 增加 12 项档案/目录/综合资料 MCP 工具并使 upload_files/list_files 支持全部五类；6a7b1ff 将 ZIP/文件夹全版本导出也固定使用 FileId+Version，不再访问旧文件 ID，正式环境旧业务路由关闭、只有 --smoke 测试注册；[CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) success。下一阶段 N4 清理旧表/Store 及只为历史测试留存的 API，再做 Edge/Chrome 真实用户操作验收。 |
 
-**源码切换边界**：IP 与项目合同的现有网页、MCP、Excel 和搜索/回收站已按真实 V2 FolderId/FileId/LinkId 接入；`NativeProjectExcelLedger`、`NativeProjectTransferStore` 和 `SearchStore`/`RecycleStore` 的项目合同新库路径通过 CI #38848010379。`Vault.CreateSchema` 仍建开发期旧表，业务档案/企业资质/个人分类/综合资料现有 `app.js` 及 `/api/archives`、`/api/records`、旧 Excel/业务附件 Store 仍读写旧表。这是 **N2-04** 的集中实施缺口；旧 Store 不能在引用未清零前删除，禁止新旧同业务双写。
+**源码切换边界**：全部正式网页、MCP、Excel、搜索/回收站和附件/历史原件下载已经转为 V2 FolderId/FileId/LinkId，ZIP/文件夹选中导出也不再含旧 business_files 身份；生产 Program.cs 不再注册旧项目/合同/IP/档案/综合资料/Excel/附件 HTTP 路由，相关旧 API 只供 --smoke 历史测试。`Vault.CreateSchema` 尚包含旧表且测试依赖老 Store，需要 N4 集中清除。自动 CI 成功不等于 Edge/Chrome 实机验收。
 
 ## 4. 接续开发的唯一顺序
 
@@ -55,7 +55,7 @@ IPSys 用户界面名称是「资料管理系统」，以**个人资料长期归
 9. **N2-03-05 完成**：原有 MCP 的 `list_ips/create_ip/update_ip/delete_ip`、知识产权全局搜索/原件 FileId 与回收站、整记录含所有原件版本的跨公司/个人复制移动已通过 Windows [CI #38831972597](https://github.com/zy19970/IPSys/actions/runs/38831972597)。跨区物理 FileObject 必须独立，复制失败整体回滚。
 10. **N2-03-06 完成**：新增 `McpLocalIpFiles.cs`；`upload_files(kind=ip)`、`list_ip_files`、`delete_ip_file` 均通过已授权本机 V2 HTTP，不再混用旧链接；同内容时必须由调用方显式确认复用选项，原件更新仍保留所有版本。[CI #38833862535](https://github.com/zy19970/IPSys/actions/runs/38833862535) 已成功。
 11. **N2-03-07-01 已完成**：`NativeProjectContractUiEndpoints.cs` 将现有项目与合同台账、项目所属合同、文件列表/历史版本映射到新库 FolderId/FileId，并提供原生排序及合同复制时同事务关联现有原件；`app.js` 项目合同 CRUD、附件内容查重与用户选择、版本上传、共享/解绑、预览下载及 ZIP/文件夹导出已切 V2。`ip-v2.js` 共用文件确认流程，`export.js` 提供原生 FileId 下载。[CI #38836041449](https://github.com/zy19970/IPSys/actions/runs/38836041449) 真实 SQLCipher HTTP、Node UI、Windows Debug/Release 通过。**项目 Excel 和项目跨工作区复制当前禁止调用旧表**。
-12. **当前 N2-04 集中交付目标**：不用继续拆项目合同的 MCP/Excel/搜索/复制小批次，这些主链路已通过 CI。直接把公司七类业务档案分类/企业资质、个人多分类资料、综合资料现有 UI 与 V2 Folder/File 真实归属、附件版本共享、Excel、搜索回收站和导出接成一个可验收系统；完成以后再进入 N4 旧表清理与 Edge/Chrome、T01–T09 正式安全测试。
+12. **当前阶段切换**：N2-04 主链路及 Windows 自动回归已通过，直接进入 N4：去除历史 Schema/Store、停用测试专用旧 HTTP/搜索身份投影、把遗留旧用例改为 V2，并整体跑 Windows/SQLCipher/Node、Edge/Chrome 实机及 T01–T09；不做旧数据库迁移。
 3. **然后 N2-03**，在新文件归属能力完整后，分模块切换旧业务 API、MCP、Excel 到 V2 数据源；旧 API 形状可保留，不能双写。
 4. **最后 N4**，接通现有 UI、搜索 File 属性与 Folder 祖先信息、递归导出、默认最新版本、PDF/回收站，删除不再引用的旧表/兼容代码，完成 Windows CI、Edge/Chrome 用户实机和 T01–T09 安全验收。
 

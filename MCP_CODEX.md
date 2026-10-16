@@ -1,9 +1,9 @@
 # IPSys 本机 Codex MCP
 
-> **2026-10-16 状态（N2-03-07-02 首批）**：知识产权与项目合同原名 MCP CRUD、`upload_files(kind=project/contract/ip)` 均已对齐 V2 FolderId/FileId/LinkId，项目合同通过 `list_project_files/list_contract_files` 与 `delete_project_file/delete_contract_file` 操作单 Folder 内的有效原件；通用 `list_files/delete_file` 也已改为 V2 多模块链接汇总和仅解除指定 LinkId。项目合同相关功能提交 [00e9c87](https://github.com/zy19970/IPSys/commit/00e9c87ab4dfec9cd702c3dd2f08f60f5becb935)、[60c3692](https://github.com/zy19970/IPSys/commit/60c36926945c9bb4d660b25212dbf5f23f23f95a)、[6fe6474](https://github.com/zy19970/IPSys/commit/6fe647437128635f0751b5edfe8795d13c74e0fc)。N2-03-07-02 剩余项目/合同 V2 Excel、搜索/回收站和跨区整项目含合同与原件版本事务复制。第三轮 [Windows CI #38845050570](https://github.com/zy19970/IPSys/actions/runs/38845050570) **success**。本机 MCP 仍需在已解锁的软件手动开启，通过当前用户 stdio/命名管道访问；无需开放 TCP 端口；本机 Codex 人工验收未完成。
+> **2026-10-16 最新 N2-04 MCP 验收**：原名项目、合同、知识产权以及业务档案、目录、综合资料 MCP 均使用当前网页的 SQLCipher V2 FolderId/FileId/LinkId；`upload_files(kind=project/contract/ip/archive/general)`、通用 `list_files/delete_file` 覆盖全部五种业务记录。新增档案/综合资料 12 项工具、子目录 parent_id 枚举和跨区/归属/原件历史保护：[功能提交 db79b82](https://github.com/zy19970/IPSys/commit/db79b825a3b7fb1ab384a70da69575d55e653b80)，[测试修正 f49bc49](https://github.com/zy19970/IPSys/commit/f49bc49a30c86ba89589e34083d0a0c2cff1f860)，[Windows CI #38880280977](https://github.com/zy19970/IPSys/actions/runs/38880280977) **success**。本轮 [6a7b1ff](https://github.com/zy19970/IPSys/commit/6a7b1ffe882aaa114c9d90af7011068cad7fd330) 又将正式页面旧附件/Excel/业务 HTTP 暴露面限制为 `--smoke` 历史测试，全部 ZIP/文件夹导出只使用 V2 FileId+FileVersion；[CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) **success**。仍需在已解锁的本机软件中手动开启 MCP，不开放 TCP 端口；本机 Codex 人工验收另行进行。
 
 
-IPSys 支持本机 Codex 通过 MCP stdio 操作相同 Windows 用户已解锁资料库，复用软件现有 SQLCipher 会话而不另开库。知识产权原名工具及 `v2_*` 使用 V2；项目合同原名工具仍走旧业务接口，用户和 Agent 必须区分 ID。
+IPSys 支持本机 Codex 通过 MCP stdio 操作同一 Windows 用户已解锁资料库，复用软件现有 SQLCipher 会话而不另开库。全部原名工具和已有 `v2_*` 项目/合同/IP 工具均使用 V2 FolderId；旧业务表与新版资料 ID 不混用。
 
 ## 使用步骤
 
@@ -21,7 +21,7 @@ IPSys 支持本机 Codex 通过 MCP stdio 操作相同 Windows 用户已解锁�
    args = ["--mcp"]
    ```
 
-4. 重新进入 Codex 会话，确认 MCP 工具列表，然后让 Agent 操作项目、合同和原件。任务结束后，回 IPSys 关闭 MCP。
+4. 重新进入 Codex 会话，确认 MCP 工具列表，即可操作项目、合同、专利、档案、目录、综合资料及原件。任务结束后回 IPSys 关闭 MCP。
 
 ## 工具
 
@@ -33,20 +33,24 @@ IPSys 支持本机 Codex 通过 MCP stdio 操作相同 Windows 用户已解锁�
 | `create_ip` | 新增专利和其他知识产权 |
 | `update_ip` | 修改已有知识产权，仅更新传入字段 |
 | `delete_ip` | 将知识产权移入回收站，可恢复 |
-| `list_files` | 当前工作区有效 V2 项目、合同、知识产权原件归属；返回 `id=LinkId`、`fileId=FileId`、`ownerId=FolderId`、`kind` 等 |
+| `list_files` | 列出工作区项目、合同、知识产权、档案、综合资料的 V2 有效附件；`id=LinkId`、`fileId=FileId`、`ownerId=FolderId`、`kind`，档案还包含 `section` |
 | `create_project` | 创建科研、横向或其他项目 |
 | `update_project` | 按 ID 更新指定字段 |
 | `delete_project` | 将项目及其合同移入回收站 |
 | `create_contract` | 在有效项目下创建合同 |
 | `delete_contract` | 将合同移入回收站 |
-| `upload_files` | 按本机绝对路径将多份原件加密入库 |
+| `upload_files` | 按本机绝对路径上传项目、合同、知识产权、档案或综合资料原件，支持 SHA-256 显式选择和历史版本追加 |
 | `delete_file` | 按 `list_files` 返回的 `id` 解除单个 V2 LinkId（参数仍为 `file_id`），不删其它关联及历史原件 |
 
-所有工具均需显式指定 `workspace`：`company` 是公司，`personal` 是个人。上传支持 `kind` = `project`、`contract` 或 `ip`、`owner_id`、`paths`（1–20 条本机绝对路径），可选 `on_conflict`（`new` / `update`）、`group_id` 和 `duplicate_mode`（`independent` / `reuse`）。知识产权附件还可填写 `material_category`，可选「申请材料」「通知文件」「证书文件」「其他材料」，不填则归为「其他材料」；项目和合同附件不用填写该字段。
+所有工具均需显式指定 `workspace`（`company` 公司、`personal` 个人）。`upload_files` 支持 `kind=project/contract/ip/archive/general`、归属 `owner_id=FolderId` 和本机绝对路径数组 `paths`（1–20 条）；`kind=archive` 必须填写所属分类 `section`（公司 certificate/achievement；个人 certificate/achievement/academic），且所选 FolderId 及 section 必须一致。`on_conflict=new/update`；更新需指定目标 `file_id=FileId` 且同 Folder 有效关联；同内容已有候选必须明确 `duplicate_mode=independent/reuse/share`，复用/共享还须正确 `source_file_id`。IP 的 `material_category` 可设为申请材料/通知文件/证书文件/其他材料，其他类型不可传此专用类别。
 
 `create_ip` 的必填参数为 `workspace`、`name`、`ip_type`，`update_ip` 使用 `ip_id` 查找记录。可填写 `status`、`applicants`、`right_holders`、`creators`、`application_no`、`application_date`、`publication_no`、`publication_date`、`grant_notice_no`、`grant_notice_date`、`publication_info`、`grant_date`、`registration_no`、`first_published_date`、`registration_date`、`category`、`remarks`、`tags`。支持发明、实用新型、外观设计专利等既有七种知识产权类型，状态和日期自动走原有业务校验；更新时不改变未传入的字段。
 
-默认独立归档而不覆盖已归档原件。单文件限 64 MiB。项目、合同、附件的所有删除均使用现有软删除 API，可在回收站恢复，不开放永久清理。
+上传不会无提示合并已有原件；单文件上限 64 MiB。业务记录软删除可在回收站恢复；删除原件只解除指定 LinkId，原件版本和其它共享位置保留，物理清理仍受历史引用保护。
+
+## N2-04 档案、目录及综合资料 MCP 工具
+
+新增 `list_archives/create_archive/update_archive/delete_archive`：通过指定 `section` 与 `archive_id` 操作 V2 资料，创建公司业务档案 achievement 时还需指定有效 `folder_id`（所属业务目录），修改属性不移动目录；`list_archive_folders` 默认列出公司七个系统根，可传 `parent_id` 逐级查询子目录，`create_archive_folder/update_archive_folder/delete_archive_folder` 创建、修改和删除允许删除的目录，系统根及含历史子资料目录受保护。综合资料使用 `list_general/create_general/update_general/delete_general`，仅需名称 `title` 和修改/删除时的 `general_id`。文件统一通过 `upload_files`、`list_files` 和 `delete_file`，不要求手动生成内部文件 ID。所有写操作以当前解锁工作区的真实 V2 身份校验；禁止越区、错分类或无关联 FileId 追加历史版本。
 
 ## Codex 提示词示例
 

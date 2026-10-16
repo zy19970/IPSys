@@ -1,14 +1,14 @@
 # IPSys — 资料管理系统
 
-> **当前开发状态（2026-10-16，N2-04 大里程碑开发中）**：知识产权、项目/合同现有网页及原件、MCP、固定 Excel、搜索回收站与完整历史跨区复制均已按 SQLCipher V2 运行，[CI #38848010379](https://github.com/zy19970/IPSys/actions/runs/38848010379) success。N2-04 又完成归档/资质/个人分类/综合资料的**V2 固定 Excel 后端、全模块原生搜索（含祖先目录和可选 File 属性）、V2 回收站与文件历史保护**，旧 UI 搜索 ID 与新 FolderId 隔离，[CI #38852697271](https://github.com/zy19970/IPSys/actions/runs/38852697271) **success**。但这些模块现有网页、附件与导出仍读写旧接口，**N2-04 整体尚未完成**；下一步直接在本里程碑内统一完成页面/附件/Excel/搜索回收站调用切换。所有旧库都是测试数据，不需要迁移、回填、兼容；Edge/Chrome 实机仍待验收。
+> **当前开发状态（2026-10-16，N2-04 全业务 V2 主链路自动回归通过）**：项目/合同、知识产权、企业资质、公司业务档案、个人分类和综合资料均已在正式网页、Excel、搜索/回收站、附件与文件版本及相关完整原件复制中使用 SQLCipher V2；同区原件共享与移动保持单事务。[db79b82](https://github.com/zy19970/IPSys/commit/db79b825a3b7fb1ab384a70da69575d55e653b80) 已补齐档案目录和综合资料 MCP CRUD、五类业务 upload_files/list_files，并去除网页旧附件调用；[6a7b1ff](https://github.com/zy19970/IPSys/commit/6a7b1ffe882aaa114c9d90af7011068cad7fd330) 又统一文件夹/ZIP 导出为 V2 FileId+FileVersion，并将旧业务 HTTP 路由仅注册于 --smoke 测试模式。[Windows CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) **success**。下一阶段 N4 旧 Schema/Store 与测试适配清理；Edge/Chrome 用户实机仍待验收。旧库全部为开发测试数据，不迁移。
 
 IPSys 定位为**业务化文件夹式本地资料管理器**，个人资料长期归档优先、公司资料独立工作区。程序采用 WinForms + 127.0.0.1 本机网页，一个 SQLCipher 加密库保存真实原件字节。2026-10-15 用户已确认 **Folder/File 统一资源物理模型**：所有业务条目及分类为带业务属性的 Folder（无版本），只有附件为 File（独立 FileId、选填属性和历史版本）。同区多个 Folder 可引用同一个 FileId，两个独立文件也可仅复用物理原件内容；查重时显示已有文件名与路径，由用户决定；公司/个人不共享物理原件。
 
-**唯一架构和开发进度依据**：[RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)。N2-03 项目合同及 IP 新库主链路已通过对应 Windows CI，当前直接进入 N2-04（档案、资质、个人分类与综合资料 V2 全入口接入）。只有代码、HTTP/SQLCipher、MCP/Excel/搜索/回收站、文件分享导出和 UI 测试一致通过，才标记 N2-04 完成；之后 N4 旧表清理和正式实机验收。
+**唯一架构和开发进度依据**：[RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)。N2-03 项目合同及 IP 新库主链路已通过对应 Windows CI，N2-04（档案、资质、个人分类与综合资料 V2 全入口接入）主链路及全量 CI 已通过，下一阶段是 N4 清理旧测试适配表与兼容代码。只有代码、HTTP/SQLCipher、MCP/Excel/搜索/回收站、文件分享导出和 UI 测试一致通过，才标记 N2-04 完成；之后 N4 旧表清理和正式实机验收。
 
 ## 产品模型与页面规则（当前统一口径）
 
-从使用者角度，资料按 **资料库 → 个人/公司工作区 → 分类容器或业务模块 → 业务记录 → 附件原件** 组织。V2 将分类及业务记录统一映射到 `folders`，附件则由 `files/file_versions/file_objects/file_chunks/folder_file_links` 管理；IP 与项目/合同的现有网页已切换，档案/综合资料和若干外围接口仍处于过渡阶段。
+从使用者角度，资料按 **资料库 → 个人/公司工作区 → 分类容器或业务模块 → 业务记录 → 附件原件** 组织。V2 将分类及业务记录统一映射到 `folders`，附件则由 `files/file_versions/file_objects/file_chunks/folder_file_links` 管理；所有正式业务网页、原件导出和 MCP 均使用 V2 数据身份；历史旧表与兼容路由仅用于尚未清理的自动测试。
 
 | 概念 | 用途 | 现行表现 |
 | --- | --- | --- |
