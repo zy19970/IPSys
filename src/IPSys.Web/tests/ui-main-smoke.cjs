@@ -1043,8 +1043,8 @@ assert.ok(js.includes("trashRows=trash"));
 assert.ok(js.includes("data-trash-restore=")&&js.includes("data-trash-purge="));
 assert.ok(js.includes("case 'trashRestoreSelected'")&&js.includes("case 'trashPurgeSelected'"));
 assert.ok(js.includes("'/api/trash/'+space+'/'+operation"));
-assert.ok(v2IpJs.includes('"/api/v2/files/"+workspace+"/"+record.fileId+"/links'),
- 'Same-workspace association must use native V2 FolderFileLinks');
+assert.ok(js.includes("api('/api/v2/files/'+space+'/'+file.fileId+'/associate'"),
+ 'Same-workspace association must use the native V2 atomic link copy/move route');
 assert.ok(!js.includes("'/api/business-files/'"),
  'Current UI must never fall back to legacy business-file IDs');
 assert.ok(!v2IpJs.includes('associateGeneric(api,'),
