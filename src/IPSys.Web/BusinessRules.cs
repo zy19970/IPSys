@@ -24,6 +24,16 @@ record ArchiveFolderInput(string Name,long? ParentId);
 record ArchiveEntryOrderItem(string Kind,long Id);
 record ArchiveEntryReorder(long ParentId,List<ArchiveEntryOrderItem>? Items);
 
+record FolderMutationInput(
+    ProjectInput? Project = null,
+    ContractInput? Contract = null,
+    IpInput? Ip = null,
+    long? ParentId = null,
+    ArchiveInput? Archive = null,
+    ArchiveFolderInput? ArchiveFolder = null,
+    string? Section = null,
+    TitleInput? General = null);
+
 // Pure V2 business rules: no obsolete SQL writes or schema upgrades.
 static class ProjectRules
 {
