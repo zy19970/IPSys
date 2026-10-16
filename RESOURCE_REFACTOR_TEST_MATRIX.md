@@ -109,3 +109,11 @@ N1 验收：[Windows CI #38740628571](https://github.com/zy19970/IPSys/actions/r
 [功能 d214d20a](https://github.com/zy19970/IPSys/commit/d214d20a658ec11dffde258bad7f5f1ef7e64f22)；[单 EXE 脚本补齐 f480fca6](https://github.com/zy19970/IPSys/commit/f480fca61cc2ef7d9e286ef7427209a6859d467c)；[Node UI 旧断言调整 d8ded0b9](https://github.com/zy19970/IPSys/commit/d8ded0b9cd25de90c59197c9e442623050d5800f)；[运行时拼接修复 c56ce21f](https://github.com/zy19970/IPSys/commit/c56ce21f5a197e4f359263c9b1ff39209862428e)。最终 [CI #38828523508](https://github.com/zy19970/IPSys/actions/runs/38828523508) 已通过自动验收。新版 IP 真实网页页面已接 `/api/v2/ui/ip` 汇聚 FolderId/FileId/LinkId/版本；IP CRUD/排序/批量删除、附件上传暂存内容去重与用户明确选择、类别、下载/预览/同区共享/解绑/新版本、IP Excel 及文件夹/ZIP 导出均指向 V2；JavaScript 适配文件单 EXE 内嵌且有 HTTP Smoke。重点核验跨工作区隔离、SHA-256、原件字节、材料类别、真实 Node UI 渲染、旧业务附件不会与 V2 FileId 混合。**旧统一搜索结果/回收站、原 14 项 MCP 的 IP 旧命令、跨区历史原件事务化复制移动和 Edge/Chrome 用户实机仍待 N2-03-05/N4。**
 
 最终 Windows CI [#38828523508](https://github.com/zy19970/IPSys/actions/runs/38828523508) **completed/success**，真实浏览器脚本执行和本地 SQLCipher/HTTP 回归全部通过。历史失败三次为脚本嵌入、旧 IP 数据模型测试断言和前端提示拼接；另一次为旧排序断言，均通过独立提交修复。需后续用户 Windows/Edge/Chrome 实机验证及 N2-03-05 搜索/回收站/MCP/跨区复制收尾。
+
+## N2-03-05～06：V2 知识产权统一搜索、回收站、跨区原件与 MCP（2026-10-16）
+
+[N2-03-05 最终 CI #38831972597](https://github.com/zy19970/IPSys/actions/runs/38831972597) **success**：原名 IP MCP CRUD、统一搜索命中的 IP FolderId/原件 FileId、共享回收站 V2 删除/恢复，以及整条知识产权带多个文件和完整历史版本跨公司/个人单事务复制移动；验证源原件字节不变、目标 FileObject 物理隔离、失败无部分复制记录、软删除来源可恢复及权限拒绝。旧临时测试表的 legacy_ip 类型在开发期与 V2 ip 明确区分，不构成旧数据迁移要求。
+
+[N2-03-06 源码提交 3f1e5608](https://github.com/zy19970/IPSys/commit/3f1e56088cb6c4f974d74221a6bca583a57d3939)、[最终 CI #38833862535](https://github.com/zy19970/IPSys/actions/runs/38833862535) **success**：在 SQLCipher + 真实本机 MCP 管道/HTTP 中验证 upload_files(kind=ip) 使用 V2 FolderId 上传原始字节并保留材料类别；list_ip_files 返回实际 FileId/LinkId；同内容 SHA-256 重复不选择时拒绝并清理 writing 暂存；选 reuse 仅复用物理内容并产生独立 FileId；update 追加 Version 2；个人工作区不能引用公司 IP ID；delete_ip_file 只解除指定关联，不损坏原 FileId 与历史版本。
+
+**当前明确不做**：旧数据库迁移、旧测试资料回填、跨新旧数据库同步及旧版库兼容。**下一项 N2-03-07**：将项目/合同真实网页、原件、MCP/Excel/转移接入 V2，再推进归档与综合资料，最后清理过渡旧物理表和兼容代码。用户本机 Edge/Chrome 以及最终安全验收尚未完成，勿将 Windows 自动 CI 等同整机正式验收。

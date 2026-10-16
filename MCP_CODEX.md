@@ -64,7 +64,7 @@ Codex 通过 stdio 使用同一个 EXE 的 `--mcp` 模式，子进程仅通过�
 
 更多步骤见 `WEB_TESTING.md`。
 
-> **N2-03-04 过渡提醒（2026-10-16）**：现有网页“知识产权”已改走 V2 FolderId 与 FileId，而不带 `v2_` 前缀的 `list_ips/create_ip/update_ip/delete_ip` 仍访问旧 IpStore。自动化新增/修改知识产权应使用 `v2_list_ips`、`v2_create_ip`、`v2_update_ip`、`v2_delete_ip`，并使用其返回的新 FolderId；不要把旧 MCP ID 传入 V2 附件或 Excel API。旧工具名的正式切换属于 N2-03-05，必须连同旧业务 API/搜索/回收站验收。
+> **2026-10-16 当前 V2 MCP（N2-03-05/06 已验收）**：`list_ips/create_ip/update_ip/delete_ip` 与 `v2_*_ip*` 使用当前知识产权网页相同的 V2 FolderId，不再写旧 IpStore。原 `upload_files` 指定 `kind=ip` 时从本机绝对路径写入 V2 原件；`owner_id` 必须是知识产权 FolderId；新增 `list_ip_files` 按 `ip_id` 返回有效 LinkId/FileId/材料类别/最新版，`delete_ip_file` 需同时提供 `ip_id`、`file_id`、`link_id`，只删除单处关联。
 
 ## V2 原生业务 MCP 工具（N2-03-01）
 
@@ -72,3 +72,9 @@ Codex 通过 stdio 使用同一个 EXE 的 `--mcp` 模式，子进程仅通过�
 
 `v2_*` 工具使用新库 FileId/FolderId 身份空间，不能把原有 `list_projects` 返回的旧 ID 与新 FolderId 混用。当前 `upload_files` 和其余旧工具尚属旧业务数据路径；原生 V2 文件上传/查重仍通过 `/api/v2/files`，不得误以为现有 MCP 文件上传已经切换。MCP 依然需要在已解锁的软件中手动启用，关闭后新旧工具同时拒绝访问。用户本机 Codex 客户端的实际可用性需实机验收。
 
+
+## V2 知识产权 MCP 原件操作（N2-03-06）
+
+调用 `upload_files` 指定 `workspace=company/personal`、`kind=ip`、`owner_id=V2 FolderId`、`paths=[绝对路径]`、可选 `material_category`（申请材料/通知文件/证书文件/其他材料）。无重复内容时生成新 FileId；有 SHA-256 重复内容时，若未明确给出 `duplicate_mode`，返回已有文件的名称/位置/FileId 并撤销暂存，不自动合并。确认后可设置 `duplicate_mode=independent` 独立保存、`duplicate_mode=reuse` 且 `source_file_id=已有 FileId` 仅复用物理内容，或 `duplicate_mode=share` 加上 `source_file_id` 共享同一 FileId。服务端复核匹配哈希与工作区归属。为原 FileId 追加版本时使用 `on_conflict=update` 和 `file_id=目标 FileId`，不得同时提供内容复用选项。查询用 `list_ip_files(ip_id=...)`；解除用 `delete_ip_file(ip_id=...,file_id=...,link_id=...)`。这些操作均使用原有手动启用的 MCP 授权、仅本机用户管道和 SQLCipher，不开放外部网络访问。
+
+[Windows CI #38833862535](https://github.com/zy19970/IPSys/actions/runs/38833862535) 已通过。旧 `list_files/delete_file` 仍服务尚未切换的项目/合同等临时旧模块，不能拿其中的旧文件链接 ID 去操作 V2 知识产权；后续这些模块全部转入 V2 后清理旧路径。项目仍在开发阶段，测试数据库无需迁移、兼容或回填。

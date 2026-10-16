@@ -1,6 +1,6 @@
 # IPSys 开发计划与验收进度（2026-10-15，V2 新库执行版）
 
-> **当前唯一执行依据**：[RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md) 的新 SQLCipher V2 路线（N1、N2、N3、N4）。2026-10-15 用户明确旧资料库全为测试数据，取消迁移、回填和旧库兼容；当前实施证据截至 `main@93be896f`。本计划取代此前“先做 V1.0 综合验收”和旧 R4 迁移的施工顺序，但不取消正式发布前的安全验收门槛。
+> **当前唯一执行依据**：[RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md) 的新 SQLCipher V2 路线（N1、N2、N3、N4）。2026-10-15 用户明确旧资料库全为测试数据，取消迁移、回填和旧库兼容；已核验最新 N2-03-06 Windows CI #38833862535。本计划取代此前“先做 V1.0 综合验收”和旧 R4 迁移的施工顺序，但不取消正式发布前的安全验收门槛。
 
 ## 1. 产品和已确认架构
 
@@ -24,8 +24,10 @@ IPSys 用户可见名称为「资料管理系统」，采用 Windows WinForms �
 | **N2-03-01** | **Windows CI 通过** | 新增 11 项 `v2_*` MCP 项目/合同/IP 操作，经手动授权、本机管道和 HTTP 仅访问 V2 `folders`；[CI #38822708366](https://github.com/zy19970/IPSys/actions/runs/38822708366)。旧 14 工具暂保留，未双写 |
 | **N2-03-02** | **Windows CI 通过** | 知识产权 FolderId 绑定 V2 FileId/Link/Version 的附件完整后端链路，工作区隔离、材料类别、版本、共享/解除/恢复及 HTTP/SQLCipher 回归；[CI #38824119576](https://github.com/zy19970/IPSys/actions/runs/38824119576)。旧网页/Excel/MCP 未切换 |
 | **N2-03-04** | **Windows CI #38828523508 已通过** | 将现有 IP 网页的 V2 FolderId/文件归属/文件版本/上传查重用户选择、Excel/ZIP/文件夹导出统一；旧搜索、IP 回收站、旧 MCP 和跨区事务化复制尚待 N2-03-05 |
+| **N2-03-05** | **Windows CI #38831972597 已通过** | IP 原名 MCP CRUD、统一搜索及 V2 回收站使用唯一 FolderId；跨区整 IP 文件夹含多份文件历史在同一个 SQLCipher 事务中复制/移动，源工作区和目标工作区的 FileObject 物理独立；拒绝不安全的物理永久删除。 |
+| **N2-03-06** | **Windows CI #38833862535 已通过** | 原 MCP `upload_files(kind=ip)`、新增 `list_ip_files/delete_ip_file` 接入 V2 FileId/LinkId，支持本机原件、更新版本、SHA-256 同内容确认/引用/物理复用/独立保存和工作区隔离，不再触达旧 IP 附件表。 |
 | **N2-03-03** | **Windows CI 通过** | V2 知识产权 XLSX 沿用固定20列与重复记录策略，仅读写新版 FolderId/attributes_json，Excel 更新不改变原 IP/附件身份；真实 SQLCipher/HTTP [CI #38825202078](https://github.com/zy19970/IPSys/actions/runs/38825202078) 通过 |
-| **N2-03 其余接口、N4** | **待继续** | 下一批优先评估并分模块迁移旧业务 HTTP、文件附件归属、MCP 旧命名和 Excel；冻结 UI/搜索/导出和完整实机验收仍待完成 |
+| **N2-03-07～N4** | **待继续** | 下一批项目/合同、其后归档及综合资料的 V2 页面/附件/Excel/MCP 接入，清理临时旧代码和旧物理表；最后完成新版搜索导出共性、冻结 UI、用户 Windows/Edge/Chrome 实机验收。没有旧库迁移、回填或兼容任务。 |
 
 N2 原生 API 与旧 UI/API 目前并存，不能据此声称新库整套业务完成。当前 `Vault` 仍初始化旧综合资料表，`app.js`、`BusinessFiles.cs` 和原有业务接口仍访问旧表；在切换前不得删除旧 Store 或对两套物理表同时写入。
 
@@ -35,7 +37,7 @@ N2 原生 API 与旧 UI/API 目前并存，不能据此声称新库整套业务�
 2. **N3-02（已完成）**：同区多 Folder 关联 FileId、软解绑及显式恢复；共享版本在各位置同步，解除一处不删除原件，Windows CI 已通过；完整回收站 UI 后续 N4 验收。
 3. **N3-03（已完成）**：独立 FileId 可显式复用同区 FileObject，属性和版本历史独立；跨公司/个人复制产生独立物理字节，CI 已通过。
 4. **N3-04（原生 V2 API 已完成）**：按大小、SHA-256 匹配同区最新原件（含异名），返回原件名与 Folder 路径，用户决定共享 FileId、只复用内容、独立保存或取消，writing 分块安全清理并按会话约束票据；CI 已通过。可视化弹窗仍归 N4。
-5. **N2-03（分批进行中）**：N2-03-01～03 原生 V2 MCP、IP 文件、Excel 已通过 CI；N2-03-04 已将**当前 IP 网页**的列表/CRUD/上传查重/版本/导出连到新版 FolderId/FileId，已通过 CI。下一批 N2-03-05 继续统一 IP 回收站、跨区原件事务复制、旧 MCP IP 默认命名和搜索，然后分模块迁移项目/合同/档案，避免新旧双写或错配。
+5. **N2-03（分批进行中）**：N2-03-01～06 已分别通过 Windows CI；知识产权现有网页、统一搜索/回收站、MCP 原名 CRUD 和本机原件上传/分类/版本/查重决策、IP Excel、跨工作区完整历史原件复制已经统一到 V2 FolderId/FileId。下一批 N2-03-07 直接替换项目/合同当前网页和业务文件调用，不迁移任何旧数据；再依次切换公司/个人归档、综合资料。所有模块改完后清理临时旧业务表与旧 API。
 6. **N4**：保持冻结 UI，接通新库的前端、File 选填属性和 Folder 祖先字段搜索、递归导出、默认最新版本、回收站；确认无调用后清除旧业务/附件表及兼容代码。
 7. **N4 整体验收和发布判断**：Windows Debug/Release/单 EXE、SQLCipher HTTP、Node UI/PDF/ZIP、MCP、Excel，以及 Edge/Chrome 实机和 T01–T09 数据安全专项。
 
