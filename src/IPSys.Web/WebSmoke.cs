@@ -371,12 +371,12 @@ static class WebSmoke
         if(!invalidIpDenied)throw new IOException("MCP 未使用知识产权原状态校验。");
         // IP aliases now return V2 FolderIds; the legacy upload_files API
         // has unrelated legacy owner IDs and cannot accept a native IP.
-        using(var upload=new HttpRequestMessage(HttpMethod.Post,
+        using(var ipRequest=new HttpRequestMessage(HttpMethod.Post,
             $"/api/v2/ip/company/{ipId}/files"){Content=new ByteArrayContent(bytes)})
         {
-            upload.Headers.Add("X-File-Name",Uri.EscapeDataString("mcp-native-ip.bin"));
-            upload.Headers.Add("X-Material-Category",Uri.EscapeDataString("申请材料"));
-            using var response=await client.SendAsync(upload);
+            ipRequest.Headers.Add("X-File-Name",Uri.EscapeDataString("mcp-native-ip.bin"));
+            ipRequest.Headers.Add("X-Material-Category",Uri.EscapeDataString("申请材料"));
+            using var response=await client.SendAsync(ipRequest);
             response.EnsureSuccessStatusCode();
         }
         var nativeFiles=await client.GetFromJsonAsync<System.Text.Json.JsonElement>(
