@@ -1,6 +1,6 @@
 # IPSys 统一资源内核重构：R0-02 回归与差异矩阵
 
-> **现行用法（2026-10-16，N4 第二批源码清理已通过）**：N2-04 全模块 V2 已完成，N4 第一批去掉旧物理表/接口，第二批删除 31 个旧 Store/Provider/HTTP/历史测试源码，保留 V2 共用 DTO/字段校验和 XLSX 模板/解析。`7b51669` 首轮因共用 `FolderMutationInput` 漏删而失败，`b3c8f3b` 补回后 [Windows CI #38911635273](https://github.com/zy19970/IPSys/actions/runs/38911635273) completed/success。F01–F17 继续跟踪版本共享、File 选填属性、搜索/递归导出边界及 Edge/Chrome/T01–T09 实机。
+> **现行用法（2026-10-17）**：N2-04 V2 全业务与 N4 旧 Schema/源码清理已通过 Windows CI；MCP P0 及三批安全、分页和 14 项业务工具补齐亦已自动验收，最新业务代码 `080a599` 对应 [CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431) **completed/success**。F01–F17 继续保留核心 Folder/File 行为检查，MCP 新能力实测按 [WEB_TESTING.md](./WEB_TESTING.md) 专项矩阵推进；Edge/Chrome、Codex/WorkBuddy、2 GiB+ 与 T01–T09 仍待用户实机。
 > 
 > 权威目标与逐步计划见 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)，界面约束见 [UI_BASELINE.md](./UI_BASELINE.md)，历史 Windows 安全/旧库验收见 [WEB_TESTING.md](./WEB_TESTING.md)。
 
@@ -14,9 +14,11 @@
 | ZIP 与目录导出 | `src/IPSys.Web/tests/export-smoke.cjs` | 模拟 File System Access API、冲突、安全命名、流式 ZIP、取消 |
 | 搜索 UI | `src/IPSys.Web/tests/search-smoke.cjs` | 当前工作区 API、真实结果导航、HTML 转义、过期结果 |
 | PDF/预览 | `src/IPSys.Web/tests/pdf-canvas-smoke.cjs` 和 `preview-smoke.cjs` | 离线 PDF.js Canvas 预览，不允许重构后回退到浏览器 iframe |
-| 最新 N4 V2-only 与旧源码裁剪 CI | [Windows CI #38911635273](https://github.com/zy19970/IPSys/actions/runs/38911635273) | 对 `b3c8f3b` 的 Debug/Release、SQLCipher 开库/HTTP/附件/Excel/回收站、MCP、Node UI/ZIP/PDF、单 EXE 回归全部通过；不包含用户本机完整浏览器及故障注入 |
+| N4 两批旧实现收敛 + MCP 最新业务 CI | [N4 CI #38911635273](https://github.com/zy19970/IPSys/actions/runs/38911635273)、[CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431) | N4 删除 31 份旧源码、恢复 V2 共用 DTO；MCP 近期合同编辑、文件历史/下载、共享及关联、转移/搜索/回收站、stdio/SQLCipher 回归通过；未覆盖大数据库定量压测与 Windows 用户实机故障注入 |
 
-当前最新自动验证的源码为 `b3c8f3b`（[Windows CI #38911635273](https://github.com/zy19970/IPSys/actions/runs/38911635273) completed/success）；前一失败提交 `7b51669` 的 Debug 编译出现 6 条 CS0246 共用 DTO 缺失，已恢复且无回退旧 SQL。之后若修复文件可选属性、导出边界或异常安全，也必须分别留存新的 CI 与实机证据。
+当前最新通过自动回归的**业务源码**为 `080a599`（[CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431) completed/success），之后 `7b7c714` 为验收文档同步提交。N4 首批/二批裁剪对应的早期源码与失败记录已保留于提交历史；测试矩阵不再把已经删除的 Store 当作待开发项。新改代码须单独留证；自动回归不能替代真实 Edge/Chrome、Codex/WorkBuddy 和 T01–T09。
+
+**MCP 最新专项自动证据**：并发/单实例 [CI #38917944549](https://github.com/zy19970/IPSys/actions/runs/38917944549)，写入可靠性 [CI #38923795350](https://github.com/zy19970/IPSys/actions/runs/38923795350)，单 SQL 文件查询和分页 [CI #38927263017](https://github.com/zy19970/IPSys/actions/runs/38927263017)，第三批业务工具扩充 [CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431)；不代表同机器 Codex + WorkBuddy 实机、MCP 任务结果丢失或数据库崩溃实验已通过。
 
 ## 二、关键行为逐项对照
 
@@ -24,22 +26,22 @@
 
 | 编号 | 场景与期望 | 当前情况 | 下一步需要的回归证据 |
 | --- | --- | --- | --- |
-| F01 | Folder 身份及工作区/类型/ID 不串号 | 全部正式业务、MCP/Excel/搜索和 `--smoke` 已统一 V2 FolderId/FileId/LinkId，新库不建旧业务表，[Windows CI #38905217041](https://github.com/zy19970/IPSys/actions/runs/38905217041) success | 后续旧源码清理后重测跨模块 ID、权限及工作区隔离 |
+| F01 | Folder 身份及工作区/类型/ID 不串号 | 全部正式业务、MCP/Excel/搜索和 `--smoke` 已统一 V2 FolderId/FileId/LinkId，新库不建旧业务表，[Windows CI #38905217041](https://github.com/zy19970/IPSys/actions/runs/38905217041) success | 旧源码已经裁剪，继续人工核对跨模块 ID、权限及工作区隔离 |
 | F02 | 项目可无合同；合同必须归属有效唯一项目，复制/移动不失关系 | 项目合同父子约束及全项目携多个合同/历史原件复制已通过 [CI #38848010379](https://github.com/zy19970/IPSys/actions/runs/38848010379) | N4 实机检查跨工作区复制/移动、软删与恢复完整关系 |
 | F03 | 公司业务档案根层分类卡片，内层目录/资料混排及保护 | 公司业务档案根卡片、深层混排、V2 网页/附件及导出已通过 [CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) | N4 实机验证排序、递归下载和目录删除保护 |
 | F04 | 同一 FileId 多 Folder 共享版本，解除一处后不让新版复活链接 | 原生 FileLink 关联/解绑和全业务 V2 原子共享移动已通过对应 Windows CI | N4 实机验证各位置版本同步、解绑不复活和恢复 |
 | F05 | 不同 FileId 可复用同一 FileObject 字节但属性/版本独立 | 独立 FileId 复用 FileObject/跨区物理独立已通过原生 CI，正式全业务上传接 V2 | N4 人工检验复用选项、独立历史及取消回滚 |
 | F06 | 异名同内容匹配、已有名称/路径提示，三选一或取消 | 原生异名同内容查重、用户明确选择和全模块网页 V2 自动回归通过 | N4 实机检验提示名称/路径、取消清理及票据失效 |
 | F07 | 版本只属于 File；Folder 改名/金额编辑不产生版本；历史 FileVersion 原件不丢 | **V2 N3-01 部分覆盖**：原生 File v1/v2、文件元数据编辑不产生新版本、历史原名/真实字节与 SHA-256 往返 [CI #38754995418](https://github.com/zy19970/IPSys/actions/runs/38754995418) 通过；共享版本同步已通过 N3-02 CI | N4 验证 UI/导出历史版本 |
-| F08 | 文件说明/标签/编号/日期及版本说明选填，上传后可补 | N3-01 原生 File 元数据已通过 [CI #38754995418](https://github.com/zy19970/IPSys/actions/runs/38754995418)；现有 IP、项目合同网页原件/历史版本已接入，但选填属性完整编辑交互仍待实现或验收 | N4 专项验证文件选填属性的 UI 和共享属性同步 |
+| F08 | 文件说明/标签/编号/日期及版本说明选填，上传后可补 | N3-01 原生 File 元数据已通过 [CI #38754995418](https://github.com/zy19970/IPSys/actions/runs/38754995418)；现有 IP、项目合同网页原件/历史版本已接入，MCP `update_file_metadata` 已经通过业务自动回归；选填属性完整 UI 编辑交互仍待验收 | N4 专项验证文件选填属性的 UI 和共享属性同步 |
 | F09 | 附件按自己名称、选填属性、直属/祖先 Folder 的业务属性能被搜索 | `SearchStore` V2 已检索可选 File 属性、相关 Folder 业务属性及公司档案祖先路径，[CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) success | N4 Edge/Chrome 搜索跳转、权限、无效结果验收 |
 | F10 | 仅解除一个 FolderFileLink，不能删掉别处文件及需要保留的版本字节 | **V2 后端 CI 已通过**：[Windows #38759311477](https://github.com/zy19970/IPSys/actions/runs/38759311477) 已验证单条软解绑、最后链接移除后历史字节完整且可显式恢复 | N4 仍需测试完整回收站 UI 和永久清理引用安全 |
-| F11 | 公司/个人不可共享同一 FileObject，跨区复制应保留独立物理内容对象 | **V2 原生后端已验证**：[CI #38762437581](https://github.com/zy19970/IPSys/actions/runs/38762437581) 验证跨区复用请求被拒绝、跨区复制分配新 FileObject、所有有效版本原件 SHA-256/字节一致 | N4 UI/MCP/Excel 完整链路仍需验证 |
+| F11 | 公司/个人不可共享同一 FileObject，跨区复制应保留独立物理内容对象 | **V2 原生后端已验证**：[CI #38762437581](https://github.com/zy19970/IPSys/actions/runs/38762437581) 验证跨区复用请求被拒绝、跨区复制分配新 FileObject、所有有效版本原件 SHA-256/字节一致 | MCP 项目/IP/档案/综合资料跨区完整历史复制已通过最新业务自动回归，真实 UI/Excel 与故障注入仍待实机 |
 | F12 | 默认仅导出最新有效文件版本；显式选历史才带旧版本 | 全模块 `export.js` 已固定 FileId+FileVersion、最新/历史版本选择，[CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) success | N4 测 v1/v2/v3、目录重叠、同名、取消及损坏/缺失 |
 | F13 | 勾选父目录和子项按目标目录导出，不错误重复；共享文件在不同目录分别出现 | 原生档案目录与资料混排导出/Node ZIP 通过 [CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886)，复杂重叠未完全实机 | N4 加测父子重叠/多位置共享/同名/取消 |
-| F14 | Excel 固定列、MCP 原名、PDF.js Canvas、单 EXE 不回归 | 全模块 V2 Excel、MCP、PDF/ZIP、Windows Debug/Release 和单 EXE 在 [Windows CI #38905217041](https://github.com/zy19970/IPSys/actions/runs/38905217041) success | 后续旧源码清理后的 CI 与本机 Edge/Chrome、Codex 和桌面 Excel 实机 |
-| F15 | 公司业务档案删除空目录时，软删除资料/回收站关系判定正确 | V2 `NativeArchiveStore` 目录删除保护、原生 `RecycleStore` 和 V2 综合 SQLCipher 回归在 [Windows CI #38905217041](https://github.com/zy19970/IPSys/actions/runs/38905217041) success | 仍需清除未被正式引用的 `ArchiveFolderStore` 旧代码，并复测回收站/深层目录边界 |
-| F16 | 综合资料在 V2 中直接通过 FolderFileLink 关联 File/版本，删除/恢复和文件对象引用安全 | 新建资料库已不创建 records/attachments/chunks，V2 FolderFileLink 及回收站/原件版本综合回归经过 [Windows CI #38905217041](https://github.com/zy19970/IPSys/actions/runs/38905217041) | 后续清除旧 Store 源码、实测历史原件恢复及跨区复制 |
+| F14 | Excel 固定列、MCP 原名与 11 个 `v2_*`、PDF.js Canvas、单 EXE 不回归 | 最新 MCP 14 项业务工具扩充在 `080a599` / [CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431) 验证，Windows Debug/Release、正式 stdio、SQLCipher/HTTP、Node 全通过 | 真实 Codex/WorkBuddy 工具加载、双 Agent/长任务/故障注入和桌面 Excel 仍需人工验收 |
+| F15 | 公司业务档案删除空目录时，软删除资料/回收站关系判定正确 | V2 `NativeArchiveStore` 目录删除保护、原生 `RecycleStore` 和 V2 综合 SQLCipher 回归在 [Windows CI #38905217041](https://github.com/zy19970/IPSys/actions/runs/38905217041) success | N4 已移除旧 ArchiveFolderStore；深层目录与回收站误操作、真实恢复体验仍需实机 |
+| F16 | 综合资料在 V2 中直接通过 FolderFileLink 关联 File/版本，删除/恢复和文件对象引用安全 | 新建资料库已不创建 records/attachments/chunks，V2 FolderFileLink 及回收站/原件版本综合回归经过 [Windows CI #38905217041](https://github.com/zy19970/IPSys/actions/runs/38905217041) | 旧 Store 已清除，MCP 文件关联恢复/跨区完整复制自动通过；用户实机需复测原件历史 |
 | F17 | SQLCipher 错密、权限、异常退出、磁盘不足及手工备份完整性 | 部分专项 CI 已通过，故障注入与全量实机尚未完成 | N4 按 `FREEZE_AUDIT.md` T01–T09 执行，不做旧库迁移专项 |
 
 ## 三、R0-03 历史执行前提（已经完成，并非当前入口）

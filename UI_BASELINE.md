@@ -1,6 +1,6 @@
-# IPSys 资料管理系统：现行 UI 与文件夹交互基线（2026-10-15）
+# IPSys 资料管理系统：现行 UI 与文件夹交互基线（2026-10-17）
 
-> 本文件是继续生效的 UI 基线。正式项目、合同、知识产权、档案、个人分类与综合资料的网页、附件和外围接口均已统一 V2 FolderId/FileId/LinkId；[CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) success。N4 清理旧 Schema/Store/历史测试适配和实机验收，不因物理模型统一改变已冻结的卡片/表格交互。
+> 本文件为持续有效的 UI 冻结基线。正式网页、附件、Excel、搜索、回收站、导出及 MCP 都已统一 SQLCipher V2 FolderId/FileId/LinkId。N4 两批清理与 MCP 三批自动回归已通过，最新业务源码 `080a599` 对应 [Windows CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431) success；尚须 Edge/Chrome 与本机 Codex/WorkBuddy 实际验收。MCP 工具扩展不改变本文件已冻结的卡片/表格导航与布局。
 
 ## 1. 产品交互模型
 
@@ -49,5 +49,5 @@ IPSys 是业务化文件夹式本地资料管理器。用户面对的是「加�
 
 ## 6. 代码与验收分界
 
-公司业务档案、企业资质、个人分类、综合资料、项目/合同和知识产权的正式网页及附件/Excel/MCP/搜索/回收站/导出都已使用 V2 身份，[CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) success。N4 主要是旧 Schema/Store/测试兼容代码清理及 Edge/Chrome 人工验收，不重新调整已冻结的 UI。详细证据见 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)、[WEB_TESTING.md](./WEB_TESTING.md)。
+公司业务档案、企业资质、个人分类、综合资料、项目/合同与知识产权已通过 V2 网页及附件/Excel/MCP/搜索/回收站/导出自动回归；N4 旧 Schema/Store/历史接口已完成清理。MCP P0、写操作安全、文件分页及 14 项新增业务工具不会改变本文件的 UI 结构。剩余 Edge/Chrome 人工操作、复杂导出与 T01–T09 安全验收见 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)、[WEB_TESTING.md](./WEB_TESTING.md)。
 

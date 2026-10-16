@@ -1,6 +1,6 @@
-# IPSys 技术设计：SQLCipher V2 当前实现与 N4 收敛（2026-10-16）
+# IPSys 技术设计：SQLCipher V2 当前实现与安全验收（2026-10-17）
 
-> 截至 `main@013fa1e`，全业务正式网页、Excel、MCP、搜索回收站及历史文件导出使用 V2，且 N4 第一批进一步移除新建/开库的 V1 Schema/Ensure 依赖，生产与 `--smoke` 都仅映射 V2 业务 API、综合 SQLCipher/HTTP 回归已改为 V2-only；[Windows CI #38905217041](https://github.com/zy19970/IPSys/actions/runs/38905217041) **completed/success**。仍需清理未引用旧源码并完成 Edge/Chrome/T01–T09 实机。
+> 截至业务源码 `080a599`，新建/开库、正式与 `--smoke` 路由以及业务 Store 均只使用 V2；N4 已移除 31 份旧 Store/Provider/旧端点及测试源码。MCP 已完成 P0 并发与单实例、第一批幂等/撤权/参数安全、第二批单 SQL 查询与分页、第三批合同/文件/转移/搜索/回收站共 14 个工具补齐，[Windows CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431) **completed/success**。仍待 Edge/Chrome、Codex/WorkBuddy、大文件及 T01–T09 实机验证。
 
 ## 1. 运行与安全边界
 
@@ -21,6 +21,7 @@ IPSys 用户可见名称为「资料管理系统」，支持 Windows 10/11 x64�
 | `file_versions` | 版本号、历史文件原名、对象引用、可选版本说明和时间；FileVersion 不属于 Folder |
 | `file_objects` / `file_chunks` | SHA-256、大小、writing/ready 生命周期与 SQLCipher 字节分块；ready 后触发器禁止改写数据 |
 | `folder_file_links` | Folder 与 File 多对多归属，位置专属别名/用途、知识产权材料类别等链接属性 |
+| `mcp_operations` | MCP 可选 `request_id` 操作状态、参数摘要与成功结果留存在加密库中；`pending/uncertain` 不自动重放，不保证异常崩溃时严格 exactly-once |
 
 V2 强制工作区组合约束、合同有效父项目、合法 Folder 父级/目录防环、七个公司业务档案系统根不可改以及 FileVersion/完成对象不可变。真实 Schema/关系测试 [Windows CI #38740628571](https://github.com/zy19970/IPSys/actions/runs/38740628571) 已通过。N1 的 CI 仅证明表及约束，后续 N3 与实际模块接入另有对应自动验收。
 
@@ -32,7 +33,7 @@ V2 强制工作区组合约束、合同有效父项目、合法 Folder 父级/�
 
 `NativeArchiveStore.cs` 与 `NativeArchiveOrder.cs` 实现业务档案分类/资料和综合资料的原生 CRUD、七个系统根保护、目录/资料混排排序、移动防环、资料归属及恢复。[Windows CI #38747066932](https://github.com/zy19970/IPSys/actions/runs/38747066932) 通过。
 
-当前正式项目、合同、知识产权、业务档案、资质、个人分类与综合资料都由 V2 Folder CRUD 及原件接口维护，原名 MCP、Excel、搜索/回收站和跨区历史原件复制均已切换。剩余旧 Store 是 N4 的测试/过渡代码，不再用于正式业务网页。
+当前正式项目、合同、知识产权、档案、资质、个人分类及综合资料均由 V2 Folder CRUD 维护。旧 SQL Store、Folder Provider 和过期 HTTP/测试适配已从源码移除，所需 DTO 与业务字段校验由 `BusinessRules.cs` 提供；正式 MCP、Excel、统一搜索及历史文件导出均复用 V2 身份。
 
 ### N3-01 原生 File 基础服务（2026-10-15 已通过 CI）
 
@@ -52,18 +53,18 @@ V2 强制工作区组合约束、合同有效父项目、合法 Folder 父级/�
 
 ## 4. N4 旧 Schema、Store 与测试适配清理
 
-`Vault.CreateSchema/ValidateSchema` 现仅负责 `ResourceSchemaV2`，`SessionEndpoints` 开库不再调用历史业务 `Ensure`，完整性检查使用 V2 `file_objects` 的 writing 状态；`Program.cs` 不论生产或 `--smoke` 均只注册 V2 业务/搜索路由。`RecycleStore.cs` 已切到 `folders/folder_file_links`，综合和专项测试均以全新 V2 SQLCipher 库运行。旧 `ProjectStore/ContractStore/ArchiveStore/BusinessFiles.cs` 与 R0/R1 Provider 等源码仍存在，其中部分校验 DTO 被 V2 复用；下一步按真实引用删除，避免误删共用验证代码。
+`Vault.CreateSchema/ValidateSchema` 仅负责 V2，新建资料库不会生成 `records/attachments/chunks` 旧表；开库不调用旧 Store Ensure。正式及 `--smoke` 只映射 V2 业务路由，`RecycleStore` 与综合回归均使用 `folders/folder_file_links`。旧源码裁剪 `7b51669` 后在 `b3c8f3b` 恢复 V2 必要共用 DTO，[CI #38911635273](https://github.com/zy19970/IPSys/actions/runs/38911635273) 通过。
 
-旧系统的 CRUD、文件版本、PDF.js、ZIP/文件夹、XLSX、统一搜索和 MCP 已切到 V2。N4 首批已移除生产和冒烟测试的旧物理表/路由依赖，[Windows CI #38905217041](https://github.com/zy19970/IPSys/actions/runs/38905217041) success；进一步源码清理、Edge/Chrome 实机与数据安全验收未完成。
+已完成 N4 旧物理层和源码裁剪，不再将停用 Store/Provider 作为下一步开发任务。当前尚需文件属性/历史共享/复杂导出、用户浏览器及数据库异常场景的实际验收；N4 尚未宣告整体发布完成。
 
 ## 5. UI 与外围系统约束
 
 [UI_BASELINE.md](./UI_BASELINE.md) 是交互权威：个人工作区优先，公司五栏目及 3×2 工作台，企业资质直接表格；业务档案根七分类卡片纯导航、内层目录/资料混排表格；个人分类卡片→台账；项目/IP 台账→详情。V2 的统一物理 Folder 不能作为统一改变这些界面的理由。
 
-`export.js` 的全部模块 ZIP/文件夹附件下载都使用 V2 FileId+FileVersion；默认最新版，历史版需明确选择。`SearchStore` 已覆盖各模块、附件选填属性和 Folder 祖先名；正式搜索是 `/api/v2/search`。全部固定列 XLSX 和原名 MCP 均接 V2（合同 Excel 只读），MCP 本机手动授权不变。ZIP 不支持 ZIP64（小于 4 GiB），同名、父子目录重叠、取消和真实浏览器跳转待实机验证。
+`export.js` 的全部模块 ZIP/文件夹附件下载都使用 V2 FileId+FileVersion；默认最新版，历史版需明确选择。`SearchStore` 已覆盖各模块、附件选填属性和 Folder 祖先名；正式搜索是 `/api/v2/search/{workspace}`。全部固定列 XLSX、原名及 `v2_*` MCP 都接 V2（合同 Excel 只读），MCP 本机手动授权不变。ZIP 不支持 ZIP64（小于 4 GiB），同名、父子目录重叠、取消和真实浏览器跳转待实机验证。
 
 ## 6. 验收、风险与发布
 
-N1/N2/N3 全业务主链路已通过 CI；N4 新建 V2-only 资料库、开库/SQLCipher、回收站、MCP、Node ZIP/PDF、Debug/Release 和单 EXE 经过 [Windows CI #38905217041](https://github.com/zy19970/IPSys/actions/runs/38905217041) **success**。仍需安全移除残余旧源码，并完成 2 GiB+ 目标、SSD 异常、磁盘满、安全退出与备份一致性、Edge/Chrome 实机等 T01–T09 验收。
+N1/N2/N3 正式业务、N4 两批旧表和源码清理、MCP 三批专项均已通过 Windows 自动回归（最新业务源码 `080a599`，[Windows CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431) success）。MCP 实现为手动授权的多个 stdio 子进程→同用户命名管道（最多 8 连接）→唯一 WinForms 宿主→带会话 Token 的 V2 HTTP；`list_files` 单次查询、`list_files_page` 限 1–200；新增业务工具共 14 项。当前不实现超过 64 MiB 的单文件支持，2 GiB+ 目标、ZIP64、SSD 异常、磁盘不足、安全退出、备份一致性及 Edge/Chrome/Agent 实机仍待验收。
 
 具体接续见 [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md)、[RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)；测试记录见 [WEB_TESTING.md](./WEB_TESTING.md)。

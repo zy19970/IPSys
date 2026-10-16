@@ -1,14 +1,14 @@
 # IPSys — 资料管理系统
 
-> **当前开发状态（2026-10-16，N4 第二批源码清理已通过自动验收）**：正式系统仅使用 SQLCipher V2 Folder/File/版本/关联模型。先前新库物理收敛已通过 CI #38905217041；本轮删除 31 个不再使用的 V1 Store、旧 Folder Provider、旧 HTTP/身份适配及历史测试源文件，将 V2 依赖的项目/合同/IP/档案/综合资料校验、共用 DTO、归档目录排序参数集中保留在 `BusinessRules.cs`，固定 XLSX 的模板/解析仍使用 V2。第一次清理提交 `7b51669` 遗漏 `FolderMutationInput`，修复提交 `b3c8f3b` 后 [Windows CI #38911635273](https://github.com/zy19970/IPSys/actions/runs/38911635273) **completed/success**。用户电脑上的 Edge/Chrome 与 T01–T09 仍待验收。
+> **当前开发状态（2026-10-17）**：正式新库及业务入口全部使用 SQLCipher V2 Folder/File/版本/关联；N4 已完成旧物理表/路由收敛和 31 个停用 Store/Provider/HTTP/历史测试源码删除，复用的业务校验已移入 `BusinessRules.cs`。MCP 的 P0 并发修复、第一批写操作安全、第二批文件列表分页和第三批 14 项业务操作补齐均已完成代码及 Windows 自动验收；最新业务源码 `080a599` 对应 [Windows CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431) **completed/success**。Edge/Chrome、真实 Codex/WorkBuddy 双 Agent、长时间文件任务、大文件、故障注入及 T01–T09 仍待用户实机验证。
 
 IPSys 定位为**业务化文件夹式本地资料管理器**，个人资料长期归档优先、公司资料独立工作区。程序采用 WinForms + 127.0.0.1 本机网页，一个 SQLCipher 加密库保存真实原件字节。2026-10-15 用户已确认 **Folder/File 统一资源物理模型**：所有业务条目及分类为带业务属性的 Folder（无版本），只有附件为 File（独立 FileId、选填属性和历史版本）。同区多个 Folder 可引用同一个 FileId，两个独立文件也可仅复用物理原件内容；查重时显示已有文件名与路径，由用户决定；公司/个人不共享物理原件。
 
-**唯一架构和开发进度依据**：[RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)。N2-04 全业务 V2 和 N4 两批物理/源码旧实现清理已通过 Windows CI，最近一轮是 [Windows CI #38911635273](https://github.com/zy19970/IPSys/actions/runs/38911635273)（`b3c8f3b`）。接下来聚焦文件版本/共享/导出极端边界、Excel/MCP 桌面实机和 T01–T09 安全验收；自动 CI 不等于正式用户验收。
+**唯一架构和开发进度依据**：[RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)。N2-04、N4 两批旧实现清理及 MCP 三批专项改造均有通过的 Windows CI 证据（最新 [Windows CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431)）。下一步集中完成真实客户端与浏览器/Excel 的实际验收、文件历史/复杂导出边界及 T01–T09 数据安全检查；自动 CI 通过不代表可正式发布。
 
 ## 产品模型与页面规则（当前统一口径）
 
-从使用者角度，资料按 **资料库 → 个人/公司工作区 → 分类容器或业务模块 → 业务记录 → 附件原件** 组织。V2 将分类及业务记录统一映射到 `folders`，附件则由 `files/file_versions/file_objects/file_chunks/folder_file_links` 管理；所有正式业务网页、原件导出和 MCP 均使用 V2 数据身份；历史旧表与兼容路由仅用于尚未清理的自动测试。
+从使用者角度，资料按 **资料库 → 个人/公司工作区 → 分类容器或业务模块 → 业务记录 → 附件原件** 组织。V2 将分类及业务记录统一映射到 `folders`，附件则由 `files/file_versions/file_objects/file_chunks/folder_file_links` 管理；所有正式业务网页、原件导出和 MCP 均使用 V2 数据身份；新建库不创建旧业务表，正式与 `--smoke` 均不注册历史 V1 业务路由；11 个 `v2_*` MCP 工具只是兼容名称，不代表旧业务表。
 
 | 概念 | 用途 | 现行表现 |
 | --- | --- | --- |
@@ -32,7 +32,7 @@ Visual Studio 可直接打开 `src/IPSys.Web/IPSys.Web.csproj` 调试。Release 
 dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-contained false -o .\out\IPSys-SingleExe
 ```
 
-从 [Windows Actions](https://github.com/zy19970/IPSys/actions/workflows/web-windows.yml) 获取最新成功的 `IPSys-Web-win-x64`。当前源码 `b3c8f3b` 的 Windows Debug/Release、单 EXE、MCP、Node UI/ZIP/PDF 和真实 SQLCipher/HTTP 往返已经通过 [Windows CI #38911635273](https://github.com/zy19970/IPSys/actions/runs/38911635273)。
+从 [Windows Actions](https://github.com/zy19970/IPSys/actions/workflows/web-windows.yml) 获取最新成功的 `IPSys-Web-win-x64`。MCP 第三批代码 `080a599` 已通过 [Windows CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431)：Debug、Release 单 EXE、正式 stdio 握手及真实 SQLCipher/HTTP/Node 回归。后续文档提交不改变此已验收的源码。
 
 ## 2. 当前实现的业务
 
@@ -48,7 +48,7 @@ dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-conta
 | 原件 | SQLCipher 分块存储、SHA-256、历史版本、同名独立文件、受控共享/复制、软删除恢复、PDF/图片预览 | B05 与 PDF.js 预览已有用户通过反馈 |
 | 导出 | 全模块 V2 文件夹/ZIP、最新及手动选择历史版本、项目与全部合同、固定列 XLSX | 所有原件导出按 V2 FileId+FileVersion；[CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) 通过，复杂路径和大文件实机待验 |
 | 搜索 | 项目、合同、知识产权、档案、个人分类、综合资料统一 V2 FolderId/FileId 搜索，包括目录祖先及附件选填属性 | [CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) 通过；真实浏览器跳转待验 |
-| MCP | 原名项目、合同、知识产权、档案目录、综合资料与五类附件接口全部使用 V2 FolderId/FileId/LinkId | CI 通过，本机 Codex 实际操作仍需验收 |
+| MCP | 本机手动授权、唯一 GUI 宿主/多客户端管道、`request_id` 写入追踪；合同编辑、文件元数据/历史版本/指定版本下载、文件共享关联与恢复/复制、四类业务转移、搜索和回收站恢复；`list_files_page` 分页 | [Windows CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431) success。实际 Codex/WorkBuddy 工具刷新、下载到宿主本机路径及多 Agent 长任务仍待实机核验；详情见 [MCP_CODEX.md](./MCP_CODEX.md) |
 | UI | 个人优先入口、公司五个业务栏目、工作台 3×2、紧凑台账、多选与持久排序 | 最新公司业务档案根层卡片、内层混合表格均有相应自动回归；仍待本机视觉验收 |
 
 ## 3. 当前已知边界
@@ -76,7 +76,7 @@ dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-conta
 | [DESIGN.md](./DESIGN.md) | V2 新 Schema、N2 原生服务、旧业务过渡态及风险边界 |
 | [HANDOFF.md](./HANDOFF.md) | N2-04 接续点、最近成功 CI、剩余模块入口及数据安全边界 |
 | [WEB_TESTING.md](./WEB_TESTING.md) | 人工/自动验收依据及测试记录 |
-| [EXCEL_LEDGER.md](./EXCEL_LEDGER.md)、[SEARCH.md](./SEARCH.md)、[MCP_CODEX.md](./MCP_CODEX.md) | 三个专项功能使用及验收说明 |
+| [EXCEL_LEDGER.md](./EXCEL_LEDGER.md)、[SEARCH.md](./SEARCH.md)、[MCP_CODEX.md](./MCP_CODEX.md) | Excel、统一搜索及最新 MCP 工具/客户端操作手册（含 P0/P1、分页、14 项新工具和幂等使用方式） |
 | [FREEZE_AUDIT.md](./FREEZE_AUDIT.md) | 历史需求冲突与持续有效的 T01–T09 安全门槛 |
 
 **项目真实代码和最新用户确认优先于历史说明。** 开发以 `main` 为目标分支，遵守 [AIGT-templates](https://github.com/zy19970/AIGT-templates) 的 `AGENTS.md` 与 `AI_RULES/GIT_OPERATIONS.md`。

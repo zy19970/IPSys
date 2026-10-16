@@ -1,8 +1,8 @@
-# IPSys P2 当前工作区统一搜索（2026-10-15）
+# IPSys 工作区统一搜索：网页与 MCP（2026-10-17）
 
-> **2026-10-16 最新进展（N2-04 正式环境统一 V2）**：工作区内项目、合同、IP、公司资质/业务档案、个人多分类与综合资料均从 `/api/v2/search/{workspace}?q=...` 检索，命中使用真实 FolderId、FileId、所属 Link 与业务目录祖先名称和文件可选属性。现有页面在 02619b2 后已直接调用 V2；[6a7b1ff](https://github.com/zy19970/IPSys/commit/6a7b1ffe882aaa114c9d90af7011068cad7fd330) 已将过渡的 `/api/search` 旧身份投影限制在 --smoke 旧用例，正式运行不再开放。[Windows CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) **success**。N4 清理旧表、旧投影与旧自动用例；Edge/Chrome 人工跳转、OCR/正文全文检索不属于已验收范围。
+> **现行接口**：正式与 `--smoke` 统一使用 `/api/v2/search/{workspace}?q=...`，旧 `/api/search` 兼容身份投影已随 N4 旧源码和路由清理。MCP 第三批新增 `search_records(workspace,query)`，直接调用相同已授权 V2 HTTP 路由；源码 `080a599` 经 [Windows CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431) **completed/success**，真实 Codex/WorkBuddy 与浏览器用户实机仍待验收。
 
-在顶部「搜索当前工作区资料」输入关键词并按 Enter。**正式后端为 `GET /api/v2/search/{workspace}?q=...`**，仅检索已解锁并经授权的当前工作区；工作区切换或页面切换后丢弃过期结果。旧 `/api/search` 只在 `--smoke` 测试模式存在，不再是生产搜索接口。
+在顶部「搜索当前工作区资料」输入关键词并按 Enter，网页向 `GET /api/v2/search/{workspace}?q=...` 发请求；同一工作区内的 MCP 客户端调用 `search_records` 并提供 `workspace`、`query`，返回相同 V2 类型/身份。当前资料库必须已解锁，MCP 还必须手动授权；页面或工作区切换后丢弃过期结果，服务不暴露外部端口。
 
 检索涵盖项目、合同、知识产权、资质/业务档案/个人分类、综合资料的结构化字段，以及附件名称、可选 File 属性和业务目录祖先信息。结果按真实 V2 FolderId/FileId 跳转，无旧 Store ID 归一的待开发任务；[CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) 自动验收已通过，实际 Edge/Chrome 导航、刷新与空结果仍待人工验收。
 

@@ -1,6 +1,6 @@
-# IPSys 跨会话交接（2026-10-16，当前直接进入 N4）
+# IPSys 跨会话交接（2026-10-17：N4 与 MCP 三批自动验收完成）
 
-> **最新交接基线（2026-10-16，N4 第二批自动验收完成）**：N2-04 全业务正式 V2 已完成，N4 第一批新库物理层与 HTTP/回收站/搜索仅保留 V2；第二批 `7b51669` 删除 31 个旧 Store/Provider/端点和历史测试源码，并新建 `BusinessRules.cs` 集中纯业务校验、共享 DTO、归档排序参数，原有固定 XLSX 模板/解析仍由 `ExcelLedger.cs` 提供。修复提交 `b3c8f3b` 恢复漏删的 `FolderMutationInput`，[Windows CI #38911635273](https://github.com/zy19970/IPSys/actions/runs/38911635273) **completed/success**。下一步是文件属性/版本/导出复杂边界、Edge/Chrome/桌面 MCP/Excel 和 T01–T09 安全实测；没有旧正式数据库迁移。
+> **最新交接基线（2026-10-17）**：正式新库及全部业务使用 SQLCipher V2，N4 旧物理表/路由/31 份旧 Store/Provider/过时测试源码已清理（[CI #38911635273](https://github.com/zy19970/IPSys/actions/runs/38911635273) success）。MCP P0 并发单实例、第一批安全、第二批单 SQL 分页、第三批 14 项合同/文件/转移/搜索/回收站工具完成，最新业务代码 `080a599` 的 [CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431) completed/success，之后 `7b7c714` 只同步了三份文档。下一步验证 Edge/Chrome、Codex/WorkBuddy 双 Agent、桌面 Excel、文件属性 UI/历史版本/导出、2 GiB+ 和 T01–T09；没有旧正式数据库迁移。
 
 ## MCP P1 第一批已验收（2026-10-16）
 
@@ -9,6 +9,10 @@
 ## MCP 第二批已验收（2026-10-16）
 
 源码提交 [bfab1a8](https://github.com/zy19970/IPSys/commit/bfab1a8aead2a65cf375b2fe5429776befe26970) 通过 [Windows CI #38927263017](https://github.com/zy19970/IPSys/actions/runs/38927263017) **completed/success**。新增 `NativeMcpFileQuery.cs` 和本机授权只读 `/api/v2/mcp/files/{workspace}`，直接 SQL 一次查询 Folder/File/FileVersion/Link，使用递归有效 Folder 屏蔽软删父目录，替换 MCP `list_files` N+1 HTTP 访问并保持原有数组契约；新增 `list_files_page` 支持 kind/owner_id/name/offset/limit(1–200) 和 hasMore/nextOffset。仍保留全部 11 个 `v2_*` 兼容别名，避免旧客户端失效；原名与 v2 列表结果形态有区别，已在 MCP_CODEX 中明确。测试覆盖分页、归档筛选、IP 文件工具业务调用和发布版 stdio `tools/call`。首次 f0454e4 因 NativeMcpSmoke 模式变量 CS0165 CI 失败，bfab1a8 修正后全绿。下一阶段是第三批已存在的 V2 HTTP 业务能力封装为 MCP（优先合同编辑、文件属性/版本、分享、转移/搜索/回收站），以及真实 Codex/WorkBuddy/大量记录下的性能和交互测试；不要把未实测视为通过。
+
+## 最新 MCP 使用与实际验收入口（2026-10-17）
+
+现行手册为 [MCP_CODEX.md](./MCP_CODEX.md)。在同一 Windows 用户下先运行唯一 WinForms 宿主、解锁数据库并手动开启 MCP，再刷新 Codex/WorkBuddy 的 `tools/list`；新工具包括 update_contract、get_file_details、update_file_metadata、download_file_version、associate_file、restore_file_link、copy_file、transfer_project/ip/archive/general、search_records、list_trash 和 restore_trash。MCP 删除文件关联须校验 FolderId/FileId/LinkId，写入推荐 `request_id` 并用 get_operation_result 诊断丢失结果；pending/uncertain 不可盲目重做。下载路径是宿主电脑本机绝对新文件，64 MiB 单原件上限不变。双 Agent 长任务、磁盘/权限/异常中断尚无用户实机验收。
 
 ## MCP 第三批业务工具补齐（2026-10-17）
 
@@ -69,7 +73,7 @@ IPSys 用户界面名称是「资料管理系统」，以**个人资料长期归
 11. **N2-03-07-01 已完成**：`NativeProjectContractUiEndpoints.cs` 将现有项目与合同台账、项目所属合同、文件列表/历史版本映射到新库 FolderId/FileId，并提供原生排序及合同复制时同事务关联现有原件；`app.js` 项目合同 CRUD、附件内容查重与用户选择、版本上传、共享/解绑、预览下载及 ZIP/文件夹导出已切 V2。`ip-v2.js` 共用文件确认流程，`export.js` 提供原生 FileId 下载。[CI #38836041449](https://github.com/zy19970/IPSys/actions/runs/38836041449) 真实 SQLCipher HTTP、Node UI、Windows Debug/Release 通过。**项目 Excel 和项目跨工作区复制当前禁止调用旧表**。
 12. **N4 第一批已完成**：新库建表、打开验证、会话完整性诊断、回收站、正式/测试 HTTP 及完整 V2 冒烟在 [Windows CI #38905217041](https://github.com/zy19970/IPSys/actions/runs/38905217041) success，已经不需要 N2-04 旧业务接口回退。
 13. **N2-03（历史阶段已完成）**：全部正式业务 API/MCP/Excel 已切换 V2，不再按旧计划重做 N2-03；本轮继续下方 N4 清理与验收。
-14. **N4 接续（下一项）**：旧源码裁剪已通过 [Windows CI #38911635273](https://github.com/zy19970/IPSys/actions/runs/38911635273)。集中验证 File 选填属性的页面编辑、同一 FileId 多位置最新和历史版本、解除/恢复及工作区隔离；复杂目录重叠、同名和取消导出；真实 Edge/Chrome、MCP/Excel 与 T01–T09。
+14. **N4 接续（下一项）**：旧实现清理已通过 CI #38911635273，MCP 三批完成 [CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431)。本轮转入文件属性 UI、FileId 多位置历史/解绑恢复/跨工作区副本、重叠同名目录/ZIP 取消与 Edge/Chrome、真实 Codex/WorkBuddy/Excel、T01–T09 安全验收。
 
 旧测试数据全可丢弃，旧库不做迁移，拒绝打开旧库且不能覆盖源文件。**T08 是新版库版本识别和未来升级安全，而不是旧测试数据升级。**
 
@@ -81,4 +85,4 @@ N1/N2 通过 Windows CI 不等于整个 V2 应用已验证。旧单文件上传�
 
 ## N2-04 自动验收完成与 N4 交接（2026-10-16）
 
-正式业务档案、企业资质、个人分类及综合资料正式网页在 N2-04 完成 V2 接入（`02619b2`、`db79b82`、`6a7b1ff`）。本次 N4 又由 `0b0dfec` 取消旧表建库和开库旧 Ensure、旧 HTTP 注册及旧综合回归，`013fa1e` 后 [Windows CI #38905217041](https://github.com/zy19970/IPSys/actions/runs/38905217041) completed/success。**当前仅剩残余源码裁剪、复杂边界及正式实机安全验收**，不要误将旧历史段落的 N2-03/N2-04 列为待开发。
+正式业务档案、企业资质、个人分类及综合资料正式网页在 N2-04 完成 V2 接入（`02619b2`、`db79b82`、`6a7b1ff`）。本次 N4 又由 `0b0dfec` 取消旧表建库和开库旧 Ensure、旧 HTTP 注册及旧综合回归，`013fa1e` 后 [Windows CI #38905217041](https://github.com/zy19970/IPSys/actions/runs/38905217041) completed/success。**旧源码裁剪已经完成，当前仅剩复杂边界及正式实机安全验收**，不要误将旧历史段落的 N2-03/N2-04 列为待开发。

@@ -91,9 +91,9 @@
 
 1. Q1–Q162 及后续明确覆盖决定为业务边界，不启动 Q163 式延伸访谈。公司业务档案可变层级目录属于已确认的后续修订，最新交互见 UI_BASELINE.md。
 2. M0 字段与状态字典已形成，WinForms、本机网页、SQLCipher、项目/合同/IP/档案及附件真实能力已接入；DESIGN.md 已记录当前实现结构，均不能据此认定完整发布验收通过。
-3. N2-04 全业务主链路已完成 V2 正式网页、MCP、Excel、搜索/回收站、附件/历史原件的自动验收，[CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) success。**当前 N4** 清理仍在新建资料库中创建的旧表与 Store、历史测试接口，随后完成 T01–T09 和 Edge/Chrome 实机；不再开展 N2-03-07-02 或旧库迁移。
+3. N2-04 正式业务已完成 V2 接入，N4 旧 Schema/Store/Provider/过时路由和测试源码裁剪已通过 [CI #38911635273](https://github.com/zy19970/IPSys/actions/runs/38911635273)。MCP P0 并发及后续三批写入安全、分页和 14 项业务接口补齐，经 [CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431) 最新自动验收。**当前 N4 仅剩业务边界与 T01–T09/Edge/Chrome/Codex/WorkBuddy/Excel 实机**，不再进行旧库迁移或重复删除旧 Store。
 4. V2 统一物理 Folder/File 已获用户确认，后续如需新增业务范围、改变合同从属、工作区隔离或再调整新库结构，仍应按已确认基线评估数据一致性与安全并记录受控变更。
 
 ## 7. 交付状态声明
 
-本报告保存 2026-10-13 需求冻结及 T01–T09 安全门槛供追溯；截至 2026-10-16 全业务 V2 主链路 [CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) 通过，但 N4 旧表物理清理、2 GiB+ 目标往返、SSD/磁盘异常、手工备份一致性和 Edge/Chrome 实机仍未全面验收。最新施工进度以 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md) 为准。
+本报告保存 2026-10-13 需求冻结及 T01–T09 安全门槛供追溯；截至 2026-10-17，N4 旧物理/源码清理和 MCP 三批业务能力已完成自动验收（最新 [CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431)），但 2 GiB+ 原件目标、SSD/磁盘异常、备份一致性、真实客户端与浏览器实机尚未全项通过。最新进度以 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md) 为准，冻结需求不得因自动验收被擅自扩展。
