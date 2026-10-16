@@ -1,6 +1,6 @@
 # IPSys 本机 Codex MCP
 
-> **当前版本（2026-10-17）**：P0 并发/单实例、第一批幂等/写入安全、第二批单 SQL 文件分页和第三批 14 项业务接口均已完成；最新源码 `080a599` 对应 [Windows CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431) **completed/success**。原名与 11 个 `v2_*` 兼容工具共用 V2 数据；本机 Codex/WorkBuddy 长任务仍待实机。下方 N2-03/N2-04 小节为历史功能过程说明，当前操作以本页「使用步骤」「工具」及三批专项章节为准。
+> **当前版本（2026-10-17）**：N4 与 MCP 三批功能均已完成；新增针对 WorkBuddy 黑盒任务书 ISS-1～ISS-10 的安全/并发/协议/语义修复，源码 `6cb1e6b` 对应 [Windows CI #38939165516](https://github.com/zy19970/IPSys/actions/runs/38939165516) **completed/success**。Windows Debug/Release、正式 stdio、SQLCipher/HTTP、Node 回归通过；管理员与普通用户混合、WorkBuddy Bash 沙箱和不同用户隔离仍待用户电脑逐项实测。下方历史阶段保留追溯，以现行操作章节为准。
 
 
 IPSys 支持本机 Codex 通过 MCP stdio 操作同一 Windows 用户已解锁资料库，复用软件现有 SQLCipher 会话而不另开库。全部原名工具和已有 `v2_*` 项目/合同/IP 工具均使用 V2 FolderId；旧业务表与新版资料 ID 不混用。
@@ -52,6 +52,9 @@ MCP 写操作（新增、修改、删除、上传，以及已有 `v2_*` 写操�
 写操作使用可选 `request_id` 幂等日志；回收站恢复必须提供 `list_trash` 原样返回的 kind/id/section。下载路径是 **运行 IPSys 的本机 Windows 电脑**上的绝对路径，仅新建文件、不覆盖已有文件。跨工作区复制文件必须使用 `independent-content`，共享关联只允许同工作区。单个文件上限仍为 64 MiB；所有操作需要当前数据库解锁和手动 MCP 授权。
 
 ## MCP 黑盒问题整改说明（2026-10-17）
+
+**自动验收证据**：代码 [`6cb1e6b`](https://github.com/zy19970/IPSys/commit/6cb1e6b0d30031d2c1e55f5e34de720ad0fa0e62)，[CI #38939165516](https://github.com/zy19970/IPSys/actions/runs/38939165516) completed/success；对纯读有界等待、缺失资源 404、ISO UTC、日志业务成败和虚构版本/空白 stdio 回归已加入自动测试。跨权限连接矩阵需要同机测试，不能凭 CI 宣称已通过。
+
 
 依照本机多客户端实测后的独立审查处理 ISS-1～ISS-10：Windows 管道通过实际 TokenUser SID 显式 ACL 限定同用户，客户端核对服务端管道 Owner SID，修复相同用户不同提升级别导致的误拒绝；**不能把管理员进程授予的宿主文件权限误认为普通 Agent 本身具备的权限**，建议 IPSys 尽量以普通用户身份运行。Windows 可执行文件目录本身的 NTFS 权限与管道 ACL 属不同检查项。不同 Windows 用户不能跨用户连接；管理员/非管理员、沙箱和跨用户拒绝仍需用户电脑实测。
 

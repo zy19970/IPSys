@@ -9,6 +9,9 @@
 
 ### MCP 黑盒 ISS-1～10 专项复测（2026-10-17）
 
+**自动回归验收完成**：源码 [`6cb1e6b`](https://github.com/zy19970/IPSys/commit/6cb1e6b0d30031d2c1e55f5e34de720ad0fa0e62) 对应 [Windows CI #38939165516](https://github.com/zy19970/IPSys/actions/runs/38939165516) completed/success，Windows Debug、Release 单 EXE、stdio JSON-RPC、SQLCipher/HTTP 和 Node 全部成功。ISS-1 的管理员宿主 + 非提升同用户、WorkBuddy Bash 沙箱与不同 Windows 用户隔离、以及 ISS-2 的大文件长任务负载仍须在用户环境复测，不能勾选为已实测。
+
+
 Windows CI 必须验证显式同用户管道 ACL/owner 校验、12 路以上并发 list_files_page 纯读、虚构 initialize protocolVersion 协商、空白行不触发 JSON stderr 错误、缺失 FileId 的 404 包含身份、文件版本 createdAt UTC Z、写操作成功/失败业务状态 businessOk。保留既有 v2_*、59 项工具名称、参数与 error 前缀。不能简单以自动源码 CI 替代 **WorkBuddy Bash/PowerShell、管理员/非管理员同一用户、不同 Windows 用户隔离**实机检查。原测试脚本位于用户电脑的 WorkBuddy 项目目录，GitHub CI 未连接该目录。
 
 | 项目 | 验收方式 | 目标 |

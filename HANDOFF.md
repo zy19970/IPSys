@@ -10,6 +10,12 @@
 
 源码提交 [bfab1a8](https://github.com/zy19970/IPSys/commit/bfab1a8aead2a65cf375b2fe5429776befe26970) 通过 [Windows CI #38927263017](https://github.com/zy19970/IPSys/actions/runs/38927263017) **completed/success**。新增 `NativeMcpFileQuery.cs` 和本机授权只读 `/api/v2/mcp/files/{workspace}`，直接 SQL 一次查询 Folder/File/FileVersion/Link，使用递归有效 Folder 屏蔽软删父目录，替换 MCP `list_files` N+1 HTTP 访问并保持原有数组契约；新增 `list_files_page` 支持 kind/owner_id/name/offset/limit(1–200) 和 hasMore/nextOffset。仍保留全部 11 个 `v2_*` 兼容别名，避免旧客户端失效；原名与 v2 列表结果形态有区别，已在 MCP_CODEX 中明确。测试覆盖分页、归档筛选、IP 文件工具业务调用和发布版 stdio `tools/call`。首次 f0454e4 因 NativeMcpSmoke 模式变量 CS0165 CI 失败，bfab1a8 修正后全绿。下一阶段是第三批已存在的 V2 HTTP 业务能力封装为 MCP（优先合同编辑、文件属性/版本、分享、转移/搜索/回收站），以及真实 Codex/WorkBuddy/大量记录下的性能和交互测试；不要把未实测视为通过。
 
+## 最新黑盒问题 ISS-1～ISS-10 修复状态（2026-10-17）
+
+基于用户提供的 WorkBuddy 黑盒修复任务书逐项独立核对，已按保守安全方案修复。源码 [6cb1e6b](https://github.com/zy19970/IPSys/commit/6cb1e6b0d30031d2c1e55f5e34de720ad0fa0e62)，[Windows CI #38939165516](https://github.com/zy19970/IPSys/actions/runs/38939165516) **completed/success**。安全：Windows TokenUser SID 显式 ACL/pipe Owner 身份核对，同 Windows 用户不同提升级别的联通目标，保留跨用户拒绝；业务：文件列表 5 秒有界数据库锁等待，只有明确执行前 409 可有限重试且不污染 request_id；协议：只返回受支持的 2025-06-18、空行忽略、stderr UTF-8、404 资源/ID、文件历史 UTC Z；语义：move 目标新 ID/源软删除、日志 state done 与 businessOk 区别、搜索 kind=file 和回收站 kind=v2_file/v2_ip_file 的映射，以及 MCP 中立名称。扩展真实 SQLCipher 与发布版 stdio 自动回归，未降低文件版本完整性或历史工具契约。
+
+**未实测**：用户电脑管理员宿主和普通权限 Agent、WorkBuddy Bash 沙箱、不同真实 Windows 用户拒绝、多 Agent 64 MiB 长操作、旧测试目录脚本 `conc2.py`/ `cli_nonadmin.py`/ `blankline_test.py` 的完整执行。应下载新 exe 并按 [WEB_TESTING.md](./WEB_TESTING.md) 复测；不能将 CI success 当作上述现场复测 success。建议优先用普通用户权限启动 IPSys，避免低权限 Agent 借管理员宿主间接访问管理员文件。
+
 ## 最新 MCP 使用与实际验收入口（2026-10-17）
 
 现行手册为 [MCP_CODEX.md](./MCP_CODEX.md)。在同一 Windows 用户下先运行唯一 WinForms 宿主、解锁数据库并手动开启 MCP，再刷新 Codex/WorkBuddy 的 `tools/list`；新工具包括 update_contract、get_file_details、update_file_metadata、download_file_version、associate_file、restore_file_link、copy_file、transfer_project/ip/archive/general、search_records、list_trash 和 restore_trash。MCP 删除文件关联须校验 FolderId/FileId/LinkId，写入推荐 `request_id` 并用 get_operation_result 诊断丢失结果；pending/uncertain 不可盲目重做。下载路径是宿主电脑本机绝对新文件，64 MiB 单原件上限不变。双 Agent 长任务、磁盘/权限/异常中断尚无用户实机验收。
