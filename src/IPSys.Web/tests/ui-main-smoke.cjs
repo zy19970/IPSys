@@ -17,12 +17,17 @@ assert.ok(js.includes("source:'v2file'")&&js.includes("source:'v2ip'")&&
  !js.includes(":'business'")&&
  exportJs.includes("if(selected.some(file=>!validOriginal(file)))"),
  'All module/selected ZIP exports require a real V2 FileId and FileVersion');
-assert.ok(programCs.includes('if(smoke)')&&
- programCs.includes('BusinessFileEndpoints.Map(app);')&&
- programCs.includes('ExcelEndpoints.Map(app, Fail);')&&
- programCs.includes('SearchLedgerEndpoints.Map(app, Fail, smoke);')&&
- searchEndpointsCs.includes('if(includeLegacy)'),
- 'Legacy HTTP business mutations and identity search must be registered in smoke only');
+assert.ok(programCs.includes('SearchLedgerEndpoints.Map(app, Fail);')&&
+ programCs.includes('NativeFolderEndpoints.Map(app, Fail);')&&
+ programCs.includes('NativeFileEndpoints.Map(app, Fail);')&&
+ !programCs.includes('BusinessFileEndpoints.Map(app);')&&
+ !programCs.includes('ExcelEndpoints.Map(app, Fail);')&&
+ !programCs.includes('IpEndpoints.Map(app, Fail);')&&
+ !programCs.includes('ProjectContractEndpoints.Map(app, Fail);')&&
+ !programCs.includes('ArchiveEndpoints.Map(app, Fail);')&&
+ !searchEndpointsCs.includes('"/api/search/{workspace}"')&&
+ searchEndpointsCs.includes('"/api/v2/search/{workspace}"'),
+ 'Production and smoke must register V2-only business and search HTTP routes');
 
 new (require('node:vm').Script)(v2IpJs);
 assert.ok(html.includes('src="/ip-v2.js" defer'),'Frozen IP page must load embedded V2 adapter before app.js');
