@@ -24,7 +24,7 @@ for(const [area,name] of [[choiceArea,'login workspace choice'],[sideSwitches,'s
 }
 assert.ok(html.includes('以个人资料管理为主，公司资料用于集中归纳'),'Workspace copy must reflect personal-data focus');
 assert.ok(html.includes('两个工作区独立保存记录与原始附件'),'Reordering must not weaken workspace isolation');
-for(const phrase of ['科研项目','横向项目','知识产权','项目基本信息','所属合同','全部附件汇总','申请与登记信息','/api/records/','/api/resume','/api/lock','/api/files/','/api/check','localFileTaskActive','sessionStorage','mockflag','data-workspace-switch'])assert.ok(js.includes(phrase),'Missing UI/API design anchor '+phrase);
+for(const phrase of ['科研项目','横向项目','知识产权','项目基本信息','所属合同','全部附件汇总','申请与登记信息','/api/v2/ui/archive/','/api/resume','/api/lock','/api/v2/files/','/api/check','localFileTaskActive','sessionStorage','mockflag','data-workspace-switch'])assert.ok(js.includes(phrase),'Missing UI/API design anchor '+phrase);
 for(const style of ['.shell','.sidebar','.tablewrap','.data','.detailsection','.auth-screen','.workspace-screen'])assert.ok(css.includes(style),'Missing UI style '+style);
 assert.ok(!html.includes('onclick='),'No inline script handlers may be added to real HTTP page');
 assert.ok(html.includes('<title>资料管理系统</title>')&&
@@ -444,10 +444,10 @@ for(const id of ['archiveDialog','archiveForm','aName','aCategory','aYear','arch
  assert.ok(html.includes('id="'+id+'"'),'Archive form or transfer control missing: '+id);
 for(const action of ['archiveAdd','archiveEdit','archiveCopy','archiveMove','archiveDelete'])
  assert.ok(js.includes("case '"+action+"'"),'Missing real archive action '+action);
-assert.ok(js.includes("archiveSections.map(section=>api('/api/archives/'+space+'/'+section)"),
+assert.ok(js.includes("api('/api/v2/ui/archive/'+space)"),
  'Real archives must be fetched by current workspace and module');
 assert.ok(js.includes('data-archive-id='),'Real archive records must open stored IDs');
-assert.ok(js.includes("archiveRows[section]=archiveResults[i]"),'Archive records must be initialized from database');
+assert.ok(js.includes("archiveRows[section]=native.archives.filter(r=>r.section===section)"),'Archive records must be initialized from database');
 const archiveFirst=js.indexOf('const archiveSections=['),archiveLast=js.indexOf('function mockCardList(k){',archiveFirst);
 assert.ok(archiveFirst>=0&&archiveLast>archiveFirst,'Archive render functions missing');
 const realArchiveCtx=vm.createContext({sessionStorage:{getItem:()=>null},document:exportDocument});
@@ -597,7 +597,7 @@ assert.ok(js.includes("body.querySelectorAll('tr[data-archive-folder-row]')")&&
  'DOM ledger decorator must make folder rows selectable, but keep record delete/order controls separate');
 assert.ok(js.includes("items=[...body.querySelectorAll('tr[data-archive-entry-kind]')]")&&
  js.includes("btn.dataset.archiveEntryMove=kind+':'+id;")&&
- js.includes("await api('/api/archive-entry-order'")&&
+ js.includes("await api('/api/v2/folders/company/entries/reorder?section=achievement'")&&
  js.includes("archiveEntryOrders[String(parentId)]=entries"),
  'Folder/record arrows must persist the single mixed order to SQLCipher');
 assert.ok(css.includes('.company-business-archive th:last-child')&&
@@ -611,7 +611,7 @@ assert.ok(realArchiveCtx.__companyTable.includes('data-action="archiveCreate"')&
  realArchiveCtx.__companyTable.includes('管理当前目录')&&
  JSON.stringify(Array.from(realArchiveCtx.__companyPath))==='["申报与认定","企业行标"]',
  'Arbitrary-depth navigation must preserve directory controls and full path');
-assert.ok(js.includes("await api('/api/archive-folders")&&
+assert.ok(js.includes("await api('/api/v2/folders/company/archive_folder")&&
  js.includes("el('archiveFolderForm').onsubmit")&&
  js.includes('function archiveFolderOptions(')&&
  js.includes("case 'archiveExpand'"),
@@ -654,7 +654,7 @@ assert.ok(js.includes("archiveSelectedFolders.add(folderId)")&&
  js.includes("const visibleFolders=archiveVisibleFolderIds();"),
  'Folder and record multi-selection must be included in toolbar ZIP export without using record deletion');
 assert.ok(js.includes("const deleteFolderButton=ev.target.closest('[data-archive-folder-delete]')")&&
- js.includes("await api('/api/archive-folders/'+id,{method:'DELETE'})")&&
+ js.includes("await api('/api/v2/folders/company/archive_folder/'+id,{method:'DELETE'})")&&
  js.indexOf("const deleteFolderButton=ev.target.closest(")<
  js.indexOf("const folderCard=ev.target.closest(")&&
  js.includes("const createAtRoot=id===null&&archiveFolderId===null;")&&
@@ -749,7 +749,7 @@ assert.ok(realArchiveCtx.__certAll.includes('data-certificate-move="51" data-mov
  realArchiveCtx.__certAll.includes('data-certificate-move="51" data-move-direction="1"')&&
  realArchiveCtx.__certAll.includes('data-certificate-move="53" data-move-direction="1" disabled'),
  'First and last row movement must be constrained while intermediate moves stay enabled');
-assert.ok(js.includes("await api('/api/archives/company/certificate/order',{method:'POST',json:{ids}})")&&
+assert.ok(js.includes("await api('/api/v2/ui/archive/company/certificate/order',{method:'POST',json:{ids}})")&&
  js.includes("const ids=(archiveRows.certificate||[]).map(r=>r.id)")&&
  js.includes("if(target.dataset.certificateMove)")&&
  js.includes("await moveCompanyCertificate(Number(target.dataset.certificateMove)"),
@@ -775,7 +775,7 @@ assert.ok(realArchiveCtx.__certAll.includes('data-action="certificateBatchDelete
 assert.ok(js.includes('all.indeterminate=count>0&&count<visible.length')&&
  js.includes('syncCompanyCertificateSelectionUi();')&&
  js.includes("case 'certificateBatchDelete':")&&
- js.includes("'/api/archives/company/certificate/batch-delete'"),
+ js.includes("'/api/v2/folders/company/archive/'+id+'?section=certificate'"),
  'Select-all partial state and batch deletion must call the real API');
 // Check the real selection helper with controlled fake table inputs.
 const headerCheck={checked:false,indeterminate:false};
@@ -915,9 +915,9 @@ assert.ok(js.includes("data-excel-kind=\"archive\" data-excel-section=\"certific
 
 // B05 real business file links are scoped to stored records, not demo attachments.
 assert.ok(html.includes('id="businessFileInput"'),'Business original file picker missing');
-assert.ok(js.includes("api('/api/business-files/'+space).then(r=>r.json())"),
+assert.ok(js.includes("api('/api/v2/ui/archive/'+space).then(r=>r.json())"),
  'Business attachment metadata must be loaded by workspace');
-assert.ok(js.includes("businessFileRows=[...files.filter(f=>!['ip','project','contract'].includes(f.kind)),...ips.files,...nativeProjectFiles]"),
+assert.ok(js.includes("businessFileRows=[...native.files,...native.general.flatMap"),
  'Native FolderId and FileId must replace all IP, project and contract legacy attachments');
 for(const text of ["businessAttachmentList('project',p.id)","businessAttachmentList('ip',row.id)",
  "businessAttachmentList('contract',c.id)","businessAttachmentList('archive',record.id,page)"])
@@ -1125,7 +1125,7 @@ assert.ok(!projectCtx.__project.includes('真实记录')&&!ipCtx.__ip.includes('
 for(const name of ['ledgerScope','ledgerSourceRows','sortLedgerData','decorateLedgerControls',
  'syncLedgerSelection','moveLedgerRecord'])
  assert.ok(js.includes('function '+name+'('),'Shared table helper missing '+name);
-for(const token of ["api('/api/ledger/'+space+'/order')","case 'ledgerBatchDelete':",
+for(const token of ["api('/api/v2/ui/archive/'+space)","case 'ledgerBatchDelete':",
  "dataset.ledgerMove","del.dataset.action='ledgerBatchDelete'","'序号'","'排序'",
  ".ledger-record-row:checked","all.indeterminate=count>0&&count<total",
  "ledgerOrders[scope.kind+':'+scope.section]=ids"])
@@ -1195,8 +1195,8 @@ vm.runInContext(
  helpers+"sortLedgerData();"+
  "globalThis.ids=[projectRows.map(x=>x.id),ipRows.map(x=>x.id),"+
  "contractRows.map(x=>x.id),archiveRows.certificate.map(x=>x.id)];",orderVm);
-assert.deepEqual(JSON.parse(JSON.stringify(orderVm.ids)),[[1,2,3],[4,5],[6,7],[9,8]],
- 'Project/contract/IP use V2 Folder.position, archives alone respect legacy ordering');
+assert.deepEqual(JSON.parse(JSON.stringify(orderVm.ids)),[[1,2,3],[4,5],[6,7],[8,9]],
+ 'All project, IP, contract and archive lists now respect native V2 Folder.position');
 // Other categories remain untouched by a different section's ordering.
 assert.ok(js.includes("if(detail?.kind==='project')return {kind:'contract',section:''}")&&
  js.includes("if(archiveGroup&&archiveSections.includes(page)")&&

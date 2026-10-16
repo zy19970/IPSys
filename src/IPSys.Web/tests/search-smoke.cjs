@@ -8,7 +8,7 @@ assert.ok(first>=0&&last>first,'Real unified search source must exist');
 const source=js.slice(first,last);
 assert.ok(!source.includes('sample(')&&!source.includes('stamp()'),
  'Search must never display sample/mock records');
-assert.ok(js.includes("api('/api/search/'+workspace+'?q='+encodeURIComponent(q))"),
+assert.ok(js.includes("api('/api/v2/search/'+workspace+'?q='+encodeURIComponent(q))"),
  'Search must use the authenticated workspace-scoped endpoint');
 assert.ok(js.includes("openSearchHit(Number(target.dataset.searchIndex))"),
  'Search results must open real records, not demo entries');
@@ -38,7 +38,7 @@ const ctx=vm.createContext({
 vm.runInContext(source,ctx);
 (async()=>{
  await vm.runInContext("runGlobalSearch('测试')",ctx);
- assert.equal(fetches[0],'/api/search/company?q=%E6%B5%8B%E8%AF%95');
+ assert.equal(fetches[0],'/api/v2/search/company?q=%E6%B5%8B%E8%AF%95');
  assert.equal(ctx.globalHits.length,2);
  const html=vm.runInContext('searchPage()',ctx);
  assert.ok(html.includes('项目')&&html.includes('附件文件名'));
