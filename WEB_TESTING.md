@@ -2,7 +2,16 @@
 
 ## 当前优先：N4 清理与 SQLCipher V2 完整实机验收（2026-10-16）
 
-用户确认旧数据库都是可丢弃开发测试数据，不迁移、回填或兼容。项目合同、知识产权、企业资质、公司业务档案、个人分类、综合资料的正式网页、原件版本、MCP、Excel、搜索/回收站、共享和 ZIP/文件夹导出已经统一 V2；[CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) **completed/success**（对应源码 `6a7b1ff`）。**当前 N4** 将旧 `--smoke` 用例和物理旧表/Store 清理，再完成 Windows/SQLCipher/Node 全套回归与 Edge/Chrome、Codex、桌面 Excel 和 T01–T09。下面历史测试记录表示当时阶段，不能当作当前待开发功能。
+用户确认旧数据库均为可丢弃的开发测试数据，不迁移、回填或兼容。N2-04 全业务正式入口已使用 V2；**N4 第一批新建数据库物理表和开库/路由/回收站/自动测试收敛**经过 [Windows CI #38905217041](https://github.com/zy19970/IPSys/actions/runs/38905217041) **completed/success**（源码 `013fa1e`）。仍要清理旧 Store/Provider 源码、开展 Edge/Chrome、真实 Codex、桌面 XLSX 和 T01–T09。下面历史测试记录均以当时的状态供追溯。
+
+
+### N4 第一批：新建 V2-only 数据库与主测试链路验收（2026-10-16）
+
+代码提交 [0b0dfec](https://github.com/zy19970/IPSys/commit/0b0dfec3630f834c0d31f8b09a41df30d1f85972) 使 `Vault.CreateSchema/ValidateSchema` 和开库过程仅依赖 V2，正式与 --smoke 均不再注册旧业务 HTTP；原生 `RecycleStore` 只处理 V2 `folders/folder_file_links`，`WebSmoke` 与相关原生测试统一使用可丢弃的新 V2 SQLCipher 数据库，并断言新库无旧业务表。
+
+首轮 [CI #38904272178](https://github.com/zy19970/IPSys/actions/runs/38904272178)、第二轮 [#38904682051](https://github.com/zy19970/IPSys/actions/runs/38904682051) 因 Node 历史源码结构断言仍假设旧路由或误判 NativeIpExcelEndpoints 失败；后续修正正则后，最终代码 [013fa1e](https://github.com/zy19970/IPSys/commit/013fa1e916d7409287d680e88031ab4c9d5e4a1d) 对应 [Windows CI #38905217041](https://github.com/zy19970/IPSys/actions/runs/38905217041) **completed/success**。实际通过项目包括 Windows Debug/Release、真实 SQLCipher/HTTP 创建/重开、密码和会话、V2 Folder/File/Excel/回收站/MCP、Node UI/ZIP/PDF 与单 EXE。
+
+**本次没有实际验证**：在用户电脑中 Edge/Chrome 的手工点击与文件夹保存授权、2 GiB+ 附件、SSD 突拔/磁盘满/备份故障注入，以及仍留在仓库中的旧 C# Store/Provider 源码清理。以上继续属于 N4 未完成任务。
 
 1. **N1 已通过对应自动测试**：V2 Schema、版本检查与拒绝旧库、七系统根、有效合同父项目/Folder 防环/工作区隔离、文件对象和分块 ready 后不可改写；[CI #38740628571](https://github.com/zy19970/IPSys/actions/runs/38740628571)。新建不得覆盖旧文件。
 2. **N2-01 已通过对应自动测试**：项目/合同/IP 原生 `folders` CRUD、软删恢复、合同父级、真实 SQLCipher HTTP 授权和不双写旧表；[CI #38743939004](https://github.com/zy19970/IPSys/actions/runs/38743939004)。

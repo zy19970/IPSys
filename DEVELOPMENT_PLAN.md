@@ -1,6 +1,6 @@
 # IPSys 开发计划与验收进度（2026-10-16，N4 当前执行版）
 
-> **当前唯一执行依据**：[RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)。N2-03 项目/合同/IP 和 N2-04 档案、资质、个人分类与综合资料的正式网页/原件/Excel/MCP/搜索回收站/导出已经统一 V2；[CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) **completed/success**，对应源码提交 `6a7b1ff`。下一阶段 N4 清理旧 Schema/Store/历史测试适配与实机验收；没有旧正式数据库需要迁移。
+> **当前唯一执行依据**：[RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)。N2-04 全业务 V2 接入完成；N4 首批已把全新资料库物理建表、打开/验证、回收站、搜索、正式和 --smoke 业务接口及综合自动测试统一到 V2，[Windows CI #38905217041](https://github.com/zy19970/IPSys/actions/runs/38905217041) **completed/success**（源码 `013fa1e`）。现继续清理不再被正式调用的旧 Store/Provider/过时用例，并开展 Edge/Chrome/T01–T09 完整验收。无正式旧库需迁移。
 
 ## 1. 产品和已确认架构
 
@@ -32,12 +32,12 @@ IPSys 用户可见名称为「资料管理系统」，采用 Windows WinForms �
 | **N2-03 项目合同完整业务链路** | **Windows CI 已通过** | Excel 项目导入/导出、合同只读导出，搜索结果采用真实 V2 FolderId/FileId；V2 项目/合同回收站与共享 LinkId 的保护；完整项目携全部合同和多版原件的单 SQLCipher 事务复制移动，跨区独立 FileObject；[CI #38848010379](https://github.com/zy19970/IPSys/actions/runs/38848010379) success。 |
 | **N2-04 分类档案与综合资料统一接入** | **正式网页及外围 V2 全链路自动回归通过** | 现有业务档案、资质、个人分类与综合资料页面、固定 Excel、统一搜索、回收站、文件版本/共享及整记录跨区原件复制已接入 SQLCipher V2；db79b82 补齐目录/档案/综合资料 MCP CRUD、原件上传与查询；6a7b1ff 修复全模块 ZIP/文件夹历史版本导出旧 business ID，并将所有已停用旧业务 HTTP 仅注册于 --smoke。最终 [Windows CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) **success**，自动化主链路达到 N2-04 交付门槛；下一阶段 N4 清理旧表/Store 与历史测试适配，Edge/Chrome 人工验收仍未完成。 |
 
-全部正式业务网页、MCP、Excel、搜索/回收站和文件历史导出使用 V2 FolderId/FileId/LinkId；旧物理表、Store、Provider 和测试路由还未清理。`Program.cs` 只在 `--smoke` 历史回归注册旧业务 HTTP，**不能误认为档案/综合资料现有网页还使用旧 Store**。N4 需先更新依赖旧表的测试后安全清除过渡层。
+全部正式业务网页、MCP、Excel、搜索/回收站、历史文件导出均使用 V2。N4 第一批已移除 `Vault` 的旧表创建/检查和开库旧 Store Ensure，`Program.cs` 在生产及 `--smoke` 两种模式均不再注册旧业务 HTTP；目前仍留存一些未调用的旧 C# Store/Provider 和历史测试实现，待根据源码引用安全删减。[Windows CI #38905217041](https://github.com/zy19970/IPSys/actions/runs/38905217041) success。
 
 ## 3. 下一步实际施工顺序（N4）
 
 1. **N1/N2-01～04/N3-01～04 已完成对应自动验收**：全业务 V2 整合通过 [CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886)，不再把 N2-04 作为下一项重做。
-2. **N4 旧结构清理（当前）**：将 `--smoke` 历史测试改为 V2 测试库，去除 `Vault` 中不再需要的 `records/attachments/chunks`、旧 Store/Provider/HTTP、旧搜索身份投影；回归新建、关闭、重开及业务数据完整性。
+2. **N4 旧物理表和接口清理（自动验收已通过）**：新建和重开只验证 SQLCipher V2，回收站/搜索、所有综合 `--smoke` 场景及正式 HTTP 只使用 FolderId/FileId/LinkId；[Windows CI #38905217041](https://github.com/zy19970/IPSys/actions/runs/38905217041) success。接续任务为删除不再引用的旧 Store/Provider、冗余历史测试源文件，并重新跑全量 CI。
 3. **N4 边界和自动回归**：文件选填属性 UI、版本/回收站引用、祖先目录搜索、重叠与同名导出、ZIP 取消；Windows Debug/Release/单 EXE、SQLCipher HTTP、Node UI/PDF/ZIP、MCP 和 Excel。
 4. **N4 实机与安全**：Edge/Chrome、真实 Codex 和桌面 Excel，T01–T09 超大文件/SSD 故障/磁盘满/备份/退出及工作区隔离；依据结果再判断正式交付。
 

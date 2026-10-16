@@ -1,6 +1,6 @@
 # IPSys 技术设计：SQLCipher V2 当前实现与 N4 收敛（2026-10-16）
 
-> 截至 `main@e06f8a7`，各正式业务页面、MCP、Excel、搜索/回收站、文件版本、ZIP/文件夹导出均已使用 V2 FolderId/FileId/LinkId；[CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) success（对应源码 `6a7b1ff`）。现在进入 N4 旧结构/测试清理与 Edge/Chrome 实机验收，不把自动 CI 等同全面正式发布。
+> 截至 `main@013fa1e`，全业务正式网页、Excel、MCP、搜索回收站及历史文件导出使用 V2，且 N4 第一批进一步移除新建/开库的 V1 Schema/Ensure 依赖，生产与 `--smoke` 都仅映射 V2 业务 API、综合 SQLCipher/HTTP 回归已改为 V2-only；[Windows CI #38905217041](https://github.com/zy19970/IPSys/actions/runs/38905217041) **completed/success**。仍需清理未引用旧源码并完成 Edge/Chrome/T01–T09 实机。
 
 ## 1. 运行与安全边界
 
@@ -52,9 +52,9 @@ V2 强制工作区组合约束、合同有效父项目、合法 Folder 父级/�
 
 ## 4. N4 旧 Schema、Store 与测试适配清理
 
-`Vault.CreateSchema` 仍创建旧 `records/attachments/chunks`，`ValidateSchema` 仍检查它们；这是 N4 的物理清理目标。正式 `Program.cs` 已只在 `--smoke` 下注册旧业务/Excel/附件/搜索 API；正式网页、MCP 及导出全走 V2。旧 `ProjectStore/ContractStore/ArchiveStore/BusinessFiles.cs` 与 Provider 仍有历史测试依赖，须在改完测试后清理。
+`Vault.CreateSchema/ValidateSchema` 现仅负责 `ResourceSchemaV2`，`SessionEndpoints` 开库不再调用历史业务 `Ensure`，完整性检查使用 V2 `file_objects` 的 writing 状态；`Program.cs` 不论生产或 `--smoke` 均只注册 V2 业务/搜索路由。`RecycleStore.cs` 已切到 `folders/folder_file_links`，综合和专项测试均以全新 V2 SQLCipher 库运行。旧 `ProjectStore/ContractStore/ArchiveStore/BusinessFiles.cs` 与 R0/R1 Provider 等源码仍存在，其中部分校验 DTO 被 V2 复用；下一步按真实引用删除，避免误删共用验证代码。
 
-原系统的 CRUD、文件版本、PDF.js、ZIP/文件夹、XLSX、统一搜索和本机 MCP 已完整接入 V2 正式主链路；[CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) success。旧兼容代码仅作为历史测试依赖保留；N4 当前清理旧 Schema/Store/测试用 HTTP，严禁旧 ID 回退与双写。
+旧系统的 CRUD、文件版本、PDF.js、ZIP/文件夹、XLSX、统一搜索和 MCP 已切到 V2。N4 首批已移除生产和冒烟测试的旧物理表/路由依赖，[Windows CI #38905217041](https://github.com/zy19970/IPSys/actions/runs/38905217041) success；进一步源码清理、Edge/Chrome 实机与数据安全验收未完成。
 
 ## 5. UI 与外围系统约束
 
@@ -64,6 +64,6 @@ V2 强制工作区组合约束、合同有效父项目、合法 Folder 父级/�
 
 ## 6. 验收、风险与发布
 
-N1/N2/N3 和全模块 N2-04 主链路自动回归已通过 [CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886)；**N4 旧物理表清理与 Edge/Chrome 端到端实机尚未完成**。T01–T09 需验证错密、越权、2 GiB+ 目标往返（当前 V2 单文件仍限 64 MiB）、移动 SSD 故障、磁盘满、退出、备份与未来升级；不做旧库迁移。
+N1/N2/N3 全业务主链路已通过 CI；N4 新建 V2-only 资料库、开库/SQLCipher、回收站、MCP、Node ZIP/PDF、Debug/Release 和单 EXE 经过 [Windows CI #38905217041](https://github.com/zy19970/IPSys/actions/runs/38905217041) **success**。仍需安全移除残余旧源码，并完成 2 GiB+ 目标、SSD 异常、磁盘满、安全退出与备份一致性、Edge/Chrome 实机等 T01–T09 验收。
 
 具体接续见 [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md)、[RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)；测试记录见 [WEB_TESTING.md](./WEB_TESTING.md)。

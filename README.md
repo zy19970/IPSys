@@ -1,10 +1,10 @@
 # IPSys — 资料管理系统
 
-> **当前开发状态（2026-10-16，N2-04 全业务 V2 主链路自动回归通过）**：项目/合同、知识产权、企业资质、公司业务档案、个人分类和综合资料均已在正式网页、Excel、搜索/回收站、附件与文件版本及相关完整原件复制中使用 SQLCipher V2；同区原件共享与移动保持单事务。[db79b82](https://github.com/zy19970/IPSys/commit/db79b825a3b7fb1ab384a70da69575d55e653b80) 已补齐档案目录和综合资料 MCP CRUD、五类业务 upload_files/list_files，并去除网页旧附件调用；[6a7b1ff](https://github.com/zy19970/IPSys/commit/6a7b1ffe882aaa114c9d90af7011068cad7fd330) 又统一文件夹/ZIP 导出为 V2 FileId+FileVersion，并将旧业务 HTTP 路由仅注册于 --smoke 测试模式。[Windows CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) **success**。下一阶段 N4 旧 Schema/Store 与测试适配清理；Edge/Chrome 用户实机仍待验收。旧库全部为开发测试数据，不迁移。
+ > **当前开发状态（2026-10-16，N4 新库物理清理第一批自动验收通过）**：正式项目、合同、知识产权、资质、档案、个人分类和综合资料均已使用 SQLCipher V2 Folder/File。N4 已移除新建及打开资料库对旧 records/attachments/chunks、业务 Store Ensure 的依赖，正式及 --smoke 均不再注册 V1 业务 HTTP，回收站/搜索/自动回归只使用 V2；[Windows CI #38905217041](https://github.com/zy19970/IPSys/actions/runs/38905217041)**completed/success**，对应源码 `013fa1e`。仍保留部分不再用于生产的旧 Store/Provider 源码，下一步按引用清理并补 Edge/Chrome 和 T01–T09 实机验收；所有旧数据库均为开发测试数据，无迁移。
 
 IPSys 定位为**业务化文件夹式本地资料管理器**，个人资料长期归档优先、公司资料独立工作区。程序采用 WinForms + 127.0.0.1 本机网页，一个 SQLCipher 加密库保存真实原件字节。2026-10-15 用户已确认 **Folder/File 统一资源物理模型**：所有业务条目及分类为带业务属性的 Folder（无版本），只有附件为 File（独立 FileId、选填属性和历史版本）。同区多个 Folder 可引用同一个 FileId，两个独立文件也可仅复用物理原件内容；查重时显示已有文件名与路径，由用户决定；公司/个人不共享物理原件。
 
-**唯一架构和开发进度依据**：[RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)。N2-03 项目合同及 IP 新库主链路已通过对应 Windows CI，N2-04（档案、资质、个人分类与综合资料 V2 全入口接入）主链路及全量 CI 已通过，下一阶段是 N4 清理旧测试适配表与兼容代码。只有代码、HTTP/SQLCipher、MCP/Excel/搜索/回收站、文件分享导出和 UI 测试一致通过，才标记 N2-04 完成；之后 N4 旧表清理和正式实机验收。
+**唯一架构和开发进度依据**：[RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)。N2-04 全业务 V2 接入已经完成；N4 第一批完成 V2-only 建库、开库、正式/测试 API 及自动验收，[Windows CI #38905217041](https://github.com/zy19970/IPSys/actions/runs/38905217041) success。继续清理未引用的旧源码、补齐复杂边界及正式实机验收；不能将 CI 等同发布验收。
 
 ## 产品模型与页面规则（当前统一口径）
 
@@ -32,7 +32,7 @@ Visual Studio 可直接打开 `src/IPSys.Web/IPSys.Web.csproj` 调试。Release 
 dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-contained false -o .\out\IPSys-SingleExe
 ```
 
-从 [Windows Actions](https://github.com/zy19970/IPSys/actions/workflows/web-windows.yml) 下载最新成功的 `IPSys-Web-win-x64` Artifact。最新已核验的全套源码自动回归为 [CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) **completed/success**（对应 `6a7b1ff`，其后 `e06f8a7` 只改文档）；CI 不等于用户实机验收。
+从 [Windows Actions](https://github.com/zy19970/IPSys/actions/workflows/web-windows.yml) 获取最新成功的 `IPSys-Web-win-x64`。目前已核验的 N4 代码完整自动回归为 [Windows CI #38905217041](https://github.com/zy19970/IPSys/actions/runs/38905217041) **completed/success**（源码 `013fa1e`）。Windows GUI/Edge/Chrome 实机及安全故障注入仍未全部完成。
 
 ## 2. 当前实现的业务
 
@@ -60,7 +60,7 @@ dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-conta
 ## 4. 当前 N4 任务与验收状态
 
 1. **N2-04 主链路代码和自动回归已通过**：[CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) success。项目、合同、知识产权、档案、资质、个人分类及综合资料的正式网页、MCP、Excel、搜索/回收站、文件历史共享与导出均已接入 V2。
-2. **N4 当前：清理旧 Schema/Store/历史测试适配**。先将 `--smoke` 的旧表测试改为 V2，再删除不再需要的旧物理表、Store、Provider、旧身份投影和兼容路由。`Vault.CreateSchema/ValidateSchema` 仍有 `records/attachments/chunks` 旧表依赖，当前尚未清理完成。
+2. **N4 第一批已通过自动验收**：`Vault.CreateSchema/ValidateSchema` 不再创建/校验 `records/attachments/chunks`，`SessionEndpoints` 不再通过旧 `Ensure` 重建业务表，正式和 `--smoke` 只注册 V2 HTTP，回收站和综合测试均使用 V2。[Windows CI #38905217041](https://github.com/zy19970/IPSys/actions/runs/38905217041) success。**下一个开发重点**是按实际引用清除仍编译的旧 Store/Provider/历史测试源码，进一步压缩兼容层；不做旧库迁移。
 3. **N4 验证与发布判定**：文件选填属性 UI、历史版本、目录祖先检索、父子重叠和同名 ZIP/文件夹导出，Windows Debug/Release/单 EXE、SQLCipher/HTTP、MCP、Excel、Node PDF/ZIP、Edge/Chrome 实机及 T01–T09 安全门槛。未验收完成前不宣布正式发布。
 
 旧库迁移/回填已经取消，勿沿旧 R4 或直接发布路线推进。实际子任务状态和证据见 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)。
