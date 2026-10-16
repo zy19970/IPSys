@@ -1,6 +1,6 @@
 # IPSys P2 当前工作区统一搜索（2026-10-15）
 
-> **2026-10-16 最新进展**：项目、合同及其原件的统一搜索已改为真实 V2 FolderId/FileId，知识产权继续使用 V2 身份；有效父项目、工作区隔离和文件名称/可选属性通过真实 SQLCipher/HTTP 回归。[功能 59f7614](https://github.com/zy19970/IPSys/commit/59f7614ed2fb90d3bf3d6f56533240555874b6f1)、[Windows CI #38848010379](https://github.com/zy19970/IPSys/actions/runs/38848010379) **success**。**N2-04 仍需把企业资质、业务档案、个人分类及综合资料搜索从旧 Store 迁入 V2**，增加完整祖先 Folder 结构化字段与实机跳转；不做 OCR 或正文全文检索。
+> **2026-10-16 最新进展**：项目/合同/IP 全链路按 V2 FolderId/FileId 检索。N2-04 已新增**全部 V2 业务档案、公司资质、个人分类和综合资料**的搜索，包括自身业务属性、公司分类祖先目录名称、原件名称与可选 File 属性；原生 API 为 `/api/v2/search/{workspace}?q=...`。因当前 `app.js` 归档/综合资料仍是旧记录 ID，[c941bda](https://github.com/zy19970/IPSys/commit/c941bda2ca63a3fb64948bb3d99df5ab1f6d2794) 将原 `/api/search/{workspace}` 保留为当前页面可用的旧 archive/general ID 投影，**不混用旧 ID 与原生 FolderId**，其余模块仍用 V2。经 [CI #38852697271](https://github.com/zy19970/IPSys/actions/runs/38852697271) **success** 验证新旧接口隔离、软删除过滤与授权。后续 N2-04 页面迁入新数据源后再删除过渡投影；尚无 OCR/正文全文检索，Edge/Chrome 实机跳转待验收。
 
 在顶部「搜索当前工作区资料」输入关键词并按 Enter。后端 `GET /api/search/{workspace}?q=...` 在**已解锁且认证通过的当前公司或个人工作区**内查询真实数据；工作区切换或页面切换后丢弃过期搜索结果。
 

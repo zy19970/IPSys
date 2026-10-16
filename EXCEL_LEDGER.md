@@ -1,6 +1,6 @@
 # IPSys P1 Excel 台账：当前实现与验收（2026-10-15）
 
-> **2026-10-16 当前状态**：知识产权 V2 固定 20 列 Excel 已通过专项 CI；项目 V2 11 列模板/导入/筛选导出与合同 9 列只读导出已接入当前网页，复用固定 XLSX/OpenXML 格式，以 V2 FolderId 为唯一记录身份，项目更新不覆盖 FileId、LinkId 与原件版本。[功能 59f7614](https://github.com/zy19970/IPSys/commit/59f7614ed2fb90d3bf3d6f56533240555874b6f1)、[Windows CI #38848010379](https://github.com/zy19970/IPSys/actions/runs/38848010379) **success**。N2-04 仍需把业务档案、企业资质、个人分类和综合资料 Excel 从旧 Store 统一接入 V2；桌面 Excel 人工验收尚未完成。
+> **2026-10-16 当前状态**：知识产权、项目与合同的 V2 固定 XLSX 已接入当前网页；合同仅只读导出，项目导入/筛选用 FolderId，主链路已通过 CI #38848010379。N2-04 已新增档案固定四列（资料名称/类别/备注/标签）、综合资料单列（资料名称）原生 Excel 导入/导出，按 V2 archive/general FolderId 去重并保持关联文件及其版本。公司业务档案 Excel 新建时类别需匹配存在的一级系统根；既有深层档案更新保留原目录。代码 [48bdd4a](https://github.com/zy19970/IPSys/commit/48bdd4a62cb8232619fa381007103ee1b065da80)、[1133653](https://github.com/zy19970/IPSys/commit/11336537185dde127b4efe2221d98d784565cbd4)，自动验收 [CI #38852697271](https://github.com/zy19970/IPSys/actions/runs/38852697271) **success**。**当前档案与综合资料网页仍调用旧 Excel，待 N2-04 页面对接后才能用于用户日常操作；桌面 Excel 人工验收未完成。**
 
 ## 1. 固定列与现有网页接入范围
 

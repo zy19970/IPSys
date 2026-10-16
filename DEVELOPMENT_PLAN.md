@@ -30,7 +30,7 @@ IPSys 用户可见名称为「资料管理系统」，采用 Windows WinForms �
 | **N2-03-07-01** | **Windows CI 通过** | 项目/合同现有网页 CRUD、合同从属项目、排序、原生附件/版本/共享/解除、文件夹/ZIP 导出已接入 V2 FolderId/FileId；[CI #38836041449](https://github.com/zy19970/IPSys/actions/runs/38836041449)。原名 MCP/Excel/搜索及跨区整项目复制尚待收敛 |
 | **N2-03-07-02-01 原名 MCP/原件** | **完整 Windows CI #38845050570 已通过** | 原名项目合同 CRUD、`upload_files`、专用文件查删、通用 `list_files/delete_file` 均已使用 V2 FolderId/FileId/LinkId；[#38844746654](https://github.com/zy19970/IPSys/actions/runs/38844746654) 已通过，[#38845050570](https://github.com/zy19970/IPSys/actions/runs/38845050570) **success** 核验通用命令 |
 | **N2-03 项目合同完整业务链路** | **Windows CI 已通过** | Excel 项目导入/导出、合同只读导出，搜索结果采用真实 V2 FolderId/FileId；V2 项目/合同回收站与共享 LinkId 的保护；完整项目携全部合同和多版原件的单 SQLCipher 事务复制移动，跨区独立 FileObject；[CI #38848010379](https://github.com/zy19970/IPSys/actions/runs/38848010379) success。 |
-| **N2-04 分类档案与综合资料统一接入** | **已进入，未完成** | 将公司业务档案及企业资质、个人分类、综合/其他资料的现有网页、附件、Excel、搜索回收站、复制/导出接入原生 V2 Folder/File；保持根层卡片/内部混排及个人分类 UI 冻结；之后再 N4 清理旧表 |
+| **N2-04 分类档案与综合资料统一接入** | **核心服务已开发，当前网页未切，整体未完成** | 原生档案/综合资料固定 XLSX、原生搜索（含祖先目录与 File 可选属性）和 V2 回收站/文件关联保护已在 48bdd4a 与 1133653 实现，c941bda 隔离现有旧搜索页面和新 V2 身份，回归修复 2ce1c2a，对应 [CI #38852697271](https://github.com/zy19970/IPSys/actions/runs/38852697271) **success**。**下一步仍在 N2-04 内集中切换当前公司业务档案、资质/个人分类、综合资料网页 CRUD/附件版本/排序/复制导出/Excel/搜索回收站的原生唯一数据源**；通过 Windows/SQLCipher/Node 回归后再 N4。 |
 
 N2/N3 原生 API 与旧路由目前并存；IP 和项目合同的实际网页/MCP/Excel/搜索/回收站及原件跨区复制已使用 V2，**企业资质/业务档案/个人分类/综合资料仍有旧 Store 和网页读写入口**，这是 N2-04 真实实施范围。不能让同一操作双写、错配两套数字 ID；旧表仅在尚有调用时保留。
 

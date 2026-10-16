@@ -1,6 +1,6 @@
 # IPSys 跨会话交接（2026-10-16，直接续作 N2-04 大里程碑）
 
-> 当前基线：`main@e59acc3`；项目/合同与知识产权现有网页、V2 原件、MCP、Excel、搜索回收站和带全部子合同与历史文件版本的跨区事务复制均已实现。集中功能 [59f7614](https://github.com/zy19970/IPSys/commit/59f7614ed2fb90d3bf3d6f56533240555874b6f1) 和旧适配修复 [e59acc3](https://github.com/zy19970/IPSys/commit/e59acc37d6cfd3c3f27673bda996aa74ef3cb839)，[Windows CI #38848010379](https://github.com/zy19970/IPSys/actions/runs/38848010379) **success**。按用户要求，不再拆更小子编号，直接以 **N2-04** 完成公司业务档案、企业资质、个人分类与综合资料的现有网页和附件/Excel/搜索回收站/导出统一接入。N2-04 当前尚未完成，不能声称已验收。用户没有旧数据库需要迁移。
+> 当前基线（2026-10-16）：N2-03 知识产权/项目合同现有网页、MCP、Excel、原件、搜索、回收站与跨区复制已通过 Windows CI #38848010379。N2-04 正集中处理公司档案、企业个人分类和综合资料。后端 [48bdd4a](https://github.com/zy19970/IPSys/commit/48bdd4a62cb8232619fa381007103ee1b065da80)、[1133653](https://github.com/zy19970/IPSys/commit/11336537185dde127b4efe2221d98d784565cbd4) 已接 V2 档案/综合资料 Excel、原生搜索与回收站；[c941bda](https://github.com/zy19970/IPSys/commit/c941bda2ca63a3fb64948bb3d99df5ab1f6d2794) 保证现有旧档案页面 `/api/search` 不误用新 FolderId，原生数据统一通过 `/api/v2/search`；测试修正 [2ce1c2a](https://github.com/zy19970/IPSys/commit/2ce1c2a62d124b4715852ba8b5e54afad8476878) 后 [Windows CI #38852697271](https://github.com/zy19970/IPSys/actions/runs/38852697271) **success**。**现有业务档案、资质、个人分类和综合资料网页、原件及外围调用仍未完成 V2 转换，N2-04 整体未验收。**没有旧数据库迁移任务。
 
 ## 1. 用户最终意图和冻结规则
 
@@ -38,7 +38,7 @@ IPSys 用户界面名称是「资料管理系统」，以**个人资料长期归
 | **N2-03-07-01** | 项目/合同现有网页、真实父项目合同、原件 FileId/LinkId/版本、用户决定内容复用、排序、合同及链接同事务复制、下载与文件夹 ZIP 已对齐 V2，Windows CI #38836041449 成功 |
 | **N2-03-07-02-01 MCP** | 首批已提交：原名项目合同 CRUD、`upload_files(kind=project/contract)`、项目/合同专用文件查询与解除，以及通用 `list_files/delete_file` 均使用 V2 Folder/File/Link，[Windows CI #38845050570](https://github.com/zy19970/IPSys/actions/runs/38845050570) success；仍需本机实机验收；后续依次进行 Excel、搜索回收站及整项目跨区事务复制 |
 | **N2-03 项目合同全链路** | 项目固定 XLSX V2 导入导出、合同只读导出、搜索结果与回收站身份统一、完整项目及所属合同全部原件历史跨区事务复制/移动已通过 [Windows CI #38848010379](https://github.com/zy19970/IPSys/actions/runs/38848010379)；失败测试后旧适配类型隔离已修复 |
-| **N2-04（当前大里程碑）** | 原生 `NativeArchiveStore`/`NativeArchiveOrder` 已有 V2 原语，但现有业务档案/企业资质/个人分类/综合资料网页仍走旧 Store，须合并接通 Folder/File 及 Excel、搜索回收站、附件共享版本和递归导出，整体回归后标记完成 |
+| **N2-04（当前大里程碑）** | 现有 SQLCipher V2 原生 archive_folder/archive/general CRUD、分类混排、档案和综合资料固定 XLSX、`/api/v2/search`（含祖先目录和可选 File 属性）、`v2_archive`/`v2_general`/`v2_file` 回收站与原件保护已备；**现有 app.js 归档/资质/个人分类/综合资料仍读写旧 Store**，必须整体切换网页、上传/下载、共享版本、导出、排序、回收站及 Excel 后才能结束 N2-04。 |
 
 **源码切换边界**：IP 与项目合同的现有网页、MCP、Excel 和搜索/回收站已按真实 V2 FolderId/FileId/LinkId 接入；`NativeProjectExcelLedger`、`NativeProjectTransferStore` 和 `SearchStore`/`RecycleStore` 的项目合同新库路径通过 CI #38848010379。`Vault.CreateSchema` 仍建开发期旧表，业务档案/企业资质/个人分类/综合资料现有 `app.js` 及 `/api/archives`、`/api/records`、旧 Excel/业务附件 Store 仍读写旧表。这是 **N2-04** 的集中实施缺口；旧 Store 不能在引用未清零前删除，禁止新旧同业务双写。
 

@@ -1,6 +1,6 @@
 # IPSys — 资料管理系统
 
-> **当前开发状态（2026-10-16，N2-03 主链路收敛，进入 N2-04）**：知识产权全链路、项目合同现有网页/原件/MCP/Excel/搜索/回收站及项目连所属合同和所有 FileVersion 的跨工作区事务复制已使用 V2 FolderId/FileId/LinkId。[集中功能提交 59f7614](https://github.com/zy19970/IPSys/commit/59f7614ed2fb90d3bf3d6f56533240555874b6f1)、[旧适配修复 e59acc3](https://github.com/zy19970/IPSys/commit/e59acc37d6cfd3c3f27673bda996aa74ef3cb839)、[Windows CI #38848010379](https://github.com/zy19970/IPSys/actions/runs/38848010379) **success**。**现在按 N2-04 大里程碑集中接入业务档案、企业/个人分类资料及综合资料的现有网页、附件和外围接口**；上述模块目前仍使用旧 Store，N2-04 尚未验收完成。旧库都是测试数据，不迁移、回填或兼容，用户 Edge/Chrome 全面实机测试仍需完成。
+> **当前开发状态（2026-10-16，N2-04 大里程碑开发中）**：知识产权、项目/合同现有网页及原件、MCP、固定 Excel、搜索回收站与完整历史跨区复制均已按 SQLCipher V2 运行，[CI #38848010379](https://github.com/zy19970/IPSys/actions/runs/38848010379) success。N2-04 又完成归档/资质/个人分类/综合资料的**V2 固定 Excel 后端、全模块原生搜索（含祖先目录和可选 File 属性）、V2 回收站与文件历史保护**，旧 UI 搜索 ID 与新 FolderId 隔离，[CI #38852697271](https://github.com/zy19970/IPSys/actions/runs/38852697271) **success**。但这些模块现有网页、附件与导出仍读写旧接口，**N2-04 整体尚未完成**；下一步直接在本里程碑内统一完成页面/附件/Excel/搜索回收站调用切换。所有旧库都是测试数据，不需要迁移、回填、兼容；Edge/Chrome 实机仍待验收。
 
 IPSys 定位为**业务化文件夹式本地资料管理器**，个人资料长期归档优先、公司资料独立工作区。程序采用 WinForms + 127.0.0.1 本机网页，一个 SQLCipher 加密库保存真实原件字节。2026-10-15 用户已确认 **Folder/File 统一资源物理模型**：所有业务条目及分类为带业务属性的 Folder（无版本），只有附件为 File（独立 FileId、选填属性和历史版本）。同区多个 Folder 可引用同一个 FileId，两个独立文件也可仅复用物理原件内容；查重时显示已有文件名与路径，由用户决定；公司/个人不共享物理原件。
 
