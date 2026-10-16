@@ -66,3 +66,7 @@ IPSys 用户界面名称是「资料管理系统」，以**个人资料长期归
 N1/N2 通过 Windows CI 不等于整个 V2 应用已验证。旧单文件上传上限仍 64 MiB；2 GiB+ 目标、SSD 故障、磁盘耗尽、手工备份一致性、密码修改与压缩尚未完整验收，不能声称正式发布完成。不在没有包含新数据的有效外部备份时删除来源文件。
 
 按 AIGT-templates 的 `AGENTS.md` 与 `AI_RULES/GIT_OPERATIONS.md` 工作，先核对主分支完整提交历史和当前源码，明确子任务后最小改动、针对性测试、直接提交 `main`、检查 CI 和 ref，并更新 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md) 的进度证据与 [RESOURCE_REFACTOR_TEST_MATRIX.md](./RESOURCE_REFACTOR_TEST_MATRIX.md) 的状态。需求与 UI 分别见 [REQUIREMENTS.md](./REQUIREMENTS.md)、[UI_BASELINE.md](./UI_BASELINE.md)，实机记录见 [WEB_TESTING.md](./WEB_TESTING.md)。
+
+## N2-04 最新主分支状态（2026-10-16，本轮）
+
+原有阶段描述是历史实施记录，最新 main 的实际代码已向前推进：[02619b2](https://github.com/zy19970/IPSys/commit/02619b25d) 已接入公司业务档案、企业资质、个人分类和综合资料现有 V2 页面，[f014a2c](https://github.com/zy19970/IPSys/commit/f014a2c497dfa8342393c310b651390aa8349230) 已实现综合资料整记录及原件全部版本的跨工作区转移，前次 [CI #38856099239](https://github.com/zy19970/IPSys/actions/runs/38856099239) 成功。本轮 [8da8ec4](https://github.com/zy19970/IPSys/commit/8da8ec49a982cb91e4737ccea0962587f85f1606) 将现有附件复制/移动关联操作切为 V2 FileId、来源 LinkId、目标 FolderId 的同工作区 SQLCipher 原子事务；重复链接拒绝并回滚，移动只解除来源一处，保留全部历史版本和其它共享位置；[820e26b](https://github.com/zy19970/IPSys/commit/820e26ba3675b9296a676d1881392b5e00959c32) 同步冻结 UI 断言，最终 [Windows CI #38859966813](https://github.com/zy19970/IPSys/actions/runs/38859966813) **success**。N2-04 主链路已经推进，但仍要审查剩余旧 API/兼容代码及整体界面一致性，N4 旧表清理和 Edge/Chrome 实机验收未完成；没有正式旧库需要迁移。
