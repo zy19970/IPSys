@@ -382,3 +382,7 @@ dotnet publish .\src\IPSys.Web\IPSys.Web.csproj -c Release -r win-x64 --self-con
 4. 目前数据库路径仍在网页输入，正式的 Windows 选路径、目录批量导出等尚待开发。主程序只在本机 `127.0.0.1` 启动 HTTP 服务，不开放到局域网。
 
 如果不能启动，把 Windows 版本、出现的窗口、报错界面和构建链接发回来即可。
+
+## N2-03-07-01 项目合同现有网页与 V2 File/Folder 自动验收（2026-10-16）
+
+[功能提交 f13d185c](https://github.com/zy19970/IPSys/commit/f13d185cbedb40f5bf842a1c674453bdfddbe229) 及 [Windows CI #38836041449](https://github.com/zy19970/IPSys/actions/runs/38836041449) **completed/success**。原有项目/合同网页已改用 `/api/v2/ui/projects`、`/api/v2/ui/contracts`、`/api/v2/ui/project-files` 和原生 `/api/v2/folders` 新建/修改/软删除；合同从真实 V2 项目 FolderId 创建。业务附件复用 V2 prepare/resolve SHA-256 内容匹配与用户显式选择、FileId 历史版本、同区共享/单处解绑、预览/下载及文件夹/ZIP 导出。项目合同排序按 V2 folders.position；合同复制新增独立 FolderId，并在一事务中引用原 FileId。SQLCipher/HTTP 验证公司/个人隔离、父级合同约束、原件初始版/新版实际字节、合同复制后同 FileId 两版本、项目删/恢复后合同与原件历史完整；Node UI、Windows Debug/Release/单 EXE 回归均通过。**未验收**：原名 MCP 项目合同身份、旧搜索回收站、项目/合同固定 Excel、跨区完整项目+合同+所有文件版本的原子复制/移动及用户 Edge/Chrome 实机；此类旧路由已在 UI 上暂时禁用或留待 N2-03-07-02，不能用旧库 ID 操作新版记录。旧测试库不需迁移、回填或兼容。

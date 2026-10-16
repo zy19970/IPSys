@@ -117,3 +117,7 @@ N1 验收：[Windows CI #38740628571](https://github.com/zy19970/IPSys/actions/r
 [N2-03-06 源码提交 3f1e5608](https://github.com/zy19970/IPSys/commit/3f1e56088cb6c4f974d74221a6bca583a57d3939)、[最终 CI #38833862535](https://github.com/zy19970/IPSys/actions/runs/38833862535) **success**：在 SQLCipher + 真实本机 MCP 管道/HTTP 中验证 upload_files(kind=ip) 使用 V2 FolderId 上传原始字节并保留材料类别；list_ip_files 返回实际 FileId/LinkId；同内容 SHA-256 重复不选择时拒绝并清理 writing 暂存；选 reuse 仅复用物理内容并产生独立 FileId；update 追加 Version 2；个人工作区不能引用公司 IP ID；delete_ip_file 只解除指定关联，不损坏原 FileId 与历史版本。
 
 **当前明确不做**：旧数据库迁移、旧测试资料回填、跨新旧数据库同步及旧版库兼容。**下一项 N2-03-07**：将项目/合同真实网页、原件、MCP/Excel/转移接入 V2，再推进归档与综合资料，最后清理过渡旧物理表和兼容代码。用户本机 Edge/Chrome 以及最终安全验收尚未完成，勿将 Windows 自动 CI 等同整机正式验收。
+
+## N2-03-07-01 项目合同 V2 网页/文件与合同父级回归（2026-10-16）
+
+[功能提交 f13d185c](https://github.com/zy19970/IPSys/commit/f13d185cbedb40f5bf842a1c674453bdfddbe229)、[Windows CI #38836041449](https://github.com/zy19970/IPSys/actions/runs/38836041449) **success**。项目与合同的实际冻结网页读写 `folders.kind=project/contract` 的同一 FolderId；合同从项目详情创建、严格依附有效同工作区父项目。原件按 FolderFileLink→FileId→FileVersion 读取，支持内容 SHA-256 异名提示与明确保存方式、独立 FileId 与历史版本、同区共享、单处解除、文件夹/ZIP 导出。合同复制创建独立 FolderId 但在同一 SQLCipher 事务中共享原 FileId/全部现有版本。真实 HTTP smoke 测试工作区隔离、目录父级、文件初始/历史真实字节、顺序、旧业务表不双写、项目软删除隐藏合同与恢复后历史未损；Node UI 检查新版数据来源和操作路径。**剩余 N2-03-07-02**：统一旧名 MCP/搜索/回收站、项目合同 Excel、跨公司个人含所有子合同与历史文件的事务复制；之后归档/综合资料，最后用户 Windows/Edge/Chrome 实机，不进行旧测试库迁移。

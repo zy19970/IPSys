@@ -32,3 +32,7 @@
 ## N2-03-03 知识产权 V2 原生 Excel 接口（2026-10-16）
 
 [功能提交 7a7d98a5](https://github.com/zy19970/IPSys/commit/7a7d98a54283174f94f3e7fb67bef2483cc0faf3)、[Windows CI #38825202078](https://github.com/zy19970/IPSys/actions/runs/38825202078) **success**。`/api/v2/excel/{workspace}/ip/template`、`export`、`import?policy=skip|update|create` 与旧 Excel 固定20列工作簿兼容，直接访问 V2 `folders.kind=ip/attributes_json`，导出 `all` 或以 V2 FolderId 作为 `filtered` 的 `ids`；8 MiB/5000 行上限与原申请号/登记号/名称+类型去重策略保持。HTTP/SQLCipher 验证来源固定 Excel 文件导入、V2 原地更新不改变 IP FolderId 或已关联 FileId/版本/原件字节、个人工作区独立导入属性不复制公司附件、无旧表双写、异常工作簿拒绝。**旧 `/api/excel/{workspace}/ip/*`、冻结网页台账仍属旧业务过渡期，不能与新版 FolderId 混用；当前仍需 N2-03-04 统一旧入口、N4 桌面 Excel 与 UI 实机验收。**
+
+## 项目和合同 Excel 与 V2 文件夹的边界（N2-03-07-01）
+
+项目、合同现有网页已切换 V2 FolderId，并通过 [Windows CI #38836041449](https://github.com/zy19970/IPSys/actions/runs/38836041449) 自动验收。**旧 /api/excel/{workspace}/project 与 contract 仍访问旧项目台账的独立 ID**，不可用于新版网页；项目的旧 Excel 导入模板与导出在当前 UI 中明确暂停，合同旧 Excel 导出同样阻止调用。下一批 N2-03-07-02 接入以 V2 FolderId 为选中 ID、合同必须归属 V2 项目的固定列 Excel 服务，原件文件版本不能因为台账更新而丢失。旧测试资料库无需迁移、回填或兼容。

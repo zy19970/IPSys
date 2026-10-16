@@ -78,3 +78,7 @@ Codex 通过 stdio 使用同一个 EXE 的 `--mcp` 模式，子进程仅通过�
 调用 `upload_files` 指定 `workspace=company/personal`、`kind=ip`、`owner_id=V2 FolderId`、`paths=[绝对路径]`、可选 `material_category`（申请材料/通知文件/证书文件/其他材料）。无重复内容时生成新 FileId；有 SHA-256 重复内容时，若未明确给出 `duplicate_mode`，返回已有文件的名称/位置/FileId 并撤销暂存，不自动合并。确认后可设置 `duplicate_mode=independent` 独立保存、`duplicate_mode=reuse` 且 `source_file_id=已有 FileId` 仅复用物理内容，或 `duplicate_mode=share` 加上 `source_file_id` 共享同一 FileId。服务端复核匹配哈希与工作区归属。为原 FileId 追加版本时使用 `on_conflict=update` 和 `file_id=目标 FileId`，不得同时提供内容复用选项。查询用 `list_ip_files(ip_id=...)`；解除用 `delete_ip_file(ip_id=...,file_id=...,link_id=...)`。这些操作均使用原有手动启用的 MCP 授权、仅本机用户管道和 SQLCipher，不开放外部网络访问。
 
 [Windows CI #38833862535](https://github.com/zy19970/IPSys/actions/runs/38833862535) 已通过。旧 `list_files/delete_file` 仍服务尚未切换的项目/合同等临时旧模块，不能拿其中的旧文件链接 ID 去操作 V2 知识产权；后续这些模块全部转入 V2 后清理旧路径。项目仍在开发阶段，测试数据库无需迁移、兼容或回填。
+
+## 项目/合同 N2-03-07-01 过渡边界（2026-10-16）
+
+现有网页中的项目和合同已于 [CI #38836041449](https://github.com/zy19970/IPSys/actions/runs/38836041449) 接入 V2 FolderId/FileId；**尚未将原名 MCP 的 `list_projects/create_project/update_project/delete_project/list_contracts/create_contract/delete_contract` 和旧 `upload_files(kind=project/contract)` 接入新身份**。在 N2-03-07-02 完成之前，应使用已存在的 `v2_list_projects/v2_create_project/v2_update_project/v2_delete_project/v2_list_contracts/v2_create_contract/v2_delete_contract` 操作新版记录，不要将旧 MCP 项目/合同返回的 ID 作为 V2 文件夹或附件 ID。开发阶段没有旧数据库需要迁移；下一批将收敛原 MCP 名称和附件操作以防错误关联。
