@@ -35,6 +35,21 @@ static class NativeMcpSmoke
               new[]{"list_project_files","list_contract_files",
                   "delete_project_file","delete_contract_file"}.All(names.Contains),
               "project and contract file MCP actions are available");
+        // One idle client must never block an independent Agent's request.
+        await McpLocal.VerifyConcurrentClientsAsync();
+        var schemas=JsonSerializer.SerializeToElement(McpLocal.Tools());
+        JsonElement Properties(string tool)=>schemas.EnumerateArray().First(x=>
+            x.GetProperty("name").GetString()==tool)
+            .GetProperty("inputSchema").GetProperty("properties");
+        bool Accepts(JsonElement property,string kind)=>
+            property.GetProperty("type").EnumerateArray().Any(x=>x.GetString()==kind);
+        Check(!Properties("upload_files").TryGetProperty("group_id",out _),
+            "obsolete group_id must not appear in the tool schema");
+        Check(Accepts(Properties("create_contract").GetProperty("amount"),"number") &&
+              Accepts(Properties("update_project").GetProperty("leader"),"null") &&
+              Accepts(Properties("create_archive").GetProperty("year"),"number"),
+            "schemas expose numeric year/amount and optional null semantics");
+
         string suffix=Guid.NewGuid().ToString("N")[..8];
         string name="原生MCP项目"+suffix;
         var created=await Call("create_project",new {
@@ -77,13 +92,14 @@ static class NativeMcpSmoke
         Check(orphanDenied,"contracts must belong to a project in same workspace");
         var contractResult=await Call("create_contract",new{
             workspace="company",project_id=project,
-            name="原生MCP合同"+suffix,contract_no="C-"+suffix,amount="1234.00"
+            name="原生MCP合同"+suffix,contract_no="C-"+suffix,amount=1234.5
         });
         long contract=Id(contractResult);
         var contracts=await Call("list_contracts",new{workspace="company"});
         var contractItem=Find(contracts,contract);
         Check(contractItem?["folder"]?["parent"]?["id"]?.GetValue<long>()==project &&
-              contractItem?["businessData"]?["contractNo"]?.GetValue<string>()=="C-"+suffix,
+              contractItem?["businessData"]?["contractNo"]?.GetValue<string>()=="C-"+suffix &&
+              contractItem?["businessData"]?["amount"]?.GetValue<string>()=="1234.5",
               "V2 MCP contract has actual V2 project parent");
 
         string patent="原生MCP专利"+suffix;
@@ -134,6 +150,32 @@ static class NativeMcpSmoke
         var updated=await Call("list_projects",new{workspace="company"});
         Check(Find(updated,originalProject)?["businessData"]?["leader"]?.GetValue<string>()
               =="代理修改负责人","original MCP project patch writes V2");
+        // Null retains the field; an empty string is an intentional clear.
+        await Original("update_project",new{
+            workspace="company",project_id=originalProject,
+            leader=(string?)null,remarks="null 不覆盖已有负责人"
+        });
+        Check(Find(await Call("list_projects",new{workspace="company"}),originalProject)?["businessData"]?["leader"]?.GetValue<string>()=="代理修改负责人",
+            "optional null preserves existing project field");
+        await Original("update_project",new{
+            workspace="company",project_id=originalProject,leader=""
+        });
+        Check(Find(await Call("list_projects",new{workspace="company"}),originalProject)?["businessData"]?["leader"]?.GetValue<string>()=="",
+            "empty string clears a project field");
+        bool badFieldType=false;
+        try { await Original("update_project",new{
+            workspace="company",project_id=originalProject,leader=42
+        }); }
+        catch(IOException){badFieldType=true;}
+        Check(badFieldType,"unrelated numeric field is still rejected");
+        bool obsoleteRejected=false;
+        try { await Original("upload_files",new{
+            workspace="company",kind="project",owner_id=originalProject,
+            paths=new[]{"C:\\missing-test-file.bin"},group_id="obsolete"
+        }); }
+        catch(IOException ex)when(ex.Message.Contains("group_id")){obsoleteRejected=true;}
+        Check(obsoleteRejected,"obsolete group_id yields an explicit rejection");
+
         var originalContract=await Original("create_contract",new{
             workspace="company",project_id=originalProject,
             name="原名MCP合同"+suffix,contract_no="ORIG-C-"+suffix

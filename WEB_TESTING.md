@@ -5,6 +5,19 @@
 用户确认旧数据库均为可丢弃测试数据，不迁移。N2-04 全业务 V2、N4 第一批新库物理表/API/回收站收敛以及第二批删除 31 份旧 Store/Provider/HTTP/历史测试源码已通过自动验收：最新源码 `b3c8f3b` 对应 [Windows CI #38911635273](https://github.com/zy19970/IPSys/actions/runs/38911635273) **completed/success**。本机 Edge/Chrome、真实 Codex、桌面 XLSX、故障注入和 T01–T09 仍未完全验证。
 
 
+### MCP P0 专项修复验证矩阵（2026-10-16）
+
+以新建的可丢弃 SQLCipher 测试库执行，不在唯一正式资料库中测试删除。源码已针对以下场景新增真实 MCP 管道和 V2 SQLCipher 的自动回归；新提交的 Windows CI 结果另行登记，不能将待执行场景直接标记为通过。
+
+| 编号 | 场景 | 预期 |
+| --- | --- | --- |
+| MCP-P0-01 | 第一个同用户 MCP 命名管道客户端连接后故意保持空闲，第二个独立客户端同时执行 `v2_list_projects` | 第二个客户端立即得到项目列表，不因第一个连接而等待 5 秒或报告软件未启动 |
+| MCP-P0-02 | IPSys GUI 宿主运行时，另一个实例尝试获取相同命名事件 | 第二个宿主被拒绝；`--mcp` 子进程可独立启动并连接当前唯一宿主 |
+| MCP-P0-03 | 查看 `upload_files` 工具 Schema，并从旧客户端传入 `group_id` | Schema 中已移除该字段，过时参数收到明确错误而非被静默忽略 |
+| MCP-P0-04 | `create_contract(amount=1234.5)`、`create_archive(year=2026)` | 原生 V2 attributes_json 将金额、年份作为经过原有校验的文本保存 |
+| MCP-P0-05 | 原生 `update_project(leader=null)`、`update_archive(year=null)`，随后 `update_project(leader="")` | 前两次保留旧值，后一项显式清空；不相关字段数值类型仍拒绝 |
+| MCP-P0-06 | 两个本机真实 Agent（Codex、WorkBuddy）并行长操作，关闭 MCP/退出/重复启动程序 | 留存实机日志确认繁忙提示、任务隔离及安全关闭；此场景不被短时 CI 冒烟覆盖 |
+
 ### N4 第二批：删除 31 份旧源码与共用 DTO 恢复（2026-10-16）
 
 [7b51669](https://github.com/zy19970/IPSys/commit/7b51669a6bfc57a98ebdc4999823804c21cd894b) 删除 31 份不再注册使用的旧业务 SQL Store、Folder Provider、兼容 API、搜索投影和历史测试，抽取 V2 必要业务校验、DTO 和 Excel 模板/解析。初次运行 [CI #38909425069](https://github.com/zy19970/IPSys/actions/runs/38909425069) Debug 编译产生六条 `CS0246`，根因为旧 `FolderCommandService.cs` 原先定义的 `FolderMutationInput` 仍为原生 Folder 接口调用却被漏删。补丁 [b3c8f3b](https://github.com/zy19970/IPSys/commit/b3c8f3b9970af8fd0489855e8e6e43dffa5096d1) 从旧定义逐项恢复八个参数，未恢复 V1 Store 或旧表。最终 [Windows CI #38911635273](https://github.com/zy19970/IPSys/actions/runs/38911635273) **completed/success**，涵盖 Windows Debug/Release、单 EXE、MCP、Node UI/PDF/ZIP 和真实 SQLCipher/HTTP 完整往返。

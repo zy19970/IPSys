@@ -14,8 +14,21 @@ if(args.Contains("--mcp"))
     await McpLocal.RunStdioAsync();
     return;
 }
-SQLitePCL.Batteries_V2.Init();
 var smoke = args.Contains("--smoke");
+// One GUI/SQLCipher host per interactive Windows user session.
+// Named EventWaitHandle lifetime is handle-based (safe across async continuations).
+// --mcp exits above this guard: Agent bridge subprocesses remain unlimited.
+using var hostInstance=new EventWaitHandle(false,EventResetMode.ManualReset,
+    McpLocal.HostInstanceName,out bool firstHost);
+if(!firstHost)
+{
+    const string duplicate="IPSys 已在当前 Windows 用户会话中运行。请使用现有窗口打开资料库；不要同时启动另一个宿主。";
+    if(smoke)throw new InvalidOperationException(duplicate);
+    System.Windows.Forms.MessageBox.Show(duplicate,"IPSys",
+        System.Windows.Forms.MessageBoxButtons.OK,System.Windows.Forms.MessageBoxIcon.Information);
+    return;
+}
+SQLitePCL.Batteries_V2.Init();
 // HTML/CSS/JS are read from managed assembly resources (works in Debug or single-file Release).
 byte[] html = EmbeddedWebAssets.Read("index.html");
 byte[] css = EmbeddedWebAssets.Read("style.css");

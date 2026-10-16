@@ -16,6 +16,13 @@ static partial class McpLocal
     private static readonly string PipeName = "IPSys-MCP-" +
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(
             WindowsIdentity.GetCurrent().User?.Value ?? Environment.UserName)))[..24];
+    internal static string HostInstanceName => @"Local\IPSys-Host-" + PipeName["IPSys-MCP-".Length..];
+    internal static bool IsHostRunning()
+    {
+        try { using var handle=EventWaitHandle.OpenExisting(HostInstanceName); return true; }
+        catch(WaitHandleCannotBeOpenedException) { return false; }
+        catch(UnauthorizedAccessException) { return true; }
+    }
 
     private static Dictionary<string,object> Field(string type,string description,string[]? choices=null)
     {
@@ -24,10 +31,23 @@ static partial class McpLocal
         return result;
     }
     private static object Tool(string name,string description,
-        Dictionary<string,object> properties,string[] required) =>
-        new {name,description,inputSchema=new {
+        Dictionary<string,object> properties,string[] required)
+    {
+        // Optional null means unspecified; year and amount can be strings or numbers.
+        foreach(var (key,value) in properties)
+        {
+            if(required.Contains(key,StringComparer.Ordinal) ||
+                value is not Dictionary<string,object> field ||
+                !field.TryGetValue("type",out var t) || t is not string type)continue;
+            field["type"]=key is "year" or "amount"
+                ? new[]{"string","number","null"} : new[]{type,"null"};
+            if(field.TryGetValue("enum",out var choices) && choices is string[] options)
+                field["enum"]=options.Cast<object?>().Append(null).ToArray();
+        }
+        return new {name,description,inputSchema=new {
             type="object",properties,required,additionalProperties=false
         }};
+    }
     private static readonly string[] Workspaces=["company","personal"];
     internal static object[] Tools()
     {
@@ -187,7 +207,6 @@ static partial class McpLocal
             ["paths"]=new {type="array",minItems=1,maxItems=20,items=Field("string","本机绝对文件路径")},
             ["on_conflict"]=Field("string","new 独立原件；update 更新已有原件版本",["new","update"]),
             ["material_category"]=Field("string","知识产权附件类别（默认其他材料）",["申请材料","通知文件","证书文件","其他材料"]),
-            ["group_id"]=Field("string","存在多个同名原件时，更新指定组的身份 ID"),
             ["duplicate_mode"]=Field("string","V2 同内容查重后独立保存、复用内容或共享 FileId",["independent","reuse","share"]),
             ["source_file_id"]=Field("integer","选择 reuse/share 时与 SHA-256 匹配的已有 FileId"),
             ["file_id"]=Field("integer","on_conflict=update 指向已有 FileId，必须归属于 owner_id")
@@ -289,16 +308,40 @@ static partial class McpLocal
         }
     }
 
+    internal static async Task VerifyConcurrentClientsAsync()
+    {
+        // Reproduce a second independent Agent connection while the first
+        // has an accepted request but deliberately sends no bytes yet.
+        using var guard=new EventWaitHandle(false,EventResetMode.ManualReset,
+            HostInstanceName,out bool createdNew);
+        if(createdNew)throw new IOException("MCP 单宿主命名事件未保持运行期占用。");
+        using var idle=new NamedPipeClientStream(".",PipeName,PipeDirection.InOut,
+            PipeOptions.Asynchronous|PipeOptions.CurrentUserOnly);
+        using var timeout=new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        await idle.ConnectAsync(timeout.Token);
+        await Task.Delay(120,timeout.Token);
+        var list=await CallHostAsync("v2_list_projects",
+            JsonSerializer.SerializeToElement(new{workspace="company"}))
+            .WaitAsync(TimeSpan.FromSeconds(8));
+        if(list is not JsonArray)
+            throw new IOException("多客户端 MCP 并发查询没有返回有效列表。");
+    }
+
     internal static Task<JsonNode> RunSmokeToolAsync(string name,JsonElement fields) =>
         CallHostAsync(name,fields);
     private static async Task<JsonNode> CallHostAsync(string name,JsonElement fields)
     {
         using var pipe=new NamedPipeClientStream(".",
             PipeName,PipeDirection.InOut,PipeOptions.Asynchronous|PipeOptions.CurrentUserOnly);
-        using var timeout=new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        using var timeout=new CancellationTokenSource(TimeSpan.FromSeconds(15));
         try{await pipe.ConnectAsync(timeout.Token);}
         catch(Exception ex)when(ex is IOException or OperationCanceledException or TimeoutException)
-        {throw new IOException("请先启动 IPSys 并打开数据库，然后在系统设置中启用 Codex MCP。",ex);}
+        {
+            string message=IsHostRunning()
+                ? "IPSys 宿主已运行，但 MCP 连接繁忙或暂时不可用。请稍后重试，并检查软件中的 MCP 授权状态。"
+                : "未找到运行中的 IPSys 宿主，请先启动软件、打开数据库并手动启用 MCP。";
+            throw new IOException(message,ex);
+        }
         using var writer=new StreamWriter(pipe,new UTF8Encoding(false),1024,true){AutoFlush=true};
         using var reader=new StreamReader(pipe,new UTF8Encoding(false),false,1024,true);
         await writer.WriteLineAsync(JsonSerializer.Serialize(new {name,arguments=fields},Json));
@@ -312,38 +355,81 @@ static partial class McpLocal
 
     // The named pipe server stays inside the WinForms host. A separate Codex
     // child only transports requests; the host never publishes vault secrets.
+    // Independent Agent stdio sessions may connect concurrently.
+    // SQLCipher writes are still protected by Vault.Gate and its file-task lock.
+    private const int MaxMcpClients=8;
     public static async Task RunHostAsync(Vault vault,string address,CancellationToken stop)
     {
-        while(!stop.IsCancellationRequested)
+        using var slots=new SemaphoreSlim(MaxMcpClients,MaxMcpClients);
+        var active=new List<Task>();
+        try
         {
-            try
+            while(!stop.IsCancellationRequested)
             {
-                using var pipe=new NamedPipeServerStream(PipeName,PipeDirection.InOut,1,
-                    PipeTransmissionMode.Byte,PipeOptions.Asynchronous|PipeOptions.CurrentUserOnly);
-                await pipe.WaitForConnectionAsync(stop);
-                using var reader=new StreamReader(pipe,new UTF8Encoding(false),false,1024,true);
-                using var writer=new StreamWriter(pipe,new UTF8Encoding(false),1024,true){AutoFlush=true};
-                object response;
+                await slots.WaitAsync(stop);
+                NamedPipeServerStream? listener=null;
                 try
                 {
-                    var line=await reader.ReadLineAsync(stop);
-                    if(line==null)continue;
-                    using var doc=JsonDocument.Parse(line);
-                    var args=doc.RootElement;
-                    var name=ReadString(args,"name","");
-                    var fields=args.TryGetProperty("arguments",out var value)?value:default;
-                    var data=await ExecuteAsync(vault,address,name,fields,stop);
-                    response=new {ok=true,data};
+                    listener=new NamedPipeServerStream(PipeName,PipeDirection.InOut,
+                        MaxMcpClients,PipeTransmissionMode.Byte,
+                        PipeOptions.Asynchronous|PipeOptions.CurrentUserOnly);
+                    await listener.WaitForConnectionAsync(stop);
+                    var connected=listener;
+                    listener=null;
+                    active.Add(Task.Run(async () =>
+                    {
+                        try { await ServeHostClientAsync(connected,vault,address,stop); }
+                        finally { connected.Dispose(); slots.Release(); }
+                    }));
+                    if(active.Count>MaxMcpClients*2)
+                        active.RemoveAll(task=>task.IsCompleted);
                 }
-                catch(Exception ex){response=new {ok=false,error=ex.Message};}
-                await writer.WriteLineAsync(JsonSerializer.Serialize(response,Json));
+                catch(OperationCanceledException)when(stop.IsCancellationRequested)
+                {
+                    listener?.Dispose();
+                    slots.Release();
+                    break;
+                }
+                catch(Exception ex)
+                {
+                    listener?.Dispose();
+                    slots.Release();
+                    Console.Error.WriteLine("IPSys MCP 监听错误："+ex.Message);
+                    try{await Task.Delay(300,stop);}
+                    catch(OperationCanceledException)when(stop.IsCancellationRequested){break;}
+                }
             }
-            catch(OperationCanceledException)when(stop.IsCancellationRequested){break;}
-            catch(Exception ex)
+        }
+        catch(OperationCanceledException)when(stop.IsCancellationRequested){}
+        finally { await Task.WhenAll(active); }
+    }
+
+    private static async Task ServeHostClientAsync(NamedPipeServerStream pipe,
+        Vault vault,string address,CancellationToken stop)
+    {
+        try
+        {
+            using var reader=new StreamReader(pipe,new UTF8Encoding(false),false,1024,true);
+            using var writer=new StreamWriter(pipe,new UTF8Encoding(false),1024,true){AutoFlush=true};
+            object response;
+            try
             {
-                Console.Error.WriteLine("IPSys MCP 本机通道错误："+ex.Message);
-                try{await Task.Delay(300,stop);}catch(OperationCanceledException){break;}
+                var line=await reader.ReadLineAsync(stop);
+                if(line==null)return;
+                using var doc=JsonDocument.Parse(line);
+                var args=doc.RootElement;
+                var name=ReadString(args,"name","");
+                var fields=args.TryGetProperty("arguments",out var value)?value:default;
+                var data=await ExecuteAsync(vault,address,name,fields,stop);
+                response=new {ok=true,data};
             }
+            catch(OperationCanceledException)when(stop.IsCancellationRequested){return;}
+            catch(Exception ex){response=new {ok=false,error=ex.Message};}
+            await writer.WriteLineAsync(JsonSerializer.Serialize(response,Json));
+        }
+        catch(Exception ex)when(ex is IOException or ObjectDisposedException)
+        {
+            Console.Error.WriteLine("IPSys MCP 客户端断开："+ex.Message);
         }
     }
 
@@ -351,6 +437,8 @@ static partial class McpLocal
     {
         if(args.ValueKind!=JsonValueKind.Object||!args.TryGetProperty(key,out var val)||
            val.ValueKind==JsonValueKind.Null)return fallback;
+        if(val.ValueKind==JsonValueKind.Number && key is "year" or "amount")
+            return val.GetRawText();
         if(val.ValueKind!=JsonValueKind.String)throw new IOException(key+" 必须是文本");
         return val.GetString()??fallback;
     }
@@ -409,8 +497,13 @@ static partial class McpLocal
         {
             if(args.ValueKind==JsonValueKind.Object&&args.TryGetProperty(argument,out var val))
             {
-                if(val.ValueKind!=JsonValueKind.String)throw new IOException(argument+" 必须是文本");
-                baseline[property]=val.GetString();
+                if(val.ValueKind==JsonValueKind.Null)continue;
+                baseline[property]=val.ValueKind switch
+                {
+                    JsonValueKind.String=>val.GetString(),
+                    JsonValueKind.Number when argument is "year" or "amount"=>val.GetRawText(),
+                    _=>throw new IOException(argument+" 必须是文本"+(argument is "year" or "amount"?"或数字":""))
+                };
             }
         }
         return baseline;
@@ -435,6 +528,8 @@ static partial class McpLocal
         if(!vault.McpEnabled)throw new IOException("MCP 未授权：请在 IPSys 的系统设置中手动开启 Codex MCP。");
         string workspace=Workspace(args);
         using var client=new HttpClient {BaseAddress=new Uri(address),Timeout=TimeSpan.FromMinutes(10)};
+        using var cancelOnExit=stop.Register(static state=>
+            ((HttpClient)state!).CancelPendingRequests(),client);
         client.DefaultRequestHeaders.TryAddWithoutValidation("X-IPSys-Token",vault.SessionToken);
         if(name.StartsWith("v2_",StringComparison.Ordinal))
             return await ExecuteNativeAsync(client,workspace,name[3..],args);

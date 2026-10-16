@@ -50,19 +50,20 @@ static class NativeMcpArchiveSmoke
             "empty archive directory deleted permanently");
         long archive=Id(await Run("create_archive",new{
             workspace="company",section="achievement",folder_id=folder,
-            name=tag+"业务材料",category="报批资料",remarks="更新前",year="2026"
+            name=tag+"业务材料",category="报批资料",remarks="更新前",year=2026
         }));
         Check(Has(await Run("list_archives",new{
             workspace="company",section="achievement"
         }),archive),"MCP created archive appears in same Folder table as UI");
         await Run("update_archive",new{
             workspace="company",section="achievement",archive_id=archive,
-            remarks="已更新"
+            remarks="已更新",year=(string?)null
         });
         var edited=await client.GetFromJsonAsync<JsonElement>(
             $"/api/v2/folders/company/archive/{archive}?section=achievement");
         Check(edited.GetProperty("businessData").GetProperty("remarks")
             .GetString()=="已更新" &&
+            edited.GetProperty("businessData").GetProperty("year").GetString()=="2026" &&
             edited.GetProperty("folder").GetProperty("parent")
             .GetProperty("id").GetInt64()==folder,
             "partial edit preserves archive folder and other fields");

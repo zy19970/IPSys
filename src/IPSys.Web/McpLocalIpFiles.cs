@@ -107,6 +107,10 @@ static partial class McpLocal
     private static async Task<JsonNode> IpUploadFiles(HttpClient client,string workspace,
         JsonElement args,CancellationToken stop,string kind="ip")
     {
+        // Fail explicitly for stale clients; group_id is a deleted V1 identity,
+        // never silently ignore it on a V2 write.
+        if(args.TryGetProperty("group_id",out _))
+            throw new IOException("group_id 为已废弃的 V1 参数。追加版本请使用 on_conflict=update 与 file_id=FileId。");
         long folder=ReadId(args,"owner_id");
         if(kind is not ("project" or "contract" or "ip" or "archive" or "general"))
             throw new IOException("文件归属类型无效。");
