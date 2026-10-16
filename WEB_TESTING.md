@@ -7,7 +7,10 @@
 
 ### MCP 第二批：一次 SQL 全局文件查询与有界分页（2026-10-16）
 
-本轮增加 `NativeMcpFileQuery`：只读本机 Token 鉴权的 `/api/v2/mcp/files/{workspace}`，使用递归有效资料目录与当前 FileId/LinkId/FileVersion SQL 投影，无 N+1 每资料 HTTP 调用。兼容 `list_files` 数组响应，新增 `list_files_page`（1–200 条、kind/owner_id/name/offset/limit）；原名与 v2_* 工具继续并存，不改变旧列表 JSON 协议。自动验收以**本次代码提交对应的新 Windows CI**为准，不能沿用上一批 CI；仍需 Codex/WorkBuddy 多 Agent 大资料库实际体验。
+**自动验收记录**：首次 `f0454e4` 的 [CI #38926833507](https://github.com/zy19970/IPSys/actions/runs/38926833507) 因分页测试模式局部变量跨断言使用，触发 `CS0165` Debug 编译失败；补丁 [`bfab1a8`](https://github.com/zy19970/IPSys/commit/bfab1a8aead2a65cf375b2fe5429776befe26970) 调整局部声明后，[Windows CI #38927263017](https://github.com/zy19970/IPSys/actions/runs/38927263017) **completed/success**。Debug/Release、MCP 正式 stdio、SQLCipher/HTTP 和 Node 全套成功。新增列表分页/归档过滤/IP 文件 MCP 直接调用等均在 SQLCipher 冒烟中执行；大型资料库定量压测、桌面 WorkBuddy/Codex 并发、offset 分页跨页修改依然需人工实测。
+
+
+本轮增加 `NativeMcpFileQuery`：只读本机 Token 鉴权的 `/api/v2/mcp/files/{workspace}`，使用递归有效资料目录与当前 FileId/LinkId/FileVersion SQL 投影，无 N+1 每资料 HTTP 调用。兼容 `list_files` 数组响应，新增 `list_files_page`（1–200 条、kind/owner_id/name/offset/limit）；原名与 v2_* 工具继续并存，不改变旧列表 JSON 协议。最新代码已经过新一轮 Windows CI 验证；仍需 Codex/WorkBuddy 多 Agent 大资料库实际体验。
 
 | 测试号 | 场景 | 预期 |
 | --- | --- | --- |

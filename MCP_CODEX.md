@@ -32,6 +32,9 @@ MCP 写操作（新增、修改、删除、上传，以及已有 `v2_*` 写操�
 
 ## MCP P1 第二批：全局文件查询、分页与兼容接口（2026-10-16）
 
+> **自动验收已通过**：代码 [`bfab1a8`](https://github.com/zy19970/IPSys/commit/bfab1a8aead2a65cf375b2fe5429776befe26970)（含第一次提交 `f0454e4` 的单次测试变量修复），[Windows CI #38927263017](https://github.com/zy19970/IPSys/actions/runs/38927263017) **completed/success**。Debug/Release、单 EXE、真实 SQLCipher/HTTP/Node，以及正式 stdio `tools/call` 入参拒绝均通过；大数据库性能定量基准和 Codex/WorkBuddy 实机仍待人工验收。
+
+
 `list_files` 现直接调用同一 SQLCipher V2 数据库中的本机只读批量查询，仅执行一次 SQL 查询，不再先列出全部项目/合同/知识产权/档案/综合资料，再对每个 Folder 各发一个 HTTP 请求。保留该旧名工具的原返回格式（数组），`id` 是 LinkId、`fileId` 是 FileId、`ownerId` 是所属 FolderId，避免破坏现有 Codex/WorkBuddy 配置。服务端通过递归有效目录校验隐藏已删除的业务条目及其上级目录，确保不泄露不可见文件关联。
 
 **日常大量文件查询建议使用 `list_files_page`**：必填 `workspace`，可选 `kind`（project/contract/ip/archive/general）、`owner_id`、`name`（位置显示名或原件名的部分匹配）、`offset`（起始 0）和 `limit`（1–200，默认 100）。返回 `items` 数组以及 `offset/limit/hasMore/nextOffset`；仅当 `hasMore=true` 时使用 `nextOffset` 取下一页。可按 `owner_id` 准确定位。底层只读 URL `/api/v2/mcp/files/{workspace}` 继续执行本机会话 Token 鉴权，不暴露对外端口。分页使用 LinkId 顺序；在多个 Agent 同时插入或删除链接时，基于 offset 的页间数据可能变化，跨页汇总应再次核验。

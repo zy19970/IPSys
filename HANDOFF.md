@@ -6,6 +6,10 @@
 
 代码 [a6d5bf4](https://github.com/zy19970/IPSys/commit/a6d5bf43274368f421fd578c5a69f9cfc27e5337) 经 [Windows CI #38923795350](https://github.com/zy19970/IPSys/actions/runs/38923795350) **completed/success**。MCP 新增 `McpLocalSafety.cs`、加密库 `mcp_operations` 请求日志表、可选写操作幂等 `request_id`、`get_operation_result` 状态查询；批量上传完整明细与 `isError`，三元组 `delete_file(owner_id=FolderId,file_id=FileId,link_id=LinkId)`，禁用授权可以通知在途请求取消，未知参数严格拒绝和已连接响应等待超时。旧版按 `file_id=LinkId` 删除的 MCP 调用不再兼容；需更新 Codex/WorkBuddy 工具列表。 `pending/uncertain` 严禁自动重做，因崩溃窗口不保证绝对 exactly-once；批量上传非整批事务。用户本机长任务/故障注入尚未验收，不迁移旧测试数据库。
 
+## MCP 第二批已验收（2026-10-16）
+
+源码提交 [bfab1a8](https://github.com/zy19970/IPSys/commit/bfab1a8aead2a65cf375b2fe5429776befe26970) 通过 [Windows CI #38927263017](https://github.com/zy19970/IPSys/actions/runs/38927263017) **completed/success**。新增 `NativeMcpFileQuery.cs` 和本机授权只读 `/api/v2/mcp/files/{workspace}`，直接 SQL 一次查询 Folder/File/FileVersion/Link，使用递归有效 Folder 屏蔽软删父目录，替换 MCP `list_files` N+1 HTTP 访问并保持原有数组契约；新增 `list_files_page` 支持 kind/owner_id/name/offset/limit(1–200) 和 hasMore/nextOffset。仍保留全部 11 个 `v2_*` 兼容别名，避免旧客户端失效；原名与 v2 列表结果形态有区别，已在 MCP_CODEX 中明确。测试覆盖分页、归档筛选、IP 文件工具业务调用和发布版 stdio `tools/call`。首次 f0454e4 因 NativeMcpSmoke 模式变量 CS0165 CI 失败，bfab1a8 修正后全绿。下一阶段是第三批已存在的 V2 HTTP 业务能力封装为 MCP（优先合同编辑、文件属性/版本、分享、转移/搜索/回收站），以及真实 Codex/WorkBuddy/大量记录下的性能和交互测试；不要把未实测视为通过。
+
 ## 1. 用户最终意图和冻结规则
 
 IPSys 用户界面名称是「资料管理系统」，以**个人资料长期归档**为优先，公司资料独立工作区；单用户本地 WinForms + 127.0.0.1 Web/Edge/Chrome，单个加密 SQLCipher 资料库保存真实文件字节。Release 为依赖系统安装 .NET Desktop Runtime 8 x64 和 ASP.NET Core Runtime 8 x64 的单 EXE。
