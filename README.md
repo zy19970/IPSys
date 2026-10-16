@@ -32,7 +32,7 @@ Visual Studio 可直接打开 `src/IPSys.Web/IPSys.Web.csproj` 调试。Release 
 dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-contained false -o .\out\IPSys-SingleExe
 ```
 
-从 [Windows Actions](https://github.com/zy19970/IPSys/actions/workflows/web-windows.yml) 下载最新成功的 `IPSys-Web-win-x64` Artifact，或自行发布。2026-10-15 的基线 [CI #38673474396](https://github.com/zy19970/IPSys/actions/runs/38673474396) 显示通过。CI 结果不等于用户本机完整验收。
+从 [Windows Actions](https://github.com/zy19970/IPSys/actions/workflows/web-windows.yml) 下载最新成功的 `IPSys-Web-win-x64` Artifact。最新已核验的全套源码自动回归为 [CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) **completed/success**（对应 `6a7b1ff`，其后 `e06f8a7` 只改文档）；CI 不等于用户实机验收。
 
 ## 2. 当前实现的业务
 
@@ -46,22 +46,22 @@ dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-conta
 | 分类档案 | 公司企业资质/业务档案；个人身份与资质/成果与奖励/学术与社会活动；业务档案可变层级、目录与资料混排 | 企业资质直达表格；公司业务档案根层入口不多选、不下载，内层可勾选并递归导出 |
 | 综合/其他资料 | 独立记录、原件上传下载、版本、回收站 | 公司与个人分别显示对应资料 |
 | 原件 | SQLCipher 分块存储、SHA-256、历史版本、同名独立文件、受控共享/复制、软删除恢复、PDF/图片预览 | B05 与 PDF.js 预览已有用户通过反馈 |
-| 导出 | 文件夹、ZIP、最新/选定历史原件、项目与全部所属合同、固定列 XLSX | IP、项目合同附件及 Excel 已走 V2；归档/分类及综合资料 Excel/附件接入待 N2-04 |
-| 搜索 | 已按 V2 FolderId 查 IP、项目、合同及其 FileId 原件，仍保留旧归档/综合过渡查询 | N2-04 需接入分类与综合资料的 V2 属性/祖先字段并统一真实详情跳转 |
-| MCP | 现有 IP、项目/合同原名 CRUD、附件版本/链接与通用文件操作均已切 V2；新增 11 项 `v2_*` 仍保留 | 本机手动授权、同用户管道；正式 Codex 客户端实机待验收，LinkId 与 FileId 不可混用 |
+| 导出 | 全模块 V2 文件夹/ZIP、最新及手动选择历史版本、项目与全部合同、固定列 XLSX | 所有原件导出按 V2 FileId+FileVersion；[CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) 通过，复杂路径和大文件实机待验 |
+| 搜索 | 项目、合同、知识产权、档案、个人分类、综合资料统一 V2 FolderId/FileId 搜索，包括目录祖先及附件选填属性 | [CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) 通过；真实浏览器跳转待验 |
+| MCP | 原名项目、合同、知识产权、档案目录、综合资料与五类附件接口全部使用 V2 FolderId/FileId/LinkId | CI 通过，本机 Codex 实际操作仍需验收 |
 | UI | 个人优先入口、公司五个业务栏目、工作台 3×2、紧凑台账、多选与持久排序 | 最新公司业务档案根层卡片、内层混合表格均有相应自动回归；仍待本机视觉验收 |
 
 ## 3. 当前已知边界
 
-现行 `BusinessFileStore.MaxFileLength` 为 **64 MiB/单文件**；用户此前的大文件本机场景反馈通过，但未记录确切字节数，**不可视为超过 2 GiB 的验证通过**。文件夹/ZIP 导出使用 Edge/Chrome 的 File System Access API；ZIP 不支持 ZIP64，需小于 4 GiB。Excel 固定模板单文件输入限制 8 MiB、最多 5000 行；合同仅能导出，不能通过 Excel 导入。无论是否复用重复字节，跨公司/个人工作区不得共享同一个物理附件对象。
+正式 V2 `NativeFileStore.MaxFileLength` 仍限 **64 MiB/单文件**；用户此前大文件的本机通过记录不能证明 V2 已超过 2 GiB 往返。ZIP 尚不支持 ZIP64（小于 4 GiB），Excel 输入限 8 MiB/5000 行，合同仅只读导出；公司/个人不得共享 FileObject。
 
 **数据安全验收尚未全部完成**：磁盘不足、SSD 异常拔出、退出过程、手工备份副本一致性、V2 版本识别/未来受控升级和超大文件的完整往返。密码修改等设置页项目尚有未接入入口。不要将这些项目写成「已支持/已验收」，不要在未取得新有效备份前删除来源文件。
 
-## 4. 下一步与验收状态
+## 4. 当前 N4 任务与验收状态
 
-1. **N2-04（当前大里程碑）**：集中完成企业资质/业务档案/个人分类/综合资料的实际网页及附件读写、排序复制、Excel、搜索回收站和共享版本导出 V2 归一；统一回归验收后整体交付，不再为每个接口单独定义小交付阶段。
-2. **N2-04 验收门槛**：同一 SQLCipher V2 身份、Folder/File 多对多与工作区隔离、全部模块的网页/HTTP/Excel/检索/回收站/下载及 Node/Windows 自动回归一致；本机 Edge/Chrome 再单独实测。
-3. **N4 清理与整体验收**：完成 File 选填属性和祖先 Folder 检索、最新版本与递归导出边界，引用清零后删除旧表/过渡 Store，进行 Windows、Edge/Chrome 及 T01–T09 安全验收再决定发布。
+1. **N2-04 主链路代码和自动回归已通过**：[CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) success。项目、合同、知识产权、档案、资质、个人分类及综合资料的正式网页、MCP、Excel、搜索/回收站、文件历史共享与导出均已接入 V2。
+2. **N4 当前：清理旧 Schema/Store/历史测试适配**。先将 `--smoke` 的旧表测试改为 V2，再删除不再需要的旧物理表、Store、Provider、旧身份投影和兼容路由。`Vault.CreateSchema/ValidateSchema` 仍有 `records/attachments/chunks` 旧表依赖，当前尚未清理完成。
+3. **N4 验证与发布判定**：文件选填属性 UI、历史版本、目录祖先检索、父子重叠和同名 ZIP/文件夹导出，Windows Debug/Release/单 EXE、SQLCipher/HTTP、MCP、Excel、Node PDF/ZIP、Edge/Chrome 实机及 T01–T09 安全门槛。未验收完成前不宣布正式发布。
 
 旧库迁移/回填已经取消，勿沿旧 R4 或直接发布路线推进。实际子任务状态和证据见 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)。
 

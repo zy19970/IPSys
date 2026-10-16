@@ -1,6 +1,6 @@
-# IPSys 技术设计：SQLCipher V2 分模块接入与过渡态（2026-10-16）
+# IPSys 技术设计：SQLCipher V2 当前实现与 N4 收敛（2026-10-16）
 
-> 截至 `main@ef89d2d`，V2 Schema、原生 Folder CRUD、File/版本/共享/查重服务均有对应 Windows CI；知识产权现有网页、Excel、搜索/回收站、原名 MCP 与跨区整记录复制已切到 V2，项目/合同现有网页 CRUD、附件、排序及 ZIP/文件夹导出已切到 V2（[CI #38836041449](https://github.com/zy19970/IPSys/actions/runs/38836041449)）。项目/合同原名 MCP、Excel、搜索/回收站和跨区整项目复制仍待 N2-03-07-02，之后归档与综合资料切换。完整进度以 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md) 为准，不把 CI 当作用户实机验收。
+> 截至 `main@e06f8a7`，各正式业务页面、MCP、Excel、搜索/回收站、文件版本、ZIP/文件夹导出均已使用 V2 FolderId/FileId/LinkId；[CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) success（对应源码 `6a7b1ff`）。现在进入 N4 旧结构/测试清理与 Edge/Chrome 实机验收，不把自动 CI 等同全面正式发布。
 
 ## 1. 运行与安全边界
 
@@ -32,7 +32,7 @@ V2 强制工作区组合约束、合同有效父项目、合法 Folder 父级/�
 
 `NativeArchiveStore.cs` 与 `NativeArchiveOrder.cs` 实现业务档案分类/资料和综合资料的原生 CRUD、七个系统根保护、目录/资料混排排序、移动防环、资料归属及恢复。[Windows CI #38747066932](https://github.com/zy19970/IPSys/actions/runs/38747066932) 通过。
 
-当前 `/api/v2/folders` 已用于知识产权和项目/合同现有网页的 Folder CRUD；IP 原名 MCP、Excel、搜索/回收站及跨区完整复制也已接入 V2。归档、综合资料现有网页及部分项目合同外围接口仍使用旧 Store，须防止新旧身份混用，待后续 N2-03/N4 统一。
+当前正式项目、合同、知识产权、业务档案、资质、个人分类与综合资料都由 V2 Folder CRUD 及原件接口维护，原名 MCP、Excel、搜索/回收站和跨区历史原件复制均已切换。剩余旧 Store 是 N4 的测试/过渡代码，不再用于正式业务网页。
 
 ### N3-01 原生 File 基础服务（2026-10-15 已通过 CI）
 
@@ -48,22 +48,22 @@ V2 强制工作区组合约束、合同有效父项目、合法 Folder 父级/�
 
 ### N3-04 SHA-256 查重、待确认原件与选择接口（已通过 Windows CI）
 
-`NativeFileChoiceStore`、`NativeFileChoiceResolve` 和 `NativeFileChoiceEndpoints` 增加 `POST /api/v2/files/{workspace}/prepare?folderId=...`（原始字节和可选 X-File 属性，返回 ticket、sha256、size、matches：已有 FileId/文件名/版本/完整有效 Folder 路径），以及 `POST /api/v2/files/{workspace}/prepared/{ticket}/resolve`（显式 `share-file`、`reuse-content`、`independent`）、`DELETE /api/v2/files/{workspace}/prepared/{ticket}`（取消）。上传先按块写入 SQLCipher `writing` 对象；只有明确独立保存才转成不可变 `ready`。引用相同 FileId 或独立 FileId 仅内容复用时删除暂存块，不删已有 ready 对象；只查同工作区最新有效版本，异名相同内容仍可匹配，同名不同字节不会匹配。一个数据库会话同时仅有一份待确认原件，票据不可重放，30 分钟过期；关闭数据库和下一次打开清理遗留 writing 对象。权限、工作区、SHA-256/大小、目录有效性、失败回滚由服务端校验。[Windows CI #38820367132](https://github.com/zy19970/IPSys/actions/runs/38820367132) 真实 SQLCipher/HTTP 通过。现有 IP 和项目/合同网页查重选择已使用本协议，其余档案/综合资料和完整实机验收仍待后续阶段完成。
+`NativeFileChoiceStore`、`NativeFileChoiceResolve`、`NativeFileChoiceEndpoints` 实现 SQLCipher `writing` 暂存、SHA-256 同内容查重、展示文件名和 Folder 路径、明确选择共享 FileId/仅复用物理字节/独立保存或取消。票据授权、回滚、关库清理等在 [CI #38820367132](https://github.com/zy19970/IPSys/actions/runs/38820367132) 通过；现有全部正式业务上传入口已在后续 N2-04 接入，Edge/Chrome 弹窗仍待实测。
 
-## 4. 过渡期旧代码（N3/N2-03/N4 后才可移除）
+## 4. N4 旧 Schema、Store 与测试适配清理
 
-`Vault.CreateSchema` 仍建立旧综合资料表及 V2 Schema，`Program.cs` 同时注册旧/V2 端点。知识产权、项目和合同的实际网页及附件已通过 `NativeIpUiEndpoints`、`NativeProjectContractUiEndpoints` 和 `NativeFile*` 使用 V2 FolderId/FileId/LinkId；归档、综合资料网页仍使用旧 Store/附件表。`ProjectStore/ContractStore` 目前还被项目合同旧 MCP、Excel、搜索路径引用；`BusinessFiles.cs` 及 R0/R1 旧表适配层待全部调用切换后才能移除。
+`Vault.CreateSchema` 仍创建旧 `records/attachments/chunks`，`ValidateSchema` 仍检查它们；这是 N4 的物理清理目标。正式 `Program.cs` 已只在 `--smoke` 下注册旧业务/Excel/附件/搜索 API；正式网页、MCP 及导出全走 V2。旧 `ProjectStore/ContractStore/ArchiveStore/BusinessFiles.cs` 与 Provider 仍有历史测试依赖，须在改完测试后清理。
 
-旧系统已有真实 CRUD、附件版本、PDF.js、ZIP/文件夹、固定 XLSX、统一搜索和本机 MCP。现有 IP 全链路、项目合同网页与原件已逐批接入 V2，其他模块仍有旧表依赖。不得将旧 CI 冒充 V2 全项验收、不得双写。当前继续 N2-03-07-02，再完成档案/综合资料转换及 N4 收敛。
+原系统的 CRUD、文件版本、PDF.js、ZIP/文件夹、XLSX、统一搜索和本机 MCP 已完整接入 V2 正式主链路；[CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) success。旧兼容代码仅作为历史测试依赖保留；N4 当前清理旧 Schema/Store/测试用 HTTP，严禁旧 ID 回退与双写。
 
 ## 5. UI 与外围系统约束
 
 [UI_BASELINE.md](./UI_BASELINE.md) 是交互权威：个人工作区优先，公司五栏目及 3×2 工作台，企业资质直接表格；业务档案根七分类卡片纯导航、内层目录/资料混排表格；个人分类卡片→台账；项目/IP 台账→详情。V2 的统一物理 Folder 不能作为统一改变这些界面的理由。
 
-`export.js` 已通过 V2 FileId 导出现有项目及所属合同原件；默认最新版本，历史版需明确选择。ZIP 不支持 ZIP64（小于 4 GiB），同名和父子目录重叠边界仍需实机验证。`SearchStore` 已有 V2 IP 查询，项目合同与档案综合资料仍有旧 Store，N2-03-07-02 应统一项目合同的 FolderId 检索/跳转，N4 增补 File 选填属性及祖先 Folder 字段（不做 OCR）。知识产权 Excel 已采用 `NativeIpExcelLedger`；旧项目合同 Excel 在新版网页已暂停，合同仍只读导出。MCP 中 IP 原名命令及原件已切 V2，项目合同原名及附件工具未切，始终要求本机手动授权。
+`export.js` 的全部模块 ZIP/文件夹附件下载都使用 V2 FileId+FileVersion；默认最新版，历史版需明确选择。`SearchStore` 已覆盖各模块、附件选填属性和 Folder 祖先名；正式搜索是 `/api/v2/search`。全部固定列 XLSX 和原名 MCP 均接 V2（合同 Excel 只读），MCP 本机手动授权不变。ZIP 不支持 ZIP64（小于 4 GiB），同名、父子目录重叠、取消和真实浏览器跳转待实机验证。
 
 ## 6. 验收、风险与发布
 
-N1/N2/N3 和部分 N2-03 的 SQLCipher/HTTP/Node/Windows CI 已通过，**V2 全模块接入和 Edge/Chrome 完整实机端到端验收仍未完成**。T01–T09 仍须覆盖错密、越权、2 GiB+ 目标往返（当前单文件仍限 64 MiB）、SSD 异常、磁盘满、退出、手工备份、引用保护与未来版本升级。T08 不再要求迁移旧测试库，但需确认版本识别及旧文件不被覆盖。
+N1/N2/N3 和全模块 N2-04 主链路自动回归已通过 [CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886)；**N4 旧物理表清理与 Edge/Chrome 端到端实机尚未完成**。T01–T09 需验证错密、越权、2 GiB+ 目标往返（当前 V2 单文件仍限 64 MiB）、移动 SSD 故障、磁盘满、退出、备份与未来升级；不做旧库迁移。
 
 具体接续见 [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md)、[RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)；测试记录见 [WEB_TESTING.md](./WEB_TESTING.md)。

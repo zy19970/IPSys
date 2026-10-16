@@ -1,8 +1,8 @@
 # IPSys Windows 验收与回归记录
 
-## 当前优先：SQLCipher V2 新库分阶段验收（2026-10-16）
+## 当前优先：N4 清理与 SQLCipher V2 完整实机验收（2026-10-16）
 
-用户确认旧数据库均为可丢弃开发测试数据，不迁移、回填或兼容。知识产权全链路和项目合同现有网页、原名 MCP、固定 XLSX、统一搜索/回收站及带全部所属合同与原件历史的跨工作区事务复制均已通过对应 V2 Windows CI，最新 [#38848010379](https://github.com/zy19970/IPSys/actions/runs/38848010379) **success**。用户要求直接推进大里程碑 **N2-04**：企业资质、业务档案、个人分类与综合资料的实际网页/附件/Excel/搜索回收站仍依赖旧 Store，尚未统一验收；之后进入 N4 全模块及 Edge/Chrome 实机和 T01–T09。以下历史分项保留当时语境，自动 CI 不等于全面实机验收。
+用户确认旧数据库都是可丢弃开发测试数据，不迁移、回填或兼容。项目合同、知识产权、企业资质、公司业务档案、个人分类、综合资料的正式网页、原件版本、MCP、Excel、搜索/回收站、共享和 ZIP/文件夹导出已经统一 V2；[CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) **completed/success**（对应源码 `6a7b1ff`）。**当前 N4** 将旧 `--smoke` 用例和物理旧表/Store 清理，再完成 Windows/SQLCipher/Node 全套回归与 Edge/Chrome、Codex、桌面 Excel 和 T01–T09。下面历史测试记录表示当时阶段，不能当作当前待开发功能。
 
 1. **N1 已通过对应自动测试**：V2 Schema、版本检查与拒绝旧库、七系统根、有效合同父项目/Folder 防环/工作区隔离、文件对象和分块 ready 后不可改写；[CI #38740628571](https://github.com/zy19970/IPSys/actions/runs/38740628571)。新建不得覆盖旧文件。
 2. **N2-01 已通过对应自动测试**：项目/合同/IP 原生 `folders` CRUD、软删恢复、合同父级、真实 SQLCipher HTTP 授权和不双写旧表；[CI #38743939004](https://github.com/zy19970/IPSys/actions/runs/38743939004)。
@@ -397,7 +397,7 @@ dotnet publish .\src\IPSys.Web\IPSys.Web.csproj -c Release -r win-x64 --self-con
 
 ## N2-04 档案/综合资料原生 Excel、搜索与回收站自动测试（2026-10-16）
 
-[集中功能 48bdd4a](https://github.com/zy19970/IPSys/commit/48bdd4a62cb8232619fa381007103ee1b065da80) 加入 V2 档案/综合资料固定 XLSX 导入导出、按工作区和类别的唯一 FolderId、更新保留原件历史；搜索 V2 档案属性/祖先分类/原件名称和可选 File 属性；回收站 v2_archive/v2_general/v2_file 记录及共享历史保护。[CI #38851729206](https://github.com/zy19970/IPSys/actions/runs/38851729206) 首轮因新增冒烟测试 CS0201 语法错误未编译通过；[修复 1133653](https://github.com/zy19970/IPSys/commit/11336537185dde127b4efe2221d98d784565cbd4) 后 [CI #38851935588](https://github.com/zy19970/IPSys/actions/runs/38851935588) **success**，验证了真实 SQLCipher HTTP、跨工作区 Excel 仅复制资料属性、重复行处理、版本字节一致、禁止带原件历史直接永久删除及软删恢复。进一步发现现有 `app.js` 仍用旧档案 ID，[c941bda](https://github.com/zy19970/IPSys/commit/c941bda2ca63a3fb64948bb3d99df5ab1f6d2794) 将 `/api/search` 旧归档身份与 `/api/v2/search` 原生 FolderId 隔离，防止页面错误跳转，对应 [CI #38852474653](https://github.com/zy19970/IPSys/actions/runs/38852474653) 因新增断言在前面软删除档案后仍期待命中而失败；[修复 2ce1c2a](https://github.com/zy19970/IPSys/commit/2ce1c2a62d124b4715852ba8b5e54afad8476878) 改为断言 V2 不返回已软删记录，最终 [Windows CI #38852697271](https://github.com/zy19970/IPSys/actions/runs/38852697271) **completed/success**。**N2-04 现有网页、原件全链路、导出/复制仍未全部切换，不能当作完成。**
+[集中功能 48bdd4a](https://github.com/zy19970/IPSys/commit/48bdd4a62cb8232619fa381007103ee1b065da80) 当时新增档案/综合资料 V2 Excel、祖先目录及 File 可选属性搜索、回收站，测试修复后 [CI #38852697271](https://github.com/zy19970/IPSys/actions/runs/38852697271) success。**本节是 N2-04 中期历史状态**；随后正式网页、MCP、ZIP/目录历史版本导出和旧 HTTP 生产隔离均已完成，并通过 [CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886)。
 
 ## N2-04 正式业务入口与导出唯一 V2 自动验收（2026-10-16）
 

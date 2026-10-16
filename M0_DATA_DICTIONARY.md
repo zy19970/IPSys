@@ -2,12 +2,12 @@
 
 > 阶段：M0 设计输入准备，2026-10-13  
 > 依据：[REQUIREMENTS.md](./REQUIREMENTS.md) V1.0 冻结范围与 [FREEZE_AUDIT.md](./FREEZE_AUDIT.md)  
-> **本文件是 M0 设计交付物，不是对已冻结需求的修改，也不是已实现的数据库 Schema。**  
+> **本文件为 2026-10-13 的 M0 历史设计交付物，不是现行 SQLCipher V2 物理 DDL。** 最新 Folder/File 结构以 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md) 和 `src/IPSys.Web/ResourceSchemaV2.cs` 为准；正式全业务 V2 主链路通过 [CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886)，当前处于 N4 清理与完整验收阶段。本文已确认的业务字段和金额格式仍有效。
 > 状态：**M0 完成：用户确认 R1–R3 使用本文件默认方案；R4 金额为人民币（CNY）且采用 `0.00`。** 本文件为获确认的数据设计，物理 Schema 与运行验证仍属 M1/M2。
 
 ## 1. 使用方式、标记与类型约定
 
-本字典是表单、SQLite 逻辑模型、检索和 Excel 模板的共同输入。前端显示名与内部逻辑字段标识保持一一对应；最终物理表名、索引、SQLite 类型与分块策略在 M1/M2 验证后确定。
+本字典提供业务字段、状态、表单和 Excel 固定模板映射的历史设计输入；实际物理表、原件加密分块和多位置关联按当前 V2 实现执行，不再把 M0 的候选表结构当作需要设计的新库方案。
 
 字段标记：
 

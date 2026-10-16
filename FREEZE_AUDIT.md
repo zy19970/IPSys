@@ -2,10 +2,10 @@
 
 > 审查日期：2026-10-13  
 > 审查对象：`REQUIREMENTS.md`（已确认至 Q162）及 `DESIGN.md`（早期探索草案）  
-> 冻结时状态：**2026-10-13 已冻结业务范围；其后 V2 Schema 和部分原生 Folder 业务已实现，但整体可靠性、性能与正式发布仍未完全验收。**
+> 冻结时状态（历史）：2026-10-13 已冻结需求；截至 2026-10-16，N2-04 全业务 V2 正式主链路已经通过 [CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886)，N4 旧模型清理及正式安全/实机验收尚未完成。
 > 唯一有效的业务需求基线：[REQUIREMENTS.md](./REQUIREMENTS.md)。本报告用于解释冲突、冻结边界和下阶段验收门槛，不自行增加产品功能。
 
-> **最新架构覆盖决定（2026-10-15）**：用户确认旧资料库均为测试数据，无需迁移、回填和兼容，直接采用 SQLCipher V2 的统一 `folders/files/file_versions/file_objects/file_chunks/folder_file_links`。所有业务对象和分类都是 Folder（无版本），只有附件 File 有版本和选填属性；同区共享 FileId 或仅复用加密字节、跨区物理隔离，由用户决定同内容处理。下文旧「不统一全部业务物理表」「旧库增量兼容升级」「优先综合发布验收」属历史阶段，不再指导现行开发。N1/N2-01/N2-02 已分别通过 CI，下一项 N3-01，然后 N2-03/N4；原有业务约束、UI 与 T01–T09 安全目标继续有效。见 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)、[DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md)。
+> **现行架构与阶段覆盖（2026-10-16）**：没有需要迁移的旧正式数据库，统一 SQLCipher V2 `folders/files/file_versions/file_objects/file_chunks/folder_file_links`；Folder 无版本、File 有独立版本和选填属性，同区共享/复用由用户决定、跨区物理隔离。N1/N2-01～04/N3-01～04 的自动回归已通过，[CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) completed/success；**现在进入 N4 旧 Schema/Store/历史测试适配清理、Edge/Chrome/T01–T09 实机验收**。下文旧库增量兼容等属历史记录，不再指导实施。
 
 ## 1. 审查结论
 
@@ -91,9 +91,9 @@
 
 1. Q1–Q162 及后续明确覆盖决定为业务边界，不启动 Q163 式延伸访谈。公司业务档案可变层级目录属于已确认的后续修订，最新交互见 UI_BASELINE.md。
 2. M0 字段与状态字典已形成，WinForms、本机网页、SQLCipher、项目/合同/IP/档案及附件真实能力已接入；DESIGN.md 已记录当前实现结构，均不能据此认定完整发布验收通过。
-3. N1、N2-01/02、N3-01～04 均已通过专项 Windows CI，知识产权网页/附件/Excel/MCP/搜索回收站/跨区复制与项目合同现有网页/附件已分批转 V2；当前下一项 N2-03-07-02 统一项目合同原名 MCP、Excel、搜索/回收站及跨区整项目复制，随后归档/综合资料切换与 N4 清理，最后 T01–T09/Edge/Chrome 正式验收。
+3. N2-04 全业务主链路已完成 V2 正式网页、MCP、Excel、搜索/回收站、附件/历史原件的自动验收，[CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) success。**当前 N4** 清理仍在新建资料库中创建的旧表与 Store、历史测试接口，随后完成 T01–T09 和 Edge/Chrome 实机；不再开展 N2-03-07-02 或旧库迁移。
 4. V2 统一物理 Folder/File 已获用户确认，后续如需新增业务范围、改变合同从属、工作区隔离或再调整新库结构，仍应按已确认基线评估数据一致性与安全并记录受控变更。
 
 ## 7. 交付状态声明
 
-本报告最初仅归档 2026-10-13 的需求冻结与 T01–T09 验收门槛；截至 2026-10-16，WinForms、SQLCipher、知识产权 V2 全链路及项目合同现有网页/原件已有真实代码和对应自动回归，公司业务档案现有网页仍待 V2 接入。该历史结论不可用于声称“目前仍无代码”，也不可用 CI 结果代替超大文件、SSD、备份与完整实机验收。当前进度以 [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md) 为准。
+本报告保存 2026-10-13 需求冻结及 T01–T09 安全门槛供追溯；截至 2026-10-16 全业务 V2 主链路 [CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) 通过，但 N4 旧表物理清理、2 GiB+ 目标往返、SSD/磁盘异常、手工备份一致性和 Edge/Chrome 实机仍未全面验收。最新施工进度以 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md) 为准。

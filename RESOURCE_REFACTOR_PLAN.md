@@ -2,7 +2,7 @@
 
 > 确认日期：2026-10-15。编制基线：`main@0b70bbe47dedef016ab218cb4e8b427e1d571140`。
 >
-> **本文件是新的目标架构、分阶段任务、验收条件和跨会话进度的统一入口；不表示目标功能已经实现。** `DESIGN.md` 描述当前真实代码，`UI_BASELINE.md` 约束当前 UI，`REQUIREMENTS.md` 和 `M0_DATA_DICTIONARY.md` 保留旧业务字段/安全规则。
+> **本文件是已确认的 V2 架构、分阶段记录与当前 N4 执行进度统一入口。** N1/N2/N3 正式业务主链路自动验收已通过；N4 旧物理表/兼容代码清理和 Edge/Chrome 实机尚未完成。技术实现看 `DESIGN.md`，交互看 `UI_BASELINE.md`，字段与安全看 `REQUIREMENTS.md`/`M0_DATA_DICTIONARY.md`。
 >
 > 每次后续实质开发均先重新阅读 `https://github.com/zy19970/AIGT-templates/main/AGENTS.md` 和 `AI_RULES/GIT_OPERATIONS.md`、IPSys 当前主分支的完整 Git 历史、本文件与相关源码。不得只凭聊天上下文判断进度。
 
@@ -19,7 +19,7 @@
 3. N3 让所有附件走 files、file_versions、file_objects/chunks、folder_file_links；实现文件可选属性、共享逻辑 FileId、独立文件内容复用、跨工作区物理隔离、同内容提示用户三选一和版本历史。
 4. N4 接入前端/检索/导出，跑完整业务、MCP、Excel、PDF 预览、回收站、Windows 单 EXE 测试，清理已停用的旧业务及附件表和兼容代码。
 
-**过渡期限制**：N1 完成只说明新的真实资源 Schema 可以使用，仍使用旧表的界面和业务 Store 尚未切换；不能将其描述为新库业务全部完成。旧分表暂留作为当前程序执行入口，N2/N3 切换后必须移除，最终只保留一套正式物理资源存储。旧数据迁移已从交付范围删除。
+**当前 N4 遗留**：正式网页、MCP、Excel、搜索/回收站、ZIP/目录历史文件已统一使用 V2 FolderId/FileId/LinkId，`Program.cs` 只在 `--smoke` 历史测试注册旧业务 HTTP。`Vault.CreateSchema/ValidateSchema` 仍创建并校验旧 `records/attachments/chunks`，旧 Store/Provider 及测试依赖需逐步清理。最终只保留一套 V2 物理资源模型，不进行旧库迁移、回填或双写。
 
 ---
 ## 1. 冻结的资源模型
@@ -125,7 +125,7 @@ C# 后端划分：
 | 子任务 | 当前状态 | 完成依据 / 下一步 |
 | --- | --- | --- |
 | N1 新 SQLCipher v2 资源 Schema | **完成（代码与 Windows CI）** | [初版 ca924d55](https://github.com/zy19970/IPSys/commit/ca924d559d76d642414c20410f4457fc7faaeb42)、[内容保护 abc2a95d](https://github.com/zy19970/IPSys/commit/abc2a95d406192ad155f6b7412dd3dc7189bc542)、[DDL 顺序修正 e16ad1be](https://github.com/zy19970/IPSys/commit/e16ad1be01f8ede92afc7d4dcb153d057191952b)；[Windows CI #38740628571](https://github.com/zy19970/IPSys/actions/runs/38740628571) **success**。验证真实新建/重开 SQLCipher v2、文件夹合法父级/循环/工作区隔离、七系统根保护、同 FileId 多目录关联、独立 FileId 复用物理内容但版本独立、文件版本/完成内容不可改写；旧业务 UI/Store 切换属 N2/N3。 |
-| N2 新 Folder 唯一业务 Store | **进行中** | 从 N2-01 开始实现直接读写新版 folders，后续依次接入归档、综合资料和原有业务 HTTP/MCP/Excel，禁止同一操作双写。 |
+| N2 新 Folder 唯一业务 Store | **正式主链路完成（Windows CI）** | 项目、合同、IP、资质、业务档案、个人分类和综合资料的正式 UI/外围均使用 V2；N2-04 [CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) success，剩余 N4 旧实现清理与人工实机。 |
 | N2-01 项目/合同/IP 原生 CRUD | **完成（代码与 Windows CI）** | [功能提交 daca2561](https://github.com/zy19970/IPSys/commit/daca2561f0cd6c4d76bc5054ae61b8f22e46f48d)、[测试修正 8264e6ce](https://github.com/zy19970/IPSys/commit/8264e6ceb14b39ece60322fb767357ef4251a1bd)；[Windows CI #38743939004](https://github.com/zy19970/IPSys/actions/runs/38743939004) **success**。NativeFolderStore/NativeFolderEndpoints 直接读写 SQLCipher v2 `folders` 与 `attributes_json`，支持项目/合同/IP CRUD、软删/恢复，验证合同父项目、会话授权、跨工作区、业务属性、父级隐藏及不双写旧表。第一次 CI #38743561769 因测试构造 IpInput 少一个 Tags 参数编译失败，补齐后全通过。**旧 UI、MCP、Excel 及附件 API 尚未切换。** |
 | N2-02 业务档案目录/资料及综合资料原生 Folder CRUD | **完成（代码与 Windows CI）** | [功能提交 340102b3](https://github.com/zy19970/IPSys/commit/340102b3cb6e28a1f8882236115bc7e82beb874c)、[分类归属约束 265123fb](https://github.com/zy19970/IPSys/commit/265123fb15124ee04d73f338997d3d423088a91f)，[Windows CI #38747066932](https://github.com/zy19970/IPSys/actions/runs/38747066932) **success**。`NativeArchiveStore` 在新版 `folders` 上实现 archive_folder/archive/general 原生 CRUD；`NativeArchiveOrder` 提供目录和资料的混排持久排序、显式移动、防循环；`/api/v2/folders` 增加 section、parentId、entries/reorder/move。七个系统根、非空目录、删除恢复、资料必须属于分类、工作区和资料类别隔离及旧表不双写均有真实 SQLCipher HTTP 验收。**尚未切换旧 UI、附件/MCP/Excel；见 N2-03/N3。** |
 | N2-03 项目合同/IP 原有业务 API/MCP/Excel 与 V2 统一 | **主链路已完成（Windows CI）** | IP 全链路及项目/合同现有网页/附件、原名 MCP、项目 XLSX 导入导出与合同只读导出、V2 搜索/回收站、全项目携子合同和历史原件跨区单事务复制已通过 [CI #38848010379](https://github.com/zy19970/IPSys/actions/runs/38848010379)。[功能提交 59f7614](https://github.com/zy19970/IPSys/commit/59f7614ed2fb90d3bf3d6f56533240555874b6f1)，[旧测试身份修复 e59acc3](https://github.com/zy19970/IPSys/commit/e59acc37d6cfd3c3f27673bda996aa74ef3cb839)。剩余档案、个人分类、综合资料归 N2-04 统一处理。 |
@@ -143,7 +143,7 @@ C# 后端划分：
 | N3-03 独立 FileId 同区仅复用内容/跨区物理复制 | **完成（代码与 Windows CI）** | [功能提交 944312d0](https://github.com/zy19970/IPSys/commit/944312d08f80d6baac7ab7fc614942441bfa880f)、[Windows CI #38762437581](https://github.com/zy19970/IPSys/actions/runs/38762437581) **success**。新增 `NativeFileCopyStore`、`NativeFileCopyEndpoints` 原生复制接口：同工作区显式 `reuse-content` 可生成不同 FileId、独立 FileVersion 记录但共用完成不可变 FileObject；`independent-content` 复制版本与原件字节到新 FileObject，跨 company/personal 必须采用该模式。复制全部有效版本、允许副本独立命名，目标 Folder 关联与文件/版本/新对象在同事务提交，检查空间与任务取消。真实 SQLCipher/HTTP 测试覆盖双 FileId 属性与新版本独立、物理对象复用/隔离、跨区原件 SHA-256/字节一致、越权/无效归属与取消回滚。**未实现 N3-04 异名同内容自动检测/用户三选一，也未切换旧 UI/MCP/Excel；CI 不等于用户实机验收。** |
 | N3-02 多 Folder 关联与解绑恢复 | **完成（代码与 Windows CI）** | [功能提交 c0b15a18](https://github.com/zy19970/IPSys/commit/c0b15a180e595883b511448d95cb77e6a90fd4af)、[Windows CI #38759311477](https://github.com/zy19970/IPSys/actions/runs/38759311477) **success**。通过 NativeFileLinkStore/NativeFileLinkEndpoints 支持同一 FileId 在多个有效 Folder 中关联、查询、单处软解绑和显式恢复。不同位置共享文件属性、版本历史；解绑后新版本不会自动复活旧链接，最后一个位置解绑后原文件字节仍保留并可从旧 Folder 查询关联恢复。真实 SQLCipher 和 HTTP 回归涵盖同区共享、版本同步、跨区拒绝、关联重复拒绝、数据持久化。下一步 N3-03 独立 FileId 物理内容复用及跨区独立复制。 |
 | N3-01 新 File 基础存储、属性与版本 | **完成（代码与 Windows CI）** | [功能提交 78e33d55](https://github.com/zy19970/IPSys/commit/78e33d5544d8435cc216820bd1fbe471e9439c14)、[Windows CI #38754995418](https://github.com/zy19970/IPSys/actions/runs/38754995418) **success**。新增 `NativeFileStore`、`NativeFileEndpoints` 的 `/api/v2/files` 原生上传（须有效 FolderId）、文件选填元数据及事后编辑、SHA-256/分块、FileVersion 原始文件名/版本说明/历史下载；首版本、文件内容和第一条归属关系同事务提交。新 `NativeFileStoreSmoke` / `NativeFileHttpSmoke` 通过真实 SQLCipher、HTTP 认证/跨区拒绝、2 MiB+ 多块往返、历史 v1/v2、属性编辑不产生版本、取消/短写全回滚、重开持久化。**仍限单文件 64 MiB；N3-02 多位置共享与解除、N3-03 内容复用、N3-04 同内容提示及旧业务入口接管尚未实现。** |
-| N4 新库完整 UI/搜索/导出及清理 | **待开始** | 实际所有业务全走统一新库后删除停用旧表，执行完整 Windows CI 与实机验收。 |
+| N4 新库完整 UI/搜索/导出及清理 | **当前进行中，尚未完成** | 全模块 UI、搜索和导出已于 N2-04 使用 V2；现在将历史 `--smoke` 旧表用例改为 V2 后清理旧物理表/Store/路由，执行 Windows/Edge/Chrome、MCP/Excel 与 T01–T09 整体验收。 |
 | R0-01 方案 MD + README 入口 | **完成：本方案入库** | 以本次 Git commit 为准 |
 | R0-02 现有/目标行为回归矩阵 | **完成（用例静态盘点）** | [测试与差异矩阵](./RESOURCE_REFACTOR_TEST_MATRIX.md) F01–F17；新 CI 尚未运行，未来目标行为在 R1–R4 验证 |
 | R0-03 不改行为的代码拆分 | **完成（10 批代码提交及 Windows CI 均通过；用户实机未单独验收）** | **首四批** WebSmoke、ProjectStore、Vault、项目合同路由分别通过 [CI #38722481324](https://github.com/zy19970/IPSys/actions/runs/38722481324)、[#38723350666](https://github.com/zy19970/IPSys/actions/runs/38723350666)、[#38723730765](https://github.com/zy19970/IPSys/actions/runs/38723730765)、[#38724245349](https://github.com/zy19970/IPSys/actions/runs/38724245349)；**第五批** [7bfe8dcf](https://github.com/zy19970/IPSys/commit/7bfe8dcf02f09d22d7c132c86c41978103c59540) 归档 14 路由，[CI #38725471725](https://github.com/zy19970/IPSys/actions/runs/38725471725) success；**第六批** [48ccae53](https://github.com/zy19970/IPSys/commit/48ccae53a411248108c379ca1f4f120f0ab9cc1c) IP 5 路由，[CI #38725783469](https://github.com/zy19970/IPSys/actions/runs/38725783469) success；**第七批** [d2ad74f8](https://github.com/zy19970/IPSys/commit/d2ad74f8b5e215870c62d398d72ec3eaf88e7936) Excel 3 路由，[CI #38726119086](https://github.com/zy19970/IPSys/actions/runs/38726119086) success；**第八批** [ee3d6d34](https://github.com/zy19970/IPSys/commit/ee3d6d34f2fb8aa3eab08042bc5f3e969b68827f) 综合资料/文件 7 路由，[CI #38726478629](https://github.com/zy19970/IPSys/actions/runs/38726478629) success；**第九批** [68fe6002](https://github.com/zy19970/IPSys/commit/68fe6002c9ac6e48325173c1f3340d4747a73ac9) 搜索/台账 4 路由，[CI #38726808097](https://github.com/zy19970/IPSys/actions/runs/38726808097) success；**第十批** [71c6e54f](https://github.com/zy19970/IPSys/commit/71c6e54fe1ceab5dae2aaabb66dc2490132d52c8) 会话/诊断 8 路由，[CI #38727268885](https://github.com/zy19970/IPSys/actions/runs/38727268885) success。原 Program 约 2973 行，拆分后约 178 行，接口/业务逻辑/Schema 未主动改动。**接下来 R1-01。** |
@@ -158,13 +158,13 @@ C# 后端划分：
 | R1-04-03-02 档案目录/资料移动及跨模块复制适配 | **已由新 N2 取代** | 以现有 ArchiveFolderStore/ArchiveStore 为权威；禁止目录成环、合同脱离项目、任意跨 section 移动；逐一验收归档目录与附件关系。 |
 | R1-04-03-03 混排持久排序/旧接口归一与 R1 收尾 | **已由新 N2/N4 取代** | 以 archive_entry_order 与原有业务台账排序为真值，新增公共操作的 SQLCipher HTTP 回归，汇总完整旧库与 Windows CI 门槛后切入 R2。 |
 | R2-01～R2-05 File/版本/共享 | **待开始** | R1 后实施 |
-| R3-01～R3-04 前端与导出 | **待开始** | R2 后实施 |
-| R4-01～R4-05 存储迁移/验收 | **待开始** | 满足安全迁移门槛后实施 |
+| R3-01～R3-04 前端与导出 | **旧路线由 N2-04/N4 接管** | 正式 V2 UI 和导出在 N2-04 自动验收通过；用户实机、复杂导出及旧测试清理由 N4 收尾。 |
+| R4-01～R4-05 存储迁移/验收 | **历史路线，迁移取消** | 旧资料库仅有开发测试数据，N4 改为新 V2 物理收敛和数据安全验收。 |
 
-每次继续：读取本文件→读取 main 和相关源码及提交历史→选**依赖已满足的第一项未完成工作（当前 N2-03，N3-04 已验收）**→最小改动与针对性回归→检查 CI、commit 和 main 的实际 diff→更新状态、证据与遗留问题。**有代码不等于有验收；未测不可写成通过。**
+每次继续：先读取 AIGT 基础规则、当前 main 全部提交历史、本文及相关源码→按 N4 清理历史测试/旧表/Store→执行 SQLCipher/HTTP、Node、Windows 及所需实机回归→核对 main/ref/commit→更新本计划与测试矩阵。**代码实现、CI 通过和用户实机通过必须分开记录。**
 
 **最终冻结：Folder 无版本并承载业务；File 有独立版本和全部选填的检索属性；同工作区跨文件夹可共享逻辑文件；同内容必须展示文件名与已有位置并由用户决定是否复用；工作区之间不共享实际原件对象。**
 
-## N2-04 最新主分支状态（2026-10-16，本轮）
+## N2-04 自动验收收尾和 N4 正式接续（2026-10-16）
 
-原有阶段描述是历史实施记录，最新 main 的实际代码已向前推进：[02619b2](https://github.com/zy19970/IPSys/commit/02619b25d) 已接入公司业务档案、企业资质、个人分类和综合资料现有 V2 页面，[f014a2c](https://github.com/zy19970/IPSys/commit/f014a2c497dfa8342393c310b651390aa8349230) 已实现综合资料整记录及原件全部版本的跨工作区转移，前次 [CI #38856099239](https://github.com/zy19970/IPSys/actions/runs/38856099239) 成功。本轮 [8da8ec4](https://github.com/zy19970/IPSys/commit/8da8ec49a982cb91e4737ccea0962587f85f1606) 将现有附件复制/移动关联操作切为 V2 FileId、来源 LinkId、目标 FolderId 的同工作区 SQLCipher 原子事务；重复链接拒绝并回滚，移动只解除来源一处，保留全部历史版本和其它共享位置；[820e26b](https://github.com/zy19970/IPSys/commit/820e26ba3675b9296a676d1881392b5e00959c32) 同步冻结 UI 断言，最终 [Windows CI #38859966813](https://github.com/zy19970/IPSys/actions/runs/38859966813) **success**。N2-04 主链路已经推进，但仍要审查剩余旧 API/兼容代码及整体界面一致性，N4 旧表清理和 Edge/Chrome 实机验收未完成；没有正式旧库需要迁移。
+N2-04 已完成档案、资质、个人分类和综合资料的现有 V2 网页 [02619b2](https://github.com/zy19970/IPSys/commit/02619b25d588)，综合资料含全部历史原件跨区复制 [f014a2c](https://github.com/zy19970/IPSys/commit/f014a2c497dfa8342393c310b651390aa8349230)，同工作区附件原子关联 [8da8ec4](https://github.com/zy19970/IPSys/commit/8da8ec49a982cb91e4737ccea0962587f85f1606)，MCP 全模块接入 [db79b82](https://github.com/zy19970/IPSys/commit/db79b825a3b7fb1ab384a70da69575d55e653b80)，全部 ZIP/文件夹 FileVersion 导出和生产旧 HTTP 隔离 [6a7b1ff](https://github.com/zy19970/IPSys/commit/6a7b1ffe882aaa114c9d90af7011068cad7fd330)。[CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) **completed/success** 对应源码 `6a7b1ff`，之后 `e06f8a7` 为文档同步。**当前 N4** 首先调整历史 `--smoke` 测试依赖和旧物理表，再清理 Store/Provider/旧接口并做 Windows/Edge/Chrome、Excel/MCP 和 T01–T09 实机。旧测试库无需迁移。
