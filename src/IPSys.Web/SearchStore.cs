@@ -61,8 +61,9 @@ static class SearchStore
             counts[hit.Kind]=current+1;
             results.Add(hit);
         }
-        var projects=ProjectStore.List(db,workspace);
-        var contracts=ContractStore.List(db,workspace);
+        var projects=NativeFolderStore.List(db,workspace,FolderKinds.Project);
+        var contracts=NativeFolderStore.List(db,workspace,FolderKinds.Contract);
+        var projectTitles=projects.ToDictionary(x=>x.Folder.Ref.Id,x=>x.Folder.Name);
         var ips=NativeFolderStore.List(db,workspace,FolderKinds.Ip);
         var archiveSections=workspace=="company"?new[]{"certificate","achievement"}:
             new[]{"certificate","achievement","academic"};
@@ -71,18 +72,23 @@ static class SearchStore
             archive.AddRange(ArchiveStore.List(db,workspace,section));
         var (general,generalFiles)=ReadGeneral(db,workspace);
 
-        foreach(var p in projects)
+        foreach(var row in projects)
         {
+            var p=(ProjectInput)row.BusinessData;
             if(!Any(query,p.Name,p.ProjectNo,p.ProjectType,p.ProjectStatus,
                 p.Leader,p.UndertakingOrg,p.Category,p.Remarks,p.Tags))continue;
-            Add(new SearchHit("project",p.Id,"",p.Name,
+            Add(new SearchHit("project",row.Folder.Ref.Id,"",Label(p.Name),
                 Summary(p.ProjectType,p.ProjectNo,p.ProjectStatus)));
         }
-        foreach(var c in contracts)
+        foreach(var row in contracts)
         {
-            if(!Any(query,c.Name,c.ContractNo,c.ProjectName,c.SigningParties,
+            var c=(ContractInput)row.BusinessData;
+            if(row.Folder.Parent is not ResourceRef parent ||
+               !projectTitles.TryGetValue(parent.Id,out string? parentName))continue;
+            if(!Any(query,c.Name,c.ContractNo,parentName,c.SigningParties,
                 c.Category,c.Remarks,c.Tags))continue;
-            Add(new SearchHit("contract",c.Id,"",c.Name,Summary(c.ProjectName,c.ContractNo)));
+            Add(new SearchHit("contract",row.Folder.Ref.Id,"",Label(c.Name),
+                Summary(parentName,c.ContractNo)));
         }
         foreach(var ip in ips)
         {
@@ -109,8 +115,10 @@ static class SearchStore
 
         // Only a currently active record owner may be a result. BusinessFileStore.List
         // already excludes deleted links, unfinished objects and deleted owners.
-        var projectNames=projects.ToDictionary(x=>x.Id,x=>x.Name);
-        var contractNames=contracts.ToDictionary(x=>x.Id,x=>x.Name);
+        var projectNames=projects.ToDictionary(x=>x.Folder.Ref.Id,x=>x.Folder.Name);
+        var contractNames=contracts.Where(x=>x.Folder.Parent is ResourceRef parent &&
+            projectNames.ContainsKey(parent.Id)).ToDictionary(
+                x=>x.Folder.Ref.Id,x=>x.Folder.Name);
         var ipNames=ips.ToDictionary(x=>x.Folder.Ref.Id,x=>Label(((IpInput)x.BusinessData).Name));
         var archiveNames=archive.ToDictionary(x=>(x.Section,x.Id),x=>x.Name);
         var seen=new HashSet<string>(StringComparer.Ordinal);
@@ -119,8 +127,9 @@ static class SearchStore
             if(!Any(query,f.Name,f.Category))continue;
             string parent=f.Kind switch
             {
-                "project" when projectNames.TryGetValue(f.OwnerId,out var p)=>p,
-                "contract" when contractNames.TryGetValue(f.OwnerId,out var c)=>c,
+                // No project/contract old attachment links may be returned
+                // with the same owner kind as an active V2 FolderId.
+                "project" or "contract"=>"",
                 // Legacy business-file IDs are unrelated to native IP FolderId.
                 // Never accidentally attach an old file hit to a new IP folder.
                 "ip"=> "",
@@ -134,24 +143,27 @@ static class SearchStore
             Add(new SearchHit("file",f.Id,f.Section,f.Name,Summary(parent,f.Category),
                 f.Kind,f.OwnerId));
         }
-        // Native IP matches use the only live V2 FolderId and immutable FileId.
-        // An IP filename can differ from the reusable shared File's display name.
-        foreach(var ip in ips)
+        // Native project/contract/IP attachments use V2 identity and metadata.
+        foreach(var item in projects.Concat(contracts).Concat(ips))
         {
-            long owner=ip.Folder.Ref.Id;
-            string ownerName=ipNames[owner];
+            long owner=item.Folder.Ref.Id;
+            string kind=item.Folder.Ref.Kind;
+            if(kind==FolderKinds.Contract &&
+               (item.Folder.Parent is not ResourceRef parent ||
+                !projectNames.ContainsKey(parent.Id)))continue;
             foreach(var link in NativeFileLinkStore.ListFolder(db,workspace,owner,false)??[])
             {
                 var details=NativeFileStore.Get(db,workspace,link.FileId);
                 if(details is null || details.Versions.Count==0)continue;
                 var latest=details.Versions[0];
                 string location=link.DisplayName??link.FileName;
+                string parentTitle=item.Folder.Name;
                 if(!Any(query,location,link.FileName,latest.OriginalName,
-                        link.MaterialCategory,details.Description,details.Tags,
-                        details.FileNumber))continue;
+                    link.MaterialCategory,details.Description,details.Tags,
+                    details.FileNumber,details.FileDate,parentTitle))continue;
                 Add(new SearchHit("file",link.FileId,"",location,
-                    Summary(ownerName,link.MaterialCategory,latest.OriginalName),
-                    "ip",owner));
+                    Summary(parentTitle,link.MaterialCategory,latest.OriginalName),
+                    kind,owner));
             }
         }
         foreach(var f in generalFiles)

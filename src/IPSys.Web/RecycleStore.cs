@@ -24,7 +24,11 @@ static class RecycleStore
         var rows=Simple(db,workspace,"""
             SELECT id,name,'' FROM business_projects WHERE workspace=$w AND deleted=1
             ORDER BY id DESC;
-            ""","project");
+            ""","legacy_project");
+        rows.AddRange(Simple(db,workspace,"""
+            SELECT id,name,'' FROM folders WHERE workspace=$w AND kind='project'
+              AND deleted=1 ORDER BY id DESC;
+            ""","project"));
         rows.AddRange(Simple(db,workspace,"""
             SELECT id,title,'' FROM records WHERE workspace=$w AND deleted=1 ORDER BY id DESC;
             ""","general"));
@@ -47,6 +51,12 @@ static class RecycleStore
             JOIN business_projects p ON p.id=c.project_id AND p.workspace=c.workspace
             WHERE c.workspace=$w AND c.deleted=1 AND p.deleted=0
             ORDER BY c.id DESC;
+            ""","legacy_contract"));
+        rows.AddRange(Simple(db,workspace,"""
+            SELECT c.id,c.name,'',p.name FROM folders c
+            JOIN folders p ON p.id=c.parent_id AND p.workspace=c.workspace
+            WHERE c.workspace=$w AND c.kind='contract' AND c.deleted=1
+              AND p.kind='project' AND p.deleted=0 ORDER BY c.id DESC;
             ""","contract"));
         // Deleted attachments under deleted business records are restored by first
         // restoring their parent; they cannot be independently resurrected as orphans.
@@ -68,6 +78,20 @@ static class RecycleStore
               AND p.deleted=0 AND f.deleted=0
             ORDER BY l.id DESC;
             ""","v2_ip_file"));
+        rows.AddRange(Simple(db,workspace,"""
+            SELECT l.id,COALESCE(l.display_name,f.name),'',p.name
+            FROM folder_file_links l JOIN folders p ON p.id=l.folder_id
+              AND p.workspace=l.workspace
+            JOIN files f ON f.id=l.file_id AND f.workspace=l.workspace
+            WHERE l.workspace=$w AND l.deleted=1
+              AND p.kind IN ('project','contract') AND p.deleted=0
+              AND f.deleted=0 AND
+              (p.kind='project' OR EXISTS(
+                SELECT 1 FROM folders parent WHERE parent.id=p.parent_id
+                AND parent.workspace=p.workspace AND parent.kind='project'
+                AND parent.deleted=0))
+            ORDER BY l.id DESC;
+            ""","v2_file"));
         rows.AddRange(Simple(db,workspace,"""
             SELECT a.id,a.filename,'' FROM attachments a
             JOIN records r ON r.id=a.record_id
@@ -98,6 +122,10 @@ static class RecycleStore
                 break;
             case "project":
                 if(r.Section!="")return false;
+                cmd.CommandText="SELECT count(*) FROM folders WHERE id=$id AND workspace=$w AND kind='project' AND deleted=1;";
+                break;
+            case "legacy_project":
+                if(r.Section!="")return false;
                 cmd.CommandText="SELECT count(*) FROM business_projects WHERE id=$id AND workspace=$w AND deleted=1;";
                 break;
             case "ip":
@@ -120,6 +148,15 @@ static class RecycleStore
             case "contract":
                 if(r.Section!="")return false;
                 cmd.CommandText="""
+                    SELECT count(*) FROM folders c JOIN folders p
+                    ON p.id=c.parent_id AND p.workspace=c.workspace
+                    WHERE c.id=$id AND c.workspace=$w AND c.kind='contract'
+                      AND c.deleted=1 AND p.kind='project' AND p.deleted=0;
+                    """;
+                break;
+            case "legacy_contract":
+                if(r.Section!="")return false;
+                cmd.CommandText="""
                     SELECT count(*) FROM business_contracts c JOIN business_projects p
                     ON p.id=c.project_id AND p.workspace=c.workspace
                     WHERE c.id=$id AND c.workspace=$w AND c.deleted=1 AND p.deleted=0;
@@ -128,6 +165,21 @@ static class RecycleStore
             case "file":
                 if(r.Section!="")return false;
                 return BusinessFileStore.OwnerForDeletedLink(db,workspace,r.Id);
+            case "v2_file":
+                if(r.Section!="")return false;
+                cmd.CommandText="""
+                    SELECT count(*) FROM folder_file_links l
+                    JOIN folders p ON p.id=l.folder_id AND p.workspace=l.workspace
+                    JOIN files f ON f.id=l.file_id AND f.workspace=l.workspace
+                    WHERE l.id=$id AND l.workspace=$w AND l.deleted=1
+                      AND p.kind IN ('project','contract') AND p.deleted=0
+                      AND f.deleted=0 AND
+                      (p.kind='project' OR EXISTS(
+                        SELECT 1 FROM folders parent WHERE parent.id=p.parent_id
+                        AND parent.workspace=p.workspace AND parent.kind='project'
+                        AND parent.deleted=0));
+                    """;
+                break;
             case "v2_ip_file":
                 if(r.Section!="")return false;
                 cmd.CommandText="""
@@ -182,6 +234,12 @@ static class RecycleStore
                     workspace,id);
                 break;
             case "project":
+                Execute(db,tx,purge?
+                    "DELETE FROM folders WHERE id=$id AND workspace=$w AND kind='project' AND deleted=1;":
+                    "UPDATE folders SET deleted=0 WHERE id=$id AND workspace=$w AND kind='project' AND deleted=1;",
+                    workspace,id);
+                break;
+            case "legacy_project":
                 if(purge)
                 {
                     Execute(db,tx,"""
@@ -197,6 +255,12 @@ static class RecycleStore
                 else Execute(db,tx,"UPDATE business_projects SET deleted=0 WHERE id=$id AND workspace=$w AND deleted=1;",workspace,id);
                 break;
             case "contract":
+                Execute(db,tx,purge?
+                    "DELETE FROM folders WHERE id=$id AND workspace=$w AND kind='contract' AND deleted=1;":
+                    "UPDATE folders SET deleted=0 WHERE id=$id AND workspace=$w AND kind='contract' AND deleted=1;",
+                    workspace,id);
+                break;
+            case "legacy_contract":
                 if(purge)Execute(db,tx,"DELETE FROM business_file_links WHERE kind='contract' AND owner_id=$id AND workspace=$w;",workspace,id);
                 Execute(db,tx,purge?
                     "DELETE FROM business_contracts WHERE id=$id AND workspace=$w AND deleted=1;":
@@ -218,6 +282,7 @@ static class RecycleStore
                     "UPDATE business_ips SET deleted=0 WHERE id=$id AND workspace=$w AND deleted=1;",
                     workspace,id);
                 break;
+            case "v2_file":
             case "v2_ip_file":
                 Execute(db,tx,purge?
                     "DELETE FROM folder_file_links WHERE id=$id AND workspace=$w AND deleted=1;":
@@ -264,11 +329,19 @@ static class RecycleStore
         if(purge)
             foreach(var item in items)
             {
-                if(item.Kind is not ("ip" or "v2_ip_file"))continue;
-                if(item.Kind=="v2_ip_file")
+                if(item.Kind is not ("ip" or "project" or "contract" or
+                    "v2_ip_file" or "v2_file"))continue;
+                if(item.Kind is "v2_ip_file" or "v2_file")
                     throw new InvalidOperationException("共享原件物理回收尚未提供，不能永久删除该关联。");
                 using var cmd=db.CreateCommand();
-                cmd.CommandText="""
+                cmd.CommandText=item.Kind=="project"?"""
+                    SELECT (SELECT COUNT(*) FROM folders WHERE workspace=$w
+                      AND kind='contract' AND parent_id=$id) +
+                      (SELECT COUNT(*) FROM folder_file_links WHERE workspace=$w
+                      AND (folder_id=$id OR folder_id IN
+                         (SELECT id FROM folders WHERE workspace=$w AND kind='contract'
+                          AND parent_id=$id)));
+                    """:"""
                     SELECT COUNT(*) FROM folder_file_links
                     WHERE workspace=$w AND folder_id=$id;
                     """;

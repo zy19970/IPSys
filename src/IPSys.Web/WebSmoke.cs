@@ -1243,11 +1243,11 @@ static class WebSmoke
             (await client.DeleteAsync($"/api/projects/company/{recoveryProjectId}"))
                 .EnsureSuccessStatusCode();
             var recycleBefore=await client.GetFromJsonAsync<List<RecycleItem>>("/api/trash/company");
-            if(recycleBefore is null||!recycleBefore.Any(r=>r.Kind=="project"&&r.Id==recoveryProjectId)||
-                recycleBefore.Any(r=>r.Kind=="contract"&&r.Id==recoveryContractId))
+            if(recycleBefore is null||!recycleBefore.Any(r=>r.Kind=="legacy_project"&&r.Id==recoveryProjectId)||
+                recycleBefore.Any(r=>r.Kind=="legacy_contract"&&r.Id==recoveryContractId))
                 throw new IOException("已删除项目应连同子合同归属进入回收站。");
             (await client.PostAsJsonAsync("/api/trash/company/restore",
-                new RecycleRequest([new RecycleKey("project",recoveryProjectId,"")])))
+                new RecycleRequest([new RecycleKey("legacy_project",recoveryProjectId,"")])))
                 .EnsureSuccessStatusCode();
             if(!(await client.GetByteArrayAsync(
                 $"/api/business-files/company/download/{recoveryAttachment.Id}"))
@@ -1256,7 +1256,7 @@ static class WebSmoke
             (await client.DeleteAsync($"/api/projects/company/{recoveryProjectId}"))
                 .EnsureSuccessStatusCode();
             (await client.PostAsJsonAsync("/api/trash/company/purge",
-                new RecycleRequest([new RecycleKey("project",recoveryProjectId,"")])))
+                new RecycleRequest([new RecycleKey("legacy_project",recoveryProjectId,"")])))
                 .EnsureSuccessStatusCode();
             if((await client.GetAsync(
                 $"/api/business-files/company/download/{recoveryAttachment.Id}"))
@@ -1494,6 +1494,7 @@ static class WebSmoke
             await NativeIpExcelHttpSmoke.VerifyAsync(client);
             await NativeIpUiHttpSmoke.VerifyAsync(client);
             await NativeProjectContractUiHttpSmoke.VerifyAsync(client);
+            await NativeProjectMilestoneSmoke.VerifyAsync(client);
             using var finalLock = await client.PostAsync("/api/lock", null);
             finalLock.EnsureSuccessStatusCode();
 

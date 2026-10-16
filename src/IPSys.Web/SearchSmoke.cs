@@ -14,15 +14,15 @@ static class SearchSmoke
     public static async Task VerifyAsync(HttpClient client)
     {
         string marker="SEARCH-"+Guid.NewGuid().ToString("N")[..9];
-        using var companyProject=await client.PostAsJsonAsync("/api/projects/company",new {
+        using var companyProject=await client.PostAsJsonAsync("/api/v2/folders/company/project",new {project=new {
             name=marker+"-公司项目",projectType="科研项目",projectNo=marker+"-P"
-        });
+        }});
         companyProject.EnsureSuccessStatusCode();
         long projectId=(await companyProject.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
             .GetProperty("id").GetInt64();
-        using var personalProject=await client.PostAsJsonAsync("/api/projects/personal",new {
+        using var personalProject=await client.PostAsJsonAsync("/api/v2/folders/personal/project",new {project=new {
             name=marker+"-个人项目",projectType="科研项目",projectNo=marker+"-Q"
-        });
+        }});
         personalProject.EnsureSuccessStatusCode();
         long personalId=(await personalProject.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
             .GetProperty("id").GetInt64();
@@ -34,8 +34,10 @@ static class SearchSmoke
         long ipId=(await ip.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
             .GetProperty("id").GetInt64();
         using var contract=await client.PostAsJsonAsync(
-            $"/api/projects/company/{projectId}/contracts",new {
-                name=marker+"-合同",contractNo=marker+"-HT",signDate="2026-10-14",amount="125.50"
+            "/api/v2/folders/company/contract",new {
+                parentId=projectId,contract=new{
+                  name=marker+"-合同",contractNo=marker+"-HT",
+                  signDate="2026-10-14",amount="125.50"}
             });
         contract.EnsureSuccessStatusCode();
         long contractId=(await contract.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
@@ -109,9 +111,8 @@ static class SearchSmoke
         using(var body=new ByteArrayContent(Encoding.UTF8.GetBytes("PDF-file-search-test")))
         {
             body.Headers.Add("X-File-Name",Uri.EscapeDataString(filename));
-            body.Headers.Add("X-Upload-Mode","new");
             using var result=await client.PostAsync(
-                $"/api/business-files/company/project/{projectId}",body);
+                $"/api/v2/files/company/upload?folderId={projectId}",body);
             result.EnsureSuccessStatusCode();
         }
         var attached=await Find(client,"company",filename);
@@ -133,7 +134,7 @@ static class SearchSmoke
             if(denied.StatusCode!=HttpStatusCode.Unauthorized)
                 throw new IOException("未解锁会话不得检索台账。");
 
-        using(var deleted=await client.DeleteAsync($"/api/projects/company/{projectId}"))
+        using(var deleted=await client.DeleteAsync($"/api/v2/folders/company/project/{projectId}"))
             deleted.EnsureSuccessStatusCode();
         if((await Find(client,"company",filename)).Results.Count!=0)
             throw new IOException("已移入回收站的项目附件不得出现搜索结果。");

@@ -623,10 +623,9 @@ function showExcelImportReport(report){
  dialog.showModal();
 }
 async function exportExcel(kind,scope,section=''){
- if(['project','contract'].includes(kind))throw Error('项目/合同 V2 Excel 台账将在下一批接入；不能使用旧资料 ID 导出。');
  const workspace=space;
  const query=kind==='archive'?'?section='+encodeURIComponent(section):'';
- const path=kind==='ip'?'/api/v2/excel/'+workspace+'/ip':'/api/excel/'+workspace+'/'+kind;
+ const path=['ip','project','contract'].includes(kind)?'/api/v2/excel/'+workspace+'/'+kind:'/api/excel/'+workspace+'/'+kind;
  let ids=null;
  if(scope==='filtered'){
   if(kind==='project'||kind==='ip'){
@@ -658,14 +657,14 @@ async function exportExcel(kind,scope,section=''){
   (scope==='filtered'?'filtered':'all')+'.xlsx');
 }
 async function importExcel(kind,file,section=''){
- if(['project','contract'].includes(kind))return notice('项目/合同 V2 Excel 导入正在接入，新资料不可写入旧 Excel 表。',true);
+ if(kind==='contract')return notice('合同不允许 Excel 导入，请从所属项目创建合同。',true);
  if(!file||file.size>8*1024*1024)return notice('请使用小于 8 MiB 的固定 XLSX 模板。',true);
  const workspace=space;
  const policy=await chooseExcelDuplicatePolicy();
  if(!policy)return;
  try{
   const query='?policy='+policy+(kind==='archive'?'&section='+encodeURIComponent(section):'');
-  const endpoint=kind==='ip'?'/api/v2/excel/'+workspace+'/ip':'/api/excel/'+workspace+'/'+kind;
+  const endpoint=['ip','project'].includes(kind)?'/api/v2/excel/'+workspace+'/'+kind:'/api/excel/'+workspace+'/'+kind;
    const response=await api(endpoint+'/import'+query,{
    method:'POST',headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},
    body:file});
@@ -2304,7 +2303,8 @@ el('content').addEventListener('click',async ev=>{
      (confirm('复制到另一个工作区？选择“取消”将在当前工作区复制。')?(space==='company'?'personal':'company'):space);
    if(!confirm((move?'转移':'复制')+'项目“'+p.name+'”至'+(destination==='company'?'公司资料':'个人资料')+'？'))break;
    try{
-    throw Error('V2 项目复制和转移要同时处理合同及所有原件历史，尚未接通原子事务。');
+    await api('/api/v2/projects/'+space+'/'+p.id+'/transfer',{method:'POST',
+     json:{targetWorkspace:destination,move}});
     if(move)detail=null;
     await refresh();notice(move?'项目已转移到另一工作区':'项目已复制');
    }catch(e){notice(e.message,true);}
@@ -2587,17 +2587,15 @@ function bindExcelCreate(prefix,kind,dialogId,isNew,sectionOf=()=> ''){
  const template=el(prefix+'ExcelTemplate'),choose=el(prefix+'ExcelChoose'),input=el(prefix+'ExcelFile');
  template.onclick=async()=>{
   if(!isNew())return;
-  if(kind==='project')return notice('项目 V2 Excel 模板将在下一批接入，暂不使用旧项目台账。',true);
   const section=sectionOf();
   try{
    const query=kind==='archive'?'?section='+encodeURIComponent(section):'';
-   const endpoint=kind==='ip'?'/api/v2/excel/'+space+'/ip':'/api/excel/'+space+'/'+kind;
+   const endpoint=['ip','project'].includes(kind)?'/api/v2/excel/'+space+'/'+kind:'/api/excel/'+space+'/'+kind;
     const response=await api(endpoint+'/template'+query);
    await saveExcel(response,kind+(section?'-'+section:'')+'-template.xlsx');
   }catch(error){notice('下载 Excel 模板失败：'+error.message,true);}
  };
  choose.onclick=()=>{if(!isNew())return;
-  if(kind==='project')return notice('项目 V2 Excel 导入正在接入，暂不写入旧项目表。',true);
   input.value='';input.click();};
  input.onchange=async event=>{
   const file=event.target.files?.[0];event.target.value='';
