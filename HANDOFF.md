@@ -10,6 +10,10 @@
 
 源码提交 [bfab1a8](https://github.com/zy19970/IPSys/commit/bfab1a8aead2a65cf375b2fe5429776befe26970) 通过 [Windows CI #38927263017](https://github.com/zy19970/IPSys/actions/runs/38927263017) **completed/success**。新增 `NativeMcpFileQuery.cs` 和本机授权只读 `/api/v2/mcp/files/{workspace}`，直接 SQL 一次查询 Folder/File/FileVersion/Link，使用递归有效 Folder 屏蔽软删父目录，替换 MCP `list_files` N+1 HTTP 访问并保持原有数组契约；新增 `list_files_page` 支持 kind/owner_id/name/offset/limit(1–200) 和 hasMore/nextOffset。仍保留全部 11 个 `v2_*` 兼容别名，避免旧客户端失效；原名与 v2 列表结果形态有区别，已在 MCP_CODEX 中明确。测试覆盖分页、归档筛选、IP 文件工具业务调用和发布版 stdio `tools/call`。首次 f0454e4 因 NativeMcpSmoke 模式变量 CS0165 CI 失败，bfab1a8 修正后全绿。下一阶段是第三批已存在的 V2 HTTP 业务能力封装为 MCP（优先合同编辑、文件属性/版本、分享、转移/搜索/回收站），以及真实 Codex/WorkBuddy/大量记录下的性能和交互测试；不要把未实测视为通过。
 
+## MCP 第三批业务工具补齐（2026-10-17）
+
+源码 `080a599cfcc07fc990e379c54b34f709011e1996` 对应 [Windows CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431) **completed/success**。本批新增 `McpLocalExtras.cs` 提供 14 个正式 MCP 工具：update_contract、get_file_details、update_file_metadata、download_file_version、associate_file、copy_file、restore_file_link、transfer_project、transfer_ip、transfer_archive、transfer_general、search_records、list_trash、restore_trash。所有新增工具复用 V2 已有 HTTP 业务事务、同一已授权 SQLCipher 会话，写操作适用 `request_id` 日志。完整业务回归已验证合同编辑、查询、文件属性、下载禁止覆盖、共享关联、文件复制、项目/IP/档案/综合资料转移和回收站恢复。宿主本机下载路径必须是绝对路径且不存在，不能覆盖原件。与其他 V2 文件操作一样，单文件仍限 64 MiB。下一轮应以真实 Codex/WorkBuddy 工具列表加载、跨工作区大文件、文件夹访问权限和长任务故障注入为主；旧库测试数据无需迁移。
+
 ## 1. 用户最终意图和冻结规则
 
 IPSys 用户界面名称是「资料管理系统」，以**个人资料长期归档**为优先，公司资料独立工作区；单用户本地 WinForms + 127.0.0.1 Web/Edge/Chrome，单个加密 SQLCipher 资料库保存真实文件字节。Release 为依赖系统安装 .NET Desktop Runtime 8 x64 和 ASP.NET Core Runtime 8 x64 的单 EXE。

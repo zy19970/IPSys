@@ -7,7 +7,10 @@
 
 ### MCP 第三批：完整业务能力回归（2026-10-17）
 
-本批复用正式已授权 V2 HTTP：update_contract、get_file_details、update_file_metadata、download_file_version、associate_file、restore_file_link、copy_file、transfer_project/ip/archive/general、search_records、list_trash、restore_trash，共 14 项。C# SQLCipher 冒烟新增合同局部更新与搜索、文件描述和指定版本下载（禁止覆盖原路径）、同工作区关联共享及恢复、完整文件独立身份复制、项目/IP/档案/综合资料跨工作区复制、回收站精确恢复。写操作通过已有 request_id 幂等日志，不声明跨进程崩溃严格 exactly-once。真实 Codex/WorkBuddy 下载路径权限、大量文件和多 Agent 同时转移仍待本机验收；此时尚未标记 CI 通过。
+**自动验收结果**：源码 `080a599` 对应 [Windows CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431) **completed/success**。Windows Debug、Release 单 EXE、stdio、Node 与真实 SQLCipher/HTTP/MCP 冒烟通过。本机 Codex/WorkBuddy 下载绝对路径权限、跨工作区大体量原件和长耗时异常中断仍需人工验证。
+
+
+本批复用正式已授权 V2 HTTP：update_contract、get_file_details、update_file_metadata、download_file_version、associate_file、restore_file_link、copy_file、transfer_project/ip/archive/general、search_records、list_trash、restore_trash，共 14 项。C# SQLCipher 冒烟新增合同局部更新与搜索、文件描述和指定版本下载（禁止覆盖原路径）、同工作区关联共享及恢复、完整文件独立身份复制、项目/IP/档案/综合资料跨工作区复制、回收站精确恢复。写操作通过已有 request_id 幂等日志，不声明跨进程崩溃严格 exactly-once。真实 Codex/WorkBuddy 下载路径权限、大量文件和多 Agent 同时转移仍待本机验收；已通过自动 CI，用户电脑的真实业务操作仍待确认。
 
 ### MCP 第二批：一次 SQL 全局文件查询与有界分页（2026-10-16）
 

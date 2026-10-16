@@ -43,6 +43,8 @@ MCP 写操作（新增、修改、删除、上传，以及已有 `v2_*` 写操�
 
 **本批专项回归**：检查 V2 文件查询中跨工作区隔离、同一 FileId 多位置、合同父级删除后的可见性、档案目录层级、分页前后 LinkId 不重复、名称与 Folder 筛选、非法页大小拒绝；验证发布版 stdio 的真实 `tools/call` 能严格拒绝未知字段。Windows CI 和真实 Codex/WorkBuddy 大型资料库负载分别留证。
 
+> MCP 第三批源码 `080a599` 已通过 [Windows CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431) **completed/success**：Windows Debug、Release 单 EXE、stdio 握手、SQLCipher/HTTP 业务往返、Node 回归。实际 Codex/WorkBuddy 长耗时跨工作区复制、不同 Windows 目录权限及用户操作仍需本机人工验收。
+
 ## MCP 第三批业务操作
 
 现有 V2 HTTP 能力补齐至 MCP：`update_contract` 编辑合同；`get_file_details`、`update_file_metadata`、`download_file_version` 管理文件属性、版本和指定版本本机下载；`associate_file`、`restore_file_link`、`copy_file` 管理原件共享、关联恢复及完整历史复制；`transfer_project`、`transfer_ip`、`transfer_archive`、`transfer_general` 处理整份资料复制/移动；`search_records` 提供跨业务搜索；`list_trash` 与 `restore_trash` 查询及精确恢复回收站条目。
