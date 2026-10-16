@@ -2,7 +2,7 @@
 
 > 确认日期：2026-10-15。编制基线：`main@0b70bbe47dedef016ab218cb4e8b427e1d571140`。
 >
- > **本文件是已确认的 V2 架构和当前 N4 执行进度唯一入口。** N2/N3 V2 正式业务已通过自动回归；N4 第一批 V2-only SQLCipher 新建/打开、HTTP、回收站、全套冒烟及 Windows 单 EXE 已通过 [Windows CI #38905217041](https://github.com/zy19970/IPSys/actions/runs/38905217041)。仍有不再服务于正式系统的旧 Store/Provider 源文件待按引用清除，Edge/Chrome 和 T01–T09 还未完整验收。
+> **本文件是 V2 架构和 N4 当前执行进度唯一入口。** N2-04 全业务接入、N4 第一批 V2-only 新建/开库/HTTP 收敛和第二批旧源码删除均已经通过 Windows CI。第二批 `7b51669` 删除 31 个 V1 Store/Provider/旧接口及历史测试，保留共用 DTO/校验与固定 XLSX 解析，`b3c8f3b` 修复漏删的 `FolderMutationInput` 后 [Windows CI #38911635273](https://github.com/zy19970/IPSys/actions/runs/38911635273) **completed/success**。当前继续做功能边界和 T01–T09/Edge/Chrome 人工与故障场景验收，不迁移测试库。
 >
 > 每次后续实质开发均先重新阅读 `https://github.com/zy19970/AIGT-templates/main/AGENTS.md` 和 `AI_RULES/GIT_OPERATIONS.md`、IPSys 当前主分支的完整 Git 历史、本文件与相关源码。不得只凭聊天上下文判断进度。
 
@@ -19,7 +19,7 @@
 3. N3 让所有附件走 files、file_versions、file_objects/chunks、folder_file_links；实现文件可选属性、共享逻辑 FileId、独立文件内容复用、跨工作区物理隔离、同内容提示用户三选一和版本历史。
 4. N4 接入前端/检索/导出，跑完整业务、MCP、Excel、PDF 预览、回收站、Windows 单 EXE 测试，清理已停用的旧业务及附件表和兼容代码。
 
-**当前 N4 已完成和遗留**：`Vault.CreateSchema/ValidateSchema` 已只使用 V2，`SessionEndpoints` 开库不再执行旧 `Ensure`，旧物理表不会在新库被创建；`Program.cs` 在正式和 `--smoke` 模式均不注册旧业务 HTTP，回收站、搜索和完整自动测试均以 V2 为唯一身份。[Windows CI #38905217041](https://github.com/zy19970/IPSys/actions/runs/38905217041) **success**。旧 C# Store/Provider/历史测试源码仍有冗余，后续按引用删除并补齐浏览器实机与 T01–T09，不做旧数据迁移。
+**当前 N4 已完成和遗留（2026-10-16）**：第一批将 `Vault`、开库、`Program.cs`、回收站及综合 `--smoke` 全部切成 V2-only；第二批在 `7b51669` 删除 31 个旧 SQL Store/Provider、旧路由/身份适配及历史回归源码，将纯业务规则和共用类型收敛到 `BusinessRules.cs`，原生 Excel 继续复用纯 XLSX 模板/解析逻辑。`FolderMutationInput` 漏删触发首轮 CI #38909425069 的六条 CS0246，补丁 `b3c8f3b` 恢复后 [Windows CI #38911635273](https://github.com/zy19970/IPSys/actions/runs/38911635273) 全绿。**剩余工作**：File 选填属性 UI、复杂版本/共享与 ZIP/文件夹导出边界、Edge/Chrome/真实 MCP/Excel、本机数据安全 T01–T09 和超过现有限制的大文件设计/验证。
 
 ---
 ## 1. 冻结的资源模型
@@ -143,7 +143,7 @@ C# 后端划分：
 | N3-03 独立 FileId 同区仅复用内容/跨区物理复制 | **完成（代码与 Windows CI）** | [功能提交 944312d0](https://github.com/zy19970/IPSys/commit/944312d08f80d6baac7ab7fc614942441bfa880f)、[Windows CI #38762437581](https://github.com/zy19970/IPSys/actions/runs/38762437581) **success**。新增 `NativeFileCopyStore`、`NativeFileCopyEndpoints` 原生复制接口：同工作区显式 `reuse-content` 可生成不同 FileId、独立 FileVersion 记录但共用完成不可变 FileObject；`independent-content` 复制版本与原件字节到新 FileObject，跨 company/personal 必须采用该模式。复制全部有效版本、允许副本独立命名，目标 Folder 关联与文件/版本/新对象在同事务提交，检查空间与任务取消。真实 SQLCipher/HTTP 测试覆盖双 FileId 属性与新版本独立、物理对象复用/隔离、跨区原件 SHA-256/字节一致、越权/无效归属与取消回滚。**未实现 N3-04 异名同内容自动检测/用户三选一，也未切换旧 UI/MCP/Excel；CI 不等于用户实机验收。** |
 | N3-02 多 Folder 关联与解绑恢复 | **完成（代码与 Windows CI）** | [功能提交 c0b15a18](https://github.com/zy19970/IPSys/commit/c0b15a180e595883b511448d95cb77e6a90fd4af)、[Windows CI #38759311477](https://github.com/zy19970/IPSys/actions/runs/38759311477) **success**。通过 NativeFileLinkStore/NativeFileLinkEndpoints 支持同一 FileId 在多个有效 Folder 中关联、查询、单处软解绑和显式恢复。不同位置共享文件属性、版本历史；解绑后新版本不会自动复活旧链接，最后一个位置解绑后原文件字节仍保留并可从旧 Folder 查询关联恢复。真实 SQLCipher 和 HTTP 回归涵盖同区共享、版本同步、跨区拒绝、关联重复拒绝、数据持久化。下一步 N3-03 独立 FileId 物理内容复用及跨区独立复制。 |
 | N3-01 新 File 基础存储、属性与版本 | **完成（代码与 Windows CI）** | [功能提交 78e33d55](https://github.com/zy19970/IPSys/commit/78e33d5544d8435cc216820bd1fbe471e9439c14)、[Windows CI #38754995418](https://github.com/zy19970/IPSys/actions/runs/38754995418) **success**。新增 `NativeFileStore`、`NativeFileEndpoints` 的 `/api/v2/files` 原生上传（须有效 FolderId）、文件选填元数据及事后编辑、SHA-256/分块、FileVersion 原始文件名/版本说明/历史下载；首版本、文件内容和第一条归属关系同事务提交。新 `NativeFileStoreSmoke` / `NativeFileHttpSmoke` 通过真实 SQLCipher、HTTP 认证/跨区拒绝、2 MiB+ 多块往返、历史 v1/v2、属性编辑不产生版本、取消/短写全回滚、重开持久化。**仍限单文件 64 MiB；N3-02 多位置共享与解除、N3-03 内容复用、N3-04 同内容提示及旧业务入口接管尚未实现。** |
-| N4 新库完整 UI/搜索/导出及清理 | **进行中：V2-only 新库、HTTP 与综合自动回归已通过** | 旧物理表不再创建、开库不再执行旧 Store Ensure，旧 HTTP（包括 `--smoke`）已解除注册，回收站与 V2 集成测试通过 [Windows CI #38905217041](https://github.com/zy19970/IPSys/actions/runs/38905217041)。下一项删除冗余旧 Store/Provider/历史测试源码，之后 Windows/Edge/Chrome、MCP/Excel 和 T01–T09 正式验收。 |
+| N4 新库完整 UI/搜索/导出及清理 | **进行中：V2-only 物理层与旧源码裁剪自动验收已通过** | 第一批 CI #38905217041 收敛新库/路由/回收站；第二批 `7b51669` 删除 31 个旧代码文件，`b3c8f3b` 补回 V2 公共 DTO，[Windows CI #38911635273](https://github.com/zy19970/IPSys/actions/runs/38911635273) completed/success。下一步优先文件可选属性/历史版本和导出重叠边界测试，再做 Edge/Chrome/MCP/Excel 与 T01–T09 安全验收；无旧库迁移。 |
 | R0-01 方案 MD + README 入口 | **完成：本方案入库** | 以本次 Git commit 为准 |
 | R0-02 现有/目标行为回归矩阵 | **完成（用例静态盘点）** | [测试与差异矩阵](./RESOURCE_REFACTOR_TEST_MATRIX.md) F01–F17；新 CI 尚未运行，未来目标行为在 R1–R4 验证 |
 | R0-03 不改行为的代码拆分 | **完成（10 批代码提交及 Windows CI 均通过；用户实机未单独验收）** | **首四批** WebSmoke、ProjectStore、Vault、项目合同路由分别通过 [CI #38722481324](https://github.com/zy19970/IPSys/actions/runs/38722481324)、[#38723350666](https://github.com/zy19970/IPSys/actions/runs/38723350666)、[#38723730765](https://github.com/zy19970/IPSys/actions/runs/38723730765)、[#38724245349](https://github.com/zy19970/IPSys/actions/runs/38724245349)；**第五批** [7bfe8dcf](https://github.com/zy19970/IPSys/commit/7bfe8dcf02f09d22d7c132c86c41978103c59540) 归档 14 路由，[CI #38725471725](https://github.com/zy19970/IPSys/actions/runs/38725471725) success；**第六批** [48ccae53](https://github.com/zy19970/IPSys/commit/48ccae53a411248108c379ca1f4f120f0ab9cc1c) IP 5 路由，[CI #38725783469](https://github.com/zy19970/IPSys/actions/runs/38725783469) success；**第七批** [d2ad74f8](https://github.com/zy19970/IPSys/commit/d2ad74f8b5e215870c62d398d72ec3eaf88e7936) Excel 3 路由，[CI #38726119086](https://github.com/zy19970/IPSys/actions/runs/38726119086) success；**第八批** [ee3d6d34](https://github.com/zy19970/IPSys/commit/ee3d6d34f2fb8aa3eab08042bc5f3e969b68827f) 综合资料/文件 7 路由，[CI #38726478629](https://github.com/zy19970/IPSys/actions/runs/38726478629) success；**第九批** [68fe6002](https://github.com/zy19970/IPSys/commit/68fe6002c9ac6e48325173c1f3340d4747a73ac9) 搜索/台账 4 路由，[CI #38726808097](https://github.com/zy19970/IPSys/actions/runs/38726808097) success；**第十批** [71c6e54f](https://github.com/zy19970/IPSys/commit/71c6e54fe1ceab5dae2aaabb66dc2490132d52c8) 会话/诊断 8 路由，[CI #38727268885](https://github.com/zy19970/IPSys/actions/runs/38727268885) success。原 Program 约 2973 行，拆分后约 178 行，接口/业务逻辑/Schema 未主动改动。**接下来 R1-01。** |
@@ -161,7 +161,7 @@ C# 后端划分：
 | R3-01～R3-04 前端与导出 | **旧路线由 N2-04/N4 接管** | 正式 V2 UI 和导出在 N2-04 自动验收通过；用户实机、复杂导出及旧测试清理由 N4 收尾。 |
 | R4-01～R4-05 存储迁移/验收 | **历史路线，迁移取消** | 旧资料库仅有开发测试数据，N4 改为新 V2 物理收敛和数据安全验收。 |
 
-每次继续：先读 AIGT 基础规则、完整 main 提交历史、本计划与实际源码；按 N4 下一任务去除剩余旧 Store/Provider 及已停用测试文件，确保保留 V2 仍依赖的业务校验/DTO；执行 Windows CI 和针对性实机检查、核对 commit/ref，再更新本计划及测试矩阵。CI 通过不等于 Edge/Chrome 实机通过。
+每次继续：读取 AIGT 基础规则、完整 main 提交历史和最新源码；本批 N4 旧 Store/Provider 裁剪已通过 [Windows CI #38911635273](https://github.com/zy19970/IPSys/actions/runs/38911635273)，不要重复。下次直接围绕文件属性/共享版本/复杂递归导出、用户实机和 T01–T09 制定相应测试与修复；运行 Windows Debug/Release/SQLCipher/Node/MCP，核对 main commit/ref 并同步本计划和矩阵。**代码验收与用户实机必须分开**。
 
 **最终冻结：Folder 无版本并承载业务；File 有独立版本和全部选填的检索属性；同工作区跨文件夹可共享逻辑文件；同内容必须展示文件名与已有位置并由用户决定是否复用；工作区之间不共享实际原件对象。**
 

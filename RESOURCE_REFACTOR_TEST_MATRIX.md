@@ -1,6 +1,6 @@
 # IPSys 统一资源内核重构：R0-02 回归与差异矩阵
 
-> **现行用法（2026-10-16，N4 第一批已通过自动验收）**：N2-04 全业务正式入口 V2 已完成，N4 进一步移除新库的旧表创建/开库 Ensure、旧业务 HTTP（包含 `--smoke`）、旧回收站和旧综合测试数据身份，[Windows CI #38905217041](https://github.com/zy19970/IPSys/actions/runs/38905217041) **completed/success**。F01–F17 当前继续用于残余旧 Store/Provider 源码清理、复杂边界与 Edge/Chrome/T01–T09 实机验收。全部旧资料库只是开发测试数据，无需迁移。
+> **现行用法（2026-10-16，N4 第二批源码清理已通过）**：N2-04 全模块 V2 已完成，N4 第一批去掉旧物理表/接口，第二批删除 31 个旧 Store/Provider/HTTP/历史测试源码，保留 V2 共用 DTO/字段校验和 XLSX 模板/解析。`7b51669` 首轮因共用 `FolderMutationInput` 漏删而失败，`b3c8f3b` 补回后 [Windows CI #38911635273](https://github.com/zy19970/IPSys/actions/runs/38911635273) completed/success。F01–F17 继续跟踪版本共享、File 选填属性、搜索/递归导出边界及 Edge/Chrome/T01–T09 实机。
 > 
 > 权威目标与逐步计划见 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)，界面约束见 [UI_BASELINE.md](./UI_BASELINE.md)，历史 Windows 安全/旧库验收见 [WEB_TESTING.md](./WEB_TESTING.md)。
 
@@ -14,9 +14,9 @@
 | ZIP 与目录导出 | `src/IPSys.Web/tests/export-smoke.cjs` | 模拟 File System Access API、冲突、安全命名、流式 ZIP、取消 |
 | 搜索 UI | `src/IPSys.Web/tests/search-smoke.cjs` | 当前工作区 API、真实结果导航、HTML 转义、过期结果 |
 | PDF/预览 | `src/IPSys.Web/tests/pdf-canvas-smoke.cjs` 和 `preview-smoke.cjs` | 离线 PDF.js Canvas 预览，不允许重构后回退到浏览器 iframe |
-| 最新 N4 V2-only 综合 CI | [Windows CI #38905217041](https://github.com/zy19970/IPSys/actions/runs/38905217041) | 对源码 `013fa1e` 的 Windows Debug/Release、真实 SQLCipher 新建与重开（不生成 V1 物理表）、MCP、Node UI/ZIP/PDF、单 EXE 均通过；旧的原生业务 Store/Provider 源码尚待清除，本机浏览器完整实测仍未完成 |
+| 最新 N4 V2-only 与旧源码裁剪 CI | [Windows CI #38911635273](https://github.com/zy19970/IPSys/actions/runs/38911635273) | 对 `b3c8f3b` 的 Debug/Release、SQLCipher 开库/HTTP/附件/Excel/回收站、MCP、Node UI/ZIP/PDF、单 EXE 回归全部通过；不包含用户本机完整浏览器及故障注入 |
 
-当前最新经自动验证的代码为 `main@013fa1e`（[Windows CI #38905217041](https://github.com/zy19970/IPSys/actions/runs/38905217041) success）。之前 N2-04 CI #38897477886 属功能接入阶段验证；之后 N4 的每项源码清理须由新的源码提交和 CI 单独验收，历史 CI 不能替代 Edge/Chrome 人工操作。
+当前最新自动验证的源码为 `b3c8f3b`（[Windows CI #38911635273](https://github.com/zy19970/IPSys/actions/runs/38911635273) completed/success）；前一失败提交 `7b51669` 的 Debug 编译出现 6 条 CS0246 共用 DTO 缺失，已恢复且无回退旧 SQL。之后若修复文件可选属性、导出边界或异常安全，也必须分别留存新的 CI 与实机证据。
 
 ## 二、关键行为逐项对照
 

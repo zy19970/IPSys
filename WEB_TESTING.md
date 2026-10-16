@@ -2,8 +2,14 @@
 
 ## 当前优先：N4 清理与 SQLCipher V2 完整实机验收（2026-10-16）
 
-用户确认旧数据库均为可丢弃的开发测试数据，不迁移、回填或兼容。N2-04 全业务正式入口已使用 V2；**N4 第一批新建数据库物理表和开库/路由/回收站/自动测试收敛**经过 [Windows CI #38905217041](https://github.com/zy19970/IPSys/actions/runs/38905217041) **completed/success**（源码 `013fa1e`）。仍要清理旧 Store/Provider 源码、开展 Edge/Chrome、真实 Codex、桌面 XLSX 和 T01–T09。下面历史测试记录均以当时的状态供追溯。
+用户确认旧数据库均为可丢弃测试数据，不迁移。N2-04 全业务 V2、N4 第一批新库物理表/API/回收站收敛以及第二批删除 31 份旧 Store/Provider/HTTP/历史测试源码已通过自动验收：最新源码 `b3c8f3b` 对应 [Windows CI #38911635273](https://github.com/zy19970/IPSys/actions/runs/38911635273) **completed/success**。本机 Edge/Chrome、真实 Codex、桌面 XLSX、故障注入和 T01–T09 仍未完全验证。
 
+
+### N4 第二批：删除 31 份旧源码与共用 DTO 恢复（2026-10-16）
+
+[7b51669](https://github.com/zy19970/IPSys/commit/7b51669a6bfc57a98ebdc4999823804c21cd894b) 删除 31 份不再注册使用的旧业务 SQL Store、Folder Provider、兼容 API、搜索投影和历史测试，抽取 V2 必要业务校验、DTO 和 Excel 模板/解析。初次运行 [CI #38909425069](https://github.com/zy19970/IPSys/actions/runs/38909425069) Debug 编译产生六条 `CS0246`，根因为旧 `FolderCommandService.cs` 原先定义的 `FolderMutationInput` 仍为原生 Folder 接口调用却被漏删。补丁 [b3c8f3b](https://github.com/zy19970/IPSys/commit/b3c8f3b9970af8fd0489855e8e6e43dffa5096d1) 从旧定义逐项恢复八个参数，未恢复 V1 Store 或旧表。最终 [Windows CI #38911635273](https://github.com/zy19970/IPSys/actions/runs/38911635273) **completed/success**，涵盖 Windows Debug/Release、单 EXE、MCP、Node UI/PDF/ZIP 和真实 SQLCipher/HTTP 完整往返。
+
+**尚未通过人工验收**：文件元数据可选属性与上传后编辑、多位置版本同步/解除、递归导出复杂同名及重叠情况、Edge/Chrome 授权、2 GiB+ 上传目标和 SSD/磁盘满/备份/安全退出等 T01–T09。
 
 ### N4 第一批：新建 V2-only 数据库与主测试链路验收（2026-10-16）
 
