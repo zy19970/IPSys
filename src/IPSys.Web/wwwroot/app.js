@@ -207,24 +207,25 @@ async function refresh(){
   if(!token||!space)return;
   const requestedSpace=space;
   try{const archiveSections=space==='personal'?['certificate','achievement','academic']:['certificate','achievement'];
-  const [rows,projects,ips,contracts,files,nativeProjectFiles,trash,mcpAccess,savedOrders,folders,mixedOrders,...archiveResults]=await Promise.all([
-    api('/api/records/'+space).then(r=>r.json()),
-    api('/api/v2/ui/projects/'+space).then(r=>r.json()),
-    IPSysNativeIp.load(api,space),
-    api('/api/v2/ui/contracts/'+space).then(r=>r.json()),
-    api('/api/business-files/'+space).then(r=>r.json()),
-    IPSysNativeIp.loadProjectFiles(api,space),
-    api('/api/trash/'+space).then(r=>r.json()),
-    api('/api/mcp').then(r=>r.json()),
-    api('/api/ledger/'+space+'/order').then(r=>r.json()),
-    space==='company'?api('/api/archive-folders').then(r=>r.json()):Promise.resolve([]),
-    space==='company'?api('/api/archive-entry-order').then(r=>r.json()):Promise.resolve({}),
-    ...archiveSections.map(section=>api('/api/archives/'+space+'/'+section).then(r=>r.json()))
+  const [native,projects,ips,contracts,nativeProjectFiles,trash,mcpAccess]=await Promise.all([
+   api('/api/v2/ui/archive/'+space).then(r=>r.json()),
+   api('/api/v2/ui/projects/'+space).then(r=>r.json()),
+   IPSysNativeIp.load(api,space),
+   api('/api/v2/ui/contracts/'+space).then(r=>r.json()),
+   IPSysNativeIp.loadProjectFiles(api,space),
+   api('/api/trash/'+space).then(r=>r.json()),
+   api('/api/mcp').then(r=>r.json())
   ]);
-    if(requestedSpace!==space||!token)return;
-    liveRows=rows;projectRows=projects;ipRows=ips.rows;contractRows=contracts;businessFileRows=[...files.filter(f=>!['ip','project','contract'].includes(f.kind)),...ips.files,...nativeProjectFiles];trashRows=trash;archiveFolders=folders;archiveEntryOrders=mixedOrders||{};mcpEnabled=!!mcpAccess.enabled;
-    archiveRows={certificate:[],achievement:[],academic:[]};
-    archiveSections.forEach((section,i)=>archiveRows[section]=archiveResults[i]);ledgerOrders=savedOrders||{};sortLedgerData();render();
+  if(requestedSpace!==space||!token)return;
+  liveRows=native.general;projectRows=projects;ipRows=ips.rows;contractRows=contracts;
+  businessFileRows=[...native.files,...native.general.flatMap(r=>r.files.map(f=>({
+   ...f,kind:'general',ownerId:r.id,section:''
+  }))),...ips.files,...nativeProjectFiles];
+  trashRows=trash;archiveFolders=native.folders;archiveEntryOrders=native.orders||{};
+  mcpEnabled=!!mcpAccess.enabled;ledgerOrders={};
+  archiveRows={certificate:[],achievement:[],academic:[]};
+  archiveSections.forEach(section=>archiveRows[section]=native.archives.filter(r=>r.section===section));
+  sortLedgerData();render();
   }catch(error){notice(error.message,true);}
 }
 function refreshSidebar(){
@@ -376,6 +377,8 @@ function realDetail(){
  '<input type="file" id="uploadInput" multiple hidden><p class="hint">支持更新指定同名原件或单独归档新原件，保留可展开的历史版本。单文件上限 64 MiB。</p>'+
  ([...groups.values()].map(g=>{g.sort((a,b)=>b.version-a.version||b.id-a.id);
  return '<div class="business-file-group">'+fileLine(g[0],g.length>1,true)+
+  '<button class="btn btn-sm" data-v2-ip-version="'+g[0].id+'">上传新版本</button>'+
+  '<button class="btn btn-sm" data-business-associate="'+g[0].id+'">共享到其它资料</button>'+
  (g.length>1?'<details><summary>查看历史版本（'+(g.length-1)+'）</summary>'+
  g.slice(1).map(f=>fileLine(f,true)).join('')+'</details>':'')+'</div>';}).join('')||
  '<div class="empty">暂无附件，点击“上传原件”开始归档。</div>')+
@@ -568,7 +571,8 @@ function quickExportButtons(records,kind,section=''){
 }
 function moduleOriginals(records,kind,section=''){
  if(kind==='general')return records.flatMap(r=>r.files.map(f=>({
-  source:'general',workspace:space,id:f.id,name:f.name,size:f.size,ownerId:r.id,ownerName:r.title
+  source:'v2file',workspace:space,id:f.id,name:f.name,size:f.size,
+   fileId:f.fileId,version:f.version,kind:'general',ownerId:r.id,ownerName:r.title
  })));
  return records.flatMap(r=>businessFiles(kind,r.id,section).map(f=>({
   source:f.v2?'v2file':'business',workspace:space,id:f.id,name:f.name,size:f.size,
@@ -625,7 +629,7 @@ function showExcelImportReport(report){
 async function exportExcel(kind,scope,section=''){
  const workspace=space;
  const query=kind==='archive'?'?section='+encodeURIComponent(section):'';
- const path=['ip','project','contract'].includes(kind)?'/api/v2/excel/'+workspace+'/'+kind:'/api/excel/'+workspace+'/'+kind;
+ const path='/api/v2/excel/'+workspace+'/'+kind;
  let ids=null;
  if(scope==='filtered'){
   if(kind==='project'||kind==='ip'){
@@ -664,7 +668,7 @@ async function importExcel(kind,file,section=''){
  if(!policy)return;
  try{
   const query='?policy='+policy+(kind==='archive'?'&section='+encodeURIComponent(section):'');
-  const endpoint=['ip','project'].includes(kind)?'/api/v2/excel/'+workspace+'/'+kind:'/api/excel/'+workspace+'/'+kind;
+  const endpoint='/api/v2/excel/'+workspace+'/'+kind;
    const response=await api(endpoint+'/import'+query,{
    method:'POST',headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},
    body:file});
@@ -724,7 +728,8 @@ function selectedOriginals(){
   const id=Number(checkbox.dataset.exportId),source=checkbox.dataset.exportSource;
   if(source==='general'){
    const found=liveRows.flatMap(r=>r.files.map(f=>({record:r,file:f}))).find(x=>x.file.id===id);
-   if(found)items.push({source:'general',workspace:space,id,name:found.file.name,
+   if(found)items.push({source:'v2file',workspace:space,id,name:found.file.name,
+    fileId:found.file.fileId,version:found.file.version,kind:'general',
     size:found.file.size,ownerId:found.record.id,ownerName:found.record.title});
    continue;
   }
@@ -792,16 +797,16 @@ function businessAttachmentList(kind,ownerId,section=''){
  '<span class="filedesc"><strong>'+escapeHtml(f.name)+'</strong><small>'+(showVersion?'v'+f.version+' · ':'')+
  (f.category?escapeHtml(f.category)+' · ':'')+fmtSize(f.size)+
  ' · SHA-256 '+escapeHtml(f.sha256.slice(0,12))+'…</small></span>'+
- (kind==='project'?'':exportCheck(f,'business',latest))+'<button class="btn btn-sm" data-preview-business="'+f.id+'">预览</button>'+
+ (kind==='project'?'':exportCheck(f,kind==='archive'?'v2file':'business',latest))+'<button class="btn btn-sm" data-preview-business="'+f.id+'">预览</button>'+
  '<button class="btn btn-sm" data-business-download="'+f.id+'">下载</button>'+
  '<button class="btn btn-sm" data-business-delete="'+f.id+'">移除</button></div>';
  return '<div class="tabletools"><b>原件附件 '+groups.size+' 份</b><div class="actions">'+category+
  (['ip','project','contract'].includes(kind)?'':'<label class="file-dedup-choice"><input type="checkbox" id="businessReuseExisting"> 同内容复用存储</label>')+
  '<button class="btn primary" data-action="businessUpload">＋ 上传原件</button></div></div>'+
- '<p class="hint">'+(['ip','project','contract'].includes(kind)?'按内容摘要查重并明确选择共享身份、复用内容、独立保存或取消；支持文件历史版本。':'同名原件可选择更新已有版本链，或作为独立新文件归档；同工作区共享引用自动显示新版本。')+' 单文件上限 64 MiB。</p>'+
+ '<p class="hint">'+(['ip','project','contract','archive'].includes(kind)?'按内容摘要查重并明确选择共享身份、复用内容、独立保存或取消；支持文件历史版本。':'同名原件可选择更新已有版本链，或作为独立新文件归档；同工作区共享引用自动显示新版本。')+' 单文件上限 64 MiB。</p>'+
  ([...groups.values()].map(g=>{g.sort((a,b)=>b.version-a.version||b.id-a.id);
   return '<div class="business-file-group">'+line(g[0],g.length>1,true)+
-   (['ip','project','contract'].includes(kind)?'<button class="btn btn-sm" data-v2-ip-version="'+g[0].id+'">上传新版本</button>':'')+
+   (['ip','project','contract','archive'].includes(kind)?'<button class="btn btn-sm" data-v2-ip-version="'+g[0].id+'">上传新版本</button>':'')+
    '<button class="btn btn-sm" data-business-associate="'+g[0].id+'">'+(['ip','project','contract'].includes(kind)?'共享到其它资料':'复制／移动关联')+'</button>'+ 
    (g.length>1?'<details><summary>查看历史版本（'+(g.length-1)+'）</summary>'+
     g.slice(1).map(f=>line(f,true)).join('')+'</details>':'')+'</div>';}).join('')||
@@ -844,17 +849,7 @@ function chooseVersionAction(file,matches){
  });
 }
 async function uploadBusinessAttachment(file,meta,workspace){
- const url='/api/business-files/'+workspace+'/'+meta.kind+'/'+meta.ownerId+
-  (meta.kind==='archive'?'?section='+encodeURIComponent(meta.section):'');
- const response=await api(url,{method:'POST',headers:{
-  'Content-Type':'application/octet-stream',
-  'X-File-Name':encodeURIComponent(file.name),
-  'X-Material-Category':encodeURIComponent(meta.category||''),
-  'X-Upload-Mode':meta.mode||'new',
-  'X-File-Group':meta.groupId||'',
-  'X-Duplicate-Mode':meta.duplicateMode||'independent'
- },body:file});
- return response.json();
+ return IPSysNativeIp.upload(api,file,meta,workspace);
 }
 async function uploadBusinessBatch(files,meta){
  if(localFileTaskActive)return notice('已有文件任务，请等待完成。',true);
@@ -864,7 +859,7 @@ async function uploadBusinessBatch(files,meta){
   for(const file of files){
    if(space!==workspace){errors.push('工作区已切换，上传终止');break;}
    if(file.size>64*1024*1024){errors.push(file.name+'：超过 64 MiB');continue;}
-   if(['ip','project','contract'].includes(meta.kind)){
+   if(['ip','project','contract','archive','general'].includes(meta.kind)){
     notice('正在检查重复内容：'+file.name);
     try{const saved=await IPSysNativeIp.upload(api,file,meta,workspace);
      if(saved){completed++;await refresh();}else skipped++;
@@ -1183,7 +1178,7 @@ async function moveCompanyCertificate(id,direction){
  if(a<0||b<0)return;
  [ids[a],ids[b]]=[ids[b],ids[a]];
  try{
-  await api('/api/archives/company/certificate/order',{method:'POST',json:{ids}});
+  await api('/api/v2/ui/archive/company/certificate/order',{method:'POST',json:{ids}});
   await refresh();
   notice('顺序已保存。');
  }catch(error){
@@ -1310,7 +1305,8 @@ function archiveRecordZipOriginals(recordId,section){
  const record=(archiveRows[section]||[]).find(r=>r.id===recordId);
  if(!record)return [];
  return archiveTableAttachmentSummary(recordId,section).files.map(file=>({
-  source:'business',workspace:space,id:file.id,name:file.name,size:file.size,
+  source:file.v2?'v2file':'business',workspace:space,id:file.id,name:file.name,size:file.size,
+  ...(file.v2?{fileId:file.fileId,version:file.version}:{}),
   kind:'archive',ownerId:recordId,section,ownerName:record.name
  }));
 }
@@ -1557,7 +1553,7 @@ async function runGlobalSearch(input){
  el('globalSearch').value=q;render();
  if(!q)return;
  try{
-  const response=await api('/api/search/'+workspace+'?q='+encodeURIComponent(q));
+  const response=await api('/api/v2/search/'+workspace+'?q='+encodeURIComponent(q));
   const data=await response.json();
   if(serial!==globalSerial||workspace!==space||page!=='search'||!token)return;
   globalHits=Array.isArray(data.results)?data.results:[];
@@ -1698,7 +1694,7 @@ function sortLedgerData(){
   ...Object.entries(archiveRows).filter(([part])=>!(space==='company'&&part==='certificate'))
    .map(([part,items])=>['archive',part,items])
  ]){
-  if(['ip','project','contract'].includes(kind))continue; // V2 folders.position is authoritative.
+  if(['ip','project','contract','archive'].includes(kind))continue; // V2 positions are authoritative.
   const ranks=new Map((ledgerOrders[kind+':'+section]||[]).map((id,i)=>[id,i]));
   const before=new Map(rows.map((row,i)=>[row.id,i]));
   rows.sort((a,b)=>(ranks.get(a.id)??Number.MAX_SAFE_INTEGER)-
@@ -1826,6 +1822,9 @@ function syncLedgerSelection(){
 }
 async function moveLedgerRecord(id,direction){
  const scope=ledgerScope(),content=el('content'),table=content.querySelector('.ledger-record-table');
+ if(scope?.kind==='archive'&&space==='company'&&page==='achievement'){
+  await moveArchiveEntry('record',id,direction);return;
+ }
  if(!scope||!table||ledgerMutationBusy)return;
  const visible=[...table.querySelectorAll('tr[data-ledger-record-id]')]
   .map(row=>Number(row.dataset.ledgerRecordId));
@@ -1840,9 +1839,9 @@ async function moveLedgerRecord(id,direction){
  try{
   await api(scope.kind==='ip'?'/api/v2/ui/ip/'+space+'/order':
    ['project','contract'].includes(scope.kind)?'/api/v2/ui/order/'+space+'/'+scope.kind:
-   '/api/ledger/'+space+'/'+scope.kind+'/order',
+   '/api/v2/ui/archive/'+space+'/'+scope.section+'/order',
    {method:'POST',json:{ids,section:scope.section}});
-  if(['ip','project','contract'].includes(scope.kind))await refresh();
+  if(['ip','project','contract','archive'].includes(scope.kind))await refresh();
   else{ledgerOrders[scope.kind+':'+scope.section]=ids;sortLedgerData();render();}
   el('content').querySelectorAll('.ledger-record-row').forEach(c=>c.checked=chosen.includes(Number(c.value)));
   syncLedgerSelection();notice('顺序已保存。');
@@ -1875,7 +1874,7 @@ async function moveArchiveEntry(kind,id,direction){
   .map(box=>Number(box.value));
  ledgerMutationBusy=true;syncLedgerSelection();
  try{
-  await api('/api/archive-entry-order',{method:'POST',json:{parentId,items:entries}});
+  await api('/api/v2/folders/company/entries/reorder?section=achievement',{method:'POST',json:{parentId,items:entries}});
   archiveEntryOrders[String(parentId)]=entries;
   render();
   el('content').querySelectorAll('.ledger-record-row').forEach(box=>{
@@ -1901,15 +1900,6 @@ function render(){
  const searchBox=el('filterSearch');if(searchBox)searchBox.value=filterName;
  syncCompanyCertificateSelectionUi();
 }
-async function upload(id,file,choice,workspace){
- const response=await api('/api/records/'+workspace+'/'+id+'/files',{
-  method:'POST',headers:{
-   'Content-Type':'application/octet-stream',
-   'X-File-Name':encodeURIComponent(file.name),
-   'X-Upload-Mode':choice.mode,'X-File-Group':choice.groupId||''
-  },body:file});
- return response.json();
-}
 async function uploadGeneralBatch(id,files){
  if(localFileTaskActive)return notice('已有文件任务，请等待完成。',true);
  const workspace=space,errors=[];let completed=0,skipped=0;
@@ -1918,16 +1908,10 @@ async function uploadGeneralBatch(id,files){
   for(const file of files){
    if(space!==workspace){errors.push('工作区已切换，上传终止');break;}
    if(file.size>64*1024*1024){errors.push(file.name+'：超过 64 MiB');continue;}
-   const record=liveRows.find(r=>r.id===id);
-   if(!record){errors.push('资料已不存在');break;}
-   const matches=[...new Map(record.files.filter(f=>f.name===file.name)
-    .map(f=>[f.groupId||'legacy-'+f.id,f])).values()];
-   const choice=await chooseVersionAction(file,matches);
-   if(!choice){skipped++;continue;}
-   notice('上传中：'+file.name+'（'+(completed+skipped+errors.length+1)+'/'+files.length+'）');
+   if(!liveRows.some(r=>r.id===id)){errors.push('资料已不存在');break;}
    try{
-    await upload(id,file,choice,workspace);
-    completed++;await refresh();
+    const saved=await IPSysNativeIp.upload(api,file,{kind:'general',ownerId:id},workspace);
+    if(saved){completed++;await refresh();}else skipped++;
    }catch(err){errors.push(file.name+'：'+err.message);}
   }
  }finally{localFileTaskActive=false;}
@@ -1935,7 +1919,7 @@ async function uploadGeneralBatch(id,files){
   (errors.length?'；'+errors.join('；'):''),errors.length>0);
 }
 async function download(file){
- try{const result=await api(`/api/files/${space}/${file.id}`);const blob=await result.blob();const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=file.name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);notice('已开始下载 '+file.name);
+ try{const result=await api(IPSysNativeIp.fileUrl(space,file));const blob=await result.blob();const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=file.name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);notice('已开始下载 '+file.name);
  }catch(e){notice(e.message,true);}
 }
 function openLiveRecord(id){detail={kind:'general',id};page='general';render();el('content').scrollTo(0,0);}
@@ -1954,7 +1938,7 @@ el('content').addEventListener('click',async ev=>{
   if(!folder)return notice('分类不存在，请刷新。',true);
   if(!confirm('确定删除空分类“'+folder.name+'”？分类中含资料或下级分类时不会删除。'))return;
   try{
-   await api('/api/archive-folders/'+id,{method:'DELETE'});
+   await api('/api/v2/folders/company/archive_folder/'+id,{method:'DELETE'});
    await refresh();notice('分类已删除。');
   }catch(error){notice('删除分类失败：'+error.message,true);}
   return;
@@ -2020,13 +2004,16 @@ el('content').addEventListener('click',async ev=>{
  if(target.dataset.businessAssociate){
   const f=businessFileRows.find(x=>x.id===Number(target.dataset.businessAssociate));
   if(f?.v2){try{if(await (f.kind==='ip'?IPSysNativeIp.associate(api,f,space,ipRows):
-    IPSysNativeIp.associateGeneric(api,f,space,f.kind==='project'?projectRows:contractRows))){
+    IPSysNativeIp.associateGeneric(api,f,space,
+      f.kind==='project'?projectRows:f.kind==='contract'?contractRows:
+      f.kind==='archive'?archiveRows[f.section]||[]:liveRows))){
      await refresh();notice('已共享到目标知识产权。');}}
     catch(e){notice(e.message,true);}return;}
   openBusinessAssoc(Number(target.dataset.businessAssociate));return;
  }
  if(target.dataset.v2IpVersion){
-  const f=businessFileRows.find(x=>x.id===Number(target.dataset.v2IpVersion));
+  const f=businessFileRows.find(x=>x.id===Number(target.dataset.v2IpVersion))||
+    liveRows.flatMap(r=>r.files).find(x=>x.id===Number(target.dataset.v2IpVersion));
   if(f){const result=await IPSysNativeIp.newVersion(api,f,space);
    if(result===true){await refresh();notice('新文件版本已保存。');}
    else if(result instanceof Error)notice(result.message,true);}
@@ -2045,7 +2032,7 @@ el('content').addEventListener('click',async ev=>{
  if(target.dataset.previewGeneral){
   const row=liveRows.find(x=>x.id===detail?.id);
   const file=row?.files.find(f=>f.id===Number(target.dataset.previewGeneral));
-  if(file)await previewOriginal(file,'/api/files/'+space+'/'+file.id);
+  if(file)await previewOriginal(file,IPSysNativeIp.fileUrl(space,file));
   return;
  }
  if(target.dataset.generalFileDelete){
@@ -2053,7 +2040,8 @@ el('content').addEventListener('click',async ev=>{
   const file=record?.files.find(f=>f.id===Number(target.dataset.generalFileDelete));
   if(!file||!confirm('移除原件“'+file.name+'”（v'+file.version+'）？可以在回收站恢复。'))return;
   try{
-   await api('/api/files/'+space+'/'+file.id,{method:'DELETE'});
+   await api('/api/v2/files/'+space+'/'+file.fileId+'/links/'+file.linkId,
+     {method:'DELETE'});
    await refresh();notice('原件已移至回收站。');
   }catch(e){notice(e.message,true);}
   return;
@@ -2177,7 +2165,8 @@ el('content').addEventListener('click',async ev=>{
    const record=(archiveRows.achievement||[]).find(r=>r.id===detail.id);
    if(!record||!confirm('以“'+record.name+'”建立下级分类？原资料和附件会保留在此分类内。'))break;
    try{
-    const result=await(await api('/api/archive-folders/from-record/'+record.id,{method:'POST'})).json();
+    const result=await(await api('/api/v2/ui/archive/company/achievement/'+record.id+
+      '/expand',{method:'POST'})).json();
     detail=null;archiveFolderId=result.id;archiveGroup=record.name;
     await refresh();notice('已创建下级分类，原有资料及附件已保留。');
    }catch(error){notice(error.message,true);}break;
@@ -2193,7 +2182,9 @@ el('content').addEventListener('click',async ev=>{
     if(!confirm('确定删除选中的 '+ids.length+' 条企业资质记录吗？删除后可在回收站恢复。'))break;
     certificateDeleteBusy=true;syncCompanyCertificateSelectionUi();
     try{
-     await api('/api/archives/company/certificate/batch-delete',{method:'POST',json:{ids}});
+     for(const id of ids)
+       await api('/api/v2/folders/company/archive/'+id+'?section=certificate',
+        {method:'DELETE'});
      certificateSelected.clear();
      await refresh();
      notice('已删除 '+ids.length+' 条企业资质记录，可在回收站恢复。');
@@ -2211,8 +2202,9 @@ el('content').addEventListener('click',async ev=>{
     try{
      if(['ip','project','contract'].includes(scope.kind)){
       for(const id of ids)await api('/api/v2/folders/'+space+'/'+scope.kind+'/'+id,{method:'DELETE'});
-     }else await api('/api/ledger/'+space+'/'+scope.kind+'/batch-delete',
-      {method:'POST',json:{ids,section:scope.section}});
+     }else for(const id of ids)
+      await api('/api/v2/folders/'+space+'/archive/'+id+'?section='+scope.section,
+       {method:'DELETE'});
      await refresh();notice('已删除 '+ids.length+' 条记录，可在回收站恢复。');
     }catch(error){notice('批量删除失败：'+error.message,true);}
     finally{ledgerMutationBusy=false;syncLedgerSelection();}
@@ -2222,7 +2214,8 @@ el('content').addEventListener('click',async ev=>{
    const record=(archiveRows[page]||[]).find(r=>r.id===detail?.id);
    if(!record||!confirm('移除资料“'+record.name+'”？此操作为软删除。'))break;
    try{
-    await api('/api/archives/'+space+'/'+page+'/'+record.id,{method:'DELETE'});
+    await api('/api/v2/folders/'+space+'/archive/'+record.id+'?section='+page,
+      {method:'DELETE'});
     detail=null;await refresh();notice('资料已从当前台账移除');
    }catch(e){notice(e.message,true);}
    break;
@@ -2327,7 +2320,7 @@ el('content').addEventListener('click',async ev=>{
    const record=liveRows.find(r=>r.id===detail?.id);
    if(!record||!confirm('将综合资料“'+record.title+'”及其附件移至回收站？'))break;
    try{
-    await api('/api/records/'+space+'/'+record.id,{method:'DELETE'});
+    await api('/api/v2/folders/'+space+'/general/'+record.id,{method:'DELETE'});
     detail=null;await refresh();notice('综合资料已移至回收站。');
    }catch(e){notice(e.message,true);}
    break;
@@ -2467,8 +2460,13 @@ el('archiveFolderForm').onsubmit=async event=>{
  const parentId=id?(Number(el('archiveFolderParent').value)||null):(archiveFolderId||null);
  el('archiveFolderSave').disabled=true;
  try{
-  const response=await api('/api/archive-folders'+(id?'/'+id:''),
-   {method:id?'PUT':'POST',json:{name,parentId}});
+  const current=id?archiveFolders.find(f=>f.id===id):null;
+   const response=await api('/api/v2/folders/company/archive_folder'+
+    (id?'/'+id+'?section=achievement':''),
+    {method:id?'PUT':'POST',json:{archiveFolder:{name,parentId:id?current?.parentId??null:parentId}}});
+   if(id&&current&&current.parentId!==parentId)
+    await api('/api/v2/folders/company/archive_folder/'+id+'/move?section=achievement',
+     {method:'POST',json:{parentId}});
   const newId=id||(await response.json()).id;
   el('archiveFolderDialog').close();
   archiveFolderId=createAtRoot?null:newId;archiveGroup=createAtRoot?null:name;
@@ -2480,7 +2478,7 @@ el('archiveFolderDelete').onclick=async()=>{
  const id=archiveFolderEditingId,folder=archiveFolders.find(f=>f.id===id);
  if(!folder||!confirm('删除空目录“'+folder.name+'”？含资料或下级目录时不会删除。'))return;
  try{
-  await api('/api/archive-folders/'+id,{method:'DELETE'});
+  await api('/api/v2/folders/company/archive_folder/'+id,{method:'DELETE'});
   el('archiveFolderDialog').close();archiveFolderId=folder.parentId||null;
   archiveGroup=null;await refresh();notice('空目录已删除。');
  }catch(error){notice(error.message,true);}
@@ -2496,8 +2494,10 @@ el('archiveForm').onsubmit=async event=>{
  if(workspace==='company'&&section==='achievement')input.folderId=Number(input.folderId);
  el('archiveSave').disabled=true;
  try{
-  const path='/api/archives/'+workspace+'/'+section+(id===null?'':'/'+id);
-  const response=await api(path,{method:id===null?'POST':'PUT',json:input});
+  const path='/api/v2/folders/'+workspace+'/archive'+
+   (id===null?'':'/'+id+'?section='+encodeURIComponent(section));
+  const response=await api(path,{method:id===null?'POST':'PUT',
+    json:{archive:input,...(id===null?{section}:{})}});
   const recordId=id===null?(await response.json()).id:id;
   el('archiveDialog').close();
   let attachmentError=null;
@@ -2536,7 +2536,7 @@ el('archiveTransferForm').onsubmit=async event=>{
  if(id===null)return;
  el('archiveTransferSave').disabled=true;
  try{
-  await api('/api/archives/'+sourceWorkspace+'/'+sourceSection+'/'+id+'/transfer',
+  await api('/api/v2/ui/archive/'+sourceWorkspace+'/'+sourceSection+'/'+id+'/transfer',
    {method:'POST',json:{targetWorkspace,targetSection,move}});
   el('archiveTransferDialog').close();
   if(move)detail=null;
@@ -2590,7 +2590,7 @@ function bindExcelCreate(prefix,kind,dialogId,isNew,sectionOf=()=> ''){
   const section=sectionOf();
   try{
    const query=kind==='archive'?'?section='+encodeURIComponent(section):'';
-   const endpoint=['ip','project'].includes(kind)?'/api/v2/excel/'+space+'/'+kind:'/api/excel/'+space+'/'+kind;
+   const endpoint='/api/v2/excel/'+space+'/'+kind;
     const response=await api(endpoint+'/template'+query);
    await saveExcel(response,kind+(section?'-'+section:'')+'-template.xlsx');
   }catch(error){notice('下载 Excel 模板失败：'+error.message,true);}
@@ -2637,9 +2637,11 @@ el('newRecordForm').onsubmit=async ev=>{
  const name=el('title').value.trim(),target=editingId,workspace=space;
  try{
   if(target!==null)
-   await api('/api/records/'+workspace+'/'+target,{method:'PUT',json:{title:name}});
+   await api('/api/v2/folders/'+workspace+'/general/'+target,
+    {method:'PUT',json:{general:{title:name}}});
   else
-   await api('/api/records/'+workspace,{method:'POST',json:{title:name}});
+   await api('/api/v2/folders/'+workspace+'/general',
+    {method:'POST',json:{general:{title:name}}});
   el('modal').close();editingId=null;el('title').value='';
   if(target===null)setPage('general');
   await refresh();

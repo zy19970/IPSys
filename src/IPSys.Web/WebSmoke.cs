@@ -1496,6 +1496,7 @@ static class WebSmoke
             await NativeProjectContractUiHttpSmoke.VerifyAsync(client);
             await NativeProjectMilestoneSmoke.VerifyAsync(client);
             await NativeArchiveGeneralMilestoneSmoke.VerifyAsync(client);
+            await NativeArchiveUiHttpSmoke.VerifyAsync(client);
             using var finalLock = await client.PostAsync("/api/lock", null);
             finalLock.EnsureSuccessStatusCode();
 

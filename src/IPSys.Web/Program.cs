@@ -108,6 +108,9 @@ NativeProjectExcelEndpoints.Map(app, Fail);
 NativeArchiveGeneralExcelEndpoints.Map(app, Fail);
 NativeIpUiEndpoints.Map(app, Fail);
 NativeProjectContractUiEndpoints.Map(app, Fail);
+NativeArchiveUiEndpoints.Map(app, Fail);
+NativeArchiveUiOrderEndpoints.Map(app, Fail);
+NativeArchiveActionsEndpoints.Map(app, Fail);
 NativeIpTransferEndpoints.Map(app, Fail);
 NativeProjectTransferEndpoints.Map(app, Fail);
 
