@@ -1037,17 +1037,22 @@ assert.ok(js.includes("trashRows=trash"));
 assert.ok(js.includes("data-trash-restore=")&&js.includes("data-trash-purge="));
 assert.ok(js.includes("case 'trashRestoreSelected'")&&js.includes("case 'trashPurgeSelected'"));
 assert.ok(js.includes("'/api/trash/'+space+'/'+operation"));
-assert.ok(js.includes("'/api/business-files/'+space+'/'+id+'/associate'"));
-assert.ok(js.includes("openBusinessAssoc(Number(target.dataset.businessAssociate))"));
+assert.ok(v2IpJs.includes('"/api/v2/files/"+workspace+"/"+record.fileId+"/links'),
+ 'Same-workspace association must use native V2 FolderFileLinks');
+assert.ok(js.includes("IPSysNativeIp.associateGeneric(api,f,space"),
+ 'Active attachment association must use V2 FileId and target FolderId');
 assert.ok(js.includes("function chooseVersionAction(file,matches)")&&
  js.includes('data-upload-choice="new"')&&js.includes("if(choice==='new')"),
  'Same-name originals must use explicit action buttons');
 assert.ok(!js.includes("const choice=prompt("),'Same-name files must not require typing a choice');
-assert.ok(js.includes("'X-Upload-Mode':meta.mode||'new'")&&js.includes("'X-File-Group':meta.groupId||''"),
- 'Business upload must identify the selected original group');
-assert.ok(js.includes("'X-Duplicate-Mode':meta.duplicateMode||'independent'")&&
- js.includes('id="businessReuseExisting"'),
- 'Byte deduplication must require a visible user choice');
+assert.ok(v2IpJs.includes('"/prepare?folderId="+meta.ownerId')&&
+ v2IpJs.includes('"/prepared/"+prepared.ticket+"/resolve')&&
+ v2IpJs.includes('sourceFileId:matched.fileId'),
+ 'Business upload must prepare SHA-256, explicitly resolve duplicates and preserve FileId identity');
+assert.ok(v2IpJs.includes('share-file')&&v2IpJs.includes('reuse-content')&&
+ v2IpJs.includes('independent')&&v2IpJs.includes('cancel')&&
+ js.includes('IPSysNativeIp.upload(api,file,meta,workspace)'),
+ 'Byte deduplication requires explicit share/reuse/independent/cancel choice');
 assert.ok(html.includes('id="filePreviewDialog"')&&html.includes('id="filePreviewClose"'),
  'Original file preview must have an accessible closeable dialog');
 assert.ok(js.includes('data-preview-business=')&&js.includes('data-preview-general=')&&
@@ -1061,8 +1066,10 @@ assert.ok(js.includes("await ensurePdfViewer()")&&
 
 assert.ok(js.includes('data-general-file-delete=')&&js.includes("case 'deleteRecord'"),
  'Legacy general records and originals must expose the trash actions');
-assert.ok(js.includes("'X-Upload-Mode':choice.mode")&&js.includes("'X-File-Group':choice.groupId||''"),
- 'General originals must carry the explicitly selected version group');
+assert.ok(js.includes("IPSysNativeIp.upload(api,file,{kind:'general',ownerId:id},workspace)")&&
+ js.includes("IPSysNativeIp.newVersion(api,f,space)")&&
+ v2IpJs.includes('"/versions"'),
+ 'General originals must use native FileId/version chain and explicit conflict resolver');
 assert.ok(js.includes("el('businessFileInput').multiple=true")&&
  js.includes('id="uploadInput" multiple hidden')&&
  js.includes("uploadBusinessBatch(files,meta)")&&js.includes("uploadGeneralBatch(id,files)"),
