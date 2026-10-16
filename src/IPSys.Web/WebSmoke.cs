@@ -1408,6 +1408,7 @@ static class WebSmoke
             await VerifySecondExcelBatchAsync(client);
             await SearchSmoke.VerifyAsync(client);
             await NativeIpSearchRecycleHttpSmoke.VerifyAsync(client);
+            await NativeIpTransferHttpSmoke.VerifyAsync(client);
             await FolderBrowserSmoke.VerifyAsync(client);
             await FolderCommandSmoke.VerifyAsync(client);
             await FolderArchiveCommandSmoke.VerifyAsync(client);

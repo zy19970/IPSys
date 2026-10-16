@@ -48,7 +48,7 @@ static class NativeFileCopyStore
     }
     public static async Task<NativeFileCopyResult> CopyAsync(SqliteConnection db,
         string sourceWorkspace,long sourceId,NativeFileCopyInput input,
-        CancellationToken cancellation)
+        CancellationToken cancellation,SqliteTransaction? parentTransaction=null)
     {
         if(!Vault.WorkspaceValid(sourceWorkspace) ||
            !Vault.WorkspaceValid(input.TargetWorkspace) ||
@@ -64,7 +64,8 @@ static class NativeFileCopyStore
             throw new KeyNotFoundException("源文件或目标文件夹不可访问。");
         cancellation.ThrowIfCancellationRequested();
 
-        using var tx=db.BeginTransaction();
+        using var ownedTx=parentTransaction is null?db.BeginTransaction():null;
+        var tx=parentTransaction??ownedTx!;
         string name;
         string? description,tags,number,date;
         using(var cmd=Command(db,tx,"""
@@ -214,7 +215,7 @@ static class NativeFileCopyStore
                 throw new IOException("文件归属关联失败。");
         }
         cancellation.ThrowIfCancellationRequested();
-        tx.Commit();
+        if(parentTransaction is null)tx.Commit();
         return new(sourceId,fileId,input.TargetWorkspace,input.Mode,
             versions.Count,objectMap.Count-created,created);
     }

@@ -133,6 +133,7 @@ static class FolderCommandService
         // Same all-or-nothing recycle-bin workflow as the existing UI.
         // The recycle store rejects deleted contracts with no active parent.
         return RecycleStore.Change(db, reference.Workspace,
-            [new RecycleKey(reference.Kind, reference.Id, reference.Section)], purge: false);
+            [new RecycleKey(reference.Kind==FolderKinds.Ip?"legacy_ip":reference.Kind,
+                reference.Id,reference.Section)], purge: false);
     }
 }

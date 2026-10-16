@@ -2261,7 +2261,23 @@ el('content').addEventListener('click',async ev=>{
   }
   case 'ipCopy':
   case 'ipMove':{
-   notice('V2 知识产权跨区复制/移动必须在保留全部历史字节下进行，目前尚未接入。',true);
+   const row=ipRows.find(r=>r.id===detail?.id);if(!row)break;
+   const move=target.dataset.action==='ipMove';
+   const other=space==='company'?'personal':'company';
+   const destination=move?other:
+    (confirm('复制到另一个工作区？取消则在当前工作区复制。')?other:space);
+   if(!confirm((move?'转移':'复制')+'知识产权“'+row.data.name+'”以及其全部原件版本至'+
+      (destination==='company'?'公司':'个人')+'工作区？'))break;
+   try{
+    const response=await api('/api/v2/ip/'+space+'/'+row.id+'/transfer',
+      {method:'POST',json:{targetWorkspace:destination,move}});
+    const copied=await response.json();
+    if(move)detail=null;
+    await refresh();
+    if(!move&&destination===space){detail={kind:'ip',id:copied.id};render();}
+    notice((move?'知识产权已转移':'知识产权已复制')+
+      '：'+copied.files+' 份原件，'+copied.versions+' 个文件版本。');
+   }catch(error){notice('知识产权复制或移动失败：'+error.message,true);}
    break;
   }
   case 'projectAdd':showProjectForm();break;
