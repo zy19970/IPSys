@@ -17,6 +17,9 @@ IPSys 支持本机 Codex 通过 MCP stdio 操作同一 Windows 用户已解锁�
 
 ## MCP P1 第一批：安全写入与恢复语义（2026-10-16）
 
+> **自动验收**：[`a6d5bf4`](https://github.com/zy19970/IPSys/commit/a6d5bf43274368f421fd578c5a69f9cfc27e5337) 对应 [Windows CI #38923795350](https://github.com/zy19970/IPSys/actions/runs/38923795350) **completed/success**。Windows Debug/Release、stdio 握手、原生 SQLCipher/HTTP 和 Node 回归通过；实际 Codex/WorkBuddy 长任务及进程崩溃故障注入仍待实测。
+
+
 MCP 写操作（新增、修改、删除、上传，以及已有 `v2_*` 写操作）可传入 `request_id`（8–128 字符，推荐 UUID，每一项业务写操作唯一）；重试同一业务动作必须使用相同编号和相同参数。V2 SQLCipher 数据库内的 `mcp_operations` 记录状态：`done` 表示结果已保存、相同请求返回同一结果，`pending`/`uncertain` 表示执行结果尚未得到确认，系统**拒绝盲目重做**。新增 `get_operation_result(workspace,request_id)` 只读工具，查询 `not_found/pending/done/uncertain` 和已记录结果。请求参数不一致或重复编号挪作其他操作会报错。本机原始 V2 测试库可重新创建；不进行旧数据库迁移。
 
 **安全边界**：正常执行和已保存结果可防止多数断线重试重复写入；服务进程在 HTTP 实际写入成功而结果尚未写入操作日志时崩溃，仍可能留下 `pending`，因此不能声称跨崩溃严格 exactly-once。发生 `pending/uncertain` 时应检查对应 Folder/File/版本后人工决定后续动作，不能换新编号立即重做同一业务动作。省略 `request_id` 仍兼容旧客户端，但不提供写入重试记录的保护。

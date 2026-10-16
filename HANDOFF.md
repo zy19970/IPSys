@@ -2,6 +2,10 @@
 
 > **最新交接基线（2026-10-16，N4 第二批自动验收完成）**：N2-04 全业务正式 V2 已完成，N4 第一批新库物理层与 HTTP/回收站/搜索仅保留 V2；第二批 `7b51669` 删除 31 个旧 Store/Provider/端点和历史测试源码，并新建 `BusinessRules.cs` 集中纯业务校验、共享 DTO、归档排序参数，原有固定 XLSX 模板/解析仍由 `ExcelLedger.cs` 提供。修复提交 `b3c8f3b` 恢复漏删的 `FolderMutationInput`，[Windows CI #38911635273](https://github.com/zy19970/IPSys/actions/runs/38911635273) **completed/success**。下一步是文件属性/版本/导出复杂边界、Edge/Chrome/桌面 MCP/Excel 和 T01–T09 安全实测；没有旧正式数据库迁移。
 
+## MCP P1 第一批已验收（2026-10-16）
+
+代码 [a6d5bf4](https://github.com/zy19970/IPSys/commit/a6d5bf43274368f421fd578c5a69f9cfc27e5337) 经 [Windows CI #38923795350](https://github.com/zy19970/IPSys/actions/runs/38923795350) **completed/success**。MCP 新增 `McpLocalSafety.cs`、加密库 `mcp_operations` 请求日志表、可选写操作幂等 `request_id`、`get_operation_result` 状态查询；批量上传完整明细与 `isError`，三元组 `delete_file(owner_id=FolderId,file_id=FileId,link_id=LinkId)`，禁用授权可以通知在途请求取消，未知参数严格拒绝和已连接响应等待超时。旧版按 `file_id=LinkId` 删除的 MCP 调用不再兼容；需更新 Codex/WorkBuddy 工具列表。 `pending/uncertain` 严禁自动重做，因崩溃窗口不保证绝对 exactly-once；批量上传非整批事务。用户本机长任务/故障注入尚未验收，不迁移旧测试数据库。
+
 ## 1. 用户最终意图和冻结规则
 
 IPSys 用户界面名称是「资料管理系统」，以**个人资料长期归档**为优先，公司资料独立工作区；单用户本地 WinForms + 127.0.0.1 Web/Edge/Chrome，单个加密 SQLCipher 资料库保存真实文件字节。Release 为依赖系统安装 .NET Desktop Runtime 8 x64 和 ASP.NET Core Runtime 8 x64 的单 EXE。

@@ -7,7 +7,10 @@
 
 ### MCP P1 第一批写入安全/幂等/撤权/错误处理（2026-10-16）
 
-基于新建 V2 SQLCipher 测试库和 MCP 原生命名管道。以下场景列为本轮验收目标，待 GitHub Actions 返回实际成功后再登记 CI ID；WorkBuddy/Codex 长时间实机与进程崩溃故障注入另行验证。
+**已验证**：[`a6d5bf4`](https://github.com/zy19970/IPSys/commit/a6d5bf43274368f421fd578c5a69f9cfc27e5337) 的 [Windows CI #38923795350](https://github.com/zy19970/IPSys/actions/runs/38923795350) **completed/success**；Debug/Release、stdio MCP、原生 SQLCipher/HTTP/MCP、Node 全部通过。新添的幂等、三重关联核验、未知参数与失败状态测试通过。P1-06～P1-08 的长时间实机、异常退出、12 分钟超时仍待实际故障注入。
+
+
+基于新建 V2 SQLCipher 测试库和 MCP 原生命名管道。自动回归已通过，WorkBuddy/Codex 长时间实机与进程崩溃故障注入仍需另行验证。
 
 | 编号 | 核验点 | 预期 |
 | --- | --- | --- |
