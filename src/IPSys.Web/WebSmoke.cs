@@ -891,7 +891,7 @@ static class WebSmoke
                 new LedgerIdsInput(testIpIds.ToArray()))).EnsureSuccessStatusCode();
             var ipTrashAfterBatch=await client.GetFromJsonAsync<List<RecycleItem>>("/api/trash/company");
             if(ipTrashAfterBatch is null||testIpIds.Any(id=>
-                !ipTrashAfterBatch.Any(x=>x.Kind=="ip"&&x.Id==id)))
+                !ipTrashAfterBatch.Any(x=>x.Kind=="legacy_ip"&&x.Id==id)))
                 throw new IOException("批量删除知识产权必须进入公司回收站。");
             var projectIds=(await client.GetFromJsonAsync<List<ProjectView>>(
                 "/api/projects/company"))!.Select(x=>x.Id).ToArray();

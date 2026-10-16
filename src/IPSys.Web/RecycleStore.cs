@@ -32,6 +32,12 @@ static class RecycleStore
             SELECT id,name,'' FROM folders WHERE workspace=$w AND kind='ip' AND deleted=1
             ORDER BY id DESC;
             ""","ip"));
+        // The still-running legacy project/ledger tests use another IP table.
+        // Never assign those unrelated numeric IDs the native "ip" recycle kind.
+        rows.AddRange(Simple(db,workspace,"""
+            SELECT id,name,'' FROM business_ips WHERE workspace=$w AND deleted=1
+            ORDER BY id DESC;
+            ""","legacy_ip"));
         rows.AddRange(Simple(db,workspace,"""
             SELECT a.id,a.name,a.section FROM business_archives a
             WHERE a.workspace=$w AND a.deleted=1 ORDER BY a.id DESC;
@@ -97,6 +103,10 @@ static class RecycleStore
             case "ip":
                 if(r.Section!="")return false;
                 cmd.CommandText="SELECT count(*) FROM folders WHERE id=$id AND workspace=$w AND kind='ip' AND deleted=1;";
+                break;
+            case "legacy_ip":
+                if(r.Section!="")return false;
+                cmd.CommandText="SELECT count(*) FROM business_ips WHERE id=$id AND workspace=$w AND deleted=1;";
                 break;
             case "archive":
                 if(ArchiveStore.Module(workspace,r.Section)==null)return false;
@@ -197,6 +207,15 @@ static class RecycleStore
                 Execute(db,tx,purge?
                     "DELETE FROM folders WHERE id=$id AND workspace=$w AND kind='ip' AND deleted=1;":
                     "UPDATE folders SET deleted=0 WHERE id=$id AND workspace=$w AND kind='ip' AND deleted=1;",
+                    workspace,id);
+                break;
+            case "legacy_ip":
+                if(purge)Execute(db,tx,
+                    "DELETE FROM business_file_links WHERE kind='ip' AND owner_id=$id AND workspace=$w;",
+                    workspace,id);
+                Execute(db,tx,purge?
+                    "DELETE FROM business_ips WHERE id=$id AND workspace=$w AND deleted=1;":
+                    "UPDATE business_ips SET deleted=0 WHERE id=$id AND workspace=$w AND deleted=1;",
                     workspace,id);
                 break;
             case "v2_ip_file":
