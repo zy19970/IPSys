@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 
 record NativeFilePreparation(string Ticket,string Workspace,long FolderId,long ObjectId,
     NativeFileMetadataInput Metadata,string? VersionNote,long Size,string Sha256,
-    DateTimeOffset ExpiresAt);
+    DateTimeOffset ExpiresAt,string? MaterialCategory=null);
 record NativeFileDuplicate(long FileId,string Name,int Version,long ObjectId,
     IReadOnlyList<string> Folders);
 record NativeFilePrepareResult(string Ticket,string Name,long Size,string Sha256,
@@ -82,7 +82,7 @@ static partial class NativeFileChoiceStore
     public static async Task<NativeFilePreparation> PrepareAsync(
         SqliteConnection db,string workspace,long folderId,
         NativeFileMetadataInput input,string? versionNote,long expectedSize,
-        Stream source,CancellationToken cancellation)
+        Stream source,CancellationToken cancellation,string? materialCategory=null)
     {
         if(!Vault.WorkspaceValid(workspace) || folderId<=0)
             throw new ArgumentException("目标工作区或文件夹无效。");
@@ -91,6 +91,10 @@ static partial class NativeFileChoiceStore
         if(expectedSize<0 || expectedSize>NativeFileStore.MaxFileLength)
             throw new ArgumentException("待上传文件超过当前 64 MiB 限制。");
         input=NativeFileStore.Normalize(input);
+        if(materialCategory!=null &&
+           (materialCategory is not ("申请材料" or "通知文件" or "证书文件" or "其他材料") ||
+           !NativeIpFileStore.IpActive(db,workspace,folderId)))
+            throw new ArgumentException("知识产权材料类别或原件所属分类无效。");
         if(versionNote?.Length>500 || versionNote?.Any(char.IsControl)==true)
             throw new ArgumentException("版本说明无效。");
         versionNote=string.IsNullOrWhiteSpace(versionNote)?null:versionNote.Trim();
@@ -145,7 +149,7 @@ static partial class NativeFileChoiceStore
         tx.Commit();
         return new(Convert.ToHexString(RandomNumberGenerator.GetBytes(24)),
             workspace,folderId,objectId,input,versionNote,size,digest,
-            DateTimeOffset.UtcNow.AddMinutes(ExpiryMinutes));
+            DateTimeOffset.UtcNow.AddMinutes(ExpiryMinutes),materialCategory);
     }
     private static string? FolderPath(SqliteConnection db,string workspace,long folderId)
     {

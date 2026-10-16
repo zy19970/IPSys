@@ -210,7 +210,7 @@ async function refresh(){
   const [rows,projects,ips,contracts,files,trash,mcpAccess,savedOrders,folders,mixedOrders,...archiveResults]=await Promise.all([
     api('/api/records/'+space).then(r=>r.json()),
     api('/api/projects/'+space).then(r=>r.json()),
-    api('/api/ip/'+space).then(r=>r.json()),
+    IPSysNativeIp.load(api,space),
     api('/api/contracts/'+space).then(r=>r.json()),
     api('/api/business-files/'+space).then(r=>r.json()),
     api('/api/trash/'+space).then(r=>r.json()),
@@ -221,7 +221,7 @@ async function refresh(){
     ...archiveSections.map(section=>api('/api/archives/'+space+'/'+section).then(r=>r.json()))
   ]);
     if(requestedSpace!==space||!token)return;
-    liveRows=rows;projectRows=projects;ipRows=ips;contractRows=contracts;businessFileRows=files;trashRows=trash;archiveFolders=folders;archiveEntryOrders=mixedOrders||{};mcpEnabled=!!mcpAccess.enabled;
+    liveRows=rows;projectRows=projects;ipRows=ips.rows;contractRows=contracts;businessFileRows=[...files.filter(f=>f.kind!=='ip'),...ips.files];trashRows=trash;archiveFolders=folders;archiveEntryOrders=mixedOrders||{};mcpEnabled=!!mcpAccess.enabled;
     archiveRows={certificate:[],achievement:[],academic:[]};
     archiveSections.forEach((section,i)=>archiveRows[section]=archiveResults[i]);ledgerOrders=savedOrders||{};sortLedgerData();render();
   }catch(error){notice(error.message,true);}
@@ -623,7 +623,7 @@ function showExcelImportReport(report){
 async function exportExcel(kind,scope,section=''){
  const workspace=space;
  const query=kind==='archive'?'?section='+encodeURIComponent(section):'';
- const path='/api/excel/'+workspace+'/'+kind;
+ const path=kind==='ip'?'/api/v2/excel/'+workspace+'/ip':'/api/excel/'+workspace+'/'+kind;
  let ids=null;
  if(scope==='filtered'){
   if(kind==='project'||kind==='ip'){
@@ -661,7 +661,8 @@ async function importExcel(kind,file,section=''){
  if(!policy)return;
  try{
   const query='?policy='+policy+(kind==='archive'?'&section='+encodeURIComponent(section):'');
-  const response=await api('/api/excel/'+workspace+'/'+kind+'/import'+query,{
+  const endpoint=kind==='ip'?'/api/v2/excel/'+workspace+'/ip':'/api/excel/'+workspace+'/'+kind;
+   const response=await api(endpoint+'/import'+query,{
    method:'POST',headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},
    body:file});
   const report=await response.json();
@@ -732,7 +733,8 @@ function selectedOriginals(){
    f.kind==='contract'?parent?.name:
    archiveRows[f.section]?.find(x=>x.id===f.ownerId)?.name;
   if(!ownerName)continue;
-  items.push({source:'business',workspace:space,id:f.id,name:f.name,size:f.size,
+  items.push({source:f.v2?'v2ip':'business',workspace:space,id:f.id,
+   name:f.name,size:f.size,...(f.v2?{fileId:f.fileId,version:f.version}:{}),
    kind:f.kind,ownerId:f.ownerId,section:f.section,ownerName,
    ...(parent?{projectId:parent.projectId,projectName:parent.projectName}:{})});
  }
@@ -762,7 +764,8 @@ function ipOriginals(ids){
  const chosen=new Set(ids.map(Number));
  const names=new Map(ipRows.filter(r=>chosen.has(r.id)).map(r=>[r.id,r.data.name]));
  return businessFileRows.filter(f=>f.kind==='ip'&&names.has(f.ownerId)).map(f=>({
-  source:'business',workspace:space,id:f.id,name:f.name,size:f.size,
+  source:f.v2?'v2ip':'business',workspace:space,id:f.id,name:f.name,size:f.size,
+  ...(f.v2?{fileId:f.fileId,version:f.version}:{}),
   kind:'ip',ownerId:f.ownerId,section:f.section||'',ownerName:names.get(f.ownerId)
  }));
 }
@@ -789,12 +792,13 @@ function businessAttachmentList(kind,ownerId,section=''){
  '<button class="btn btn-sm" data-business-download="'+f.id+'">下载</button>'+
  '<button class="btn btn-sm" data-business-delete="'+f.id+'">移除</button></div>';
  return '<div class="tabletools"><b>原件附件 '+groups.size+' 份</b><div class="actions">'+category+
- '<label class="file-dedup-choice"><input type="checkbox" id="businessReuseExisting"> 同内容复用存储</label>'+
+ (kind==='ip'?'':'<label class="file-dedup-choice"><input type="checkbox" id="businessReuseExisting"> 同内容复用存储</label>')+
  '<button class="btn primary" data-action="businessUpload">＋ 上传原件</button></div></div>'+
- '<p class="hint">同名原件可选择更新已有版本链，或作为独立新文件归档；同工作区共享引用自动显示新版本。单文件上限 64 MiB。</p>'+
+ '<p class="hint">'+(kind==='ip'?'按内容摘要查重并由你明确选择共享身份、复用内容、独立保存或取消；可对现有文件上传新版。':'同名原件可选择更新已有版本链，或作为独立新文件归档；同工作区共享引用自动显示新版本。')+' 单文件上限 64 MiB。</p+'
  ([...groups.values()].map(g=>{g.sort((a,b)=>b.version-a.version||b.id-a.id);
   return '<div class="business-file-group">'+line(g[0],g.length>1,true)+
-   '<button class="btn btn-sm" data-business-associate="'+g[0].id+'">复制／移动关联</button>'+
+   (kind==='ip'?'<button class="btn btn-sm" data-v2-ip-version="'+g[0].id+'">上传新版本</button>':'')+
+   '<button class="btn btn-sm" data-business-associate="'+g[0].id+'">'+(kind==='ip'?'共享到其它知识产权':'复制／移动关联')+'</button>'+ 
    (g.length>1?'<details><summary>查看历史版本（'+(g.length-1)+'）</summary>'+
     g.slice(1).map(f=>line(f,true)).join('')+'</details>':'')+'</div>';}).join('')||
  '<p class="hint">暂无附件，可上传原始文件。</p>')+
@@ -856,6 +860,13 @@ async function uploadBusinessBatch(files,meta){
   for(const file of files){
    if(space!==workspace){errors.push('工作区已切换，上传终止');break;}
    if(file.size>64*1024*1024){errors.push(file.name+'：超过 64 MiB');continue;}
+   if(meta.kind==='ip'){
+    notice('正在检查重复内容：'+file.name);
+    try{const saved=await IPSysNativeIp.upload(api,file,meta,workspace);
+     if(saved){completed++;await refresh();}else skipped++;
+    }catch(err){errors.push(file.name+'：'+err.message);}
+    continue;
+   }
    const matches=[...new Map(businessFiles(meta.kind,meta.ownerId,meta.section)
     .filter(f=>f.name===file.name&&f.category===(meta.category||''))
     .map(f=>[f.groupId||'legacy-'+f.id,f])).values()];
@@ -923,7 +934,9 @@ el('filePreviewDialog').addEventListener('close',()=>{
 async function downloadBusinessAttachment(fileId){
  try{
   const file=businessFileRows.find(f=>f.id===fileId);if(!file)return;
-  const response=await api('/api/business-files/'+space+'/download/'+fileId);
+  const path=file.v2?IPSysNativeIp.url(space,file.ownerId,file.fileId,file.version):
+   '/api/business-files/'+space+'/download/'+fileId;
+  const response=await api(path);
   const blob=await response.blob();
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');a.href=url;a.download=file.name;
@@ -1556,6 +1569,9 @@ function openSearchHit(index){
   kind==='archive'?(archiveRows[h.section]||[]):[];
  const row=candidates.find(r=>r.id===id);
  if(!row){notice('记录已发生变化，请重新搜索。',true);return;}
+ if(kind==='ip'){
+  notice('知识产权已使用 V2，旧搜索结果 ID 不适用，请在知识产权台账中查找。',true);return;
+ }
  if(kind==='general')page='general';
  else if(kind==='project')page='researchProject';
  else if(kind==='contract')page='contract';
@@ -1681,6 +1697,7 @@ function sortLedgerData(){
   ...Object.entries(archiveRows).filter(([part])=>!(space==='company'&&part==='certificate'))
    .map(([part,items])=>['archive',part,items])
  ]){
+  if(kind==='ip')continue; // Respect V2 folders.position, never legacy ledger order IDs.
   const ranks=new Map((ledgerOrders[kind+':'+section]||[]).map((id,i)=>[id,i]));
   const before=new Map(rows.map((row,i)=>[row.id,i]));
   rows.sort((a,b)=>(ranks.get(a.id)??Number.MAX_SAFE_INTEGER)-
@@ -1820,9 +1837,11 @@ async function moveLedgerRecord(id,direction){
  const chosen=[...table.querySelectorAll('.ledger-record-row:checked')].map(c=>Number(c.value));
  ledgerMutationBusy=true;syncLedgerSelection();
  try{
-  await api('/api/ledger/'+space+'/'+scope.kind+'/order',
+  await api(scope.kind==='ip'?'/api/v2/ui/ip/'+space+'/order':
+   '/api/ledger/'+space+'/'+scope.kind+'/order',
    {method:'POST',json:{ids,section:scope.section}});
-  ledgerOrders[scope.kind+':'+scope.section]=ids;sortLedgerData();render();
+  if(scope.kind==='ip')await refresh();
+  else{ledgerOrders[scope.kind+':'+scope.section]=ids;sortLedgerData();render();}
   el('content').querySelectorAll('.ledger-record-row').forEach(c=>c.checked=chosen.includes(Number(c.value)));
   syncLedgerSelection();notice('顺序已保存。');
  }catch(error){notice('调整排序失败：'+error.message,true);}
@@ -1997,14 +2016,27 @@ el('content').addEventListener('click',async ev=>{
   await changeTrash('purge',[Number(target.dataset.trashPurge)]);return;
  }
  if(target.dataset.businessAssociate){
+  const f=businessFileRows.find(x=>x.id===Number(target.dataset.businessAssociate));
+  if(f?.v2){try{if(await IPSysNativeIp.associate(api,f,space,ipRows)){
+     await refresh();notice('已共享到目标知识产权。');}}
+    catch(e){notice(e.message,true);}return;}
   openBusinessAssoc(Number(target.dataset.businessAssociate));return;
+ }
+ if(target.dataset.v2IpVersion){
+  const f=businessFileRows.find(x=>x.id===Number(target.dataset.v2IpVersion));
+  if(f){const result=await IPSysNativeIp.newVersion(api,f,space);
+   if(result===true){await refresh();notice('新文件版本已保存。');}
+   else if(result instanceof Error)notice(result.message,true);}
+  return;
  }
  if(target.dataset.businessDownload){
   await downloadBusinessAttachment(Number(target.dataset.businessDownload));return;
  }
  if(target.dataset.previewBusiness){
   const file=businessFileRows.find(f=>f.id===Number(target.dataset.previewBusiness));
-  if(file)await previewOriginal(file,'/api/business-files/'+space+'/download/'+file.id);
+  if(file)await previewOriginal(file,file.v2?
+   IPSysNativeIp.url(space,file.ownerId,file.fileId,file.version):
+   '/api/business-files/'+space+'/download/'+file.id);
   return;
  }
  if(target.dataset.previewGeneral){
@@ -2028,7 +2060,8 @@ el('content').addEventListener('click',async ev=>{
   const f=businessFileRows.find(x=>x.id===fileId);
   if(!f||!confirm('从这条业务记录中移除“'+f.name+'”（v'+f.version+'）？可在回收站恢复。'))return;
   try{
-   await api('/api/business-files/'+space+'/'+fileId,{method:'DELETE'});
+   await api(f.v2?'/api/v2/ip/'+space+'/'+f.ownerId+'/files/'+f.fileId+'/links/'+f.linkId:
+    '/api/business-files/'+space+'/'+fileId,{method:'DELETE'});
    await refresh();notice('已从此记录移除附件（未物理删除原件）。');
   }catch(e){notice(e.message,true);}
   return;
@@ -2172,7 +2205,9 @@ el('content').addEventListener('click',async ev=>{
     if(!confirm('确定删除选中的 '+ids.length+' 条记录吗？删除后可在回收站恢复。'))break;
     ledgerMutationBusy=true;syncLedgerSelection();
     try{
-     await api('/api/ledger/'+space+'/'+scope.kind+'/batch-delete',
+     if(scope.kind==='ip'){
+      for(const id of ids)await api('/api/v2/folders/'+space+'/ip/'+id,{method:'DELETE'});
+     }else await api('/api/ledger/'+space+'/'+scope.kind+'/batch-delete',
       {method:'POST',json:{ids,section:scope.section}});
      await refresh();notice('已删除 '+ids.length+' 条记录，可在回收站恢复。');
     }catch(error){notice('批量删除失败：'+error.message,true);}
@@ -2224,21 +2259,13 @@ el('content').addEventListener('click',async ev=>{
   case 'ipDelete':{
    const row=ipRows.find(r=>r.id===detail?.id);if(!row)break;
    if(!confirm('删除知识产权“'+row.data.name+'”？记录将从台账隐藏。'))break;
-   try{await api('/api/ip/'+space+'/'+row.id,{method:'DELETE'});detail=null;await refresh();notice('知识产权记录已删除');}
+   try{await api('/api/v2/folders/'+space+'/ip/'+row.id,{method:'DELETE'});detail=null;await refresh();notice('知识产权记录已删除');}
    catch(e){notice(e.message,true);}break;
   }
   case 'ipCopy':
   case 'ipMove':{
-   const row=ipRows.find(r=>r.id===detail?.id);if(!row)break;
-   const move=target.dataset.action==='ipMove';
-   const other=space==='company'?'personal':'company';
-   const dest=move?other:(confirm('复制到另一工作区？取消则复制到当前工作区。')?other:space);
-   if(!confirm((move?'转移':'复制')+'知识产权“'+row.data.name+'”至'+(dest==='company'?'公司':'个人')+'工作区？'))break;
-   try{
-    await api('/api/ip/'+space+'/'+row.id+'/transfer',{method:'POST',json:{targetWorkspace:dest,move}});
-    if(move)detail=null;
-    await refresh();notice(move?'知识产权记录已转移':'知识产权记录已复制');
-   }catch(e){notice(e.message,true);}break;
+   notice('V2 知识产权跨区复制/移动必须在保留全部历史字节下进行，目前尚未接入。',true);
+   break;
   }
   case 'projectAdd':showProjectForm();break;
   case 'projectEdit':showProjectForm(detail?.id);break;
@@ -2526,8 +2553,8 @@ el('ipForm').onsubmit=async ev=>{
  const fields=Object.fromEntries(new FormData(el('ipForm')).entries());
  el('ipSave').disabled=true;
  try{
-  const resp=await api('/api/ip/'+space+(id===null?'':'/'+id),
-   {method:id===null?'POST':'PUT',json:fields});
+  const resp=await api('/api/v2/folders/'+space+'/ip'+(id===null?'':'/'+id),
+   {method:id===null?'POST':'PUT',json:{ip:fields}});
   const created=id===null?(await resp.json()).id:id;
   el('ipDialog').close();await refresh();
   if(ipRows.some(r=>r.id===created)){page='ip';detail={kind:'ip',id:created};render();}
@@ -2542,7 +2569,8 @@ function bindExcelCreate(prefix,kind,dialogId,isNew,sectionOf=()=> ''){
   const section=sectionOf();
   try{
    const query=kind==='archive'?'?section='+encodeURIComponent(section):'';
-   const response=await api('/api/excel/'+space+'/'+kind+'/template'+query);
+   const endpoint=kind==='ip'?'/api/v2/excel/'+space+'/ip':'/api/excel/'+space+'/'+kind;
+    const response=await api(endpoint+'/template'+query);
    await saveExcel(response,kind+(section?'-'+section:'')+'-template.xlsx');
   }catch(error){notice('下载 Excel 模板失败：'+error.message,true);}
  };

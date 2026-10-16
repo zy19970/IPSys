@@ -48,10 +48,13 @@ static class NativeFileChoiceEndpoints
                 return fail("文件必须声明大小且单文件不超过 64 MiB。",413);
             NativeFileMetadataInput input;
             string? note;
+            string? category;
             try
             {
                 input=Headers(ctx);
                 note=Uri.UnescapeDataString(ctx.Request.Headers["X-Version-Note"].ToString());
+                category=ctx.Request.Headers["X-Material-Category"].ToString();
+                category=string.IsNullOrWhiteSpace(category)?null:Uri.UnescapeDataString(category);
             }
             catch(UriFormatException){return fail("文件属性编码无效。",400);}
             var max=ctx.Features.Get<IHttpMaxRequestBodySizeFeature>();
@@ -70,7 +73,7 @@ static class NativeFileChoiceEndpoints
                    <length.Value+reserve)
                     return fail("加密数据库磁盘空间不足。",507);
                 var pending=await NativeFileChoiceStore.PrepareAsync(v.Db,
-                    workspace,folderId,input,note,length.Value,ctx.Request.Body,cancellation);
+                    workspace,folderId,input,note,length.Value,ctx.Request.Body,cancellation,category);
                 try
                 {
                     var matches=NativeFileChoiceStore.Matches(v.Db,

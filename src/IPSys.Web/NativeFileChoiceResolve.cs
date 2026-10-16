@@ -100,8 +100,8 @@ static partial class NativeFileChoiceStore
         }
         cancellation.ThrowIfCancellationRequested();
         long linkId=InsertId(v.Db,tx,"""
-            INSERT INTO folder_file_links(workspace,folder_id,file_id,display_name,position)
-            VALUES($w,$folder,$file,$display,
+            INSERT INTO folder_file_links(workspace,folder_id,file_id,display_name,material_category,position)
+            VALUES($w,$folder,$file,$display,$category,
                 (SELECT COALESCE(MAX(position),-1)+1 FROM folder_file_links
                 WHERE workspace=$w AND folder_id=$folder AND deleted=0))
             """,cmd=>
@@ -114,6 +114,7 @@ static partial class NativeFileChoiceStore
                     StringComparison.Ordinal)
                 ?pending.Metadata.Name:null;
             cmd.Parameters.AddWithValue("$display",(object?)alias??DBNull.Value);
+            cmd.Parameters.AddWithValue("$category",(object?)pending.MaterialCategory??DBNull.Value);
         });
         if(choice!="independent")RemoveStaged(v.Db,tx,pending);
         cancellation.ThrowIfCancellationRequested();
