@@ -441,6 +441,13 @@ static class WebSmoke
                 throw new IOException("新版主界面或工作区选择未成功加载。");
             string css = await client.GetStringAsync("/style.css");
             string javascript = await client.GetStringAsync("/app.js");
+            // The actual IP page depends on a second embedded script. A missing
+            // route can pass dotnet build while leaving the frozen UI unusable.
+            string nativeIpJs = await client.GetStringAsync("/ip-v2.js");
+            if (!landing.Contains("src=\"/ip-v2.js\"") ||
+                !nativeIpJs.Contains("IPSysNativeIp") ||
+                !javascript.Contains("IPSysNativeIp.load"))
+                throw new IOException("V2 知识产权脚本未嵌入单 EXE 或页面未正确引用。");
             if (!css.Contains(":root") || !javascript.Contains("openForm") ||
                 !javascript.Contains("function realDetail") ||
                 !javascript.Contains("function mockDetail"))
