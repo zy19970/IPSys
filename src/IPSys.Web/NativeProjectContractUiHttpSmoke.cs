@@ -137,14 +137,6 @@ static class NativeProjectContractUiHttpSmoke
             Check(invalid.StatusCode is HttpStatusCode.NotFound
                 or HttpStatusCode.BadRequest or HttpStatusCode.Conflict,
                 "cannot create contract under project from another workspace");
-        var old=await client.GetFromJsonAsync<List<ProjectView>>("/api/projects/company");
-        Check(old is not null && old.All(x=>x.Name!=name),
-            "native UI did not duplicate-write old business project");
-        var legacy=await client.GetFromJsonAsync<List<ContractView>>(
-            "/api/contracts/company");
-        Check(legacy is not null && legacy.All(x=>x.ContractNo!="CT-"+suffix),
-            "native contract did not write old business contract");
-
         using(var deleted=await client.DeleteAsync(
             $"/api/v2/folders/company/project/{projectId}"))
             deleted.EnsureSuccessStatusCode();

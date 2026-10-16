@@ -3,9 +3,8 @@ using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text.Json;
 
-// A real legacy fixed-format IP workbook is fed into the *V2* Excel importer.
-// All writes in this test go to distinct new V2 FolderIds; no legacy table is
-// ever used by the new endpoints. Existing legacy rows act only as a fixture.
+// A V2-generated fixed-column workbook is imported across isolated workspaces.
+// No V1 data source is required to exercise the full Excel update cycle.
 static class NativeIpExcelHttpSmoke
 {
     static void Check(bool ok,string why)
@@ -50,12 +49,13 @@ static class NativeIpExcelHttpSmoke
         string appNo="CN2026"+code;
         string company="/api/v2/excel/company/ip";
         string personal="/api/v2/excel/personal/ip";
+        // V2 export is itself the fixed-column workbook fixture.
         var fixture=await Json(await client.PostAsJsonAsync(
-            "/api/ip/company",Ip(originalName,appNo,"初始说明")));
-        long legacyId=fixture.GetProperty("id").GetInt64();
-        var source=await Export(client,"/api/excel/company/ip/export",
-            "filtered",[legacyId]);
-        Check(source.Length>800,"existing 20-column Excel workbook fixture");
+            "/api/v2/folders/personal/ip",
+            new FolderMutationInput(Ip:Ip(originalName,appNo,"初始说明"))));
+        long fixtureId=fixture.GetProperty("id").GetInt64();
+        var source=await Export(client,personal+"/export","filtered",[fixtureId]);
+        Check(source.Length>800,"V2 20-column Excel workbook fixture");
 
         using(var anonymous=new HttpClient{BaseAddress=client.BaseAddress})
         using(var blocked=await anonymous.PostAsJsonAsync(company+"/export",
@@ -79,13 +79,7 @@ static class NativeIpExcelHttpSmoke
         Check(entry.ValueKind==JsonValueKind.Object,"new IP exists only in native folders");
         long nativeId=entry.GetProperty("folder").GetProperty("ref")
             .GetProperty("id").GetInt64();
-        Check(nativeId!=legacyId ||
-              entry.GetProperty("businessData").GetProperty("name").GetString()==originalName,
-            "V2 record has native resource identity");
-        var legacyBefore=await client.GetFromJsonAsync<JsonElement>("/api/ip/company");
-        int before=legacyBefore.EnumerateArray().Count(x=>
-            x.GetProperty("data").GetProperty("applicationNo").GetString()==appNo);
-        Check(before==1,"import made no additional legacy row");
+        Check(nativeId>0,"import created a V2 FolderId");
 
         byte[] raw=RandomNumberGenerator.GetBytes(5127);
         using(var upload=new HttpRequestMessage(HttpMethod.Post,
@@ -102,11 +96,10 @@ static class NativeIpExcelHttpSmoke
                   "skip mode matches stable application number");
 
             using(var changed=await client.PutAsJsonAsync(
-                "/api/ip/company/"+legacyId,
-                Ip("Excel新名称"+code,appNo,"更新后说明")))
+                "/api/v2/folders/personal/ip/"+fixtureId,
+                new FolderMutationInput(Ip:Ip("Excel新名称"+code,appNo,"更新后说明"))))
                 changed.EnsureSuccessStatusCode();
-            var revised=await Export(client,"/api/excel/company/ip/export",
-                "filtered",[legacyId]);
+            var revised=await Export(client,personal+"/export","filtered",[fixtureId]);
             var updating=await Import(client,company+"/import","update",revised);
             Check(updating.GetProperty("updated").GetInt32()==1 &&
                   updating.GetProperty("created").GetInt32()==0,

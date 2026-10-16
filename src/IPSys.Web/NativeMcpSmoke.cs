@@ -47,9 +47,6 @@ static class NativeMcpSmoke
         var item=Find(list,project);
         Check(item?["businessData"]?["name"]?.GetValue<string>()==name,
             "V2 MCP project appears in new folder source");
-        var old=await client.GetFromJsonAsync<List<ProjectView>>("/api/projects/company");
-        Check(old is not null && !old.Any(x=>x.Name==name),
-            "V2 MCP create did not double-write legacy business projects");
         await Call("update_project",new{
             workspace="company",project_id=project,
             name="原生MCP已改名"+suffix,remarks="仅更新备注"
@@ -106,10 +103,6 @@ static class NativeMcpSmoke
               =="CN202610000002.0" &&
               Find(ips,ip)?["businessData"]?["remarks"]?.GetValue<string>()=="新备注",
               "IP updates preserve application number");
-        var legacyIps=await client.GetFromJsonAsync<List<IpView>>("/api/ip/company");
-        Check(legacyIps is not null && !legacyIps.Any(x=>x.Data.Name==patent),
-              "IP V2 mutation never double-writes legacy IP");
-
         await Call("delete_project",new{workspace="company",project_id=project});
         Check(Find(await Call("list_contracts",new{workspace="company"}),contract)==null,
               "project delete hides its V2 contracts");
@@ -151,11 +144,6 @@ static class NativeMcpSmoke
               contractRows.Any(x=>x?["id"]?.GetValue<long>()==originalContractId &&
                   x?["projectId"]?.GetValue<long>()==originalProject),
             "original contract list and create share native parent FolderId");
-        var legacyAfter=await client.GetFromJsonAsync<List<ProjectView>>(
-            "/api/projects/company");
-        Check(legacyAfter is not null && !legacyAfter.Any(x=>x.Name=="原名MCP项目"+suffix),
-            "original MCP project create does not write old business_projects");
-
         string path=Path.Combine(Path.GetTempPath(),"IPSys-V2-MCP-"+suffix+".bin");
         byte[] originalBytes=System.Security.Cryptography.RandomNumberGenerator.GetBytes(2173);
         await File.WriteAllBytesAsync(path,originalBytes);

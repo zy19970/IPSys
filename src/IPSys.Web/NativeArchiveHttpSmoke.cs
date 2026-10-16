@@ -180,9 +180,6 @@ static class NativeArchiveHttpSmoke
         using(var cross=await client.GetAsync(
             $"/api/v2/folders/company/general/{general}"))
             Check(cross.StatusCode==HttpStatusCode.NotFound,"general workspace isolation");
-        var legacy=await client.GetFromJsonAsync<List<ArchiveView>>(
-            "/api/archives/company/achievement");
-        Check(!legacy!.Any(x=>x.Name=="归档资料"+suffix),"new archive never double-writes legacy table");
         Console.WriteLine("N2 ARCHIVE SQLCIPHER HTTP SMOKE PASS");
     }
 }

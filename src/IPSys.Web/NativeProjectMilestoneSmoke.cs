@@ -82,13 +82,13 @@ static class NativeProjectMilestoneSmoke
                 "contracts cannot be imported from Excel");
 
         var search=await client.GetFromJsonAsync<SearchResponse>(
-            "/api/search/company?q="+Uri.EscapeDataString(marker));
+            "/api/v2/search/company?q="+Uri.EscapeDataString(marker));
         Check(search is not null &&
             search.Results.Any(x=>x.Kind=="project"&&x.Id==project) &&
             search.Results.Any(x=>x.Kind=="contract"&&x.Id==contract),
             "search uses V2 FolderId for project and contract");
         var fileSearch=await client.GetFromJsonAsync<SearchResponse>(
-            "/api/search/company?q="+Uri.EscapeDataString(marker+"原件.pdf"));
+            "/api/v2/search/company?q="+Uri.EscapeDataString(marker+"原件.pdf"));
         Check(fileSearch is not null &&
             fileSearch.Results.Any(x=>x.Kind=="file"&&
                 x.OwnerKind=="contract"&&x.OwnerId==contract),

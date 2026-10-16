@@ -4,7 +4,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 
 // N2-03-02: complete V2 IP Folder -> FileLink -> FileVersion -> encrypted
-// content roundtrip. Legacy business APIs are read only for no-dual-write checks.
+// content roundtrip. All assertions use V2-only HTTP and storage identities.
 static class NativeIpFileHttpSmoke
 {
     static void Check(bool ok,string reason)
@@ -157,11 +157,6 @@ static class NativeIpFileHttpSmoke
             $"/api/v2/ip/personal/{foreign}/files/{fileId}"))
             Check(foreignScope.StatusCode==HttpStatusCode.NotFound,
                 "cannot reach company file from personal IP");
-        var legacy=await client.GetFromJsonAsync<JsonElement>(
-            "/api/business-files/company");
-        Check(!legacy.EnumerateArray().Any(x=>
-            x.TryGetProperty("name",out var n)&&n.GetString()=="原件申请.pdf"),
-            "V2 IP attachment never double-writes old business attachment tables");
         Console.WriteLine("N2-03-02 V2 IP FILE HTTP SMOKE PASS");
     }
 }

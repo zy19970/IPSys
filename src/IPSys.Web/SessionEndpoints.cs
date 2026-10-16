@@ -49,14 +49,7 @@ static class SessionEndpoints
                     db = Vault.Connect(path, input.Password, input.Create);
                     if (input.Create) Vault.CreateSchema(db);
                     else Vault.ValidateSchema(db);
-                    ProjectStore.Ensure(db);
-                    IpStore.Ensure(db);
-                    ContractStore.Ensure(db);
-                    ArchiveStore.Ensure(db);
-                    ArchiveEntryOrderStore.Ensure(db);
-                    LedgerBatch.Ensure(db);
-                    BusinessFileStore.Ensure(db);
-                    GeneralStore.Ensure(db);
+                    // V2 schema is complete; opening must not silently rebuild V1 tables.
                     // Remove only incomplete V2 writing objects abandoned by a crash.
                     NativeFileChoiceStore.CleanupWriting(db);
                     string token = v.SetOpen(db, path);
@@ -127,7 +120,7 @@ static class SessionEndpoints
                 using var cmd = v.Db.CreateCommand();
                 cmd.CommandText = "PRAGMA integrity_check;";
                 string result = Convert.ToString(cmd.ExecuteScalar()) ?? "";
-                cmd.CommandText = "SELECT count(*) FROM attachments WHERE state='writing';";
+                cmd.CommandText = "SELECT count(*) FROM file_objects WHERE state='writing';";
                 long incomplete = (long)cmd.ExecuteScalar()!;
                 return Results.Json(new { result, incomplete });
             }

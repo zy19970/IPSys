@@ -155,23 +155,6 @@ static class SearchSmoke
             deleted.EnsureSuccessStatusCode();
         if((await Find(client,"company",marker+"-企业资质")).Results.Count!=0)
             throw new IOException("删除的资质资料不得仍被检索。");
-        // Existing archive/general pages still use their old own-record IDs.
-        // The compatibility search must not send a V2 FolderId to that UI.
-        string legacyName=marker+"-旧页面资质";
-        using var legacy=await client.PostAsJsonAsync(
-            "/api/archives/company/certificate",new {
-                name=legacyName,category="企业资质"});
-        legacy.EnsureSuccessStatusCode();
-        long legacyId=(await legacy.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
-            .GetProperty("id").GetInt64();
-        var currentPage=await client.GetFromJsonAsync<SearchResponse>(
-            "/api/search/company?q="+Uri.EscapeDataString(legacyName));
-        if(currentPage is null||!currentPage.Results.Any(h=>h.Kind=="archive"&&
-            h.Id==legacyId && h.Section=="certificate"))
-            throw new IOException("旧资料页面搜索必须保留旧资料 ID，不能错误跳转 V2 FolderId。");
-        var onlyNative=await Find(client,"company",legacyName);
-        if(onlyNative.Results.Any(h=>h.Kind=="archive"))
-            throw new IOException("V2 搜索不得将旧资质表误认为 Folder。");
         var nativeResult=await Find(client,"company",marker+"-企业资质");
         if(nativeResult.Results.Any(h=>h.Kind=="archive"&&h.Id==archiveId))
             throw new IOException("V2 原生检索必须隐藏前面已软删除的 FolderId。");

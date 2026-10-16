@@ -202,27 +202,11 @@ sealed class Vault : IDisposable
     }
     public static void CreateSchema(SqliteConnection db)
     {
-        using var cmd = db.CreateCommand();
-        cmd.CommandText = """
-            CREATE TABLE records(id INTEGER PRIMARY KEY,workspace TEXT NOT NULL
-                CHECK(workspace IN ('company','personal')), title TEXT NOT NULL
-                CHECK(length(trim(title))>0));
-            CREATE TABLE attachments(id INTEGER PRIMARY KEY,record_id INTEGER NOT NULL
-                REFERENCES records(id),filename TEXT NOT NULL,expected_size INTEGER NOT NULL,
-                size INTEGER,sha256 TEXT,state TEXT NOT NULL CHECK(state IN ('writing','ready')));
-            CREATE TABLE chunks(attachment_id INTEGER NOT NULL REFERENCES attachments(id)
-                ON DELETE CASCADE,idx INTEGER NOT NULL,bytes BLOB NOT NULL,
-                PRIMARY KEY(attachment_id,idx));
-            """;
-        cmd.ExecuteNonQuery();
+        // New vaults use only the canonical resource model.
         ResourceSchemaV2.Create(db);
     }
     public static void ValidateSchema(SqliteConnection db)
     {
-        using var cmd = db.CreateCommand();
-        cmd.CommandText = "SELECT count(*) FROM sqlite_master WHERE type='table' AND name IN ('records','attachments','chunks');";
-        if ((long)cmd.ExecuteScalar()! != 3L)
-            throw new IOException("不支持该数据库的表结构；请新建新版资料库。");
         ResourceSchemaV2.Validate(db);
     }
 }

@@ -35,6 +35,11 @@ static class ResourceSchemaV2Smoke
             {
                 Vault.CreateSchema(db);
                 Vault.ValidateSchema(db);
+                using(var legacy=db.CreateCommand())
+                {
+                    legacy.CommandText="SELECT count(*) FROM sqlite_master WHERE type='table' AND name IN ('records','attachments','chunks','business_projects','business_contracts','business_ips','business_archives','business_file_links','business_file_objects','business_file_chunks','archive_folders');";
+                    Check((long)legacy.ExecuteScalar()! == 0,"new V2 vault contains no legacy business tables");
+                }
                 using(var count=db.CreateCommand())
                 {
                     count.CommandText="SELECT count(*) FROM folders WHERE is_system=1;";

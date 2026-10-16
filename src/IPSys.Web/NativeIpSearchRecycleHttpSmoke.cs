@@ -20,7 +20,7 @@ static class NativeIpSearchRecycleHttpSmoke
         long id=(await ip.Content.ReadFromJsonAsync<JsonElement>())
             .GetProperty("id").GetInt64();
         var hits=await client.GetFromJsonAsync<SearchResponse>(
-            "/api/search/company?q="+Uri.EscapeDataString(tag+"CN"));
+            "/api/v2/search/company?q="+Uri.EscapeDataString(tag+"CN"));
         Check(hits!.Results.Any(x=>x.Kind=="ip"&&x.Id==id),
             "application number must return native FolderId");
 
@@ -41,19 +41,19 @@ static class NativeIpSearchRecycleHttpSmoke
         long linkId=file.GetProperty("id").GetInt64();
 
         var found=await client.GetFromJsonAsync<SearchResponse>(
-            "/api/search/company?q="+Uri.EscapeDataString(filename));
+            "/api/v2/search/company?q="+Uri.EscapeDataString(filename));
         Check(found!.Results.Any(x=>x.Kind=="file"&&x.OwnerKind=="ip"
              &&x.OwnerId==id&&x.Id==fileId),
              "V2 file search must refer to native FileId and FolderId");
         var privateHits=await client.GetFromJsonAsync<SearchResponse>(
-            "/api/search/personal?q="+Uri.EscapeDataString(filename));
+            "/api/v2/search/personal?q="+Uri.EscapeDataString(filename));
         Check(privateHits!.Results.Count==0,"cross-workspace IP original isolation");
 
         using(var del=await client.DeleteAsync(
             $"/api/v2/ip/company/{id}/files/{fileId}/links/{linkId}"))
             del.EnsureSuccessStatusCode();
         Check(!(await client.GetFromJsonAsync<SearchResponse>(
-            "/api/search/company?q="+Uri.EscapeDataString(filename)))!
+            "/api/v2/search/company?q="+Uri.EscapeDataString(filename)))!
             .Results.Any(x=>x.OwnerKind=="ip"&&x.OwnerId==id),
             "unlinked original should not appear in search");
 
@@ -76,7 +76,7 @@ static class NativeIpSearchRecycleHttpSmoke
         using(var del=await client.DeleteAsync($"/api/v2/folders/company/ip/{id}"))
             del.EnsureSuccessStatusCode();
         Check(!(await client.GetFromJsonAsync<SearchResponse>(
-            "/api/search/company?q="+Uri.EscapeDataString(tag)))!
+            "/api/v2/search/company?q="+Uri.EscapeDataString(tag)))!
             .Results.Any(x=>x.OwnerKind=="ip"||x.Kind=="ip"),
             "deleted native IP and its file are hidden from search");
         var after=await client.GetFromJsonAsync<List<RecycleItem>>("/api/trash/company");

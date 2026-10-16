@@ -57,8 +57,6 @@ static class NativeFolderHttpSmoke
             restored.EnsureSuccessStatusCode();
         using(var visible=await client.GetAsync(root+"contract/"+contract))
             visible.EnsureSuccessStatusCode();
-        var old=await client.GetFromJsonAsync<List<ProjectView>>("/api/projects/company");
-        Check(!old!.Any(x=>x.Name=="V2项目"+suffix),"no legacy double write");
         Console.WriteLine("N2 NATIVE FOLDER HTTP SMOKE PASS");
     }
 }

@@ -75,11 +75,6 @@ static class NativeIpUiHttpSmoke
             Check(bytes.SequenceEqual(await response.Content.ReadAsByteArrayAsync()),
                 "V2 UI file ID opens encrypted original bytes");
         }
-        var legacy=await client.GetFromJsonAsync<JsonElement>("/api/ip/company");
-        Check(!legacy.EnumerateArray().Any(x=>
-            x.GetProperty("data").GetProperty("name").GetString()==input.Name),
-            "IP UI never double-writes legacy IP rows");
-
         var current=data.GetProperty("rows").EnumerateArray()
             .Select(r=>r.GetProperty("id").GetInt64()).ToArray();
         var reversed=current.Reverse().ToArray();

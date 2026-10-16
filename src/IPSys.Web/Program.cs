@@ -84,21 +84,9 @@ app.MapGet("/ui-preview", (HttpContext ctx) =>
 
 SessionEndpoints.Map(app, Fail);
 
-SearchLedgerEndpoints.Map(app, Fail, smoke);
+SearchLedgerEndpoints.Map(app, Fail);
 
-// V1 endpoints exist only to run historical --smoke regression scenarios.
-// Current UI, MCP, Excel, ZIP and search must have exactly one production
-// business identity: the native V2 FolderId, FileId and LinkId.
-if(smoke)
-{
-    GeneralRecordEndpoints.MapList(app, Fail);
-    IpEndpoints.Map(app, Fail);
-    ExcelEndpoints.Map(app, Fail);
-    ArchiveEndpoints.Map(app, Fail);
-    ProjectContractEndpoints.Map(app, Fail);
-    FolderBrowserEndpoints.Map(app, Fail);
-    FolderCommandEndpoints.Map(app, Fail);
-}
+// Only canonical V2 business HTTP routes are registered, including in --smoke.
 NativeFolderEndpoints.Map(app, Fail);
 NativeFileEndpoints.Map(app, Fail);
 NativeFileLinkEndpoints.Map(app, Fail);
@@ -118,11 +106,6 @@ NativeGeneralTransferEndpoints.Map(app, Fail);
 NativeIpTransferEndpoints.Map(app, Fail);
 NativeProjectTransferEndpoints.Map(app, Fail);
 
-if(smoke)
-{
-    GeneralRecordEndpoints.MapChanges(app, Fail);
-    BusinessFileEndpoints.Map(app);
-}
 RecycleEndpoints.Map(app);
 
 SessionEndpoints.MapDiagnostics(app);
@@ -144,8 +127,6 @@ if (smoke)
         NativeFileLinkStoreSmoke.Run();
         NativeFileCopyStoreSmoke.Run();
         NativeFileChoiceStoreSmoke.Run();
-        FolderProviderSmoke.Run();
-        ArchiveFolderProviderSmoke.Run();
         await WebSmoke.Run(address);
         string? smokeReport = Environment.GetEnvironmentVariable("IPSYS_SMOKE_REPORT");
         if (!string.IsNullOrWhiteSpace(smokeReport))
