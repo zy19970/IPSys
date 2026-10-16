@@ -1658,7 +1658,8 @@ function businessAssocOptions(){
   ...contractRows.map(x=>({kind:'contract',id:x.id,section:'',label:'合同 · '+x.name})),
   ...ipRows.map(x=>({kind:'ip',id:x.id,section:'',label:'知识产权 · '+x.data.name})),
   ...Object.entries(archiveRows).flatMap(([section,rows])=>
-   rows.map(x=>({kind:'archive',id:x.id,section,label:'归档 · '+x.name})))
+   rows.map(x=>({kind:'archive',id:x.id,section,label:'归档 · '+x.name}))),
+  ...liveRows.map(x=>({kind:'general',id:x.id,section:'',label:'综合资料 · '+x.title}))
  ];
 }
 function openBusinessAssoc(id){
@@ -1672,7 +1673,7 @@ function openBusinessAssoc(id){
   opt.value=String(i);opt.textContent=x.label;select.append(opt);});
  select.dataset.targets=JSON.stringify(options);
  el('businessAssocMode').value='copy';
- el('businessAssocNote').textContent='文件：'+src.name+'。操作包含同名同类别的历史版本，范围为当前工作区。';
+ el('businessAssocNote').textContent='文件：'+src.name+'。共享同一 FileId 及全部历史版本；移动则解除来源位置关联。';
  el('businessAssocDialog').showModal();
 }
 
@@ -2005,12 +2006,7 @@ el('content').addEventListener('click',async ev=>{
  }
  if(target.dataset.businessAssociate){
   const f=businessFileRows.find(x=>x.id===Number(target.dataset.businessAssociate));
-  if(f?.v2){try{if(await (f.kind==='ip'?IPSysNativeIp.associate(api,f,space,ipRows):
-    IPSysNativeIp.associateGeneric(api,f,space,
-      f.kind==='project'?projectRows:f.kind==='contract'?contractRows:
-      f.kind==='archive'?archiveRows[f.section]||[]:liveRows))){
-     await refresh();notice('已共享到目标知识产权。');}}
-    catch(e){notice(e.message,true);}return;}
+  if(!f)return;
   openBusinessAssoc(Number(target.dataset.businessAssociate));return;
  }
  if(target.dataset.v2IpVersion){
@@ -2374,9 +2370,15 @@ el('businessAssocForm').onsubmit=async event=>{
  if(!confirm((move?'移动':'复制')+'所选附件及其历史版本至“'+target.label+'”？'))return;
  el('businessAssocSave').disabled=true;
  try{
-  await api('/api/business-files/'+space+'/'+id+'/associate',{method:'POST',json:{
-   targetKind:target.kind,targetOwnerId:target.id,targetSection:target.section,move
-  }});
+  const file=businessFileRows.find(x=>x.id===id);
+  if(file?.v2){
+   await api('/api/v2/files/'+space+'/'+file.fileId+'/associate',
+    {method:'POST',json:{linkId:file.linkId,targetFolderId:target.id,move}});
+  }else{
+   await api('/api/business-files/'+space+'/'+id+'/associate',{method:'POST',json:{
+    targetKind:target.kind,targetOwnerId:target.id,targetSection:target.section,move
+   }});
+  }
   el('businessAssocDialog').close();await refresh();notice('附件关联操作已完成');
  }catch(e){notice(e.message,true);}
  finally{el('businessAssocSave').disabled=false;}

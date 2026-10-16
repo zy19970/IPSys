@@ -1488,6 +1488,7 @@ static class WebSmoke
             await NativeArchiveHttpSmoke.VerifyAsync(client);
             await NativeFileHttpSmoke.VerifyAsync(client);
             await NativeFileLinkHttpSmoke.VerifyAsync(client);
+            await NativeFileAssociateSmoke.VerifyAsync(client);
             await NativeFileCopyHttpSmoke.VerifyAsync(client);
             await NativeFileChoiceHttpSmoke.VerifyAsync(client);
             await NativeIpFileHttpSmoke.VerifyAsync(client);
