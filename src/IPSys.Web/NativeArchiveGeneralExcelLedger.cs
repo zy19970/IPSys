@@ -72,8 +72,6 @@ static partial class ExcelLedger
                     var input=Archive(fields);
                     if(ArchiveStore.Validate(input) is string error)
                         throw new InvalidDataException(error);
-                    long? parent=ArchiveParent(db,workspace,section,input.Category);
-                    input=input with {FolderId=parent};
                     var existing=NativeArchives(db,workspace,section).FirstOrDefault(x=>{
                         var a=(ArchiveInput)x.BusinessData;
                         return Same(a.Name??"",input.Name??"") &&
@@ -92,8 +90,12 @@ static partial class ExcelLedger
                     }
                     else
                     {
+                        // Only new company-business rows need a selected root;
+                        // updating an existing nested archive never moves its parent.
+                        var parent=ArchiveParent(db,workspace,section,input.Category);
                         NativeArchiveStore.Create(db,workspace,FolderKinds.Archive,
-                            new FolderMutationInput(Archive:input,Section:section));
+                            new FolderMutationInput(Archive:input with {FolderId=parent},
+                                Section:section));
                         created++;
                     }
                 }

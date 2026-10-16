@@ -86,7 +86,7 @@ static class NativeArchiveGeneralMilestoneSmoke
             {Content=new ByteArrayContent(revised)})
         {
             version.Headers.Add("X-File-Name",Uri.EscapeDataString(mark+"修订.pdf"));
-            (await Read(await client.SendAsync(version)));
+            await Read(await client.SendAsync(version));
         }
         var files=await client.GetFromJsonAsync<JsonElement>(
             $"/api/v2/files/company/folders/{certificate}/links");
