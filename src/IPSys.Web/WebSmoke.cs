@@ -369,6 +369,20 @@ static class WebSmoke
         catch(IOException ex)when(ex.Message.Contains("所选状态不适用于"))
         {invalidIpDenied=true;}
         if(!invalidIpDenied)throw new IOException("MCP 未使用知识产权原状态校验。");
+        // A native IP FolderId must not be handed to an old business-file
+        // upload path: it could collide with an unrelated legacy owner ID.
+        bool oldUploadRejected=false;
+        try
+        {
+            await McpLocal.RunSmokeToolAsync("upload_files",
+                System.Text.Json.JsonSerializer.SerializeToElement(new{
+                    workspace="company",kind="ip",owner_id=ipId,paths=new[]{filename}
+                }));
+        }
+        catch(IOException ex)when(ex.Message.Contains("V2"))
+        {oldUploadRejected=true;}
+        if(!oldUploadRejected)
+            throw new IOException("旧 MCP upload_files 不得将 V2 FolderId 当旧专利 ID 关联原件。");
         // IP aliases now return V2 FolderIds; the legacy upload_files API
         // has unrelated legacy owner IDs and cannot accept a native IP.
         using(var ipRequest=new HttpRequestMessage(HttpMethod.Post,

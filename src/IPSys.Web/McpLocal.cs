@@ -494,6 +494,11 @@ static partial class McpLocal
                 string kind=ReadString(args,"kind");
                 if(kind is not ("project" or "contract" or "ip"))throw new IOException("kind 只能为 project、contract 或 ip");
                 long owner=ReadId(args,"owner_id");
+                // Other generic MCP file tools still address old business-file
+                // IDs. Do not attach a native IP FolderId to an unrelated
+                // legacy owner with the same number.
+                if(kind=="ip")
+                    throw new IOException("知识产权原件请使用已接入 V2 的网页上传：旧 upload_files 的文件链接 ID 不是 V2 FileId，已拒绝可能错配的操作。");
                 string mode=ReadString(args,"on_conflict","new");
                 string material=ReadString(args,"material_category",kind=="ip"?"其他材料":"");
                 if(kind=="ip"&&material is not ("申请材料" or "通知文件" or "证书文件" or "其他材料"))
