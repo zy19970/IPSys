@@ -1569,9 +1569,6 @@ function openSearchHit(index){
   kind==='archive'?(archiveRows[h.section]||[]):[];
  const row=candidates.find(r=>r.id===id);
  if(!row){notice('记录已发生变化，请重新搜索。',true);return;}
- if(kind==='ip'){
-  notice('知识产权已使用 V2，旧搜索结果 ID 不适用，请在知识产权台账中查找。',true);return;
- }
  if(kind==='general')page='general';
  else if(kind==='project')page='researchProject';
  else if(kind==='contract')page='contract';
@@ -1611,7 +1608,7 @@ function settingsPage(){return heading('系统设置','数据库管理与已确�
  `<section class="white detailsection"><div class="detailsectionhead"><h2>当前加密数据库</h2></div><div class="detailbody"><div class="minirow"><span>数据库文件</span><strong>${escapeHtml(dbName)}</strong></div><div class="minirow"><span>加密状态</span><span class="realflag">SQLCipher 已启用</span></div><div class="minirow"><span>数据库完整性检查</span><button class="btn" data-action="check">立即检查</button></div><div id="checkResult" class="hint"></div><div class="minirow"><span>本机 Codex MCP</span><span class="actions"><span class="hint">${mcpEnabled?'已开启':'默认关闭'}</span><button class="btn" data-action="mcpToggle">${mcpEnabled?'关闭 MCP':'开启 MCP'}</button></span></div><p class="hint">仅允许当前 Windows 用户通过本机 Codex MCP 操作已解锁的数据库；关库或退出自动失效。开启后 Codex 可新增项目、合同及原件。</p><div class="minirow"><span>关闭当前数据库</span><button class="btn" data-action="lock">关闭数据库</button></div></div></section>`+
  section('尚未接入的设置项','<div class="minirow"><span>修改数据库密码</span>'+stamp()+'</div><div class="minirow"><span>记录类别与标签</span>'+stamp()+'</div><p class="hint">手动备份需安全退出程序后在 Windows 资源管理器复制加密库。</p>');}
 function trashPage(){
- const names={project:'项目',contract:'合同',ip:'知识产权',archive:space==='company'?'资质与业务档案':'证件与成果',file:'业务附件',general:'综合资料',general_file:'综合资料附件'};
+ const names={project:'项目',contract:'合同',ip:'知识产权',archive:space==='company'?'资质与业务档案':'证件与成果',file:'业务附件',general:'综合资料',general_file:'综合资料附件',v2_ip_file:'知识产权原件关联'};
  return heading('回收站','当前工作区的真实已删除记录与附件',
  '<button class="btn" data-nav="settings">返回设置</button>')+
  '<section class="white"><div class="tabletools"><b>已删除 '+trashRows.length+' 条</b><div class="actions">'+

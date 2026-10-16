@@ -26,8 +26,9 @@ static class SearchSmoke
         personalProject.EnsureSuccessStatusCode();
         long personalId=(await personalProject.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
             .GetProperty("id").GetInt64();
-        using var ip=await client.PostAsJsonAsync("/api/ip/company",new {
-            name=marker+"-专利",ipType="发明专利",status="实质审查中",applicationNo=marker+"-CN"
+        using var ip=await client.PostAsJsonAsync("/api/v2/folders/company/ip",new {
+            ip=new{name=marker+"-专利",ipType="发明专利",
+                status="实质审查中",applicationNo=marker+"-CN"}
         });
         ip.EnsureSuccessStatusCode();
         long ipId=(await ip.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
@@ -81,6 +82,22 @@ static class SearchSmoke
         var number=await Find(client,"company",marker+"-CN");
         if(!number.Results.Any(h=>h.Kind=="ip"&&h.Id==ipId))
             throw new IOException("知识产权申请号搜索未命中。");
+        byte[] ipBytes=Encoding.UTF8.GetBytes("IP-V2-original-"+marker);
+        string ipFilename=marker+"-专利证书.pdf";
+        using(var upload=new HttpRequestMessage(HttpMethod.Post,
+            $"/api/v2/ip/company/{ipId}/files") {Content=new ByteArrayContent(ipBytes)})
+        {
+            upload.Headers.Add("X-File-Name",Uri.EscapeDataString(ipFilename));
+            upload.Headers.Add("X-Material-Category",Uri.EscapeDataString("证书文件"));
+            using var response=await client.SendAsync(upload);
+            response.EnsureSuccessStatusCode();
+        }
+        var ipOriginal=await Find(client,"company",ipFilename);
+        if(!ipOriginal.Results.Any(x=>x.Kind=="file"&&x.OwnerKind=="ip"
+             &&x.OwnerId==ipId&&x.Title==ipFilename))
+            throw new IOException("V2 知识产权原件应按真实 FolderId 进入统一搜索。");
+        if((await Find(client,"personal",ipFilename)).Results.Count!=0)
+            throw new IOException("V2 知识产权原件不允许跨工作区搜索。");
         var byProject=await Find(client,"company",marker+"-P");
         if(!byProject.Results.Any(h=>h.Kind=="project"&&h.Id==projectId))
             throw new IOException("项目编号搜索未命中。");

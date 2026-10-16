@@ -63,7 +63,7 @@ static class SearchStore
         }
         var projects=ProjectStore.List(db,workspace);
         var contracts=ContractStore.List(db,workspace);
-        var ips=IpStore.List(db,workspace);
+        var ips=NativeFolderStore.List(db,workspace,FolderKinds.Ip);
         var archiveSections=workspace=="company"?new[]{"certificate","achievement"}:
             new[]{"certificate","achievement","academic"};
         var archive=new List<ArchiveView>();
@@ -86,11 +86,11 @@ static class SearchStore
         }
         foreach(var ip in ips)
         {
-            var d=ip.Data;
+            var d=(IpInput)ip.BusinessData;
             if(!Any(query,d.Name,d.IpType,d.Status,d.ApplicationNo,d.RegistrationNo,
                 d.Applicants,d.RightHolders,d.Creators,d.PublicationNo,d.GrantNoticeNo,
                 d.PublicationInfo,d.Category,d.Remarks,d.Tags))continue;
-            Add(new SearchHit("ip",ip.Id,"",Label(d.Name),
+            Add(new SearchHit("ip",ip.Folder.Ref.Id,"",Label(d.Name),
                 Summary(d.IpType,d.ApplicationNo,d.RegistrationNo)));
         }
         foreach(var a in archive)
@@ -111,7 +111,7 @@ static class SearchStore
         // already excludes deleted links, unfinished objects and deleted owners.
         var projectNames=projects.ToDictionary(x=>x.Id,x=>x.Name);
         var contractNames=contracts.ToDictionary(x=>x.Id,x=>x.Name);
-        var ipNames=ips.ToDictionary(x=>x.Id,x=>Label(x.Data.Name));
+        var ipNames=ips.ToDictionary(x=>x.Folder.Ref.Id,x=>Label(((IpInput)x.BusinessData).Name));
         var archiveNames=archive.ToDictionary(x=>(x.Section,x.Id),x=>x.Name);
         var seen=new HashSet<string>(StringComparer.Ordinal);
         foreach(var f in BusinessFileStore.List(db,workspace))
@@ -121,7 +121,9 @@ static class SearchStore
             {
                 "project" when projectNames.TryGetValue(f.OwnerId,out var p)=>p,
                 "contract" when contractNames.TryGetValue(f.OwnerId,out var c)=>c,
-                "ip" when ipNames.TryGetValue(f.OwnerId,out var i)=>i,
+                // Legacy business-file IDs are unrelated to native IP FolderId.
+                // Never accidentally attach an old file hit to a new IP folder.
+                "ip"=> "",
                 "archive" when archiveNames.TryGetValue((f.Section,f.OwnerId),out var a)=>a,
                 _=>""
             };
@@ -131,6 +133,26 @@ static class SearchStore
             if(!seen.Add(key))continue;
             Add(new SearchHit("file",f.Id,f.Section,f.Name,Summary(parent,f.Category),
                 f.Kind,f.OwnerId));
+        }
+        // Native IP matches use the only live V2 FolderId and immutable FileId.
+        // An IP filename can differ from the reusable shared File's display name.
+        foreach(var ip in ips)
+        {
+            long owner=ip.Folder.Ref.Id;
+            string ownerName=ipNames[owner];
+            foreach(var link in NativeFileLinkStore.ListFolder(db,workspace,owner,false)??[])
+            {
+                var details=NativeFileStore.Get(db,workspace,link.FileId);
+                if(details is null || details.Versions.Count==0)continue;
+                var latest=details.Versions[0];
+                string location=link.DisplayName??link.FileName;
+                if(!Any(query,location,link.FileName,latest.OriginalName,
+                        link.MaterialCategory,details.Description,details.Tags,
+                        details.FileNumber))continue;
+                Add(new SearchHit("file",link.FileId,"",location,
+                    Summary(ownerName,link.MaterialCategory,latest.OriginalName),
+                    "ip",owner));
+            }
         }
         foreach(var f in generalFiles)
         {

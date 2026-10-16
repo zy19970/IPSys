@@ -1,0 +1,113 @@
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Security.Cryptography;
+
+// The frozen IP UI, MCP, search and recycle must address one native FolderId.
+static class NativeIpSearchRecycleHttpSmoke
+{
+    private static void Check(bool value,string reason)
+    {
+        if(!value)throw new IOException("N2-03-05 V2 IP search/recycle: "+reason);
+    }
+    public static async Task VerifyAsync(HttpClient client)
+    {
+        string tag="IPNATIVE-"+Guid.NewGuid().ToString("N")[..9];
+        var ip=await client.PostAsJsonAsync("/api/v2/folders/company/ip",
+            new{ip=new{name=tag+"申请",ipType="发明专利",status="实质审查中",
+                applicationNo=tag+"CN"}});
+        ip.EnsureSuccessStatusCode();
+        long id=(await ip.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("id").GetInt64();
+        var hits=await client.GetFromJsonAsync<SearchResponse>(
+            "/api/search/company?q="+Uri.EscapeDataString(tag+"CN"));
+        Check(hits!.Results.Any(x=>x.Kind=="ip"&&x.Id==id),
+            "application number must return native FolderId");
+
+        byte[] content=RandomNumberGenerator.GetBytes(4700);
+        string filename=tag+"原件.pdf";
+        using(var upload=new HttpRequestMessage(HttpMethod.Post,
+            $"/api/v2/ip/company/{id}/files"){Content=new ByteArrayContent(content)})
+        {
+            upload.Headers.Add("X-File-Name",Uri.EscapeDataString(filename));
+            upload.Headers.Add("X-Material-Category",Uri.EscapeDataString("申请材料"));
+            using var response=await client.SendAsync(upload);
+            response.EnsureSuccessStatusCode();
+        }
+        var links=await client.GetFromJsonAsync<JsonElement>(
+            $"/api/v2/ip/company/{id}/files");
+        var file=links.EnumerateArray().Single();
+        long fileId=file.GetProperty("fileId").GetInt64();
+        long linkId=file.GetProperty("id").GetInt64();
+
+        var found=await client.GetFromJsonAsync<SearchResponse>(
+            "/api/search/company?q="+Uri.EscapeDataString(filename));
+        Check(found!.Results.Any(x=>x.Kind=="file"&&x.OwnerKind=="ip"
+             &&x.OwnerId==id&&x.Id==fileId),
+             "V2 file search must refer to native FileId and FolderId");
+        var privateHits=await client.GetFromJsonAsync<SearchResponse>(
+            "/api/search/personal?q="+Uri.EscapeDataString(filename));
+        Check(privateHits!.Results.Count==0,"cross-workspace IP original isolation");
+
+        using(var del=await client.DeleteAsync(
+            $"/api/v2/ip/company/{id}/files/{fileId}/links/{linkId}"))
+            del.EnsureSuccessStatusCode();
+        Check(!(await client.GetFromJsonAsync<SearchResponse>(
+            "/api/search/company?q="+Uri.EscapeDataString(filename)))!
+            .Results.Any(x=>x.OwnerKind=="ip"&&x.OwnerId==id),
+            "unlinked original should not appear in search");
+
+        var trash=await client.GetFromJsonAsync<List<RecycleItem>>("/api/trash/company");
+        Check(trash!.Any(x=>x.Kind=="v2_ip_file"&&x.Id==linkId),
+            "removed native file link visible in recycle");
+        using(var rejected=await client.PostAsJsonAsync(
+            "/api/trash/company/purge",
+            new RecycleRequest([new RecycleKey("v2_ip_file",linkId,"")])))
+            Check(rejected.StatusCode==HttpStatusCode.Conflict,
+                "do not call deletion of immutable physical bytes a permanent purge");
+        using(var restored=await client.PostAsJsonAsync(
+            "/api/trash/company/restore",
+            new RecycleRequest([new RecycleKey("v2_ip_file",linkId,"")])))
+            restored.EnsureSuccessStatusCode();
+        Check((await client.GetByteArrayAsync(
+            $"/api/v2/ip/company/{id}/files/{fileId}/versions/1/download"))
+            .SequenceEqual(content),"recovered link preserves original bytes");
+
+        using(var del=await client.DeleteAsync($"/api/v2/folders/company/ip/{id}"))
+            del.EnsureSuccessStatusCode();
+        Check(!(await client.GetFromJsonAsync<SearchResponse>(
+            "/api/search/company?q="+Uri.EscapeDataString(tag)))!
+            .Results.Any(x=>x.OwnerKind=="ip"||x.Kind=="ip"),
+            "deleted native IP and its file are hidden from search");
+        var after=await client.GetFromJsonAsync<List<RecycleItem>>("/api/trash/company");
+        Check(after!.Any(x=>x.Kind=="ip"&&x.Id==id),
+            "deleted V2 IP listed in shared recycle");
+        using(var reject=await client.PostAsJsonAsync(
+            "/api/trash/company/purge",
+            new RecycleRequest([new RecycleKey("ip",id,"")])))
+            Check(reject.StatusCode==HttpStatusCode.Conflict,
+                "IP with historical original must not lose linked history");
+        using(var restore=await client.PostAsJsonAsync(
+            "/api/trash/company/restore",
+            new RecycleRequest([new RecycleKey("ip",id,"")])))
+            restore.EnsureSuccessStatusCode();
+        Check((await client.GetByteArrayAsync(
+            $"/api/v2/ip/company/{id}/files/{fileId}/versions/1/download"))
+            .SequenceEqual(content),"IP restore preserves link and raw bytes");
+
+        var empty=await client.PostAsJsonAsync("/api/v2/folders/personal/ip",
+            new{ip=new{name=tag+"无附件",ipType="发明专利",status="已申请"}});
+        empty.EnsureSuccessStatusCode();
+        long emptyId=(await empty.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("id").GetInt64();
+        using(var del=await client.DeleteAsync($"/api/v2/folders/personal/ip/{emptyId}"))
+            del.EnsureSuccessStatusCode();
+        using(var purge=await client.PostAsJsonAsync("/api/trash/personal/purge",
+            new RecycleRequest([new RecycleKey("ip",emptyId,"")])))
+            purge.EnsureSuccessStatusCode();
+        var personalTrash=await client.GetFromJsonAsync<List<RecycleItem>>("/api/trash/personal");
+        Check(!personalTrash!.Any(x=>x.Kind=="ip"&&x.Id==emptyId),
+            "empty native IP permanently deletes only its own folder");
+        Console.WriteLine("N2-03-05 V2 IP SEARCH RECYCLE SQLCIPHER HTTP PASS");
+    }
+}

@@ -36,7 +36,7 @@ static partial class McpLocal
         Tool("list_projects","列出指定工作区当前有效项目。",new(){
             ["workspace"]=Field("string","工作区：company 公司；personal 个人",Workspaces)
         },["workspace"]),
-        Tool("list_ips","查询专利和其他知识产权，返回每条记录的 ID、类型、状态与详情。",new(){
+        Tool("list_ips","查询 V2 知识产权，返回与网页相同 FolderId 的业务详情。",new(){
             ["workspace"]=Field("string","工作区",Workspaces)
         },["workspace"]),
         Tool("create_ip","创建专利或知识产权。知识产权类型和状态按 IPSys 现有约束校验。",new(){
@@ -62,7 +62,7 @@ static partial class McpLocal
             ["remarks"]=Field("string","备注"),
             ["tags"]=Field("string","标签")
         },["workspace","name","ip_type"]),
-        Tool("update_ip","按 ID 更新专利或知识产权，仅改变明确传入的字段。",new(){
+        Tool("update_ip","按 V2 FolderId 更新知识产权，仅改变明确传入的字段。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
             ["ip_id"]=Field("integer","知识产权 ID"),
             ["name"]=Field("string","名称"),
@@ -86,7 +86,7 @@ static partial class McpLocal
             ["remarks"]=Field("string","备注"),
             ["tags"]=Field("string","标签")
         },["workspace","ip_id"]),
-        Tool("delete_ip","将指定专利或知识产权移入回收站。",new(){
+        Tool("delete_ip","按 V2 FolderId 将知识产权移入回收站。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
             ["ip_id"]=Field("integer","知识产权 ID")
         },["workspace","ip_id"]),
@@ -406,6 +406,15 @@ static partial class McpLocal
         string baseProject="/api/projects/"+workspace;
         if(name.StartsWith("v2_",StringComparison.Ordinal))
             return await ExecuteNativeAsync(client,workspace,name[3..],args);
+        // Legacy IP tool names now share the actual V2 IP FolderId with the UI.
+        if(name is "create_ip" or "update_ip" or "delete_ip")
+            return await ExecuteNativeAsync(client,workspace,name,args);
+        if(name=="list_ips")
+        {
+            JsonNode ui=await RequestAsync(client,HttpMethod.Get,
+                "/api/v2/ui/ip/"+workspace);
+            return ui["rows"]?.DeepClone()??new JsonArray();
+        }
         switch(name)
         {
             case "list_projects":

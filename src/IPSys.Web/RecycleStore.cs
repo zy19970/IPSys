@@ -29,7 +29,7 @@ static class RecycleStore
             SELECT id,title,'' FROM records WHERE workspace=$w AND deleted=1 ORDER BY id DESC;
             ""","general"));
         rows.AddRange(Simple(db,workspace,"""
-            SELECT id,name,'' FROM business_ips WHERE workspace=$w AND deleted=1
+            SELECT id,name,'' FROM folders WHERE workspace=$w AND kind='ip' AND deleted=1
             ORDER BY id DESC;
             ""","ip"));
         rows.AddRange(Simple(db,workspace,"""
@@ -53,6 +53,15 @@ static class RecycleStore
         foreach(var r in dead)
             if(BusinessFileStore.OwnerForDeletedLink(db,workspace,r.Id))
                 rows.Add(new RecycleItem("file",r.Id,r.Name,"",null));
+        rows.AddRange(Simple(db,workspace,"""
+            SELECT l.id,COALESCE(l.display_name,f.name),'',p.name
+            FROM folder_file_links l
+            JOIN folders p ON p.id=l.folder_id AND p.workspace=l.workspace
+            JOIN files f ON f.id=l.file_id AND f.workspace=l.workspace
+            WHERE l.workspace=$w AND l.deleted=1 AND p.kind='ip'
+              AND p.deleted=0 AND f.deleted=0
+            ORDER BY l.id DESC;
+            ""","v2_ip_file"));
         rows.AddRange(Simple(db,workspace,"""
             SELECT a.id,a.filename,'' FROM attachments a
             JOIN records r ON r.id=a.record_id
@@ -87,7 +96,7 @@ static class RecycleStore
                 break;
             case "ip":
                 if(r.Section!="")return false;
-                cmd.CommandText="SELECT count(*) FROM business_ips WHERE id=$id AND workspace=$w AND deleted=1;";
+                cmd.CommandText="SELECT count(*) FROM folders WHERE id=$id AND workspace=$w AND kind='ip' AND deleted=1;";
                 break;
             case "archive":
                 if(ArchiveStore.Module(workspace,r.Section)==null)return false;
@@ -109,6 +118,16 @@ static class RecycleStore
             case "file":
                 if(r.Section!="")return false;
                 return BusinessFileStore.OwnerForDeletedLink(db,workspace,r.Id);
+            case "v2_ip_file":
+                if(r.Section!="")return false;
+                cmd.CommandText="""
+                    SELECT COUNT(*) FROM folder_file_links l
+                    JOIN folders p ON p.id=l.folder_id AND p.workspace=l.workspace
+                    JOIN files f ON f.id=l.file_id AND f.workspace=l.workspace
+                    WHERE l.id=$id AND l.workspace=$w AND l.deleted=1
+                      AND p.kind='ip' AND p.deleted=0 AND f.deleted=0;
+                    """;
+                break;
             default:return false;
         }
         return (long)cmd.ExecuteScalar()! == 1;
@@ -175,10 +194,15 @@ static class RecycleStore
                     workspace,id);
                 break;
             case "ip":
-                if(purge)Execute(db,tx,"DELETE FROM business_file_links WHERE kind='ip' AND owner_id=$id AND workspace=$w;",workspace,id);
                 Execute(db,tx,purge?
-                    "DELETE FROM business_ips WHERE id=$id AND workspace=$w AND deleted=1;":
-                    "UPDATE business_ips SET deleted=0 WHERE id=$id AND workspace=$w AND deleted=1;",
+                    "DELETE FROM folders WHERE id=$id AND workspace=$w AND kind='ip' AND deleted=1;":
+                    "UPDATE folders SET deleted=0 WHERE id=$id AND workspace=$w AND kind='ip' AND deleted=1;",
+                    workspace,id);
+                break;
+            case "v2_ip_file":
+                Execute(db,tx,purge?
+                    "DELETE FROM folder_file_links WHERE id=$id AND workspace=$w AND deleted=1;":
+                    "UPDATE folder_file_links SET deleted=0 WHERE id=$id AND workspace=$w AND deleted=1;",
                     workspace,id);
                 break;
             case "archive":
@@ -216,6 +240,24 @@ static class RecycleStore
         if(items.Distinct().Count()!=items.Count)return false;
         // All-or-nothing: validate every item before touching the database.
         if(items.Any(x=>!Deleted(db,workspace,x)))return false;
+        // V2 immutable file chunks cannot currently be reclaimed. Refuse an
+        // unsafe "permanent deletion" when source history still exists.
+        if(purge)
+            foreach(var item in items)
+            {
+                if(item.Kind is not ("ip" or "v2_ip_file"))continue;
+                if(item.Kind=="v2_ip_file")
+                    throw new InvalidOperationException("共享原件物理回收尚未提供，不能永久删除该关联。");
+                using var cmd=db.CreateCommand();
+                cmd.CommandText="""
+                    SELECT COUNT(*) FROM folder_file_links
+                    WHERE workspace=$w AND folder_id=$id;
+                    """;
+                cmd.Parameters.AddWithValue("$w",workspace);
+                cmd.Parameters.AddWithValue("$id",item.Id);
+                if((long)cmd.ExecuteScalar()!>0)
+                    throw new InvalidOperationException("该知识产权仍关联文件历史，禁止直接永久删除。");
+            }
         using var tx=db.BeginTransaction();
         foreach(var item in items)Apply(db,tx,workspace,item,purge);
         if(purge)CleanupUnreferenced(db,tx);
@@ -255,9 +297,14 @@ static class RecycleEndpoints
             {
                 if(!v.Allowed(ctx))return Results.Unauthorized();
                 if(v.FileTaskActive||v.ExitRequested)return Fail("文件任务或退出期间不可修改数据。",409);
-                return RecycleStore.Change(v.Db,workspace,request.Items,operation=="purge")
-                    ?Results.Ok(new {ok=true,count=request.Items.Count})
-                    :Results.NotFound();
+                try
+                {
+                    return RecycleStore.Change(v.Db,workspace,request.Items,operation=="purge")
+                        ?Results.Ok(new {ok=true,count=request.Items.Count})
+                        :Results.NotFound();
+                }
+                catch(InvalidOperationException ex){return Fail(ex.Message,409);}
+                catch(SqliteException ex){return Fail("引用约束拒绝此操作："+ex.SqliteErrorCode,409);}
             }
             finally{v.Gate.Release();}
         });
