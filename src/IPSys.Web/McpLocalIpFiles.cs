@@ -23,6 +23,55 @@ static partial class McpLocal
             $"/api/v2/ip/{workspace}/{folder}/files/{file}/links/{link}");
     }
 
+    // General legacy-name listing is now a V2-only projection. Its historical
+    // 'id' column remains the link identity, not the logical FileId.
+    private static async Task<JsonNode> ListBusinessFiles(HttpClient client,
+        string workspace)
+    {
+        JsonArray rows=new();
+        foreach(string kind in new[]{"project","contract","ip"})
+        {
+            var folders=await RequestAsync(client,HttpMethod.Get,V2Url(workspace,kind));
+            foreach(var resource in folders.AsArray())
+            {
+                long folder=resource?["folder"]?["ref"]?["id"]?.GetValue<long>()??0;
+                if(folder<=0)continue;
+                var links=await RequestAsync(client,HttpMethod.Get,
+                    $"/api/v2/files/{workspace}/folders/{folder}/links");
+                foreach(var link in links.AsArray())
+                {
+                    if(link is null)continue;
+                    rows.Add(new JsonObject{
+                        ["id"]=link["id"]?.DeepClone(),
+                        ["fileId"]=link["fileId"]?.DeepClone(),
+                        ["ownerId"]=folder,
+                        ["kind"]=kind,
+                        ["name"]=link["displayName"]?.DeepClone() ??
+                            link["fileName"]?.DeepClone(),
+                        ["latestVersion"]=link["latestVersion"]?.DeepClone(),
+                        ["size"]=link["size"]?.DeepClone(),
+                        ["sha256"]=link["sha256"]?.DeepClone()
+                    });
+                }
+            }
+        }
+        return rows;
+    }
+
+    private static async Task<JsonNode> DeleteBusinessFile(HttpClient client,
+        string workspace,JsonElement args)
+    {
+        long link=ReadId(args,"file_id");
+        var all=(await ListBusinessFiles(client,workspace)).AsArray();
+        var record=all.FirstOrDefault(x=>x?["id"]?.GetValue<long>()==link);
+        if(record is null)
+            throw new IOException("V2 文件关联不存在或已解除。file_id 须为 list_files 中的链接 id。");
+        long file=record["fileId"]?.GetValue<long>()??0;
+        if(file<=0)throw new IOException("V2 文件关联缺少有效 FileId。");
+        return await RequestAsync(client,HttpMethod.Delete,
+            $"/api/v2/files/{workspace}/{file}/links/{link}");
+    }
+
     private static async Task<JsonNode> ProjectContractLinks(HttpClient client,
         string workspace,string kind,JsonElement args)
     {

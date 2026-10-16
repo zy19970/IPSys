@@ -216,6 +216,31 @@ static class NativeMcpSmoke
             }catch(IOException){mismatched=true;}
             Check(mismatched,"cannot unlink a link belonging to another folder");
 
+            var allFiles=await Original("list_files",new{workspace="company"});
+            Check(allFiles is JsonArray af && af.Any(x=>
+                x?["id"]?.GetValue<long>()==link &&
+                x?["fileId"]?.GetValue<long>()==file &&
+                x?["ownerId"]?.GetValue<long>()==originalProject &&
+                x?["kind"]?.GetValue<string>()=="project"),
+                "general legacy-name list_files uses only the V2 FileId/LinkId map");
+            using(var relink=await client.PostAsJsonAsync(
+                $"/api/v2/files/company/{file}/links",
+                new{folderId=originalContractId}))
+                relink.EnsureSuccessStatusCode();
+            var relinked=(await Original("list_contract_files",new{
+                workspace="company",contract_id=originalContractId
+            })).AsArray();
+            long renewed=relinked.Single()["id"]?.GetValue<long>()??0;
+            Check(renewed>0,"contract re-association creates a new link");
+            await Original("delete_file",new{workspace="company",file_id=renewed});
+            Check((await Original("list_contract_files",new{
+                workspace="company",contract_id=originalContractId
+            })).AsArray().Count==0 &&
+                  (await Original("list_project_files",new{
+                workspace="company",project_id=originalProject
+            })).AsArray().Any(x=>x?["fileId"]?.GetValue<long>()==file),
+                "general delete_file unlinks one V2 location without erasing shared bytes");
+
             // Append a version via a typed owner check, never by legacy group_id.
             byte[] revised=System.Security.Cryptography.RandomNumberGenerator.GetBytes(951);
             await File.WriteAllBytesAsync(path,revised);

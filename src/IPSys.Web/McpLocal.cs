@@ -93,7 +93,7 @@ static partial class McpLocal
         Tool("list_contracts","查询 V2 有效合同及其所属项目 FolderId。",new(){
             ["workspace"]=Field("string","工作区",Workspaces)
         },["workspace"]),
-        Tool("list_files","历史旧业务附件查询；V2 项目合同请使用 list_project_files/list_contract_files，知识产权使用 list_ip_files。",new(){
+        Tool("list_files","列出工作区 V2 项目/合同/知识产权有效原件，每项 id 是 LinkId、fileId 是逻辑原件身份。",new(){
             ["workspace"]=Field("string","工作区",Workspaces)
         },["workspace"]),
         Tool("create_project","在已解锁的 IPSys 中创建项目。",new(){
@@ -145,9 +145,9 @@ static partial class McpLocal
             ["workspace"]=Field("string","工作区",Workspaces),
             ["contract_id"]=Field("integer","合同 ID")
         },["workspace","contract_id"]),
-        Tool("delete_file","将指定业务附件关联移至回收站，不立即永久清除加密字节。",new(){
+        Tool("delete_file","使用 list_files 的 id (LinkId) 只解除该位置的 V2 文件关联，不删除 FileId、历史版本或共享物理字节。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
-            ["file_id"]=Field("integer","list_files 查询到的文件链接 ID")
+            ["file_id"]=Field("integer","list_files 中返回的链接 id (LinkId)，不是逻辑 FileId")
         },["workspace","file_id"]),
         Tool("list_project_files","查询 V2 项目 FolderId 下的有效 FileId、LinkId 与最新版本。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
@@ -463,8 +463,7 @@ static partial class McpLocal
         switch(name)
         {
             case "list_files":
-                return await RequestAsync(client,HttpMethod.Get,
-                    "/api/business-files/"+workspace);
+                return await ListBusinessFiles(client,workspace);
             case "list_project_files":
                 return await ProjectContractLinks(client,workspace,"project",args);
             case "list_contract_files":
@@ -478,8 +477,7 @@ static partial class McpLocal
             case "delete_ip_file":
                 return await DeleteIpLink(client,workspace,args);
             case "delete_file":
-                return await RequestAsync(client,HttpMethod.Delete,
-                    "/api/business-files/"+workspace+"/"+ReadId(args,"file_id"));
+                return await DeleteBusinessFile(client,workspace,args);
             case "upload_files":
             {
                 string kind=ReadString(args,"kind");
