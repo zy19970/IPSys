@@ -20,11 +20,7 @@ assert.ok(js.includes("source:'v2file'")&&js.includes("source:'v2ip'")&&
 assert.ok(programCs.includes('SearchLedgerEndpoints.Map(app, Fail);')&&
  programCs.includes('NativeFolderEndpoints.Map(app, Fail);')&&
  programCs.includes('NativeFileEndpoints.Map(app, Fail);')&&
- !programCs.includes('BusinessFileEndpoints.Map(app);')&&
- !programCs.includes('ExcelEndpoints.Map(app, Fail);')&&
- !programCs.includes('IpEndpoints.Map(app, Fail);')&&
- !programCs.includes('ProjectContractEndpoints.Map(app, Fail);')&&
- !programCs.includes('ArchiveEndpoints.Map(app, Fail);')&&
+ !/^\\s*(?:BusinessFileEndpoints|ExcelEndpoints|IpEndpoints|ProjectContractEndpoints|ArchiveEndpoints|GeneralRecordEndpoints|FolderBrowserEndpoints|FolderCommandEndpoints)\\.Map(?:List|Changes)?\\(/m.test(programCs)&&
  !searchEndpointsCs.includes('"/api/search/{workspace}"')&&
  searchEndpointsCs.includes('"/api/v2/search/{workspace}"'),
  'Production and smoke must register V2-only business and search HTTP routes');
