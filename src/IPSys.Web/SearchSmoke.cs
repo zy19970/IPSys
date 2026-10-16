@@ -173,8 +173,8 @@ static class SearchSmoke
         if(onlyNative.Results.Any(h=>h.Kind=="archive"))
             throw new IOException("V2 搜索不得将旧资质表误认为 Folder。");
         var nativeResult=await Find(client,"company",marker+"-企业资质");
-        if(!nativeResult.Results.Any(h=>h.Kind=="archive"&&h.Id==archiveId))
-            throw new IOException("V2 原生检索应返回真实 FolderId。");
+        if(nativeResult.Results.Any(h=>h.Kind=="archive"&&h.Id==archiveId))
+            throw new IOException("V2 原生检索必须隐藏前面已软删除的 FolderId。");
         Console.WriteLine("SEARCH SMOKE PASS: modules, fields, filenames, isolation, auth, soft delete");
     }
 }
