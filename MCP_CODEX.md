@@ -64,6 +64,8 @@ Codex 通过 stdio 使用同一个 EXE 的 `--mcp` 模式，子进程仅通过�
 
 更多步骤见 `WEB_TESTING.md`。
 
+> **N2-03-04 过渡提醒（2026-10-16）**：现有网页“知识产权”已改走 V2 FolderId 与 FileId，而不带 `v2_` 前缀的 `list_ips/create_ip/update_ip/delete_ip` 仍访问旧 IpStore。自动化新增/修改知识产权应使用 `v2_list_ips`、`v2_create_ip`、`v2_update_ip`、`v2_delete_ip`，并使用其返回的新 FolderId；不要把旧 MCP ID 传入 V2 附件或 Excel API。旧工具名的正式切换属于 N2-03-05，必须连同旧业务 API/搜索/回收站验收。
+
 ## V2 原生业务 MCP 工具（N2-03-01）
 
 新增 `v2_list_projects`、`v2_create_project`、`v2_update_project`、`v2_delete_project`；`v2_list_contracts`、`v2_create_contract`、`v2_delete_contract`；`v2_list_ips`、`v2_create_ip`、`v2_update_ip`、`v2_delete_ip`。参数名继续沿用原 `workspace`、`project_id`、`ip_id` 等结构，实际结果包含原生 `FolderSnapshot`（`folder.ref.id`、`businessData`）；合同必须指定当前工作区真实有效项目的 `project_id`。

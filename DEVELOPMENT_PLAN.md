@@ -23,6 +23,7 @@ IPSys 用户可见名称为「资料管理系统」，采用 Windows WinForms �
 | **N3-04** | **Windows CI 通过** | SQLCipher writing 暂存、同内容含异名查重、原件名/目录路径提示、明确选择与取消清理；[CI #38820367132](https://github.com/zy19970/IPSys/actions/runs/38820367132) |
 | **N2-03-01** | **Windows CI 通过** | 新增 11 项 `v2_*` MCP 项目/合同/IP 操作，经手动授权、本机管道和 HTTP 仅访问 V2 `folders`；[CI #38822708366](https://github.com/zy19970/IPSys/actions/runs/38822708366)。旧 14 工具暂保留，未双写 |
 | **N2-03-02** | **Windows CI 通过** | 知识产权 FolderId 绑定 V2 FileId/Link/Version 的附件完整后端链路，工作区隔离、材料类别、版本、共享/解除/恢复及 HTTP/SQLCipher 回归；[CI #38824119576](https://github.com/zy19970/IPSys/actions/runs/38824119576)。旧网页/Excel/MCP 未切换 |
+| **N2-03-04** | **Windows CI #38828523508 已通过** | 将现有 IP 网页的 V2 FolderId/文件归属/文件版本/上传查重用户选择、Excel/ZIP/文件夹导出统一；旧搜索、IP 回收站、旧 MCP 和跨区事务化复制尚待 N2-03-05 |
 | **N2-03-03** | **Windows CI 通过** | V2 知识产权 XLSX 沿用固定20列与重复记录策略，仅读写新版 FolderId/attributes_json，Excel 更新不改变原 IP/附件身份；真实 SQLCipher/HTTP [CI #38825202078](https://github.com/zy19970/IPSys/actions/runs/38825202078) 通过 |
 | **N2-03 其余接口、N4** | **待继续** | 下一批优先评估并分模块迁移旧业务 HTTP、文件附件归属、MCP 旧命名和 Excel；冻结 UI/搜索/导出和完整实机验收仍待完成 |
 
@@ -34,7 +35,7 @@ N2 原生 API 与旧 UI/API 目前并存，不能据此声称新库整套业务�
 2. **N3-02（已完成）**：同区多 Folder 关联 FileId、软解绑及显式恢复；共享版本在各位置同步，解除一处不删除原件，Windows CI 已通过；完整回收站 UI 后续 N4 验收。
 3. **N3-03（已完成）**：独立 FileId 可显式复用同区 FileObject，属性和版本历史独立；跨公司/个人复制产生独立物理字节，CI 已通过。
 4. **N3-04（原生 V2 API 已完成）**：按大小、SHA-256 匹配同区最新原件（含异名），返回原件名与 Folder 路径，用户决定共享 FileId、只复用内容、独立保存或取消，writing 分块安全清理并按会话约束票据；CI 已通过。可视化弹窗仍归 N4。
-5. **N2-03（分批进行中）**：N2-03-01 原生业务 MCP、N2-03-02 知识产权 Folder→File、N2-03-03 知识产权 Excel 与 V2 FolderId 适配均已通过 Windows CI。下一批 N2-03-04 必须切入现有网页所调用的旧业务 HTTP、附件和旧 MCP 命令身份收敛；保持无旧新双写，不在未联动时强切旧接口。
+5. **N2-03（分批进行中）**：N2-03-01～03 原生 V2 MCP、IP 文件、Excel 已通过 CI；N2-03-04 已将**当前 IP 网页**的列表/CRUD/上传查重/版本/导出连到新版 FolderId/FileId，已通过 CI。下一批 N2-03-05 继续统一 IP 回收站、跨区原件事务复制、旧 MCP IP 默认命名和搜索，然后分模块迁移项目/合同/档案，避免新旧双写或错配。
 6. **N4**：保持冻结 UI，接通新库的前端、File 选填属性和 Folder 祖先字段搜索、递归导出、默认最新版本、回收站；确认无调用后清除旧业务/附件表及兼容代码。
 7. **N4 整体验收和发布判断**：Windows Debug/Release/单 EXE、SQLCipher HTTP、Node UI/PDF/ZIP、MCP、Excel，以及 Edge/Chrome 实机和 T01–T09 数据安全专项。
 

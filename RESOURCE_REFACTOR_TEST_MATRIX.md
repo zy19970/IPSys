@@ -90,7 +90,7 @@ N1 验收：[Windows CI #38740628571](https://github.com/zy19970/IPSys/actions/r
 
 ## N3-04 内容查重与用户决策原生验收（2026-10-16）
 
-[功能提交 93be896f](https://github.com/zy19970/IPSys/commit/93be896f4c0d26b0bfedb64c8c766069924a77f4) 与 [Windows CI #38820367132](https://github.com/zy19970/IPSys/actions/runs/38820367132) **success**。新原生 `/api/v2/files/{workspace}/prepare` 在 SQLCipher 暂存 writing 原件并按大小与 SHA-256 查询同区有效文件最新版；显示已有 FileId、文件名和 Folder 完整父级路径，支持不同名称命中，同名不同内容不可误命中。`/prepared/{ticket}/resolve` 必须明确选择引用同一 FileId、创建独立 FileId 只复用原件或完全独立保存；取消端点删除 writing 分块。SQLCipher/HTTP 测试覆盖令牌一次性消费、鉴权、工作区隔离、冲突、回滚、关闭/重开清理及原件字节。30 分钟过期、每数据库会话仅一项待确认。**此项仅为原生 HTTP/Store；现有网页的选择弹窗、MCP/Excel 和所有旧业务附件入口仍待 N2-03/N4 切换。**
+[功能提交 93be896f](https://github.com/zy19970/IPSys/commit/93be896f4c0d26b0bfedb64c8c766069924a77f4) 与 [Windows CI #38820367132](https://github.com/zy19970/IPSys/actions/runs/38820367132) **success**。新原生 `/api/v2/files/{workspace}/prepare` 在 SQLCipher 暂存 writing 原件并按大小与 SHA-256 查询同区有效文件最新版；显示已有 FileId、文件名和 Folder 完整父级路径，支持不同名称命中，同名不同内容不可误命中。`/prepared/{ticket}/resolve` 必须明确选择引用同一 FileId、创建独立 FileId 只复用原件或完全独立保存；取消端点删除 writing 分块。SQLCipher/HTTP 测试覆盖令牌一次性消费、鉴权、工作区隔离、冲突、回滚、关闭/重开清理及原件字节。30 分钟过期、每数据库会话仅一项已确认 CI 成功。**此项仅为原生 HTTP/Store；现有网页的选择弹窗、MCP/Excel 和所有旧业务附件入口仍待 N2-03/N4 切换。**
 
 ## N2-03-01 原生 V2 本机 MCP 第一批（2026-10-16）
 
@@ -103,3 +103,9 @@ N1 验收：[Windows CI #38740628571](https://github.com/zy19970/IPSys/actions/r
 ## N2-03-03 知识产权固定 Excel 同源 V2 FolderId 回归（2026-10-16）
 
 [功能提交 7a7d98a5](https://github.com/zy19970/IPSys/commit/7a7d98a54283174f94f3e7fb67bef2483cc0faf3)、[Windows CI #38825202078](https://github.com/zy19970/IPSys/actions/runs/38825202078) **success**。新 `/api/v2/excel/{workspace}/ip` 三接口沿用固定 20 列 OpenXML、行号错误报告、8 MiB/5000 行、申请号优先的重复记录策略，仅读写 `NativeFolderStore` 与 V2 FolderId/attributes_json。真实 SQLCipher HTTP 测试以旧固定模板导出产生可导入工作簿，验证 V2 创建、skip、update、以 FolderId 筛选导出、修改知识产权属性后原文件 FileId 与版本和真实下载字节保留、跨工作区只导入台账属性不串联物理原件、损坏工作簿拒绝，旧专利表没有自动双写。**旧网页 `/api/excel`、旧 MCP/HTTP/附件和其他 Excel 模块未统一；下一批 N2-03-04 应整合现有 IP 业务及附件入口，避免旧新业务身份交叉，最终 N4 再做桌面 Excel 实机。**
+
+## N2-03-04 现有知识产权网页与 V2 原件/Excel 同源（2026-10-16）
+
+[功能 d214d20a](https://github.com/zy19970/IPSys/commit/d214d20a658ec11dffde258bad7f5f1ef7e64f22)；[单 EXE 脚本补齐 f480fca6](https://github.com/zy19970/IPSys/commit/f480fca61cc2ef7d9e286ef7427209a6859d467c)；[Node UI 旧断言调整 d8ded0b9](https://github.com/zy19970/IPSys/commit/d8ded0b9cd25de90c59197c9e442623050d5800f)；[运行时拼接修复 c56ce21f](https://github.com/zy19970/IPSys/commit/c56ce21f5a197e4f359263c9b1ff39209862428e)。最终 [CI #38828523508](https://github.com/zy19970/IPSys/actions/runs/38828523508) 已通过自动验收。新版 IP 真实网页页面已接 `/api/v2/ui/ip` 汇聚 FolderId/FileId/LinkId/版本；IP CRUD/排序/批量删除、附件上传暂存内容去重与用户明确选择、类别、下载/预览/同区共享/解绑/新版本、IP Excel 及文件夹/ZIP 导出均指向 V2；JavaScript 适配文件单 EXE 内嵌且有 HTTP Smoke。重点核验跨工作区隔离、SHA-256、原件字节、材料类别、真实 Node UI 渲染、旧业务附件不会与 V2 FileId 混合。**旧统一搜索结果/回收站、原 14 项 MCP 的 IP 旧命令、跨区历史原件事务化复制移动和 Edge/Chrome 用户实机仍待 N2-03-05/N4。**
+
+最终 Windows CI [#38828523508](https://github.com/zy19970/IPSys/actions/runs/38828523508) **completed/success**，真实浏览器脚本执行和本地 SQLCipher/HTTP 回归全部通过。历史失败三次为脚本嵌入、旧 IP 数据模型测试断言和前端提示拼接；另一次为旧排序断言，均通过独立提交修复。需后续用户 Windows/Edge/Chrome 实机验证及 N2-03-05 搜索/回收站/MCP/跨区复制收尾。
