@@ -70,7 +70,7 @@
   const headers={
    "Content-Type":"application/octet-stream",
    "X-File-Name":encodeURIComponent(file.name),
-   "X-Material-Category":encodeURIComponent(meta.category||"其他材料")
+   ...(meta.kind==="ip"?{"X-Material-Category":encodeURIComponent(meta.category||"其他材料")}:{})
   };
   const prepared=await(await api(path+"/prepare?folderId="+meta.ownerId,
    {method:"POST",headers,body:file})).json();
@@ -96,8 +96,8 @@
    input.addEventListener("change",async()=>{
     const file=input.files?.[0];if(!file)return resolve(false);
     try{
-     await api("/api/v2/ip/"+workspace+"/"+record.ownerId+"/files/"+
-      record.fileId+"/versions",{method:"POST",
+     await api(record.kind==="ip"?"/api/v2/ip/"+workspace+"/"+record.ownerId+"/files/"+
+      record.fileId+"/versions":"/api/v2/files/"+workspace+"/"+record.fileId+"/versions",{method:"POST",
       headers:{"Content-Type":"application/octet-stream",
        "X-File-Name":encodeURIComponent(file.name)},body:file});
      resolve(true);
@@ -133,5 +133,34 @@
    {method:"POST",json:{materialCategory:record.category||"其他材料"}});
   return true;
  }
- globalThis.IPSysNativeIp={load,url,upload,newVersion,associate};
+ function fileUrl(workspace,record){
+  return record.kind==="ip"?url(workspace,record.ownerId,record.fileId,record.version):
+   "/api/v2/files/"+workspace+"/"+record.fileId+"/versions/"+record.version+"/download";
+ }
+ async function loadProjectFiles(api,workspace){
+  const response=await api("/api/v2/ui/project-files/"+workspace);
+  const files=await response.json();
+  return files.map(f=>({
+   id:-(f.linkId*100000+f.version),v2:true,
+   linkId:f.linkId,fileId:f.fileId,ownerId:f.folderId,
+   kind:f.kind,section:"",groupId:"v2-file-"+f.linkId,
+   version:f.version,name:f.name,category:f.category,
+   size:f.size,sha256:f.sha256,source:"v2file"
+  }));
+ }
+ async function associateGeneric(api,record,workspace,options){
+  const candidates=options.filter(x=>x.id!==record.ownerId);
+  if(!candidates.length)throw Error("当前工作区没有其它可关联的业务记录。");
+  const userInput=prompt("输入要共享到的"+(record.kind==="project"?"项目":"合同")+
+   " FolderId：\n"+candidates.map(x=>x.id+" · "+x.name).join("\n"));
+  if(userInput==null)return false;
+  const id=Number(userInput);
+  if(!Number.isSafeInteger(id)||!candidates.some(x=>x.id===id))
+   throw Error("请从当前工作区列表中输入有效的业务记录 ID。");
+  await api("/api/v2/files/"+workspace+"/"+record.fileId+"/links",
+   {method:"POST",json:{folderId:id}});
+  return true;
+ }
+ globalThis.IPSysNativeIp={load,url,fileUrl,loadProjectFiles,upload,
+  newVersion,associate,associateGeneric};
 })();

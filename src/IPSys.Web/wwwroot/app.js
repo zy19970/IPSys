@@ -207,12 +207,13 @@ async function refresh(){
   if(!token||!space)return;
   const requestedSpace=space;
   try{const archiveSections=space==='personal'?['certificate','achievement','academic']:['certificate','achievement'];
-  const [rows,projects,ips,contracts,files,trash,mcpAccess,savedOrders,folders,mixedOrders,...archiveResults]=await Promise.all([
+  const [rows,projects,ips,contracts,files,nativeProjectFiles,trash,mcpAccess,savedOrders,folders,mixedOrders,...archiveResults]=await Promise.all([
     api('/api/records/'+space).then(r=>r.json()),
-    api('/api/projects/'+space).then(r=>r.json()),
+    api('/api/v2/ui/projects/'+space).then(r=>r.json()),
     IPSysNativeIp.load(api,space),
-    api('/api/contracts/'+space).then(r=>r.json()),
+    api('/api/v2/ui/contracts/'+space).then(r=>r.json()),
     api('/api/business-files/'+space).then(r=>r.json()),
+    IPSysNativeIp.loadProjectFiles(api,space),
     api('/api/trash/'+space).then(r=>r.json()),
     api('/api/mcp').then(r=>r.json()),
     api('/api/ledger/'+space+'/order').then(r=>r.json()),
@@ -221,7 +222,7 @@ async function refresh(){
     ...archiveSections.map(section=>api('/api/archives/'+space+'/'+section).then(r=>r.json()))
   ]);
     if(requestedSpace!==space||!token)return;
-    liveRows=rows;projectRows=projects;ipRows=ips.rows;contractRows=contracts;businessFileRows=[...files.filter(f=>f.kind!=='ip'),...ips.files];trashRows=trash;archiveFolders=folders;archiveEntryOrders=mixedOrders||{};mcpEnabled=!!mcpAccess.enabled;
+    liveRows=rows;projectRows=projects;ipRows=ips.rows;contractRows=contracts;businessFileRows=[...files.filter(f=>!['ip','project','contract'].includes(f.kind)),...ips.files,...nativeProjectFiles];trashRows=trash;archiveFolders=folders;archiveEntryOrders=mixedOrders||{};mcpEnabled=!!mcpAccess.enabled;
     archiveRows={certificate:[],achievement:[],academic:[]};
     archiveSections.forEach((section,i)=>archiveRows[section]=archiveResults[i]);ledgerOrders=savedOrders||{};sortLedgerData();render();
   }catch(error){notice(error.message,true);}
@@ -570,7 +571,8 @@ function moduleOriginals(records,kind,section=''){
   source:'general',workspace:space,id:f.id,name:f.name,size:f.size,ownerId:r.id,ownerName:r.title
  })));
  return records.flatMap(r=>businessFiles(kind,r.id,section).map(f=>({
-  source:'business',workspace:space,id:f.id,name:f.name,size:f.size,kind,ownerId:r.id,
+  source:f.v2?'v2file':'business',workspace:space,id:f.id,name:f.name,size:f.size,
+  ...(f.v2?{fileId:f.fileId,version:f.version}:{}),kind,ownerId:r.id,
   section:kind==='archive'?section:'',ownerName:r.name,
   ...(kind==='contract'?{projectId:r.projectId,projectName:r.projectName}:{})
  })));
@@ -621,6 +623,7 @@ function showExcelImportReport(report){
  dialog.showModal();
 }
 async function exportExcel(kind,scope,section=''){
+ if(['project','contract'].includes(kind))throw Error('项目/合同 V2 Excel 台账将在下一批接入；不能使用旧资料 ID 导出。');
  const workspace=space;
  const query=kind==='archive'?'?section='+encodeURIComponent(section):'';
  const path=kind==='ip'?'/api/v2/excel/'+workspace+'/ip':'/api/excel/'+workspace+'/'+kind;
@@ -655,6 +658,7 @@ async function exportExcel(kind,scope,section=''){
   (scope==='filtered'?'filtered':'all')+'.xlsx');
 }
 async function importExcel(kind,file,section=''){
+ if(['project','contract'].includes(kind))return notice('项目/合同 V2 Excel 导入正在接入，新资料不可写入旧 Excel 表。',true);
  if(!file||file.size>8*1024*1024)return notice('请使用小于 8 MiB 的固定 XLSX 模板。',true);
  const workspace=space;
  const policy=await chooseExcelDuplicatePolicy();
@@ -733,7 +737,7 @@ function selectedOriginals(){
    f.kind==='contract'?parent?.name:
    archiveRows[f.section]?.find(x=>x.id===f.ownerId)?.name;
   if(!ownerName)continue;
-  items.push({source:f.v2?'v2ip':'business',workspace:space,id:f.id,
+  items.push({source:f.v2?(f.kind==='ip'?'v2ip':'v2file'):'business',workspace:space,id:f.id,
    name:f.name,size:f.size,...(f.v2?{fileId:f.fileId,version:f.version}:{}),
    kind:f.kind,ownerId:f.ownerId,section:f.section,ownerName,
    ...(parent?{projectId:parent.projectId,projectName:parent.projectName}:{})});
@@ -753,7 +757,8 @@ function projectOriginals(projectIds){
    const contract=f.kind==='contract'?contracts.get(f.ownerId):null;
    const project=projects.get(contract?contract.projectId:f.ownerId);
    return {
-    source:'business',workspace:space,id:f.id,name:f.name,size:f.size,
+    source:f.v2?'v2file':'business',workspace:space,id:f.id,name:f.name,size:f.size,
+    ...(f.v2?{fileId:f.fileId,version:f.version}:{}),
     kind:f.kind,ownerId:f.ownerId,section:f.section,
     ownerName:contract?contract.name:project.name,
     ...(contract?{projectId:contract.projectId,projectName:project.name}:{})
@@ -792,13 +797,13 @@ function businessAttachmentList(kind,ownerId,section=''){
  '<button class="btn btn-sm" data-business-download="'+f.id+'">下载</button>'+
  '<button class="btn btn-sm" data-business-delete="'+f.id+'">移除</button></div>';
  return '<div class="tabletools"><b>原件附件 '+groups.size+' 份</b><div class="actions">'+category+
- (kind==='ip'?'':'<label class="file-dedup-choice"><input type="checkbox" id="businessReuseExisting"> 同内容复用存储</label>')+
+ (['ip','project','contract'].includes(kind)?'':'<label class="file-dedup-choice"><input type="checkbox" id="businessReuseExisting"> 同内容复用存储</label>')+
  '<button class="btn primary" data-action="businessUpload">＋ 上传原件</button></div></div>'+
- '<p class="hint">'+(kind==='ip'?'按内容摘要查重并由你明确选择共享身份、复用内容、独立保存或取消；可对现有文件上传新版。':'同名原件可选择更新已有版本链，或作为独立新文件归档；同工作区共享引用自动显示新版本。')+' 单文件上限 64 MiB。</p>'+
+ '<p class="hint">'+(['ip','project','contract'].includes(kind)?'按内容摘要查重并明确选择共享身份、复用内容、独立保存或取消；支持文件历史版本。':'同名原件可选择更新已有版本链，或作为独立新文件归档；同工作区共享引用自动显示新版本。')+' 单文件上限 64 MiB。</p>'+
  ([...groups.values()].map(g=>{g.sort((a,b)=>b.version-a.version||b.id-a.id);
   return '<div class="business-file-group">'+line(g[0],g.length>1,true)+
-   (kind==='ip'?'<button class="btn btn-sm" data-v2-ip-version="'+g[0].id+'">上传新版本</button>':'')+
-   '<button class="btn btn-sm" data-business-associate="'+g[0].id+'">'+(kind==='ip'?'共享到其它知识产权':'复制／移动关联')+'</button>'+ 
+   (['ip','project','contract'].includes(kind)?'<button class="btn btn-sm" data-v2-ip-version="'+g[0].id+'">上传新版本</button>':'')+
+   '<button class="btn btn-sm" data-business-associate="'+g[0].id+'">'+(['ip','project','contract'].includes(kind)?'共享到其它资料':'复制／移动关联')+'</button>'+ 
    (g.length>1?'<details><summary>查看历史版本（'+(g.length-1)+'）</summary>'+
     g.slice(1).map(f=>line(f,true)).join('')+'</details>':'')+'</div>';}).join('')||
  '<p class="hint">暂无附件，可上传原始文件。</p>')+
@@ -860,7 +865,7 @@ async function uploadBusinessBatch(files,meta){
   for(const file of files){
    if(space!==workspace){errors.push('工作区已切换，上传终止');break;}
    if(file.size>64*1024*1024){errors.push(file.name+'：超过 64 MiB');continue;}
-   if(meta.kind==='ip'){
+   if(['ip','project','contract'].includes(meta.kind)){
     notice('正在检查重复内容：'+file.name);
     try{const saved=await IPSysNativeIp.upload(api,file,meta,workspace);
      if(saved){completed++;await refresh();}else skipped++;
@@ -934,7 +939,7 @@ el('filePreviewDialog').addEventListener('close',()=>{
 async function downloadBusinessAttachment(fileId){
  try{
   const file=businessFileRows.find(f=>f.id===fileId);if(!file)return;
-  const path=file.v2?IPSysNativeIp.url(space,file.ownerId,file.fileId,file.version):
+  const path=file.v2?IPSysNativeIp.fileUrl(space,file):
    '/api/business-files/'+space+'/download/'+fileId;
   const response=await api(path);
   const blob=await response.blob();
@@ -1694,7 +1699,7 @@ function sortLedgerData(){
   ...Object.entries(archiveRows).filter(([part])=>!(space==='company'&&part==='certificate'))
    .map(([part,items])=>['archive',part,items])
  ]){
-  if(kind==='ip')continue; // Respect V2 folders.position, never legacy ledger order IDs.
+  if(['ip','project','contract'].includes(kind))continue; // V2 folders.position is authoritative.
   const ranks=new Map((ledgerOrders[kind+':'+section]||[]).map((id,i)=>[id,i]));
   const before=new Map(rows.map((row,i)=>[row.id,i]));
   rows.sort((a,b)=>(ranks.get(a.id)??Number.MAX_SAFE_INTEGER)-
@@ -1835,9 +1840,10 @@ async function moveLedgerRecord(id,direction){
  ledgerMutationBusy=true;syncLedgerSelection();
  try{
   await api(scope.kind==='ip'?'/api/v2/ui/ip/'+space+'/order':
+   ['project','contract'].includes(scope.kind)?'/api/v2/ui/order/'+space+'/'+scope.kind:
    '/api/ledger/'+space+'/'+scope.kind+'/order',
    {method:'POST',json:{ids,section:scope.section}});
-  if(scope.kind==='ip')await refresh();
+  if(['ip','project','contract'].includes(scope.kind))await refresh();
   else{ledgerOrders[scope.kind+':'+scope.section]=ids;sortLedgerData();render();}
   el('content').querySelectorAll('.ledger-record-row').forEach(c=>c.checked=chosen.includes(Number(c.value)));
   syncLedgerSelection();notice('顺序已保存。');
@@ -2014,7 +2020,8 @@ el('content').addEventListener('click',async ev=>{
  }
  if(target.dataset.businessAssociate){
   const f=businessFileRows.find(x=>x.id===Number(target.dataset.businessAssociate));
-  if(f?.v2){try{if(await IPSysNativeIp.associate(api,f,space,ipRows)){
+  if(f?.v2){try{if(await (f.kind==='ip'?IPSysNativeIp.associate(api,f,space,ipRows):
+    IPSysNativeIp.associateGeneric(api,f,space,f.kind==='project'?projectRows:contractRows))){
      await refresh();notice('已共享到目标知识产权。');}}
     catch(e){notice(e.message,true);}return;}
   openBusinessAssoc(Number(target.dataset.businessAssociate));return;
@@ -2032,7 +2039,7 @@ el('content').addEventListener('click',async ev=>{
  if(target.dataset.previewBusiness){
   const file=businessFileRows.find(f=>f.id===Number(target.dataset.previewBusiness));
   if(file)await previewOriginal(file,file.v2?
-   IPSysNativeIp.url(space,file.ownerId,file.fileId,file.version):
+   IPSysNativeIp.fileUrl(space,file):
    '/api/business-files/'+space+'/download/'+file.id);
   return;
  }
@@ -2057,7 +2064,8 @@ el('content').addEventListener('click',async ev=>{
   const f=businessFileRows.find(x=>x.id===fileId);
   if(!f||!confirm('从这条业务记录中移除“'+f.name+'”（v'+f.version+'）？可在回收站恢复。'))return;
   try{
-   await api(f.v2?'/api/v2/ip/'+space+'/'+f.ownerId+'/files/'+f.fileId+'/links/'+f.linkId:
+   await api(f.v2?(f.kind==='ip'?'/api/v2/ip/'+space+'/'+f.ownerId+'/files/'+f.fileId+'/links/'+f.linkId:
+    '/api/v2/files/'+space+'/'+f.fileId+'/links/'+f.linkId):
     '/api/business-files/'+space+'/'+fileId,{method:'DELETE'});
    await refresh();notice('已从此记录移除附件（未物理删除原件）。');
   }catch(e){notice(e.message,true);}
@@ -2202,8 +2210,8 @@ el('content').addEventListener('click',async ev=>{
     if(!confirm('确定删除选中的 '+ids.length+' 条记录吗？删除后可在回收站恢复。'))break;
     ledgerMutationBusy=true;syncLedgerSelection();
     try{
-     if(scope.kind==='ip'){
-      for(const id of ids)await api('/api/v2/folders/'+space+'/ip/'+id,{method:'DELETE'});
+     if(['ip','project','contract'].includes(scope.kind)){
+      for(const id of ids)await api('/api/v2/folders/'+space+'/'+scope.kind+'/'+id,{method:'DELETE'});
      }else await api('/api/ledger/'+space+'/'+scope.kind+'/batch-delete',
       {method:'POST',json:{ids,section:scope.section}});
      await refresh();notice('已删除 '+ids.length+' 条记录，可在回收站恢复。');
@@ -2230,19 +2238,19 @@ el('content').addEventListener('click',async ev=>{
    const c=contractRows.find(row=>row.id===detail?.id);if(!c)break;
    if(!confirm('在“'+c.projectName+'”项目下复制合同“'+c.name+'”？'))break;
    try{
-    const response=await api('/api/contracts/'+space+'/'+c.id+'/copy',{method:'POST'});
+    const response=await api('/api/v2/ui/contracts/'+space+'/'+c.id+'/copy',{method:'POST'});
     const newId=(await response.json()).id;
     const projectReturn=detail.returnProject;
     await refresh();
     detail={kind:'contract',id:newId,returnProject:projectReturn};render();
-    notice('合同已复制到原所属项目');
+    notice('合同及全部文件关联已复制到原项目，原件只保留一份，版本共享。');
    }catch(e){notice(e.message,true);}break;
   }
   case 'contractDelete':{
    const c=contractRows.find(row=>row.id===detail?.id);if(!c)break;
    if(!confirm('将合同“'+c.name+'”从台账移除？此操作为软删除。'))break;
    try{
-    await api('/api/contracts/'+space+'/'+c.id,{method:'DELETE'});
+    await api('/api/v2/folders/'+space+'/contract/'+c.id,{method:'DELETE'});
     const projectReturn=detail.returnProject;
     detail=null;
     await refresh();
@@ -2285,7 +2293,7 @@ el('content').addEventListener('click',async ev=>{
   case 'projectDelete':{
    const p=projectRows.find(x=>x.id===detail?.id);
    if(!p||!confirm('将项目“'+p.name+'”移出当前台账？此操作为软删除。'))break;
-   try{await api('/api/projects/'+space+'/'+p.id,{method:'DELETE'});detail=null;await refresh();notice('项目已移出当前台账');}
+   try{await api('/api/v2/folders/'+space+'/project/'+p.id,{method:'DELETE'});detail=null;await refresh();notice('项目已移出当前台账');}
    catch(e){notice(e.message,true);}break;
   }
   case 'projectCopy':
@@ -2296,7 +2304,7 @@ el('content').addEventListener('click',async ev=>{
      (confirm('复制到另一个工作区？选择“取消”将在当前工作区复制。')?(space==='company'?'personal':'company'):space);
    if(!confirm((move?'转移':'复制')+'项目“'+p.name+'”至'+(destination==='company'?'公司资料':'个人资料')+'？'))break;
    try{
-    await api('/api/projects/'+space+'/'+p.id+'/transfer',{method:'POST',json:{targetWorkspace:destination,move}});
+    throw Error('V2 项目复制和转移要同时处理合同及所有原件历史，尚未接通原子事务。');
     if(move)detail=null;
     await refresh();notice(move?'项目已转移到另一工作区':'项目已复制');
    }catch(e){notice(e.message,true);}
@@ -2545,9 +2553,9 @@ el('contractForm').onsubmit=async event=>{
  const data=Object.fromEntries(new FormData(el('contractForm')).entries());
  el('contractSave').disabled=true;
  try{
-  const endpoint=id===null?'/api/projects/'+workspace+'/'+projectId+'/contracts':
-   '/api/contracts/'+workspace+'/'+id;
-  const response=await api(endpoint,{method:id===null?'POST':'PUT',json:data});
+  const endpoint='/api/v2/folders/'+workspace+'/contract'+(id===null?'':'/'+id);
+  const response=await api(endpoint,{method:id===null?'POST':'PUT',
+   json:{contract:data,...(id===null?{parentId:projectId}:{})}});
   const savedId=id===null?(await response.json()).id:id;
   const projectReturn=detail?.kind==='project'?projectId:detail?.returnProject||null;
   el('contractDialog').close();
@@ -2579,6 +2587,7 @@ function bindExcelCreate(prefix,kind,dialogId,isNew,sectionOf=()=> ''){
  const template=el(prefix+'ExcelTemplate'),choose=el(prefix+'ExcelChoose'),input=el(prefix+'ExcelFile');
  template.onclick=async()=>{
   if(!isNew())return;
+  if(kind==='project')return notice('项目 V2 Excel 模板将在下一批接入，暂不使用旧项目台账。',true);
   const section=sectionOf();
   try{
    const query=kind==='archive'?'?section='+encodeURIComponent(section):'';
@@ -2587,7 +2596,9 @@ function bindExcelCreate(prefix,kind,dialogId,isNew,sectionOf=()=> ''){
    await saveExcel(response,kind+(section?'-'+section:'')+'-template.xlsx');
   }catch(error){notice('下载 Excel 模板失败：'+error.message,true);}
  };
- choose.onclick=()=>{if(!isNew())return;input.value='';input.click();};
+ choose.onclick=()=>{if(!isNew())return;
+  if(kind==='project')return notice('项目 V2 Excel 导入正在接入，暂不写入旧项目表。',true);
+  input.value='';input.click();};
  input.onchange=async event=>{
   const file=event.target.files?.[0];event.target.value='';
   if(!file||!isNew())return;
@@ -2608,8 +2619,8 @@ el('projectForm').onsubmit=async ev=>{
  const values=Object.fromEntries(new FormData(el('projectForm')).entries());
  el('saveProject').disabled=true;
  try{
-  const result=await api('/api/projects/'+space+(id===null?'':'/'+id),
-   {method:id===null?'POST':'PUT',json:values});
+  const result=await api('/api/v2/folders/'+space+'/project'+(id===null?'':'/'+id),
+   {method:id===null?'POST':'PUT',json:{project:values}});
   const created=id===null?(await result.json()).id:id;
   el('projectDialog').close();
   await refresh();

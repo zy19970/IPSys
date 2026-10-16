@@ -120,6 +120,8 @@ const IPSysExport=(()=>{
   const url=file.source==='general'?'/api/files/'+file.workspace+'/'+file.id:
    file.source==='v2ip'?'/api/v2/ip/'+file.workspace+'/'+file.ownerId+'/files/'+
     file.fileId+'/versions/'+file.version+'/download':
+   file.source==='v2file'?'/api/v2/files/'+file.workspace+'/'+file.fileId+
+    '/versions/'+file.version+'/download':
    '/api/business-files/'+file.workspace+'/download/'+file.id;
   const response=await api(url,{signal});
   if(!response.body)throw Error('浏览器未提供流式读取能力');

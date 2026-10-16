@@ -317,10 +317,10 @@ assert.ok(css.includes('.auth-mode-actions{display:flex'),'Secondary new-vault b
 assert.ok(html.includes('id="projectDialog"'),'Project editor must be a real modal');
 for(const name of ['pName','pType','pNo','pStatus','pLeader','pOrg','pStart','pEnd','pCategory','pTags','pRemarks'])
  assert.ok(html.includes('id="'+name+'"'),'Missing project field '+name);
-for(const route of ["'/api/projects/'+space","method:'DELETE'","method:'PUT'","method:'POST'","targetWorkspace:destination"])
+for(const route of ["'/api/v2/ui/projects/'+space","'/api/v2/folders/'+space+'/project'","method:'DELETE'","method:'PUT'","method:'POST'"])
  assert.ok(js.includes(route),'Missing project persistence or transfer '+route);
 assert.ok(js.includes("projectRows=projects;ipRows=ips.rows;contractRows=contracts;"),
- 'Projects and contracts must keep the legacy API; IP must use native V2 FolderId rows');
+ 'Project/contract list and IP rows must use native V2 FolderId sources');
 const projectCtx=vm.createContext({sessionStorage:{getItem:()=>null},document:exportDocument});
 const projector=js.slice(js.indexOf('function projectViewRows('),js.indexOf('function archiveCard(',js.indexOf('function projectViewRows(')));
 vm.runInContext(preamble+
@@ -417,7 +417,7 @@ for(const action of ['contractAdd','contractEdit','contractCopy','contractDelete
 assert.ok(js.includes('data-contract-id='),'Real contract items must link to saved IDs');
 assert.ok(js.includes('data-contract-back-project'),'Contract detail must return to owning project');
 assert.ok(js.includes("section('所属合同',projectContracts(p.id))"),'Project details must list real children');
-assert.ok(js.includes("id===null?'/api/projects/'+workspace+'/'+projectId+'/contracts'"),
+assert.ok(js.includes("json:{contract:data,...(id===null?{parentId:projectId}:{})}"),
  'New contracts must be created from their project ID');
 const contractFrom=js.indexOf('const contractFieldLabels=');
 const contractUntil=js.indexOf('function projectViewRows(',contractFrom);
@@ -917,15 +917,15 @@ assert.ok(js.includes("data-excel-kind=\"archive\" data-excel-section=\"certific
 assert.ok(html.includes('id="businessFileInput"'),'Business original file picker missing');
 assert.ok(js.includes("api('/api/business-files/'+space).then(r=>r.json())"),
  'Business attachment metadata must be loaded by workspace');
-assert.ok(js.includes("businessFileRows=[...files.filter(f=>f.kind!=='ip'),...ips.files]"),
- 'Native IP file-link identities must replace legacy IP attachments without mixing IDs');
+assert.ok(js.includes("businessFileRows=[...files.filter(f=>!['ip','project','contract'].includes(f.kind)),...ips.files,...nativeProjectFiles]"),
+ 'Native FolderId and FileId must replace all IP, project and contract legacy attachments');
 for(const text of ["businessAttachmentList('project',p.id)","businessAttachmentList('ip',row.id)",
  "businessAttachmentList('contract',c.id)","businessAttachmentList('archive',record.id,page)"])
  assert.ok(js.includes(text),'Business detail is missing its actual attachment list: '+text);
 for(const action of ['businessUpload','businessDownload','businessDelete'])
  assert.ok(js.includes(action),'Required business attachment operation missing: '+action);
-assert.ok(js.includes("'/api/contracts/'+space+'/'+c.id+'/copy'"),
- 'Duplicating contracts must clone persisted file references with the contract');
+assert.ok(js.includes("'/api/v2/ui/contracts/'+space+'/'+c.id+'/copy'"),
+ 'Native contract duplicate must preserve same-file references transactionally');
 assert.ok(js.includes("businessFileCount('archive',r.id,k)"),
  'Archive detail ledger must show actual attachment counts');
 
@@ -1195,8 +1195,8 @@ vm.runInContext(
  helpers+"sortLedgerData();"+
  "globalThis.ids=[projectRows.map(x=>x.id),ipRows.map(x=>x.id),"+
  "contractRows.map(x=>x.id),archiveRows.certificate.map(x=>x.id)];",orderVm);
-assert.deepEqual(JSON.parse(JSON.stringify(orderVm.ids)),[[3,1,2],[4,5],[7,6],[9,8]],
- 'Projects, contracts and archives respect legacy order; native IP stays in V2 Folder.position order');
+assert.deepEqual(JSON.parse(JSON.stringify(orderVm.ids)),[[1,2,3],[4,5],[6,7],[9,8]],
+ 'Project/contract/IP use V2 Folder.position, archives alone respect legacy ordering');
 // Other categories remain untouched by a different section's ordering.
 assert.ok(js.includes("if(detail?.kind==='project')return {kind:'contract',section:''}")&&
  js.includes("if(archiveGroup&&archiveSections.includes(page)")&&

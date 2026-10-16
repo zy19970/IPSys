@@ -1480,6 +1480,7 @@ static class WebSmoke
             await NativeIpFileHttpSmoke.VerifyAsync(client);
             await NativeIpExcelHttpSmoke.VerifyAsync(client);
             await NativeIpUiHttpSmoke.VerifyAsync(client);
+            await NativeProjectContractUiHttpSmoke.VerifyAsync(client);
             using var finalLock = await client.PostAsync("/api/lock", null);
             finalLock.EnsureSuccessStatusCode();
 
