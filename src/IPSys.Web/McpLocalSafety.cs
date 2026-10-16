@@ -15,7 +15,7 @@ static partial class McpLocal
         return original.StartsWith("create_",StringComparison.Ordinal) ||
                original.StartsWith("update_",StringComparison.Ordinal) ||
                original.StartsWith("delete_",StringComparison.Ordinal) ||
-               original=="upload_files";
+               original=="upload_files" || ExtraWrite(original);
     }
 
     private static void ValidateToolArguments(string name,JsonElement args)

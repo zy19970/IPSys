@@ -102,6 +102,28 @@ static class NativeMcpSmoke
               contractItem?["businessData"]?["amount"]?.GetValue<string>()=="1234.5",
               "V2 MCP contract has actual V2 project parent");
 
+        await Original("update_contract",new{
+            workspace="company",contract_id=contract,remarks="MCP编辑合同回归",
+            amount=2345.75
+        });
+        var editedContract=Find(await Call("list_contracts",new{workspace="company"}),contract);
+        Check(editedContract?["businessData"]?["remarks"]?.GetValue<string>()=="MCP编辑合同回归" &&
+              editedContract?["businessData"]?["amount"]?.GetValue<string>()=="2345.75" &&
+              editedContract?["businessData"]?["contractNo"]?.GetValue<string>()=="C-"+suffix,
+            "MCP update_contract patches fields without losing existing contract number");
+        var searched=await Original("search_records",new{
+            workspace="company",query="MCP编辑合同回归"
+        });
+        Check(searched["results"] is JsonArray hits &&
+            hits.Any(x=>x?["kind"]?.GetValue<string>()=="contract" &&
+                x?["id"]?.GetValue<long>()==contract),
+            "MCP unified search finds an updated contract");
+        bool illegalContract=false;
+        try {await Original("update_contract",new{
+            workspace="personal",contract_id=contract,name="越权"
+        });}catch(IOException){illegalContract=true;}
+        Check(illegalContract,"MCP contract update respects workspace isolation");
+
         string patent="原生MCP专利"+suffix;
         long ip=Id(await Call("create_ip",new{
             workspace="company",name=patent,ip_type="发明专利",
@@ -148,6 +170,28 @@ static class NativeMcpSmoke
                 "delete_ip_file only removes the selected IP link");
         }
         finally { File.Delete(ipPath); }
+
+        var projectCopy=await Original("transfer_project",new{
+            workspace="company",project_id=project,
+            target_workspace="personal",move=false,
+            request_id=Guid.NewGuid().ToString("N")
+        });
+        long copiedProject=Id(projectCopy);
+        Check(Find(await Call("list_projects",new{workspace="personal"}),
+            copiedProject)!=null &&
+            Find(await Call("list_projects",new{workspace="company"}),project)!=null,
+            "transfer_project copies a project to personal without removing source");
+        await Call("delete_project",new{
+            workspace="personal",project_id=copiedProject
+        });
+        var ipCopy=await Original("transfer_ip",new{
+            workspace="company",ip_id=ip,
+            target_workspace="personal",move=false
+        });
+        long copiedIp=Id(ipCopy);
+        Check(Find(await Call("list_ips",new{workspace="personal"}),
+            copiedIp)!=null,"transfer_ip copies V2 IP record to target workspace");
+        await Call("delete_ip",new{workspace="personal",ip_id=copiedIp});
 
         await Call("delete_project",new{workspace="company",project_id=project});
         Check(Find(await Call("list_contracts",new{workspace="company"}),contract)==null,
@@ -232,6 +276,19 @@ static class NativeMcpSmoke
         await Original("delete_general",new{
             workspace="personal",general_id=Id(firstWrite)
         });
+        var trash=await Original("list_trash",new{workspace="personal"});
+        Check(trash is JsonArray waste && waste.Any(x=>
+            x?["kind"]?.GetValue<string>()=="v2_general" &&
+            x?["id"]?.GetValue<long>()==Id(firstWrite)),
+            "MCP trash list contains the soft-deleted general record");
+        await Original("restore_trash",new{
+            workspace="personal",kind="v2_general",id=Id(firstWrite)
+        });
+        Check(Find(await Original("list_general",new{workspace="personal"}),
+            Id(firstWrite))!=null,"MCP restore_trash recovers a V2 folder");
+        await Original("delete_general",new{
+            workspace="personal",general_id=Id(firstWrite)
+        });
 
         bool unknownParamDenied=false;
         try { await Original("create_project",new{
@@ -284,16 +341,70 @@ static class NativeMcpSmoke
                   pf.Any(x=>x?["fileId"]?.GetValue<long>()==file &&
                       x?["id"]?.GetValue<long>()==link),
                 "project file list uses V2 folder-file links");
+            var detail=await Original("get_file_details",new{
+                workspace="company",file_id=file
+            });
+            Check(detail["id"]?.GetValue<long>()==file &&
+                detail["versions"] is JsonArray versions && versions.Count==1,
+                "get_file_details exposes V2 file metadata and version history");
+            await Original("update_file_metadata",new{
+                workspace="company",file_id=file,
+                description="MCP选填说明",tags="合同,原件",
+                file_number="FILE-"+suffix
+            });
+            detail=await Original("get_file_details",new{
+                workspace="company",file_id=file
+            });
+            Check(detail["description"]?.GetValue<string>()=="MCP选填说明" &&
+                detail["fileNumber"]?.GetValue<string>()=="FILE-"+suffix,
+                "MCP file metadata update retains FileId and stores optional properties");
+            string output=Path.Combine(Path.GetTempPath(),
+                "IPSys-MCP-out-"+suffix+".bin");
+            try
+            {
+                var saved=await Original("download_file_version",new{
+                    workspace="company",file_id=file,version=1,output_path=output
+                });
+                Check(saved["size"]?.GetValue<long>()==originalBytes.Length &&
+                    (await File.ReadAllBytesAsync(output)).SequenceEqual(originalBytes),
+                    "MCP explicit-version download restores decrypted original bytes");
+                bool overwriteDenied=false;
+                try{await Original("download_file_version",new{
+                    workspace="company",file_id=file,version=1,output_path=output
+                });}catch(IOException){overwriteDenied=true;}
+                Check(overwriteDenied,"MCP download cannot overwrite a local file");
+            }
+            finally{File.Delete(output);}
+
             byte[] downloaded=await client.GetByteArrayAsync(
                 $"/api/v2/files/company/{file}/versions/1/download");
             Check(downloaded.SequenceEqual(originalBytes),
                 "MCP uploaded project original bytes round trip");
 
+            long copyFolder=Id(await Original("create_general",new{
+                workspace="company",title="MCP文件复制验证"+suffix
+            }));
+            var copy=await Original("copy_file",new{
+                workspace="company",file_id=file,target_workspace="company",
+                target_folder_id=copyFolder,mode="reuse-content",
+                request_id=Guid.NewGuid().ToString("N")
+            });
+            long duplicateFile=copy["fileId"]?.GetValue<long>()??0;
+            Check(duplicateFile>0 && duplicateFile!=file &&
+                (await Original("get_file_details",new{
+                    workspace="company",file_id=duplicateFile
+                }))["versions"] is JsonArray copiedVersions && copiedVersions.Count==1,
+                "MCP copy_file creates independent FileId/version identity");
+            await Original("delete_general",new{
+                workspace="company",general_id=copyFolder
+            });
+
             // Contract shares the same immutable V2 file; detach only its link.
-            using(var linked=await client.PostAsJsonAsync(
-                $"/api/v2/files/company/{file}/links",
-                new{folderId=originalContractId}))
-                linked.EnsureSuccessStatusCode();
+            var shared=await Original("associate_file",new{
+                workspace="company",file_id=file,link_id=link,
+                target_folder_id=originalContractId,move=false
+            });
+            Check(shared is JsonObject,"MCP associate_file returns a V2 link result");
             var contractFiles=await Original("list_contract_files",new{
                 workspace="company",contract_id=originalContractId
             });
@@ -308,6 +419,18 @@ static class NativeMcpSmoke
                 workspace="company",contract_id=originalContractId
             })).AsArray().Count==0,
                 "contract unlink only deletes the selected LinkId");
+            await Original("restore_file_link",new{
+                workspace="company",owner_id=originalContractId,
+                file_id=file,link_id=contractLink
+            });
+            Check((await Original("list_contract_files",new{
+                workspace="company",contract_id=originalContractId
+            })).AsArray().Any(x=>x?["id"]?.GetValue<long>()==contractLink),
+                "MCP restores exact deleted LinkId in original folder");
+            await Original("delete_contract_file",new{
+                workspace="company",contract_id=originalContractId,
+                file_id=file,link_id=contractLink
+            });
             Check((await Original("list_project_files",new{
                 workspace="company",project_id=originalProject
             })).AsArray().Any(x=>x?["fileId"]?.GetValue<long>()==file),

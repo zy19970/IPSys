@@ -247,7 +247,7 @@ static partial class McpLocal
                     inputSchema=type.GetProperty("inputSchema")!.GetValue(tool)!
                 };
             }).ToArray();
-        return [..legacy,..native,..ArchiveTools(),
+        return [..legacy,..native,..ArchiveTools(),..ExtraTools(),
             Tool("get_operation_result","通过 request_id 查询加密库记录的写操作状态；pending/uncertain 不可自动重试。",new(){
                 ["workspace"]=Field("string","工作区",Workspaces),
                 ["request_id"]=Field("string","此前写操作的幂等编号")
@@ -576,6 +576,13 @@ static partial class McpLocal
            "create_contract" or "delete_contract" or
            "create_ip" or "update_ip" or "delete_ip")
             return await ExecuteNativeAsync(client,workspace,name,args);
+        if(name is "update_contract" or "get_file_details" or
+           "update_file_metadata" or "download_file_version" or
+           "associate_file" or "copy_file" or "restore_file_link" or
+           "transfer_project" or "transfer_ip" or "transfer_archive" or
+           "transfer_general" or "search_records" or "list_trash" or
+           "restore_trash")
+            return await ExecuteExtraAsync(client,workspace,name,args,stop);
         if(name is "list_archives" or "create_archive" or "update_archive" or
            "delete_archive" or "list_archive_folders" or "create_archive_folder" or
            "update_archive_folder" or "delete_archive_folder" or "list_general" or

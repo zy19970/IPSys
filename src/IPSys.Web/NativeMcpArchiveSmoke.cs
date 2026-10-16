@@ -94,6 +94,28 @@ static class NativeMcpArchiveSmoke
         });
         Check(Has(await Run("list_general",new{workspace="company"}),general),
             "general rename preserves FolderId");
+        var generalCopied=await Run("transfer_general",new{
+            workspace="company",general_id=general,
+            target_workspace="personal",move=false
+        });
+        long newGeneral=Id(generalCopied);
+        Check(Has(await Run("list_general",new{workspace="personal"}),newGeneral),
+            "transfer_general copies V2 general folder to another workspace");
+        await Run("delete_general",new{
+            workspace="personal",general_id=newGeneral
+        });
+        var archiveCopied=await Run("transfer_archive",new{
+            workspace="company",section="achievement",archive_id=archive,
+            target_workspace="personal",target_section="achievement",move=false
+        });
+        long newArchive=Id(archiveCopied);
+        Check(Has(await Run("list_archives",new{
+            workspace="personal",section="achievement"
+        }),newArchive),"transfer_archive preserves V2 archive in target workspace");
+        await Run("delete_archive",new{
+            workspace="personal",section="achievement",archive_id=newArchive
+        });
+
         byte[] source=RandomNumberGenerator.GetBytes(1301);
         string path=Path.Combine(Path.GetTempPath(),tag+".pdf");
         await File.WriteAllBytesAsync(path,source);

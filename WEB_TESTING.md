@@ -5,6 +5,10 @@
 用户确认旧数据库均为可丢弃测试数据，不迁移。N2-04 全业务 V2、N4 第一批新库物理表/API/回收站收敛以及第二批删除 31 份旧 Store/Provider/HTTP/历史测试源码已通过自动验收：最新源码 `b3c8f3b` 对应 [Windows CI #38911635273](https://github.com/zy19970/IPSys/actions/runs/38911635273) **completed/success**。本机 Edge/Chrome、真实 Codex、桌面 XLSX、故障注入和 T01–T09 仍未完全验证。
 
 
+### MCP 第三批：完整业务能力回归（2026-10-17）
+
+本批复用正式已授权 V2 HTTP：update_contract、get_file_details、update_file_metadata、download_file_version、associate_file、restore_file_link、copy_file、transfer_project/ip/archive/general、search_records、list_trash、restore_trash，共 14 项。C# SQLCipher 冒烟新增合同局部更新与搜索、文件描述和指定版本下载（禁止覆盖原路径）、同工作区关联共享及恢复、完整文件独立身份复制、项目/IP/档案/综合资料跨工作区复制、回收站精确恢复。写操作通过已有 request_id 幂等日志，不声明跨进程崩溃严格 exactly-once。真实 Codex/WorkBuddy 下载路径权限、大量文件和多 Agent 同时转移仍待本机验收；此时尚未标记 CI 通过。
+
 ### MCP 第二批：一次 SQL 全局文件查询与有界分页（2026-10-16）
 
 **自动验收记录**：首次 `f0454e4` 的 [CI #38926833507](https://github.com/zy19970/IPSys/actions/runs/38926833507) 因分页测试模式局部变量跨断言使用，触发 `CS0165` Debug 编译失败；补丁 [`bfab1a8`](https://github.com/zy19970/IPSys/commit/bfab1a8aead2a65cf375b2fe5429776befe26970) 调整局部声明后，[Windows CI #38927263017](https://github.com/zy19970/IPSys/actions/runs/38927263017) **completed/success**。Debug/Release、MCP 正式 stdio、SQLCipher/HTTP 和 Node 全套成功。新增列表分页/归档过滤/IP 文件 MCP 直接调用等均在 SQLCipher 冒烟中执行；大型资料库定量压测、桌面 WorkBuddy/Codex 并发、offset 分页跨页修改依然需人工实测。

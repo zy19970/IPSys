@@ -43,6 +43,12 @@ MCP 写操作（新增、修改、删除、上传，以及已有 `v2_*` 写操�
 
 **本批专项回归**：检查 V2 文件查询中跨工作区隔离、同一 FileId 多位置、合同父级删除后的可见性、档案目录层级、分页前后 LinkId 不重复、名称与 Folder 筛选、非法页大小拒绝；验证发布版 stdio 的真实 `tools/call` 能严格拒绝未知字段。Windows CI 和真实 Codex/WorkBuddy 大型资料库负载分别留证。
 
+## MCP 第三批业务操作
+
+现有 V2 HTTP 能力补齐至 MCP：`update_contract` 编辑合同；`get_file_details`、`update_file_metadata`、`download_file_version` 管理文件属性、版本和指定版本本机下载；`associate_file`、`restore_file_link`、`copy_file` 管理原件共享、关联恢复及完整历史复制；`transfer_project`、`transfer_ip`、`transfer_archive`、`transfer_general` 处理整份资料复制/移动；`search_records` 提供跨业务搜索；`list_trash` 与 `restore_trash` 查询及精确恢复回收站条目。
+
+写操作使用可选 `request_id` 幂等日志；回收站恢复必须提供 `list_trash` 原样返回的 kind/id/section。下载路径是 **运行 IPSys 的本机 Windows 电脑**上的绝对路径，仅新建文件、不覆盖已有文件。跨工作区复制文件必须使用 `independent-content`，共享关联只允许同工作区。单个文件上限仍为 64 MiB；所有操作需要当前数据库解锁和手动 MCP 授权。
+
 ## 使用步骤
 
 1. 从 Actions 的最新成功构建解压 IPSys-Web-win-x64 到固定文件夹。
