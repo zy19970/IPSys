@@ -37,6 +37,7 @@ static class NativeMcpSmoke
               "project and contract file MCP actions are available");
         // One idle client must never block an independent Agent's request.
         await McpLocal.VerifyConcurrentClientsAsync();
+        await McpLocal.VerifyRestrictedPipeAclAsync(); // Owner + DACL: only user and SYSTEM.
         var parallel=await Task.WhenAll(Enumerable.Range(0,12).Select(_=>Original("list_files_page",new{workspace="company",limit=10})));
         Check(parallel.All(x=>x["items"] is JsonArray),"concurrent file-page reads complete without 409");
         var schemas=JsonSerializer.SerializeToElement(McpLocal.Tools());

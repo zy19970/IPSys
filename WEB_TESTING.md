@@ -9,6 +9,10 @@
 
 ### MCP 黑盒 ISS-1～10 专项复测（2026-10-17）
 
+**管道权限专项补充**：Windows CI 追加连接后检查实际命名管道 ACL 的允许账户仅为当前 TokenUser 与 LocalSystem，且 Owner SID 为 TokenUser；若 ACL/安全策略阻止连接，MCP 子进程应返回带具体排查方向的中文错误。这个测试在当前 CI 用户权限内进行，**不等于**非提升 WorkBuddy 可以访问管理员宿主。Windows MIC 可能禁止跨完整性级别写入，用户测试应分别记录双方 TokenUser、完整性级别、Windows 管道拒绝码及 EXE NTFS 权限；默认方案是运行普通权限宿主，不降低权限标签、不开放不同用户访问。
+
+
+
 **自动回归验收完成**：源码 [`6cb1e6b`](https://github.com/zy19970/IPSys/commit/6cb1e6b0d30031d2c1e55f5e34de720ad0fa0e62) 对应 [Windows CI #38939165516](https://github.com/zy19970/IPSys/actions/runs/38939165516) completed/success，Windows Debug、Release 单 EXE、stdio JSON-RPC、SQLCipher/HTTP 和 Node 全部成功。ISS-1 的管理员宿主 + 非提升同用户、WorkBuddy Bash 沙箱与不同 Windows 用户隔离、以及 ISS-2 的大文件长任务负载仍须在用户环境复测，不能勾选为已实测。
 
 
@@ -16,7 +20,7 @@ Windows CI 必须验证显式同用户管道 ACL/owner 校验、12 路以上并�
 
 | 项目 | 验收方式 | 目标 |
 | --- | --- | --- |
-| ISS-1 | 同用户提升/非提升、WorkBuddy Bash/PowerShell、不同用户 | 同一用户跨权限级别可连接，其他用户必须拒绝；程序目录 ACL 独立检查 |
+| ISS-1 | 同用户提升/非提升、WorkBuddy Bash/PowerShell、不同用户 | CI 核查管道 Owner 为 TokenUser，DACL 允许规则只涉及当前用户与 SYSTEM；不同用户必须拒绝。管理员宿主 + 普通客户端仍须单独核验 Windows MIC，不以放宽完整性标签替代安全验证；程序 NTFS 权限另查 |
 | ISS-2 | 12～24 次同时 list_files_page，四读加一文件任务 | 纯读不因短时 Gate 竞争立刻 409；繁忙等待有界；仅明确未执行的写请求可有限重试 |
 | ISS-3/5/10 | 发布版 `--mcp` 发送空白行、虚构版本、正常握手 | UTF-8、空行安静、返回服务器实际支持版本，客户端文案中立 |
 | ISS-4/6 | 不存在文件 404 与新文件版本时间 | 错误含类型/ID；UTC 带 Z 标注 |

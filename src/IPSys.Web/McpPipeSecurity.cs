@@ -30,6 +30,29 @@ static class McpPipeSecurity
     internal static NamedPipeClientStream CreateClient(string name)=>
         new(".",name,PipeDirection.InOut,PipeOptions.Asynchronous);
 
+    // CI can inspect the effective pipe DACL without granting an unknown
+    // Windows account access or needing administrator privileges.
+    internal static void VerifyRestrictedAcl(NamedPipeClientStream client)
+    {
+        var security=PipesAclExtensions.GetAccessControl(client);
+        var sid=CurrentUserSid;
+        var system=new SecurityIdentifier(WellKnownSidType.LocalSystemSid,null);
+        var rules=security.GetAccessRules(true,true,typeof(SecurityIdentifier));
+        bool user=false,localSystem=false;
+        foreach(PipeAccessRule rule in rules)
+        {
+            if(rule.AccessControlType!=AccessControlType.Allow)
+                continue;
+            if(rule.IdentityReference.Equals(sid))user=true;
+            else if(rule.IdentityReference.Equals(system))localSystem=true;
+            else throw new UnauthorizedAccessException(
+                "MCP 管道 ACL 出现非当前用户或 SYSTEM 的允许规则。");
+        }
+        if(!user||!localSystem)
+            throw new UnauthorizedAccessException(
+                "MCP 管道未同时包含当前真实用户及 SYSTEM 的授权规则。");
+    }
+
     internal static void VerifyServerOwner(NamedPipeClientStream client)
     {
         // Unlike PipeOptions.CurrentUserOnly, this compares the pipe's owner

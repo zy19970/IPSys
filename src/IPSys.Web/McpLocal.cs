@@ -351,6 +351,15 @@ static partial class McpLocal
             throw new IOException("多客户端 MCP 并发查询没有返回有效列表。");
     }
 
+    internal static async Task VerifyRestrictedPipeAclAsync()
+    {
+        using var pipe=McpPipeSecurity.CreateClient(PipeName);
+        using var timeout=new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        await pipe.ConnectAsync(timeout.Token);
+        McpPipeSecurity.VerifyServerOwner(pipe);
+        McpPipeSecurity.VerifyRestrictedAcl(pipe);
+    }
+
     internal static Task<JsonNode> RunSmokeToolAsync(string name,JsonElement fields) =>
         CallHostAsync(name,fields);
     private static async Task<JsonNode> CallHostAsync(string name,JsonElement fields)
@@ -358,6 +367,18 @@ static partial class McpLocal
         using var pipe=McpPipeSecurity.CreateClient(PipeName);
         using var timeout=new CancellationTokenSource(TimeSpan.FromSeconds(15));
         try{await pipe.ConnectAsync(timeout.Token); McpPipeSecurity.VerifyServerOwner(pipe);}
+        catch(UnauthorizedAccessException ex)
+        {
+            throw new IOException("MCP 管道安全校验或 Windows 访问权限拒绝连接。"+
+                "请确认 Agent 与 IPSys 属于同一 Windows 登录用户；"+
+                "若宿主以管理员权限运行，建议关闭宿主并以普通用户重新启动，"+
+                "不要放宽管道 ACL。原始原因："+ex.Message,ex);
+        }
+        catch(System.Security.SecurityException ex)
+        {
+            throw new IOException("MCP 管道安全描述符无法读取；"+
+                "请检查当前登录用户、应用提权状态和安全策略。原始原因："+ex.Message,ex);
+        }
         catch(Exception ex)when(ex is IOException or OperationCanceledException or TimeoutException)
         {
             string message=IsHostRunning()
