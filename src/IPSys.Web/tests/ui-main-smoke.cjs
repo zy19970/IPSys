@@ -6,6 +6,11 @@ const dir=path.resolve(__dirname,'../wwwroot');
 const html=fs.readFileSync(path.join(dir,'index.html'),'utf8');
 const js=fs.readFileSync(path.join(dir,'app.js'),'utf8');
 const css=fs.readFileSync(path.join(dir,'style.css'),'utf8');
+const v2IpJs=fs.readFileSync(path.join(dir,'ip-v2.js'),'utf8');
+new (require('node:vm').Script)(v2IpJs);
+assert.ok(html.includes('src="/ip-v2.js" defer'),'Frozen IP page must load embedded V2 adapter before app.js');
+for(const apiName of ['IPSysNativeIp','/api/v2/ui/ip/','/api/v2/files/','/api/v2/ip/'])
+ assert.ok(v2IpJs.includes(apiName),'Native IP browser bridge missing '+apiName);
 const requiredIds=['locked','chooseWorkspace','unlocked','openForm','newMode','oldMode','dbPathWrap','dbPath','resumeHint','password','confirmWrap','confirm','submitOpen','sidebar','bottomnav','projectExcelImport','projectExcelTemplate','projectExcelChoose','projectExcelFile','sidebarDbName','globalSearch','content','dbNameChoice','closeDbFromChoice','modal','newRecordForm','title','saveRecord','cancelRecord','closeDbButton','toast'];
 for(const id of requiredIds)assert.match(html,new RegExp(`id="${id}"`),`Missing real page element ${id}`);
 for(const phrase of ['选择一个工作区','个人资料','公司资料','app.js','style.css'])assert.ok(html.includes(phrase),'Missing '+phrase);
@@ -314,7 +319,8 @@ for(const name of ['pName','pType','pNo','pStatus','pLeader','pOrg','pStart','pE
  assert.ok(html.includes('id="'+name+'"'),'Missing project field '+name);
 for(const route of ["'/api/projects/'+space","method:'DELETE'","method:'PUT'","method:'POST'","targetWorkspace:destination"])
  assert.ok(js.includes(route),'Missing project persistence or transfer '+route);
-assert.ok(js.includes("projectRows=projects;ipRows=ips;contractRows=contracts;"),'Projects, IP and contracts must refresh from the real database');
+assert.ok(js.includes("projectRows=projects;ipRows=ips.rows;contractRows=contracts;"),
+ 'Projects and contracts must keep the legacy API; IP must use native V2 FolderId rows');
 const projectCtx=vm.createContext({sessionStorage:{getItem:()=>null},document:exportDocument});
 const projector=js.slice(js.indexOf('function projectViewRows('),js.indexOf('function archiveCard(',js.indexOf('function projectViewRows(')));
 vm.runInContext(preamble+
@@ -382,7 +388,8 @@ for(const name of ['name','ipType','status','applicants','rightHolders','creator
  assert.ok(html.includes('id="ip-'+name+'"'),'Missing intellectual-property field '+name);
 for(const action of ['ipAdd','ipEdit','ipDelete','ipCopy','ipMove'])
  assert.ok(js.includes("case '"+action+"'"),'IP operation missing '+action);
-assert.ok(js.includes("ipRows=ips;contractRows=contracts;"),'IP and contracts must be loaded from real API');
+assert.ok(js.includes("ipRows=ips.rows;contractRows=contracts;"),
+ 'IP FolderId rows must be projected from the V2 service');
 const intellectualCode=js.slice(js.indexOf('const ipStatusByType='),js.indexOf('function projectViewRows(',js.indexOf('const ipStatusByType=')));
 assert.ok(intellectualCode.length>0);
 const ipCtx=vm.createContext({sessionStorage:{getItem:()=>null},document:exportDocument});
@@ -910,7 +917,8 @@ assert.ok(js.includes("data-excel-kind=\"archive\" data-excel-section=\"certific
 assert.ok(html.includes('id="businessFileInput"'),'Business original file picker missing');
 assert.ok(js.includes("api('/api/business-files/'+space).then(r=>r.json())"),
  'Business attachment metadata must be loaded by workspace');
-assert.ok(js.includes("businessFileRows=files"),'Real attachment rows must be bound from SQLCipher');
+assert.ok(js.includes("businessFileRows=[...files.filter(f=>f.kind!=='ip'),...ips.files]"),
+ 'Native IP file-link identities must replace legacy IP attachments without mixing IDs');
 for(const text of ["businessAttachmentList('project',p.id)","businessAttachmentList('ip',row.id)",
  "businessAttachmentList('contract',c.id)","businessAttachmentList('archive',record.id,page)"])
  assert.ok(js.includes(text),'Business detail is missing its actual attachment list: '+text);
