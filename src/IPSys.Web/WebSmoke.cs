@@ -369,39 +369,82 @@ static class WebSmoke
         catch(IOException ex)when(ex.Message.Contains("所选状态不适用于"))
         {invalidIpDenied=true;}
         if(!invalidIpDenied)throw new IOException("MCP 未使用知识产权原状态校验。");
-        // A native IP FolderId must not be handed to an old business-file
-        // upload path: it could collide with an unrelated legacy owner ID.
-        bool oldUploadRejected=false;
-        try
-        {
-            await McpLocal.RunSmokeToolAsync("upload_files",
-                System.Text.Json.JsonSerializer.SerializeToElement(new{
-                    workspace="company",kind="ip",owner_id=ipId,paths=new[]{filename}
-                }));
-        }
-        catch(IOException ex)when(ex.Message.Contains("V2"))
-        {oldUploadRejected=true;}
-        if(!oldUploadRejected)
-            throw new IOException("旧 MCP upload_files 不得将 V2 FolderId 当旧专利 ID 关联原件。");
-        // IP aliases now return V2 FolderIds; the legacy upload_files API
-        // has unrelated legacy owner IDs and cannot accept a native IP.
-        using(var ipRequest=new HttpRequestMessage(HttpMethod.Post,
-            $"/api/v2/ip/company/{ipId}/files"){Content=new ByteArrayContent(bytes)})
-        {
-            ipRequest.Headers.Add("X-File-Name",Uri.EscapeDataString("mcp-native-ip.bin"));
-            ipRequest.Headers.Add("X-Material-Category",Uri.EscapeDataString("申请材料"));
-            using var response=await client.SendAsync(ipRequest);
-            response.EnsureSuccessStatusCode();
-        }
-        var nativeFiles=await client.GetFromJsonAsync<System.Text.Json.JsonElement>(
-            $"/api/v2/ip/company/{ipId}/files");
-        var nativeFile=nativeFiles.EnumerateArray().Single(x=>
-            x.GetProperty("materialCategory").GetString()=="申请材料");
-        long ipFileId=nativeFile.GetProperty("fileId").GetInt64();
+        // The original MCP command name must now use the SAME native FolderId
+        // as the frozen IP page; it cannot silently create a legacy IP link.
+        var nativeUpload=await McpLocal.RunSmokeToolAsync("upload_files",
+            System.Text.Json.JsonSerializer.SerializeToElement(new{
+                workspace="company",kind="ip",owner_id=ipId,paths=new[]{filename},
+                material_category="申请材料"
+            }));
+        if(nativeUpload["succeeded"]?.GetValue<int>()!=1)
+            throw new IOException("MCP V2 知识产权上传失败："+nativeUpload.ToJsonString());
+        var nativeFiles=await McpLocal.RunSmokeToolAsync("list_ip_files",
+            System.Text.Json.JsonSerializer.SerializeToElement(new {
+                workspace="company",ip_id=ipId
+            }));
+        var nativeFile=nativeFiles.AsArray().Single(x=>
+            x?["materialCategory"]?.GetValue<string>()=="申请材料")!;
+        long ipFileId=nativeFile["fileId"]?.GetValue<long>()??0;
+        long ipLinkId=nativeFile["id"]?.GetValue<long>()??0;
+        if(ipFileId<=0||ipLinkId<=0)
+            throw new IOException("MCP 必须返回 V2 FileId 和 LinkId。");
         byte[] recoveredIp=await client.GetByteArrayAsync(
             $"/api/v2/ip/company/{ipId}/files/{ipFileId}/versions/1/download");
         if(!recoveredIp.AsSpan().SequenceEqual(bytes))
-            throw new IOException("MCP 创建的 V2 专利与原件不在同一身份空间。");
+            throw new IOException("MCP V2 专利原件字节与来源文件不一致。");
+        var duplicate=await McpLocal.RunSmokeToolAsync("upload_files",
+            System.Text.Json.JsonSerializer.SerializeToElement(new{
+                workspace="company",kind="ip",owner_id=ipId,paths=new[]{filename},
+                material_category="申请材料"
+            }));
+        if(duplicate["failed"]?.GetValue<int>()!=1 ||
+           !(duplicate["files"]?[0]?["error"]?.GetValue<string>()??"")
+             .Contains("duplicate_mode"))
+            throw new IOException("MCP 同字节上传未要求明确选择保存方式。");
+        var reused=await McpLocal.RunSmokeToolAsync("upload_files",
+            System.Text.Json.JsonSerializer.SerializeToElement(new{
+                workspace="company",kind="ip",owner_id=ipId,paths=new[]{filename},
+                duplicate_mode="reuse",source_file_id=ipFileId,material_category="证书文件"
+            }));
+        if(reused["succeeded"]?.GetValue<int>()!=1)
+            throw new IOException("MCP 复用内容但独立 FileId 失败："+reused.ToJsonString());
+        nativeFiles=await McpLocal.RunSmokeToolAsync("list_ip_files",
+            System.Text.Json.JsonSerializer.SerializeToElement(new{
+                workspace="company",ip_id=ipId
+            }));
+        var independent=nativeFiles.AsArray().SingleOrDefault(x=>
+            x?["fileId"]?.GetValue<long>()!=ipFileId)
+            ??throw new IOException("MCP 复用文件没有创建独立 FileId。");
+        long newFileId=independent["fileId"]?.GetValue<long>()??0;
+        long newLinkId=independent["id"]?.GetValue<long>()??0;
+        var versionUpload=await McpLocal.RunSmokeToolAsync("upload_files",
+            System.Text.Json.JsonSerializer.SerializeToElement(new {
+                workspace="company",kind="ip",owner_id=ipId,paths=new[]{filename},
+                on_conflict="update",file_id=ipFileId
+            }));
+        if(versionUpload["succeeded"]?.GetValue<int>()!=1 ||
+           versionUpload["files"]?[0]?["result"]?["version"]?.GetValue<int>()!=2)
+            throw new IOException("MCP V2 原件追加版本失败。");
+        var wrongOwner=await McpLocal.RunSmokeToolAsync("upload_files",
+            System.Text.Json.JsonSerializer.SerializeToElement(new{
+                workspace="personal",kind="ip",owner_id=ipId,paths=new[]{filename}
+            }));
+        if(wrongOwner["failed"]?.GetValue<int>()!=1)
+            throw new IOException("MCP 不允许将公司知识产权文件归属到个人工作区。");
+        await McpLocal.RunSmokeToolAsync("delete_ip_file",
+            System.Text.Json.JsonSerializer.SerializeToElement(new {
+                workspace="company",ip_id=ipId,file_id=newFileId,link_id=newLinkId
+            }));
+        nativeFiles=await McpLocal.RunSmokeToolAsync("list_ip_files",
+            System.Text.Json.JsonSerializer.SerializeToElement(new{
+                workspace="company",ip_id=ipId
+            }));
+        if(nativeFiles.AsArray().Count!=1 ||
+           nativeFiles[0]?["fileId"]?.GetValue<long>()!=ipFileId ||
+           !(await client.GetByteArrayAsync(
+              $"/api/v2/ip/company/{ipId}/files/{ipFileId}/versions/1/download"))
+             .AsSpan().SequenceEqual(bytes))
+            throw new IOException("MCP V2 单关联删除损坏另一 FileId 的历史。");
         var legacyIp=await client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/ip/company");
         if(legacyIp.EnumerateArray().Any(x=>
             x.GetProperty("data").GetProperty("name").GetString()=="MCP 专利名称已修改"))

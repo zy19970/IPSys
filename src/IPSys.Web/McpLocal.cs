@@ -149,7 +149,17 @@ static partial class McpLocal
             ["workspace"]=Field("string","工作区",Workspaces),
             ["file_id"]=Field("integer","list_files 查询到的文件链接 ID")
         },["workspace","file_id"]),
-        Tool("upload_files","从本机绝对路径加密归档原件到项目、合同或专利。单份不超过 64 MiB；默认独立原件。",new(){
+        Tool("list_ip_files","查询 V2 知识产权下的有效原件；返回 LinkId、FileId、最新版与材料类别。",new(){
+            ["workspace"]=Field("string","工作区",Workspaces),
+            ["ip_id"]=Field("integer","知识产权 FolderId")
+        },["workspace","ip_id"]),
+        Tool("delete_ip_file","仅解除指定知识产权中的一条 V2 原件关联，不删除共享 FileId 或历史版本。",new(){
+            ["workspace"]=Field("string","工作区",Workspaces),
+            ["ip_id"]=Field("integer","知识产权 FolderId"),
+            ["file_id"]=Field("integer","原件 FileId"),
+            ["link_id"]=Field("integer","关联 LinkId")
+        },["workspace","ip_id","file_id","link_id"]),
+        Tool("upload_files","从本机绝对路径加密归档到对应模块。知识产权使用 V2 FolderId/FileId；同字节文件必须显式选择 duplicate_mode，追加版本指定 file_id。每份上限 64 MiB。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
             ["kind"]=Field("string","原件归属类别",["project","contract","ip"]),
             ["owner_id"]=Field("integer","项目、合同或知识产权 ID"),
@@ -157,7 +167,9 @@ static partial class McpLocal
             ["on_conflict"]=Field("string","new 独立原件；update 更新已有原件版本",["new","update"]),
             ["material_category"]=Field("string","知识产权附件类别（默认其他材料）",["申请材料","通知文件","证书文件","其他材料"]),
             ["group_id"]=Field("string","存在多个同名原件时，更新指定组的身份 ID"),
-            ["duplicate_mode"]=Field("string","物理字节保留独立或显式复用",["independent","reuse"])
+            ["duplicate_mode"]=Field("string","IP 查重后独立保存、复用内容或共享 FileId",["independent","reuse","share"]),
+            ["source_file_id"]=Field("integer","IP 选择 reuse/share 时与 SHA-256 匹配的已有 FileId"),
+            ["file_id"]=Field("integer","IP on_conflict=update 指向已有 FileId；必须属于 owner_id")
         },["workspace","kind","owner_id","paths"])
         ];
         // Keep legacy tool contracts intact until N2-03 endpoint migration.
@@ -419,39 +431,14 @@ static partial class McpLocal
         {
             case "list_projects":
                 return await RequestAsync(client,HttpMethod.Get,baseProject);
-            case "list_ips":
-                return await RequestAsync(client,HttpMethod.Get,"/api/ip/"+workspace);
-            case "create_ip":
-            {
-                if(string.IsNullOrWhiteSpace(ReadString(args,"name"))||
-                   string.IsNullOrWhiteSpace(ReadString(args,"ip_type")))
-                    throw new IOException("name 和 ip_type 必填");
-                return await RequestAsync(client,HttpMethod.Post,"/api/ip/"+workspace,
-                    Patch(new JsonObject(),args,IpFields));
-            }
-            case "update_ip":
-            {
-                long id=ReadId(args,"ip_id");
-                JsonNode records=await RequestAsync(client,HttpMethod.Get,"/api/ip/"+workspace);
-                JsonObject stored=records.AsArray().OfType<JsonObject>()
-                    .FirstOrDefault(x=>x["id"]?.GetValue<long>()==id)
-                    ??throw new IOException("专利/知识产权不存在或不属于当前工作区。");
-                JsonObject data=stored["data"]?.AsObject()
-                    ??throw new IOException("知识产权数据格式无效。");
-                JsonObject payload=new();
-                foreach(string key in IpFields.Values)
-                    payload[key]=data[key]?.DeepClone();
-                Patch(payload,args,IpFields);
-                return await RequestAsync(client,HttpMethod.Put,
-                    "/api/ip/"+workspace+"/"+id,payload);
-            }
-            case "delete_ip":
-                return await RequestAsync(client,HttpMethod.Delete,
-                    "/api/ip/"+workspace+"/"+ReadId(args,"ip_id"));
             case "list_contracts":
                 return await RequestAsync(client,HttpMethod.Get,"/api/contracts/"+workspace);
             case "list_files":
                 return await RequestAsync(client,HttpMethod.Get,"/api/business-files/"+workspace);
+            case "list_ip_files":
+                return await IpLinks(client,workspace,args);
+            case "delete_ip_file":
+                return await DeleteIpLink(client,workspace,args);
             case "delete_project":
                 return await RequestAsync(client,HttpMethod.Delete,baseProject+"/"+ReadId(args,"project_id"));
             case "delete_contract":
@@ -494,11 +481,8 @@ static partial class McpLocal
                 string kind=ReadString(args,"kind");
                 if(kind is not ("project" or "contract" or "ip"))throw new IOException("kind 只能为 project、contract 或 ip");
                 long owner=ReadId(args,"owner_id");
-                // Other generic MCP file tools still address old business-file
-                // IDs. Do not attach a native IP FolderId to an unrelated
-                // legacy owner with the same number.
                 if(kind=="ip")
-                    throw new IOException("知识产权原件请使用已接入 V2 的网页上传：旧 upload_files 的文件链接 ID 不是 V2 FileId，已拒绝可能错配的操作。");
+                    return await IpUploadFiles(client,workspace,args,stop);
                 string mode=ReadString(args,"on_conflict","new");
                 string material=ReadString(args,"material_category",kind=="ip"?"其他材料":"");
                 if(kind=="ip"&&material is not ("申请材料" or "通知文件" or "证书文件" or "其他材料"))
