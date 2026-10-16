@@ -15,35 +15,6 @@ static class SearchStore
     private static string Label(string? name)=>string.IsNullOrWhiteSpace(name)?"未命名":name;
     private static string Summary(params string?[] fields)=>string.Join(" · ",
         fields.Where(x=>!string.IsNullOrWhiteSpace(x)).Select(x=>x!.Trim()));
-    private sealed record GeneralRow(long Id,string Title);
-    private sealed record GeneralFile(long Id,long OwnerId,string Parent,string Name,string GroupId);
-    private static (List<GeneralRow>,List<GeneralFile>) ReadGeneral(SqliteConnection db,string workspace)
-    {
-        var rows=new List<GeneralRow>();
-        var files=new List<GeneralFile>();
-        using(var cmd=db.CreateCommand())
-        {
-            cmd.CommandText="SELECT id,title FROM records WHERE workspace=$workspace AND deleted=0 ORDER BY id DESC;";
-            cmd.Parameters.AddWithValue("$workspace",workspace);
-            using var reader=cmd.ExecuteReader();
-            while(reader.Read())rows.Add(new GeneralRow(reader.GetInt64(0),reader.GetString(1)));
-        }
-        using(var cmd=db.CreateCommand())
-        {
-            cmd.CommandText="""
-                SELECT a.id,r.id,r.title,a.filename,a.group_id
-                FROM attachments a JOIN records r ON r.id=a.record_id
-                WHERE r.workspace=$workspace AND r.deleted=0
-                  AND a.deleted=0 AND a.state='ready'
-                ORDER BY a.id DESC;
-                """;
-            cmd.Parameters.AddWithValue("$workspace",workspace);
-            using var reader=cmd.ExecuteReader();
-            while(reader.Read())files.Add(new GeneralFile(reader.GetInt64(0),reader.GetInt64(1),
-                reader.GetString(2),reader.GetString(3),reader.GetString(4)));
-        }
-        return (rows,files);
-    }
     public static SearchResponse Find(SqliteConnection db,string workspace,string? text)
     {
         if(!Vault.WorkspaceValid(workspace))throw new InvalidDataException("搜索工作区无效。");
@@ -67,10 +38,37 @@ static class SearchStore
         var ips=NativeFolderStore.List(db,workspace,FolderKinds.Ip);
         var archiveSections=workspace=="company"?new[]{"certificate","achievement"}:
             new[]{"certificate","achievement","academic"};
-        var archive=new List<ArchiveView>();
-        foreach(string section in archiveSections)
-            archive.AddRange(ArchiveStore.List(db,workspace,section));
-        var (general,generalFiles)=ReadGeneral(db,workspace);
+        var archive=archiveSections.SelectMany(section=>
+            NativeArchiveStore.List(db,workspace,FolderKinds.Archive,section)).ToArray();
+        var general=NativeArchiveStore.List(db,workspace,FolderKinds.General,null);
+        // Read only valid V2 ancestor folders; a child record inherits their
+        // names for search without copying duplicate metadata into its attributes.
+        var archiveParents=new Dictionary<long,(long? Parent,string Name)>();
+        if(workspace=="company")
+        {
+            using var ancestors=db.CreateCommand();
+            ancestors.CommandText="""
+                SELECT id,parent_id,name FROM folders
+                WHERE workspace='company' AND kind='archive_folder'
+                  AND section='achievement' AND deleted=0;
+                """;
+            using var rd=ancestors.ExecuteReader();
+            while(rd.Read())
+                archiveParents[rd.GetInt64(0)]=(
+                    rd.IsDBNull(1)?null:rd.GetInt64(1),rd.GetString(2));
+        }
+        string Ancestors(long? id)
+        {
+            var names=new List<string>();
+            var seen=new HashSet<long>();
+            while(id is long parent && seen.Add(parent) &&
+                archiveParents.TryGetValue(parent,out var entry))
+            {
+                names.Add(entry.Name);
+                id=entry.Parent;
+            }
+            return string.Join(" / ",names.AsEnumerable().Reverse());
+        }
 
         foreach(var row in projects)
         {
@@ -99,58 +97,40 @@ static class SearchStore
             Add(new SearchHit("ip",ip.Folder.Ref.Id,"",Label(d.Name),
                 Summary(d.IpType,d.ApplicationNo,d.RegistrationNo)));
         }
-        foreach(var a in archive)
+        foreach(var row in archive)
         {
-            if(!Any(query,a.Name,a.Category,a.Remarks,a.Tags))continue;
-            Add(new SearchHit("archive",a.Id,a.Section,a.Name,
-                Summary(a.Category,a.Section=="academic"?"学术与社会活动":
-                    a.Section=="achievement"?(workspace=="company"?"业务档案":"成果与奖励"):"资质与证件")));
+            var a=(ArchiveInput)row.BusinessData;
+            string section=row.Folder.Ref.Section;
+            string ancestry=Ancestors(row.Folder.Parent?.Id);
+            if(!Any(query,a.Name,a.Category,a.Remarks,a.Tags,a.Year,ancestry))
+                continue;
+            Add(new SearchHit("archive",row.Folder.Ref.Id,section,
+                row.Folder.Name,Summary(ancestry,a.Category,
+                    section=="academic"?"学术与社会活动":
+                    section=="achievement"?(workspace=="company"?"业务档案":"成果与奖励")
+                    :"资质与证件")));
         }
         foreach(var r in general)
         {
-            if(Has(r.Title,query))
-                Add(new SearchHit("general",r.Id,"",r.Title,
-                    workspace=="company"?"综合资料":"其他资料"));
+            if(Has(r.Folder.Name,query))
+                Add(new SearchHit("general",r.Folder.Ref.Id,"",
+                    r.Folder.Name,workspace=="company"?"综合资料":"其他资料"));
         }
 
-        // Only a currently active record owner may be a result. BusinessFileStore.List
-        // already excludes deleted links, unfinished objects and deleted owners.
+        // Search only active V2 FolderFileLinks; legacy business_file_links
+        // and attachments cannot masquerade as a matching native FolderId.
         var projectNames=projects.ToDictionary(x=>x.Folder.Ref.Id,x=>x.Folder.Name);
-        var contractNames=contracts.Where(x=>x.Folder.Parent is ResourceRef parent &&
-            projectNames.ContainsKey(parent.Id)).ToDictionary(
-                x=>x.Folder.Ref.Id,x=>x.Folder.Name);
-        var ipNames=ips.ToDictionary(x=>x.Folder.Ref.Id,x=>Label(((IpInput)x.BusinessData).Name));
-        var archiveNames=archive.ToDictionary(x=>(x.Section,x.Id),x=>x.Name);
-        var seen=new HashSet<string>(StringComparer.Ordinal);
-        foreach(var f in BusinessFileStore.List(db,workspace))
-        {
-            if(!Any(query,f.Name,f.Category))continue;
-            string parent=f.Kind switch
-            {
-                // No project/contract old attachment links may be returned
-                // with the same owner kind as an active V2 FolderId.
-                "project" or "contract"=>"",
-                // Legacy business-file IDs are unrelated to native IP FolderId.
-                // Never accidentally attach an old file hit to a new IP folder.
-                "ip"=> "",
-                "archive" when archiveNames.TryGetValue((f.Section,f.OwnerId),out var a)=>a,
-                _=>""
-            };
-            if(parent.Length==0)continue;
-            string key=f.Kind+":"+f.OwnerId+":"+f.Section+":"+
-                (string.IsNullOrEmpty(f.GroupId)?f.Id.ToString():f.GroupId);
-            if(!seen.Add(key))continue;
-            Add(new SearchHit("file",f.Id,f.Section,f.Name,Summary(parent,f.Category),
-                f.Kind,f.OwnerId));
-        }
-        // Native project/contract/IP attachments use V2 identity and metadata.
-        foreach(var item in projects.Concat(contracts).Concat(ips))
+        var activeContracts=contracts.Where(x=>x.Folder.Parent is ResourceRef p &&
+            projectNames.ContainsKey(p.Id)).ToArray();
+        // All business records, including archives and general folders, use
+        // the same FileId and FileVersion search contract.
+        foreach(var item in projects.Concat(activeContracts).Concat(ips)
+            .Concat(archive).Concat(general))
         {
             long owner=item.Folder.Ref.Id;
             string kind=item.Folder.Ref.Kind;
             if(kind==FolderKinds.Contract &&
-               (item.Folder.Parent is not ResourceRef parent ||
-                !projectNames.ContainsKey(parent.Id)))continue;
+                item.Folder.Parent is not ResourceRef parent)continue;
             foreach(var link in NativeFileLinkStore.ListFolder(db,workspace,owner,false)??[])
             {
                 var details=NativeFileStore.Get(db,workspace,link.FileId);
@@ -158,21 +138,16 @@ static class SearchStore
                 var latest=details.Versions[0];
                 string location=link.DisplayName??link.FileName;
                 string parentTitle=item.Folder.Name;
+                string ancestry=kind==FolderKinds.Archive?
+                    Ancestors(item.Folder.Parent?.Id):"";
                 if(!Any(query,location,link.FileName,latest.OriginalName,
                     link.MaterialCategory,details.Description,details.Tags,
-                    details.FileNumber,details.FileDate,parentTitle))continue;
-                Add(new SearchHit("file",link.FileId,"",location,
-                    Summary(parentTitle,link.MaterialCategory,latest.OriginalName),
-                    kind,owner));
+                    details.FileNumber,details.FileDate,parentTitle,ancestry))continue;
+                Add(new SearchHit("file",link.FileId,
+                    kind==FolderKinds.Archive?item.Folder.Ref.Section:"",location,
+                    Summary(ancestry,parentTitle,link.MaterialCategory,
+                        latest.OriginalName),kind,owner));
             }
-        }
-        foreach(var f in generalFiles)
-        {
-            if(!Has(f.Name,query))continue;
-            string key="general:"+f.OwnerId+":"+
-                (string.IsNullOrEmpty(f.GroupId)?f.Id.ToString():f.GroupId);
-            if(!seen.Add(key))continue;
-            Add(new SearchHit("file",f.Id,"",f.Name,f.Parent,"general",f.OwnerId));
         }
         return new SearchResponse(query,results,truncated);
     }

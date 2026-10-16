@@ -105,6 +105,7 @@ NativeFileChoiceEndpoints.Map(app, Fail);
 NativeIpFileEndpoints.Map(app, Fail);
 NativeIpExcelEndpoints.Map(app, Fail);
 NativeProjectExcelEndpoints.Map(app, Fail);
+NativeArchiveGeneralExcelEndpoints.Map(app, Fail);
 NativeIpUiEndpoints.Map(app, Fail);
 NativeProjectContractUiEndpoints.Map(app, Fail);
 NativeIpTransferEndpoints.Map(app, Fail);

@@ -42,25 +42,37 @@ static class SearchSmoke
         contract.EnsureSuccessStatusCode();
         long contractId=(await contract.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
             .GetProperty("id").GetInt64();
-        using var archive=await client.PostAsJsonAsync("/api/archives/company/certificate",new {
-            name=marker+"-企业资质",category="企业资质",remarks="统一检索"
+        using var archive=await client.PostAsJsonAsync("/api/v2/folders/company/archive",new {
+            section="certificate",archive=new {
+              name=marker+"-企业资质",category="企业资质",remarks="统一检索"}
         });
         archive.EnsureSuccessStatusCode();
         long archiveId=(await archive.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
             .GetProperty("id").GetInt64();
-        using var companyBusiness=await client.PostAsJsonAsync("/api/archives/company/achievement",new {
-            name=marker+"-首台套申报",category="申报与认定",remarks="业务归档"
-        });
+        var roots=await client.GetFromJsonAsync<System.Text.Json.JsonElement>(
+            "/api/v2/folders/company/archive_folder");
+        long rootId=roots.EnumerateArray().First(x=>
+            x.GetProperty("folder").GetProperty("name").GetString()=="申报与认定")
+            .GetProperty("folder").GetProperty("ref").GetProperty("id").GetInt64();
+        using var companyBusiness=await client.PostAsJsonAsync(
+            "/api/v2/folders/company/archive",new {
+                section="achievement",archive=new{
+                  name=marker+"-首台套申报",category="",remarks="业务归档",
+                  folderId=rootId}
+            });
         companyBusiness.EnsureSuccessStatusCode();
         long businessId=(await companyBusiness.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
             .GetProperty("id").GetInt64();
-        using var academic=await client.PostAsJsonAsync("/api/archives/personal/academic",new {
-            name=marker+"-学术兼职",category="学术兼职"
-        });
+        using var academic=await client.PostAsJsonAsync(
+            "/api/v2/folders/personal/archive",new {
+                section="academic",archive=new{
+                  name=marker+"-学术兼职",category="学术兼职"}
+            });
         academic.EnsureSuccessStatusCode();
         long academicId=(await academic.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
             .GetProperty("id").GetInt64();
-        using var general=await client.PostAsJsonAsync("/api/records/company",new {title=marker+"-综合资料"});
+        using var general=await client.PostAsJsonAsync(
+            "/api/v2/folders/company/general",new {general=new{title=marker+"-综合资料"}});
         general.EnsureSuccessStatusCode();
         long generalId=(await general.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
             .GetProperty("id").GetInt64();
@@ -138,7 +150,8 @@ static class SearchSmoke
             deleted.EnsureSuccessStatusCode();
         if((await Find(client,"company",filename)).Results.Count!=0)
             throw new IOException("已移入回收站的项目附件不得出现搜索结果。");
-        using(var deleted=await client.DeleteAsync($"/api/archives/company/certificate/{archiveId}"))
+        using(var deleted=await client.DeleteAsync(
+            $"/api/v2/folders/company/archive/{archiveId}?section=certificate"))
             deleted.EnsureSuccessStatusCode();
         if((await Find(client,"company",marker+"-企业资质")).Results.Count!=0)
             throw new IOException("删除的资质资料不得仍被检索。");

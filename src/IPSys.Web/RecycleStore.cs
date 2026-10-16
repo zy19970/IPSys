@@ -30,6 +30,11 @@ static class RecycleStore
               AND deleted=1 ORDER BY id DESC;
             ""","project"));
         rows.AddRange(Simple(db,workspace,"""
+            SELECT id,name,'' FROM folders
+            WHERE workspace=$w AND kind='general' AND deleted=1
+            ORDER BY id DESC;
+            ""","v2_general"));
+        rows.AddRange(Simple(db,workspace,"""
             SELECT id,title,'' FROM records WHERE workspace=$w AND deleted=1 ORDER BY id DESC;
             ""","general"));
         rows.AddRange(Simple(db,workspace,"""
@@ -42,6 +47,14 @@ static class RecycleStore
             SELECT id,name,'' FROM business_ips WHERE workspace=$w AND deleted=1
             ORDER BY id DESC;
             ""","legacy_ip"));
+        rows.AddRange(Simple(db,workspace,"""
+            SELECT id,name,section FROM folders
+            WHERE workspace=$w AND kind='archive' AND deleted=1
+              AND (parent_id IS NULL OR EXISTS(
+                SELECT 1 FROM folders p WHERE p.id=folders.parent_id
+                  AND p.workspace=folders.workspace AND p.deleted=0))
+            ORDER BY id DESC;
+            ""","v2_archive"));
         rows.AddRange(Simple(db,workspace,"""
             SELECT a.id,a.name,a.section FROM business_archives a
             WHERE a.workspace=$w AND a.deleted=1 ORDER BY a.id DESC;
@@ -84,12 +97,11 @@ static class RecycleStore
               AND p.workspace=l.workspace
             JOIN files f ON f.id=l.file_id AND f.workspace=l.workspace
             WHERE l.workspace=$w AND l.deleted=1
-              AND p.kind IN ('project','contract') AND p.deleted=0
+              AND p.kind IN ('project','contract','archive','general') AND p.deleted=0
               AND f.deleted=0 AND
-              (p.kind='project' OR EXISTS(
+              (p.parent_id IS NULL OR EXISTS(
                 SELECT 1 FROM folders parent WHERE parent.id=p.parent_id
-                AND parent.workspace=p.workspace AND parent.kind='project'
-                AND parent.deleted=0))
+                AND parent.workspace=p.workspace AND parent.deleted=0))
             ORDER BY l.id DESC;
             ""","v2_file"));
         rows.AddRange(Simple(db,workspace,"""
@@ -108,6 +120,10 @@ static class RecycleStore
         cmd.Parameters.AddWithValue("$w",workspace);
         switch(r.Kind)
         {
+            case "v2_general":
+                if(r.Section!="")return false;
+                cmd.CommandText="SELECT COUNT(*) FROM folders WHERE id=$id AND workspace=$w AND kind='general' AND deleted=1;";
+                break;
             case "general":
                 if(r.Section!="")return false;
                 cmd.CommandText="SELECT count(*) FROM records WHERE id=$id AND workspace=$w AND deleted=1;";
@@ -135,6 +151,17 @@ static class RecycleStore
             case "legacy_ip":
                 if(r.Section!="")return false;
                 cmd.CommandText="SELECT count(*) FROM business_ips WHERE id=$id AND workspace=$w AND deleted=1;";
+                break;
+            case "v2_archive":
+                if(ArchiveStore.Module(workspace,r.Section)==null)return false;
+                cmd.CommandText="""
+                    SELECT COUNT(*) FROM folders a WHERE a.id=$id AND a.workspace=$w
+                      AND a.kind='archive' AND a.section=$section AND a.deleted=1
+                      AND (a.parent_id IS NULL OR EXISTS(
+                        SELECT 1 FROM folders p WHERE p.id=a.parent_id
+                          AND p.workspace=a.workspace AND p.deleted=0));
+                    """;
+                cmd.Parameters.AddWithValue("$section",r.Section);
                 break;
             case "archive":
                 if(ArchiveStore.Module(workspace,r.Section)==null)return false;
@@ -172,9 +199,9 @@ static class RecycleStore
                     JOIN folders p ON p.id=l.folder_id AND p.workspace=l.workspace
                     JOIN files f ON f.id=l.file_id AND f.workspace=l.workspace
                     WHERE l.id=$id AND l.workspace=$w AND l.deleted=1
-                      AND p.kind IN ('project','contract') AND p.deleted=0
+                      AND p.kind IN ('project','contract','archive','general') AND p.deleted=0
                       AND f.deleted=0 AND
-                      (p.kind='project' OR EXISTS(
+                      (p.parent_id IS NULL OR EXISTS(
                         SELECT 1 FROM folders parent WHERE parent.id=p.parent_id
                         AND parent.workspace=p.workspace AND parent.kind='project'
                         AND parent.deleted=0));
@@ -210,6 +237,12 @@ static class RecycleStore
         var id=item.Id;var section=item.Section;
         switch(item.Kind)
         {
+            case "v2_general":
+                Execute(db,tx,purge?
+                    "DELETE FROM folders WHERE id=$id AND workspace=$w AND kind='general' AND deleted=1;":
+                    "UPDATE folders SET deleted=0 WHERE id=$id AND workspace=$w AND kind='general' AND deleted=1;",
+                    workspace,id);
+                break;
             case "general":
                 if(purge)
                 {
@@ -289,6 +322,12 @@ static class RecycleStore
                     "UPDATE folder_file_links SET deleted=0 WHERE id=$id AND workspace=$w AND deleted=1;",
                     workspace,id);
                 break;
+            case "v2_archive":
+                Execute(db,tx,purge?
+                    "DELETE FROM folders WHERE id=$id AND workspace=$w AND kind='archive' AND section=$section AND deleted=1;":
+                    "UPDATE folders SET deleted=0 WHERE id=$id AND workspace=$w AND kind='archive' AND section=$section AND deleted=1;",
+                    workspace,id,section);
+                break;
             case "archive":
                 if(purge)Execute(db,tx,"""
                     DELETE FROM business_file_links WHERE kind='archive' AND owner_id=$id
@@ -330,6 +369,7 @@ static class RecycleStore
             foreach(var item in items)
             {
                 if(item.Kind is not ("ip" or "project" or "contract" or
+                    "v2_archive" or "v2_general" or
                     "v2_ip_file" or "v2_file"))continue;
                 if(item.Kind is "v2_ip_file" or "v2_file")
                     throw new InvalidOperationException("共享原件物理回收尚未提供，不能永久删除该关联。");
