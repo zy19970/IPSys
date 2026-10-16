@@ -1,22 +1,22 @@
 # IPSys P1 Excel 台账：当前实现与验收（2026-10-15）
 
-> **两批源码与 Windows 自动回归已经完成**：第一批 [CI #38512444768](https://github.com/zy19970/IPSys/actions/runs/38512444768)、第二批 [CI #38514681983](https://github.com/zy19970/IPSys/actions/runs/38514681983) 显示成功；2026-10-15 最新 [CI #38673474396](https://github.com/zy19970/IPSys/actions/runs/38673474396) 亦成功。用户表示 Excel 使用频率较低，**尚未单独确认桌面 Excel 全量实机验收**。这些是**旧业务 API 下的实现与 CI 证据**，当前 V2 已有 N1/N2/N3 原生 Folder/File，N2-03-03 已新增知识产权 XLSX 的 V2 FolderId 独立接入并通过 [Windows CI #38825202078](https://github.com/zy19970/IPSys/actions/runs/38825202078)，**知识产权现有网页已在 N2-03-04 改用 V2 Excel 路由；项目、合同及其他档案旧 Excel 路由仍待切换**；后续 N2-03-04 联动业务页面、附件和旧 MCP 身份，再完成其他 Excel 模块的统一，并于 N4 进行端到端及桌面 Excel 实机验收。
+> **2026-10-16 当前状态**：旧业务 Excel 两批 [CI #38512444768](https://github.com/zy19970/IPSys/actions/runs/38512444768)、[#38514681983](https://github.com/zy19970/IPSys/actions/runs/38514681983) 已通过；知识产权 V2 固定 20 列 Excel 服务及现有网页调用分别通过 [#38825202078](https://github.com/zy19970/IPSys/actions/runs/38825202078)、[#38828523508](https://github.com/zy19970/IPSys/actions/runs/38828523508)。**项目/合同现有网页已切 V2，但旧 Excel 使用另一套 ID，现有网页暂停项目模板/导入/导出及合同只读导出，待 N2-03-07-02**。档案/综合资料 Excel 之后切换；用户本机桌面 Excel 全项实机验收尚未完成。
 
-## 1. 已接入范围
+## 1. 固定列与现有网页接入范围
 
 | 模块 | 固定列 | 导入 | 导出 |
 | --- | --- | --- | --- |
-| 项目 | 11列（名称、类别、编号、负责人、单位、起止日期、状态、辅助分类、备注、标签） | 支持 | 支持当前筛选/选中和全部 |
+| 项目 | 11列（名称、类别、编号、负责人、单位、起止日期、状态、辅助分类、备注、标签） | 旧版已实现；新版网页暂不开放 | 旧版已实现；新版网页暂不开放，待 N2-03-07-02 |
 | 知识产权 | 20列（类型、状态、申请/公开/公告/登记及辅助分类等） | 支持 | 支持当前筛选/选中和全部 |
 | 公司企业资质、公司业务档案、个人身份与资质、个人成果与学术资料 | 4列（资料名称、类别、备注、标签） | 支持 | 支持，严格按所属工作区与 `section` |
 | 公司综合资料、个人其他资料 | 1列（资料名称） | 支持 | 支持 |
-| 合同 | 9列（合同名、所属项目、合同编号、签订日期、金额等） | **不支持**（必须先有所属项目） | **只读导出** |
+| 合同 | 9列（合同名、所属项目、合同编号、签订日期、金额等） | **不支持**（需从项目内创建） | 仅规划只读导出，现有新版网页在 V2 接入前暂停调用旧接口 |
 
 **重要**：企业资质网页表单为了操作简洁仅显示「名称、附件、备注」，但现行固定 XLSX 档案模板仍有类别/标签列以兼容历史资料。这不是要求网页显示这两个字段，也不允许导入时破坏旧元数据。固定 Excel 列与 UI 隐藏列相互独立，具体以 [M0_DATA_DICTIONARY.md](./M0_DATA_DICTIONARY.md) 为准。
 
 ## 2. 操作及边界
 
-从对应模块「新建」弹窗下载固定模板或导入 XLSX；台账「导出」菜单提供结构化 Excel，与附件文件夹/ZIP 是不同功能。项目/IP/企业资质等具有勾选能力的页面，导出优先使用**当前可见的勾选记录**；未选则使用当前筛选结果；其它模块按筛选及所属栏目输出，不跨工作区。合同不能通过 Excel 新建或导入附件。
+已接入 Excel 的模块可从对应「新建」弹窗下载固定模板或导入 XLSX；项目/合同现有 V2 网页在新版 Excel 接入前暂不使用旧台账入口。台账「导出」菜单提供结构化 Excel，与附件文件夹/ZIP 是不同功能。项目/IP/企业资质等具有勾选能力的页面，导出优先使用**当前可见的勾选记录**；未选则使用当前筛选结果；其它模块按筛选及所属栏目输出，不跨工作区。合同不能通过 Excel 新建或导入附件。
 
 实际文件是离线 OpenXML XLSX（不要求本机安装 Excel），编号和带前导零文本保持原样，日期采用 `yyyy-MM-dd`。每次导入最多 **8 MiB、5000行**，表头或结构错误拒绝整个文件；支持「跳过重复」「更新已有」「重复另建」与取消。合法行继续保存、错误行报告原始行号、最多展示300条详细错误。
 
@@ -31,7 +31,7 @@
 
 ## N2-03-03 知识产权 V2 原生 Excel 接口（2026-10-16）
 
-[功能提交 7a7d98a5](https://github.com/zy19970/IPSys/commit/7a7d98a54283174f94f3e7fb67bef2483cc0faf3)、[Windows CI #38825202078](https://github.com/zy19970/IPSys/actions/runs/38825202078) **success**。`/api/v2/excel/{workspace}/ip/template`、`export`、`import?policy=skip|update|create` 与旧 Excel 固定20列工作簿兼容，直接访问 V2 `folders.kind=ip/attributes_json`，导出 `all` 或以 V2 FolderId 作为 `filtered` 的 `ids`；8 MiB/5000 行上限与原申请号/登记号/名称+类型去重策略保持。HTTP/SQLCipher 验证来源固定 Excel 文件导入、V2 原地更新不改变 IP FolderId 或已关联 FileId/版本/原件字节、个人工作区独立导入属性不复制公司附件、无旧表双写、异常工作簿拒绝。**旧 `/api/excel/{workspace}/ip/*`、冻结网页台账仍属旧业务过渡期，不能与新版 FolderId 混用；当前仍需 N2-03-04 统一旧入口、N4 桌面 Excel 与 UI 实机验收。**
+[功能提交 7a7d98a5](https://github.com/zy19970/IPSys/commit/7a7d98a54283174f94f3e7fb67bef2483cc0faf3)、[Windows CI #38825202078](https://github.com/zy19970/IPSys/actions/runs/38825202078) **success**。`/api/v2/excel/{workspace}/ip/template`、`export`、`import?policy=skip|update|create` 与旧 Excel 固定20列工作簿兼容，直接访问 V2 `folders.kind=ip/attributes_json`，导出 `all` 或以 V2 FolderId 作为 `filtered` 的 `ids`；8 MiB/5000 行上限与原申请号/登记号/名称+类型去重策略保持。HTTP/SQLCipher 验证来源固定 Excel 文件导入、V2 原地更新不改变 IP FolderId 或已关联 FileId/版本/原件字节、个人工作区独立导入属性不复制公司附件、无旧表双写、异常工作簿拒绝。**此为 N2-03-03 当时的原生接口验收记录。现有知识产权网页随后已于 N2-03-04 接入 V2 Excel；旧 `/api/excel/{workspace}/ip/*` 属过渡期路由，不可混用新 FolderId，桌面 Excel 实机仍待 N4。**
 
 ## 项目和合同 Excel 与 V2 文件夹的边界（N2-03-07-01）
 

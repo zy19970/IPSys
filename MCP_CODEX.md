@@ -1,9 +1,9 @@
 # IPSys 本机 Codex MCP
 
-> **2026-10-15 状态同步**：当前 `main` 保留原有 **14 项旧业务 MCP 工具**，并在 N2-03-01 新增 **11 项 `v2_*` V2 原生项目/合同/IP MCP 工具**（共 25 项不同名称，旧命令暂不变），现行 Windows CI 已通过 stdio 握手、工具清单及真实 SQLCipher/本机命名管道回归；**本机 Codex 或其他平台 MCP 客户端的完整人工连接与日常操作验收仍需执行**。原 14 项命令继续通过过渡期旧业务 API/Store；新增 11 项带 `v2_` 前缀的工具明确通过 `/api/v2/folders` 只写新 `folders/attributes_json`，不同时写旧业务表。[Windows CI #38822708366](https://github.com/zy19970/IPSys/actions/runs/38822708366) 验证本机 MCP 管道、SQLCipher/HTTP 和授权隔离；后续 N2-03 将旧业务 API、附件、Excel 接入 V2 并收敛原有命名。发布程序是单 EXE，但目标电脑需预装 .NET Desktop Runtime 8 x64 与 ASP.NET Core Runtime 8 x64。MCP 是**本机 stdio** 接口，无需对外暴露网络端口；其他本机客户端可以在支持 stdio MCP 且可启动本机 EXE 时按其配置接入，未验证的平台不承诺即插即用。
+> **2026-10-16 当前状态**：N2-03-01 已新增 11 项 `v2_*` 项目/合同/IP 原生业务工具；知识产权原名 `list_ips/create_ip/update_ip/delete_ip` 与 `upload_files(kind=ip)`、`list_ip_files/delete_ip_file` 已通过 N2-03-05/06 接入 V2 FolderId/FileId/LinkId，[CI #38833862535](https://github.com/zy19970/IPSys/actions/runs/38833862535) success。项目合同现有网页虽已接入 V2，但原名项目合同 MCP 及其文件上传/列表/删除仍指向旧 API/ID，N2-03-07-02 需统一；当前可使用明确 `v2_*` 项目合同命令。MCP 仍默认关闭，需手动授权，仅通过本机 stdio 和同用户命名管道访问，不开放网络端口。Codex 与其他本机客户端的完整人工使用验收未完成，Release 单 EXE 依赖外部两类 .NET 8 x64 运行时。
 
 
-IPSys 支持本机 Codex 通过 MCP stdio 控制同一 Windows 用户已经运行且已解锁的资料库。当前 Agent 复用旧业务 API 和 SQLCipher 会话，不另外打开数据库；接入 V2 后也应保持相同的授权及隔离边界。
+IPSys 支持本机 Codex 通过 MCP stdio 操作相同 Windows 用户已解锁资料库，复用软件现有 SQLCipher 会话而不另开库。知识产权原名工具及 `v2_*` 使用 V2；项目合同原名工具仍走旧业务接口，用户和 Agent 必须区分 ID。
 
 ## 使用步骤
 
@@ -70,7 +70,7 @@ Codex 通过 stdio 使用同一个 EXE 的 `--mcp` 模式，子进程仅通过�
 
 新增 `v2_list_projects`、`v2_create_project`、`v2_update_project`、`v2_delete_project`；`v2_list_contracts`、`v2_create_contract`、`v2_delete_contract`；`v2_list_ips`、`v2_create_ip`、`v2_update_ip`、`v2_delete_ip`。参数名继续沿用原 `workspace`、`project_id`、`ip_id` 等结构，实际结果包含原生 `FolderSnapshot`（`folder.ref.id`、`businessData`）；合同必须指定当前工作区真实有效项目的 `project_id`。
 
-`v2_*` 工具使用新库 FileId/FolderId 身份空间，不能把原有 `list_projects` 返回的旧 ID 与新 FolderId 混用。当前 `upload_files` 和其余旧工具尚属旧业务数据路径；原生 V2 文件上传/查重仍通过 `/api/v2/files`，不得误以为现有 MCP 文件上传已经切换。MCP 依然需要在已解锁的软件中手动启用，关闭后新旧工具同时拒绝访问。用户本机 Codex 客户端的实际可用性需实机验收。
+`v2_*` 项目/合同/IP 及 IP 原名 CRUD、`upload_files(kind=ip)` 已使用 V2 FolderId/FileId 身份。**项目合同原名 `list_projects/list_contracts` 和 `upload_files(kind=project/contract)` 仍属旧业务路径**，不能将返回的数字 ID 用作现有网页的 V2 FolderId/LinkId。项目合同原件 MCP 尚未接入 `/api/v2/files` 查重链路；软件内手动启用与本机授权继续适用。
 
 
 ## V2 知识产权 MCP 原件操作（N2-03-06）

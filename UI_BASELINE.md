@@ -1,6 +1,6 @@
 # IPSys 资料管理系统：现行 UI 与文件夹交互基线（2026-10-15）
 
-> 本文件仍是当前生效的 UI 约束。2026-10-15 新决定是全业务统一 V2 `folders/files` 数据模型，N1/N2 原生业务有独立 Windows CI；**正式网页仍沿用旧业务 API**，不能以物理存储统一为由更改已冻结的卡片/表格特例。进度见 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)。
+> 本文件仍是当前生效的 UI 约束。2026-10-16 已确认 V2 统一 Folder/File 模型；**知识产权和项目/合同的现有网页已分批切换 V2**，业务档案、分类资料、综合资料仍有旧 API/Store 入口。物理存储统一不改变已冻结的卡片/表格交互，分模块进度见 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)。
 
 ## 1. 产品交互模型
 
@@ -49,5 +49,5 @@ IPSys 是业务化文件夹式本地资料管理器。用户面对的是「加�
 
 ## 6. 代码与验收分界
 
-公司业务档案混排和现有业务界面目前仍经旧 API/Store 实现；V2 已建立统一 `folders` 表和 N2 原生 Folder 操作，附件和旧前端尚待 N3/N2-03/N4 切换。统一物理资源不意味着统一更改这些业务的展示方式。UI 核对以 `wwwroot/app.js`、`style.css` 和 Windows CI 为证据；V2 端到端与用户实机验收以 [WEB_TESTING.md](./WEB_TESTING.md) 为准。业务范围见 [REQUIREMENTS.md](./REQUIREMENTS.md)，字段见 [M0_DATA_DICTIONARY.md](./M0_DATA_DICTIONARY.md)，技术结构见 [DESIGN.md](./DESIGN.md)。
+公司业务档案混排、个人分类档案和综合/其他资料的现有网页仍有旧 API/Store 入口；知识产权网页/附件/Excel/原名 MCP/搜索回收站/跨区完整复制，以及项目合同现有网页 CRUD/原件版本/导出已经通过对应 V2 自动回归。项目合同原名 MCP、Excel、搜索/回收站和跨区整项目复制及其它模块切换仍待 N2-03-07-02/N4。统一物理资源不意味着统一修改页面显示方式；自动 CI 与用户 Edge/Chrome 实机验收须分别记录于 [WEB_TESTING.md](./WEB_TESTING.md)。业务字段及技术约束见 [REQUIREMENTS.md](./REQUIREMENTS.md)、[M0_DATA_DICTIONARY.md](./M0_DATA_DICTIONARY.md) 和 [DESIGN.md](./DESIGN.md)。
 

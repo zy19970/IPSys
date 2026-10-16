@@ -1,6 +1,6 @@
 # IPSys 开发计划与验收进度（2026-10-15，V2 新库执行版）
 
-> **当前唯一执行依据**：[RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md) 的新 SQLCipher V2 路线（N1、N2、N3、N4）。2026-10-15 用户明确旧资料库全为测试数据，取消迁移、回填和旧库兼容；已核验最新 N2-03-06 Windows CI #38833862535。本计划取代此前“先做 V1.0 综合验收”和旧 R4 迁移的施工顺序，但不取消正式发布前的安全验收门槛。
+> **当前唯一执行依据**：[RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md) 的 V2 N1～N4 路线。2026-10-16 已核验 N2-03-07-01 项目合同网页/文件功能提交 `f13d185c` 对应 [Windows CI #38836041449](https://github.com/zy19970/IPSys/actions/runs/38836041449) success，状态文档已归档至 `ef89d2d`；当前进入 N2-03-07-02。用户已确认旧资料库均为测试数据，不需要迁移、回填与兼容，仍须严格执行发布前安全/实机验收。
 
 ## 1. 产品和已确认架构
 
@@ -12,7 +12,7 @@ IPSys 用户可见名称为「资料管理系统」，采用 Windows WinForms �
 
 | 阶段 | 状态 | 范围与限制 |
 | --- | --- | --- |
-| M0/M1、U0、B01–B06、P1/P2/MCP | 旧系统已有代码、部分 CI 和限定范围用户实机结果 | 项目/合同/IP、归档、原件、版本、导出、Excel、搜索、14 项本机 MCP、冻结 UI；当前仍主要读取旧业务表 |
+| M0/M1、U0、B01–B06、P1/P2/MCP | 旧业务功能与历史验收基线 | 曾有项目/合同/IP、归档、原件版本、Excel、搜索与本机 MCP；现有 IP 全链路和项目合同网页/原件已分批切 V2，其他旧 Store 是过渡代码，旧 CI 不等于当前 V2 全项验收 |
 | R0/R1 | 已完成相应历史 CI | Program 职责拆分、旧表上的 Folder Provider/浏览/CRUD/复制转移适配；属过渡层 |
 | **N1 新 Schema** | **Windows CI 通过** | V2 六张核心资源表、版本识别、工作区/父子约束、历史对象写后保护；[CI #38740628571](https://github.com/zy19970/IPSys/actions/runs/38740628571) |
 | **N2-01** | **Windows CI 通过** | 项目、合同、知识产权在新 `folders` 上的原生 CRUD、软删恢复；[CI #38743939004](https://github.com/zy19970/IPSys/actions/runs/38743939004) |
@@ -30,7 +30,7 @@ IPSys 用户可见名称为「资料管理系统」，采用 Windows WinForms �
 | **N2-03-07-01** | **Windows CI 通过** | 项目/合同现有网页 CRUD、合同从属项目、排序、原生附件/版本/共享/解除、文件夹/ZIP 导出已接入 V2 FolderId/FileId；[CI #38836041449](https://github.com/zy19970/IPSys/actions/runs/38836041449)。原名 MCP/Excel/搜索及跨区整项目复制尚待收敛 |
 | **N2-03-07-02～N4** | **待继续** | 下一批统一项目/合同 MCP 原名、搜索/回收站、Excel/跨区含合同原件事务复制；其后归档与综合资料使用 V2，清理开发期临时旧表和旧 API。最后 Node/SQLCipher/Windows/Edge/Chrome 完整实机验收，不迁移旧库 |
 
-N2 原生 API 与旧 UI/API 目前并存，不能据此声称新库整套业务完成。当前 `Vault` 仍初始化旧综合资料表，`app.js`、`BusinessFiles.cs` 和原有业务接口仍访问旧表；在切换前不得删除旧 Store 或对两套物理表同时写入。
+N2/N3 原生 API 与旧路由并存，但**IP 全链路与项目/合同现有网页、原件和导出已使用 V2**，不应把所有 UI 笼统标为旧表。`Vault` 仍初始化旧综合资料表，`app.js` 仍有档案/综合资料旧接口，项目合同原名 MCP、Excel、搜索路径及 `BusinessFiles.cs` 旧 Store 仍在调用。必须逐项切换，禁止将 V2 ID 与旧业务数字 ID 互用或对同一操作双写。
 
 ## 3. 下一步实际施工顺序
 

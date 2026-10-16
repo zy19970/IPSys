@@ -1,18 +1,18 @@
 # IPSys Windows 验收与回归记录
 
-## 当前优先：SQLCipher V2 新库分阶段验收（2026-10-15）
+## 当前优先：SQLCipher V2 新库分阶段验收（2026-10-16）
 
-用户确认旧库全是测试数据，取消旧库迁移、回填及旧版互开。以下按 V2 新库逐项测试，异常/破坏性操作仅用可丢弃新库；旧业务 API 的通过记录不能直接作为 V2 新库业务通过证据。
+用户确认旧库全是测试数据，取消旧库迁移、回填及旧版互开。IP 现有网页/附件/Excel/MCP/搜索回收站/跨区复制和项目合同现有网页/原件均已分批使用 V2 且有相应 CI；**当前下一项 N2-03-07-02** 继续项目合同原名 MCP、Excel、搜索/回收站和跨区整项目复制，然后转换档案/综合资料、N4 全量验收。下面早期原生专项记录保留各阶段当时的边界，不能把它们的“仍待切换”当成当前状态。异常/破坏性操作仅用可丢弃新库，旧 API CI 不等于 V2 全应用实机通过。
 
 1. **N1 已通过对应自动测试**：V2 Schema、版本检查与拒绝旧库、七系统根、有效合同父项目/Folder 防环/工作区隔离、文件对象和分块 ready 后不可改写；[CI #38740628571](https://github.com/zy19970/IPSys/actions/runs/38740628571)。新建不得覆盖旧文件。
 2. **N2-01 已通过对应自动测试**：项目/合同/IP 原生 `folders` CRUD、软删恢复、合同父级、真实 SQLCipher HTTP 授权和不双写旧表；[CI #38743939004](https://github.com/zy19970/IPSys/actions/runs/38743939004)。
 3. **N2-02 已通过对应自动测试**：档案目录/资料、综合资料原生 CRUD，目录/资料混排排序与移动、禁止成环、分类归属、七系统根、工作区/section 隔离；[CI #38747066932](https://github.com/zy19970/IPSys/actions/runs/38747066932)。
-4. **N3-01 已通过对应自动测试**：原生 File 选填属性、FileVersion v1/v2、加密分块/SHA-256/历史原件下载、初次 Folder 归属、短输入和取消全回滚、认证与工作区隔离、重开加密库 [CI #38754995418](https://github.com/zy19970/IPSys/actions/runs/38754995418)；旧 UI 和实机操作未验。**N3-02 已通过自动验收**：[CI #38759311477](https://github.com/zy19970/IPSys/actions/runs/38759311477) 覆盖同区多 Folder 共享 FileId、同步属性/新版本、单处解绑、解绑后新版不自动复活旧链接、最后关联解除后保留历史并显式恢复、跨区拒绝；用户本机及旧 UI 集成仍待测。**N3-03 已通过自动验收**：[CI #38762437581](https://github.com/zy19970/IPSys/actions/runs/38762437581) 检验不同 FileId 同区仅共享 FileObject 字节、属性/版本独立，跨工作区生成新物理 FileObject 且所有历史字节/SHA-256 一致；实际 UI 尚未接入。**N3-04 原生 Store/HTTP 已通过自动验收**：[CI #38820367132](https://github.com/zy19970/IPSys/actions/runs/38820367132) 验证 SQLCipher writing 暂存与 SHA-256 同内容异名查重、现有文件名/Folder 路径提示、同名异内容不误报、三种明确选择/取消清理、票据消费/拒绝跨区与关库重开清理；当前网页尚未提供 N4 的可视化选择对话框，用户实机未测。
+4. **N3-01 已通过对应自动测试**：原生 File 选填属性、FileVersion v1/v2、加密分块/SHA-256/历史原件下载、初次 Folder 归属、短输入和取消全回滚、认证与工作区隔离、重开加密库 [CI #38754995418](https://github.com/zy19970/IPSys/actions/runs/38754995418)；旧 UI 和实机操作未验。**N3-02 已通过自动验收**：[CI #38759311477](https://github.com/zy19970/IPSys/actions/runs/38759311477) 覆盖同区多 Folder 共享 FileId、同步属性/新版本、单处解绑、解绑后新版不自动复活旧链接、最后关联解除后保留历史并显式恢复、跨区拒绝；用户本机及旧 UI 集成仍待测。**N3-03 已通过自动验收**：[CI #38762437581](https://github.com/zy19970/IPSys/actions/runs/38762437581) 检验不同 FileId 同区仅共享 FileObject 字节、属性/版本独立，跨工作区生成新物理 FileObject 且所有历史字节/SHA-256 一致；实际 UI 尚未接入。**N3-04 原生 Store/HTTP 已通过自动验收**：[CI #38820367132](https://github.com/zy19970/IPSys/actions/runs/38820367132) 验证 SQLCipher writing 暂存与 SHA-256 同内容异名查重、现有文件名/Folder 路径提示、同名异内容不误报、三种明确选择/取消清理、票据消费/拒绝跨区与关库重开清理；IP、项目合同现有网页已在后续 N2-03 接入可视化查重选择对话框，完整用户实机未测。
 9. **N2-03-05/06 知识产权搜索、回收站、MCP 原件与跨工作区复制自动验收**：[CI #38831972597](https://github.com/zy19970/IPSys/actions/runs/38831972597) 与 [CI #38833862535](https://github.com/zy19970/IPSys/actions/runs/38833862535) 均为 success。真实 SQLCipher/HTTP/MCP 验证统一搜索返回 V2 FolderId/FileId、单原件关联解除与恢复、跨工作区完整 IP 原件与三版本字节独立拷贝及事务回滚；MCP 的 IP 上传使用 V2 FolderId、SHA-256 同内容未选择时提示并取消暂存，选择独立 FileId 内容复用、新版本、材料类别、私有工作区隔离和解除 LinkId 不损其它文件。仍待用户本机 Edge/Chrome 手工完成实际交互与 ZIP 组合边界验收。**没有旧数据库要迁移：不要进行旧测试数据的迁移/回填或旧版库兼容检查。**
 8. **N2-03-04 现有 IP 网页 V2 接入（CI #38828523508 已验收）**：知识产权列表与编辑使用 V2 FolderId，附件通过 V2 FileId/LinkId/版本号查询和下载，Excel 及文件夹/ZIP 导出使用相同原件路径；重复内容先暂存并提示已有文件名/位置，由用户明确选择共享身份、仅复用内容、独立保存或取消，材料类别随确认一同保存。单 EXE 新脚本 HTTP 及 Node UI 断言已补；旧统一搜索、回收站、旧 MCP IP 命名及跨区完整复制尚待 N2-03-05。历史 CI #38827074704/#38827419407/#38827699129 失败原因及修复见提交历史。
-7. **N2-03-03 知识产权固定 Excel 与 V2 FolderId 已通过 Windows 自动回归**：[CI #38825202078](https://github.com/zy19970/IPSys/actions/runs/38825202078) 真实 SQLCipher/HTTP 使用现有固定20列表头工作簿测试 V2 导入新建、申请号去重 skip/update、新 FolderId 筛选导出、Excel 更新后 FileId/文件版本及实际历史字节不变、跨公司/个人导入只复制属性不带附件、非法工作簿 400 拒绝、会话鉴权；此项只证明原生 `/api/v2/excel`，旧网页调用 `/api/excel` 尚未切换，Excel 桌面手工验收未做。
-6. **N2-03-02 知识产权 V2 业务附件链路已通过 Windows 自动回归**：[CI #38824119576](https://github.com/zy19970/IPSys/actions/runs/38824119576) 运行真实 SQLCipher/HTTP，覆盖有效 IP FolderId 与 FileId 归属、分类上传、不同历史版本 SHA-256/字节往返、多专利共用一个 FileId、新版同步、解除一处/恢复、专利属性编辑不产生文件版本、删除后隐藏/恢复、公司个人跨区拒绝、旧业务附件表不双写。首轮因 IpInput Smoke 缺少 Tags 编译失败，修复后通过；旧 UI、旧 HTTP、旧 MCP/Excel 仍待 N2-03-03/N4。
-5. **N2-03-01 已通过 Windows 自动回归**：[CI #38822708366](https://github.com/zy19970/IPSys/actions/runs/38822708366) 验证 11 项明确命名的 `v2_*` 本机 MCP 项目/合同/IP CRUD 经用户授权→命名管道→HTTP→SQLCipher V2 `folders` 实际操作，合同从属、编辑保留未指定字段、跨区拒绝、删除恢复、不写旧表、关闭 MCP 拒绝读取，原 14 项旧工具回归不变。**N2-03 其余及 N4 待开发验收**：原有业务 API/附件/MCP 旧命名/Excel/UI 和 File 属性与 Folder 祖先搜索、递归导出、默认最新版、回收站和 PDF 未整体切换；旧表清理后仍需完整 CI、Edge/Chrome 实机及 T01–T09。
+7. **N2-03-03 知识产权固定 Excel 与 V2 FolderId 已通过 Windows 自动回归**：[CI #38825202078](https://github.com/zy19970/IPSys/actions/runs/38825202078) 真实 SQLCipher/HTTP 使用现有固定20列表头工作簿测试 V2 导入新建、申请号去重 skip/update、新 FolderId 筛选导出、Excel 更新后 FileId/文件版本及实际历史字节不变、跨公司/个人导入只复制属性不带附件、非法工作簿 400 拒绝、会话鉴权；此项只证明原生 `/api/v2/excel`，此为当时阶段边界，IP 现有网页随后已在 N2-03-04 切至 V2 Excel；桌面 Excel 手工验收未做。
+6. **N2-03-02 知识产权 V2 业务附件链路已通过 Windows 自动回归**：[CI #38824119576](https://github.com/zy19970/IPSys/actions/runs/38824119576) 运行真实 SQLCipher/HTTP，覆盖有效 IP FolderId 与 FileId 归属、分类上传、不同历史版本 SHA-256/字节往返、多专利共用一个 FileId、新版同步、解除一处/恢复、专利属性编辑不产生文件版本、删除后隐藏/恢复、公司个人跨区拒绝、旧业务附件表不双写。首轮因 IpInput Smoke 缺少 Tags 编译失败，修复后通过；此为 N2-03-02 当时边界，IP 现有网页/Excel/原名 MCP 已于 N2-03-03～06 陆续完成。
+5. **N2-03-01 已通过 Windows 自动回归**：[CI #38822708366](https://github.com/zy19970/IPSys/actions/runs/38822708366) 验证 11 项明确命名的 `v2_*` 本机 MCP 项目/合同/IP CRUD 经用户授权→命名管道→HTTP→SQLCipher V2 `folders` 实际操作，合同从属、编辑保留未指定字段、跨区拒绝、删除恢复、不写旧表、关闭 MCP 拒绝读取，原 14 项旧工具回归不变。**N2-03-01 当时尚待开发的范围（后续已分批完成）**：原有业务 API/附件/MCP 旧命名/Excel/UI 和 File 属性与 Folder 祖先搜索、递归导出、默认最新版、回收站和 PDF 未整体切换；旧表清理后仍需完整 CI、Edge/Chrome 实机及 T01–T09。
 
 > 旧 B05、PDF 及用户所测大文件通过的结论仅限对应旧业务测试范围，不能推断新 File 层和超 2 GiB 已验收。权威任务及证据见 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)。
 
@@ -82,7 +82,7 @@
 | T05 目录导出 | CI 通过、人工未全测 | Edge/Chrome 文件夹权限、重复名字、取消及 ZIP 部分失败 |
 | T06 工作区隔离 | CI 有证据、组合人工未全测 | 不同工作区查询/文件物理对象/导出隔离 |
 | T07 任务退出 | 部分代码/CI、有待人工 | 上传中「取消退出、完成后退出、留在程序」，浏览器关闭行为 |
-| T08 V2 版本及未来升级 | N1 版本识别已通过 CI，真实 Windows/未来升级已验收 | 旧测试库拒绝打开且不覆盖；新建/重开 V2 安全；取消旧数据迁移/回填，不承诺旧程序读取 V2 |
+| T08 V2 版本及未来升级 | N1 版本识别已通过 CI，未来升级及完整 Windows 实机仍未验收 | 旧测试库拒绝打开且不覆盖；新建/重开 V2 安全；取消旧数据迁移/回填，不承诺旧程序读取 V2 |
 | T09 源文件删除 | 前提未满足 | 无新有效外部备份时绝不自动删除来源文件 |
 
 原始门槛与定义以 [FREEZE_AUDIT.md](./FREEZE_AUDIT.md) 为准；综合状态以 [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md) 为准。
