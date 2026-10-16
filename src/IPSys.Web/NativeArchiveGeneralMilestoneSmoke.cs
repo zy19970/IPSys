@@ -57,7 +57,7 @@ static class NativeArchiveGeneralMilestoneSmoke
                 name=mark+"项目申报",category="申报与认定",folderId=root,
                 year="2026"}}))).GetProperty("id").GetInt64();
         var search=await client.GetFromJsonAsync<SearchResponse>(
-            "/api/search/company?q="+Uri.EscapeDataString(mark));
+            "/api/v2/search/company?q="+Uri.EscapeDataString(mark));
         Check(search is not null &&
             search.Results.Any(x=>x.Kind=="archive"&&x.Section=="certificate"&&
                 x.Id==certificate) &&
@@ -66,7 +66,7 @@ static class NativeArchiveGeneralMilestoneSmoke
             search.Results.Any(x=>x.Kind=="general"&&x.Id==general),
             "all archive/general hits use native FolderId");
         var ancestor=await client.GetFromJsonAsync<SearchResponse>(
-            "/api/search/company?q="+Uri.EscapeDataString("申报与认定"));
+            "/api/v2/search/company?q="+Uri.EscapeDataString("申报与认定"));
         Check(ancestor is not null && ancestor.Results.Any(x=>x.Kind=="archive"&&
             x.Id==business),"ancestor folder names searchable");
 

@@ -8,7 +8,7 @@ static class SearchSmoke
     private static async Task<SearchResponse> Find(HttpClient client,string workspace,string term)
     {
         return await client.GetFromJsonAsync<SearchResponse>(
-            "/api/search/"+workspace+"?q="+Uri.EscapeDataString(term))
+            "/api/v2/search/"+workspace+"?q="+Uri.EscapeDataString(term))
             ??throw new IOException("搜索返回内容为空。");
     }
     public static async Task VerifyAsync(HttpClient client)
@@ -135,14 +135,14 @@ static class SearchSmoke
 
         var empty=await Find(client,"company"," ");
         if(empty.Results.Count!=0)throw new IOException("空关键词不应返回全部资料。");
-        using(var bad=await client.GetAsync("/api/search/company?q="+new string('x',101)))
+        using(var bad=await client.GetAsync("/api/v2/search/company?q="+new string('x',101)))
             if(bad.StatusCode!=HttpStatusCode.BadRequest)
                 throw new IOException("超长关键词未被拒绝。");
-        using(var badScope=await client.GetAsync("/api/search/unknown?q="+marker))
+        using(var badScope=await client.GetAsync("/api/v2/search/unknown?q="+marker))
             if(badScope.StatusCode!=HttpStatusCode.BadRequest)
                 throw new IOException("无效工作区应被拒绝。");
         using(var guest=new HttpClient{BaseAddress=client.BaseAddress})
-        using(var denied=await guest.GetAsync("/api/search/company?q="+marker))
+        using(var denied=await guest.GetAsync("/api/v2/search/company?q="+marker))
             if(denied.StatusCode!=HttpStatusCode.Unauthorized)
                 throw new IOException("未解锁会话不得检索台账。");
 
@@ -155,6 +155,26 @@ static class SearchSmoke
             deleted.EnsureSuccessStatusCode();
         if((await Find(client,"company",marker+"-企业资质")).Results.Count!=0)
             throw new IOException("删除的资质资料不得仍被检索。");
+        // Existing archive/general pages still use their old own-record IDs.
+        // The compatibility search must not send a V2 FolderId to that UI.
+        string legacyName=marker+"-旧页面资质";
+        using var legacy=await client.PostAsJsonAsync(
+            "/api/archives/company/certificate",new {
+                name=legacyName,category="企业资质"});
+        legacy.EnsureSuccessStatusCode();
+        long legacyId=(await legacy.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
+            .GetProperty("id").GetInt64();
+        var currentPage=await client.GetFromJsonAsync<SearchResponse>(
+            "/api/search/company?q="+Uri.EscapeDataString(legacyName));
+        if(currentPage is null||!currentPage.Results.Any(h=>h.Kind=="archive"&&
+            h.Id==legacyId && h.Section=="certificate"))
+            throw new IOException("旧资料页面搜索必须保留旧资料 ID，不能错误跳转 V2 FolderId。");
+        var onlyNative=await Find(client,"company",legacyName);
+        if(onlyNative.Results.Any(h=>h.Kind=="archive"))
+            throw new IOException("V2 搜索不得将旧资质表误认为 Folder。");
+        var nativeResult=await Find(client,"company",marker+"-企业资质");
+        if(!nativeResult.Results.Any(h=>h.Kind=="archive"&&h.Id==archiveId))
+            throw new IOException("V2 原生检索应返回真实 FolderId。");
         Console.WriteLine("SEARCH SMOKE PASS: modules, fields, filenames, isolation, auth, soft delete");
     }
 }

@@ -16,12 +16,29 @@ static class SearchLedgerEndpoints
             try
             {
                 if(!v.Allowed(ctx))return Results.Unauthorized();
-                try{return Results.Json(SearchStore.Find(v.Db,workspace,q));}
+                try{return Results.Json(SearchStore.FindForCurrentUi(v.Db,workspace,q));}
                 catch(InvalidDataException ex){return Fail(ex.Message);}
             }
             finally{v.Gate.Release();}
         });
         
+        // During N2-04, native archive/general results must use their real
+        // FolderIds, while the existing /api/search page still opens legacy IDs.
+        app.MapGet("/api/v2/search/{workspace}",async(
+            HttpContext ctx,Vault v,string workspace,string? q)=>
+        {
+            if(!v.Allowed(ctx))return (IResult)Results.Unauthorized();
+            if(!Vault.WorkspaceValid(workspace))return Fail("无效工作区。");
+            await v.Gate.WaitAsync(ctx.RequestAborted);
+            try
+            {
+                if(!v.Allowed(ctx))return Results.Unauthorized();
+                try{return Results.Json(SearchStore.Find(v.Db,workspace,q));}
+                catch(InvalidDataException ex){return Fail(ex.Message);}
+            }
+            finally{v.Gate.Release();}
+        });
+
         // Scoped row ordering and atomic soft delete for all non-certificate record ledgers.
         app.MapGet("/api/ledger/{workspace}/order",async(HttpContext ctx,Vault v,string workspace)=>
         {
