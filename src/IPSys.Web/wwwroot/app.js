@@ -935,8 +935,8 @@ el('filePreviewDialog').addEventListener('close',()=>{
 async function downloadBusinessAttachment(fileId){
  try{
   const file=businessFileRows.find(f=>f.id===fileId);if(!file)return;
-  const path=file.v2?IPSysNativeIp.fileUrl(space,file):
-   '/api/business-files/'+space+'/download/'+fileId;
+  if(!file.v2)throw Error('此附件不是 V2 原件，刷新资料库后重试。');
+  const path=IPSysNativeIp.fileUrl(space,file);
   const response=await api(path);
   const blob=await response.blob();
   const url=URL.createObjectURL(blob);
@@ -2022,9 +2022,10 @@ el('content').addEventListener('click',async ev=>{
  }
  if(target.dataset.previewBusiness){
   const file=businessFileRows.find(f=>f.id===Number(target.dataset.previewBusiness));
-  if(file)await previewOriginal(file,file.v2?
-   IPSysNativeIp.fileUrl(space,file):
-   '/api/business-files/'+space+'/download/'+file.id);
+  if(file){
+   if(!file.v2)return notice('附件身份不符，请刷新资料列表。',true);
+   await previewOriginal(file,IPSysNativeIp.fileUrl(space,file));
+  }
   return;
  }
  if(target.dataset.previewGeneral){
@@ -2049,9 +2050,8 @@ el('content').addEventListener('click',async ev=>{
   const f=businessFileRows.find(x=>x.id===fileId);
   if(!f||!confirm('从这条业务记录中移除“'+f.name+'”（v'+f.version+'）？可在回收站恢复。'))return;
   try{
-   await api(f.v2?(f.kind==='ip'?'/api/v2/ip/'+space+'/'+f.ownerId+'/files/'+f.fileId+'/links/'+f.linkId:
-    '/api/v2/files/'+space+'/'+f.fileId+'/links/'+f.linkId):
-    '/api/business-files/'+space+'/'+fileId,{method:'DELETE'});
+   if(!f.v2)throw Error('附件身份不符，请刷新资料列表。');
+   await api('/api/v2/files/'+space+'/'+f.fileId+'/links/'+f.linkId,{method:'DELETE'});
    await refresh();notice('已从此记录移除附件（未物理删除原件）。');
   }catch(e){notice(e.message,true);}
   return;
@@ -2371,14 +2371,9 @@ el('businessAssocForm').onsubmit=async event=>{
  el('businessAssocSave').disabled=true;
  try{
   const file=businessFileRows.find(x=>x.id===id);
-  if(file?.v2){
-   await api('/api/v2/files/'+space+'/'+file.fileId+'/associate',
-    {method:'POST',json:{linkId:file.linkId,targetFolderId:target.id,move}});
-  }else{
-   await api('/api/business-files/'+space+'/'+id+'/associate',{method:'POST',json:{
-    targetKind:target.kind,targetOwnerId:target.id,targetSection:target.section,move
-   }});
-  }
+  if(!file?.v2)throw Error('附件身份不符，请刷新资料列表。');
+  await api('/api/v2/files/'+space+'/'+file.fileId+'/associate',
+   {method:'POST',json:{linkId:file.linkId,targetFolderId:target.id,move}});
   el('businessAssocDialog').close();await refresh();notice('附件关联操作已完成');
  }catch(e){notice(e.message,true);}
  finally{el('businessAssocSave').disabled=false;}

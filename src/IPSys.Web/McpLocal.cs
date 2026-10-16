@@ -93,7 +93,7 @@ static partial class McpLocal
         Tool("list_contracts","查询 V2 有效合同及其所属项目 FolderId。",new(){
             ["workspace"]=Field("string","工作区",Workspaces)
         },["workspace"]),
-        Tool("list_files","列出工作区 V2 项目/合同/知识产权有效原件，每项 id 是 LinkId、fileId 是逻辑原件身份。",new(){
+        Tool("list_files","列出工作区全部 V2 项目、合同、知识产权、档案和综合资料有效原件；id 是 LinkId，fileId 是逻辑文件身份。",new(){
             ["workspace"]=Field("string","工作区",Workspaces)
         },["workspace"]),
         Tool("create_project","在已解锁的 IPSys 中创建项目。",new(){
@@ -179,10 +179,11 @@ static partial class McpLocal
             ["file_id"]=Field("integer","原件 FileId"),
             ["link_id"]=Field("integer","关联 LinkId")
         },["workspace","ip_id","file_id","link_id"]),
-        Tool("upload_files","本机文件上传到 V2 项目/合同/IP FolderId；遇同字节文件必须显式选择 duplicate_mode，追加版本须指定已归属 owner_id 的 FileId。每份上限 64 MiB。",new(){
+        Tool("upload_files","本机上传到 V2 项目/合同/知识产权/档案/综合资料 FolderId；同内容必须显式确认 duplicate_mode；追加版本需为本 Folder 已关联 FileId。每份上限 64 MiB。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
-            ["kind"]=Field("string","原件归属类别",["project","contract","ip"]),
-            ["owner_id"]=Field("integer","项目、合同或知识产权 ID"),
+            ["kind"]=Field("string","原件归属类别",["project","contract","ip","archive","general"]),
+            ["section"]=Field("string","归档分类 archive 必填：certificate、achievement、academic；其它类型不需要"),
+            ["owner_id"]=Field("integer","归属资料 FolderId"),
             ["paths"]=new {type="array",minItems=1,maxItems=20,items=Field("string","本机绝对文件路径")},
             ["on_conflict"]=Field("string","new 独立原件；update 更新已有原件版本",["new","update"]),
             ["material_category"]=Field("string","知识产权附件类别（默认其他材料）",["申请材料","通知文件","证书文件","其他材料"]),
@@ -214,7 +215,7 @@ static partial class McpLocal
                     inputSchema=type.GetProperty("inputSchema")!.GetValue(tool)!
                 };
             }).ToArray();
-        return [..legacy,..native];
+        return [..legacy,..native,..ArchiveTools()];
     }
 
     private static object Success(JsonElement id,object value)=>new {jsonrpc="2.0",id,result=value};
@@ -442,6 +443,11 @@ static partial class McpLocal
            "create_contract" or "delete_contract" or
            "create_ip" or "update_ip" or "delete_ip")
             return await ExecuteNativeAsync(client,workspace,name,args);
+        if(name is "list_archives" or "create_archive" or "update_archive" or
+           "delete_archive" or "list_archive_folders" or "create_archive_folder" or
+           "update_archive_folder" or "delete_archive_folder" or "list_general" or
+           "create_general" or "update_general" or "delete_general")
+            return await ExecuteArchiveAsync(client,workspace,name,args);
         if(name=="list_projects")
         {
             var ui=await RequestAsync(client,HttpMethod.Get,
@@ -481,8 +487,8 @@ static partial class McpLocal
             case "upload_files":
             {
                 string kind=ReadString(args,"kind");
-                if(kind is not ("project" or "contract" or "ip"))
-                    throw new IOException("kind 只能为 project、contract 或 ip");
+                if(kind is not ("project" or "contract" or "ip" or "archive" or "general"))
+                    throw new IOException("kind 只能为 project、contract、ip、archive 或 general");
                 return await IpUploadFiles(client,workspace,args,stop,kind);
             }
             default:throw new IOException("不支持的 MCP 工具："+name);

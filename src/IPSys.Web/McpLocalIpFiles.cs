@@ -2,7 +2,7 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-// V2 project/contract/IP attachment MCP tools use authenticated local HTTP
+// V2 business attachment MCP tools use authenticated local HTTP
 // and one FolderId/FileId/LinkId identity. No legacy business-file writes.
 static partial class McpLocal
 {
@@ -29,9 +29,14 @@ static partial class McpLocal
         string workspace)
     {
         JsonArray rows=new();
-        foreach(string kind in new[]{"project","contract","ip"})
+        foreach(string kind in new[]{"project","contract","ip","archive","general"})
+        foreach(string section in kind=="archive"
+            ?workspace=="company"?new[]{"certificate","achievement"}:
+                new[]{"certificate","achievement","academic"}
+            :new[]{""})
         {
-            var folders=await RequestAsync(client,HttpMethod.Get,V2Url(workspace,kind));
+            var folders=await RequestAsync(client,HttpMethod.Get,
+                V2Url(workspace,kind)+(kind=="archive"?"?section="+section:""));
             foreach(var resource in folders.AsArray())
             {
                 long folder=resource?["folder"]?["ref"]?["id"]?.GetValue<long>()??0;
@@ -46,6 +51,7 @@ static partial class McpLocal
                         ["fileId"]=link["fileId"]?.DeepClone(),
                         ["ownerId"]=folder,
                         ["kind"]=kind,
+                        ["section"]=section,
                         ["name"]=link["displayName"]?.DeepClone() ??
                             link["fileName"]?.DeepClone(),
                         ["latestVersion"]=link["latestVersion"]?.DeepClone(),
@@ -102,9 +108,14 @@ static partial class McpLocal
         JsonElement args,CancellationToken stop,string kind="ip")
     {
         long folder=ReadId(args,"owner_id");
-        if(kind is not ("project" or "contract" or "ip"))
+        if(kind is not ("project" or "contract" or "ip" or "archive" or "general"))
             throw new IOException("文件归属类型无效。");
-        await RequestAsync(client,HttpMethod.Get,V2Url(workspace,kind,folder));
+        string section=kind=="archive"?ArchiveSection(workspace,args):
+            ReadString(args,"section","");
+        if(kind!="archive"&&section!="")
+            throw new IOException("非归档文件类型不能指定 section。");
+        await RequestAsync(client,HttpMethod.Get,
+            V2Url(workspace,kind,folder)+(kind=="archive"?"?section="+section:""));
         string mode=ReadString(args,"on_conflict","new");
         string choice=ReadString(args,"duplicate_mode","");
         string category=ReadString(args,"material_category",kind=="ip"?"其他材料":"");
@@ -113,7 +124,7 @@ static partial class McpLocal
         if(kind=="ip"&&category is not ("申请材料" or "通知文件" or "证书文件" or "其他材料"))
             throw new IOException("知识产权材料类别无效。");
         if(kind!="ip"&&category.Length!=0)
-            throw new IOException("项目/合同附件不能指定知识产权材料类别。");
+            throw new IOException("非知识产权的附件不能指定知识产权材料类别。");
         if(choice is not ("" or "independent" or "reuse" or "share"))
             throw new IOException("duplicate_mode 仅支持 independent、reuse、share。");
         if(mode=="update"&&choice!="")
@@ -130,7 +141,7 @@ static partial class McpLocal
                 $"/api/v2/files/{workspace}/folders/{folder}/links");
             if(linked is not JsonArray links || !links.Any(x=>
                 x?["fileId"]?.GetValue<long>()==current))
-                throw new IOException("指定 FileId 未关联所选项目/合同，拒绝追加版本。");
+                throw new IOException("指定 FileId 未关联所选资源文件夹，拒绝追加版本。");
         }
         long? source=choice is "reuse" or "share"
             ?ReadId(args,"source_file_id"):null;

@@ -1045,6 +1045,10 @@ assert.ok(js.includes("case 'trashRestoreSelected'")&&js.includes("case 'trashPu
 assert.ok(js.includes("'/api/trash/'+space+'/'+operation"));
 assert.ok(v2IpJs.includes('"/api/v2/files/"+workspace+"/"+record.fileId+"/links'),
  'Same-workspace association must use native V2 FolderFileLinks');
+assert.ok(!js.includes("'/api/business-files/'"),
+ 'Current UI must never fall back to legacy business-file IDs');
+assert.ok(!v2IpJs.includes('associateGeneric(api,'),
+ 'Retired prompt-based folder association must not be reachable');
 assert.ok(js.includes("api('/api/v2/files/'+space+'/'+file.fileId+'/associate'") &&
  js.includes("targetFolderId:target.id,move") &&
  js.includes("linkId:file.linkId") &&

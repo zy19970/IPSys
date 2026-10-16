@@ -480,6 +480,7 @@ static class WebSmoke
                 throw new IOException("MCP 删除的 V2 项目仍可从有效资源端点访问。");
         // V2 MCP tools are separate from legacy names: no dual-write on mutation.
         await NativeMcpSmoke.VerifyAsync(client);
+        await NativeMcpArchiveSmoke.VerifyAsync(client);
         (await client.PostAsJsonAsync("/api/mcp",new McpAccessInput(false)))
             .EnsureSuccessStatusCode();
         rejected=false;

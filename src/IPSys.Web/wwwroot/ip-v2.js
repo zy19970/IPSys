@@ -148,19 +148,6 @@
    size:f.size,sha256:f.sha256,source:"v2file"
   }));
  }
- async function associateGeneric(api,record,workspace,options){
-  const candidates=options.filter(x=>x.id!==record.ownerId);
-  if(!candidates.length)throw Error("当前工作区没有其它可关联的业务记录。");
-  const userInput=prompt("输入要共享到的"+({project:"项目",contract:"合同",archive:"档案",general:"综合资料"}[record.kind]||"业务资料")+
-   " FolderId：\n"+candidates.map(x=>x.id+" · "+(x.name||x.title)).join("\n"));
-  if(userInput==null)return false;
-  const id=Number(userInput);
-  if(!Number.isSafeInteger(id)||!candidates.some(x=>x.id===id))
-   throw Error("请从当前工作区列表中输入有效的业务记录 ID。");
-  await api("/api/v2/files/"+workspace+"/"+record.fileId+"/links",
-   {method:"POST",json:{folderId:id}});
-  return true;
- }
  globalThis.IPSysNativeIp={load,url,fileUrl,loadProjectFiles,upload,
-  newVersion,associate,associateGeneric};
+  newVersion,associate};
 })();
