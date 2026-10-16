@@ -33,7 +33,7 @@ static partial class McpLocal
     {
         object[] legacy=
         [
-        Tool("list_projects","列出指定工作区当前有效项目。",new(){
+        Tool("list_projects","列出 V2 当前工作区有效项目，ID 与现有项目网页 FolderId 一致。",new(){
             ["workspace"]=Field("string","工作区：company 公司；personal 个人",Workspaces)
         },["workspace"]),
         Tool("list_ips","查询 V2 知识产权，返回与网页相同 FolderId 的业务详情。",new(){
@@ -90,10 +90,10 @@ static partial class McpLocal
             ["workspace"]=Field("string","工作区",Workspaces),
             ["ip_id"]=Field("integer","知识产权 ID")
         },["workspace","ip_id"]),
-        Tool("list_contracts","查询当前工作区有效合同及其所属项目 ID。",new(){
+        Tool("list_contracts","查询 V2 有效合同及其所属项目 FolderId。",new(){
             ["workspace"]=Field("string","工作区",Workspaces)
         },["workspace"]),
-        Tool("list_files","查询当前工作区有效的业务原件及链接 ID。",new(){
+        Tool("list_files","历史旧业务附件查询；V2 项目合同请使用 list_project_files/list_contract_files，知识产权使用 list_ip_files。",new(){
             ["workspace"]=Field("string","工作区",Workspaces)
         },["workspace"]),
         Tool("create_project","在已解锁的 IPSys 中创建项目。",new(){
@@ -149,6 +149,26 @@ static partial class McpLocal
             ["workspace"]=Field("string","工作区",Workspaces),
             ["file_id"]=Field("integer","list_files 查询到的文件链接 ID")
         },["workspace","file_id"]),
+        Tool("list_project_files","查询 V2 项目 FolderId 下的有效 FileId、LinkId 与最新版本。",new(){
+            ["workspace"]=Field("string","工作区",Workspaces),
+            ["project_id"]=Field("integer","项目 FolderId")
+        },["workspace","project_id"]),
+        Tool("list_contract_files","查询 V2 合同 FolderId 下的有效 FileId、LinkId 与最新版本。",new(){
+            ["workspace"]=Field("string","工作区",Workspaces),
+            ["contract_id"]=Field("integer","合同 FolderId")
+        },["workspace","contract_id"]),
+        Tool("delete_project_file","仅解除指定 V2 项目中的一条文件关联，不删除共享原件和历史版本。",new(){
+            ["workspace"]=Field("string","工作区",Workspaces),
+            ["project_id"]=Field("integer","项目 FolderId"),
+            ["file_id"]=Field("integer","原件 FileId"),
+            ["link_id"]=Field("integer","项目文件 LinkId")
+        },["workspace","project_id","file_id","link_id"]),
+        Tool("delete_contract_file","仅解除指定 V2 合同中的一条文件关联，不删除共享原件和历史版本。",new(){
+            ["workspace"]=Field("string","工作区",Workspaces),
+            ["contract_id"]=Field("integer","合同 FolderId"),
+            ["file_id"]=Field("integer","原件 FileId"),
+            ["link_id"]=Field("integer","合同文件 LinkId")
+        },["workspace","contract_id","file_id","link_id"]),
         Tool("list_ip_files","查询 V2 知识产权下的有效原件；返回 LinkId、FileId、最新版与材料类别。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
             ["ip_id"]=Field("integer","知识产权 FolderId")
@@ -159,7 +179,7 @@ static partial class McpLocal
             ["file_id"]=Field("integer","原件 FileId"),
             ["link_id"]=Field("integer","关联 LinkId")
         },["workspace","ip_id","file_id","link_id"]),
-        Tool("upload_files","从本机绝对路径加密归档到对应模块。知识产权使用 V2 FolderId/FileId；同字节文件必须显式选择 duplicate_mode，追加版本指定 file_id。每份上限 64 MiB。",new(){
+        Tool("upload_files","本机文件上传到 V2 项目/合同/IP FolderId；遇同字节文件必须显式选择 duplicate_mode，追加版本须指定已归属 owner_id 的 FileId。每份上限 64 MiB。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
             ["kind"]=Field("string","原件归属类别",["project","contract","ip"]),
             ["owner_id"]=Field("integer","项目、合同或知识产权 ID"),
@@ -167,9 +187,9 @@ static partial class McpLocal
             ["on_conflict"]=Field("string","new 独立原件；update 更新已有原件版本",["new","update"]),
             ["material_category"]=Field("string","知识产权附件类别（默认其他材料）",["申请材料","通知文件","证书文件","其他材料"]),
             ["group_id"]=Field("string","存在多个同名原件时，更新指定组的身份 ID"),
-            ["duplicate_mode"]=Field("string","IP 查重后独立保存、复用内容或共享 FileId",["independent","reuse","share"]),
-            ["source_file_id"]=Field("integer","IP 选择 reuse/share 时与 SHA-256 匹配的已有 FileId"),
-            ["file_id"]=Field("integer","IP on_conflict=update 指向已有 FileId；必须属于 owner_id")
+            ["duplicate_mode"]=Field("string","V2 同内容查重后独立保存、复用内容或共享 FileId",["independent","reuse","share"]),
+            ["source_file_id"]=Field("integer","选择 reuse/share 时与 SHA-256 匹配的已有 FileId"),
+            ["file_id"]=Field("integer","on_conflict=update 指向已有 FileId，必须归属于 owner_id")
         },["workspace","kind","owner_id","paths"])
         ];
         // Keep legacy tool contracts intact until N2-03 endpoint migration.
@@ -415,12 +435,25 @@ static partial class McpLocal
         string workspace=Workspace(args);
         using var client=new HttpClient {BaseAddress=new Uri(address),Timeout=TimeSpan.FromMinutes(10)};
         client.DefaultRequestHeaders.TryAddWithoutValidation("X-IPSys-Token",vault.SessionToken);
-        string baseProject="/api/projects/"+workspace;
         if(name.StartsWith("v2_",StringComparison.Ordinal))
             return await ExecuteNativeAsync(client,workspace,name[3..],args);
-        // Legacy IP tool names now share the actual V2 IP FolderId with the UI.
-        if(name is "create_ip" or "update_ip" or "delete_ip")
+        // 原名项目/合同/IP CRUD 与已有 v2_* 共用同一 FolderId，不双写旧表。
+        if(name is "create_project" or "update_project" or "delete_project" or
+           "create_contract" or "delete_contract" or
+           "create_ip" or "update_ip" or "delete_ip")
             return await ExecuteNativeAsync(client,workspace,name,args);
+        if(name=="list_projects")
+        {
+            var ui=await RequestAsync(client,HttpMethod.Get,
+                "/api/v2/ui/projects/"+workspace);
+            return ui.DeepClone();
+        }
+        if(name=="list_contracts")
+        {
+            var ui=await RequestAsync(client,HttpMethod.Get,
+                "/api/v2/ui/contracts/"+workspace);
+            return ui.DeepClone();
+        }
         if(name=="list_ips")
         {
             JsonNode ui=await RequestAsync(client,HttpMethod.Get,
@@ -429,122 +462,30 @@ static partial class McpLocal
         }
         switch(name)
         {
-            case "list_projects":
-                return await RequestAsync(client,HttpMethod.Get,baseProject);
-            case "list_contracts":
-                return await RequestAsync(client,HttpMethod.Get,"/api/contracts/"+workspace);
             case "list_files":
-                return await RequestAsync(client,HttpMethod.Get,"/api/business-files/"+workspace);
+                return await RequestAsync(client,HttpMethod.Get,
+                    "/api/business-files/"+workspace);
+            case "list_project_files":
+                return await ProjectContractLinks(client,workspace,"project",args);
+            case "list_contract_files":
+                return await ProjectContractLinks(client,workspace,"contract",args);
+            case "delete_project_file":
+                return await DeleteProjectContractLink(client,workspace,"project",args);
+            case "delete_contract_file":
+                return await DeleteProjectContractLink(client,workspace,"contract",args);
             case "list_ip_files":
                 return await IpLinks(client,workspace,args);
             case "delete_ip_file":
                 return await DeleteIpLink(client,workspace,args);
-            case "delete_project":
-                return await RequestAsync(client,HttpMethod.Delete,baseProject+"/"+ReadId(args,"project_id"));
-            case "delete_contract":
-                return await RequestAsync(client,HttpMethod.Delete,
-                    "/api/contracts/"+workspace+"/"+ReadId(args,"contract_id"));
             case "delete_file":
                 return await RequestAsync(client,HttpMethod.Delete,
                     "/api/business-files/"+workspace+"/"+ReadId(args,"file_id"));
-            case "create_project":
-            {
-                JsonObject input=Patch(new JsonObject(),args,ProjectFields);
-                if(string.IsNullOrWhiteSpace(ReadString(args,"name"))||
-                   string.IsNullOrWhiteSpace(ReadString(args,"project_type")))
-                    throw new IOException("name 和 project_type 必填");
-                return await RequestAsync(client,HttpMethod.Post,baseProject,input);
-            }
-            case "update_project":
-            {
-                long id=ReadId(args,"project_id");
-                JsonNode list=await RequestAsync(client,HttpMethod.Get,baseProject);
-                JsonObject row=list.AsArray().OfType<JsonObject>()
-                    .FirstOrDefault(p=>p["id"]?.GetValue<long>()==id)
-                    ??throw new IOException("指定项目不存在或不属于当前工作区。");
-                JsonObject payload=new();
-                foreach(var property in ProjectFields.Values)
-                    payload[property]=row[property]?.DeepClone();
-                Patch(payload,args,ProjectFields);
-                return await RequestAsync(client,HttpMethod.Put,baseProject+"/"+id,payload);
-            }
-            case "create_contract":
-            {
-                long id=ReadId(args,"project_id");
-                if(string.IsNullOrWhiteSpace(ReadString(args,"name")))
-                    throw new IOException("合同名称必填");
-                return await RequestAsync(client,HttpMethod.Post,baseProject+"/"+id+"/contracts",
-                    Patch(new JsonObject(),args,ContractFields));
-            }
             case "upload_files":
             {
                 string kind=ReadString(args,"kind");
-                if(kind is not ("project" or "contract" or "ip"))throw new IOException("kind 只能为 project、contract 或 ip");
-                long owner=ReadId(args,"owner_id");
-                if(kind=="ip")
-                    return await IpUploadFiles(client,workspace,args,stop);
-                string mode=ReadString(args,"on_conflict","new");
-                string material=ReadString(args,"material_category",kind=="ip"?"其他材料":"");
-                if(kind=="ip"&&material is not ("申请材料" or "通知文件" or "证书文件" or "其他材料"))
-                    throw new IOException("知识产权材料类别无效。");
-                if(kind!="ip"&&material.Length!=0)
-                    throw new IOException("非知识产权附件不能指定材料类别。");
-                string group=ReadString(args,"group_id");
-                string duplicate=ReadString(args,"duplicate_mode","independent");
-                if(mode is not ("new" or "update")||duplicate is not ("independent" or "reuse")||
-                   group.Length>80||group.Any(char.IsControl))
-                    throw new IOException("附件版本或物理复用模式无效。");
-                if(!args.TryGetProperty("paths",out var files)||
-                   files.ValueKind!=JsonValueKind.Array||files.GetArrayLength() is <1 or >20)
-                    throw new IOException("paths 必须包含 1–20 条本机路径。");
-                JsonArray outcomes=new();
-                foreach(var element in files.EnumerateArray())
-                {
-                    if(stop.IsCancellationRequested)throw new OperationCanceledException();
-                    string path=element.ValueKind==JsonValueKind.String?element.GetString()??"":"";
-                    try
-                    {
-                        if(!Path.IsPathFullyQualified(path))throw new IOException("必须使用绝对路径。");
-                        var file=new FileInfo(Path.GetFullPath(path));
-                        if(!file.Exists)throw new FileNotFoundException("本机文件不存在。");
-                        var bad=BusinessFileStore.CheckName(file.Name);
-                        if(bad!=null)throw new IOException(bad);
-                        if(file.Length>BusinessFileStore.MaxFileLength)
-                            throw new IOException("文件超过 64 MiB 上限。");
-                        using var stream=new FileStream(file.FullName,FileMode.Open,FileAccess.Read,
-                            FileShare.Read,1024*1024,FileOptions.Asynchronous|FileOptions.SequentialScan);
-                        using var msg=new HttpRequestMessage(HttpMethod.Post,
-                            $"/api/business-files/{workspace}/{kind}/{owner}");
-                        msg.Content=new StreamContent(stream);
-                        msg.Content.Headers.ContentType=new MediaTypeHeaderValue("application/octet-stream");
-                        msg.Content.Headers.ContentLength=file.Length;
-                        msg.Headers.TryAddWithoutValidation("X-File-Name",Uri.EscapeDataString(file.Name));
-                        msg.Headers.TryAddWithoutValidation("X-Material-Category",Uri.EscapeDataString(material));
-                        msg.Headers.TryAddWithoutValidation("X-Upload-Mode",mode);
-                        msg.Headers.TryAddWithoutValidation("X-File-Group",group);
-                        msg.Headers.TryAddWithoutValidation("X-Duplicate-Mode",duplicate);
-                        using var reply=await client.SendAsync(msg,stop);
-                        string response=await reply.Content.ReadAsStringAsync(stop);
-                        if(!reply.IsSuccessStatusCode)
-                        {
-                            string reason=response;
-                            try{reason=JsonNode.Parse(response)?["error"]?.GetValue<string>()??response;}catch{}
-                            throw new IOException(reason);
-                        }
-                        outcomes.Add(new JsonObject{
-                            ["path"]=path,["ok"]=true,["result"]=JsonNode.Parse(response)
-                        });
-                    }
-                    catch(Exception ex)when(ex is not OperationCanceledException)
-                    {
-                        outcomes.Add(new JsonObject{["path"]=path,["ok"]=false,["error"]=ex.Message});
-                    }
-                }
-                return new JsonObject {
-                    ["files"]=outcomes,
-                    ["succeeded"]=outcomes.Count(x=>x?["ok"]?.GetValue<bool>()==true),
-                    ["failed"]=outcomes.Count(x=>x?["ok"]?.GetValue<bool>()!=true)
-                };
+                if(kind is not ("project" or "contract" or "ip"))
+                    throw new IOException("kind 只能为 project、contract 或 ip");
+                return await IpUploadFiles(client,workspace,args,stop,kind);
             }
             default:throw new IOException("不支持的 MCP 工具："+name);
         }

@@ -2,8 +2,8 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-// V2 IP attachment MCP tools always use authenticated local HTTP and the
-// native FolderId/FileId/LinkId scope. No legacy business-file IDs are read.
+// V2 project/contract/IP attachment MCP tools use authenticated local HTTP
+// and one FolderId/FileId/LinkId identity. No legacy business-file writes.
 static partial class McpLocal
 {
     private static async Task<JsonNode> IpLinks(HttpClient client,string workspace,
@@ -23,17 +23,48 @@ static partial class McpLocal
             $"/api/v2/ip/{workspace}/{folder}/files/{file}/links/{link}");
     }
 
+    private static async Task<JsonNode> ProjectContractLinks(HttpClient client,
+        string workspace,string kind,JsonElement args)
+    {
+        if(kind is not ("project" or "contract"))
+            throw new IOException("无效项目合同类别。");
+        long folder=ReadId(args,kind=="project"?"project_id":"contract_id");
+        // Ensure a numeric FolderId belongs to the requested kind, not just
+        // any active folder in the current workspace.
+        await RequestAsync(client,HttpMethod.Get,V2Url(workspace,kind,folder));
+        return await RequestAsync(client,HttpMethod.Get,
+            $"/api/v2/files/{workspace}/folders/{folder}/links");
+    }
+
+    private static async Task<JsonNode> DeleteProjectContractLink(HttpClient client,
+        string workspace,string kind,JsonElement args)
+    {
+        long file=ReadId(args,"file_id"),link=ReadId(args,"link_id");
+        var links=await ProjectContractLinks(client,workspace,kind,args);
+        if(links is not JsonArray list || !list.Any(x=>
+            x?["id"]?.GetValue<long>()==link &&
+            x?["fileId"]?.GetValue<long>()==file))
+            throw new IOException("文件关联不存在或不属于所选项目/合同。");
+        return await RequestAsync(client,HttpMethod.Delete,
+            $"/api/v2/files/{workspace}/{file}/links/{link}");
+    }
+
     private static async Task<JsonNode> IpUploadFiles(HttpClient client,string workspace,
-        JsonElement args,CancellationToken stop)
+        JsonElement args,CancellationToken stop,string kind="ip")
     {
         long folder=ReadId(args,"owner_id");
+        if(kind is not ("project" or "contract" or "ip"))
+            throw new IOException("文件归属类型无效。");
+        await RequestAsync(client,HttpMethod.Get,V2Url(workspace,kind,folder));
         string mode=ReadString(args,"on_conflict","new");
         string choice=ReadString(args,"duplicate_mode","");
-        string category=ReadString(args,"material_category","其他材料");
+        string category=ReadString(args,"material_category",kind=="ip"?"其他材料":"");
         if(mode is not ("new" or "update"))
             throw new IOException("on_conflict 仅支持 new 或 update。");
-        if(category is not ("申请材料" or "通知文件" or "证书文件" or "其他材料"))
+        if(kind=="ip"&&category is not ("申请材料" or "通知文件" or "证书文件" or "其他材料"))
             throw new IOException("知识产权材料类别无效。");
+        if(kind!="ip"&&category.Length!=0)
+            throw new IOException("项目/合同附件不能指定知识产权材料类别。");
         if(choice is not ("" or "independent" or "reuse" or "share"))
             throw new IOException("duplicate_mode 仅支持 independent、reuse、share。");
         if(mode=="update"&&choice!="")
@@ -42,6 +73,16 @@ static partial class McpLocal
            files.ValueKind!=JsonValueKind.Array||files.GetArrayLength() is <1 or >20)
             throw new IOException("paths 必须包含 1–20 条本机路径。");
         long? versionFile=mode=="update"?ReadId(args,"file_id"):null;
+        if(kind!="ip"&&versionFile is long current)
+        {
+            // Generic V2 version-upload endpoint checks file accessibility;
+            // MCP must additionally prove this FileId belongs to owner_id.
+            var linked=await RequestAsync(client,HttpMethod.Get,
+                $"/api/v2/files/{workspace}/folders/{folder}/links");
+            if(linked is not JsonArray links || !links.Any(x=>
+                x?["fileId"]?.GetValue<long>()==current))
+                throw new IOException("指定 FileId 未关联所选项目/合同，拒绝追加版本。");
+        }
         long? source=choice is "reuse" or "share"
             ?ReadId(args,"source_file_id"):null;
         JsonArray outcomes=new();
@@ -64,7 +105,9 @@ static partial class McpLocal
                     FileOptions.Asynchronous|FileOptions.SequentialScan))
                 using(var request=new HttpRequestMessage(HttpMethod.Post,
                     mode=="update"
-                      ?$"/api/v2/ip/{workspace}/{folder}/files/{versionFile}/versions"
+                      ?kind=="ip"
+                          ?$"/api/v2/ip/{workspace}/{folder}/files/{versionFile}/versions"
+                          :$"/api/v2/files/{workspace}/{versionFile}/versions"
                       :$"/api/v2/files/{workspace}/prepare?folderId={folder}"))
                 {
                     request.Content=new StreamContent(stream);
@@ -73,7 +116,7 @@ static partial class McpLocal
                     request.Content.Headers.ContentLength=local.Length;
                     request.Headers.TryAddWithoutValidation("X-File-Name",
                         Uri.EscapeDataString(original));
-                    if(mode=="new")
+                    if(mode=="new"&&kind=="ip")
                         request.Headers.TryAddWithoutValidation("X-Material-Category",
                             Uri.EscapeDataString(category));
                     using var response=await client.SendAsync(request,stop);

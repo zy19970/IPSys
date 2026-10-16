@@ -9,6 +9,8 @@ static class NativeMcpSmoke
     private static JsonElement Args(object o)=>JsonSerializer.SerializeToElement(o);
     private static async Task<JsonNode> Call(string name,object input)=>
         await McpLocal.RunSmokeToolAsync("v2_"+name,Args(input));
+    private static async Task<JsonNode> Original(string name,object input)=>
+        await McpLocal.RunSmokeToolAsync(name,Args(input));
     private static void Check(bool ok,string reason)
     {
         if(!ok)throw new IOException("N2-03-01 MCP V2: "+reason);
@@ -29,8 +31,10 @@ static class NativeMcpSmoke
         Check(native.All(name=>names.Contains("v2_"+name)) &&
               names.Distinct().Count()==names.Length,
               "MCP V2 tool registry has 11 unique business actions");
-        Check(names.Contains("upload_files")&&!names.Contains("v2_upload_files"),
-              "old file MCP route remains explicit while V2 file upload needs UI choice");
+        Check(names.Contains("upload_files")&&!names.Contains("v2_upload_files") &&
+              new[]{"list_project_files","list_contract_files",
+                  "delete_project_file","delete_contract_file"}.All(names.Contains),
+              "project and contract file MCP actions are available");
         string suffix=Guid.NewGuid().ToString("N")[..8];
         string name="原生MCP项目"+suffix;
         var created=await Call("create_project",new {
@@ -119,6 +123,135 @@ static class NativeMcpSmoke
         Check(Find(await Call("list_contracts",new{workspace="company"}),contract)==null &&
               Find(await Call("list_ips",new{workspace="company"}),ip)==null,
               "MCP V2 soft-deletion correctly removes only native records");
+        // N2-03-07-02: original tool names must use the same V2 FolderId
+        // as the live UI; no new legacy project/contract rows may appear.
+        var oldNameProject=await Original("create_project",new{
+            workspace="company",name="原名MCP项目"+suffix,project_type="科研项目",
+            project_no="ORIG-"+suffix,remarks="创建于 V2"
+        });
+        long originalProject=Id(oldNameProject);
+        var currentProjects=await Original("list_projects",new{workspace="company"});
+        Check(currentProjects is JsonArray projectRows &&
+              projectRows.Any(x=>x?["id"]?.GetValue<long>()==originalProject &&
+                  x?["projectNo"]?.GetValue<string>()=="ORIG-"+suffix),
+            "original project list and create both use V2 FolderId");
+        await Original("update_project",new{
+            workspace="company",project_id=originalProject,leader="代理修改负责人"
+        });
+        var updated=await Call("list_projects",new{workspace="company"});
+        Check(Find(updated,originalProject)?["businessData"]?["leader"]?.GetValue<string>()
+              =="代理修改负责人","original MCP project patch writes V2");
+        var originalContract=await Original("create_contract",new{
+            workspace="company",project_id=originalProject,
+            name="原名MCP合同"+suffix,contract_no="ORIG-C-"+suffix
+        });
+        long originalContractId=Id(originalContract);
+        var listedContracts=await Original("list_contracts",new{workspace="company"});
+        Check(listedContracts is JsonArray contractRows &&
+              contractRows.Any(x=>x?["id"]?.GetValue<long>()==originalContractId &&
+                  x?["projectId"]?.GetValue<long>()==originalProject),
+            "original contract list and create share native parent FolderId");
+        var legacyAfter=await client.GetFromJsonAsync<List<ProjectView>>(
+            "/api/projects/company");
+        Check(legacyAfter is not null && !legacyAfter.Any(x=>x.Name=="原名MCP项目"+suffix),
+            "original MCP project create does not write old business_projects");
+
+        string path=Path.Combine(Path.GetTempPath(),"IPSys-V2-MCP-"+suffix+".bin");
+        byte[] originalBytes=System.Security.Cryptography.RandomNumberGenerator.GetBytes(2173);
+        await File.WriteAllBytesAsync(path,originalBytes);
+        try
+        {
+            var uploaded=await Original("upload_files",new{
+                workspace="company",kind="project",owner_id=originalProject,
+                paths=new[]{path}
+            });
+            Check(uploaded["succeeded"]?.GetValue<int>()==1,
+                "project original upload_files saved a native V2 FileId");
+            var result=uploaded["files"]?[0]?["result"]??throw new IOException(
+                "原名 MCP 上传缺少原件结果。");
+            long file=result["fileId"]?.GetValue<long>()??0,
+                link=result["linkId"]?.GetValue<long>()??0;
+            Check(file>0&&link>0,"V2 upload returned FileId and LinkId");
+            var projectFiles=await Original("list_project_files",new{
+                workspace="company",project_id=originalProject
+            });
+            Check(projectFiles is JsonArray pf &&
+                  pf.Any(x=>x?["fileId"]?.GetValue<long>()==file &&
+                      x?["id"]?.GetValue<long>()==link),
+                "project file list uses V2 folder-file links");
+            byte[] downloaded=await client.GetByteArrayAsync(
+                $"/api/v2/files/company/{file}/versions/1/download");
+            Check(downloaded.SequenceEqual(originalBytes),
+                "MCP uploaded project original bytes round trip");
+
+            // Contract shares the same immutable V2 file; detach only its link.
+            using(var linked=await client.PostAsJsonAsync(
+                $"/api/v2/files/company/{file}/links",
+                new{folderId=originalContractId}))
+                linked.EnsureSuccessStatusCode();
+            var contractFiles=await Original("list_contract_files",new{
+                workspace="company",contract_id=originalContractId
+            });
+            long contractLink=contractFiles.AsArray()
+                .FirstOrDefault(x=>x?["fileId"]?.GetValue<long>()==file)?["id"]?.GetValue<long>()??0;
+            Check(contractLink>0,"contract sees shared V2 FileId");
+            await Original("delete_contract_file",new{
+                workspace="company",contract_id=originalContractId,
+                file_id=file,link_id=contractLink
+            });
+            Check((await Original("list_contract_files",new{
+                workspace="company",contract_id=originalContractId
+            })).AsArray().Count==0,
+                "contract unlink only deletes the selected LinkId");
+            Check((await Original("list_project_files",new{
+                workspace="company",project_id=originalProject
+            })).AsArray().Any(x=>x?["fileId"]?.GetValue<long>()==file),
+                "original project file still accessible after contract unlink");
+            var mismatched=false;
+            try{
+                await Original("delete_project_file",new{
+                    workspace="company",project_id=originalProject,
+                    file_id=file,link_id=contractLink
+                });
+            }catch(IOException){mismatched=true;}
+            Check(mismatched,"cannot unlink a link belonging to another folder");
+
+            // Append a version via a typed owner check, never by legacy group_id.
+            byte[] revised=System.Security.Cryptography.RandomNumberGenerator.GetBytes(951);
+            await File.WriteAllBytesAsync(path,revised);
+            var appended=await Original("upload_files",new{
+                workspace="company",kind="project",owner_id=originalProject,
+                paths=new[]{path},on_conflict="update",file_id=file
+            });
+            Check(appended["succeeded"]?.GetValue<int>()==1 &&
+                  (await client.GetByteArrayAsync(
+                      $"/api/v2/files/company/{file}/versions/2/download"))
+                  .SequenceEqual(revised),
+                "original project MCP appends genuine V2 FileVersion");
+            bool foreignVersion=false;
+            try{
+                await Original("upload_files",new{
+                    workspace="company",kind="contract",owner_id=originalContractId,
+                    paths=new[]{path},on_conflict="update",file_id=file
+                });
+            }catch(IOException){foreignVersion=true;}
+            Check(foreignVersion,"cannot version a FileId without owner link");
+            await Original("delete_project_file",new{
+                workspace="company",project_id=originalProject,
+                file_id=file,link_id=link
+            });
+            Check((await Original("list_project_files",new{
+                workspace="company",project_id=originalProject
+            })).AsArray().Count==0,"project file unlinked without physical deletion");
+        }
+        finally{File.Delete(path);}
+
+        await Original("delete_contract",new{
+            workspace="company",contract_id=originalContractId
+        });
+        await Original("delete_project",new{
+            workspace="company",project_id=originalProject
+        });
         await Call("delete_project",new{workspace="company",project_id=project});
         Console.WriteLine("N2-03-01 V2 MCP NATIVE SQLCIPHER HTTP SMOKE PASS");
     }
