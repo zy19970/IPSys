@@ -1,5 +1,16 @@
 # IPSys Windows 验收与回归记录
 
+> **本机第六轮测试报告与三项补丁（2026-10-17）**：从 [MCP_TEST_RESULTS/2026-10-17/MCP_TEST_REPORT.md](./MCP_TEST_RESULTS/2026-10-17/MCP_TEST_REPORT.md) 独立核对得出：原 37 项 **PASS 28 / FAIL 0 / BLOCKED 9**，ISS-001～015 **15/15 通过**，另有 ISS-016～018 三项已由 [`e3f6292`](https://github.com/zy19970/IPSys/commit/e3f62921aad6e7cef16a7fa8bf498ff0c7392636) 修补。Windows CI [#39014009578](https://github.com/zy19970/IPSys/actions/runs/39014009578) 加入 SQLCipher/MCP 冒烟回归；**本机 Agent 还没有针对该新提交实测，不可把原报告中的通过数直接视为新版本复测结果**。MCP 当前 70 项，不得使用历史 69 工具断言。
+
+### ISS-016～018 定点回归
+
+1. `python t10_final.py iss016`：回收站不存在 ID 与创建目录 `parent_id=0` 应留存 `done/businessOk=false`，不再是 `EXECUTION_UNCERTAIN`；真正取消、强杀或断线仍不可误记为 `done`。
+2. 在同一个有效父目录下，两次调用 `create_archive_folder` 使用完全相同的名称与不同 `request_id`：第一次成功，第二次 `httpStatus=409` 且提示同级目录重名；不暴露 SQLite 数字错误码。
+3. 对一个无效本地上传路径单文件调用 `upload_files`：协议 `tools/call` 顶层 `message` 说明具体原因；两个无效路径应提示“失败 2 个”并保留 `files[].error`。同步检查 70 工具、`t02_lists.py` 和 `t04_async.py cancel` 不回归。
+
+本机权限/GUI 场景仍有 9 项 BLOCKED；24 并发 p95 已观测到约 1,956 ms（旧轮约 475 ms），尚没有足够证据归因于数据库体积或确定性能缺陷，可在等规模数据及相同环境下单独对比。
+
+
 > **最终一次性复测基线（2026-10-17）**：剩余 ISS-003～ISS-014 修复提交 `30af13d4`→`a885d368`→`2d099748`→`24822d73`，最终 [Windows CI #39010080604](https://github.com/zy19970/IPSys/actions/runs/39010080604) **completed/success**。MCP 从 69 项增至 **70 项**（新增仅确认后清理已软删且无附件关联资料的 `purge_trash`），CI 包含发布版正式 stdio 结构化错误和批请求拒绝、原生 SQLCipher/HTTP 业务冒烟。完整本机 Agent 测试从 [MCP_AGENT_FINAL_RETEST.md](./MCP_AGENT_FINAL_RETEST.md) 一次性执行，兼测先前三项 P0/P1 和剩余 12 项；未在本机执行的跨权限及第二 Windows 账户、强杀后真实恢复仍不得视为已验收。
 
 ### 最终 MCP 复测与验收记录入口

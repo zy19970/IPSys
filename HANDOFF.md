@@ -1,5 +1,8 @@
 # IPSys 跨会话交接（2026-10-17：N4 与 MCP 三批自动验收完成）
 
+> **MCP 黑盒第六轮与缺陷收敛（2026-10-17）**：用户报告已推送 [MCP_TEST_RESULTS/2026-10-17](./MCP_TEST_RESULTS/2026-10-17/MCP_TEST_REPORT.md)，被测 `d3bc77f` 环境结果为 37 项 PASS28/FAIL0/BLOCKED9，ISS-001～015 的 15 项门禁均通过。随后发现 ISS-016（前置拒绝记录为 unknown）、ISS-017（同名目录泄漏 SQLite 数字码）、ISS-018（批量上传顶层不带实际错误）；修复提交 `e3f6292`，对应 [Windows CI #39014009578](https://github.com/zy19970/IPSys/actions/runs/39014009578)。MCP **70 工具**，未改变 V2 数据模型、FileId/LinkId/版本和异步崩溃保护；本机 Agent 尚未对新提交二次实测，不能报告为已实机通过。后续优先完成 [WEB_TESTING.md](./WEB_TESTING.md) 的 ISS-016～018 定点回归，并补足 9 项 BLOCKED 的真实权限/GUI 场景。
+
+
 > **最终 MCP 统一复测基线（2026-10-17）**：首次实机报告中的 ISS-001、ISS-002、ISS-015 已由 `a18a004`、`22276bf` 修复；随后 `30af13d4`、`a885d368`、`2d099748`、`24822d73` 集中修复 ISS-003～014。最新 [Windows CI #39010080604](https://github.com/zy19970/IPSys/actions/runs/39010080604) completed/success。**正式 MCP 70 工具**（新增 `purge_trash`，需要 confirm=true 且限制仅清理可安全永久删除的回收站资料）。代码/文档完成后由本机 Agent 按 [MCP_AGENT_FINAL_RETEST.md](./MCP_AGENT_FINAL_RETEST.md) 一次性复测全部问题和历史回归，CI 成功不代表跨权限用户及宿主强杀实验已实机通过。
 
 
