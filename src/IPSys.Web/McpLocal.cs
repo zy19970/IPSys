@@ -356,10 +356,13 @@ static partial class McpLocal
         {
             ValidateToolArguments(name,fields);
             JsonNode response=await CallHostAsync(name,fields);
-            bool partial=name=="upload_files" && response["failed"] is JsonNode failed &&
-                failed.GetValue<int>()>0;
-            bool businessFailure=response["ok"]?.ToJsonString()=="false" ||
-                response["status"]?.GetValue<string>() is "failed" or "partial_success" or "interrupted";
+            // Array-valued list tools must not be indexed like JsonObject.
+            bool partial=name=="upload_files" && response is JsonObject batch &&
+                batch["failed"] is JsonNode failed && failed.GetValue<int>()>0;
+            bool businessFailure=response is JsonObject result &&
+                (result["ok"]?.ToJsonString()=="false" ||
+                 result["status"]?.GetValue<string>() is
+                    "failed" or "partial_success" or "interrupted");
             return Success(id,new {
                 content=new[] {new {type="text",text=response.ToJsonString(Json)}},
                 isError=partial||businessFailure
@@ -425,6 +428,15 @@ static partial class McpLocal
 
     internal static Task<JsonNode> RunSmokeToolAsync(string name,JsonElement fields) =>
         CallHostAsync(name,fields);
+    internal static async Task<JsonNode> RunSmokeProtocolToolAsync(string name,JsonElement fields)
+    {
+        using var input=JsonDocument.Parse(JsonSerializer.Serialize(new {
+            jsonrpc="2.0",id=1,method="tools/call",
+            @params=new {name,arguments=fields}
+        },Json));
+        var result=await CallToolAsync(JsonSerializer.SerializeToElement(1),input.RootElement);
+        return JsonSerializer.SerializeToNode(result,Json)??new JsonObject();
+    }
     private static async Task<JsonNode> CallHostAsync(string name,JsonElement fields)
     {
         using var pipe=McpPipeSecurity.CreateClient(PipeName);
@@ -653,8 +665,9 @@ static partial class McpLocal
         return "目标资源不存在（接口 "+path+"）";
     }
 
+    private sealed class McpKnownRejectionException(string reason) : IOException(reason);
     private sealed class McpPreflightBusyException(string reason) : IOException(reason);
-    // 400/404 report a definite rejected request, not an unknown side effect.
+    // Explicit HTTP 400/404/nonbusy 409 business rejections are definitive.
     private sealed class McpDefinitiveFailureException(int status,string reason)
         : IOException(reason)
     {
@@ -694,7 +707,7 @@ static partial class McpLocal
                         ?ExplainNotFound(url):"操作未完成（"+method.Method+" "+url+"）"):
                     reason);
             if(result.StatusCode is System.Net.HttpStatusCode.BadRequest or
-                System.Net.HttpStatusCode.NotFound)
+                System.Net.HttpStatusCode.NotFound or System.Net.HttpStatusCode.Conflict)
                 throw new McpDefinitiveFailureException((int)result.StatusCode,message);
             throw new IOException(message);
         }

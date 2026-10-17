@@ -11,6 +11,14 @@ static class NativeMcpSmoke
         await McpLocal.RunSmokeToolAsync("v2_"+name,Args(input));
     private static async Task<JsonNode> Original(string name,object input)=>
         await McpLocal.RunSmokeToolAsync(name,Args(input));
+    private static async Task CheckArrayRpc(string name,object input)
+    {
+        var result=await McpLocal.RunSmokeProtocolToolAsync(name,Args(input));
+        string? raw=result["result"]?["content"]?[0]?["text"]?.GetValue<string>();
+        Check(result["result"]?["isError"]?.GetValue<bool>()==false &&
+              raw!=null && JsonNode.Parse(raw) is JsonArray,
+              "stdio tools/call preserves array results for "+name+": "+raw);
+    }
     private static void Check(bool ok,string reason)
     {
         if(!ok)throw new IOException("N2-03-01 MCP V2: "+reason);
@@ -19,7 +27,7 @@ static class NativeMcpSmoke
         node["id"]?.GetValue<long>()??throw new IOException("MCP 未返回 V2 ID。");
     private static JsonNode? Find(JsonNode list,long id)=>
         list.AsArray().FirstOrDefault(x=>x?["folder"]?["ref"]?["id"]?.GetValue<long>()==id);
-    public static async Task VerifyAsync(HttpClient client)
+    public static async Task VerifyAsync(HttpClient client,Vault vault)
     {
         var names=McpLocal.Tools().Select(x=>(string)x.GetType()
             .GetProperty("name")!.GetValue(x)!).ToArray();
@@ -71,6 +79,36 @@ static class NativeMcpSmoke
         { meaningful404=true; }
         Check(meaningful404,"MCP 404 reports the missing entity and FileId");
 
+        // ISS-015: simulate an interrupted former host's durable pending row.
+        string orphan=Guid.NewGuid().ToString("N");
+        var orphanArgs=new {workspace="company",kind="project",owner_id=999999L,
+            paths=new[]{"C:\\missing-abandoned-test.bin"},request_id=orphan};
+        await vault.Gate.WaitAsync();
+        try
+        {
+            using var cmd=vault.Db.CreateCommand();
+            cmd.CommandText="""
+                INSERT INTO mcp_operations(workspace,request_id,tool_name,arguments_hash,state)
+                VALUES('company',$id,'upload_files',$hash,'pending');
+                """;
+            cmd.Parameters.AddWithValue("$id",orphan);
+            cmd.Parameters.AddWithValue("$hash",McpLocal.SmokeArgumentsHash(Args(orphanArgs)));
+            cmd.ExecuteNonQuery();
+        }
+        finally{vault.Gate.Release();}
+        var abandoned=await Original("get_task_status",new{workspace="company",request_id=orphan});
+        var abandonedAgain=await Original("get_operation_result",new{workspace="company",request_id=orphan});
+        var abandonedCancel=await Original("cancel_task",new{workspace="company",request_id=orphan});
+        var abandonedReplay=await Original("start_upload_task",orphanArgs);
+        Check(abandoned["state"]?.GetValue<string>()=="uncertain" &&
+              abandoned["businessOk"]==null &&
+              abandoned["result"]?["resumeSupported"]?.GetValue<bool>()==false &&
+              abandoned["result"]?["interruptedAt"]!=null &&
+              abandonedAgain["state"]?.GetValue<string>()=="uncertain" &&
+              abandonedCancel["state"]?.GetValue<string>()=="uncertain" &&
+              abandonedReplay["accepted"]?.GetValue<bool>()==false &&
+              abandonedReplay["state"]?.GetValue<string>()=="uncertain",
+              "ISS-015 orphan pending is durably reconciled and cannot replay");
         string suffix=Guid.NewGuid().ToString("N")[..8];
         string name="原生MCP项目"+suffix;
         var created=await Call("create_project",new {
@@ -79,6 +117,20 @@ static class NativeMcpSmoke
         });
         long project=Id(created);
         Check(project>0,"created V2 project");
+        // ISS-001: call the actual JSON-RPC adapter, not just the pipe.
+        await CheckArrayRpc("list_projects",new{workspace="company"});
+        await CheckArrayRpc("v2_list_projects",new{workspace="company"});
+        await CheckArrayRpc("list_contracts",new{workspace="company"});
+        await CheckArrayRpc("v2_list_contracts",new{workspace="company"});
+        await CheckArrayRpc("list_ips",new{workspace="company"});
+        await CheckArrayRpc("v2_list_ips",new{workspace="company"});
+        await CheckArrayRpc("list_general",new{workspace="company"});
+        await CheckArrayRpc("list_archives",new{workspace="company",section="achievement"});
+        await CheckArrayRpc("list_archive_folders",new{workspace="company"});
+        await CheckArrayRpc("list_trash",new{workspace="company"});
+        await CheckArrayRpc("list_files",new{workspace="company"});
+        await CheckArrayRpc("list_folder_entries",new{workspace="company",parent_id=0});
+        await CheckArrayRpc("list_project_files",new{workspace="company",project_id=project});
         var list=await Call("list_projects",new{workspace="company"});
         var item=Find(list,project);
         Check(item?["businessData"]?["name"]?.GetValue<string>()==name,
@@ -116,6 +168,8 @@ static class NativeMcpSmoke
             name="原生MCP合同"+suffix,contract_no="C-"+suffix,amount=1234.5
         });
         long contract=Id(contractResult);
+        await CheckArrayRpc("list_contract_files",new{workspace="company",
+            contract_id=contract});
         var contracts=await Call("list_contracts",new{workspace="company"});
         var contractItem=Find(contracts,contract);
         Check(contractItem?["folder"]?["parent"]?["id"]?.GetValue<long>()==project &&
@@ -151,6 +205,7 @@ static class NativeMcpSmoke
             status="实质审查中",application_no="CN202610000002.0",
             remarks="初始说明"
         }));
+        await CheckArrayRpc("list_ip_files",new{workspace="company",ip_id=ip});
         var ips=await Call("list_ips",new{workspace="company"});
         Check(Find(ips,ip)?["businessData"]?["applicationNo"]?.GetValue<string>()
               =="CN202610000002.0","MCP V2 IP on native Folder Store");
@@ -315,6 +370,25 @@ static class NativeMcpSmoke
               missingJournal["result"]?["httpStatus"]?.GetValue<int>()==404 &&
               missing.ToJsonString()==replayMissing.ToJsonString(),
               "definitive 404 must be a durable, replayable business failure");
+        string rejectedId=Guid.NewGuid().ToString("N");
+        var rejected=await Original("delete_file",new{
+            workspace="company",owner_id=originalProject,
+            file_id=999999999L,link_id=999999999L,request_id=rejectedId
+        });
+        var rejectedLog=await Original("get_operation_result",new{
+            workspace="company",request_id=rejectedId
+        });
+        Check(rejected["status"]?.GetValue<string>()=="failed" &&
+              rejectedLog["state"]?.GetValue<string>()=="done" &&
+              rejectedLog["businessOk"]?.GetValue<bool>()==false &&
+              rejectedLog["result"]?["error"]?.GetValue<string>()?.Contains("LinkId")==true,
+            "ISS-002 local preflight rejection is durable done/businessOk=false");
+        var rejectedRepeat=await Original("delete_file",new{
+            workspace="company",owner_id=originalProject,
+            file_id=999999999L,link_id=999999999L,request_id=rejectedId
+        });
+        Check(rejectedRepeat.ToJsonString()==rejected.ToJsonString(),
+            "definite local rejection is replayable with same request_id");
         await Original("delete_general",new{
             workspace="personal",general_id=Id(firstWrite)
         });
@@ -559,6 +633,7 @@ static class NativeMcpSmoke
             long contractLink=contractFiles.AsArray()
                 .FirstOrDefault(x=>x?["fileId"]?.GetValue<long>()==file)?["id"]?.GetValue<long>()??0;
             Check(contractLink>0,"contract sees shared V2 FileId");
+            await CheckArrayRpc("list_file_links",new{workspace="company",file_id=file});
             var owners=await Original("list_file_links",new{
                 workspace="company",file_id=file
             });

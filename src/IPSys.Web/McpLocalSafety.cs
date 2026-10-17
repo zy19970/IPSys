@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -9,6 +10,10 @@ using Microsoft.Data.Sqlite;
 // remains uncertain and must be reconciled, never automatically re-executed.
 static partial class McpLocal
 {
+    // Tracks in-flight requests in this process so only orphaned pending rows
+    // are reconciled. Vault identity protects reopen/relock boundaries.
+    private static readonly ConcurrentDictionary<(Vault vault,string workspace,string requestId),byte>
+        LiveWriteOperations=new();
     private static bool IsWriteTool(string name)
     {
         string original=name.StartsWith("v2_",StringComparison.Ordinal)?name[3..]:name;
@@ -83,6 +88,7 @@ static partial class McpLocal
             throw new IOException("request_id 必须为 8–128 个字符的非控制字符字符串。");
     }
 
+    internal static string SmokeArgumentsHash(JsonElement args)=>ArgumentsHash(args);
     private static string ArgumentsHash(JsonElement args)
     {
         // Sort top-level keys to make retries with a different property order
@@ -113,10 +119,43 @@ static partial class McpLocal
             cmd.CommandText="SELECT tool_name,state,result_json FROM mcp_operations WHERE workspace=$w AND request_id=$id;";
             cmd.Parameters.AddWithValue("$w",workspace);
             cmd.Parameters.AddWithValue("$id",requestId);
-            using var rd=cmd.ExecuteReader();
-            if(!rd.Read())return new JsonObject{["state"]="not_found",["requestId"]=requestId};
-            string name=rd.GetString(0),state=rd.GetString(1);
-            string? raw=rd.IsDBNull(2)?null:rd.GetString(2);
+            string name,state;
+            string? raw;
+            using(var rd=cmd.ExecuteReader())
+            {
+                if(!rd.Read())return new JsonObject{["state"]="not_found",["requestId"]=requestId};
+                name=rd.GetString(0);
+                state=rd.GetString(1);
+                raw=rd.IsDBNull(2)?null:rd.GetString(2);
+            }
+            // Reconcile on first query after reopening the vault. An active
+            // write or upload must never be mistaken for a crashed host.
+            if(state=="pending" &&
+               !LiveWriteOperations.ContainsKey((vault,workspace,requestId)) &&
+               !UploadTasks.ContainsKey(TaskKey(workspace,requestId)))
+            {
+                var abandoned=new JsonObject{
+                    ["status"]="interrupted",["reason"]="host_restarted",
+                    ["interruptedAt"]=DateTimeOffset.UtcNow.ToString("O"),
+                    ["resumeSupported"]=false,
+                    ["note"]="任务执行者已不存在，可能存在已提交的部分结果；请核对后再决定是否新建请求。"
+                };
+                using var fix=vault.Db.CreateCommand();
+                fix.CommandText="""
+                    UPDATE mcp_operations SET state='uncertain',
+                        result_json=COALESCE(result_json,$reason),
+                        updated_at=CURRENT_TIMESTAMP
+                    WHERE workspace=$w AND request_id=$id AND state='pending';
+                    """;
+                fix.Parameters.AddWithValue("$w",workspace);
+                fix.Parameters.AddWithValue("$id",requestId);
+                fix.Parameters.AddWithValue("$reason",abandoned.ToJsonString(Json));
+                if(fix.ExecuteNonQuery()==1)
+                {
+                    state="uncertain";
+                    raw??=abandoned.ToJsonString(Json);
+                }
+            }
             return new JsonObject{
                 ["requestId"]=requestId,["state"]=state,["tool"]=name,
                 ["result"]=raw is null?null:JsonNode.Parse(raw),
@@ -178,6 +217,7 @@ static partial class McpLocal
             insert.Parameters.AddWithValue("$name",name);
             insert.Parameters.AddWithValue("$sha",digest);
             insert.ExecuteNonQuery();
+            LiveWriteOperations.TryAdd((vault,workspace,requestId),0);
         }
         finally { vault.Gate.Release(); }
         }
@@ -186,10 +226,12 @@ static partial class McpLocal
         Exception? failure=null;
         try { value=await ExecuteAsync(vault,address,name,args,stop,progress); }
         catch(Exception ex){failure=ex;}
-        if(failure is McpDefinitiveFailureException rejected)
+        if(failure is McpDefinitiveFailureException or McpKnownRejectionException)
             value=new JsonObject{
                 ["ok"]=false,["status"]="failed",
-                ["httpStatus"]=rejected.StatusCode,["error"]=rejected.Message
+                ["httpStatus"]=failure is McpDefinitiveFailureException rejected
+                    ? rejected.StatusCode : 400,
+                ["error"]=failure.Message
             };
 
         // The journal must finish even when a caller disconnects or revokes
@@ -216,21 +258,27 @@ static partial class McpLocal
             // Cancellation of a dispatched HTTP upload can leave an unknown
             // server-side side effect; retain partial outcomes for reconciliation.
             bool interrupted=value?["status"]?.GetValue<string>()=="interrupted";
-            bool definitive=(failure is null or McpDefinitiveFailureException)&&!interrupted;
+            bool definitive=(failure is null or McpDefinitiveFailureException or
+                McpKnownRejectionException)&&!interrupted;
             update.Parameters.AddWithValue("$state",definitive?"done":"uncertain");
-            update.Parameters.AddWithValue("$result",failure is null or McpDefinitiveFailureException?
+            update.Parameters.AddWithValue("$result",failure is null or McpDefinitiveFailureException or
+                McpKnownRejectionException?
                 (object)(value?.ToJsonString(Json)??"{}"):DBNull.Value);
             update.Parameters.AddWithValue("$w",workspace);
             update.Parameters.AddWithValue("$id",requestId);
             update.ExecuteNonQuery();
             }
         }
-        finally { vault.Gate.Release(); }
+        finally
+        {
+            vault.Gate.Release();
+            if(!preReserved)LiveWriteOperations.TryRemove((vault,workspace,requestId),out _);
+        }
         if(failure is McpPreflightBusyException)
             throw new IOException("MCP 请求在写入前因数据库忙被拒绝，可等待后使用相同 request_id 重试："+failure.Message,failure);
         // A definite HTTP 400/404 is a durable business failure, and replay
         // must produce the same error payload rather than an uncertain result.
-        if(failure is McpDefinitiveFailureException)
+        if(failure is McpDefinitiveFailureException or McpKnownRejectionException)
             return value??new JsonObject();
         if(failure!=null)throw new IOException("写操作返回异常，执行结果可能不确定；"+
             "禁止盲目重试。请用 get_operation_result 查询 request_id="+requestId+

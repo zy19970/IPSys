@@ -141,7 +141,7 @@ if (smoke)
         NativeFileLinkStoreSmoke.Run();
         NativeFileCopyStoreSmoke.Run();
         NativeFileChoiceStoreSmoke.Run();
-        await WebSmoke.Run(address);
+        await WebSmoke.Run(address,app.Services.GetRequiredService<Vault>());
         string? smokeReport = Environment.GetEnvironmentVariable("IPSYS_SMOKE_REPORT");
         if (!string.IsNullOrWhiteSpace(smokeReport))
             File.WriteAllText(smokeReport, "WEB SMOKE PASS", Encoding.UTF8);

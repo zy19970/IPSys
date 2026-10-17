@@ -37,6 +37,19 @@ static class NativeMcpArchiveSmoke
         }));
         Check(Has(await Run("list_archive_folders",new{workspace="company",parent_id=root}),folder),
             "new directory uses live V2 FolderId");
+        string reject409Id=Guid.NewGuid().ToString("N");
+        var reject409=await Run("move_folder",new{
+            workspace="company",kind="archive_folder",entry_id=folder,
+            parent_id=folder,request_id=reject409Id
+        });
+        var reject409Log=await Run("get_operation_result",new{
+            workspace="company",request_id=reject409Id
+        });
+        Check(reject409["status"]?.GetValue<string>()=="failed" &&
+              reject409["httpStatus"]?.GetValue<int>()==409 &&
+              reject409Log["state"]?.GetValue<string>()=="done" &&
+              reject409Log["businessOk"]?.GetValue<bool>()==false,
+              "ISS-002 known 409 validation rejection is durable, not uncertain");
         await Run("update_archive_folder",new{
             workspace="company",folder_id=folder,name=tag+"重命名目录"
         });

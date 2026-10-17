@@ -200,7 +200,7 @@ static partial class McpLocal
                 throw new IOException("items 每项必须仅含 kind=folder/record 与唯一正整数 id。");
             result.Add(new JsonObject{["kind"]=kind.GetString(),["id"]=number});
         }
-        if(result.Count==0)throw new IOException("items 不能为空。");
+        if(result.Count==0)throw new McpKnownRejectionException("items 不能为空。");
         return result;
     }
 
@@ -341,10 +341,10 @@ static partial class McpLocal
                     TransferBody());
             case "move_folder":
             {
-                if(workspace!="company")throw new IOException("仅支持公司业务档案目录移动。");
+                if(workspace!="company")throw new McpKnownRejectionException("仅支持公司业务档案目录移动。");
                 string kind=RequiredText(args,"kind");
                 if(kind is not ("archive_folder" or "archive"))
-                    throw new IOException("kind 仅允许 archive_folder 或 archive。");
+                    throw new McpKnownRejectionException("kind 仅允许 archive_folder 或 archive。");
                 long id=Positive(args,"entry_id");
                 long? parent=null;
                 if(args.TryGetProperty("parent_id",out var destination) &&
@@ -354,7 +354,7 @@ static partial class McpLocal
                     if(target>0)parent=target;
                 }
                 if(kind=="archive"&&parent is null)
-                    throw new IOException("业务档案资料必须指定正整数父目录 parent_id。");
+                    throw new McpKnownRejectionException("业务档案资料必须指定正整数父目录 parent_id。");
                 return await RequestAsync(client,HttpMethod.Post,
                     $"/api/v2/folders/company/{kind}/{id}/move?section=achievement",
                     new JsonObject{["parentId"]=parent});
@@ -369,7 +369,7 @@ static partial class McpLocal
             }
             case "reorder_entries":
             {
-                if(workspace!="company")throw new IOException("仅支持公司业务档案混排。");
+                if(workspace!="company")throw new McpKnownRejectionException("仅支持公司业务档案混排。");
                 long parent=Nonnegative(args,"parent_id");
                 return await RequestAsync(client,HttpMethod.Post,
                     "/api/v2/folders/company/entries/reorder?section=achievement",
@@ -390,9 +390,9 @@ static partial class McpLocal
             {
                 string section=RequiredText(args,"section");
                 if(ArchiveRules.Module(workspace,section)==null)
-                    throw new IOException("工作区不支持此资料类别。");
+                    throw new McpKnownRejectionException("工作区不支持此资料类别。");
                 if(workspace=="company"&&section=="achievement")
-                    throw new IOException("公司业务档案请使用 reorder_entries 保证目录混排。");
+                    throw new McpKnownRejectionException("公司业务档案请使用 reorder_entries 保证目录混排。");
                 long[] ids=ReorderIds(args);
                 return await RequestAsync(client,HttpMethod.Post,
                     $"/api/v2/ui/archive/{workspace}/{Uri.EscapeDataString(section)}/order",

@@ -66,7 +66,7 @@ static partial class McpLocal
         if(links is not JsonArray found || !found.Any(x=>
             x?["id"]?.GetValue<long>()==link &&
             x?["fileId"]?.GetValue<long>()==file))
-            throw new IOException("FolderId、FileId、LinkId 不一致或文件已解除；拒绝删除。");
+            throw new McpKnownRejectionException("FolderId、FileId、LinkId 不一致或文件已解除；拒绝删除。");
         return await RequestAsync(client,HttpMethod.Delete,
             $"/api/v2/files/{workspace}/{file}/links/{link}");
     }
@@ -92,7 +92,7 @@ static partial class McpLocal
         if(links is not JsonArray list || !list.Any(x=>
             x?["id"]?.GetValue<long>()==link &&
             x?["fileId"]?.GetValue<long>()==file))
-            throw new IOException("文件关联不存在或不属于所选项目/合同。");
+            throw new McpKnownRejectionException("文件关联不存在或不属于所选项目/合同。");
         return await RequestAsync(client,HttpMethod.Delete,
             $"/api/v2/files/{workspace}/{file}/links/{link}");
     }
@@ -110,25 +110,25 @@ static partial class McpLocal
         string section=kind=="archive"?ArchiveSection(workspace,args):
             ReadString(args,"section","");
         if(kind!="archive"&&section!="")
-            throw new IOException("非归档文件类型不能指定 section。");
+            throw new McpKnownRejectionException("非归档文件类型不能指定 section。");
         await RequestAsync(client,HttpMethod.Get,
             V2Url(workspace,kind,folder)+(kind=="archive"?"?section="+section:""));
         string mode=ReadString(args,"on_conflict","new");
         string choice=ReadString(args,"duplicate_mode","");
         string category=ReadString(args,"material_category",kind=="ip"?"其他材料":"");
         if(mode is not ("new" or "update"))
-            throw new IOException("on_conflict 仅支持 new 或 update。");
+            throw new McpKnownRejectionException("on_conflict 仅支持 new 或 update。");
         if(kind=="ip"&&category is not ("申请材料" or "通知文件" or "证书文件" or "其他材料"))
-            throw new IOException("知识产权材料类别无效。");
+            throw new McpKnownRejectionException("知识产权材料类别无效。");
         if(kind!="ip"&&category.Length!=0)
-            throw new IOException("非知识产权的附件不能指定知识产权材料类别。");
+            throw new McpKnownRejectionException("非知识产权的附件不能指定知识产权材料类别。");
         if(choice is not ("" or "independent" or "reuse" or "share"))
-            throw new IOException("duplicate_mode 仅支持 independent、reuse、share。");
+            throw new McpKnownRejectionException("duplicate_mode 仅支持 independent、reuse、share。");
         if(mode=="update"&&choice!="")
-            throw new IOException("追加版本时不能同时选择共享或去重。");
+            throw new McpKnownRejectionException("追加版本时不能同时选择共享或去重。");
         if(!args.TryGetProperty("paths",out var files)||
            files.ValueKind!=JsonValueKind.Array||files.GetArrayLength() is <1 or >20)
-            throw new IOException("paths 必须包含 1–20 条本机路径。");
+            throw new McpKnownRejectionException("paths 必须包含 1–20 条本机路径。");
         long? versionFile=mode=="update"?ReadId(args,"file_id"):null;
         if(kind!="ip"&&versionFile is long current)
         {
@@ -138,7 +138,7 @@ static partial class McpLocal
                 $"/api/v2/files/{workspace}/folders/{folder}/links");
             if(linked is not JsonArray links || !links.Any(x=>
                 x?["fileId"]?.GetValue<long>()==current))
-                throw new IOException("指定 FileId 未关联所选资源文件夹，拒绝追加版本。");
+                throw new McpKnownRejectionException("指定 FileId 未关联所选资源文件夹，拒绝追加版本。");
         }
         long? source=choice is "reuse" or "share"
             ?ReadId(args,"source_file_id"):null;

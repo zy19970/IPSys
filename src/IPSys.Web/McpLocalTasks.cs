@@ -128,7 +128,9 @@ static partial class McpLocal
                             throw new IOException("request_id 已被其它操作或不同上传参数使用。");
                         return new JsonObject{["accepted"]=false,["requestId"]=id,
                             ["state"]=reader.GetString(2),
-                            ["note"]="已有请求日志；用 get_task_status 或 get_operation_result 查询，不会再执行上传。"};
+                            ["note"]=reader.GetString(2)=="uncertain"
+                                ?"既有任务结果不确定，必须先核对文件及关联，确认后才可使用新 request_id 处理未成功部分。"
+                                :"已有请求日志；用 get_task_status 或 get_operation_result 查询，不会再执行上传。"};
                     }
                 }
                 using var insert=vault.Db.CreateCommand();
