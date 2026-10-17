@@ -1083,7 +1083,7 @@ assert.ok(!js.includes("function chooseVersionAction(")&&
  'Retired legacy groupId upload dialog and fallback must not survive');
 assert.ok(js.includes("uploadBusinessAttachment(file,meta,workspace)") &&
  js.includes("IPSysNativeIp.upload(api,file,meta,workspace)") &&
- js.includes("正在检查重复内容："),
+ v2IpJs.includes('原件已加密暂存，正在查找相同内容'),
  'All live business uploads use one native SHA-256 resolver');
 assert.ok(v2IpJs.includes('"/prepare?folderId="+meta.ownerId')&&
  v2IpJs.includes('"/prepared/"+prepared.ticket+"/resolve')&&
