@@ -23,10 +23,10 @@ assert.ok(!section.includes('while(space===workspace&&token)')&&
  section.includes('while(token)')&&
  section.includes("api('/api/trash/purge-task')"),
  'Progress polling must survive switching between personal and company');
-assert.ok(app.includes("if(trashPurgeTaskActive){render();return;}")&&
- app.includes('if(trashPurgeTaskActive){render();return;}\n  const requestedSpace=space;')&&
+assert.ok(app.includes("if(trashPurgeTaskActive||localFileTaskActive){render();return;}")&&
+ app.includes('if(trashPurgeTaskActive||localFileTaskActive){render();return;}\n  const requestedSpace=space;')&&
  app.includes('暂缓加载资料'),
- 'Workspace switching and refresh must not queue queries on the busy SQLCipher Gate');
+ 'Uploads and deletes must both prevent workspace reads on the busy SQLCipher Gate');
 assert.ok(section.includes("status.bytesDone")&&section.includes("status.bytesTotal"),
  'progress must use actual deleted bytes, not a fake timer');
 assert.ok(section.includes('status.state')&&section.includes("state.error"),
