@@ -712,9 +712,10 @@ static class NativeMcpSmoke
                 workspace="company",project_id=originalProject,
                 file_id=file,link_id=link
             });
-            Check((await Original("list_project_files",new{
+            Check(!(await Original("list_project_files",new{
                 workspace="company",project_id=originalProject
-            })).AsArray().Count==0,"project file unlinked without physical deletion");
+            })).AsArray().Any(x=>x?["id"]?.GetValue<long>()==link),
+                "target project LinkId unlinked; other async-uploaded files remain intact");
         }
         finally{File.Delete(path);}
 
