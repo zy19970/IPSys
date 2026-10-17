@@ -2,7 +2,7 @@
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const app=fs.readFileSync('src/IPSys.Web/wwwroot/app.js','utf8');
+const app=fs.readFileSync('src/IPSys.Web/wwwroot/app.js','utf8').replace(/\r\n/g,'\n');
 const from=app.indexOf('let trashPurgePolling=false');
 const to=app.indexOf('async function changeTrash(',from);
 assert.ok(from>0&&to>from,'persistent purge panel and task polling must exist');
