@@ -1,5 +1,7 @@
 # IPSys 本机 Codex MCP
 
+> **最新 MCP 可靠性源码（2026-10-17）**：提交 [30ce4a1](https://github.com/zy19970/IPSys/commit/30ce4a15f02932a24244a37410e6cb8bf55dc9a1) 已经 [Windows CI #38988662134](https://github.com/zy19970/IPSys/actions/runs/38988662134) **completed/success**；Debug、Release 单 EXE、真实 SQLCipher/命名管道、stdio、Node 回归通过。下方 6cb1e6b 与 1fa0d27 为前批历史验收；同用户不同真实会话、管理员/普通权限 WorkBuddy 和长任务仍待实机。
+
 > **当前版本（2026-10-17）**：N4 与 MCP 三批功能均已完成；新增针对 WorkBuddy 黑盒任务书 ISS-1～ISS-10 的安全/并发/协议/语义修复，源码 `6cb1e6b` 对应 [Windows CI #38939165516](https://github.com/zy19970/IPSys/actions/runs/38939165516) **completed/success**。Windows Debug/Release、正式 stdio、SQLCipher/HTTP、Node 回归通过；管理员与普通用户混合、WorkBuddy Bash 沙箱和不同用户隔离仍待用户电脑逐项实测。下方历史阶段保留追溯，以现行操作章节为准。
 
 

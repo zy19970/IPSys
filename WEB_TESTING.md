@@ -1,5 +1,7 @@
 # IPSys Windows 验收与回归记录
 
+> **最新自动验收（2026-10-17）**：MCP 第一批可靠性收尾提交 `30ce4a1` 经 [Windows CI #38988662134](https://github.com/zy19970/IPSys/actions/runs/38988662134) **completed/success**，包含新增空闲管道饱和/会话隔离/HTTP 404 失败重放测试；不同 Windows 用户、跨提权等级和长文件任务仍是实机待测。
+
 ## 当前优先：N4 清理与 SQLCipher V2 完整实机验收（2026-10-16）
 
 用户确认旧数据库全部为可丢弃测试数据，不迁移旧正式库。N2-04 业务 V2 化、N4 两批旧物理表/路由及 31 份停用源码清理、MCP P0 并发单实例和三批安全/分页/业务工具补齐均已完成自动回归。最新 MCP 业务源码 `080a599` 对应 [Windows CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431) **completed/success**；但 Edge/Chrome、真实 Codex + WorkBuddy 双客户端、桌面 Excel、长任务故障/大文件和 T01–T09 尚未在用户电脑全面验收。本文件后半段按时间保留的旧测试步骤及阶段性待开发结论仅作历史记录，以前部现行验收章节为准。

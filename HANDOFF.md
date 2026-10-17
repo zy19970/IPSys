@@ -1,5 +1,7 @@
 # IPSys 跨会话交接（2026-10-17：N4 与 MCP 三批自动验收完成）
 
+> **本轮最新源码与验收（2026-10-17）**：`30ce4a1` 完成 MCP 空闲管道有界等待、SID/SessionId 隔离、明确 HTTP 400/404 业务失败日志；[Windows CI #38988662134](https://github.com/zy19970/IPSys/actions/runs/38988662134) **completed/success**。此前业务基线 `080a599` 和管道 ACL 补强 `1fa0d27` 均已包含在现行 main 中。跨提权/跨登录会话/不同真实用户及长文件任务仍待实机。
+
 > **最新交接基线（2026-10-17）**：正式新库及全部业务使用 SQLCipher V2，N4 旧物理表/路由/31 份旧 Store/Provider/过时测试源码已清理（[CI #38911635273](https://github.com/zy19970/IPSys/actions/runs/38911635273) success）。MCP P0 并发单实例、第一批安全、第二批单 SQL 分页、第三批 14 项合同/文件/转移/搜索/回收站工具完成，最新业务代码 `080a599` 的 [CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431) completed/success，之后 `7b7c714` 只同步了三份文档。下一步验证 Edge/Chrome、Codex/WorkBuddy 双 Agent、桌面 Excel、文件属性 UI/历史版本/导出、2 GiB+ 和 T01–T09；没有旧正式数据库迁移。
 
 ## MCP 第一批可靠性收尾（2026-10-17）
