@@ -93,6 +93,7 @@ jobs:
             $line = $process.StandardOutput.ReadLineAsync().WaitAsync([TimeSpan]::FromSeconds(12)).GetAwaiter().GetResult()
             $listing = $line | ConvertFrom-Json
             $names = @($listing.result.tools | ForEach-Object { $_.name })
+            if ($names.Count -ne 70) { throw "Expected 70 MCP tools, received $($names.Count)" }
             foreach ($required in @('list_projects','create_project','update_project',
                                     'create_contract','upload_files','delete_project','delete_contract','delete_file',
                                     'list_ips','create_ip','update_ip','delete_ip')) {
@@ -108,7 +109,15 @@ jobs:
                 $validation.result.content[0].text -notmatch '未声明的 MCP 参数') {
               throw 'MCP stdio tools/call failed to reject unknown input properties'
             }
-            Write-Host 'MCP stdio tool dispatch and strict JSON Schema: PASS'
+            $structured = $validation.result.content[0].text | ConvertFrom-Json
+            if ($structured.ok -ne $false -or $structured.code -ne 'TOOL_CALL_REJECTED' -or
+                $structured.retryable -ne $false -or -not $structured.message) {
+              throw 'MCP tool error is not a structured JSON envelope'
+            }
+            $process.StandardInput.WriteLine('[{"jsonrpc":"2.0","id":5,"method":"ping"}]')
+            $batch = ($process.StandardOutput.ReadLineAsync().WaitAsync([TimeSpan]::FromSeconds(12)).GetAwaiter().GetResult()) | ConvertFrom-Json
+            if ($batch.error.code -ne -32600) { throw 'MCP batch request must return -32600' }
+            Write-Host 'MCP stdio tool dispatch, errors, and batch refusal: PASS'
           }
           finally {
             try { $process.StandardInput.Close() } catch {}

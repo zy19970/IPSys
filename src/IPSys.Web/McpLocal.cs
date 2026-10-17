@@ -801,7 +801,7 @@ static partial class McpLocal
            "transfer_project" or "transfer_ip" or "transfer_archive" or
            "transfer_general" or "move_folder" or "list_folder_entries" or
            "reorder_entries" or "reorder_records" or "reorder_archive_records" or
-           "search_records" or "list_trash" or "restore_trash")
+           "search_records" or "list_trash" or "restore_trash" or "purge_trash")
             return await ExecuteExtraAsync(client,workspace,name,args,stop);
         if(name is "list_archives" or "create_archive" or "update_archive" or
            "delete_archive" or "list_archive_folders" or "create_archive_folder" or
