@@ -15,9 +15,18 @@ assert.ok(section.includes("state.state==='succeeded'")&&
  section.includes('await refresh()')&&
  section.includes('!trashPurgeTaskActive'),
  'only successful server state allows UI to announce permanent deletion');
-assert.ok(app.includes('void resumeTrashPurgeStatus();')&&
- app.includes('async function resumeTrashPurgeStatus()'),
- 'Browser reload and workspace re-selection must reattach to the running task');
+assert.ok(app.includes('void resumeTrashPurgeStatus().then(active=>')&&
+ app.includes('async function resumeTrashPurgeStatus()')&&
+ app.includes("await fetch('/api/trash/purge-task'"),
+ 'Switch must check the vault-wide task before starting database reads');
+assert.ok(!section.includes('while(space===workspace&&token)')&&
+ section.includes('while(token)')&&
+ section.includes("api('/api/trash/purge-task')"),
+ 'Progress polling must survive switching between personal and company');
+assert.ok(app.includes("if(trashPurgeTaskActive){render();return;}")&&
+ app.includes('if(trashPurgeTaskActive){render();return;}\n  const requestedSpace=space;')&&
+ app.includes('暂缓加载资料'),
+ 'Workspace switching and refresh must not queue queries on the busy SQLCipher Gate');
 assert.ok(section.includes("status.bytesDone")&&section.includes("status.bytesTotal"),
  'progress must use actual deleted bytes, not a fake timer');
 assert.ok(section.includes('status.state')&&section.includes("state.error"),
@@ -43,7 +52,7 @@ const ctx={document,fmtSize:n=>(n/1024/1024).toFixed(1)+' MiB',
  space:'company',token:'test-token',trashPurgeTaskActive:false,setTimeout,clearTimeout,
  Promise,console,globalThis:null,api(){throw Error('API unused');}};
 ctx.globalThis=ctx;
-vm.runInNewContext(section+'\nthis.render=renderTrashPurge;this.panel=trashPurgePanel;',ctx);
+vm.runInNewContext(section+'\nthis.render=renderTrashPurge;this.panel=trashPurgePanel;this.track=trackTrashPurge;',ctx);
 ctx.render({state:'running',count:1,bytesDone:32*1024*1024,bytesTotal:128*1024*1024,
  stage:'正在清理加密原件数据块',error:null});
 const panel=ctx.panel(),field=id=>panel.querySelector('#'+id);
@@ -68,4 +77,25 @@ ctx.render({state:'running',count:1,bytesDone:0,bytesTotal:0,
  stage:'正在清理关联',error:null});
 assert.equal(field('trashPurgePercent').textContent,'处理中');
 assert.match(field('trashPurgeBytes').textContent,/没有需要释放的原件字节/);
+// Exercise the real polling function with a company purge while personal is
+// selected. Before the fix this loop exited without making ANY request.
+(async()=>{
+ let calls=0,refreshed=0;
+ ctx.space='personal';
+ ctx.refresh=async()=>{refreshed++;};
+ ctx.notice=()=>{};
+ ctx.api=async path=>{
+  assert.equal(path,'/api/trash/purge-task');
+  calls++;
+  return {json:async()=>({
+   taskId:'company-purge',workspace:'company',state:'succeeded',
+   stage:'永久删除成功',count:1,bytesDone:128*1024*1024,
+   bytesTotal:128*1024*1024,error:null
+  })};
+ };
+ await ctx.track('company-purge','company');
+ assert.equal(calls,1,'changing workspace must not interrupt purge polling');
+ assert.equal(refreshed,1,'completed company purge refreshes selected personal workspace');
+ console.log('RECYCLE PURGE CROSS-WORKSPACE POLLING UI SMOKE PASS');
+})().catch(error=>{console.error(error);process.exitCode=1;});
 console.log('RECYCLE PURGE REAL-BYTE PROGRESS UI SMOKE PASS');

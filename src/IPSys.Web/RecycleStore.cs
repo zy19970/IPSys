@@ -368,6 +368,15 @@ static class RecycleEndpoints
         Results.Json(new {error=message},statusCode:status);
     public static void Map(WebApplication app)
     {
+        // One Vault has two logical workspaces but only one SQLCipher Gate.
+        // The current deletion task must remain visible after switching workspaces;
+        // this status endpoint deliberately never waits for Vault.Gate.
+        app.MapGet("/api/trash/purge-task",(HttpContext ctx,Vault v)=>
+        {
+            if(!v.Allowed(ctx))return Results.Unauthorized();
+            var state=v.LastRecyclePurge?.Snapshot();
+            return state is null?Results.NotFound():Results.Json(state);
+        });
         app.MapGet("/api/trash/{workspace}/purge-task",(HttpContext ctx,Vault v,string workspace)=>
         {
             if(!v.Allowed(ctx))return Results.Unauthorized();

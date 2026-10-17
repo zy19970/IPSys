@@ -207,9 +207,20 @@ function selectSpace(next){
   space=next;page='dashboard';detail=null;archiveGroup=null;archiveFolderId=null;archiveFolders=[];archiveSelectedFolders.clear();archiveEntryOrders={};ledgerOrders={};projectRows=[];ipRows=[];contractRows=[];businessFileRows=[];trashRows=[];archiveRows={certificate:[],achievement:[],academic:[]};filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();certificateSelected.clear();
   el('globalSearch').value='';el('sidebarDbName').textContent=dbName;
   el('chooseWorkspace').hidden=true;el('unlocked').hidden=false;
-  refresh();
-  // The vault-owned deletion task survives browser reload and workspace choice.
-  void resumeTrashPurgeStatus();
+  // One SQLCipher Vault/Gate serves BOTH workspaces. Never start a normal
+  // refresh that queues behind a multi-GiB purge; inspect its lock-free status.
+  if(trashPurgeTaskActive){render();return;}
+  refreshSidebar();
+  el('content').innerHTML='<section class="white empty">正在确认数据库是否存在永久删除任务…</section>';
+  void resumeTrashPurgeStatus().then(active=>{
+   if(space!==next||!token)return;
+   if(active)render();
+   else void refresh();
+  }).catch(error=>{
+   if(space!==next||!token)return;
+   el('content').innerHTML='<section class="white empty">无法确认数据库任务状态：'+
+    escapeHtml(error.message)+'。请检查连接，重新切换工作区重试；暂不读取数据库以免等待删除事务。</section>';
+  });
 }
 mountStaticIcons();
 document.querySelectorAll('[data-workspace-choice]').forEach(b=>b.onclick=()=>selectSpace(b.dataset.workspaceChoice));
@@ -219,6 +230,7 @@ document.querySelectorAll('[data-workspace-switch]').forEach(button=>{
 function setPage(next){if(space==='company'&&next==='horizontalProject')next='researchProject';globalSerial++;globalHits=[];globalQuery='';globalPending=false;globalError='';page=next;detail=null;archiveGroup=null;archiveFolderId=null;filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();archiveSelectedFolders.clear();certificateSelected.clear();el('globalSearch').value='';render();}
 async function refresh(){
   if(!token||!space)return;
+  if(trashPurgeTaskActive){render();return;}
   const requestedSpace=space;
   try{const archiveSections=space==='personal'?['certificate','achievement','academic']:['certificate','achievement'];
   const [native,projects,ips,contracts,nativeProjectFiles,trash,mcpAccess]=await Promise.all([
@@ -1653,7 +1665,7 @@ function syncTrashPurgeSelection(){
 }
 // Permanent deletion runs on the WinForms-owned server independently of the
 // browser request. A snapshot GET bypasses the SQLCipher write semaphore.
-let trashPurgePolling=false,trashPurgeObserved=null;
+let trashPurgePolling=false;
 function trashPurgePanel(){
  let p=document.getElementById('trashPurgeProgress');
  if(p)return p;
@@ -1698,11 +1710,13 @@ async function trackTrashPurge(taskId,workspace){
  if(trashPurgePolling)return;
  trashPurgePolling=true;trashPurgeTaskActive=true;
  try{
-  while(space===workspace&&token){
+  while(token){
    let state;
    try{
-    state=await(await api('/api/trash/'+workspace+'/purge-task')).json();
-    if(state.taskId!==taskId)throw Error('删除任务身份已变化，请检查回收站。');
+    // Always track the Vault-wide task, regardless of the selected workspace.
+    state=await(await api('/api/trash/purge-task')).json();
+    if(state.taskId!==taskId||state.workspace!==workspace)
+     throw Error('删除任务身份已变化，请检查回收站。');
     renderTrashPurge(state);
    }catch(error){
     const p=trashPurgePanel();p.hidden=false;
@@ -1723,18 +1737,20 @@ async function trackTrashPurge(taskId,workspace){
  }finally{trashPurgePolling=false;trashPurgeTaskActive=false;}
 }
 async function resumeTrashPurgeStatus(){
- if(trashPurgePolling||!space||!token)return;
- const workspace=space;
- try{
-  const response=await fetch('/api/trash/'+workspace+'/purge-task',{
-   headers:{'X-IPSys-Token':token},cache:'no-store'});
-  if(response.status===404)return;
-  if(!response.ok)return;
-  const state=await response.json();
-  renderTrashPurge(state);
-  if(!['succeeded','failed','canceled'].includes(state.state))
-   void trackTrashPurge(state.taskId,workspace);
- }catch{/* Database status is still available through the normal UI. */}
+ if(trashPurgePolling)return trashPurgeTaskActive;
+ if(!token)return false;
+ // The server owns exactly one purge task per opened Vault, not per workspace.
+ // Query it BEFORE fetching folder lists, which need the long-held DB Gate.
+ const response=await fetch('/api/trash/purge-task',{
+  headers:{'X-IPSys-Token':token},cache:'no-store'});
+ if(response.status===404)return false;
+ if(response.status===401){token='';sessionStorage.clear();screen(false);throw Error('登录状态已失效');}
+ if(!response.ok)throw Error('删除任务状态查询失败：HTTP '+response.status);
+ const state=await response.json();
+ renderTrashPurge(state);
+ const active=!['succeeded','failed','canceled'].includes(state.state);
+ if(active)void trackTrashPurge(state.taskId,state.workspace);
+ return active;
 }
 async function changeTrash(operation,indices){
  const items=[...new Set(indices)].map(i=>trashRows[i]).filter(Boolean)
@@ -1997,6 +2013,12 @@ function render(){
  if(!space||!token)return;
  refreshSidebar();
  const content=el('content');
+ if(trashPurgeTaskActive){
+  content.innerHTML='<section class="white empty"><h2>加密资料库正在永久删除原件</h2>'+
+   '<p>公司与个人工作区使用同一个 SQLCipher 数据库。当前删除事务占用数据库，暂缓加载资料，避免界面长时间等待。</p>'+
+   '<p>右下角显示真实删除进度。只有服务器提交完成后才会自动读取当前工作区。</p></section>';
+  return;
+ }
  content.innerHTML=detail?(detail.kind==='general'?realDetail():detail.kind==='project'?projectDetail():detail.kind==='contract'?contractDetail():detail.kind==='ip'?ipDetail():detail.kind==='archive'?realArchiveDetail():mockDetail()):
    archiveGroup&&archiveSections.includes(page)&&!(space==='company'&&(page==='certificate'||page==='achievement'))?realArchiveTable(page,archiveGroup):
    page==='dashboard'?dashboard():page==='general'?generalList():

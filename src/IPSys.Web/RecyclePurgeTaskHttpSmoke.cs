@@ -45,12 +45,26 @@ static class RecyclePurgeTaskHttpSmoke
         string id=(await request.Content.ReadFromJsonAsync<JsonElement>())
             .GetProperty("taskId").GetString()!;
 
+        // The current user may switch to personal workspace while the
+        // company job is running. Vault-wide status must stay readable.
+        using(var wrongScoped=await client.GetAsync("/api/trash/personal/purge-task"))
+            Check(wrongScoped.StatusCode==HttpStatusCode.NotFound,
+                "workspace-scoped status remains isolated");
+        using(var crossSpace=await client.GetAsync("/api/trash/purge-task"))
+        {
+            crossSpace.EnsureSuccessStatusCode();
+            var snapshot=await crossSpace.Content.ReadFromJsonAsync<JsonElement>();
+            Check(snapshot.GetProperty("workspace").GetString()=="company" &&
+                  snapshot.GetProperty("taskId").GetString()==id,
+                  "global lock-free task status survives selecting personal workspace");
+        }
+
         // Poll the task without blocking on the SQLCipher connection Gate.
         JsonElement status=default;
         bool terminal=false;
         for(int i=0;i<200;i++)
         {
-            using var result=await client.GetAsync("/api/trash/company/purge-task");
+            using var result=await client.GetAsync("/api/trash/purge-task");
             result.EnsureSuccessStatusCode();
             status=await result.Content.ReadFromJsonAsync<JsonElement>();
             Check(status.GetProperty("taskId").GetString()==id,"stable task identity");

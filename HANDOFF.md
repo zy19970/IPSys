@@ -1,5 +1,9 @@
 # IPSys 跨会话交接（2026-10-17，N4 实机验收与后续功能完善）
 
+> **跨工作区删除期间界面“卡死”修复（2026-10-18）**：用户实际删除 2.66 GiB 原件到约 13% 时从一个工作区切到另一个工作区，界面似乎冻结。根因：`trackTrashPurge` 循环绑定 `while(space===workspace&&token)`，切换工作区停止轮询，但 Vault 后台删除仍执行；`selectSpace` 立即同时刷新全部业务模块，在长时间持有 `Vault.Gate` 的 SQLCipher 删除事务期间请求排队，造成无响应错觉。新增 Vault 全局只读 `GET /api/trash/purge-task`（独立于工作区、无需 DB Gate）；前端轮询只依赖当前登录，不依赖工作区；切换/刷新时先检查任务状态，在进行中显示数据库维护说明，暂停 SQLCipher 列表查询，任务完成后自动刷新当前所选工作区。既不取消已有删除，也不额外访问真实资料；专项 Node+HTTP 回归覆盖公司删除期间选择个人资料。
+
+
+
 > **回收站大文件永久删除进度（2026-10-18）**：网页不再同步等待整个 `/api/trash/{workspace}/purge`。新增 `POST /api/trash/{workspace}/purge-task` 创建宿主内存任务，`GET /api/trash/{workspace}/purge-task` 不等待 SQLCipher Gate，返回任务状态/真实分块已删除字节/预计可回收总字节/失败原因。仅服务器提交数据库事务后标记 succeeded；途中失败/安全退出取消则回滚。Web 固定面板显示数据块回收百分比及“事务提交中”阶段，支持重开页面恢复轮询，删除执行时禁止关库；空原件共享引用只显示关联/元数据处理，不编造字节进度。旧同步 purge HTTP/MCP 行为保留。新增 SQLCipher 回滚回归、独立 HTTP 任务轮询和 UI 状态测试；实际 2GiB SSD 操作仍需目标机验收。
 
 

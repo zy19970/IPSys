@@ -1062,8 +1062,9 @@ assert.ok(js.includes("data-trash-restore=")&&js.includes("data-trash-purge="));
 assert.ok(js.includes("case 'trashRestoreSelected'")&&js.includes("case 'trashPurgeSelected'"));
 assert.ok(js.includes("api('/api/trash/'+workspace+'/purge-task'") &&
  js.includes("api('/api/trash/'+space+'/restore'") &&
- js.includes("await api('/api/trash/'+workspace+'/purge-task'"),
- 'Permanent purge must create and poll a background task; restore remains independent');
+ js.includes("api('/api/trash/purge-task')") &&
+ js.includes("fetch('/api/trash/purge-task'"),
+ 'Permanent purge starts a background task and polls vault-wide status across workspaces');
 assert.ok(js.includes("api('/api/v2/files/'+space+'/'+file.fileId+'/associate'"),
  'Same-workspace association must use the native V2 atomic link copy/move route');
 assert.ok(!js.includes("'/api/business-files/'"),
