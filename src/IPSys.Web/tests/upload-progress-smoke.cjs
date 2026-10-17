@@ -15,7 +15,7 @@ assert.ok(adapter.includes('api.uploadFile(path+"/prepare?folderId="')&&
  adapter.includes('signal:api.uploadProgress.signal()'),
  'Both V2 create and version upload must stream with progress and await server confirmation');
 assert.ok(app.includes('api.uploadProgress.begin(files.length)')&&
- app.includes('api.uploadProgress.finish({completed,errors,skipped})')&&
+ app.includes('api.uploadProgress.finish({completed,errors,skipped,warnings})')&&
  app.includes('api.uploadProgress.onActiveChanged=active=>{localFileTaskActive=active;}'),
  'Both batch paths must keep persistent progress and beforeunload lock');
 
