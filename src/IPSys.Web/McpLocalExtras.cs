@@ -6,6 +6,23 @@ using System.Text.Json.Nodes;
 // All data mutations still pass the normal HTTP route + SQLCipher guards.
 static partial class McpLocal
 {
+    private static FileStream CreateMcpDownloadFile(string path)
+    {
+        try
+        {
+            return new FileStream(path,FileMode.CreateNew,FileAccess.Write,
+                FileShare.None,1024*1024,FileOptions.Asynchronous);
+        }
+        catch(UnauthorizedAccessException ex)
+        {
+            throw new IOException("下载目标没有写入权限："+path,ex);
+        }
+        catch(IOException ex)
+        {
+            throw new IOException("无法创建下载目标：路径不可访问、文件已存在或被占用："+path,ex);
+        }
+    }
+
     private static object[] ExtraTools() =>
     [
         Tool("update_contract","修改已有合同的指定字段，其余字段保留；不能借此更改所属项目。",new(){
@@ -280,8 +297,7 @@ static partial class McpLocal
                     throw new IOException("原件下载失败，HTTP "+(int)response.StatusCode);
                 long size=response.Content.Headers.ContentLength??-1;
                 if(size<0)throw new IOException("下载缺少 Content-Length，已拒绝写入。");
-                await using(var dest=new FileStream(full,FileMode.CreateNew,
-                    FileAccess.Write,FileShare.None,1024*1024,FileOptions.Asynchronous))
+                await using(var dest=CreateMcpDownloadFile(full))
                 {
                     try
                     {

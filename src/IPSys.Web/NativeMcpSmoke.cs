@@ -610,7 +610,8 @@ static class NativeMcpSmoke
                 bool overwriteDenied=false;
                 try{await Original("download_file_version",new{
                     workspace="company",file_id=file,version=1,output_path=output
-                });}catch(IOException){overwriteDenied=true;}
+                });}catch(IOException ex)when(ex.Message.Contains("禁止覆盖",StringComparison.Ordinal))
+                {overwriteDenied=true;}
                 Check(overwriteDenied,"MCP download cannot overwrite a local file");
             }
             finally{File.Delete(output);}

@@ -407,7 +407,10 @@ static partial class McpLocal
         {
             var failure=new JsonObject{
                 ["ok"]=false,["status"]="failed",
-                ["code"]="TOOL_CALL_REJECTED",
+                ["code"]=ex.Message.Contains("结果可能不确定",StringComparison.Ordinal) ||
+                    ex.Message.Contains("结果若不确定",StringComparison.Ordinal) ||
+                    ex.Message.Contains("MCP 管道已断开",StringComparison.Ordinal)
+                    ?"EXECUTION_UNCERTAIN":"TOOL_CALL_REJECTED",
                 ["message"]=ex.Message,["error"]=ex.Message,["retryable"]=false
             };
             if(ex.Message.Contains("结果可能不确定",StringComparison.Ordinal) ||
