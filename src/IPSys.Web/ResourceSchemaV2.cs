@@ -133,7 +133,9 @@ static class ResourceSchemaV2
             CREATE TRIGGER chunk_delete_ready BEFORE DELETE ON file_chunks
               WHEN EXISTS(SELECT 1 FROM file_objects
                 WHERE id=OLD.object_id AND workspace=OLD.workspace AND state='ready')
-              BEGIN SELECT RAISE(ABORT,'completed content bytes are immutable'); END;
+                AND EXISTS(SELECT 1 FROM file_versions
+                  WHERE object_id=OLD.object_id AND workspace=OLD.workspace)
+              BEGIN SELECT RAISE(ABORT,'completed content bytes are still referenced'); END;
 
             CREATE TABLE file_versions(
               id INTEGER PRIMARY KEY,file_id INTEGER NOT NULL,
@@ -202,6 +204,36 @@ static class ResourceSchemaV2
                   ('company','archive_folder','achievement','专项工作与合作',4,1),
                   ('company','archive_folder','achievement','政策与行业资料',5,1),
                   ('company','archive_folder','achievement','其他业务资料',6,1);
+            """;
+        cmd.ExecuteNonQuery();
+        tx.Commit();
+    }
+
+    // Existing V2 vaults need only this narrow, transactional trigger refresh.
+    // Keep ready bytes immutable while any (including historical/deleted) version
+    // still references them. This is not a V1 data migration.
+    public static void EnsureOrphanPurgeTrigger(SqliteConnection db)
+    {
+        using(var inspect=db.CreateCommand())
+        {
+            inspect.CommandText="SELECT sql FROM sqlite_master WHERE type='trigger' AND name='chunk_delete_ready';";
+            string? definition=inspect.ExecuteScalar() as string;
+            if(definition?.Contains("file_versions",StringComparison.OrdinalIgnoreCase)==true)
+                return;
+            if(string.IsNullOrEmpty(definition))
+                throw new IOException("新版加密库缺少原件删除保护触发器，拒绝执行清理。");
+        }
+        using var tx=db.BeginTransaction();
+        using var cmd=db.CreateCommand();
+        cmd.Transaction=tx;
+        cmd.CommandText="""
+            DROP TRIGGER chunk_delete_ready;
+            CREATE TRIGGER chunk_delete_ready BEFORE DELETE ON file_chunks
+            WHEN EXISTS(SELECT 1 FROM file_objects
+              WHERE id=OLD.object_id AND workspace=OLD.workspace AND state='ready')
+              AND EXISTS(SELECT 1 FROM file_versions
+                WHERE object_id=OLD.object_id AND workspace=OLD.workspace)
+            BEGIN SELECT RAISE(ABORT,'completed content bytes are still referenced'); END;
             """;
         cmd.ExecuteNonQuery();
         tx.Commit();

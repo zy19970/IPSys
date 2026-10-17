@@ -152,9 +152,9 @@ static partial class McpLocal
             ["id"]=Field("integer","待恢复条目 ID"),
             ["section"]=Field("string","回收站返回的 section，空可省略")
         },["workspace","kind","id"]),
-        Tool("purge_trash","明确确认后永久清理一条已删除且没有文件关联的回收站记录；不会自动清理原件或文件历史，也不会递归删除业务目录。用于先清理已软删除的空资料，再删除所属空目录。",new(){
+        Tool("purge_trash","明确确认后永久清理回收站记录或已解除的 File/Folder 关联。只有 FileId 不再存在任何有效或可恢复关联时，才清除文件历史及未被其它 FileId 共享的物理原件块；不会递归删除业务目录，数据库文件未必立即缩小。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
-            ["kind"]=Field("string","回收站原始类别，不允许 v2_file/v2_ip_file",["project","contract","ip","v2_general","v2_archive"]),
+            ["kind"]=Field("string","回收站返回的原始类别（含 v2_file/v2_ip_file LinkId）",["project","contract","ip","v2_general","v2_archive","v2_file","v2_ip_file"]),
             ["id"]=Field("integer","待永久清理的已删除记录 ID"),
             ["section"]=Field("string","档案类别，其他类型留空"),
             ["confirm"]=new Dictionary<string,object>{{"type","boolean"},{"description","必须明确传 true 确认永久删除"}}
@@ -438,9 +438,6 @@ static partial class McpLocal
                                   "v2_archive" or "v2_file" or "v2_ip_file"))
                     throw new McpKnownRejectionException(
                         "回收站 kind 非法；请通过 list_trash 获取合法 kind。");
-                if(purge && kind is "v2_file" or "v2_ip_file")
-                    throw new McpKnownRejectionException(
-                        "共享文件关联和历史原件不支持永久清理。");
                 if(purge && !Bool(args,"confirm"))
                     throw new McpKnownRejectionException(
                         "永久清理必须明确传入 confirm=true。");

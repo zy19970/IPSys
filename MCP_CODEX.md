@@ -14,9 +14,13 @@
 
 > **历史：MCP 黑盒缺陷修复阶段（2026-10-17）**：剩余 ISS-003～ISS-014 已按安全边界实现，源码提交 `30af13d4`、`a885d368`、`2d099748`、`24822d73`；最终 [Windows CI #39010080604](https://github.com/zy19970/IPSys/actions/runs/39010080604) **completed/success**。**当时 MCP 共 70 个工具**，在原 69 个基础上新增 `purge_trash`。包括 JSON-RPC 批请求明确拒绝、先初始化、统一结构化错误信封、按 IP 类型说明状态、按当前同区匹配规则提示共享/复用约束、UNC/网络路径明确拒绝、上传取消区分原因、下载目标中文错误以及安全地永久清理无附件的已删除资料。原先三批“69 工具”属于历史版本，不用于当前验收。**单轮完整实机复测入口**：[MCP_AGENT_FINAL_RETEST.md](./MCP_AGENT_FINAL_RETEST.md)。实机权限矩阵仍需 Agent 实际执行。
 
+## `purge_trash` 文件关联永久清理（2026-10-18）
+
+当前可以将 `list_trash` 返回的 `v2_file` / `v2_ip_file` 原始 LinkId 与 `confirm=true` 传入 `purge_trash`。操作按**精确关联**永久删除：若同一 FileId 在任何文件夹（包括待恢复的关联）仍有引用，则所有历史版本与物理文件块继续保留；只有最后一个关联被永久删除后才清理 FileId 和版本，并且只有 FileObject 未被其它独立 FileId 的任意历史版本复用，才删除 SQLCipher 数据块。整个操作在单一事务中完成。已释放的 SQLite 页面可供后续数据复用，但**数据库文件在磁盘上的总大小不保证立刻缩小**；后续空间压缩需单独安排和验证。已记录版本文件不能靠直接永久删除其它业务资料绕过引用限制。
+
 ## 新增 `purge_trash` 与最终安全边界
 
-`purge_trash(workspace,kind,id,section?,confirm=true,request_id?)` 只能操作经 `list_trash` 确认的已删除资料，目前允许的 kind 为 `project/contract/ip/v2_general/v2_archive`；必须明确 `confirm=true`。仅允许没有仍受保护的文件关联/从属记录时精确永久清理，不支持 `v2_file/v2_ip_file` 原件关联的任意永久销毁，不会递归删除业务目录。若目录内仍有软删除资料导致不能删除，应先清理可安全清理的资料并再删除空目录；无法清理的关联需另行核对，不能跳过引用保护。
+`purge_trash(workspace,kind,id,section?,confirm=true,request_id?)` 只能操作经 `list_trash` 确认的已删除资料，目前允许的 kind 为 `project/contract/ip/v2_general/v2_archive/v2_file/v2_ip_file`；必须明确 `confirm=true`。原件关联永久清理仅对所选 LinkId 生效，文件/版本/对象受其它引用保护；不会递归删除业务目录。若目录内仍有软删除资料导致不能删除，应先清理可安全清理的资料并再删除空目录；无法清理的关联需另行核对，不能跳过引用保护。
 
 上传源路径与下载输出路径须是 IPSys 宿主机器的本地盘符绝对路径，UNC/网络共享路径不允许。取消上传时仍保留在途 HTTP 结果未知的 `uncertain`，按 `cancelReason`（`user_cancel/authorization_revoked/host_stopping`）判断触发原因，不能仅凭取消指令断言未入库。协议 `tools/call` 的失败响应现在是结构化 JSON 文本，客户端解析 `ok/code/message/retryable` 以及可选的 `httpStatus`；真实业务失败仍应通过 `get_operation_result` 查询幂等日志。不允许直接复用失败参数的新编号或自动重传不确定结果。
 

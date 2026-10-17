@@ -81,12 +81,13 @@ static class ResourceSchemaV2Smoke
                     "ready object immutability");
                 Reject(db,$"UPDATE file_chunks SET bytes=X'00' WHERE object_id={objectId}",
                     "ready file chunk immutability");
-                Reject(db,$"DELETE FROM file_chunks WHERE object_id={objectId}",
-                    "ready bytes must not be deleted");
+                // A ready orphan may be purged; referenced versions stay immutable.
                 Reject(db,$"INSERT INTO file_chunks(object_id,workspace,idx,bytes) VALUES({objectId},'company',1,X'00')",
                     "cannot append bytes after object is ready");
                 ExecuteId(db,
                     $"INSERT INTO file_versions(file_id,workspace,version,object_id,original_name) VALUES({fileId},'company',1,{objectId},'原件.pdf')");
+                Reject(db,$"DELETE FROM file_chunks WHERE object_id={objectId}",
+                    "referenced ready bytes must not be deleted");
                 ExecuteId(db,
                     $"INSERT INTO folder_file_links(workspace,folder_id,file_id) VALUES('company',{folderId},{fileId})");
                 ExecuteId(db,

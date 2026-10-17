@@ -1,5 +1,9 @@
 # IPSys — 资料管理系统
 
+> **附件永久删除（2026-10-18 修复）**：回收站此前拒绝永久删除任何文件关联（“共享原件物理回收尚未提供”）。新版支持按 LinkId 永久清理：只有某 FileId 不再有任何活跃或可恢复关联才删除其文件历史和身份；独立 FileId 复用的相同物理字节仅在全部相关版本引用解除后回收。数据清理为事务操作；数据库已释放的内部空间可供再利用，磁盘上的 SQLCipher 数据库文件不会保证立即变小。错误诊断与测试见 [WEB_TESTING.md](./WEB_TESTING.md)。
+
+
+
 > **超 2 GiB 原件专项（2026-10-17）**：新 V2 单文件代码上限 **8 GiB**，数据库采用 1 MiB 分块增量 SHA-256。直接上传和网页实际使用的 prepare→resolve 均已对 **2 GiB + 12,345 字节**执行真实 SQLCipher/HTTP 上传与流式下载校验，两轮 Windows CI success：[Windows CI #39023923481](https://github.com/zy19970/IPSys/actions/runs/39023923481) 与 [#39024449728](https://github.com/zy19970/IPSys/actions/runs/39024449728)。ZIP64 结构回归已通过；Edge/Chrome 实际保存、第三方解压、移动磁盘异常与备份安全仍需在可丢弃测试库中验收，操作见 [LARGE_FILE_TESTING.md](./LARGE_FILE_TESTING.md)。
 
 

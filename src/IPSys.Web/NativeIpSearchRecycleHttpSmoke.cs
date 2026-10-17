@@ -60,11 +60,8 @@ static class NativeIpSearchRecycleHttpSmoke
         var trash=await client.GetFromJsonAsync<List<RecycleItem>>("/api/trash/company");
         Check(trash!.Any(x=>x.Kind=="v2_ip_file"&&x.Id==linkId),
             "removed native file link visible in recycle");
-        using(var rejected=await client.PostAsJsonAsync(
-            "/api/trash/company/purge",
-            new RecycleRequest([new RecycleKey("v2_ip_file",linkId,"")])))
-            Check(rejected.StatusCode==HttpStatusCode.Conflict,
-                "do not call deletion of immutable physical bytes a permanent purge");
+        // A removed link must remain restorable until the user explicitly
+        // chooses permanent deletion from the recycle bin.
         using(var restored=await client.PostAsJsonAsync(
             "/api/trash/company/restore",
             new RecycleRequest([new RecycleKey("v2_ip_file",linkId,"")])))
@@ -94,6 +91,25 @@ static class NativeIpSearchRecycleHttpSmoke
         Check((await client.GetByteArrayAsync(
             $"/api/v2/ip/company/{id}/files/{fileId}/versions/1/download"))
             .SequenceEqual(content),"IP restore preserves link and raw bytes");
+        // Permanent deletion of the LAST LinkId must remove this FileId and
+        // make its entire version stream inaccessible.
+        using(var unlink=await client.DeleteAsync(
+            $"/api/v2/ip/company/{id}/files/{fileId}/links/{linkId}"))
+            unlink.EnsureSuccessStatusCode();
+        using(var purgeFile=await client.PostAsJsonAsync(
+            "/api/trash/company/purge",
+            new RecycleRequest([new RecycleKey("v2_ip_file",linkId,"")])))
+            purgeFile.EnsureSuccessStatusCode();
+        using(var missing=await client.GetAsync(
+            $"/api/v2/ip/company/{id}/files/{fileId}/versions/1/download"))
+            Check(missing.StatusCode==HttpStatusCode.NotFound,
+                "permanently purged FileId has no downloadable versions");
+        using(var deletedFolder=await client.DeleteAsync($"/api/v2/folders/company/ip/{id}"))
+            deletedFolder.EnsureSuccessStatusCode();
+        using(var purgeFolder=await client.PostAsJsonAsync(
+            "/api/trash/company/purge",
+            new RecycleRequest([new RecycleKey("ip",id,"")])))
+            purgeFolder.EnsureSuccessStatusCode();
 
         var empty=await client.PostAsJsonAsync("/api/v2/folders/personal/ip",
             new{ip=new{name=tag+"无附件",ipType="发明专利",status="已申请"}});

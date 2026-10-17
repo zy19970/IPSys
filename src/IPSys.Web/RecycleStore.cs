@@ -150,6 +150,71 @@ static class RecycleStore
         cmd.CommandText=sql;
         if(cmd.ExecuteNonQuery()!=1)throw new InvalidOperationException("回收站记录已变化。");
     }
+    private static SqliteCommand InTransaction(SqliteConnection db,SqliteTransaction tx,
+        string workspace,string sql,long id)
+    {
+        var cmd=db.CreateCommand();
+        cmd.Transaction=tx;
+        cmd.CommandText=sql;
+        cmd.Parameters.AddWithValue("$w",workspace);
+        cmd.Parameters.AddWithValue("$id",id);
+        return cmd;
+    }
+    private static long Count(SqliteConnection db,SqliteTransaction tx,
+        string workspace,string sql,long id)
+    {
+        using var cmd=InTransaction(db,tx,workspace,sql,id);
+        return (long)cmd.ExecuteScalar()!;
+    }
+    // The only irreversible path for original bytes: first remove the exact
+    // tombstoned LinkId, then delete a FileId only when ZERO links remain,
+    // including links in other folders and tombstones still restorable there.
+    private static void PurgeFileLink(SqliteConnection db,SqliteTransaction tx,
+        string workspace,RecycleKey item)
+    {
+        long fileId=Count(db,tx,workspace,
+            "SELECT file_id FROM folder_file_links WHERE id=$id AND workspace=$w AND deleted=1;",
+            item.Id);
+        Apply(db,tx,workspace,item,true);
+        if(Count(db,tx,workspace,
+            "SELECT COUNT(*) FROM folder_file_links WHERE workspace=$w AND file_id=$id;",
+            fileId)!=0)return;
+
+        var objectIds=new List<long>();
+        using(var versions=InTransaction(db,tx,workspace,
+            "SELECT DISTINCT object_id FROM file_versions WHERE workspace=$w AND file_id=$id;",
+            fileId))
+        using(var reader=versions.ExecuteReader())
+            while(reader.Read())objectIds.Add(reader.GetInt64(0));
+
+        using(var versions=InTransaction(db,tx,workspace,
+            "DELETE FROM file_versions WHERE workspace=$w AND file_id=$id;",fileId))
+            versions.ExecuteNonQuery();
+        using(var file=InTransaction(db,tx,workspace,
+            "DELETE FROM files WHERE workspace=$w AND id=$id;",fileId))
+        {
+            if(file.ExecuteNonQuery()!=1)
+                throw new InvalidOperationException("待清理的原件身份已变化。");
+        }
+        foreach(long objectId in objectIds)
+        {
+            // An independent FileId or any historical version can reference the
+            // same immutable object; only truly orphaned content may be removed.
+            if(Count(db,tx,workspace,
+                "SELECT COUNT(*) FROM file_versions WHERE workspace=$w AND object_id=$id;",
+                objectId)!=0)continue;
+            using(var chunks=InTransaction(db,tx,workspace,
+                "DELETE FROM file_chunks WHERE workspace=$w AND object_id=$id;",objectId))
+                chunks.ExecuteNonQuery();
+            using(var obj=InTransaction(db,tx,workspace,
+                "DELETE FROM file_objects WHERE workspace=$w AND id=$id AND state='ready';",
+                objectId))
+            {
+                if(obj.ExecuteNonQuery()!=1)
+                    throw new InvalidOperationException("物理原件清理状态已变化。");
+            }
+        }
+    }
     public static bool Change(SqliteConnection db,string workspace,
         IReadOnlyList<RecycleKey> items,bool purge)
     {
@@ -159,8 +224,7 @@ static class RecycleStore
         {
             foreach(var item in items)
             {
-                if(item.Kind is "v2_ip_file" or "v2_file")
-                    throw new InvalidOperationException("共享原件物理回收尚未提供，不能永久删除该关联。");
+                if(item.Kind is "v2_file" or "v2_ip_file")continue;
                 using var cmd=db.CreateCommand();
                 cmd.CommandText=item.Kind=="project"?"""
                     SELECT (SELECT COUNT(*) FROM folders WHERE workspace=$w
@@ -180,7 +244,16 @@ static class RecycleStore
             }
         }
         using var tx=db.BeginTransaction();
-        foreach(var item in items)Apply(db,tx,workspace,item,purge);
+        if(purge)
+        {
+            // Purge selected tombstoned links first. A single FileId may occur
+            // in multiple selected folders; its bytes are reclaimed only last.
+            foreach(var item in items.Where(x=>x.Kind is "v2_file" or "v2_ip_file"))
+                PurgeFileLink(db,tx,workspace,item);
+            foreach(var item in items.Where(x=>x.Kind is not ("v2_file" or "v2_ip_file")))
+                Apply(db,tx,workspace,item,true);
+        }
+        else foreach(var item in items)Apply(db,tx,workspace,item,false);
         tx.Commit();
         return true;
     }

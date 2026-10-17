@@ -1617,13 +1617,13 @@ function settingsPage(){return heading('系统设置','数据库管理与已确�
  `<section class="white detailsection"><div class="detailsectionhead"><h2>当前加密数据库</h2></div><div class="detailbody"><div class="minirow"><span>数据库文件</span><strong>${escapeHtml(dbName)}</strong></div><div class="minirow"><span>加密状态</span><span class="realflag">SQLCipher 已启用</span></div><div class="minirow"><span>数据库完整性检查</span><button class="btn" data-action="check">立即检查</button></div><div id="checkResult" class="hint"></div><div class="minirow"><span>本机 Codex MCP</span><span class="actions"><span class="hint">${mcpEnabled?'已开启':'默认关闭'}</span><button class="btn" data-action="mcpToggle">${mcpEnabled?'关闭 MCP':'开启 MCP'}</button></span></div><p class="hint">仅允许当前 Windows 用户通过本机 Codex MCP 操作已解锁的数据库；关库或退出自动失效。开启后 Codex 可新增项目、合同及原件。</p><div class="minirow"><span>关闭当前数据库</span><button class="btn" data-action="lock">关闭数据库</button></div></div></section>`+
  section('尚未接入的设置项','<div class="minirow"><span>修改数据库密码</span>'+stamp()+'</div><div class="minirow"><span>记录类别与标签</span>'+stamp()+'</div><p class="hint">手动备份需安全退出程序后在 Windows 资源管理器复制加密库。</p>');}
 function trashPage(){
- const names={project:'项目',contract:'合同',ip:'知识产权',archive:space==='company'?'资质与业务档案':'证件与成果',file:'业务附件',general:'综合资料',general_file:'综合资料附件',v2_ip_file:'知识产权原件关联'};
+ const names={project:'项目',contract:'合同',ip:'知识产权',archive:space==='company'?'资质与业务档案':'证件与成果',file:'业务附件',general:'综合资料',general_file:'综合资料附件',v2_file:'文件关联',v2_ip_file:'知识产权原件关联'};
  return heading('回收站','当前工作区的真实已删除记录与附件',
  '<button class="btn" data-nav="settings">返回设置</button>')+
  '<section class="white"><div class="tabletools"><b>已删除 '+trashRows.length+' 条</b><div class="actions">'+
  '<button class="btn" data-action="trashRestoreSelected">恢复勾选</button>'+
  '<button type="button" class="btn trash-purge-selected" data-action="trashPurgeSelected" disabled>永久删除</button></div></div>'+
- '<p class="hint">恢复项目将一并恢复其所属合同与关联附件；永久删除不可撤销。仅支持逐条或勾选多条，不提供一键清空。</p>'+
+ '<p class="hint">永久删除附件会先移除所选关联；同一个文件仍被其它位置引用时保留全部版本，仅当不再有任何关联时清理文件版本与未被其它文件共享的原件数据。数据库已释放空间可供后续写入复用，数据库文件大小不一定立即缩小。操作不可撤销。</p>'+
  '<div class="tablewrap"><table class="data"><thead><tr><th><input type="checkbox" id="trashAll"></th>'+
  '<th>类别</th><th>名称</th><th>原归属</th><th>操作</th></tr></thead><tbody>'+
  (trashRows.length?trashRows.map((r,i)=>'<tr><td><input class="trashcheck" type="checkbox" value="'+i+'"></td>'+
@@ -1653,7 +1653,7 @@ async function changeTrash(operation,indices){
  const items=[...new Set(indices)].map(i=>trashRows[i]).filter(Boolean)
    .map(r=>({kind:r.kind,id:r.id,section:r.section||''}));
  if(!items.length)return notice('请先勾选资料。',true);
- if(operation==='purge'&&!confirm('永久删除选中的 '+items.length+' 条资料及适用附件？该操作不可撤销。'))return;
+ if(operation==='purge'&&!confirm('确定永久删除选中的 '+items.length+' 条回收站记录？\n文件关联将永久移除；如无其它引用，还会清理其历史版本和物理数据。\n此操作不可恢复，数据库文件大小可能不会立即缩小。'))return;
  try{
   await api('/api/trash/'+space+'/'+operation,{method:'POST',json:{items}});
   await refresh();notice(operation==='restore'?'资料已恢复':'资料已永久删除');

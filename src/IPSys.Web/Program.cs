@@ -140,6 +140,7 @@ if (smoke)
         FolderModelSmoke.Run();
         ResourceSchemaV2Smoke.Run();
         NativeFileStoreSmoke.Run();
+        RecyclePurgeSmoke.Run();
         NativeFileLinkStoreSmoke.Run();
         NativeFileCopyStoreSmoke.Run();
         NativeFileChoiceStoreSmoke.Run();

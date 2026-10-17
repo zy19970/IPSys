@@ -1,5 +1,9 @@
 # IPSys Windows 验收与回归记录
 
+> **原件永久删除专项（2026-10-18）**：新增 SQLCipher V2 测试 `RecyclePurgeSmoke` 和知识产权 HTTP 回收站测试，核验单 LinkId 永久删除、同 FileId 多文件夹仍可下载、另一个独立 FileId 复用物理数据不受误删、最后引用移除后文件历史/物理分块清理、V2 旧触发器原位更新、跨工作区不互相影响。UI/MCP 的 `purge_trash` 已开放 `v2_file/v2_ip_file`；应使用可丢弃测试库复测，慎用真实唯一文件。注意 DELETE 释放 SQLite 内部空间不等于磁盘上的数据库文件立刻收缩。
+
+
+
 > **上传进度专项（2026-10-18）**：新增 XHR 原件上传进度与批量汇总、服务器校验/查重确认阶段、取消传输和固定结果窗口；对应 Node 测试 `upload-progress-smoke.cjs` 纳入 Windows CI。需在实际浏览器上传大于 2 GiB 附件，目视确认百分比、网络 100% 后未误报入库成功、重复文件选择、成功/失败/取消状态及进度窗口不会被页面刷新清除。
 
 > **超 2 GiB 容量专项（2026-10-17，Windows 自动回归已通过，目标机实机待验）**：当前源码已经将单文件上限提升为 8 GiB，补齐 Kestrel/V2/MCP/网页校验、浏览器大文件流式下载及 ZIP64，新增大于 2 GiB SQLCipher/HTTP 数据往返可选专项和 ZIP64 自动测试。详细执行与安全边界见 [LARGE_FILE_TESTING.md](./LARGE_FILE_TESTING.md)。在 [Windows CI #39023923481](https://github.com/zy19970/IPSys/actions/runs/39023923481) 与 [#39024449728](https://github.com/zy19970/IPSys/actions/runs/39024449728) 完成两种真实 V2 SQLCipher/HTTP 路径（直接上传和网页准备/确认）的 2 GiB + 12,345 字节 SHA-256 双向往返；该结论并非用户目标电脑的真实 Edge/Chrome/SSD 故障实测。下文历史 64 MiB 上限属于对应旧构建。
