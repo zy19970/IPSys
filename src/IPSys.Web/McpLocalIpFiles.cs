@@ -144,6 +144,7 @@ static partial class McpLocal
             ?ReadId(args,"source_file_id"):null;
         JsonArray outcomes=new();
         bool interrupted=false;
+        string? cancelReason=null;
         foreach(var element in files.EnumerateArray())
         {
             string path=element.ValueKind==JsonValueKind.String?element.GetString()??"":"";
@@ -153,9 +154,7 @@ static partial class McpLocal
             try
             {
                 stop.ThrowIfCancellationRequested();
-                if(!Path.IsPathFullyQualified(path))
-                    throw new IOException("必须使用绝对路径。");
-                var local=new FileInfo(Path.GetFullPath(path));
+                var local=new FileInfo(McpLocalFilePath(path,"paths"));
                 if(!local.Exists)throw new FileNotFoundException("本机文件不存在。");
                 if(local.Length>NativeFileStore.MaxFileLength)
                     throw new IOException("文件超过 64 MiB 上限。");
@@ -218,13 +217,33 @@ static partial class McpLocal
             catch(OperationCanceledException)
             {
                 interrupted=true;
+                cancelReason=progress?.StopReason??"request_interrupted";
+                string explanation=cancelReason switch {
+                    "user_cancel"=>"用户请求取消",
+                    "authorization_revoked"=>"MCP 授权已撤销",
+                    "host_stopping"=>"宿主进程正在退出",
+                    _=>"请求已中断"
+                };
                 outcomes.Add(new JsonObject{["path"]=path,["ok"]=false,
-                    ["error"]="已取消或撤销 MCP 授权；之前成功的文件不会自动回滚。"});
+                    ["error"]=explanation+"；已发出的请求可能已经写入，请核对文件关联。",
+                    ["cancelReason"]=cancelReason});
             }
             catch(Exception ex)
             {
+                string detail=ex switch {
+                    UnauthorizedAccessException=>"没有读取文件的权限。",
+                    FileNotFoundException=>"指定本机文件不存在。",
+                    IOException when !ex.Message.StartsWith("IPSys ",StringComparison.Ordinal) &&
+                        !ex.Message.Contains("发现内容一致",StringComparison.Ordinal) &&
+                        !ex.Message.Contains("64 MiB",StringComparison.Ordinal) &&
+                        !ex.Message.Contains("路径",StringComparison.Ordinal) &&
+                        !ex.Message.Contains("关联",StringComparison.Ordinal) &&
+                        !ex.Message.Contains("文件",StringComparison.Ordinal)=>
+                            "无法读取文件：文件可能被占用、路径不可访问或权限不足。",
+                    _=>ex.Message
+                };
                 outcomes.Add(new JsonObject{["path"]=path,["ok"]=false,
-                    ["error"]=ex.Message});
+                    ["error"]=detail});
             }
             finally
             {
@@ -244,6 +263,7 @@ static partial class McpLocal
         return new JsonObject{
             ["files"]=outcomes,["succeeded"]=succeeded,["failed"]=failed,
             ["requested"]=files.GetArrayLength(),
+            ["cancelReason"]=cancelReason,
             ["status"]=interrupted?"interrupted":failed>0?
                 (succeeded>0?"partial_success":"failed"):"success",
             ["retryAdvice"]=failed>0 || interrupted?

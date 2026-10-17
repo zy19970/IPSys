@@ -47,9 +47,10 @@ static class NativeMcpSmoke
             "reorder_entries","reorder_records","reorder_archive_records",
             "list_file_links"}.All(names.Contains),
             "second batch of V2 MCP endpoint adapters registered");
-        Check(new[]{"start_upload_task","get_task_status","cancel_task"}
-            .All(names.Contains) && names.Distinct().Count()==names.Length,
-            "async upload start/status/cancel tools are uniquely registered");
+        Check(new[]{"start_upload_task","get_task_status","cancel_task","purge_trash"}
+            .All(names.Contains) && names.Distinct().Count()==names.Length &&
+            names.Length==70,
+            "MCP registry keeps all prior tools and adds explicit trash purge");
         // One idle client must never block an independent Agent's request.
         McpLocal.VerifySessionScopedIdentity();
         await McpLocal.VerifyConcurrentClientsAsync();
@@ -78,6 +79,15 @@ static class NativeMcpSmoke
             ex.Message.Contains("文件不存在") && ex.Message.Contains("999999999"))
         { meaningful404=true; }
         Check(meaningful404,"MCP 404 reports the missing entity and FileId");
+        var invalidKind=await McpLocal.RunSmokeProtocolToolAsync("restore_trash",
+            Args(new{workspace="company",kind="bad_kind",id=42}));
+        var invalidText=invalidKind["result"]?["content"]?[0]?["text"]?.GetValue<string>();
+        var invalidError=invalidText is null?null:JsonNode.Parse(invalidText);
+        Check(invalidKind["result"]?["isError"]?.GetValue<bool>()==true &&
+              invalidError?["code"]?.GetValue<string>()=="TOOL_CALL_REJECTED" &&
+              invalidError?["message"]?.GetValue<string>()?.Contains("kind 非法")==true &&
+              invalidError?["retryable"]?.GetValue<bool>()==false,
+              "ISS-008/013 schema and invalid-trash errors use JSON object envelopes");
 
         // ISS-015: simulate an interrupted former host's durable pending row.
         string orphan=Guid.NewGuid().ToString("N");
@@ -318,6 +328,13 @@ static class NativeMcpSmoke
         }); }
         catch(IOException){badFieldType=true;}
         Check(badFieldType,"unrelated numeric field is still rejected");
+        var invalidSource=await Original("upload_files",new{
+            workspace="company",kind="project",owner_id=originalProject,
+            paths=new[]{@"\\127.0.0.1\C$\unreachable-source.txt"}
+        });
+        Check(invalidSource["status"]?.GetValue<string>()=="failed" &&
+              invalidSource["files"]?[0]?["error"]?.GetValue<string>()?.Contains("UNC")==true,
+              "ISS-007 does not read network paths under the GUI host");
         bool obsoleteRejected=false;
         try { await Original("upload_files",new{
             workspace="company",kind="project",owner_id=originalProject,

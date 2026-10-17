@@ -74,7 +74,8 @@ static class NativeArchiveActionsEndpoints
             if(!v.Allowed(ctx))return (IResult)Results.Unauthorized();
             var from=ArchiveRules.Module(workspace,section);
             var to=ArchiveRules.Module(input.TargetWorkspace,input.TargetSection);
-            if(from is null||from!=to)return fail("目标资料类别不兼容。",400);
+            if(from is null||from!=to)return fail(
+                "目标资料类别不兼容：科研成果可在 company/achievement 与 personal/achievement、personal/academic 之间转移；certificate 不支持跨工作区转移。",400);
             if(input.Move&&workspace==input.TargetWorkspace&&
                 section==input.TargetSection)
                 return fail("同一工作区同类别无需转移。",400);

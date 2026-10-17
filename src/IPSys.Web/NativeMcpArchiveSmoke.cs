@@ -88,6 +88,37 @@ static class NativeMcpArchiveSmoke
         });
         Check(!Has(await Run("list_archive_folders",new{workspace="company",parent_id=root}),empty),
             "empty archive directory deleted permanently");
+        // ISS-014: explicitly purge an already-deleted attachment-free record
+        // before removing its parent directory. A direct delete must not
+        // silently wipe soft-deleted references.
+        long purgeFolder=Id(await Run("create_archive_folder",new{
+            workspace="company",parent_id=root,name=tag+"清理目录"
+        }));
+        long purgeRecord=Id(await Run("create_archive",new{
+            workspace="company",section="achievement",folder_id=purgeFolder,
+            name=tag+"清理测试资料"
+        }));
+        await Run("delete_archive",new{
+            workspace="company",section="achievement",archive_id=purgeRecord
+        });
+        bool explicitConfirmRequired=false;
+        try{await Run("purge_trash",new{
+            workspace="company",kind="v2_archive",section="achievement",
+            id=purgeRecord,confirm=false
+        });}catch(IOException){explicitConfirmRequired=true;}
+        Check(explicitConfirmRequired,"permanent deletion requires explicit confirmation");
+        var purged=await Run("purge_trash",new{
+            workspace="company",kind="v2_archive",section="achievement",
+            id=purgeRecord,confirm=true,request_id=Guid.NewGuid().ToString("N")
+        });
+        Check(purged["ok"]?.GetValue<bool>()==true,
+            "permanent trash operation removes only the selected empty record");
+        await Run("delete_archive_folder",new{
+            workspace="company",folder_id=purgeFolder
+        });
+        Check(!Has(await Run("list_archive_folders",new{
+            workspace="company",parent_id=root
+        }),purgeFolder),"after explicit purge, the empty directory can be deleted");
         long archive=Id(await Run("create_archive",new{
             workspace="company",section="achievement",folder_id=folder,
             name=tag+"业务材料",category="报批资料",remarks="更新前",year=2026

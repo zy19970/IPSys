@@ -222,7 +222,7 @@ static class NativeFolderEndpoints
                 catch(KeyNotFoundException){return Results.NotFound();}
                 catch(InvalidOperationException ex){return Bad(ex.Message,409);}
                 catch(Microsoft.Data.Sqlite.SqliteException ex)
-                    {return Bad("目录移动不符合层级约束："+ex.SqliteErrorCode,409);}
+                    {return Bad("目录层级不合法、目标不可用或发生名称冲突，请重新检查目标目录。",409);}
             }
             finally{v.Gate.Release();}
         });

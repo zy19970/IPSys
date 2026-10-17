@@ -43,7 +43,24 @@ static partial class NativeFileChoiceStore
             candidate=Matches(v.Db,workspace,pending.Size,pending.Sha256)
                 .FirstOrDefault(x=>x.FileId==decision.SourceFileId);
             if(candidate is null)
-                throw new InvalidOperationException("原匹配文件或内容已发生变化，请重新查重后选择。");
+                throw new InvalidOperationException("未找到匹配文件：所选 source_file_id 在当前工作区没有相同内容；share/reuse 仅允许同一工作区，跨工作区复制请使用 independent-content。");
+        }
+        // Sharing an already linked FileId inside the same folder would
+        // violate the unique active Folder/File link, so reject explicitly.
+        if(choice=="share-file")
+        {
+            using var exists=v.Db.CreateCommand();
+            exists.CommandText="""
+                SELECT COUNT(*) FROM folder_file_links
+                WHERE workspace=$w AND folder_id=$folder
+                  AND file_id=$file AND deleted=0;
+                """;
+            exists.Parameters.AddWithValue("$w",workspace);
+            exists.Parameters.AddWithValue("$folder",pending.FolderId);
+            exists.Parameters.AddWithValue("$file",candidate!.FileId);
+            if((long)exists.ExecuteScalar()!>0)
+                throw new InvalidOperationException(
+                    "该文件已关联当前文件夹，无需重复共享。可选择 independent 创建独立文件，或取消本次上传。");
         }
         cancellation.ThrowIfCancellationRequested();
         using var tx=v.Db.BeginTransaction();

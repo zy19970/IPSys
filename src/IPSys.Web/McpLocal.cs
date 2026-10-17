@@ -83,7 +83,7 @@ static partial class McpLocal
             ["workspace"]=Field("string","工作区",Workspaces),
             ["name"]=Field("string","名称"),
             ["ip_type"]=Field("string","知识产权类型",["发明专利","实用新型专利","外观设计专利","软件著作权","其他著作权","商标","集成电路布图设计"]),
-            ["status"]=Field("string","状态"),
+            ["status"]=Field("string","状态随 ip_type 变化：发明专利可选准备中/已申请/已公开/实质审查中/已授权/已失效；实用新型/外观设计为准备中/已申请/已授权/已失效；软件/其他著作权和集成电路布图设计为准备中/登记中/已登记；商标为准备中/申请中/已注册/已失效。可留空。"),
             ["applicants"]=Field("string","申请人"),
             ["right_holders"]=Field("string","权利人"),
             ["creators"]=Field("string","发明人/设计人/作者"),
@@ -107,7 +107,7 @@ static partial class McpLocal
             ["ip_id"]=Field("integer","知识产权 ID"),
             ["name"]=Field("string","名称"),
             ["ip_type"]=Field("string","知识产权类型",["发明专利","实用新型专利","外观设计专利","软件著作权","其他著作权","商标","集成电路布图设计"]),
-            ["status"]=Field("string","状态"),
+            ["status"]=Field("string","状态随 ip_type 变化：发明专利可选准备中/已申请/已公开/实质审查中/已授权/已失效；实用新型/外观设计为准备中/已申请/已授权/已失效；软件/其他著作权和集成电路布图设计为准备中/登记中/已登记；商标为准备中/申请中/已注册/已失效。可留空。"),
             ["applicants"]=Field("string","申请人"),
             ["right_holders"]=Field("string","权利人"),
             ["creators"]=Field("string","发明人/设计人/作者"),
@@ -301,6 +301,7 @@ static partial class McpLocal
         Console.SetError(new StreamWriter(Console.OpenStandardError(),new UTF8Encoding(false)){AutoFlush=true});
         using var input=new StreamReader(Console.OpenStandardInput(),new UTF8Encoding(false));
         using var output=new StreamWriter(Console.OpenStandardOutput(),new UTF8Encoding(false)) {AutoFlush=true,NewLine="\n"};
+        bool initialized=false;
         while(true)
         {
             string? line=await input.ReadLineAsync();
@@ -310,15 +311,30 @@ static partial class McpLocal
             {
                 using var envelope=JsonDocument.Parse(line);
                 var root=envelope.RootElement;
-                if(root.ValueKind!=JsonValueKind.Object||!root.TryGetProperty("method",out var methodValue))
+                if(root.ValueKind!=JsonValueKind.Object)
+                {
+                    using var nullId=JsonDocument.Parse("null");
+                    await output.WriteLineAsync(JsonSerializer.Serialize(
+                        Error(nullId.RootElement,-32600,"不支持 JSON-RPC 批量请求，请逐条发送。"),Json));
                     continue;
+                }
+                if(!root.TryGetProperty("method",out var methodValue) ||
+                   methodValue.ValueKind!=JsonValueKind.String)
+                {
+                    using var nullId=JsonDocument.Parse("null");
+                    await output.WriteLineAsync(JsonSerializer.Serialize(
+                        Error(nullId.RootElement,-32600,"JSON-RPC 请求缺少 method。"),Json));
+                    continue;
+                }
                 string method=methodValue.GetString()??"";
                 if(!root.TryGetProperty("id",out var rawId))continue; // notifications
                 JsonElement id=rawId.Clone();
                 object reply;
                 try
                 {
-                    reply=method switch
+                    if(method=="initialize")initialized=true;
+                    reply=!initialized?Error(id,-32002,"请先发送 initialize 初始化 MCP 连接。") :
+                        method switch
                     {
                         "initialize"=>Success(id,new {
                             protocolVersion="2025-06-18",
@@ -363,14 +379,42 @@ static partial class McpLocal
                 (result["ok"]?.ToJsonString()=="false" ||
                  result["status"]?.GetValue<string>() is
                     "failed" or "partial_success" or "interrupted");
+            bool isError=partial||businessFailure;
+            JsonNode visible=response;
+            if(isError && response is JsonObject original)
+            {
+                var failure=(JsonObject)original.DeepClone();
+                string status=failure["status"]?.GetValue<string>()??"failed";
+                string detail=failure["error"]?.GetValue<string>()??
+                    (status=="partial_success"?"批量操作部分失败。":"操作未成功。");
+                failure["ok"]=false;
+                failure["message"]=detail;
+                failure["error"]=detail;
+                failure["code"]=status switch {
+                    "partial_success"=>"PARTIAL_FAILURE",
+                    "interrupted"=>"EXECUTION_UNCERTAIN",
+                    _=>"BUSINESS_REJECTED"
+                };
+                failure["retryable"]=false;
+                visible=failure;
+            }
             return Success(id,new {
-                content=new[] {new {type="text",text=response.ToJsonString(Json)}},
-                isError=partial||businessFailure
+                content=new[] {new {type="text",text=visible.ToJsonString(Json)}},
+                isError
             });
         }
         catch(Exception ex)
         {
-            return Success(id,new {content=new[] {new {type="text",text=ex.Message}},isError=true});
+            var failure=new JsonObject{
+                ["ok"]=false,["status"]="failed",
+                ["code"]="TOOL_CALL_REJECTED",
+                ["message"]=ex.Message,["error"]=ex.Message,["retryable"]=false
+            };
+            if(ex.Message.Contains("结果可能不确定",StringComparison.Ordinal) ||
+               ex.Message.Contains("结果若不确定",StringComparison.Ordinal))
+                failure["code"]="EXECUTION_UNCERTAIN";
+            return Success(id,new {content=new[] {new {
+                type="text",text=failure.ToJsonString(Json)}},isError=true});
         }
     }
 
@@ -661,10 +705,31 @@ static partial class McpLocal
                 (p.Length>5?p[5]:"未知")+"）";
         }
         if(p.Length>=5 && p[0]=="api" && p[1]=="v2" && p[2]=="files")
+        {
+            if(p[4]=="folders")
+                return "文件夹或关联不存在（FolderId="+
+                    (p.Length>5?p[5]:"未知")+"）";
             return "文件不存在或当前工作区无权访问（FileId="+p[4]+"）";
+        }
         return "目标资源不存在（接口 "+path+"）";
     }
 
+    // Use local drive paths only for MCP file import/export.
+    private static string McpLocalFilePath(string path,string field)
+    {
+        if(!Path.IsPathFullyQualified(path) ||
+           path.StartsWith(@"\\",StringComparison.Ordinal))
+            throw new McpKnownRejectionException(field+
+                " 仅支持本机磁盘的绝对路径，不接受 UNC 共享地址。");
+        string full=Path.GetFullPath(path);
+        string root=Path.GetPathRoot(full)??"";
+        if(root.Length!=3 || root[1]!=':' || root[2]!='\\')
+            throw new McpKnownRejectionException(field+" 必须位于本机盘符下。");
+        if(new DriveInfo(root).DriveType is DriveType.Network or DriveType.Unknown)
+            throw new McpKnownRejectionException(field+
+                " 不支持网络映射盘；请先将文件复制到本机磁盘。");
+        return full;
+    }
     private sealed class McpKnownRejectionException(string reason) : IOException(reason);
     private sealed class McpPreflightBusyException(string reason) : IOException(reason);
     // Explicit HTTP 400/404/nonbusy 409 business rejections are definitive.

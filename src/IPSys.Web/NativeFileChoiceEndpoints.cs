@@ -29,7 +29,7 @@ static class NativeFileChoiceEndpoints
                 catch(KeyNotFoundException){return Results.NotFound();}
                 catch(InvalidOperationException ex){return fail(ex.Message,409);}
                 catch(OperationCanceledException){return fail("文件任务已取消。",409);}
-                catch(SqliteException ex){return fail("资源写入约束拒绝："+ex.SqliteErrorCode,409);}
+                catch(SqliteException){return fail("文件关联或版本写入冲突，请检查目标文件夹是否已关联该文件。",409);}
                 catch(IOException ex){return fail(ex.Message,409);}
             }
             finally{v.Gate.Release();}

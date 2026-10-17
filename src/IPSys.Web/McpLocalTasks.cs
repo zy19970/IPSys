@@ -8,7 +8,8 @@ using Microsoft.Data.Sqlite;
 static partial class McpLocal
 {
     private sealed class UploadTask(string workspace,string id,string digest,
-        JsonElement args,CancellationTokenSource cancellation)
+        JsonElement args,CancellationTokenSource cancellation,
+        CancellationToken authorizationCancellation,CancellationToken hostCancellation)
     {
         private readonly object _sync=new();
         private string _state="queued",_current="";
@@ -52,8 +53,26 @@ static partial class McpLocal
                 ["succeeded"]=_succeeded,["failed"]=_failed,
                 ["currentFile"]=_current,["bytesSent"]=_bytesSent,
                 ["totalBytes"]=TotalBytes,["cancelRequested"]=_cancelRequested,
+                ["cancelReason"]=_cancelRequested?"user_cancel":
+                    authorizationCancellation.IsCancellationRequested?"authorization_revoked":
+                    hostCancellation.IsCancellationRequested?"host_stopping":null,
                 ["note"]="bytesSent 是客户端已读取/发送的字节数，不代表 SQLCipher 已提交；取消后必须核对最终操作日志。"
             };
+        }
+        public string StopReason
+        {
+            get
+            {
+                lock(_sync)
+                {
+                    if(_cancelRequested)return "user_cancel";
+                }
+                if(authorizationCancellation.IsCancellationRequested)
+                    return "authorization_revoked";
+                if(hostCancellation.IsCancellationRequested)
+                    return "host_stopping";
+                return "request_interrupted";
+            }
         }
         public void Cancel()
         {
@@ -142,7 +161,8 @@ static partial class McpLocal
                 // The journal exists BEFORE acknowledging an async request.
                 var linked=CancellationTokenSource.CreateLinkedTokenSource(
                     vault.McpCancellation,HostShutdownToken);
-                var task=new UploadTask(workspace,id,digest,args,linked);
+                var task=new UploadTask(workspace,id,digest,args,linked,
+                    vault.McpCancellation,HostShutdownToken);
                 if(!UploadTasks.TryAdd(key,task))
                 {
                     linked.Dispose();

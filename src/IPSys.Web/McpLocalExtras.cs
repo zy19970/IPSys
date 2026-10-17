@@ -80,12 +80,12 @@ static partial class McpLocal
             ["target_workspace"]=Field("string","目标工作区",Workspaces),
             ["move"]=new Dictionary<string,object>{{"type","boolean"},{"description","true 移动，false 复制"}}
         },["workspace","ip_id","target_workspace"]),
-        Tool("transfer_archive","在语义兼容类别间复制/移动档案与版本。move=true 返回目标新 ID，来源软删除入原工作区回收站；恢复来源会形成并存副本。",new(){
+        Tool("transfer_archive","在语义兼容类别间复制/移动档案与版本。company/achievement 与 personal/achievement 或 personal/academic 对应科研成果；证书 certificate 仅在相同工作区类别内使用。实际接受范围以 ArchiveRules.Module 校验为准。move=true 返回目标新 ID，来源软删除入原工作区回收站；恢复来源会形成并存副本。",new(){
             ["workspace"]=Field("string","来源工作区",Workspaces),
             ["section"]=Field("string","来源资料类别"),
             ["archive_id"]=Field("integer","档案 FolderId"),
             ["target_workspace"]=Field("string","目标工作区",Workspaces),
-            ["target_section"]=Field("string","目标档案类别"),
+            ["target_section"]=Field("string","目标类别：achievement ↔ academic（科研成果），certificate 不跨工作区"),
             ["move"]=new Dictionary<string,object>{{"type","boolean"},{"description","true 移动，false 复制"}}
         },["workspace","section","archive_id","target_workspace","target_section"]),
         Tool("transfer_general","复制/移动综合资料及历史文件。move=true 返回目标新 ID，来源软删除入原工作区回收站；恢复来源会形成并存副本。",new(){
@@ -134,7 +134,14 @@ static partial class McpLocal
             ["kind"]=Field("string","回收站返回的原始 kind；不能自行推测"),
             ["id"]=Field("integer","待恢复条目 ID"),
             ["section"]=Field("string","回收站返回的 section，空可省略")
-        },["workspace","kind","id"])
+        },["workspace","kind","id"]),
+        Tool("purge_trash","明确确认后永久清理一条已删除且没有文件关联的回收站记录；不会自动清理原件或文件历史，也不会递归删除业务目录。用于先清理已软删除的空资料，再删除所属空目录。",new(){
+            ["workspace"]=Field("string","工作区",Workspaces),
+            ["kind"]=Field("string","回收站原始类别，不允许 v2_file/v2_ip_file",["project","contract","ip","v2_general","v2_archive"]),
+            ["id"]=Field("integer","待永久清理的已删除记录 ID"),
+            ["section"]=Field("string","档案类别，其他类型留空"),
+            ["confirm"]=new Dictionary<string,object>{{"type","boolean"},{"description","必须明确传 true 确认永久删除"}}
+        },["workspace","kind","id","confirm"])
     ];
 
     private static bool ExtraWrite(string name) => name is
@@ -142,7 +149,7 @@ static partial class McpLocal
         "reorder_records" or "reorder_archive_records" or
         "associate_file" or "copy_file" or "restore_file_link" or
         "transfer_project" or "transfer_ip" or "transfer_archive" or
-        "transfer_general" or "restore_trash";
+        "transfer_general" or "restore_trash" or "purge_trash";
 
     private static long Positive(JsonElement args,string key)=>ReadId(args,key);
     private static bool Bool(JsonElement args,string key)
@@ -262,7 +269,9 @@ static partial class McpLocal
                 if(!Path.IsPathFullyQualified(path) ||
                     path.IndexOfAny(Path.GetInvalidPathChars())>=0)
                     throw new IOException("output_path 必须是有效的绝对路径。");
-                string full=Path.GetFullPath(path);
+                string full=McpLocalFilePath(path,"output_path");
+                if(File.Exists(full))
+                    throw new McpKnownRejectionException("下载目标文件已存在，禁止覆盖："+full);
                 // Do not truncate any local user file, even on retries.
                 using var response=await client.GetAsync(
                     Files(file)+$"/versions/{version}/download",
@@ -405,8 +414,20 @@ static partial class McpLocal
             case "list_trash":
                 return await RequestAsync(client,HttpMethod.Get,"/api/trash/"+workspace);
             case "restore_trash":
+            case "purge_trash":
             {
+                bool purge=name=="purge_trash";
                 string kind=RequiredText(args,"kind");
+                if(kind is not ("project" or "contract" or "ip" or "v2_general" or
+                                  "v2_archive" or "v2_file" or "v2_ip_file"))
+                    throw new McpKnownRejectionException(
+                        "回收站 kind 非法；请通过 list_trash 获取合法 kind。");
+                if(purge && kind is "v2_file" or "v2_ip_file")
+                    throw new McpKnownRejectionException(
+                        "共享文件关联和历史原件不支持永久清理。");
+                if(purge && !Bool(args,"confirm"))
+                    throw new McpKnownRejectionException(
+                        "永久清理必须明确传入 confirm=true。");
                 long id=Positive(args,"id");
                 string section=ReadString(args,"section");
                 var trash=await RequestAsync(client,HttpMethod.Get,"/api/trash/"+workspace);
@@ -416,7 +437,7 @@ static partial class McpLocal
                     x?["section"]?.GetValue<string>()==section))
                     throw new IOException("回收站不存在匹配的 kind/id/section 记录，拒绝恢复。");
                 return await RequestAsync(client,HttpMethod.Post,
-                    "/api/trash/"+workspace+"/restore",
+                    "/api/trash/"+workspace+(purge?"/purge":"/restore"),
                     new JsonObject{["items"]=new JsonArray(new JsonObject{
                         ["kind"]=kind,["id"]=id,["section"]=section})});
             }

@@ -93,6 +93,28 @@ static class NativeFileChoiceStoreSmoke
                 }
                 catch(KeyNotFoundException){}
 
+                // ISS-003: same Folder/FileId cannot be shared twice; return
+                // a business explanation instead of a raw SQLite constraint.
+                var repeated=NativeFileChoiceStore.PrepareAsync(db,"company",b,
+                    new NativeFileMetadataInput("重复共享测试.pdf"),null,
+                    bytes.Length,new MemoryStream(bytes),CancellationToken.None)
+                    .GetAwaiter().GetResult();
+                v.PendingFile=repeated;
+                bool duplicateLinkRejected=false;
+                try
+                {
+                    NativeFileChoiceStore.Resolve(v,"company",repeated.Ticket,
+                        new NativeFileDecision("share-file",source),CancellationToken.None);
+                }
+                catch(InvalidOperationException ex) when(
+                    ex.Message.Contains("已关联当前文件夹"))
+                { duplicateLinkRejected=true; }
+                Check(duplicateLinkRejected &&
+                      NativeFileLinkStore.ListFolder(db,"company",b,false)!.Count==1,
+                    "same-folder share fails with a readable error and no new link");
+                NativeFileChoiceStore.Discard(db,repeated);
+                v.PendingFile=null;
+
                 var reuse=NativeFileChoiceStore.PrepareAsync(db,"company",b,
                     new NativeFileMetadataInput("仅复用物理字节.docx","副本单独备注"),
                     null,bytes.Length,new MemoryStream(bytes),CancellationToken.None)

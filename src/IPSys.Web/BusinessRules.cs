@@ -101,7 +101,7 @@ static class IpRules
         if (!AllowedStatuses.TryGetValue(Clean(x.IpType), out var legal))
             return "必须选择已确认的七种知识产权类型。";
         if (Clean(x.Status).Length != 0 && !legal.Contains(Clean(x.Status)))
-            return "所选状态不适用于该知识产权类型。";
+            return "所选状态不适用于该知识产权类型。"+ "该类型可用状态："+string.Join("、",legal)+"。";
         foreach (var field in new [] {x.Applicants,x.RightHolders,x.Creators,x.ApplicationNo,
             x.PublicationNo,x.GrantNoticeNo,x.PublicationInfo,x.RegistrationNo,
             x.Category,x.Remarks,x.Tags})
