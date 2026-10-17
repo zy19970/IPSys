@@ -15,7 +15,7 @@ static partial class McpLocal
         return original.StartsWith("create_",StringComparison.Ordinal) ||
                original.StartsWith("update_",StringComparison.Ordinal) ||
                original.StartsWith("delete_",StringComparison.Ordinal) ||
-               original=="upload_files" || ExtraWrite(original);
+               original is "upload_files" or "start_upload_task" || ExtraWrite(original);
     }
 
     private static void ValidateToolArguments(string name,JsonElement args)
@@ -128,19 +128,27 @@ static partial class McpLocal
     }
 
     private static async Task<JsonNode> ExecuteProtectedAsync(Vault vault,string address,
-        string name,JsonElement args,CancellationToken stop)
+        string name,JsonElement args,CancellationToken stop,
+        UploadTask? progress=null,bool preReserved=false)
     {
-        if(!vault.McpEnabled)throw new IOException("MCP 未授权或授权已撤销。");
+        if(!vault.McpEnabled && !preReserved)
+            throw new IOException("MCP 未授权或授权已撤销。");
         string workspace=Workspace(args);
         if(name=="get_operation_result")
             return await ReadOperationAsync(vault,workspace,
                 ReadString(args,"request_id"),stop);
+        if(name is "get_task_status" or "cancel_task")
+            return await ManageUploadTaskAsync(vault,workspace,name,args,stop);
+        if(name=="start_upload_task")
+            return await StartUploadTaskAsync(vault,address,workspace,args,stop);
 
         string requestId=ReadString(args,"request_id");
         if(!IsWriteTool(name)||requestId.Length==0)
             return await ExecuteAsync(vault,address,name,args,stop);
 
         string digest=ArgumentsHash(args);
+        if(!preReserved)
+        {
         await vault.Gate.WaitAsync(stop);
         try
         {
@@ -172,10 +180,11 @@ static partial class McpLocal
             insert.ExecuteNonQuery();
         }
         finally { vault.Gate.Release(); }
+        }
 
         JsonNode? value=null;
         Exception? failure=null;
-        try { value=await ExecuteAsync(vault,address,name,args,stop); }
+        try { value=await ExecuteAsync(vault,address,name,args,stop,progress); }
         catch(Exception ex){failure=ex;}
         if(failure is McpDefinitiveFailureException rejected)
             value=new JsonObject{
@@ -204,9 +213,12 @@ static partial class McpLocal
                     updated_at=CURRENT_TIMESTAMP
                 WHERE workspace=$w AND request_id=$id AND state='pending';
                 """;
-            bool definitive=failure is null or McpDefinitiveFailureException;
+            // Cancellation of a dispatched HTTP upload can leave an unknown
+            // server-side side effect; retain partial outcomes for reconciliation.
+            bool interrupted=value?["status"]?.GetValue<string>()=="interrupted";
+            bool definitive=(failure is null or McpDefinitiveFailureException)&&!interrupted;
             update.Parameters.AddWithValue("$state",definitive?"done":"uncertain");
-            update.Parameters.AddWithValue("$result",definitive?
+            update.Parameters.AddWithValue("$result",failure is null or McpDefinitiveFailureException?
                 (object)(value?.ToJsonString(Json)??"{}"):DBNull.Value);
             update.Parameters.AddWithValue("$w",workspace);
             update.Parameters.AddWithValue("$id",requestId);

@@ -98,7 +98,7 @@ static partial class McpLocal
     }
 
     private static async Task<JsonNode> IpUploadFiles(HttpClient client,string workspace,
-        JsonElement args,CancellationToken stop,string kind="ip")
+        JsonElement args,CancellationToken stop,string kind="ip",UploadTask? progress=null)
     {
         // Fail explicitly for stale clients; group_id is a deleted V1 identity,
         // never silently ignore it on a V2 write.
@@ -148,6 +148,8 @@ static partial class McpLocal
         {
             string path=element.ValueKind==JsonValueKind.String?element.GetString()??"":"";
             string? ticket=null;
+            bool fileSucceeded=false;
+            progress?.Begin(path);
             try
             {
                 stop.ThrowIfCancellationRequested();
@@ -161,6 +163,7 @@ static partial class McpLocal
                 using(var stream=new FileStream(local.FullName,FileMode.Open,
                     FileAccess.Read,FileShare.Read,1024*1024,
                     FileOptions.Asynchronous|FileOptions.SequentialScan))
+                using(var counted=progress is null?stream:new ProgressReadStream(stream,progress))
                 using(var request=new HttpRequestMessage(HttpMethod.Post,
                     mode=="update"
                       ?kind=="ip"
@@ -168,7 +171,7 @@ static partial class McpLocal
                           :$"/api/v2/files/{workspace}/{versionFile}/versions"
                       :$"/api/v2/files/{workspace}/prepare?folderId={folder}"))
                 {
-                    request.Content=new StreamContent(stream);
+                    request.Content=new StreamContent(counted);
                     request.Content.Headers.ContentType=
                         new MediaTypeHeaderValue("application/octet-stream");
                     request.Content.Headers.ContentLength=local.Length;
@@ -186,6 +189,7 @@ static partial class McpLocal
                     {
                         outcomes.Add(new JsonObject{["path"]=path,["ok"]=true,
                             ["result"]=saved});
+                        fileSucceeded=true;
                         continue;
                     }
                     ticket=saved["ticket"]?.GetValue<string>()
@@ -208,6 +212,7 @@ static partial class McpLocal
                     ticket=null;
                     outcomes.Add(new JsonObject{["path"]=path,["ok"]=true,
                         ["result"]=result});
+                    fileSucceeded=true;
                 }
             }
             catch(OperationCanceledException)
@@ -223,6 +228,7 @@ static partial class McpLocal
             }
             finally
             {
+                progress?.EndFile(fileSucceeded);
                 if(ticket is not null)
                 {
                     try{

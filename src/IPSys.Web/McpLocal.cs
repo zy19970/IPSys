@@ -265,6 +265,26 @@ static partial class McpLocal
                 };
             }).ToArray();
         return [..legacy,..native,..ArchiveTools(),..ExtraTools(),
+            Tool("start_upload_task","异步启动 1–20 个本机原件上传，立即返回 request_id；其余参数与 upload_files 相同。请使用 get_task_status/cancel_task。",new(){
+                ["workspace"]=Field("string","工作区",Workspaces),
+                ["kind"]=Field("string","归属资源",["project","contract","ip","archive","general"]),
+                ["section"]=Field("string","archive 所属分类"),
+                ["owner_id"]=Field("integer","资料 FolderId"),
+                ["paths"]=new {type="array",minItems=1,maxItems=20,items=Field("string","本机绝对路径")},
+                ["on_conflict"]=Field("string","new 或 update",["new","update"]),
+                ["material_category"]=Field("string","知识产权材料类别",["申请材料","通知文件","证书文件","其他材料"]),
+                ["duplicate_mode"]=Field("string","重复文件处理选择",["independent","reuse","share"]),
+                ["source_file_id"]=Field("integer","复用/共享的源 FileId"),
+                ["file_id"]=Field("integer","追加版本使用的 FileId")
+            },["workspace","kind","owner_id","paths","request_id"]),
+            Tool("get_task_status","按 request_id 查询当前文件数、发送字节和 SQLCipher 持久操作结果。",new(){
+                ["workspace"]=Field("string","工作区",Workspaces),
+                ["request_id"]=Field("string","上传任务 request_id")
+            },["workspace","request_id"]),
+            Tool("cancel_task","按 request_id 请求取消当前活动异步上传；已发送文件和在途写入仍须人工核对。",new(){
+                ["workspace"]=Field("string","工作区",Workspaces),
+                ["request_id"]=Field("string","上传任务 request_id")
+            },["workspace","request_id"]),
             Tool("get_operation_result","查询 request_id 日志：state=done 仅表示请求已完成并存档，实际成功需检查 businessOk 和 result.status；pending/uncertain 不可自动重试。",new(){
                 ["workspace"]=Field("string","工作区",Workspaces),
                 ["request_id"]=Field("string","此前写操作的幂等编号")
@@ -455,6 +475,7 @@ static partial class McpLocal
     private static readonly TimeSpan FirstMessageTimeout=TimeSpan.FromSeconds(5);
     public static async Task RunHostAsync(Vault vault,string address,CancellationToken stop)
     {
+        HostShutdownToken=stop;
         using var slots=new SemaphoreSlim(MaxMcpClients,MaxMcpClients);
         var active=new List<Task>();
         try
@@ -680,7 +701,7 @@ static partial class McpLocal
         throw new IOException("MCP 请求超过有限重试次数。");
     }
     private static async Task<JsonNode> ExecuteAsync(Vault vault,string address,
-        string name,JsonElement args,CancellationToken stop)
+        string name,JsonElement args,CancellationToken stop,UploadTask? progress=null)
     {
         if(!vault.McpEnabled)throw new IOException("MCP 未授权：请在 IPSys 的系统设置中手动开启本机 MCP。");
         string workspace=Workspace(args);
@@ -752,7 +773,7 @@ static partial class McpLocal
                 string kind=ReadString(args,"kind");
                 if(kind is not ("project" or "contract" or "ip" or "archive" or "general"))
                     throw new IOException("kind 只能为 project、contract、ip、archive 或 general");
-                return await IpUploadFiles(client,workspace,args,stop,kind);
+                return await IpUploadFiles(client,workspace,args,stop,kind,progress);
             }
             default:throw new IOException("不支持的 MCP 工具："+name);
         }

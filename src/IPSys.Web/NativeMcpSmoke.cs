@@ -39,6 +39,9 @@ static class NativeMcpSmoke
             "reorder_entries","reorder_records","reorder_archive_records",
             "list_file_links"}.All(names.Contains),
             "second batch of V2 MCP endpoint adapters registered");
+        Check(new[]{"start_upload_task","get_task_status","cancel_task"}
+            .All(names.Contains) && names.Distinct().Count()==names.Length,
+            "async upload start/status/cancel tools are uniquely registered");
         // One idle client must never block an independent Agent's request.
         McpLocal.VerifySessionScopedIdentity();
         await McpLocal.VerifyConcurrentClientsAsync();
@@ -405,6 +408,69 @@ static class NativeMcpSmoke
                   recordedFailure["result"]?["status"]?.GetValue<string>()=="failed",
                   "finished request journal distinguishes logged failure from business success");
 
+            // Host-owned async upload acknowledges before processing completes;
+            // the same request_id is durable and cannot execute twice.
+            string asyncId=Guid.NewGuid().ToString("N");
+            var asyncParams=new{
+                workspace="company",kind="project",owner_id=originalProject,
+                paths=new[]{path},duplicate_mode="independent",request_id=asyncId
+            };
+            var scheduled=await Original("start_upload_task",asyncParams);
+            Check(scheduled["accepted"]?.GetValue<bool>()==true &&
+                  scheduled["requestId"]?.GetValue<string>()==asyncId,
+                  "start_upload_task accepts a durable request_id immediately");
+            JsonNode asyncStatus=new JsonObject();
+            for(int check=0;check<300;check++)
+            {
+                asyncStatus=await Original("get_task_status",new{
+                    workspace="company",request_id=asyncId
+                });
+                if(asyncStatus["state"]?.GetValue<string>() is "done" or "uncertain")
+                    break;
+                await Task.Delay(100);
+            }
+            Check(asyncStatus["state"]?.GetValue<string>()=="done" &&
+                  asyncStatus["businessOk"]?.GetValue<bool>()==true &&
+                  asyncStatus["result"]?["succeeded"]?.GetValue<int>()==1,
+                  "async upload finishes in encrypted operation ledger");
+            var asyncReplay=await Original("start_upload_task",asyncParams);
+            Check(asyncReplay["accepted"]?.GetValue<bool>()==false &&
+                  asyncReplay["state"]?.GetValue<string>()=="done",
+                  "completed async request_id never schedules duplicate upload");
+            string cancelId=Guid.NewGuid().ToString("N");
+            var cancelParams=new{
+                workspace="company",kind="project",owner_id=originalProject,
+                paths=Enumerable.Repeat(path,8).ToArray(),
+                duplicate_mode="independent",request_id=cancelId
+            };
+            Check((await Original("start_upload_task",cancelParams))
+                ["accepted"]?.GetValue<bool>()==true,
+                "second async upload scheduled with independent request_id");
+            var cancelReply=await Original("cancel_task",new{
+                workspace="company",request_id=cancelId
+            });
+            Check(cancelReply["requestId"]?.GetValue<string>()==cancelId,
+                "cancel_task only targets its own request_id");
+            JsonNode cancelResult=new JsonObject();
+            for(int check=0;check<300;check++)
+            {
+                cancelResult=await Original("get_task_status",new{
+                    workspace="company",request_id=cancelId
+                });
+                if(cancelResult["state"]?.GetValue<string>() is "done" or "uncertain")
+                    break;
+                await Task.Delay(100);
+            }
+            string? cancelledState=cancelResult["state"]?.GetValue<string>();
+            Check(cancelledState is "done" or "uncertain",
+                "cancelled task reaches a terminal journal state");
+            if(cancelledState=="uncertain")
+                Check(cancelResult["businessOk"]==null &&
+                      cancelResult["result"]?["status"]?.GetValue<string>()=="interrupted",
+                      "cancelled in-flight upload retains partial result as uncertain");
+            Check((await Original("start_upload_task",cancelParams))
+                 ["accepted"]?.GetValue<bool>()==false,
+                "cancelled upload request_id cannot automatically replay");
             var result=uploaded["files"]?[0]?["result"]??throw new IOException(
                 "原名 MCP 上传缺少原件结果。");
             long file=result["fileId"]?.GetValue<long>()??0,
