@@ -26,7 +26,7 @@ static class RecyclePurgeSmoke
     }
     private static long Link(SqliteConnection db,long fileId,long folderId)
     {
-        return Scalar(db,"SELECT id FROM folder_file_links WHERE file_id=$id AND folder_id="+folderId+";");
+        return Scalar(db,"SELECT id FROM folder_file_links WHERE file_id=$id AND folder_id="+folderId+";",fileId);
     }
     private static void Remove(SqliteConnection db,string workspace,long fileId,long linkId)
     {
