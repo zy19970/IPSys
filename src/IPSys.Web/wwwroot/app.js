@@ -157,7 +157,11 @@ async function api(path,opts={}){
 }
 // File/Blob payloads are sent via XHR so their byte progress remains visible.
 api.uploadProgress=globalThis.IPSysUploadProgress;
-api.uploadProgress.onActiveChanged=active=>{localFileTaskActive=active;};
+api.uploadProgress.onActiveChanged=active=>{
+ localFileTaskActive=active;
+ // File server-side rollback may continue after the browser finishes.
+ if(!active&&space&&token)void refreshWhenFileTaskIdle(space);
+};
 api.uploadFile=async(path,opts)=>{
  try{return await api.uploadProgress.request(path,opts,token);}
  catch(error){
@@ -207,15 +211,15 @@ function selectSpace(next){
   space=next;page='dashboard';detail=null;archiveGroup=null;archiveFolderId=null;archiveFolders=[];archiveSelectedFolders.clear();archiveEntryOrders={};ledgerOrders={};projectRows=[];ipRows=[];contractRows=[];businessFileRows=[];trashRows=[];archiveRows={certificate:[],achievement:[],academic:[]};filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();certificateSelected.clear();
   el('globalSearch').value='';el('sidebarDbName').textContent=dbName;
   el('chooseWorkspace').hidden=true;el('unlocked').hidden=false;
-  // One SQLCipher Vault/Gate serves BOTH workspaces. Never start a normal
-  // refresh that queues behind a multi-GiB purge; inspect its lock-free status.
-  if(trashPurgeTaskActive){render();return;}
+  // One Vault/Gate serves both workspaces and all file tasks.
+  // Keep the active upload queue tied to its original workspace.
+  if(trashPurgeTaskActive||localFileTaskActive){render();return;}
   refreshSidebar();
   el('content').innerHTML='<section class="white empty">正在确认数据库是否存在永久删除任务…</section>';
   void resumeTrashPurgeStatus().then(active=>{
    if(space!==next||!token)return;
    if(active)render();
-   else void refresh();
+   else void refreshWhenFileTaskIdle(next);
   }).catch(error=>{
    if(space!==next||!token)return;
    el('content').innerHTML='<section class="white empty">无法确认数据库任务状态：'+
@@ -227,10 +231,34 @@ document.querySelectorAll('[data-workspace-choice]').forEach(b=>b.onclick=()=>se
 document.querySelectorAll('[data-workspace-switch]').forEach(button=>{
  button.onclick=()=>selectSpace(button.dataset.workspaceSwitch);
 });
+// /api/task reads only Vault state; it never waits on SQLCipher.Gate.
+async function refreshWhenFileTaskIdle(workspace){
+ try{
+  while(token&&space===workspace){
+   const task=await(await api('/api/task')).json();
+   if(!task.active&&!localFileTaskActive&&!trashPurgeTaskActive){
+    if(space===workspace&&token)await refresh();
+    return;
+   }
+   if(!localFileTaskActive&&!trashPurgeTaskActive){
+    refreshSidebar();
+    el('content').innerHTML='<section class="white empty">'+
+     '<h2>加密资料库正在处理文件任务</h2>'+
+     '<p>公司和个人工作区共用同一数据库。当前仍在上传或回滚文件，'+
+     '暂缓加载其它资料，避免页面长时间等待。</p>'+
+     '<p>完成后将自动载入当前工作区。来自其它客户端的文件任务'+
+     '无法在此显示字节进度。</p></section>';
+   }
+   await new Promise(resolve=>setTimeout(resolve,600));
+  }
+ }catch(error){
+  if(token&&space===workspace)notice('文件任务状态查询失败：'+error.message,true);
+ }
+}
 function setPage(next){if(space==='company'&&next==='horizontalProject')next='researchProject';globalSerial++;globalHits=[];globalQuery='';globalPending=false;globalError='';page=next;detail=null;archiveGroup=null;archiveFolderId=null;filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();archiveSelectedFolders.clear();certificateSelected.clear();el('globalSearch').value='';render();}
 async function refresh(){
   if(!token||!space)return;
-  if(trashPurgeTaskActive){render();return;}
+  if(trashPurgeTaskActive||localFileTaskActive){render();return;}
   const requestedSpace=space;
   try{const archiveSections=space==='personal'?['certificate','achievement','academic']:['certificate','achievement'];
   const [native,projects,ips,contracts,nativeProjectFiles,trash,mcpAccess]=await Promise.all([
@@ -852,18 +880,14 @@ async function uploadBusinessBatch(files,meta){
   for(const file of files){
    if(api.uploadProgress.cancelled())break;
    api.uploadProgress.file(file,++index);
-   if(space!==workspace){errors.push('工作区已切换，上传终止');break;}
    if(file.size>MAX_ORIGINAL_BYTES){errors.push(file.name+'：超过 8 GiB');continue;}
    if(!['ip','project','contract','archive','general'].includes(meta.kind)){
     errors.push(file.name+'：不支持的资料归属类别');continue;
    }
    try{
     const saved=await uploadBusinessAttachment(file,meta,workspace);
-    if(saved){
-     completed++;
-     try{await refresh();}
-     catch(err){warnings.push(file.name+'：已保存，但刷新附件列表失败：'+err.message);}
-    }else skipped++;
+    if(saved)completed++;
+    else skipped++;
    }catch(err){
     if(api.uploadProgress.cancelled()||err?.name==='AbortError'){skipped++;break;}
     errors.push(file.name+'：'+err.message);
@@ -2013,10 +2037,15 @@ function render(){
  if(!space||!token)return;
  refreshSidebar();
  const content=el('content');
- if(trashPurgeTaskActive){
-  content.innerHTML='<section class="white empty"><h2>加密资料库正在永久删除原件</h2>'+
+ if(trashPurgeTaskActive||localFileTaskActive){
+  content.innerHTML=trashPurgeTaskActive?
+   '<section class="white empty"><h2>加密资料库正在永久删除原件</h2>'+
    '<p>公司与个人工作区使用同一个 SQLCipher 数据库。当前删除事务占用数据库，暂缓加载资料，避免界面长时间等待。</p>'+
-   '<p>右下角显示真实删除进度。只有服务器提交完成后才会自动读取当前工作区。</p></section>';
+   '<p>右下角显示真实删除进度。只有服务器提交完成后才会自动读取当前工作区。</p></section>':
+   '<section class="white empty"><h2>原件正在上传</h2>'+
+   '<p>已启动的上传继续保存到原工作区，切换空间不改变文件归属。</p>'+
+   '<p>当前数据库正在接收和加密原件，暂缓查询其它工作区。'+
+   '右下角可查看上传进度，完成后自动加载当前工作区。</p></section>';
   return;
  }
  content.innerHTML=detail?(detail.kind==='general'?realDetail():detail.kind==='project'?projectDetail():detail.kind==='contract'?contractDetail():detail.kind==='ip'?ipDetail():detail.kind==='archive'?realArchiveDetail():mockDetail()):
@@ -2039,16 +2068,11 @@ async function uploadGeneralBatch(id,files){
   for(const file of files){
    if(api.uploadProgress.cancelled())break;
    api.uploadProgress.file(file,++index);
-   if(space!==workspace){errors.push('工作区已切换，上传终止');break;}
    if(file.size>MAX_ORIGINAL_BYTES){errors.push(file.name+'：超过 8 GiB');continue;}
-   if(!liveRows.some(r=>r.id===id)){errors.push('资料已不存在');break;}
    try{
     const saved=await IPSysNativeIp.upload(api,file,{kind:'general',ownerId:id},workspace);
-    if(saved){
-     completed++;
-     try{await refresh();}
-     catch(err){warnings.push(file.name+'：已保存，但刷新附件列表失败：'+err.message);}
-    }else skipped++;
+    if(saved)completed++;
+    else skipped++;
    }catch(err){
     if(api.uploadProgress.cancelled()||err?.name==='AbortError'){skipped++;break;}
     errors.push(file.name+'：'+err.message);

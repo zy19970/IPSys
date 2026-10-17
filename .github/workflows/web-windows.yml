@@ -142,6 +142,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Upload progress script syntax failed' }
           node src/IPSys.Web/tests/upload-progress-smoke.cjs
           if ($LASTEXITCODE -ne 0) { throw 'Real upload progress/multiphase state smoke failed' }
+          node src/IPSys.Web/tests/upload-cross-workspace-smoke.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Upload cross-workspace SQLCipher Gate UI smoke failed' }
           node src/IPSys.Web/tests/trash-purge-progress-smoke.cjs
           if ($LASTEXITCODE -ne 0) { throw 'Recycle physical-purge progress UI smoke failed' }
           node --check src/IPSys.Web/wwwroot/app.js
