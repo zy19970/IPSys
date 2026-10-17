@@ -35,6 +35,10 @@ static class NativeMcpSmoke
               new[]{"list_project_files","list_contract_files",
                   "delete_project_file","delete_contract_file"}.All(names.Contains),
               "project and contract file MCP actions are available");
+        Check(new[]{"copy_contract","move_folder","list_folder_entries",
+            "reorder_entries","reorder_records","reorder_archive_records",
+            "list_file_links"}.All(names.Contains),
+            "second batch of V2 MCP endpoint adapters registered");
         // One idle client must never block an independent Agent's request.
         McpLocal.VerifySessionScopedIdentity();
         await McpLocal.VerifyConcurrentClientsAsync();
@@ -340,6 +344,34 @@ static class NativeMcpSmoke
             name="原名MCP合同"+suffix,contract_no="ORIG-C-"+suffix
         });
         long originalContractId=Id(originalContract);
+        var copiedContract=await Original("copy_contract",new{
+            workspace="company",contract_id=originalContractId,
+            request_id=Guid.NewGuid().ToString("N")
+        });
+        long copiedContractId=Id(copiedContract);
+        Check(copiedContractId!=originalContractId &&
+              Find(await Call("list_contracts",new{workspace="company"}),copiedContractId)?
+                 ["folder"]?["parent"]?["id"]?.GetValue<long>()==originalProject &&
+              Find(await Call("list_contracts",new{workspace="company"}),copiedContractId)?
+                 ["businessData"]?["contractNo"]?.GetValue<string>()=="ORIG-C-"+suffix,
+              "copy_contract creates a sibling with matching contract fields");
+        await Original("reorder_records",new{
+            workspace="company",kind="contract",
+            ids=new[]{copiedContractId,originalContractId},
+            request_id=Guid.NewGuid().ToString("N")
+        });
+        var reorderedContracts=(await Original("list_contracts",new{
+            workspace="company"
+        })).AsArray().Select(x=>x?["id"]?.GetValue<long>()??0).ToArray();
+        Check(Array.IndexOf(reorderedContracts,copiedContractId)<
+              Array.IndexOf(reorderedContracts,originalContractId),
+              "reorder_records persists selected contract ordering");
+        bool invalidOrderDenied=false;
+        try {await Original("reorder_records",new{
+            workspace="company",kind="contract",
+            ids=new[]{originalContractId,originalContractId}
+        });}catch(IOException){invalidOrderDenied=true;}
+        Check(invalidOrderDenied,"duplicate FolderId must be rejected by MCP reorder");
         var listedContracts=await Original("list_contracts",new{workspace="company"});
         Check(listedContracts is JsonArray contractRows &&
               contractRows.Any(x=>x?["id"]?.GetValue<long>()==originalContractId &&
@@ -460,14 +492,46 @@ static class NativeMcpSmoke
             long contractLink=contractFiles.AsArray()
                 .FirstOrDefault(x=>x?["fileId"]?.GetValue<long>()==file)?["id"]?.GetValue<long>()??0;
             Check(contractLink>0,"contract sees shared V2 FileId");
+            var owners=await Original("list_file_links",new{
+                workspace="company",file_id=file
+            });
+            Check(owners is JsonArray activeLinks &&
+                activeLinks.Any(x=>x?["id"]?.GetValue<long>()==link &&
+                    x?["folderId"]?.GetValue<long>()==originalProject) &&
+                activeLinks.Any(x=>x?["id"]?.GetValue<long>()==contractLink &&
+                    x?["folderId"]?.GetValue<long>()==originalContractId),
+                "list_file_links returns all active folder associations for FileId");
+            bool foreignFileDenied=false;
+            try{await Original("list_file_links",new{
+                workspace="personal",file_id=file
+            });}catch(IOException){foreignFileDenied=true;}
+            Check(foreignFileDenied,"list_file_links must enforce workspace isolation");
+            var attachedCopy=await Original("copy_contract",new{
+                workspace="company",contract_id=originalContractId
+            });
+            long attachedCopyId=Id(attachedCopy);
+            var copiedLinks=await Original("list_contract_files",new{
+                workspace="company",contract_id=attachedCopyId
+            });
+            Check(copiedLinks is JsonArray clonedLinks &&
+                clonedLinks.Any(x=>x?["fileId"]?.GetValue<long>()==file &&
+                    x?["id"]?.GetValue<long>()!=contractLink),
+                "copy_contract adds new LinkId while preserving shared FileId");
             await Original("delete_contract_file",new{
                 workspace="company",contract_id=originalContractId,
                 file_id=file,link_id=contractLink
             });
             Check((await Original("list_contract_files",new{
                 workspace="company",contract_id=originalContractId
-            })).AsArray().Count==0,
-                "contract unlink only deletes the selected LinkId");
+            })).AsArray().Count==0 &&
+                (await Original("list_file_links",new{
+                    workspace="company",file_id=file
+                })).AsArray().Any(x=>
+                    x?["folderId"]?.GetValue<long>()==attachedCopyId),
+                "contract unlink cannot erase another copied contract's shared file");
+            await Original("delete_contract",new{
+                workspace="company",contract_id=attachedCopyId
+            });
             await Original("restore_file_link",new{
                 workspace="company",owner_id=originalContractId,
                 file_id=file,link_id=contractLink
@@ -588,6 +652,9 @@ static class NativeMcpSmoke
         }
         finally{File.Delete(path);}
 
+        await Original("delete_contract",new{
+            workspace="company",contract_id=copiedContractId
+        });
         await Original("delete_contract",new{
             workspace="company",contract_id=originalContractId
         });

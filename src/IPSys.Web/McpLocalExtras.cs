@@ -20,9 +20,17 @@ static partial class McpLocal
             ["remarks"]=Field("string","备注"),
             ["tags"]=Field("string","检索标签")
         },["workspace","contract_id"]),
+        Tool("copy_contract","在同一工作区和所属项目下复制合同业务属性及全部有效文件关联；返回新合同 FolderId，附件共享 FileId/历史版本，不重复写原件。",new(){
+            ["workspace"]=Field("string","工作区",Workspaces),
+            ["contract_id"]=Field("integer","源合同 FolderId")
+        },["workspace","contract_id"]),
         Tool("get_file_details","获取 FileId 的元数据及全部有效历史版本（不读取原件字节）。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
             ["file_id"]=Field("integer","实际逻辑 FileId，不是 LinkId")
+        },["workspace","file_id"]),
+        Tool("list_file_links","按 FileId 查询同工作区所有有效关联，包含关联 LinkId、所属 FolderId；可用于查明哪些目录共享同一原件。",new(){
+            ["workspace"]=Field("string","工作区",Workspaces),
+            ["file_id"]=Field("integer","原件 FileId，不是 LinkId")
         },["workspace","file_id"]),
         Tool("update_file_metadata","更新 FileId 的可选属性及名称；null 保留原值，空文本清空可选属性。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
@@ -86,6 +94,34 @@ static partial class McpLocal
             ["target_workspace"]=Field("string","目标工作区",Workspaces),
             ["move"]=new Dictionary<string,object>{{"type","boolean"},{"description","true 移动，false 复制"}}
         },["workspace","general_id","target_workspace"]),
+        Tool("move_folder","调整公司业务档案目录或资料在 achievement 分类下的所属目录；kind=archive_folder 可移到根，kind=archive 必须指定目标目录。保留 FolderId 与附件。",new(){
+            ["workspace"]=Field("string","必须为 company",["company"]),
+            ["kind"]=Field("string","archive_folder 为目录，archive 为资料",["archive_folder","archive"]),
+            ["entry_id"]=Field("integer","待移动的目录或资料 FolderId"),
+            ["parent_id"]=Field("integer","新父目录 FolderId；省略或 null 表示根，仅 archive_folder 适用")
+        },["workspace","kind","entry_id"]),
+        Tool("list_folder_entries","获取公司业务档案 achievement 指定父目录下的目录与资料混排列表，供 reorder_entries 使用。parent_id=0 表示根。",new(){
+            ["workspace"]=Field("string","必须为 company",["company"]),
+            ["parent_id"]=Field("integer","目录 FolderId；0 表示根目录")
+        },["workspace","parent_id"]),
+        Tool("reorder_entries","按当前父目录下全部目录和资料的精确排列持久化排序；须提供完整 items，每项为 kind=folder/record 和 id；parent_id=0 为根。",new(){
+            ["workspace"]=Field("string","必须为 company",["company"]),
+            ["parent_id"]=Field("integer","父目录 FolderId；0 为根"),
+            ["items"]=new {type="array",minItems=1,maxItems=1000,
+                items=Field("object","按顺序排列的 {kind:folder/record,id:FolderId}")}
+        },["workspace","parent_id","items"]),
+        Tool("reorder_records","调整同工作区项目或合同列表中选中记录的相对顺序；ids 按目标顺序提供，未选择的记录保持原有槽位。",new(){
+            ["workspace"]=Field("string","工作区",Workspaces),
+            ["kind"]=Field("string","project 或 contract",["project","contract"]),
+            ["ids"]=new {type="array",minItems=1,maxItems=1000,
+                items=Field("integer","待排序记录 FolderId")}
+        },["workspace","kind","ids"]),
+        Tool("reorder_archive_records","调整证书、科研成果、个人履历等非混排档案模块的全部记录顺序；ids 必须包含该模块当前全部有效 FolderId。公司 achievement 混排应使用 reorder_entries。",new(){
+            ["workspace"]=Field("string","工作区",Workspaces),
+            ["section"]=Field("string","archive 资料类别"),
+            ["ids"]=new {type="array",minItems=1,maxItems=1000,
+                items=Field("integer","全量档案 FolderId")}
+        },["workspace","section","ids"]),
         Tool("search_records","工作区统一搜索；文件命中 kind=file 只是搜索结果种类，不等于回收站 kind=v2_file/v2_ip_file。恢复前必须 list_trash。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
             ["query"]=Field("string","检索词，最长 100 字")
@@ -102,6 +138,8 @@ static partial class McpLocal
     ];
 
     private static bool ExtraWrite(string name) => name is
+        "copy_contract" or "move_folder" or "reorder_entries" or
+        "reorder_records" or "reorder_archive_records" or
         "associate_file" or "copy_file" or "restore_file_link" or
         "transfer_project" or "transfer_ip" or "transfer_archive" or
         "transfer_general" or "restore_trash";
@@ -122,6 +160,48 @@ static partial class McpLocal
         if(string.IsNullOrWhiteSpace(value))
             throw new IOException(key+" 不能为空。");
         return value;
+    }
+
+    private static long Nonnegative(JsonElement args,string key)
+    {
+        if(!args.TryGetProperty(key,out var value) ||
+           value.ValueKind!=JsonValueKind.Number ||
+           !value.TryGetInt64(out long id) || id<0)
+            throw new IOException(key+" 必须是非负整数（0 表示根目录）。");
+        return id;
+    }
+
+    private static long[] ReorderIds(JsonElement args)
+    {
+        var ids=args.GetProperty("ids").EnumerateArray().Select(x=>
+        {
+            if(x.ValueKind!=JsonValueKind.Number||!x.TryGetInt64(out long id)||id<=0)
+                throw new IOException("ids 必须全部为正整数 FolderId。");
+            return id;
+        }).ToArray();
+        if(ids.Length==0||ids.Distinct().Count()!=ids.Length)
+            throw new IOException("ids 不允许为空或包含重复 FolderId。");
+        return ids;
+    }
+
+    private static JsonArray ReorderItems(JsonElement args)
+    {
+        var result=new JsonArray();
+        var seen=new HashSet<long>();
+        foreach(var item in args.GetProperty("items").EnumerateArray())
+        {
+            if(item.ValueKind!=JsonValueKind.Object||item.EnumerateObject().Count()!=2||
+               !item.TryGetProperty("kind",out var kind)||
+               !item.TryGetProperty("id",out var id)||
+               kind.ValueKind!=JsonValueKind.String ||
+               kind.GetString() is not ("folder" or "record") ||
+               id.ValueKind!=JsonValueKind.Number ||
+               !id.TryGetInt64(out long number)||number<=0||!seen.Add(number))
+                throw new IOException("items 每项必须仅含 kind=folder/record 与唯一正整数 id。");
+            result.Add(new JsonObject{["kind"]=kind.GetString(),["id"]=number});
+        }
+        if(result.Count==0)throw new IOException("items 不能为空。");
+        return result;
     }
 
     private static async Task<JsonNode> ExecuteExtraAsync(HttpClient client,
@@ -147,9 +227,15 @@ static partial class McpLocal
                     V2Url(workspace,"contract",id),
                     NativePayload("contract",NativePatch(current,args,ContractFields)));
             }
+            case "copy_contract":
+                return await RequestAsync(client,HttpMethod.Post,
+                    $"/api/v2/ui/contracts/{workspace}/{Positive(args,"contract_id")}/copy");
             case "get_file_details":
                 return await RequestAsync(client,HttpMethod.Get,
                     Files(Positive(args,"file_id")));
+            case "list_file_links":
+                return await RequestAsync(client,HttpMethod.Get,
+                    Files(Positive(args,"file_id"))+"/links");
             case "update_file_metadata":
             {
                 long file=Positive(args,"file_id");
@@ -253,6 +339,65 @@ static partial class McpLocal
                 return await RequestAsync(client,HttpMethod.Post,
                     $"/api/v2/ui/general/{workspace}/{Positive(args,"general_id")}/transfer",
                     TransferBody());
+            case "move_folder":
+            {
+                if(workspace!="company")throw new IOException("仅支持公司业务档案目录移动。");
+                string kind=RequiredText(args,"kind");
+                if(kind is not ("archive_folder" or "archive"))
+                    throw new IOException("kind 仅允许 archive_folder 或 archive。");
+                long id=Positive(args,"entry_id");
+                long? parent=null;
+                if(args.TryGetProperty("parent_id",out var destination) &&
+                   destination.ValueKind!=JsonValueKind.Null)
+                {
+                    long target=Nonnegative(args,"parent_id");
+                    if(target>0)parent=target;
+                }
+                if(kind=="archive"&&parent is null)
+                    throw new IOException("业务档案资料必须指定正整数父目录 parent_id。");
+                return await RequestAsync(client,HttpMethod.Post,
+                    $"/api/v2/folders/company/{kind}/{id}/move?section=achievement",
+                    new JsonObject{["parentId"]=parent});
+            }
+            case "list_folder_entries":
+            {
+                if(workspace!="company")throw new IOException("仅支持公司业务档案混排列举。");
+                long parent=Nonnegative(args,"parent_id");
+                return await RequestAsync(client,HttpMethod.Get,
+                    "/api/v2/folders/company/entries?section=achievement"+
+                    (parent==0?"":"&parentId="+parent));
+            }
+            case "reorder_entries":
+            {
+                if(workspace!="company")throw new IOException("仅支持公司业务档案混排。");
+                long parent=Nonnegative(args,"parent_id");
+                return await RequestAsync(client,HttpMethod.Post,
+                    "/api/v2/folders/company/entries/reorder?section=achievement",
+                    new JsonObject{["parentId"]=parent,
+                        ["items"]=ReorderItems(args)});
+            }
+            case "reorder_records":
+            {
+                string kind=RequiredText(args,"kind");
+                if(kind is not ("project" or "contract"))
+                    throw new IOException("kind 仅允许 project 或 contract。");
+                long[] ids=ReorderIds(args);
+                return await RequestAsync(client,HttpMethod.Post,
+                    $"/api/v2/ui/order/{workspace}/{kind}",
+                    JsonSerializer.SerializeToNode(new {ids})!);
+            }
+            case "reorder_archive_records":
+            {
+                string section=RequiredText(args,"section");
+                if(ArchiveRules.Module(workspace,section)==null)
+                    throw new IOException("工作区不支持此资料类别。");
+                if(workspace=="company"&&section=="achievement")
+                    throw new IOException("公司业务档案请使用 reorder_entries 保证目录混排。");
+                long[] ids=ReorderIds(args);
+                return await RequestAsync(client,HttpMethod.Post,
+                    $"/api/v2/ui/archive/{workspace}/{Uri.EscapeDataString(section)}/order",
+                    JsonSerializer.SerializeToNode(new {ids})!);
+            }
             case "search_records":
                 return await RequestAsync(client,HttpMethod.Get,
                     "/api/v2/search/"+workspace+"?q="+

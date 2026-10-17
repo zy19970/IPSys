@@ -43,6 +43,19 @@ static class NativeMcpArchiveSmoke
         long empty=Id(await Run("create_archive_folder",new{
             workspace="company",parent_id=root,name=tag+"空目录"
         }));
+        await Run("move_folder",new{
+            workspace="company",kind="archive_folder",entry_id=empty,
+            parent_id=folder,request_id=Guid.NewGuid().ToString("N")
+        });
+        Check(Has(await Run("list_archive_folders",new{
+            workspace="company",parent_id=folder
+        }),empty),"move_folder places directory under requested parent");
+        await Run("move_folder",new{
+            workspace="company",kind="archive_folder",entry_id=empty,parent_id=root
+        });
+        Check(Has(await Run("list_archive_folders",new{
+            workspace="company",parent_id=root
+        }),empty),"move_folder restores previous parent without new FolderId");
         await Run("delete_archive_folder",new{
             workspace="company",folder_id=empty
         });
@@ -55,6 +68,54 @@ static class NativeMcpArchiveSmoke
         Check(Has(await Run("list_archives",new{
             workspace="company",section="achievement"
         }),archive),"MCP created archive appears in same Folder table as UI");
+        long peer=Id(await Run("create_archive_folder",new{
+            workspace="company",parent_id=folder,name=tag+"混排目录"
+        }));
+        var entries=await Run("list_folder_entries",new{
+            workspace="company",parent_id=folder
+        });
+        Check(entries is JsonArray before &&
+            before.Count==2,"list_folder_entries returns mixed direct children");
+        await Run("reorder_entries",new{
+            workspace="company",parent_id=folder,
+            items=new object[]{new {kind="record",id=archive},
+                new {kind="folder",id=peer}},
+            request_id=Guid.NewGuid().ToString("N")
+        });
+        var ordered=await Run("list_folder_entries",new{
+            workspace="company",parent_id=folder
+        });
+        Check(ordered is JsonArray arr && arr.Count==2 &&
+              arr[0]?["folder"]?["ref"]?["id"]?.GetValue<long>()==archive &&
+              arr[1]?["folder"]?["ref"]?["id"]?.GetValue<long>()==peer,
+              "reorder_entries persists mixed folder/record order");
+        bool staleRejected=false;
+        try{await Run("reorder_entries",new{
+            workspace="company",parent_id=folder,
+            items=new object[]{new {kind="record",id=archive}}
+        });}catch(IOException ex)when(ex.Message.Contains("409")){
+            staleRejected=true;
+        }
+        Check(staleRejected,"mixed reorder rejects missing siblings");
+        bool cycleRejected=false;
+        try{await Run("move_folder",new{
+            workspace="company",kind="archive_folder",entry_id=folder,
+            parent_id=peer
+        });}catch(IOException){cycleRejected=true;}
+        Check(cycleRejected,"move_folder rejects descendant cycles");
+        await Run("move_folder",new{
+            workspace="company",kind="archive",entry_id=archive,parent_id=peer
+        });
+        var movedArchive=await client.GetFromJsonAsync<JsonElement>(
+            $"/api/v2/folders/company/archive/{archive}?section=achievement");
+        Check(movedArchive.GetProperty("businessData").GetProperty("folderId").GetInt64()==peer,
+            "move_folder updates archive's persisted business parent");
+        await Run("move_folder",new{
+            workspace="company",kind="archive",entry_id=archive,parent_id=folder
+        });
+        await Run("delete_archive_folder",new{
+            workspace="company",folder_id=peer
+        });
         await Run("update_archive",new{
             workspace="company",section="achievement",archive_id=archive,
             remarks="已更新",year=(string?)null
@@ -112,6 +173,22 @@ static class NativeMcpArchiveSmoke
         Check(Has(await Run("list_archives",new{
             workspace="personal",section="achievement"
         }),newArchive),"transfer_archive preserves V2 archive in target workspace");
+        var personalArchives=await Run("list_archives",new{
+            workspace="personal",section="achievement"
+        });
+        var ids=personalArchives.AsArray().Select(x=>
+            x?["folder"]?["ref"]?["id"]?.GetValue<long>()??0).ToArray();
+        Check(ids.Length>0&&ids.All(x=>x>0),
+            "personal archive ordering input comes from current V2 folders");
+        await Run("reorder_archive_records",new{
+            workspace="personal",section="achievement",ids,
+            request_id=Guid.NewGuid().ToString("N")
+        });
+        bool wrongSectionOrder=false;
+        try{await Run("reorder_archive_records",new{
+            workspace="company",section="achievement",ids=new[]{archive}
+        });}catch(IOException){wrongSectionOrder=true;}
+        Check(wrongSectionOrder,"company achievement must use mixed-entry reorder");
         await Run("delete_archive",new{
             workspace="personal",section="achievement",archive_id=newArchive
         });

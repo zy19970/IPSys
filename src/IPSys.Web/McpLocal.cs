@@ -695,12 +695,14 @@ static partial class McpLocal
            "create_contract" or "delete_contract" or
            "create_ip" or "update_ip" or "delete_ip")
             return await ExecuteNativeAsync(client,workspace,name,args);
-        if(name is "update_contract" or "get_file_details" or
+        if(name is "update_contract" or "copy_contract" or
+           "get_file_details" or "list_file_links" or
            "update_file_metadata" or "download_file_version" or
            "associate_file" or "copy_file" or "restore_file_link" or
            "transfer_project" or "transfer_ip" or "transfer_archive" or
-           "transfer_general" or "search_records" or "list_trash" or
-           "restore_trash")
+           "transfer_general" or "move_folder" or "list_folder_entries" or
+           "reorder_entries" or "reorder_records" or "reorder_archive_records" or
+           "search_records" or "list_trash" or "restore_trash")
             return await ExecuteExtraAsync(client,workspace,name,args,stop);
         if(name is "list_archives" or "create_archive" or "update_archive" or
            "delete_archive" or "list_archive_folders" or "create_archive_folder" or
