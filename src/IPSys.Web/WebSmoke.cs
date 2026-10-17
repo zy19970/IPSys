@@ -31,14 +31,14 @@ static class WebSmoke
             string css=await client.GetStringAsync("/style.css");
             string app=await client.GetStringAsync("/app.js");
             string ip=await client.GetStringAsync("/ip-v2.js");
-            string upload=await client.GetStringAsync("/upload-progress.js");
+            string uploadProgressJs=await client.GetStringAsync("/upload-progress.js");
             string export=await client.GetStringAsync("/export.js");
             string pdf=await client.GetStringAsync("/pdf-preview.js");
             if(!landing.Contains("id=\"chooseWorkspace\"")||
                 !landing.Contains("id=\"sidebar\"")||
                 !landing.Contains("src=\"/ip-v2.js\"")||
                 !css.Contains(":root")||!app.Contains("IPSysNativeIp.load")||
-                !ip.Contains("IPSysNativeIp")||!upload.Contains("IPSysUploadProgress")||
+                !ip.Contains("IPSysNativeIp")||!uploadProgressJs.Contains("IPSysUploadProgress")||
                 !export.Contains("IPSys")||
                 pdf.Length<100)
                 throw new IOException("内嵌网页和 V2 原件脚本不完整。");
