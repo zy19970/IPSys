@@ -163,7 +163,7 @@ static partial class McpLocal
                 using(var stream=new FileStream(local.FullName,FileMode.Open,
                     FileAccess.Read,FileShare.Read,1024*1024,
                     FileOptions.Asynchronous|FileOptions.SequentialScan))
-                using(var counted=progress is null?stream:new ProgressReadStream(stream,progress))
+                using(Stream counted=progress is null?(Stream)stream:new ProgressReadStream(stream,progress))
                 using(var request=new HttpRequestMessage(HttpMethod.Post,
                     mode=="update"
                       ?kind=="ip"
