@@ -1,5 +1,7 @@
 # IPSys 跨会话交接（2026-10-17，N4 实机验收与后续功能完善）
 
+> **上传进度 UX（2026-10-18）**：增加所有 V2 原件批量上传和新版本的固定上传面板，XHR 显示当前文件、已发送字节/百分比与传输速度，完成发送后继续显示服务器 SHA-256/加密暂存/查重确认，确认保存或版本上传 HTTP 成功才列为成功。支持取消进行中的 XHR、停止后续队列、上传结果面板保留至用户关闭。等待用户实机 Edge/Chrome 验证；详细参见 [LARGE_FILE_TESTING.md](./LARGE_FILE_TESTING.md)。
+
 > **超 2 GiB 文件进度（最新）**：在不改变 V2 Schema 的情况下，将单文件上限提升至 **8 GiB**、Web/MCP 保留流式上传、浏览器大文件下载改为用户选择文件后流式保存，并补充 ZIP64。真实 Windows SQLCipher/HTTP **2 GiB + 12,345 字节**直接上传与 prepare→resolve 两条路径及各自 SHA256 下载校验均在 [Windows CI #39023923481](https://github.com/zy19970/IPSys/actions/runs/39023923481) 与 [#39024449728](https://github.com/zy19970/IPSys/actions/runs/39024449728) success。大文件下载、复制和跨工作区转移使用长任务超时。新版本桌面文件选择、第三方 ZIP64 解压、断电/拔盘、有效备份仍待实机；测试见 [LARGE_FILE_TESTING.md](./LARGE_FILE_TESTING.md)。旧“64 MiB”以及历史 CI 仅对应先前阶段。
 
 

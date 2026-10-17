@@ -8,6 +8,12 @@
 
 **证据边界**：以上属于 GitHub Windows Runner 上的真实加密数据库与 HTTP 流，以及浏览器写入逻辑模拟，不等于用户目标电脑上的 Edge/Chrome 文件选择器、ZIP64 第三方解压、磁盘断开、容量不足或有效备份实测。不能据此宣称 T02/T03/T04 所有安全门槛已完成。
 
+## 上传进度和确认状态
+
+网页项目/合同/知识产权/业务档案/综合资料原件及历史版本上传，使用浏览器 XMLHttpRequest 的 upload.onprogress 统计**已发送原件字节**，提供文件名、当前第几份、已发送容量/总容量、传输速度和百分比。进度面板固定在页面外层，不随数据列表刷新消失。**“发送 100%”只是网络发送结束，不代表数据库写入成功**；收到 prepare 回复后进入“已加密暂存、查重、待用户确认”阶段，只有 resolve 返回成功才计入“已保存”。直接版本上传也以服务器 HTTP 成功响应为准。批量上传保留逐文件成功/失败/跳过统计，取消会中止活动 XHR 并阻止后续文件继续上传。
+
+由于在传输末尾/服务器提交期间取消可能与提交完成竞态，进度窗口会提示刷新资料列表核对；不要根据“已发送 100%”或取消按钮本身判断入库结果。UI 状态的自动回归见 `src/IPSys.Web/tests/upload-progress-smoke.cjs`，真实 Edge/Chrome 2 GiB+ 上传仍需 Windows 目标电脑实机观察。
+
 ## 一、链路与设计
 
 1. **网页上传与追加版本**：浏览器直接以 File/Blob 作为 request body，不用 FileReader/arrayBuffer 读取全部原件。ASP.NET Core Kestrel 保持其它 API 原有 66 MiB 默认请求上限；仅在两个原件上传入口（/api/v2/files/{workspace}/upload、/versions 及 /prepare）通过 IHttpMaxRequestBodySizeFeature 提升为 8 GiB。上传请求必须提供 Content-Length，超限拒绝。

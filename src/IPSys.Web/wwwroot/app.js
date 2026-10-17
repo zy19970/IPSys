@@ -155,6 +155,16 @@ async function api(path,opts={}){
     throw new Error(message);}
   return response;
 }
+// File/Blob payloads are sent via XHR so their byte progress remains visible.
+api.uploadProgress=globalThis.IPSysUploadProgress;
+api.uploadProgress.onActiveChanged=active=>{localFileTaskActive=active;};
+api.uploadFile=async(path,opts)=>{
+ try{return await api.uploadProgress.request(path,opts,token);}
+ catch(error){
+  if(error.status===401){token='';sessionStorage.clear();screen(false);}
+  throw error;
+ }
+};
 function screen(unlocked){
   el('locked').hidden=unlocked;
   el('chooseWorkspace').hidden=!unlocked||!!space;
@@ -821,24 +831,32 @@ async function uploadBusinessAttachment(file,meta,workspace){
  return IPSysNativeIp.upload(api,file,meta,workspace);
 }
 async function uploadBusinessBatch(files,meta){
- if(localFileTaskActive)return notice('已有文件任务，请等待完成。',true);
- const workspace=space,errors=[];let completed=0,skipped=0;
- localFileTaskActive=true;
+ if(localFileTaskActive||!api.uploadProgress.begin(files.length))
+  return notice('已有文件任务，请等待完成。',true);
+ const workspace=space,errors=[],warnings=[];let completed=0,skipped=0,index=0;
  try{
   for(const file of files){
+   if(api.uploadProgress.cancelled())break;
+   api.uploadProgress.file(file,++index);
    if(space!==workspace){errors.push('工作区已切换，上传终止');break;}
    if(file.size>MAX_ORIGINAL_BYTES){errors.push(file.name+'：超过 8 GiB');continue;}
    if(!['ip','project','contract','archive','general'].includes(meta.kind)){
     errors.push(file.name+'：不支持的资料归属类别');continue;
    }
-   notice('正在检查重复内容：'+file.name);
    try{
     const saved=await uploadBusinessAttachment(file,meta,workspace);
-    if(saved){completed++;await refresh();}else skipped++;
-   }catch(err){errors.push(file.name+'：'+err.message);}
+    if(saved){
+     completed++;
+     try{await refresh();}
+     catch(err){warnings.push(file.name+'：已保存，但刷新附件列表失败：'+err.message);}
+    }else skipped++;
+   }catch(err){
+    if(api.uploadProgress.cancelled()||err?.name==='AbortError'){skipped++;break;}
+    errors.push(file.name+'：'+err.message);
+   }
   }
- }finally{localFileTaskActive=false;}
- notice('上传完成：成功 '+completed+'，失败 '+errors.length+'，跳过 '+skipped+
+ }finally{api.uploadProgress.finish({completed,errors,skipped,warnings});}
+ notice('上传结束：已保存 '+completed+'，失败 '+errors.length+'，跳过 '+skipped+
   (errors.length?'；'+errors.join('；'):''),errors.length>0);
 }
 async function previewOriginal(file,url){
@@ -1893,21 +1911,30 @@ function render(){
  syncCompanyCertificateSelectionUi();
 }
 async function uploadGeneralBatch(id,files){
- if(localFileTaskActive)return notice('已有文件任务，请等待完成。',true);
- const workspace=space,errors=[];let completed=0,skipped=0;
- localFileTaskActive=true;
+ if(localFileTaskActive||!api.uploadProgress.begin(files.length))
+  return notice('已有文件任务，请等待完成。',true);
+ const workspace=space,errors=[],warnings=[];let completed=0,skipped=0,index=0;
  try{
   for(const file of files){
+   if(api.uploadProgress.cancelled())break;
+   api.uploadProgress.file(file,++index);
    if(space!==workspace){errors.push('工作区已切换，上传终止');break;}
    if(file.size>MAX_ORIGINAL_BYTES){errors.push(file.name+'：超过 8 GiB');continue;}
    if(!liveRows.some(r=>r.id===id)){errors.push('资料已不存在');break;}
    try{
     const saved=await IPSysNativeIp.upload(api,file,{kind:'general',ownerId:id},workspace);
-    if(saved){completed++;await refresh();}else skipped++;
-   }catch(err){errors.push(file.name+'：'+err.message);}
+    if(saved){
+     completed++;
+     try{await refresh();}
+     catch(err){warnings.push(file.name+'：已保存，但刷新附件列表失败：'+err.message);}
+    }else skipped++;
+   }catch(err){
+    if(api.uploadProgress.cancelled()||err?.name==='AbortError'){skipped++;break;}
+    errors.push(file.name+'：'+err.message);
+   }
   }
- }finally{localFileTaskActive=false;}
- notice('上传完成：成功 '+completed+'，失败 '+errors.length+'，跳过 '+skipped+
+ }finally{api.uploadProgress.finish({completed,errors,skipped,warnings});}
+ notice('上传结束：已保存 '+completed+'，失败 '+errors.length+'，跳过 '+skipped+
   (errors.length?'；'+errors.join('；'):''),errors.length>0);
 }
 async function download(file){
@@ -2001,6 +2028,7 @@ el('content').addEventListener('click',async ev=>{
   openBusinessAssoc(Number(target.dataset.businessAssociate));return;
  }
  if(target.dataset.v2IpVersion){
+  if(localFileTaskActive)return notice('已有文件正在上传，请先完成或取消。',true);
   const f=businessFileRows.find(x=>x.id===Number(target.dataset.v2IpVersion))||
     liveRows.flatMap(r=>r.files).find(x=>x.id===Number(target.dataset.v2IpVersion));
   if(f){const result=await IPSysNativeIp.newVersion(api,f,space);

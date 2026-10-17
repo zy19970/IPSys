@@ -1,5 +1,7 @@
 # IPSys Windows 验收与回归记录
 
+> **上传进度专项（2026-10-18）**：新增 XHR 原件上传进度与批量汇总、服务器校验/查重确认阶段、取消传输和固定结果窗口；对应 Node 测试 `upload-progress-smoke.cjs` 纳入 Windows CI。需在实际浏览器上传大于 2 GiB 附件，目视确认百分比、网络 100% 后未误报入库成功、重复文件选择、成功/失败/取消状态及进度窗口不会被页面刷新清除。
+
 > **超 2 GiB 容量专项（2026-10-17，Windows 自动回归已通过，目标机实机待验）**：当前源码已经将单文件上限提升为 8 GiB，补齐 Kestrel/V2/MCP/网页校验、浏览器大文件流式下载及 ZIP64，新增大于 2 GiB SQLCipher/HTTP 数据往返可选专项和 ZIP64 自动测试。详细执行与安全边界见 [LARGE_FILE_TESTING.md](./LARGE_FILE_TESTING.md)。在 [Windows CI #39023923481](https://github.com/zy19970/IPSys/actions/runs/39023923481) 与 [#39024449728](https://github.com/zy19970/IPSys/actions/runs/39024449728) 完成两种真实 V2 SQLCipher/HTTP 路径（直接上传和网页准备/确认）的 2 GiB + 12,345 字节 SHA-256 双向往返；该结论并非用户目标电脑的真实 Edge/Chrome/SSD 故障实测。下文历史 64 MiB 上限属于对应旧构建。
 
 > **当前唯一测试入口（2026-10-17 接口收敛完成）**：源码 [`2620c109`](https://github.com/zy19970/IPSys/commit/2620c109043f779eeb57f411210f99bb2f21e554) 经 [Windows CI #39019604428](https://github.com/zy19970/IPSys/actions/runs/39019604428) **completed/success**，覆盖 Debug/Release、正式 stdio **59 个无 `v2_*` 前缀工具**、真实 SQLCipher/HTTP、原名项目/合同/IP CRUD、Node UI/导出检查。新版本本机 Agent 验收采用 [MCP_INTERFACE_CLEANUP_TEST.md](./MCP_INTERFACE_CLEANUP_TEST.md)；历史 `MCP_AGENT_FINAL_RETEST.md` 与 `MCP_TEST_RESULTS/2026-10-17/` 对应旧 **70** 工具/16 列表版本，原始结果 `PASS28/FAIL0/BLOCKED9` 仍为历史事实。当前 **13 个数组型列表**，本机真实跨权限、第二用户/会话、GUI 撤权及 ISS-016～018 修复后的独立黑盒复测尚待实际执行。不要把自动 CI 和历史实机两种验证级别混为一谈。

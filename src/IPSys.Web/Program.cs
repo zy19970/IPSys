@@ -34,6 +34,7 @@ byte[] html = EmbeddedWebAssets.Read("index.html");
 byte[] css = EmbeddedWebAssets.Read("style.css");
 byte[] javascript = EmbeddedWebAssets.Read("app.js");
 byte[] nativeIpScript = EmbeddedWebAssets.Read("ip-v2.js");
+byte[] uploadProgressScript = EmbeddedWebAssets.Read("upload-progress.js");
 byte[] exportScript = EmbeddedWebAssets.Read("export.js");
 byte[] pdfScript = EmbeddedWebAssets.Read("pdf.min.js");
 byte[] pdfWorker = EmbeddedWebAssets.Read("pdf.worker.min.js");
@@ -79,6 +80,7 @@ app.MapGet("/index.html", () => Results.Bytes(html, contentType: "text/html; cha
 app.MapGet("/style.css", () => Results.Bytes(css, contentType: "text/css; charset=utf-8"));
 app.MapGet("/app.js", () => Results.Bytes(javascript, contentType: "text/javascript; charset=utf-8"));
 app.MapGet("/ip-v2.js", () => Results.Bytes(nativeIpScript, contentType: "text/javascript; charset=utf-8"));
+app.MapGet("/upload-progress.js", () => Results.Bytes(uploadProgressScript, contentType: "text/javascript; charset=utf-8"));
 app.MapGet("/export.js", () => Results.Bytes(exportScript, contentType: "text/javascript; charset=utf-8"));
 app.MapGet("/pdfjs/pdf.min.js", () => Results.Bytes(pdfScript, contentType: "text/javascript; charset=utf-8"));
 app.MapGet("/pdfjs/pdf.worker.min.js", () => Results.Bytes(pdfWorker, contentType: "text/javascript; charset=utf-8"));

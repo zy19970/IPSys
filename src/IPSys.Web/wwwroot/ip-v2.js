@@ -26,7 +26,8 @@
   const resp=await api("/api/v2/ui/ip/"+workspace);
   return project(await resp.json());
  }
- function selectMatch(file,matches){
+ function selectMatch(file,matches,signal){
+  if(signal?.aborted)return Promise.resolve(null);
   return new Promise(resolve=>{
    const dlg=document.createElement("dialog");
    dlg.className="input-dialog upload-conflict-dialog";
@@ -50,8 +51,11 @@
    let done=false;
    function finish(value){
     if(done)return;done=true;
+    signal?.removeEventListener("abort",onAbort);
     if(dlg.open)dlg.close();dlg.remove();resolve(value);
    }
+   function onAbort(){finish(null);}
+   signal?.addEventListener("abort",onAbort,{once:true});
    dlg.addEventListener("click",event=>{
     const value=event.target.closest("[data-pick]")?.dataset.pick;
     if(!value)return;
@@ -62,7 +66,7 @@
     if(matched)finish({choice,sourceFileId:matched.fileId});
    });
    dlg.addEventListener("cancel",event=>{event.preventDefault();finish(null);});
-   dlg.showModal();
+   if(signal?.aborted)finish(null);else dlg.showModal();
   });
  }
  async function upload(api,file,meta,workspace){
@@ -72,15 +76,20 @@
    "X-File-Name":encodeURIComponent(file.name),
    ...(meta.kind==="ip"?{"X-Material-Category":encodeURIComponent(meta.category||"其他材料")}:{})
   };
-  const prepared=await(await api(path+"/prepare?folderId="+meta.ownerId,
+  const prepared=await(await api.uploadFile(path+"/prepare?folderId="+meta.ownerId,
    {method:"POST",headers,body:file})).json();
+  api.uploadProgress.stage("原件已加密暂存，正在查找相同内容…");
   let finished=false;
   try{
-   const choice=await selectMatch(file,prepared.matches);
+   api.uploadProgress.stage("请在弹窗中选择共享、复用或独立保存；尚未正式归档。");
+   const choice=await selectMatch(file,prepared.matches,api.uploadProgress.signal());
    if(!choice)return null;
+   api.uploadProgress.stage("已选择保存方式，正在提交文件关联与版本记录…");
    const result=await(await api(path+"/prepared/"+prepared.ticket+"/resolve",
-    {method:"POST",json:choice})).json();
-   finished=true;return result;
+    {method:"POST",json:choice,signal:api.uploadProgress.signal()})).json();
+   finished=true;
+   api.uploadProgress.stage("服务器已确认：原件归档成功。");
+   return result;
   }finally{
    if(!finished){
     try{await api(path+"/prepared/"+prepared.ticket,{method:"DELETE"});}
@@ -95,13 +104,21 @@
    input.addEventListener("cancel",()=>resolve(false),{once:true});
    input.addEventListener("change",async()=>{
     const file=input.files?.[0];if(!file)return resolve(false);
+    const progress=api.uploadProgress;
+    if(!progress.begin(1))return resolve(new Error("已有文件正在上传。"));
+    progress.file(file,1);
+    let completed=0;
+    const errors=[];
     try{
-     await api(record.kind==="ip"?"/api/v2/ip/"+workspace+"/"+record.ownerId+"/files/"+
+     await api.uploadFile(record.kind==="ip"?"/api/v2/ip/"+workspace+"/"+record.ownerId+"/files/"+
       record.fileId+"/versions":"/api/v2/files/"+workspace+"/"+record.fileId+"/versions",{method:"POST",
       headers:{"Content-Type":"application/octet-stream",
        "X-File-Name":encodeURIComponent(file.name)},body:file});
-     resolve(true);
-    }catch(error){resolve(error);}
+     completed=1;resolve(true);
+    }catch(error){
+     if(error?.name!=="AbortError")errors.push(file.name+"："+error.message);
+     resolve(error?.name==="AbortError"?false:error);
+    }finally{progress.finish({completed,errors});}
    },{once:true});
    input.click();
   });

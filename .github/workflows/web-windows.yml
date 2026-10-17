@@ -138,6 +138,10 @@ jobs:
       - name: Verify browser JavaScript syntax
         shell: pwsh
         run: |
+          node --check src/IPSys.Web/wwwroot/upload-progress.js
+          if ($LASTEXITCODE -ne 0) { throw 'Upload progress script syntax failed' }
+          node src/IPSys.Web/tests/upload-progress-smoke.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Real upload progress/multiphase state smoke failed' }
           node --check src/IPSys.Web/wwwroot/app.js
           if ($LASTEXITCODE -ne 0) { throw 'Main application JavaScript syntax failed' }
           node --check src/IPSys.Web/wwwroot/export.js
