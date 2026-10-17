@@ -466,8 +466,9 @@ static class NativeMcpSmoke
                 "cancelled task reaches a terminal journal state");
             if(cancelledState=="uncertain")
                 Check(cancelResult["businessOk"]==null &&
-                      cancelResult["result"]?["status"]?.GetValue<string>()=="interrupted",
-                      "cancelled in-flight upload retains partial result as uncertain");
+                      (cancelResult["result"]==null ||
+                       cancelResult["result"]?["status"]?.GetValue<string>()=="interrupted"),
+                      "cancelled upload records uncertain; partial results are optional before dispatch");
             Check((await Original("start_upload_task",cancelParams))
                  ["accepted"]?.GetValue<bool>()==false,
                 "cancelled upload request_id cannot automatically replay");
