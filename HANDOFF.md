@@ -1,5 +1,8 @@
 # IPSys 跨会话交接（2026-10-17：N4 与 MCP 三批自动验收完成）
 
+> **最终 MCP 统一复测基线（2026-10-17）**：首次实机报告中的 ISS-001、ISS-002、ISS-015 已由 `a18a004`、`22276bf` 修复；随后 `30af13d4`、`a885d368`、`2d099748`、`24822d73` 集中修复 ISS-003～014。最新 [Windows CI #39010080604](https://github.com/zy19970/IPSys/actions/runs/39010080604) completed/success。**正式 MCP 70 工具**（新增 `purge_trash`，需要 confirm=true 且限制仅清理可安全永久删除的回收站资料）。代码/文档完成后由本机 Agent 按 [MCP_AGENT_FINAL_RETEST.md](./MCP_AGENT_FINAL_RETEST.md) 一次性复测全部问题和历史回归，CI 成功不代表跨权限用户及宿主强杀实验已实机通过。
+
+
 > **2026-10-17 本机 Agent 黑盒第一轮修复**：实机报告（基线 `9d37c49`）确认 16 个数组型 MCP 工具不能调用、确定性拒绝误报 unknown、宿主异常退出后遗留永久 pending。代码提交 `a18a004` + `22276bf`，最终 [Windows CI #38996186466](https://github.com/zy19970/IPSys/actions/runs/38996186466) **completed/success**，MCP 工具继续为 **69 项**。RPC 数组根现在正确处理；已知本地前置及 HTTP 409 拒绝可查询 `done/businessOk=false`；孤儿 pending 在首次查询时标为 `uncertain`，附带 `host_restarted/interruptedAt/resumeSupported=false`，不会自动重传。真实实机 Agent 必须重跑 `t02_lists.py`、`t06_business.py`、`t07_extras.py`、`t09_restart.py`；用户账号权限矩阵及强杀故障注入不得把 CI 当成实机验收。
 
 

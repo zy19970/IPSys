@@ -1,5 +1,12 @@
 # IPSys Windows 验收与回归记录
 
+> **最终一次性复测基线（2026-10-17）**：剩余 ISS-003～ISS-014 修复提交 `30af13d4`→`a885d368`→`2d099748`→`24822d73`，最终 [Windows CI #39010080604](https://github.com/zy19970/IPSys/actions/runs/39010080604) **completed/success**。MCP 从 69 项增至 **70 项**（新增仅确认后清理已软删且无附件关联资料的 `purge_trash`），CI 包含发布版正式 stdio 结构化错误和批请求拒绝、原生 SQLCipher/HTTP 业务冒烟。完整本机 Agent 测试从 [MCP_AGENT_FINAL_RETEST.md](./MCP_AGENT_FINAL_RETEST.md) 一次性执行，兼测先前三项 P0/P1 和剩余 12 项；未在本机执行的跨权限及第二 Windows 账户、强杀后真实恢复仍不得视为已验收。
+
+### 最终 MCP 复测与验收记录入口
+
+现在将 `tools/list` 的数量断言改为 **70**（旧任务书的 69 是历史基线）；保留 16 个列表数组、已知拒绝 `done/businessOk=false`、僵尸 pending 收敛等第一轮检查。新增 `purge_trash` 的 `confirm=true` 和无关联保护检查，失败不得删除共享 FileId、历史版本或非空目录；UNC/网络路径应被拒绝且错误有结构化 `ok/code/message/retryable`。`cancelReason` 提供取消/撤权/宿主停止的区分，但不保证 HTTP 在途取消可证明无副作用。复测使用本机真实 EXE、真实原件 SHA 和请求日志，不允许以仓库 CI 自动测试代替客户端实机验证。
+
+
 > **实机黑盒第一轮三项缺陷修复（2026-10-17）**：来源为用户提交的独立 Agent 黑盒报告（基线 `9d37c49`，37 项中 24 PASS、4 FAIL、9 BLOCKED）；源码 `a18a004` + `22276bf`，最终 [Windows CI #38996186466](https://github.com/zy19970/IPSys/actions/runs/38996186466) **completed/success**。修复 P0 ISS-001 的数组根节点错误、P1 ISS-002 的确定性业务拒绝误记 `uncertain`、P1 ISS-015 的崩溃遗留 `pending`。自动回归新增 16 个原名/v2 列表工具的 JSON-RPC `tools/call` 路径、400/404/409/本地校验操作日志、模拟孤儿 pending 的 SQLCipher 状态收敛与同号防重；真实 Codex/WorkBuddy、跨 Windows 提升级别/用户和进程强杀恢复仍待用户电脑。
 
 ### MCP 黑盒第一轮实机复测门禁

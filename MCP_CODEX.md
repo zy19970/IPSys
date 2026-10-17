@@ -1,5 +1,14 @@
 # IPSys 本机 Codex MCP
 
+> **最终 MCP 黑盒缺陷修复（2026-10-17）**：剩余 ISS-003～ISS-014 已按安全边界实现，源码提交 `30af13d4`、`a885d368`、`2d099748`、`24822d73`；最终 [Windows CI #39010080604](https://github.com/zy19970/IPSys/actions/runs/39010080604) **completed/success**。**现有 MCP 共 70 个工具**，在原 69 个基础上新增 `purge_trash`。包括 JSON-RPC 批请求明确拒绝、先初始化、统一结构化错误信封、按 IP 类型说明状态、按当前同区匹配规则提示共享/复用约束、UNC/网络路径明确拒绝、上传取消区分原因、下载目标中文错误以及安全地永久清理无附件的已删除资料。原先三批“69 工具”属于历史版本，不用于当前验收。**单轮完整实机复测入口**：[MCP_AGENT_FINAL_RETEST.md](./MCP_AGENT_FINAL_RETEST.md)。实机权限矩阵仍需 Agent 实际执行。
+
+## 新增 `purge_trash` 与最终安全边界
+
+`purge_trash(workspace,kind,id,section?,confirm=true,request_id?)` 只能操作经 `list_trash` 确认的已删除资料，目前允许的 kind 为 `project/contract/ip/v2_general/v2_archive`；必须明确 `confirm=true`。仅允许没有仍受保护的文件关联/从属记录时精确永久清理，不支持 `v2_file/v2_ip_file` 原件关联的任意永久销毁，不会递归删除业务目录。若目录内仍有软删除资料导致不能删除，应先清理可安全清理的资料并再删除空目录；无法清理的关联需另行核对，不能跳过引用保护。
+
+上传源路径与下载输出路径须是 IPSys 宿主机器的本地盘符绝对路径，UNC/网络共享路径不允许。取消上传时仍保留在途 HTTP 结果未知的 `uncertain`，按 `cancelReason`（`user_cancel/authorization_revoked/host_stopping`）判断触发原因，不能仅凭取消指令断言未入库。协议 `tools/call` 的失败响应现在是结构化 JSON 文本，客户端解析 `ok/code/message/retryable` 以及可选的 `httpStatus`；真实业务失败仍应通过 `get_operation_result` 查询幂等日志。不允许直接复用失败参数的新编号或自动重传不确定结果。
+
+
 > **2026-10-17 实机黑盒第一轮修复（ISS-001/002/015）**：源码 `a18a004` + `22276bf`，最终 [Windows CI #38996186466](https://github.com/zy19970/IPSys/actions/runs/38996186466) **completed/success**。现有 **69 个 MCP 工具不变**，原有 16 个数组返回的列表工具在 `tools/call` 中可正常输出 JSON 数组；明确的 HTTP 400/404/非繁忙 409 及已识别的本地前置业务拒绝记为 `done/businessOk=false`（错误结果可同号重放），仅真实未知执行结果维持 `uncertain`。崩溃留下的无活动执行者 `pending` 在首次查询时持久收敛成 `uncertain`，`result` 包含 `reason=host_restarted`、`interruptedAt`、`resumeSupported=false`；禁止自动恢复或整批重传。源代码 CI 不代替用户电脑的跨权限与强制重启复测。
 
 ## 第一轮黑盒修复使用与恢复说明
