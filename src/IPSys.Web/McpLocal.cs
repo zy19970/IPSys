@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO.Pipes;
 using System.Security.Cryptography;
 using System.Security.Principal;
@@ -13,10 +14,26 @@ using System.Net.Http.Headers;
 static partial class McpLocal
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
-    private static readonly string PipeName = "IPSys-MCP-" +
-        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(
-            WindowsIdentity.GetCurrent().User?.Value ?? Environment.UserName)))[..24];
+    // The named pipe and Local single-host event share a Windows logon-session scope.
+    internal static string SessionPipeName(string userSid,int sessionId) =>
+        "IPSys-MCP-" + Convert.ToHexString(SHA256.HashData(
+            Encoding.UTF8.GetBytes(userSid+":"+sessionId)))[..24];
+    private static readonly string PipeName=SessionPipeName(
+        WindowsIdentity.GetCurrent().User?.Value ??
+            throw new UnauthorizedAccessException("无法确定 Windows 用户。"),
+        Process.GetCurrentProcess().SessionId);
     internal static string HostInstanceName => @"Local\IPSys-Host-" + PipeName["IPSys-MCP-".Length..];
+    internal static void VerifySessionScopedIdentity()
+    {
+        string sid=WindowsIdentity.GetCurrent().User?.Value ??
+            throw new IOException("MCP 无法读取 Windows 用户 SID。");
+        int session=Process.GetCurrentProcess().SessionId;
+        int other=session==int.MaxValue?session-1:session+1;
+        if(SessionPipeName(sid,session)!=PipeName ||
+           SessionPipeName(sid,other)==PipeName ||
+           SessionPipeName(sid+"-other",session)==PipeName)
+            throw new IOException("MCP 管道没有按登录会话和用户隔离。");
+    }
     internal static bool IsHostRunning()
     {
         try { using var handle=EventWaitHandle.OpenExisting(HostInstanceName); return true; }
@@ -321,9 +338,11 @@ static partial class McpLocal
             JsonNode response=await CallHostAsync(name,fields);
             bool partial=name=="upload_files" && response["failed"] is JsonNode failed &&
                 failed.GetValue<int>()>0;
+            bool businessFailure=response["ok"]?.ToJsonString()=="false" ||
+                response["status"]?.GetValue<string>() is "failed" or "partial_success" or "interrupted";
             return Success(id,new {
                 content=new[] {new {type="text",text=response.ToJsonString(Json)}},
-                isError=partial
+                isError=partial||businessFailure
             });
         }
         catch(Exception ex)
@@ -349,6 +368,30 @@ static partial class McpLocal
             .WaitAsync(TimeSpan.FromSeconds(8));
         if(list is not JsonArray)
             throw new IOException("多客户端 MCP 并发查询没有返回有效列表。");
+    }
+
+    internal static async Task VerifyIdleClientSaturationAsync()
+    {
+        // All eight clients can stall before sending a full line. The ninth
+        // must recover as the bounded first-message waits expire.
+        var idle=new List<NamedPipeClientStream>();
+        try
+        {
+            using var timeout=new CancellationTokenSource(TimeSpan.FromSeconds(20));
+            for(int i=0;i<MaxMcpClients;i++)
+            {
+                var client=McpPipeSecurity.CreateClient(PipeName);
+                idle.Add(client);
+                await client.ConnectAsync(timeout.Token);
+                McpPipeSecurity.VerifyServerOwner(client);
+            }
+            var result=await CallHostAsync("v2_list_projects",
+                JsonSerializer.SerializeToElement(new{workspace="company"}))
+                .WaitAsync(TimeSpan.FromSeconds(15));
+            if(result is not JsonArray)
+                throw new IOException("八路空闲 MCP 管道阻塞了后续 Agent 查询。");
+        }
+        finally { foreach(var client in idle)client.Dispose(); }
     }
 
     internal static async Task VerifyRestrictedPipeAclAsync()
@@ -409,6 +452,7 @@ static partial class McpLocal
     // Independent Agent stdio sessions may connect concurrently.
     // SQLCipher writes are still protected by Vault.Gate and its file-task lock.
     private const int MaxMcpClients=8;
+    private static readonly TimeSpan FirstMessageTimeout=TimeSpan.FromSeconds(5);
     public static async Task RunHostAsync(Vault vault,string address,CancellationToken stop)
     {
         using var slots=new SemaphoreSlim(MaxMcpClients,MaxMcpClients);
@@ -463,7 +507,13 @@ static partial class McpLocal
             object response;
             try
             {
-                var line=await reader.ReadLineAsync(stop);
+                // Silent or partial-line peers cannot occupy a host slot forever.
+                using var firstMessage=CancellationTokenSource.CreateLinkedTokenSource(stop);
+                firstMessage.CancelAfter(FirstMessageTimeout);
+                string? line;
+                try { line=await reader.ReadLineAsync(firstMessage.Token); }
+                catch(OperationCanceledException)when(firstMessage.IsCancellationRequested &&
+                    !stop.IsCancellationRequested){return;}
                 if(line==null)return;
                 using var doc=JsonDocument.Parse(line);
                 var args=doc.RootElement;
@@ -583,6 +633,12 @@ static partial class McpLocal
     }
 
     private sealed class McpPreflightBusyException(string reason) : IOException(reason);
+    // 400/404 report a definite rejected request, not an unknown side effect.
+    private sealed class McpDefinitiveFailureException(int status,string reason)
+        : IOException(reason)
+    {
+        public int StatusCode {get;}=status;
+    }
 
     private static async Task<JsonNode> RequestAsync(HttpClient client,HttpMethod method,string url,JsonNode? body=null)
     {
@@ -611,11 +667,15 @@ static partial class McpLocal
             if(preflightBusy)
                 throw new McpPreflightBusyException("IPSys "+(int)result.StatusCode+
                     "："+reason+"；请求尚未开始执行，可使用原 request_id 稍后重试。");
-            throw new IOException("IPSys "+(int)result.StatusCode+"："+
+            string message="IPSys "+(int)result.StatusCode+"："+
                 (string.IsNullOrWhiteSpace(reason)?
                     (result.StatusCode==System.Net.HttpStatusCode.NotFound
                         ?ExplainNotFound(url):"操作未完成（"+method.Method+" "+url+"）"):
-                    reason)+(preflightBusy?"；retryAdvice=资料库繁忙，等待后以相同 request_id 重试（如先前结果未知须查询操作日志）。":""));
+                    reason);
+            if(result.StatusCode is System.Net.HttpStatusCode.BadRequest or
+                System.Net.HttpStatusCode.NotFound)
+                throw new McpDefinitiveFailureException((int)result.StatusCode,message);
+            throw new IOException(message);
         }
         throw new IOException("MCP 请求超过有限重试次数。");
     }

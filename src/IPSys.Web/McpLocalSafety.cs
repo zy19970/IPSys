@@ -177,6 +177,11 @@ static partial class McpLocal
         Exception? failure=null;
         try { value=await ExecuteAsync(vault,address,name,args,stop); }
         catch(Exception ex){failure=ex;}
+        if(failure is McpDefinitiveFailureException rejected)
+            value=new JsonObject{
+                ["ok"]=false,["status"]="failed",
+                ["httpStatus"]=rejected.StatusCode,["error"]=rejected.Message
+            };
 
         // The journal must finish even when a caller disconnects or revokes
         // authorization. A known result is reusable; otherwise it is uncertain.
@@ -199,8 +204,9 @@ static partial class McpLocal
                     updated_at=CURRENT_TIMESTAMP
                 WHERE workspace=$w AND request_id=$id AND state='pending';
                 """;
-            update.Parameters.AddWithValue("$state",failure is null?"done":"uncertain");
-            update.Parameters.AddWithValue("$result",failure is null?
+            bool definitive=failure is null or McpDefinitiveFailureException;
+            update.Parameters.AddWithValue("$state",definitive?"done":"uncertain");
+            update.Parameters.AddWithValue("$result",definitive?
                 (object)(value?.ToJsonString(Json)??"{}"):DBNull.Value);
             update.Parameters.AddWithValue("$w",workspace);
             update.Parameters.AddWithValue("$id",requestId);
@@ -210,6 +216,10 @@ static partial class McpLocal
         finally { vault.Gate.Release(); }
         if(failure is McpPreflightBusyException)
             throw new IOException("MCP 请求在写入前因数据库忙被拒绝，可等待后使用相同 request_id 重试："+failure.Message,failure);
+        // A definite HTTP 400/404 is a durable business failure, and replay
+        // must produce the same error payload rather than an uncertain result.
+        if(failure is McpDefinitiveFailureException)
+            return value??new JsonObject();
         if(failure!=null)throw new IOException("写操作返回异常，执行结果可能不确定；"+
             "禁止盲目重试。请用 get_operation_result 查询 request_id="+requestId+
             " 并检查对应业务记录。原始错误："+failure.Message,failure);

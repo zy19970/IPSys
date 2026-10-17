@@ -7,6 +7,12 @@
 
 **现行 MCP 本机验收入口（2026-10-17）**：启动最新成功的 Windows 构建并新建可丢弃 SQLCipher V2 库；开启 MCP 后分别让 Codex 与 WorkBuddy 连接同一 Windows 用户的唯一宿主并刷新 tools/list。依次验证 14 项新增业务工具、单 SQL 分页、大量资料查询、合同局部修改、文件元数据/完整历史/下载到不存在的本机绝对路径、关联解绑恢复与跨区转移、统一搜索及回收站恢复。记录每项写入 request_id、返回 IDs 和最终资料库状态；长上传期间关闭授权、响应丢失/进程崩溃与 2 GiB+ 大文件均列为人工安全实验，不因 CI 通过而标为实机通过。历史阶段章节中「待开发」或早期 MCP 工具总数不再作为当前事实。
 
+### MCP 第一批可靠性收尾专项（2026-10-17）
+
+在 `NativeMcpSmoke` 的真实 SQLCipher/管道回归中增加：SID 相同但登录 SessionId 不同时命名管道不同；8 个连接静默占位，5 秒首报文超时释放槽位，第 9 个客户端在连接等待期内仍能读取；12 路并发分页可返回；给不存在的项目提交带 `request_id` 的修改，HTTP 404 应记录 `done/businessOk=false`，同编号重放失败结构一致。真实 stdio `tools/call` 的 `isError` 也须为 true。
+
+**待用户实机复测**：同 Windows 用户不同 RDP/登录会话不串库；普通权限宿主与 Codex/WorkBuddy、管理员宿主与非提升 Agent 的 MIC 行为；不同 Windows 用户被 ACL 拒绝；24 路并发、大文件上传期间撤权与异常断线。不能因为 CI 通过就标为上述实机通过。测试只在新建可丢弃 V2 库中执行。
+
 ### MCP 黑盒 ISS-1～10 专项复测（2026-10-17）
 
 **最新 ACL 防回归结果**：源码 `1fa0d27` 对应 [Windows CI #38941986213](https://github.com/zy19970/IPSys/actions/runs/38941986213) **completed/success**，Debug、Release、正式 stdio、Node 和 SQLCipher/HTTP 全部通过。新增真实管道连接后的 TokenUser Owner 与 DACL 白名单断言，仅允许当前用户或 SYSTEM；MCP 权限被拒绝时输出可操作的中文诊断。该项自动验收不涉及不同用户账户的真实负面连接，也无法证明管理员宿主＋非提升 Bash/WorkBuddy 已联通；后者仍应依据用户提供的 ISS-1 脚本单独验收，必要时先检查 Windows MIC 与 EXE NTFS 权限。

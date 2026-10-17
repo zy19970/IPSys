@@ -5,6 +5,14 @@
 
 IPSys 支持本机 Codex 通过 MCP stdio 操作同一 Windows 用户已解锁资料库，复用软件现有 SQLCipher 会话而不另开库。全部原名工具和已有 `v2_*` 项目/合同/IP 工具均使用 V2 FolderId；旧业务表与新版资料 ID 不混用。
 
+## MCP 第一批可靠性收尾（2026-10-17）
+
+MCP 命名管道按 **Windows 用户 SID + 登录会话 ID** 隔离，并与 GUI 单实例范围保持一致。Agent 的 `--mcp` 子进程应与 IPSys 宿主处于同一个 Windows 登录会话；同一用户的另一远程桌面/快速切换会话不会误连本会话资料库。8 个并发管道连接的每个连接必须在 **5 秒**内发送完整首条请求，否则宿主释放空闲槽位；客户端连接等待仍为 15 秒。完整请求发出后的 HTTP/文件任务超时策略不变。
+
+对已携带 `request_id` 的写操作，明确收到 HTTP **400/404** 表示已确认的业务拒绝时，日志记录 `state=done`、`businessOk=false`，`result` 中包含 `ok=false/status=failed/httpStatus/error`，重复同编号同参数返回相同结果；MCP `tools/call` 设置 `isError=true`。未知网络断开、服务错误、请求取消仍保留 `uncertain`，不得换编号盲目执行。已确认执行前数据库忙仍可使用原编号有限重试。无 `request_id` 的老客户端仍会得到原有错误。
+
+新增自动回归覆盖同一 SID 不同 SessionId 的命名隔离、8 路静默连接占满后的第 9 路请求、12 路并发分页以及 404 失败日志重放。Windows MIC 跨提权连接、WorkBuddy Bash 沙箱、不同真实登录用户和多 Agent 长文件操作**需要用户本机实际测试**；CI 不等同于实机通过。
+
 ## MCP P0 连接与参数修正规则（2026-10-16）
 
 本机 MCP 采用“多个 Agent stdio 子进程 → 当前用户命名管道 → 唯一 IPSys GUI 宿主 → 既有已解锁 SQLCipher V2 HTTP”的固定链路。Windows 每个用户交互会话只允许一个 GUI 宿主实例（启动时由系统命名事件保护）；额外 Agent 使用同一 EXE 的 `--mcp` 模式启动，不受单实例限制。不得同时通过不同宿主操作其它已打开数据库。

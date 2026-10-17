@@ -2,6 +2,10 @@
 
 > **最新交接基线（2026-10-17）**：正式新库及全部业务使用 SQLCipher V2，N4 旧物理表/路由/31 份旧 Store/Provider/过时测试源码已清理（[CI #38911635273](https://github.com/zy19970/IPSys/actions/runs/38911635273) success）。MCP P0 并发单实例、第一批安全、第二批单 SQL 分页、第三批 14 项合同/文件/转移/搜索/回收站工具完成，最新业务代码 `080a599` 的 [CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431) completed/success，之后 `7b7c714` 只同步了三份文档。下一步验证 Edge/Chrome、Codex/WorkBuddy 双 Agent、桌面 Excel、文件属性 UI/历史版本/导出、2 GiB+ 和 T01–T09；没有旧正式数据库迁移。
 
+## MCP 第一批可靠性收尾（2026-10-17）
+
+本批基于上一轮 MCP 静态审查，收敛三项：空闲/半报文客户端首请求 5 秒超时以防占满全部 8 个管道槽位；SID + Windows 登录 SessionId 命名隔离与 Local 单 GUI 宿主一致；带 request_id 的明确 HTTP 400/404 拒绝被持久化为 done/businessOk=false 结果并允许同编号重放。未知网络与写入异常依然 uncertain，防止重复副作用。新增真实管道饱和、会话命名和失败状态冒烟。最终源码提交与 Actions 验收状态须以 GitHub 最新结果为准；真实 MIC 提权/非提权 WorkBuddy、不同真实用户和多 Agent 大文件仍待用户实机。
+
 ## MCP P1 第一批已验收（2026-10-16）
 
 代码 [a6d5bf4](https://github.com/zy19970/IPSys/commit/a6d5bf43274368f421fd578c5a69f9cfc27e5337) 经 [Windows CI #38923795350](https://github.com/zy19970/IPSys/actions/runs/38923795350) **completed/success**。MCP 新增 `McpLocalSafety.cs`、加密库 `mcp_operations` 请求日志表、可选写操作幂等 `request_id`、`get_operation_result` 状态查询；批量上传完整明细与 `isError`，三元组 `delete_file(owner_id=FolderId,file_id=FileId,link_id=LinkId)`，禁用授权可以通知在途请求取消，未知参数严格拒绝和已连接响应等待超时。旧版按 `file_id=LinkId` 删除的 MCP 调用不再兼容；需更新 Codex/WorkBuddy 工具列表。 `pending/uncertain` 严禁自动重做，因崩溃窗口不保证绝对 exactly-once；批量上传非整批事务。用户本机长任务/故障注入尚未验收，不迁移旧测试数据库。

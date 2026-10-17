@@ -36,7 +36,9 @@ static class NativeMcpSmoke
                   "delete_project_file","delete_contract_file"}.All(names.Contains),
               "project and contract file MCP actions are available");
         // One idle client must never block an independent Agent's request.
+        McpLocal.VerifySessionScopedIdentity();
         await McpLocal.VerifyConcurrentClientsAsync();
+        await McpLocal.VerifyIdleClientSaturationAsync();
         await McpLocal.VerifyRestrictedPipeAclAsync(); // Owner + DACL: only user and SYSTEM.
         var parallel=await Task.WhenAll(Enumerable.Range(0,12).Select(_=>Original("list_files_page",new{workspace="company",limit=10})));
         Check(parallel.All(x=>x["items"] is JsonArray),"concurrent file-page reads complete without 409");
@@ -285,6 +287,27 @@ static class NativeMcpSmoke
         }); }
         catch(IOException){reusedIdDenied=true;}
         Check(reusedIdDenied,"request_id cannot be reused with different arguments");
+
+        // A definite HTTP 404 is replayable and must not be marked uncertain.
+        string missingRequestId=Guid.NewGuid().ToString("N");
+        var missing=await Original("update_project",new{
+            workspace="company",project_id=999999999,
+            name="不存在的项目",request_id=missingRequestId
+        });
+        var missingJournal=await Original("get_operation_result",new{
+            workspace="company",request_id=missingRequestId
+        });
+        var replayMissing=await Original("update_project",new{
+            request_id=missingRequestId,name="不存在的项目",
+            project_id=999999999,workspace="company"
+        });
+        Check(missing["status"]?.GetValue<string>()=="failed" &&
+              missing["httpStatus"]?.GetValue<int>()==404 &&
+              missingJournal["state"]?.GetValue<string>()=="done" &&
+              missingJournal["businessOk"]?.GetValue<bool>()==false &&
+              missingJournal["result"]?["httpStatus"]?.GetValue<int>()==404 &&
+              missing.ToJsonString()==replayMissing.ToJsonString(),
+              "definitive 404 must be a durable, replayable business failure");
         await Original("delete_general",new{
             workspace="personal",general_id=Id(firstWrite)
         });
