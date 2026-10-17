@@ -16,7 +16,9 @@ assert.ok(adapter.includes('api.uploadFile(path+"/prepare?folderId="')&&
  'Both V2 create and version upload must stream with progress and await server confirmation');
 assert.ok(app.includes('api.uploadProgress.begin(files.length)')&&
  app.includes('api.uploadProgress.finish({completed,errors,skipped,warnings})')&&
- app.includes('api.uploadProgress.onActiveChanged=active=>{localFileTaskActive=active;}'),
+ app.includes('api.uploadProgress.onActiveChanged=active=>{') &&
+ app.includes('localFileTaskActive=active;') &&
+ app.includes('if(!active&&space&&token)void refreshWhenFileTaskIdle(space);'),
  'Both batch paths must keep persistent progress and beforeunload lock');
 
 class FakeNode{
