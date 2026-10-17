@@ -1,5 +1,7 @@
 # IPSys — 资料管理系统
 
+> **第三批 MCP 功能已自动验收（2026-10-17）**：源码 `c58dc2f` 对应 [Windows CI #38991226637](https://github.com/zy19970/IPSys/actions/runs/38991226637) **completed/success**。新增 `start_upload_task` 异步文件上传、`get_task_status` 状态/发送字节轮询和 `cancel_task` 主动取消，MCP 工具总数 **69**。上传先记录 SQLCipher 加密请求编号、同号不会重复写入；在途取消可能为 `uncertain`，需人工核对原件与 LinkId。具体使用见 [MCP_CODEX.md](./MCP_CODEX.md)。Windows 实机跨权限和长文件故障测试仍待执行。
+
 > **最新 MCP 自动验收（2026-10-17）**：第二批业务接口补齐源码 `6f8aede` 经 [Windows CI #38989490476](https://github.com/zy19970/IPSys/actions/runs/38989490476) **completed/success**；新开放 7 个本机 MCP 工具：`copy_contract`、`list_file_links`、`move_folder`、`list_folder_entries`、`reorder_entries`、`reorder_records`、`reorder_archive_records`。复用现有 V2 数据和权限。详细参数见 [MCP_CODEX.md](./MCP_CODEX.md)，真实跨权限和长文件实机验证仍待完成。
 
 > **MCP 可靠性最新验收（2026-10-17）**：提交 `30ce4a1` 增加空闲连接限时释放、同用户不同登录会话隔离、400/404 确定性失败记录及实际管道回归，[Windows CI #38988662134](https://github.com/zy19970/IPSys/actions/runs/38988662134) **completed/success**；真实 WorkBuddy 跨权限/多会话和长文件任务仍待实机。

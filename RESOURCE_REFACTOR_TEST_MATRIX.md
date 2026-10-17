@@ -1,5 +1,7 @@
 # IPSys 统一资源内核重构：R0-02 回归与差异矩阵
 
+> **第三批 MCP 长任务回归（2026-10-17）**：`c58dc2f` 经 [Windows CI #38991226637](https://github.com/zy19970/IPSys/actions/runs/38991226637) **completed/success**；验证 `start_upload_task`、`get_task_status`、`cancel_task`、加密预登记、同号防重复、取消前后结果不确定性。若取消尚未产生明细，日志可以 `uncertain/result=null`；在途存在明细时记录 `interrupted`，不自动重试。长文件/多 Agent 真实 Windows 权限实验仍待完成。
+>
 > **MCP 第二批业务接口自动验收（2026-10-17）**：`6f8aede` / [Windows CI #38989490476](https://github.com/zy19970/IPSys/actions/runs/38989490476) **completed/success**，新增合同复制、文件反向链接、移动业务目录、混排及项目/合同/档案排序回归（真实 SQLCipher/命名管道）。不同 Windows 用户、跨提权 WorkBuddy、并发长文件与故障注入仍为实机待测。
 >
 > **新增 MCP 专项验收（2026-10-17）**：`30ce4a1` / [Windows CI #38988662134](https://github.com/zy19970/IPSys/actions/runs/38988662134) **completed/success**，新增管道首报文超时/八路饱和恢复、登录会话隔离和 404 失败日志重放自动回归；MIC 跨权限、真实多登录用户、长任务故障注入仍需实机。

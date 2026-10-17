@@ -1,5 +1,15 @@
 # IPSys 本机 Codex MCP
 
+> **最新 MCP 第三批可靠性验收（2026-10-17）**：源码 `6593333` 实现异步上传，`3701ad4` 修复 Stream 编译推断，`5ff60bd` 和 `c58dc2f` 修复关联与取消竞态断言，最终 [Windows CI #38991226637](https://github.com/zy19970/IPSys/actions/runs/38991226637) **completed/success**。新增 3 个工具，当前共 **69** 个。Debug/Release、MCP stdio、真实 SQLCipher/HTTP 冒烟和单 EXE 发布通过；真实跨权限/多 Agent 大文件/强制断线仍待实机。
+
+## 第三批 MCP 长时间文件任务（2026-10-17）
+
+`start_upload_task` 使用与原 `upload_files` 完全一致的参数（`workspace`、`kind`、`owner_id`、`paths` 及已有重复文件、追加版本、资料分类参数），**额外强制提供唯一 `request_id`**，长度 8–128 个非控制字符。每次支持 1–20 个本机绝对路径，单文件仍不超过 64 MiB。GUI 宿主先把请求写入加密 `mcp_operations`（`pending`），再在宿主进程异步上传，接口立即返回 `accepted=true`、编号和初始状态。相同编号同参数重入不再执行第二次上传；已完成编号返回 `accepted=false`，不同参数复用同编号会被拒绝。
+
+`get_task_status(workspace,request_id)` 支持上传中的 `queued`、`running`、`cancelling`、`requested/completed/succeeded/failed`、`currentFile`、`bytesSent/totalBytes`、`cancelRequested`。字节数反映客户端流读取/发送，不代表服务器已写入 SQLCipher。任务从活动列表移除后返回日志状态 `done/uncertain/not_found`、`businessOk` 和 `result`；重启宿主会丢失实时计数，最终仍以加密日志为准。
+
+`cancel_task(workspace,request_id)` 只对当前活动的异步上传请求取消；已经成功的文件不会自动回滚，在途 HTTP 结果可能不确定。取消早于文件请求发出时，`uncertain` 可能没有文件级 `result`；如果得到部分文件结果，日志会保留 `result.status=interrupted` 与每份状态。**`uncertain` 或旧 `pending` 都不能自动重试，也不应换新编号把全部文件再次上传**。请通过 `get_operation_result` 结合 `list_project_files`、`list_contract_files`、`list_files_page`、`list_file_links` 逐一核对 FileId/LinkId 后仅处理明确未成功的文件。同步工具 `upload_files` 保留，未改变已有参数和工作区权限。
+
 > **最新 MCP 业务接口补齐（2026-10-17）**：源码 `6f8aede` 的 [Windows CI #38989490476](https://github.com/zy19970/IPSys/actions/runs/38989490476) **completed/success**。Debug/Release、MCP stdio、真实 SQLCipher/HTTP 与原有 Node 回归均通过。新增 7 个 V2 原生业务工具；上一轮空闲管道/会话隔离与失败日志修复继续有效。跨权限 WorkBuddy、多 Windows 用户/会话与长文件故障注入仍待实机。
 
 ## 第二批 MCP 业务接口补齐（2026-10-17）

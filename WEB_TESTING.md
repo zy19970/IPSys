@@ -1,5 +1,13 @@
 # IPSys Windows 验收与回归记录
 
+> **第三批长任务已自动验收（2026-10-17）**：源码最终 `c58dc2f` 对应 [Windows CI #38991226637](https://github.com/zy19970/IPSys/actions/runs/38991226637) **completed/success**。三个新工具及异步成功/状态查询/同号防重复/取消记录在 Debug、Release 实际 SQLCipher/MCP 回归通过。早期编译 CS0173、测试的全目录计数假设和取消竞态均已修复。Windows 真实跨权限双 Agent、大文件与进程故障注入未实机测试。
+
+### 第三批 MCP 异步上传回归（2026-10-17）
+
+自动测试通过 `NativeMcpSmoke.cs` 对 `start_upload_task`、`get_task_status`、`cancel_task` 及 69 工具清单进行检查：预先登记持久日志，后台上传并最终归入 `done`；同一 `request_id` 同参数不能重复执行；取消后允许 `done` 或 `uncertain`，后者 `businessOk=null`，如果取消前未产生文件级结果则 `result=null`，已有部分结果则 `status=interrupted`。文件解除关联验证针对指定 LinkId，不应误要求其它异步上传关联同时消失。
+
+实机复测请使用新建可丢弃 V2 库，通过 Codex/WorkBuddy 异步上传含大文件的若干本机绝对路径，轮询文件/字节进度，主动取消和撤销授权，再检查 `get_operation_result` 与网页实际附件；进一步测试断网、强制停止宿主、64 MiB 文件、两个 Agent 共用请求编号及 Windows 普通/管理员权限组合。任何 `uncertain`/遗留 `pending` 状态都不得不核实就重试。自动 CI 不能替代这些实机验证。
+
 > **最新自动验收（2026-10-17）**：第二批 MCP 业务接口补齐源码 `6f8aede` 经 [Windows CI #38989490476](https://github.com/zy19970/IPSys/actions/runs/38989490476) **completed/success**；新增工具的真实 SQLCipher/命名管道集成回归已覆盖复制合同及共享附件、FileId 反向关联、移动目录/资料与列表混排排序、项目合同及普通档案排序、拒绝错误/越权输入。跨权限 WorkBuddy、不同登录会话及长任务仍待实机。
 
 ### MCP 第二批业务接口专项验证（2026-10-17）

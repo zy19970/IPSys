@@ -1,5 +1,11 @@
 # IPSys 跨会话交接（2026-10-17：N4 与 MCP 三批自动验收完成）
 
+> **最新 MCP 第三批进度（2026-10-17）**：源码 `6593333` → `3701ad4` → `5ff60bd` → `c58dc2f`，最终 [Windows CI #38991226637](https://github.com/zy19970/IPSys/actions/runs/38991226637) **completed/success**；新增 `start_upload_task`、`get_task_status`、`cancel_task` 共三项，MCP 工具总数 **69**。复用 SQLCipher 加密操作日志，无新数据表；旧正式库不迁移。用户电脑多 Agent/跨权限、强制断线、大文件压力仍待实机验收。
+
+## MCP 第三批长文件任务（2026-10-17）
+
+核心文件：`McpLocalTasks.cs` 为当前 GUI 宿主的异步任务与进度管理；`McpLocalIpFiles.cs` 在发送文件流时计字节；`McpLocalSafety.cs` 先登记加密 `pending`，最终维护 `done/uncertain` 及结果；`McpLocal.cs` 注册三个工具，`NativeMcpSmoke.cs` 验证同号防重和取消边界。异步上传必须携 `request_id`；取消发生在上传前时 uncertain 可能无结果，HTTP 在途取消可有部分已成功文件；不得自动重试。Windows CI 最终 [Windows CI #38991226637](https://github.com/zy19970/IPSys/actions/runs/38991226637) success，实机混合权限/长任务仍待开展。
+
 > **最新 MCP 业务接口补齐（2026-10-17）**：源码 `6f8aede` 已经 [Windows CI #38989490476](https://github.com/zy19970/IPSys/actions/runs/38989490476) **completed/success**；新增合同复制、文件反向关联、企业业务档案移动与混排查询排序、项目合同及普通档案排序共 7 个工具。业务直接复用原生 V2 HTTP 和 SQLCipher；此前 `30ce4a1` 的空闲连接/会话隔离修复已包含。后续主要为真实多 Agent 权限矩阵、长文件任务与故障注入，暂无旧库迁移需求。
 
 > **本轮最新源码与验收（2026-10-17）**：`30ce4a1` 完成 MCP 空闲管道有界等待、SID/SessionId 隔离、明确 HTTP 400/404 业务失败日志；[Windows CI #38988662134](https://github.com/zy19970/IPSys/actions/runs/38988662134) **completed/success**。此前业务基线 `080a599` 和管道 ACL 补强 `1fa0d27` 均已包含在现行 main 中。跨提权/跨登录会话/不同真实用户及长文件任务仍待实机。
