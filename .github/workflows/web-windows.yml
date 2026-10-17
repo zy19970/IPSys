@@ -105,11 +105,13 @@ jobs:
             $process.StandardInput.WriteLine('{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"list_files_page","arguments":{"workspace":"company","unexpected_parameter":"reject"}}}')
             $line = $process.StandardOutput.ReadLineAsync().WaitAsync([TimeSpan]::FromSeconds(12)).GetAwaiter().GetResult()
             $validation = $line | ConvertFrom-Json
-            if ($validation.id -ne 3 -or $validation.result.isError -ne $true -or
-                $validation.result.content[0].text -notmatch '未声明的 MCP 参数') {
+            if ($validation.id -ne 3 -or $validation.result.isError -ne $true) {
               throw 'MCP stdio tools/call failed to reject unknown input properties'
             }
             $structured = $validation.result.content[0].text | ConvertFrom-Json
+            if ($structured.message -notmatch '未声明的 MCP 参数') {
+              throw 'MCP stdio error JSON does not identify the rejected parameter'
+            }
             if ($structured.ok -ne $false -or $structured.code -ne 'TOOL_CALL_REJECTED' -or
                 $structured.retryable -ne $false -or -not $structured.message) {
               throw 'MCP tool error is not a structured JSON envelope'
