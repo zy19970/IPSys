@@ -16,11 +16,10 @@ static partial class McpLocal
         LiveWriteOperations=new();
     private static bool IsWriteTool(string name)
     {
-        string original=name.StartsWith("v2_",StringComparison.Ordinal)?name[3..]:name;
-        return original.StartsWith("create_",StringComparison.Ordinal) ||
-               original.StartsWith("update_",StringComparison.Ordinal) ||
-               original.StartsWith("delete_",StringComparison.Ordinal) ||
-               original is "upload_files" or "start_upload_task" || ExtraWrite(original);
+        return name.StartsWith("create_",StringComparison.Ordinal) ||
+               name.StartsWith("update_",StringComparison.Ordinal) ||
+               name.StartsWith("delete_",StringComparison.Ordinal) ||
+               name is "upload_files" or "start_upload_task" || ExtraWrite(name);
     }
 
     private static void ValidateToolArguments(string name,JsonElement args)

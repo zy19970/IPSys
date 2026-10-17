@@ -1,5 +1,8 @@
 # IPSys MCP 一次性黑盒复测任务书（第一轮与剩余缺陷全量验收）
 
+> **历史测试计划说明**：本文件适用于 `main@24822d7` 的 **70 工具**版本，是 2026-10-17 第六轮黑盒的历史验收任务书。当前新接口已精简为 **59 工具**（删除 11 个 `v2_*` 别名），请使用 [MCP_INTERFACE_CLEANUP_TEST.md](./MCP_INTERFACE_CLEANUP_TEST.md) 进行新版本测试；本文件中的 70、16 列表及 `v2_*` 均不再是现行工具清单。
+
+
 > 测试基线：`main@24822d739a7221fff43de834e82542f97f94443f`，Windows CI [#39010080604](https://github.com/zy19970/IPSys/actions/runs/39010080604) completed/success。  
 > 适用：在 Windows 本机运行的 IPSys GUI 宿主，以及实际 `IPSys.Web.exe --mcp` stdio 客户端。  
 > **工具总数现在为 70**，其中新增 `purge_trash`；历史任务书“69 工具”断言必须替换。  

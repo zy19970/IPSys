@@ -974,7 +974,7 @@ assert.ok(js.includes("b06Script.src='/export.js'"),'The embedded ZIP/folder eng
 
 // When only one effective revision survives, never display its stored historical version number.
 const fileListStart=js.indexOf('function businessAttachmentList(');
-const fileListEnd=js.indexOf('function chooseVersionAction(',fileListStart);
+const fileListEnd=js.indexOf('async function uploadBusinessAttachment(',fileListStart);
 assert.ok(fileListStart>0&&fileListEnd>fileListStart,'Missing business file renderer');
 const fileListCtx=vm.createContext({sessionStorage:{getItem:()=>null},document:exportDocument});
 vm.runInContext(preamble+
@@ -1077,10 +1077,14 @@ assert.ok(js.includes("kind:'general',id:x.id") &&
  js.includes("kind:'contract',id:x.id") &&
  js.includes("kind:'project',id:x.id"),
  'Native association must offer current-workspace project, contract, archive and general folders');
-assert.ok(js.includes("function chooseVersionAction(file,matches)")&&
- js.includes('data-upload-choice="new"')&&js.includes("if(choice==='new')"),
- 'Same-name originals must use explicit action buttons');
-assert.ok(!js.includes("const choice=prompt("),'Same-name files must not require typing a choice');
+assert.ok(!js.includes("function chooseVersionAction(")&&
+ !js.includes("legacy-'+f.id") &&
+ !js.includes("data-upload-choice="),
+ 'Retired legacy groupId upload dialog and fallback must not survive');
+assert.ok(js.includes("uploadBusinessAttachment(file,meta,workspace)") &&
+ js.includes("IPSysNativeIp.upload(api,file,meta,workspace)") &&
+ js.includes("正在检查重复内容："),
+ 'All live business uploads use one native SHA-256 resolver');
 assert.ok(v2IpJs.includes('"/prepare?folderId="+meta.ownerId')&&
  v2IpJs.includes('"/prepared/"+prepared.ticket+"/resolve')&&
  v2IpJs.includes('sourceFileId:matched.fileId'),

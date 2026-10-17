@@ -7,8 +7,6 @@ using System.Text.Json.Nodes;
 static class NativeMcpSmoke
 {
     private static JsonElement Args(object o)=>JsonSerializer.SerializeToElement(o);
-    private static async Task<JsonNode> Call(string name,object input)=>
-        await McpLocal.RunSmokeToolAsync("v2_"+name,Args(input));
     private static async Task<JsonNode> Original(string name,object input)=>
         await McpLocal.RunSmokeToolAsync(name,Args(input));
     private static async Task CheckArrayRpc(string name,object input)
@@ -29,6 +27,25 @@ static class NativeMcpSmoke
         list.AsArray().FirstOrDefault(x=>x?["folder"]?["ref"]?["id"]?.GetValue<long>()==id);
     public static async Task VerifyAsync(HttpClient client,Vault vault)
     {
+        // Production MCP exposes only the unversioned tools. For the native
+        // resource-shape assertions, read the same authenticated V2 HTTP
+        // endpoint the UI uses; all writes continue through the real pipe.
+        async Task<JsonNode> Call(string name,object input)
+        {
+            if(name is "list_projects" or "list_contracts" or "list_ips")
+            {
+                string workspace=Args(input).GetProperty("workspace").GetString()!;
+                string kind=name switch {
+                    "list_projects"=>"project","list_contracts"=>"contract",_=>"ip"
+                };
+                using var response=await client.GetAsync(
+                    "/api/v2/folders/"+workspace+"/"+kind);
+                response.EnsureSuccessStatusCode();
+                return JsonNode.Parse(await response.Content.ReadAsStringAsync())
+                    ??new JsonArray();
+            }
+            return await Original(name,input);
+        }
         var names=McpLocal.Tools().Select(x=>(string)x.GetType()
             .GetProperty("name")!.GetValue(x)!).ToArray();
         string[] native={
@@ -36,9 +53,14 @@ static class NativeMcpSmoke
             "list_contracts","create_contract","delete_contract",
             "list_ips","create_ip","update_ip","delete_ip"
         };
-        Check(native.All(name=>names.Contains("v2_"+name)) &&
+        Check(native.All(names.Contains) &&
+              names.All(name=>!name.StartsWith("v2_",StringComparison.Ordinal)) &&
               names.Distinct().Count()==names.Length,
-              "MCP V2 tool registry has 11 unique business actions");
+              "MCP exposes one unversioned name per V2 business action");
+        var retiredAlias=await McpLocal.RunSmokeProtocolToolAsync(
+            "v2_list_projects",Args(new{workspace="company"}));
+        Check(retiredAlias["error"]?["code"]?.GetValue<int>()==-32602,
+            "retired v2_* MCP aliases are not discoverable or callable");
         Check(names.Contains("upload_files")&&!names.Contains("v2_upload_files") &&
               new[]{"list_project_files","list_contract_files",
                   "delete_project_file","delete_contract_file"}.All(names.Contains),
@@ -49,7 +71,7 @@ static class NativeMcpSmoke
             "second batch of V2 MCP endpoint adapters registered");
         Check(new[]{"start_upload_task","get_task_status","cancel_task","purge_trash"}
             .All(names.Contains) && names.Distinct().Count()==names.Length &&
-            names.Length==70,
+            names.Length==59,
             "MCP registry keeps all prior tools and adds explicit trash purge");
         // One idle client must never block an independent Agent's request.
         McpLocal.VerifySessionScopedIdentity();
@@ -129,11 +151,8 @@ static class NativeMcpSmoke
         Check(project>0,"created V2 project");
         // ISS-001: call the actual JSON-RPC adapter, not just the pipe.
         await CheckArrayRpc("list_projects",new{workspace="company"});
-        await CheckArrayRpc("v2_list_projects",new{workspace="company"});
         await CheckArrayRpc("list_contracts",new{workspace="company"});
-        await CheckArrayRpc("v2_list_contracts",new{workspace="company"});
         await CheckArrayRpc("list_ips",new{workspace="company"});
-        await CheckArrayRpc("v2_list_ips",new{workspace="company"});
         await CheckArrayRpc("list_general",new{workspace="company"});
         await CheckArrayRpc("list_archives",new{workspace="company",section="achievement"});
         await CheckArrayRpc("list_archive_folders",new{workspace="company"});

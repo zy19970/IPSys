@@ -71,7 +71,7 @@ static partial class McpLocal
     private static readonly string[] Workspaces=["company","personal"];
     internal static object[] Tools()
     {
-        object[] legacy=
+        object[] tools=
         [
         Tool("list_projects","列出 V2 当前工作区有效项目，ID 与现有项目网页 FolderId 一致。",new(){
             ["workspace"]=Field("string","工作区：company 公司；personal 个人",Workspaces)
@@ -242,29 +242,7 @@ static partial class McpLocal
             ["file_id"]=Field("integer","on_conflict=update 指向已有 FileId，必须归属于 owner_id")
         },["workspace","kind","owner_id","paths"])
         ];
-        // Keep legacy tool contracts intact until N2-03 endpoint migration.
-        // Add explicitly named V2 tools with the same field schemas; never
-        // direct one agent action to both the old and the new resource tables.
-        var supported=new HashSet<string>(StringComparer.Ordinal)
-        {
-            "list_projects","create_project","update_project","delete_project",
-            "list_contracts","create_contract","delete_contract",
-            "list_ips","create_ip","update_ip","delete_ip"
-        };
-        var native=legacy.Where(tool=>supported.Contains((string)tool.GetType()
-                .GetProperty("name")!.GetValue(tool)!))
-            .Select(tool=>
-            {
-                var type=tool.GetType();
-                return (object)new
-                {
-                    name="v2_"+(string)type.GetProperty("name")!.GetValue(tool)!,
-                    description="V2 Folder 原生响应；旧名列表返回网页友好结构，写操作共用同一业务源，保留别名仅为兼容已有 Agent。 "+
-                        (string)type.GetProperty("description")!.GetValue(tool)!,
-                    inputSchema=type.GetProperty("inputSchema")!.GetValue(tool)!
-                };
-            }).ToArray();
-        return [..legacy,..native,..ArchiveTools(),..ExtraTools(),
+        return [..tools,..ArchiveTools(),..ExtraTools(),
             Tool("start_upload_task","异步启动 1–20 个本机原件上传，立即返回 request_id；其余参数与 upload_files 相同。请使用 get_task_status/cancel_task。",new(){
                 ["workspace"]=Field("string","工作区",Workspaces),
                 ["kind"]=Field("string","归属资源",["project","contract","ip","archive","general"]),
@@ -447,7 +425,7 @@ static partial class McpLocal
         await idle.ConnectAsync(timeout.Token);
         McpPipeSecurity.VerifyServerOwner(idle);
         await Task.Delay(120,timeout.Token);
-        var list=await CallHostAsync("v2_list_projects",
+        var list=await CallHostAsync("list_projects",
             JsonSerializer.SerializeToElement(new{workspace="company"}))
             .WaitAsync(TimeSpan.FromSeconds(8));
         if(list is not JsonArray)
@@ -469,7 +447,7 @@ static partial class McpLocal
                 await client.ConnectAsync(timeout.Token);
                 McpPipeSecurity.VerifyServerOwner(client);
             }
-            var result=await CallHostAsync("v2_list_projects",
+            var result=await CallHostAsync("list_projects",
                 JsonSerializer.SerializeToElement(new{workspace="company"}))
                 .WaitAsync(TimeSpan.FromSeconds(15));
             if(result is not JsonArray)
@@ -804,9 +782,7 @@ static partial class McpLocal
         using var cancelOnExit=stop.Register(static state=>
             ((HttpClient)state!).CancelPendingRequests(),client);
         client.DefaultRequestHeaders.TryAddWithoutValidation("X-IPSys-Token",vault.SessionToken);
-        if(name.StartsWith("v2_",StringComparison.Ordinal))
-            return await ExecuteNativeAsync(client,workspace,name[3..],args);
-        // 原名项目/合同/IP CRUD 与已有 v2_* 共用同一 FolderId，不双写旧表。
+        // Only one public tool name per business action; writes use V2 FolderId.
         if(name is "create_project" or "update_project" or "delete_project" or
            "create_contract" or "delete_contract" or
            "create_ip" or "update_ip" or "delete_ip")

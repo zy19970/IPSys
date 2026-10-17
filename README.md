@@ -1,5 +1,8 @@
 # IPSys — 资料管理系统
 
+> **接口现状（2026-10-17）**：SQLCipher 业务数据仅使用 V2 Folder/File/Link/Version 一套模型；HTTP 正式业务路径使用 `/api/v2`。MCP 对外保留 59 个无版本前缀的工具（`v2_*` 11 个重复别名已移除），现行使用与测试详见 [MCP_CODEX.md](./MCP_CODEX.md) 和 [MCP_INTERFACE_CLEANUP_TEST.md](./MCP_INTERFACE_CLEANUP_TEST.md)。历史 70 工具的实机测试归档不作修改。
+
+
 > **第三批 MCP 功能已自动验收（2026-10-17）**：源码 `c58dc2f` 对应 [Windows CI #38991226637](https://github.com/zy19970/IPSys/actions/runs/38991226637) **completed/success**。新增 `start_upload_task` 异步文件上传、`get_task_status` 状态/发送字节轮询和 `cancel_task` 主动取消，MCP 工具总数 **69**。上传先记录 SQLCipher 加密请求编号、同号不会重复写入；在途取消可能为 `uncertain`，需人工核对原件与 LinkId。具体使用见 [MCP_CODEX.md](./MCP_CODEX.md)。Windows 实机跨权限和长文件故障测试仍待执行。
 
 > **最新 MCP 自动验收（2026-10-17）**：第二批业务接口补齐源码 `6f8aede` 经 [Windows CI #38989490476](https://github.com/zy19970/IPSys/actions/runs/38989490476) **completed/success**；新开放 7 个本机 MCP 工具：`copy_contract`、`list_file_links`、`move_folder`、`list_folder_entries`、`reorder_entries`、`reorder_records`、`reorder_archive_records`。复用现有 V2 数据和权限。详细参数见 [MCP_CODEX.md](./MCP_CODEX.md)，真实跨权限和长文件实机验证仍待完成。

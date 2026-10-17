@@ -1,5 +1,8 @@
 # IPSys Windows 验收与回归记录
 
+> **2026-10-17 MCP 工具去重 / 前端旧上传路径收敛（当前验收入口）**：公开工具从 **70 精简为 59**，撤下 11 个 `v2_*` 名称；原名项目/合同/IP 工具仍访问 SQLCipher V2，三个 `list_*` 保持原有网页投影数组而非 FolderSnapshot。当前完整用例见 [MCP_INTERFACE_CLEANUP_TEST.md](./MCP_INTERFACE_CLEANUP_TEST.md)。Windows CI 应检查 59 唯一工具、无 `v2_*`、原名 CRUD、真实 SQLCipher/HTTP、13 项数组列表、Node UI 上传/ZIP，以及前端 `chooseVersionAction`、旧 `groupId` 不再可达。此前第六轮实机报告的 70 工具、16 列表是**旧构建历史数据**，不能当作新清单实测结果；本机权限/GUI 尚未通过的 9 项继续标记 BLOCKED。
+
+
 > **本机第六轮测试报告与三项补丁（2026-10-17）**：从 [MCP_TEST_RESULTS/2026-10-17/MCP_TEST_REPORT.md](./MCP_TEST_RESULTS/2026-10-17/MCP_TEST_REPORT.md) 独立核对得出：原 37 项 **PASS 28 / FAIL 0 / BLOCKED 9**，ISS-001～015 **15/15 通过**，另有 ISS-016～018 三项已由 [`e3f6292`](https://github.com/zy19970/IPSys/commit/e3f62921aad6e7cef16a7fa8bf498ff0c7392636) 修补。Windows CI [#39014009578](https://github.com/zy19970/IPSys/actions/runs/39014009578) 加入 SQLCipher/MCP 冒烟回归；**本机 Agent 还没有针对该新提交实测，不可把原报告中的通过数直接视为新版本复测结果**。MCP 当前 70 项，不得使用历史 69 工具断言。
 
 ### ISS-016～018 定点回归

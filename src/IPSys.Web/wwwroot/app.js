@@ -815,41 +815,6 @@ function businessAttachmentList(kind,ownerId,section=''){
  '<p class="hint">暂无附件，可上传原始文件。</p>')+
  (kind!=='project'&&files.length?exportButtons():'');
 }
-function chooseVersionAction(file,matches){
- if(!matches.length)return Promise.resolve({mode:'new',groupId:''});
- return new Promise(resolve=>{
-  const dialog=document.createElement('dialog');
-  dialog.className='input-dialog upload-conflict-dialog';
-  dialog.setAttribute('aria-label','同名原件版本处理');
-  dialog.innerHTML='<h3>发现同名原件</h3>'+
-   '<p class="hint">“'+escapeHtml(file.name)+'”已归档。请选择：</p>'+
-   '<div class="upload-conflict-actions">'+matches.map((f,i)=>
-     '<button type="button" class="btn" data-upload-choice="'+i+'">更新为新版本'+
-     (matches.length>1?'（原件 '+(i+1)+'）':'')+
-     ' · 当前 v'+f.version+' · '+fmtSize(f.size)+'</button>').join('')+
-   '<button type="button" class="btn primary" data-upload-choice="new">作为独立原件</button>'+
-   '<button type="button" class="btn" data-upload-choice="skip">跳过此文件</button></div>';
-  document.body.append(dialog);
-  let done=false;
-  const close=value=>{
-   if(done)return;done=true;
-   if(dialog.open)dialog.close();
-   dialog.remove();resolve(value);
-  };
-  dialog.addEventListener('click',e=>{
-   const choice=e.target.closest('[data-upload-choice]')?.dataset.uploadChoice;
-   if(choice===undefined)return;
-   if(choice==='skip')close(null);
-   else if(choice==='new')close({mode:'new',groupId:''});
-   else {
-    const match=matches[Number(choice)];
-    if(match)close({mode:'update',groupId:match.groupId});
-   }
-  });
-  dialog.addEventListener('cancel',e=>{e.preventDefault();close(null);});
-  dialog.showModal();
- });
-}
 async function uploadBusinessAttachment(file,meta,workspace){
  return IPSysNativeIp.upload(api,file,meta,workspace);
 }
@@ -861,22 +826,13 @@ async function uploadBusinessBatch(files,meta){
   for(const file of files){
    if(space!==workspace){errors.push('工作区已切换，上传终止');break;}
    if(file.size>64*1024*1024){errors.push(file.name+'：超过 64 MiB');continue;}
-   if(['ip','project','contract','archive','general'].includes(meta.kind)){
-    notice('正在检查重复内容：'+file.name);
-    try{const saved=await IPSysNativeIp.upload(api,file,meta,workspace);
-     if(saved){completed++;await refresh();}else skipped++;
-    }catch(err){errors.push(file.name+'：'+err.message);}
-    continue;
+   if(!['ip','project','contract','archive','general'].includes(meta.kind)){
+    errors.push(file.name+'：不支持的资料归属类别');continue;
    }
-   const matches=[...new Map(businessFiles(meta.kind,meta.ownerId,meta.section)
-    .filter(f=>f.name===file.name&&f.category===(meta.category||''))
-    .map(f=>[f.groupId||'legacy-'+f.id,f])).values()];
-   const choice=await chooseVersionAction(file,matches);
-   if(!choice){skipped++;continue;}
-   notice('上传中：'+file.name+'（'+(completed+skipped+errors.length+1)+'/'+files.length+'）');
+   notice('正在检查重复内容：'+file.name);
    try{
-    await uploadBusinessAttachment(file,{...meta,...choice},workspace);
-    completed++;await refresh();
+    const saved=await uploadBusinessAttachment(file,meta,workspace);
+    if(saved){completed++;await refresh();}else skipped++;
    }catch(err){errors.push(file.name+'：'+err.message);}
   }
  }finally{localFileTaskActive=false;}
@@ -1610,7 +1566,7 @@ function settingsPage(){return heading('系统设置','数据库管理与已确�
  `<section class="white detailsection"><div class="detailsectionhead"><h2>当前加密数据库</h2></div><div class="detailbody"><div class="minirow"><span>数据库文件</span><strong>${escapeHtml(dbName)}</strong></div><div class="minirow"><span>加密状态</span><span class="realflag">SQLCipher 已启用</span></div><div class="minirow"><span>数据库完整性检查</span><button class="btn" data-action="check">立即检查</button></div><div id="checkResult" class="hint"></div><div class="minirow"><span>本机 Codex MCP</span><span class="actions"><span class="hint">${mcpEnabled?'已开启':'默认关闭'}</span><button class="btn" data-action="mcpToggle">${mcpEnabled?'关闭 MCP':'开启 MCP'}</button></span></div><p class="hint">仅允许当前 Windows 用户通过本机 Codex MCP 操作已解锁的数据库；关库或退出自动失效。开启后 Codex 可新增项目、合同及原件。</p><div class="minirow"><span>关闭当前数据库</span><button class="btn" data-action="lock">关闭数据库</button></div></div></section>`+
  section('尚未接入的设置项','<div class="minirow"><span>修改数据库密码</span>'+stamp()+'</div><div class="minirow"><span>记录类别与标签</span>'+stamp()+'</div><p class="hint">手动备份需安全退出程序后在 Windows 资源管理器复制加密库。</p>');}
 function trashPage(){
- const names={project:'项目',contract:'合同',ip:'知识产权',archive:space==='company'?'资质与业务档案':'证件与成果',file:'业务附件',general:'综合资料',general_file:'综合资料附件',v2_ip_file:'知识产权原件关联',legacy_ip:'旧版知识产权资料'};
+ const names={project:'项目',contract:'合同',ip:'知识产权',archive:space==='company'?'资质与业务档案':'证件与成果',file:'业务附件',general:'综合资料',general_file:'综合资料附件',v2_ip_file:'知识产权原件关联'};
  return heading('回收站','当前工作区的真实已删除记录与附件',
  '<button class="btn" data-nav="settings">返回设置</button>')+
  '<section class="white"><div class="tabletools"><b>已删除 '+trashRows.length+' 条</b><div class="actions">'+

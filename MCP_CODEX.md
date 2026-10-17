@@ -1,5 +1,10 @@
 # IPSys 本机 Codex MCP
 
+> **当前唯一接口口径（2026-10-17 接口收敛）**：MCP 对外暴露 **59 个无版本前缀的工具**，原来的 11 个 `v2_*` 业务别名已下线；`create_project`、`update_ip`、`list_contracts` 等原名接口仍操作 SQLCipher V2 Folder/File 数据模型。项目/合同/IP 三个 `list_*` 继续输出网页友好结构（包含 `id` 和相应扁平化业务字段）；原生 `FolderSnapshot` 可在授权的 HTTP `/api/v2/folders/{workspace}/{kind}` 查询，但不再单独占用 MCP 工具名称。既有 70 工具黑盒报告和 `v2_*` 用例只适用于历史版本；新实机测试使用 [MCP_INTERFACE_CLEANUP_TEST.md](./MCP_INTERFACE_CLEANUP_TEST.md)。HTTP `/api/v2`、数据表、FileId/LinkId 与版本机制未改变。
+
+`v2_list_projects`→`list_projects`、`v2_list_contracts`→`list_contracts`、`v2_list_ips`→`list_ips`：调用参数不变，但**返回结构不完全相同**，调用者必须按当前原名接口的 `id` 等字段取值，不能继续读取 `folder.ref.id`。其余 8 个 `v2_*` 写操作改为对应原名，参数和数据含义不变。客户端应刷新 MCP 工具清单；已注册旧名称的 Agent 需要替换工具调用后再连接。
+
+
 > **第六轮本机 Agent 黑盒复测及残余修复（2026-10-17）**：报告归档在 [MCP_TEST_RESULTS/2026-10-17](./MCP_TEST_RESULTS/2026-10-17/MCP_TEST_REPORT.md)。被测构建 `d3bc77f` 实际为 **37 项 PASS 28 / FAIL 0 / BLOCKED 9**，原 ISS-001～015 门禁 **15/15** 成功。实测另外发现 ISS-016（两处明确前置拒绝误标 uncertain）、ISS-017（同名目录内部约束码）、ISS-018（批量上传顶层错误泛化）；源码修复见 [`e3f6292`](https://github.com/zy19970/IPSys/commit/e3f62921aad6e7cef16a7fa8bf498ff0c7392636)，Windows CI [#39014009578](https://github.com/zy19970/IPSys/actions/runs/39014009578)。**后续补丁仅有 CI/自动冒烟依据，尚未经本机 Agent 再次实测**；当前工具数仍 **70**。跨权限、第二 Windows 用户/会话及 GUI 手工撤权用例仍需单独补测。
 
 明确的业务拒绝（如 `restore_trash` 查无目标或 `create_archive_folder` 父 ID 非正数）现在留存 `done/businessOk=false`；在途取消与网络结果未知继续保留 `uncertain`。创建同级重名目录明确提示名称冲突，不显示 SQLite 内部码。同步 `upload_files` 失败时，`tools/call` 的顶层 `message/error` 对单文件给实际原因、多文件给失败数量及首个原因，`files[]` 仍保留逐文件结果。测试时不要复用修改了业务参数的旧 `request_id`，以及不得假定 24 路并发延迟升高必然由数据库体积造成。
@@ -215,12 +220,11 @@ Codex 通过 stdio 使用同一个 EXE 的 `--mcp` 模式，子进程仅通过�
 
 > **2026-10-16 当前 V2 MCP（N2-03-05/06 已验收）**：`list_ips/create_ip/update_ip/delete_ip` 与 `v2_*_ip*` 使用当前知识产权网页相同的 V2 FolderId，不再写旧 IpStore。原 `upload_files` 指定 `kind=ip` 时从本机绝对路径写入 V2 原件；`owner_id` 必须是知识产权 FolderId；新增 `list_ip_files` 按 `ip_id` 返回有效 LinkId/FileId/材料类别/最新版，`delete_ip_file` 需同时提供 `ip_id`、`file_id`、`link_id`，只删除单处关联。
 
-## V2 原生业务 MCP 工具（N2-03-01）
+## 项目、合同与知识产权：当前统一 MCP 工具
 
-新增 `v2_list_projects`、`v2_create_project`、`v2_update_project`、`v2_delete_project`；`v2_list_contracts`、`v2_create_contract`、`v2_delete_contract`；`v2_list_ips`、`v2_create_ip`、`v2_update_ip`、`v2_delete_ip`。参数名继续沿用原 `workspace`、`project_id`、`ip_id` 等结构，实际结果包含原生 `FolderSnapshot`（`folder.ref.id`、`businessData`）；合同必须指定当前工作区真实有效项目的 `project_id`。
+公开命令只保留 `list_projects/create_project/update_project/delete_project`、`list_contracts/create_contract/delete_contract`、`list_ips/create_ip/update_ip/delete_ip` 等无前缀名称；所有写操作均由原生 V2 HTTP/SQLCipher Folder Store 执行。合同必须绑定当前工作区的项目 FolderId。三组列表原名返回网页表格友好的 JSON 数组；如需原生 FolderSnapshot，可在 IPSys 授权的本机 HTTP 业务 API 查询，不再提供同功能的双份 MCP 工具。
 
-`v2_*` 项目/合同/IP 及原名项目合同/IP CRUD 使用相同 V2 FolderId。所有 `upload_files` 的项目、合同、IP 类型现统一写入 V2 FileId/版本，发现 SHA-256 同内容必须由调用者决定 `duplicate_mode=independent/reuse/share` 或取消；`reuse/share` 必须用匹配的 `source_file_id`，`on_conflict=update` 则用已归属于所选 `owner_id` 的 `file_id`。旧 `group_id` 不能代替新版 FileId。软件内手动开启及本机授权始终适用。
-
+原先 `v2_*` 命令的描述只属于历史提交，当前 `tools/list` 应出现 **59** 个唯一名称且不含任何 `v2_*`，客户端需要刷新工具注册缓存。归属字段仍统一使用 FolderId、FileId、LinkId，不恢复旧 SQL 表或旧 group_id 上传流程。
 
 ## V2 知识产权 MCP 原件操作（N2-03-06）
 
