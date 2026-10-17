@@ -51,6 +51,50 @@ static class NativeMcpArchiveSmoke
         }));
         Check(Has(await Run("list_archive_folders",new{workspace="company",parent_id=root}),folder),
             "new directory uses live V2 FolderId");
+        // ISS-016: deterministic local rejects must be replayable done/false,
+        // not an uncertain operation requiring manual reconciliation.
+        string missingTrashId=Guid.NewGuid().ToString("N");
+        var missingTrash=await Run("restore_trash",new{
+            workspace="company",kind="project",id=999999999L,
+            request_id=missingTrashId
+        });
+        var missingTrashLedger=await Run("get_operation_result",new{
+            workspace="company",request_id=missingTrashId
+        });
+        Check(missingTrash["status"]?.GetValue<string>()=="failed" &&
+              missingTrashLedger["state"]?.GetValue<string>()=="done" &&
+              missingTrashLedger["businessOk"]?.GetValue<bool>()==false &&
+              missingTrashLedger["result"]?["error"]?.GetValue<string>()?.Contains("回收站不存在")==true,
+              "ISS-016 missing trash record is a known rejection");
+        string invalidParentId=Guid.NewGuid().ToString("N");
+        var invalidParent=await Run("create_archive_folder",new{
+            workspace="company",parent_id=0,name=tag+"父目录错误",
+            request_id=invalidParentId
+        });
+        var invalidParentLedger=await Run("get_operation_result",new{
+            workspace="company",request_id=invalidParentId
+        });
+        Check(invalidParent["status"]?.GetValue<string>()=="failed" &&
+              invalidParentLedger["state"]?.GetValue<string>()=="done" &&
+              invalidParentLedger["businessOk"]?.GetValue<bool>()==false &&
+              invalidParentLedger["result"]?["error"]?.GetValue<string>()?.Contains("parent_id")==true,
+              "ISS-016 invalid folder parent is a known rejection");
+        // ISS-017: duplicate sibling name is reported as a business conflict,
+        // never the internal SQLITE_CONSTRAINT code 19.
+        string duplicateId=Guid.NewGuid().ToString("N");
+        var duplicate=await Run("create_archive_folder",new{
+            workspace="company",parent_id=root,name=tag+"子目录",
+            request_id=duplicateId
+        });
+        var duplicateLedger=await Run("get_operation_result",new{
+            workspace="company",request_id=duplicateId
+        });
+        Check(duplicate["status"]?.GetValue<string>()=="failed" &&
+              duplicate["httpStatus"]?.GetValue<int>()==409 &&
+              duplicate["error"]?.GetValue<string>()?.Contains("同一目录下已存在同名目录")==true &&
+              duplicateLedger["state"]?.GetValue<string>()=="done" &&
+              duplicateLedger["businessOk"]?.GetValue<bool>()==false,
+              "ISS-017 duplicate directory name has actionable Chinese error");
         string reject409Id=Guid.NewGuid().ToString("N");
         var reject409=await Run("move_folder",new{
             workspace="company",kind="archive_folder",entry_id=folder,

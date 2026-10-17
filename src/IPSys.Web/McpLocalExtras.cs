@@ -451,7 +451,7 @@ static partial class McpLocal
                     x?["kind"]?.GetValue<string>()==kind &&
                     x?["id"]?.GetValue<long>()==id &&
                     x?["section"]?.GetValue<string>()==section))
-                    throw new IOException("回收站不存在匹配的 kind/id/section 记录，拒绝恢复。");
+                    throw new McpKnownRejectionException("回收站不存在匹配的 kind/id/section 记录，拒绝恢复。");
                 return await RequestAsync(client,HttpMethod.Post,
                     "/api/trash/"+workspace+(purge?"/purge":"/restore"),
                     new JsonObject{["items"]=new JsonArray(new JsonObject{

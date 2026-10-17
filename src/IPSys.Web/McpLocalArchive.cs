@@ -138,9 +138,16 @@ static partial class McpLocal
             case "create_archive_folder":
             {
                 RequireCompany(workspace);
+                // A nonpositive parent is rejected before any HTTP dispatch:
+                // this is a known bad argument, never an uncertain write.
+                if(!args.TryGetProperty("parent_id",out var parent) ||
+                   parent.ValueKind!=JsonValueKind.Number ||
+                   !parent.TryGetInt64(out long parentId) || parentId<=0)
+                    throw new McpKnownRejectionException(
+                        "parent_id 必须是有效正整数；请先查询 list_archive_folders 获取父目录 ID。");
                 var fields=new JsonObject{
                     ["name"]=ReadString(args,"name"),
-                    ["parentId"]=ReadId(args,"parent_id")
+                    ["parentId"]=parentId
                 };
                 return await RequestAsync(client,HttpMethod.Post,
                     V2Url(workspace,"archive_folder"),

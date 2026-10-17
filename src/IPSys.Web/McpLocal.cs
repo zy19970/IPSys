@@ -387,6 +387,20 @@ static partial class McpLocal
                 string status=failure["status"]?.GetValue<string>()??"failed";
                 string detail=failure["error"]?.GetValue<string>()??
                     (status=="partial_success"?"批量操作部分失败。":"操作未成功。");
+                // Uploads return per-file results; surface the actionable first
+                // failure at the protocol level without losing files[] detail.
+                if(name=="upload_files" && failure["files"] is JsonArray outcomes)
+                {
+                    var unsuccessful=outcomes.Where(x=>x is JsonObject item &&
+                        item["ok"]?.ToJsonString()=="false").ToArray();
+                    if(unsuccessful.Length>0)
+                    {
+                        string reason=unsuccessful[0]?["error"]?.GetValue<string>()
+                            ??"文件处理失败，请检查 files 中的逐文件结果。";
+                        detail=outcomes.Count==1?reason:
+                            $"批量上传 {outcomes.Count} 个文件，失败 {unsuccessful.Length} 个。首个失败原因：{reason}";
+                    }
+                }
                 failure["ok"]=false;
                 failure["message"]=detail;
                 failure["error"]=detail;

@@ -335,6 +335,30 @@ static class NativeMcpSmoke
         Check(invalidSource["status"]?.GetValue<string>()=="failed" &&
               invalidSource["files"]?[0]?["error"]?.GetValue<string>()?.Contains("UNC")==true,
               "ISS-007 does not read network paths under the GUI host");
+        // ISS-018: check actual tools/call content, not just host-internal
+        // upload_files result. One-file failure exposes its specific reason;
+        // multi-file failure provides a count and preserves each file detail.
+        var singleRpc=await McpLocal.RunSmokeProtocolToolAsync("upload_files",Args(new{
+            workspace="company",kind="project",owner_id=originalProject,
+            paths=new[]{@"\\127.0.0.1\C$\invalid-upload-test.txt"}
+        }));
+        string? singleText=singleRpc["result"]?["content"]?[0]?["text"]?.GetValue<string>();
+        JsonNode? single=singleText is null?null:JsonNode.Parse(singleText);
+        Check(singleRpc["result"]?["isError"]?.GetValue<bool>()==true &&
+              single?["message"]?.GetValue<string>()?.Contains("UNC")==true &&
+              single?["files"]?[0]?["error"]?.GetValue<string>()?.Contains("UNC")==true,
+              "ISS-018 one failed upload surfaces its original reason");
+        var multiRpc=await McpLocal.RunSmokeProtocolToolAsync("upload_files",Args(new{
+            workspace="company",kind="project",owner_id=originalProject,
+            paths=new[]{"relative-test-a.txt","relative-test-b.txt"}
+        }));
+        string? multiText=multiRpc["result"]?["content"]?[0]?["text"]?.GetValue<string>();
+        JsonNode? multi=multiText is null?null:JsonNode.Parse(multiText);
+        Check(multiRpc["result"]?["isError"]?.GetValue<bool>()==true &&
+              multi?["message"]?.GetValue<string>()?.Contains("失败 2 个")==true &&
+              multi?["files"] is JsonArray outputs && outputs.Count==2 &&
+              outputs.All(x=>x?["error"]!=null),
+              "ISS-018 multiple failed uploads summarize count and retain details");
         bool obsoleteRejected=false;
         try { await Original("upload_files",new{
             workspace="company",kind="project",owner_id=originalProject,

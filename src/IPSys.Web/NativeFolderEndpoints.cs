@@ -10,6 +10,18 @@ static class NativeFolderEndpoints
     private static ResourceRef Ref(string w,string kind,long id,string? section) =>
         new(w,kind,id,kind==FolderKinds.ArchiveFolder?"achievement":section??"");
 
+    private static string FolderConstraintMessage(
+        Microsoft.Data.Sqlite.SqliteException ex,string kind)
+    {
+        // SQLITE_CONSTRAINT_UNIQUE on idx_archive_sibling_names is a
+        // same-parent, case-insensitive duplicate; do not expose code 19.
+        if(kind==FolderKinds.ArchiveFolder && ex.SqliteExtendedErrorCode==2067)
+            return "同一目录下已存在同名目录，请修改目录名称。";
+        // Other triggers/foreign-key violations have different causes; do
+        // not misreport every constraint violation as a duplicate name.
+        return "资料结构约束不允许此操作，请检查名称、父级目录和文件关联。";
+    }
+
     public static void Map(WebApplication app, Func<string,int,IResult> fail)
     {
         IResult Bad(string text,int status=400)=>fail(text,status);
@@ -35,7 +47,7 @@ static class NativeFolderEndpoints
                 }
                 catch(ArgumentException ex){return Bad(ex.Message);}
                 catch(InvalidOperationException ex){return Bad(ex.Message,409);}
-                catch(Microsoft.Data.Sqlite.SqliteException ex){return Bad("资料结构约束不允许此操作："+ex.SqliteErrorCode,409);}
+                catch(Microsoft.Data.Sqlite.SqliteException ex){return Bad(FolderConstraintMessage(ex,kind),409);}
                 catch(KeyNotFoundException){return Results.NotFound();}
             }
             finally{v.Gate.Release();}
@@ -59,7 +71,7 @@ static class NativeFolderEndpoints
                 }
                 catch(ArgumentException ex){return Bad(ex.Message);}
                 catch(InvalidOperationException ex){return Bad(ex.Message,409);}
-                catch(Microsoft.Data.Sqlite.SqliteException ex){return Bad("资料结构约束不允许此操作："+ex.SqliteErrorCode,409);}
+                catch(Microsoft.Data.Sqlite.SqliteException ex){return Bad(FolderConstraintMessage(ex,kind),409);}
             }
             finally{v.Gate.Release();}
         });
@@ -84,7 +96,7 @@ static class NativeFolderEndpoints
                 }
                 catch(ArgumentException ex){return Bad(ex.Message);}
                 catch(InvalidOperationException ex){return Bad(ex.Message,409);}
-                catch(Microsoft.Data.Sqlite.SqliteException ex){return Bad("资料结构约束不允许此操作："+ex.SqliteErrorCode,409);}
+                catch(Microsoft.Data.Sqlite.SqliteException ex){return Bad(FolderConstraintMessage(ex,kind),409);}
                 catch(KeyNotFoundException){return Results.NotFound();}
             }
             finally{v.Gate.Release();}
@@ -110,7 +122,7 @@ static class NativeFolderEndpoints
                 }
                 catch(ArgumentException ex){return Bad(ex.Message);}
                 catch(InvalidOperationException ex){return Bad(ex.Message,409);}
-                catch(Microsoft.Data.Sqlite.SqliteException ex){return Bad("资料结构约束不允许此操作："+ex.SqliteErrorCode,409);}
+                catch(Microsoft.Data.Sqlite.SqliteException ex){return Bad(FolderConstraintMessage(ex,kind),409);}
             }
             finally{v.Gate.Release();}
         });
@@ -135,7 +147,7 @@ static class NativeFolderEndpoints
                 }
                 catch(ArgumentException ex){return Bad(ex.Message);}
                 catch(InvalidOperationException ex){return Bad(ex.Message,409);}
-                catch(Microsoft.Data.Sqlite.SqliteException ex){return Bad("资料结构约束不允许此操作："+ex.SqliteErrorCode,409);}
+                catch(Microsoft.Data.Sqlite.SqliteException ex){return Bad(FolderConstraintMessage(ex,kind),409);}
             }
             finally{v.Gate.Release();}
         });
@@ -160,7 +172,7 @@ static class NativeFolderEndpoints
                 }
                 catch(ArgumentException ex){return Bad(ex.Message);}
                 catch(InvalidOperationException ex){return Bad(ex.Message,409);}
-                catch(Microsoft.Data.Sqlite.SqliteException ex){return Bad("资料结构约束不允许此操作："+ex.SqliteErrorCode,409);}
+                catch(Microsoft.Data.Sqlite.SqliteException ex){return Bad(FolderConstraintMessage(ex,kind),409);}
             }
             finally{v.Gate.Release();}
         });
