@@ -14,7 +14,7 @@ static partial class McpLocal
     {
         string section=ReadString(args,"section");
         if(ArchiveRules.Module(workspace,section) is null)
-            throw new IOException("section 与当前工作区不匹配。");
+            throw new McpKnownRejectionException("section 与当前工作区不匹配。");
         return section;
     }
     private static string ArchiveUrl(string workspace,string section,long? id=null)=>
@@ -100,13 +100,13 @@ static partial class McpLocal
             {
                 string section=ArchiveSection(workspace,args);
                 if(string.IsNullOrWhiteSpace(ReadString(args,"name")))
-                    throw new IOException("档案名称不能为空。");
+                    throw new McpKnownRejectionException("档案名称不能为空。");
                 var data=Patch(new JsonObject(),args,ArchiveFields);
                 if(section=="achievement"&&workspace=="company")
                     data["folderId"]=ReadId(args,"folder_id");
                 else if(args.TryGetProperty("folder_id",out var supplied)&&
                     supplied.ValueKind!=JsonValueKind.Null)
-                    throw new IOException("该档案分类不使用父目录 ID。");
+                    throw new McpKnownRejectionException("该档案分类不使用父目录 ID。");
                 return await RequestAsync(client,HttpMethod.Post,
                     V2Url(workspace,"archive"),ArchivePayload(data,section));
             }
@@ -114,11 +114,11 @@ static partial class McpLocal
             {
                 string section=ArchiveSection(workspace,args);
                 if(args.TryGetProperty("folder_id",out _))
-                    throw new IOException("更新档案属性不能改变归属目录，请在页面中执行转移。");
+                    throw new McpKnownRejectionException("更新档案属性不能改变归属目录，请在页面中执行转移。");
                 long id=ReadId(args,"archive_id");
                 var current=await RequestAsync(client,HttpMethod.Get,ArchiveUrl(workspace,section,id));
                 if(current["businessData"] is not JsonObject data)
-                    throw new IOException("档案业务数据无效。");
+                    throw new McpKnownRejectionException("档案业务数据无效。");
                 return await RequestAsync(client,HttpMethod.Put,ArchiveUrl(workspace,section,id),
                     ArchivePayload(Patch((JsonObject)data.DeepClone(),args,ArchiveFields),section));
             }
@@ -153,7 +153,7 @@ static partial class McpLocal
                 var current=await RequestAsync(client,HttpMethod.Get,
                     V2Url(workspace,"archive_folder",id));
                 long parent=current["folder"]?["parent"]?["id"]?.GetValue<long>()
-                    ??throw new IOException("系统根目录不可修改。");
+                    ??throw new McpKnownRejectionException("系统根目录不可修改。");
                 return await RequestAsync(client,HttpMethod.Put,
                     V2Url(workspace,"archive_folder",id),
                     new JsonObject{["archiveFolder"]=new JsonObject{
@@ -185,6 +185,6 @@ static partial class McpLocal
     }
     private static void RequireCompany(string workspace)
     {
-        if(workspace!="company")throw new IOException("业务档案实体目录只属于公司工作区。");
+        if(workspace!="company")throw new McpKnownRejectionException("业务档案实体目录只属于公司工作区。");
     }
 }

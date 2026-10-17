@@ -27,6 +27,20 @@ static class NativeMcpArchiveSmoke
             "list_archive_folders","create_archive_folder","update_archive_folder",
             "delete_archive_folder","list_general","create_general","update_general",
             "delete_general"}.All(names.Contains),"12 native archive/general actions registered");
+        // ISS-002: invalid archive classification is a known local refusal,
+        // not an unknown write outcome.
+        string badSectionId=Guid.NewGuid().ToString("N");
+        var badSection=await Run("create_archive",new{
+            workspace="company",section="academic",name="错误分类测试",
+            request_id=badSectionId
+        });
+        var badSectionLog=await Run("get_operation_result",new{
+            workspace="company",request_id=badSectionId
+        });
+        Check(badSection["status"]?.GetValue<string>()=="failed" &&
+              badSectionLog["state"]?.GetValue<string>()=="done" &&
+              badSectionLog["businessOk"]?.GetValue<bool>()==false,
+              "invalid section is a durable, definitive local rejection");
         string tag="N204-MCP-"+Guid.NewGuid().ToString("N")[..8];
         var roots=await Run("list_archive_folders",new{workspace="company"});
         long root=roots.AsArray().First(x=>
