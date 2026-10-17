@@ -140,7 +140,9 @@ const sample=k=>{
   return (mock[space]&&mock[space][k])||[];
 };
 const isProject=k=>k==='researchProject'||k==='horizontalProject';
-const fmtSize=n=>n>=1024*1024?(n/1024/1024).toFixed(1)+' MiB':(n/1024).toFixed(1)+' KiB';
+const MAX_ORIGINAL_BYTES=8*1024*1024*1024;
+const fmtSize=n=>n>=1024*1024*1024?(n/1024/1024/1024).toFixed(2)+' GiB':
+ n>=1024*1024?(n/1024/1024).toFixed(1)+' MiB':(n/1024).toFixed(1)+' KiB';
 window.addEventListener('beforeunload',ev=>{if(localFileTaskActive){ev.preventDefault();ev.returnValue='';}});
 function notice(message,bad=false){const e=el('toast');e.textContent=message;e.className=bad?'visible bad':'visible';clearTimeout(notice.timer);notice.timer=setTimeout(()=>e.className='',4300);}
 async function api(path,opts={}){
@@ -376,7 +378,7 @@ function realDetail(){
  '<div class="info"><label>已归档原件</label><strong>'+groups.size+' 份</strong></div></div></section>'+
  '<section class="white detailsection"><div class="detailsectionhead"><h2>附件资料</h2>'+
  '<button class="btn primary" data-action="upload">＋ 上传原件</button></div><div class="detailbody">'+
- '<input type="file" id="uploadInput" multiple hidden><p class="hint">支持更新指定同名原件或单独归档新原件，保留可展开的历史版本。单文件上限 64 MiB。</p>'+
+ '<input type="file" id="uploadInput" multiple hidden><p class="hint">支持更新指定同名原件或单独归档新原件，保留可展开的历史版本。单文件上限 8 GiB。</p>'+
  ([...groups.values()].map(g=>{g.sort((a,b)=>b.version-a.version||b.id-a.id);
  return '<div class="business-file-group">'+fileLine(g[0],g.length>1,true)+
   '<button class="btn btn-sm" data-v2-ip-version="'+g[0].id+'">上传新版本</button>'+
@@ -805,7 +807,7 @@ function businessAttachmentList(kind,ownerId,section=''){
  return '<div class="tabletools"><b>原件附件 '+groups.size+' 份</b><div class="actions">'+category+
  (['ip','project','contract'].includes(kind)?'':'<label class="file-dedup-choice"><input type="checkbox" id="businessReuseExisting"> 同内容复用存储</label>')+
  '<button class="btn primary" data-action="businessUpload">＋ 上传原件</button></div></div>'+
- '<p class="hint">'+(['ip','project','contract','archive'].includes(kind)?'按内容摘要查重并明确选择共享身份、复用内容、独立保存或取消；支持文件历史版本。':'同名原件可选择更新已有版本链，或作为独立新文件归档；同工作区共享引用自动显示新版本。')+' 单文件上限 64 MiB。</p>'+
+ '<p class="hint">'+(['ip','project','contract','archive'].includes(kind)?'按内容摘要查重并明确选择共享身份、复用内容、独立保存或取消；支持文件历史版本。':'同名原件可选择更新已有版本链，或作为独立新文件归档；同工作区共享引用自动显示新版本。')+' 单文件上限 8 GiB。</p>'+
  ([...groups.values()].map(g=>{g.sort((a,b)=>b.version-a.version||b.id-a.id);
   return '<div class="business-file-group">'+line(g[0],g.length>1,true)+
    (['ip','project','contract','archive'].includes(kind)?'<button class="btn btn-sm" data-v2-ip-version="'+g[0].id+'">上传新版本</button>':'')+
@@ -825,7 +827,7 @@ async function uploadBusinessBatch(files,meta){
  try{
   for(const file of files){
    if(space!==workspace){errors.push('工作区已切换，上传终止');break;}
-   if(file.size>64*1024*1024){errors.push(file.name+'：超过 64 MiB');continue;}
+   if(file.size>MAX_ORIGINAL_BYTES){errors.push(file.name+'：超过 8 GiB');continue;}
    if(!['ip','project','contract','archive','general'].includes(meta.kind)){
     errors.push(file.name+'：不支持的资料归属类别');continue;
    }
@@ -840,6 +842,8 @@ async function uploadBusinessBatch(files,meta){
   (errors.length?'；'+errors.join('；'):''),errors.length>0);
 }
 async function previewOriginal(file,url){
+ if(file.size>128*1024*1024)
+  return notice('大于 128 MiB 的文件不进行浏览器内预览，请直接下载原件。',true);
  const serial=++previewSerial;
  const extension=(file.name.split('.').pop()||'').toLowerCase();
  const images=['png','jpg','jpeg','gif','webp','bmp'];
@@ -888,19 +892,48 @@ el('filePreviewDialog').addEventListener('close',()=>{
  el('filePreviewBody').classList.remove('pdf-mode');
  if(activePreviewUrl){URL.revokeObjectURL(activePreviewUrl);activePreviewUrl=null;}
 });
-async function downloadBusinessAttachment(fileId){
- try{
-  const file=businessFileRows.find(f=>f.id===fileId);if(!file)return;
-  if(!file.v2)throw Error('此附件不是 V2 原件，刷新资料库后重试。');
-  const path=IPSysNativeIp.fileUrl(space,file);
+// Avoid buffering a multi-GiB Blob in browser memory on ordinary downloads.
+async function saveOriginalToDisk(file,path){
+ if(file.size>32*1024*1024){
+  if(typeof window.showSaveFilePicker!=='function')
+   throw Error('大附件下载需使用支持本地文件流写入的新版 Edge 或 Chrome。');
+  // Invoke picker before network awaits while the click still has user activation.
+  const handle=await window.showSaveFilePicker({suggestedName:file.name});
+  const writer=await handle.createWritable();
+  let finished=false,received=0;
+  try{
+   const response=await api(path);
+   if(!response.body)throw Error('浏览器不支持流式下载。');
+   const reader=response.body.getReader();
+   try{
+    while(true){
+     const item=await reader.read();
+     if(item.done)break;
+     received+=item.value.byteLength;
+     if(received>file.size)throw Error('原件下载长度异常。');
+     await writer.write(item.value);
+    }
+   }finally{reader.releaseLock();}
+   if(received!==file.size)throw Error('原件下载不完整，请核对数据库与磁盘。');
+   await writer.close();finished=true;
+  }finally{if(!finished)try{await writer.abort()}catch{}}
+ }else{
   const response=await api(path);
   const blob=await response.blob();
+  if(blob.size!==file.size)throw Error('原件下载长度异常。');
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');a.href=url;a.download=file.name;
   document.body.append(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),60000);
-  notice('开始下载原件：'+file.name);
- }catch(e){notice(e.message,true);}
+ }
+}
+async function downloadBusinessAttachment(fileId){
+ try{
+  const file=businessFileRows.find(f=>f.id===fileId);if(!file)return;
+  if(!file.v2)throw Error('此附件不是 V2 原件，刷新资料库后重试。');
+  await saveOriginalToDisk(file,IPSysNativeIp.fileUrl(space,file));
+  notice('原件已下载：'+file.name);
+ }catch(e){if(e.name!=='AbortError')notice(e.message,true);}
 }
 function projectDetail(){
  const p=projectRows.find(x=>x.id===detail.id);
@@ -1866,7 +1899,7 @@ async function uploadGeneralBatch(id,files){
  try{
   for(const file of files){
    if(space!==workspace){errors.push('工作区已切换，上传终止');break;}
-   if(file.size>64*1024*1024){errors.push(file.name+'：超过 64 MiB');continue;}
+   if(file.size>MAX_ORIGINAL_BYTES){errors.push(file.name+'：超过 8 GiB');continue;}
    if(!liveRows.some(r=>r.id===id)){errors.push('资料已不存在');break;}
    try{
     const saved=await IPSysNativeIp.upload(api,file,{kind:'general',ownerId:id},workspace);
@@ -1878,8 +1911,10 @@ async function uploadGeneralBatch(id,files){
   (errors.length?'；'+errors.join('；'):''),errors.length>0);
 }
 async function download(file){
- try{const result=await api(IPSysNativeIp.fileUrl(space,file));const blob=await result.blob();const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=file.name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);notice('已开始下载 '+file.name);
- }catch(e){notice(e.message,true);}
+ try{
+  await saveOriginalToDisk(file,IPSysNativeIp.fileUrl(space,file));
+  notice('原件已下载：'+file.name);
+ }catch(e){if(e.name!=='AbortError')notice(e.message,true);}
 }
 function openLiveRecord(id){detail={kind:'general',id};page='general';render();el('content').scrollTo(0,0);}
 function openMockRecord(kind,id){if(page!==kind)archiveGroup=null;detail={kind,id};page=kind;render();el('content').scrollTo(0,0);}

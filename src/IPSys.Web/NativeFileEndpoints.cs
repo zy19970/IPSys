@@ -18,7 +18,7 @@ static class NativeFileEndpoints
         if(!Vault.WorkspaceValid(workspace))return fail("无效工作区。",400);
         long? length=ctx.Request.ContentLength;
         if(length is null or <0 or >NativeFileStore.MaxFileLength)
-            return fail("本阶段文件必须声明长度且不超过 64 MiB。",413);
+            return fail("文件必须声明准确长度且不超过 8 GiB。",413);
         NativeFileMetadataInput input;
         string? note;
         try

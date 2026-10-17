@@ -157,7 +157,7 @@ static partial class McpLocal
                 var local=new FileInfo(McpLocalFilePath(path,"paths"));
                 if(!local.Exists)throw new FileNotFoundException("本机文件不存在。");
                 if(local.Length>NativeFileStore.MaxFileLength)
-                    throw new IOException("文件超过 64 MiB 上限。");
+                    throw new IOException("文件超过 8 GiB 上限。");
                 string original=NativeFileStore.ValidName(local.Name);
                 using(var stream=new FileStream(local.FullName,FileMode.Open,
                     FileAccess.Read,FileShare.Read,1024*1024,
@@ -235,7 +235,7 @@ static partial class McpLocal
                     FileNotFoundException=>"指定本机文件不存在。",
                     IOException when !ex.Message.StartsWith("IPSys ",StringComparison.Ordinal) &&
                         !ex.Message.Contains("发现内容一致",StringComparison.Ordinal) &&
-                        !ex.Message.Contains("64 MiB",StringComparison.Ordinal) &&
+                        !ex.Message.Contains("8 GiB",StringComparison.Ordinal) &&
                         !ex.Message.Contains("路径",StringComparison.Ordinal) &&
                         !ex.Message.Contains("关联",StringComparison.Ordinal) &&
                         !ex.Message.Contains("文件",StringComparison.Ordinal)=>

@@ -34,7 +34,7 @@
 
 ## 第三批 MCP 长时间文件任务（2026-10-17）
 
-`start_upload_task` 使用与原 `upload_files` 完全一致的参数（`workspace`、`kind`、`owner_id`、`paths` 及已有重复文件、追加版本、资料分类参数），**额外强制提供唯一 `request_id`**，长度 8–128 个非控制字符。每次支持 1–20 个本机绝对路径，单文件仍不超过 64 MiB。GUI 宿主先把请求写入加密 `mcp_operations`（`pending`），再在宿主进程异步上传，接口立即返回 `accepted=true`、编号和初始状态。相同编号同参数重入不再执行第二次上传；已完成编号返回 `accepted=false`，不同参数复用同编号会被拒绝。
+`start_upload_task` 使用与原 `upload_files` 完全一致的参数（`workspace`、`kind`、`owner_id`、`paths` 及已有重复文件、追加版本、资料分类参数），**额外强制提供唯一 `request_id`**，长度 8–128 个非控制字符。每次支持 1–20 个本机绝对路径，单文件当前代码上限为 8 GiB；超过 2 GiB 建议用异步任务，需进行长时间本机验收。GUI 宿主先把请求写入加密 `mcp_operations`（`pending`），再在宿主进程异步上传，接口立即返回 `accepted=true`、编号和初始状态。相同编号同参数重入不再执行第二次上传；已完成编号返回 `accepted=false`，不同参数复用同编号会被拒绝。
 
 `get_task_status(workspace,request_id)` 支持上传中的 `queued`、`running`、`cancelling`、`requested/completed/succeeded/failed`、`currentFile`、`bytesSent/totalBytes`、`cancelRequested`。字节数反映客户端流读取/发送，不代表服务器已写入 SQLCipher。任务从活动列表移除后返回日志状态 `done/uncertain/not_found`、`businessOk` 和 `result`；重启宿主会丢失实时计数，最终仍以加密日志为准。
 
@@ -117,7 +117,7 @@ MCP 写操作（新增、修改、删除、上传，以及已有 `v2_*` 写操�
 
 现有 V2 HTTP 能力补齐至 MCP：`update_contract` 编辑合同；`get_file_details`、`update_file_metadata`、`download_file_version` 管理文件属性、版本和指定版本本机下载；`associate_file`、`restore_file_link`、`copy_file` 管理原件共享、关联恢复及完整历史复制；`transfer_project`、`transfer_ip`、`transfer_archive`、`transfer_general` 处理整份资料复制/移动；`search_records` 提供跨业务搜索；`list_trash` 与 `restore_trash` 查询及精确恢复回收站条目。
 
-写操作使用可选 `request_id` 幂等日志；回收站恢复必须提供 `list_trash` 原样返回的 kind/id/section。下载路径是 **运行 IPSys 的本机 Windows 电脑**上的绝对路径，仅新建文件、不覆盖已有文件。跨工作区复制文件必须使用 `independent-content`，共享关联只允许同工作区。单个文件上限仍为 64 MiB；所有操作需要当前数据库解锁和手动 MCP 授权。
+写操作使用可选 `request_id` 幂等日志；回收站恢复必须提供 `list_trash` 原样返回的 kind/id/section。下载路径是 **运行 IPSys 的本机 Windows 电脑**上的绝对路径，仅新建文件、不覆盖已有文件。跨工作区复制文件必须使用 `independent-content`，共享关联只允许同工作区。单个文件当前代码上限为 8 GiB；所有操作需要当前数据库解锁和手动 MCP 授权。
 
 ## MCP 管道安全补强验收（2026-10-17）
 
@@ -186,7 +186,7 @@ stdio 初始化只声明真正支持的 `2025-06-18` 协议版本；空行静默
 
 `create_ip` 的必填参数为 `workspace`、`name`、`ip_type`，`update_ip` 使用 `ip_id` 查找记录。可填写 `status`、`applicants`、`right_holders`、`creators`、`application_no`、`application_date`、`publication_no`、`publication_date`、`grant_notice_no`、`grant_notice_date`、`publication_info`、`grant_date`、`registration_no`、`first_published_date`、`registration_date`、`category`、`remarks`、`tags`。支持发明、实用新型、外观设计专利等既有七种知识产权类型，状态和日期自动走原有业务校验；更新时不改变未传入的字段。
 
-上传不会无提示合并已有原件；单文件上限 64 MiB。业务记录软删除可在回收站恢复；删除原件只解除指定 LinkId，原件版本和其它共享位置保留，物理清理仍受历史引用保护。
+上传不会无提示合并已有原件；当前单文件上限 8 GiB，超 2 GiB 参见 LARGE_FILE_TESTING.md。业务记录软删除可在回收站恢复；删除原件只解除指定 LinkId，原件版本和其它共享位置保留，物理清理仍受历史引用保护。
 
 ## N2-04 档案、目录及综合资料 MCP 工具
 
@@ -202,7 +202,7 @@ stdio 初始化只声明真正支持的 `2025-06-18` 协议版本；空行静默
 
 历史版本下载：调用 `get_file_details` 核对 FileId 和版本，再用 `download_file_version` 指定 `version` 与 `output_path`。路径指向 **IPSys 宿主所在 Windows 电脑**，目标目录须存在、具备写权限，目标文件必须不存在。新文件的完整历史复制用 `copy_file`；跨工作区只能选择 `independent-content`。
 
-回收站恢复：`list_trash` 后从目标条目原样获取 `kind`、`id`、`section`，交给 `restore_trash`。跨工作区转移用 `transfer_project/ip/archive/general` 和 `target_workspace`；`move` 默认不启用，移动前确认来源和归属关系。原件容量上限仍是 64 MiB。
+回收站恢复：`list_trash` 后从目标条目原样获取 `kind`、`id`、`section`，交给 `restore_trash`。跨工作区转移用 `transfer_project/ip/archive/general` 和 `target_workspace`；`move` 默认不启用，移动前确认来源和归属关系。原件容量代码上限现为 8 GiB，超 2 GiB 的实机验收待补充。
 
 ## Codex 提示词示例
 

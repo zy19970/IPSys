@@ -62,7 +62,7 @@ dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-conta
 
 ## 3. 当前已知边界
 
-正式 V2 `NativeFileStore.MaxFileLength` 仍限 **64 MiB/单文件**；用户此前大文件的本机通过记录不能证明 V2 已超过 2 GiB 往返。ZIP 尚不支持 ZIP64（小于 4 GiB），Excel 输入限 8 MiB/5000 行，合同仅只读导出；公司/个人不得共享 FileObject。
+**大文件代码更新（待专项验收）**：正式 V2 单文件上限调整为 **8 GiB**，仍以 1 MiB SQLCipher 分块流式保存，网页/MCP 上传与浏览器大文件直接下载贯通；ZIP 导出新增 ZIP64，Excel 输入仍限 8 MiB/5000 行。超过 2 GiB 的 SQLCipher/HTTP 哈希往返和真实 Edge/Chrome、磁盘故障应单独留验收证据，详见 [LARGE_FILE_TESTING.md](./LARGE_FILE_TESTING.md)。
 
 **数据安全验收尚未全部完成**：磁盘不足、SSD 异常拔出、退出过程、手工备份副本一致性、V2 版本识别/未来受控升级和超大文件的完整往返。密码修改等设置页项目尚有未接入入口。不要将这些项目写成「已支持/已验收」，不要在未取得新有效备份前删除来源文件。
 

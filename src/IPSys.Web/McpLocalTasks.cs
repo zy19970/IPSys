@@ -202,7 +202,7 @@ static partial class McpLocal
         return await GetUploadTaskStatusAsync(vault,workspace,requestId,stop);
     }
 
-    // Measure bytes as StreamContent reads them, without buffering 64 MiB.
+    // Measure bytes as StreamContent reads them, without buffering multi-GiB originals.
     private sealed class ProgressReadStream(Stream source,UploadTask progress):Stream
     {
         public override bool CanRead=>true;

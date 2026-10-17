@@ -45,7 +45,7 @@ static class NativeFileChoiceEndpoints
             if(!Vault.WorkspaceValid(workspace))return fail("无效工作区。",400);
             long? length=ctx.Request.ContentLength;
             if(length is null or <0 or >NativeFileStore.MaxFileLength)
-                return fail("文件必须声明大小且单文件不超过 64 MiB。",413);
+                return fail("文件必须声明准确大小且不超过 8 GiB。",413);
             NativeFileMetadataInput input;
             string? note;
             string? category;

@@ -14,7 +14,7 @@ record NativeFileUploadResult(long FileId,int Version,long Size,string Sha256);
 // is atomic with creation; general sharing and deduplication are N3-02/N3-03/04.
 static class NativeFileStore
 {
-    public const long MaxFileLength=64L*1024*1024;
+    public const long MaxFileLength=8L*1024*1024*1024; // 8 GiB, handled in 1 MiB chunks.
     private const int ChunkSize=1024*1024;
 
     internal static string ValidName(string? name)
@@ -105,7 +105,7 @@ static class NativeFileStore
     {
         Scope(workspace);
         if(expectedLength<0 || expectedLength>MaxFileLength)
-            throw new ArgumentException("本阶段单文件限制 64 MiB 且必须声明准确长度。");
+            throw new ArgumentException("单文件不得超过 8 GiB，且必须声明准确长度。");
         var data=Normalize(input);
         versionNote=Optional(versionNote,500,"版本说明");
         if(materialCategory!=null && materialCategory is not

@@ -4,6 +4,7 @@
 const IPSysExport=(()=>{
  const encoder=new TextEncoder();
  const MAX32=0xffffffff;
+ const ZIP32_SAFE_LIMIT=MAX32-64*1024*1024; // Reserve room for paths and central directory.
  let active=null;
  let hideTimer=null;
  function cleanName(value,isFile=false){
@@ -164,6 +165,10 @@ const IPSysExport=(()=>{
  }
  const u16=(d,at,val)=>d.setUint16(at,val,true);
  const u32=(d,at,val)=>d.setUint32(at,val>>>0,true);
+ const u64=(d,at,val)=>{
+  if(!Number.isSafeInteger(val)||val<0)throw Error('ZIP64 偏移量不合法。');
+  d.setBigUint64(at,BigInt(val),true);
+ };
  function dosDate(date){
   const y=Math.min(2107,Math.max(1980,date.getFullYear()));
   return ((y-1980)<<9)|((date.getMonth()+1)<<5)|date.getDate();
@@ -171,27 +176,58 @@ const IPSysExport=(()=>{
  function dosTime(date){
   return (date.getHours()<<11)|(date.getMinutes()<<5)|(date.getSeconds()>>1);
  }
- function localHeader(name,date){
-  const bytes=encoder.encode(name),b=new Uint8Array(30+bytes.length),d=new DataView(b.buffer);
-  u32(d,0,0x04034b50);u16(d,4,20);u16(d,6,0x0808);u16(d,8,0);
+ function localHeader(name,date,zip64=false){
+  const bytes=encoder.encode(name),extra=zip64?20:0;
+  if(bytes.length>65535)throw Error('ZIP 文件名过长。');
+  const b=new Uint8Array(30+bytes.length+extra),d=new DataView(b.buffer);
+  u32(d,0,0x04034b50);u16(d,4,zip64?45:20);u16(d,6,0x0808);u16(d,8,0);
   u16(d,10,dosTime(date));u16(d,12,dosDate(date));
-  u16(d,26,bytes.length);b.set(bytes,30);return b;
+  if(zip64){u32(d,18,MAX32);u32(d,22,MAX32);}
+  u16(d,26,bytes.length);u16(d,28,extra);b.set(bytes,30);
+  if(zip64){
+   const p=30+bytes.length;
+   u16(d,p,1);u16(d,p+2,16);u64(d,p+4,0);u64(d,p+12,0);
+  }
+  return b;
  }
- function descriptor(size,crc){
-  const b=new Uint8Array(16),d=new DataView(b.buffer);
-  u32(d,0,0x08074b50);u32(d,4,crc);u32(d,8,size);u32(d,12,size);return b;
+ function descriptor(size,crc,zip64=false){
+  const b=new Uint8Array(zip64?24:16),d=new DataView(b.buffer);
+  u32(d,0,0x08074b50);u32(d,4,crc);
+  if(zip64){u64(d,8,size);u64(d,16,size);}
+  else{u32(d,8,size);u32(d,12,size);}
+  return b;
  }
- function centralHeader(item){
-  const bytes=encoder.encode(item.name),b=new Uint8Array(46+bytes.length),d=new DataView(b.buffer);
-  u32(d,0,0x02014b50);u16(d,4,20);u16(d,6,20);u16(d,8,0x0808);
-  u16(d,10,0);u16(d,12,dosTime(item.date));u16(d,14,dosDate(item.date));
-  u32(d,16,item.crc);u32(d,20,item.size);u32(d,24,item.size);
-  u16(d,28,bytes.length);u32(d,42,item.offset);b.set(bytes,46);return b;
+ function centralHeader(item,zip64=false){
+  const bytes=encoder.encode(item.name),extra=zip64?28:0;
+  if(bytes.length>65535)throw Error('ZIP 文件路径过长。');
+  const b=new Uint8Array(46+bytes.length+extra),d=new DataView(b.buffer);
+  u32(d,0,0x02014b50);u16(d,4,zip64?45:20);u16(d,6,zip64?45:20);
+  u16(d,8,0x0808);u16(d,10,0);u16(d,12,dosTime(item.date));u16(d,14,dosDate(item.date));
+  u32(d,16,item.crc);u32(d,20,zip64?MAX32:item.size);u32(d,24,zip64?MAX32:item.size);
+  u16(d,28,bytes.length);u16(d,30,extra);u32(d,42,zip64?MAX32:item.offset);
+  b.set(bytes,46);
+  if(zip64){
+   const p=46+bytes.length;
+   u16(d,p,1);u16(d,p+2,24);
+   u64(d,p+4,item.size);u64(d,p+12,item.size);u64(d,p+20,item.offset);
+  }
+  return b;
  }
- function endHeader(count,offset,size){
-  const b=new Uint8Array(22),d=new DataView(b.buffer);
-  u32(d,0,0x06054b50);u16(d,8,count);u16(d,10,count);
-  u32(d,12,size);u32(d,16,offset);return b;
+ function endHeader(count,offset,size,zip64=false){
+  if(!zip64){
+   const b=new Uint8Array(22),d=new DataView(b.buffer);
+   u32(d,0,0x06054b50);u16(d,8,count);u16(d,10,count);
+   u32(d,12,size);u32(d,16,offset);return b;
+  }
+  // ZIP64 End of Central Directory, locator, and backwards-compatible EOCD.
+  const b=new Uint8Array(56+20+22),d=new DataView(b.buffer);
+  const endOffset=offset+size;
+  u32(d,0,0x06064b50);u64(d,4,44);
+  u16(d,12,45);u16(d,14,45);
+  u64(d,24,count);u64(d,32,count);u64(d,40,size);u64(d,48,offset);
+  u32(d,56,0x07064b50);u64(d,64,endOffset);u32(d,72,1);
+  u32(d,76,0x06054b50);u16(d,84,0xffff);u16(d,86,0xffff);
+  u32(d,88,MAX32);u32(d,92,MAX32);return b;
  }
  async function exportFolder(root,items,signal,report){
   const rootUsed=await existingNames(root);
@@ -234,12 +270,12 @@ const IPSysExport=(()=>{
    status('导出文件夹：'+(i+1)+' / '+items.length+'，成功 '+report.success+'，失败 '+report.failures.length);
   }
  }
- async function exportZip(fileHandle,items,signal,report){
+ async function exportZip(fileHandle,items,signal,report,zip64=false){
   const writer=await fileHandle.createWritable();
   let offset=0,done=false;
   const central=[];
   async function write(bytes){
-   if(offset+bytes.byteLength>=MAX32)throw Error('ZIP 超过 4 GiB 容量范围，请缩小选择规模。');
+   if(!zip64&&offset+bytes.byteLength>=MAX32)throw Error('ZIP32 容量已满，请改用 ZIP64。');
    try{await writer.write(bytes)}catch(err){err.fatal=true;throw err}
    offset+=bytes.byteLength;
   }
@@ -248,9 +284,9 @@ const IPSysExport=(()=>{
     if(signal.aborted)break;
     const file=items[i],begin=offset,date=new Date();
     try{
-     await write(localHeader(file.path,date));
+     await write(localHeader(file.path,date,zip64));
      const info=await pipe(file,write,signal);
-     await write(descriptor(info.size,info.crc));
+     await write(descriptor(info.size,info.crc,zip64));
      central.push({name:file.path,offset:begin,date,...info});
      report.success++;
     }catch(err){
@@ -263,11 +299,10 @@ const IPSysExport=(()=>{
     status('生成 ZIP：'+(i+1)+' / '+items.length+'，成功 '+report.success+'，失败 '+report.failures.length);
    }
    if(signal.aborted)throw new DOMException('已取消','AbortError');
-   if(central.length>65535)throw Error('ZIP 文件数超过 65535，请分批导出。');
    if(central.length===0)throw Error('所选附件全部导出失败，未生成 ZIP。');
    const start=offset;
-   for(const entry of central)await write(centralHeader(entry));
-   await write(endHeader(central.length,start,offset-start));
+   for(const entry of central)await write(centralHeader(entry,zip64));
+   await write(endHeader(central.length,start,offset-start,zip64));
    await writer.close();done=true;
   }finally{if(!done){try{await writer.abort()}catch{}}}
  }
@@ -295,10 +330,10 @@ const IPSysExport=(()=>{
   if(!['folder','zip'].includes(format))throw Error('无效导出格式');
   if(selected.some(file=>!validOriginal(file)))
    return notice('选择的原件缺少有效 V2 FileId 或版本号，请刷新资料列表后重新导出。',true);
-  if(format==='zip'){
-   const bytes=selected.reduce((n,f)=>n+f.size+200+encoder.encode(f.name).length,0);
-   if(bytes>=MAX32)return notice('本版 ZIP 不支持超过 4 GiB，请分批导出。',true);
-  }
+  // All offsets remain JavaScript-safe integers; ZIP64 is used above the
+  // classic 4 GiB / 65535-entry limits and preserves the older small ZIP layout.
+  const projected=selected.reduce((n,f)=>n+f.size+2048+2*encoder.encode(f.name).length,0);
+  const zip64=format==='zip'&&(projected>=ZIP32_SAFE_LIMIT||selected.length>65535);
   if(hideTimer!==null&&typeof clearTimeout==='function')clearTimeout(hideTimer);
   hideTimer=null;
   let target;
@@ -317,7 +352,7 @@ const IPSysExport=(()=>{
   let cancelled=false,discarded=false;
   try{
    if(format==='folder')await exportFolder(target,plan,abort.signal,report);
-   else await exportZip(target,plan,abort.signal,report);
+   else await exportZip(target,plan,abort.signal,report,zip64);
    cancelled=abort.signal.aborted;
   }catch(err){
    cancelled=isCancel(err);

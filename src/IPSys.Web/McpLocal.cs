@@ -229,7 +229,7 @@ static partial class McpLocal
             ["file_id"]=Field("integer","原件 FileId"),
             ["link_id"]=Field("integer","关联 LinkId")
         },["workspace","ip_id","file_id","link_id"]),
-        Tool("upload_files","本机上传到 V2 项目/合同/知识产权/档案/综合资料 FolderId；同内容必须显式确认 duplicate_mode；追加版本需为本 Folder 已关联 FileId。每份上限 64 MiB。",new(){
+        Tool("upload_files","本机上传到 V2 项目/合同/知识产权/档案/综合资料 FolderId；同内容必须显式确认 duplicate_mode；追加版本需为本 Folder 已关联 FileId。每份上限 8 GiB；大文件建议使用 start_upload_task 异步上传并轮询状态。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
             ["kind"]=Field("string","原件归属类别",["project","contract","ip","archive","general"]),
             ["section"]=Field("string","归档分类 archive 必填：certificate、achievement、academic；其它类型不需要"),
@@ -504,10 +504,10 @@ static partial class McpLocal
         using var reader=new StreamReader(pipe,new UTF8Encoding(false),false,1024,true);
         await writer.WriteLineAsync(JsonSerializer.Serialize(new {name,arguments=fields},Json));
         string? line;
-        try { line=await reader.ReadLineAsync().WaitAsync(TimeSpan.FromMinutes(12)); }
+        try { line=await reader.ReadLineAsync().WaitAsync(name=="upload_files"?TimeSpan.FromHours(3):TimeSpan.FromMinutes(12)); }
         catch(TimeoutException ex)
         {
-            throw new IOException("MCP 请求等待超过 12 分钟，执行结果可能不确定。"+
+            throw new IOException("MCP 请求等待超时，执行结果可能不确定。"+
                 "请通过相同 request_id 查询 get_operation_result，切勿盲目重试写操作。",ex);
         }
         if(line==null)throw new IOException("IPSys 本机 MCP 管道已断开；"+
@@ -778,7 +778,8 @@ static partial class McpLocal
     {
         if(!vault.McpEnabled)throw new IOException("MCP 未授权：请在 IPSys 的系统设置中手动开启本机 MCP。");
         string workspace=Workspace(args);
-        using var client=new HttpClient {BaseAddress=new Uri(address),Timeout=TimeSpan.FromMinutes(10)};
+        using var client=new HttpClient {BaseAddress=new Uri(address),
+            Timeout=name=="upload_files"?TimeSpan.FromHours(3):TimeSpan.FromMinutes(10)};
         using var cancelOnExit=stop.Register(static state=>
             ((HttpClient)state!).CancelPendingRequests(),client);
         client.DefaultRequestHeaders.TryAddWithoutValidation("X-IPSys-Token",vault.SessionToken);

@@ -89,7 +89,7 @@ static partial class NativeFileChoiceStore
         if(!NativeFileStore.FolderActive(db,workspace,folderId))
             throw new KeyNotFoundException("目标文件夹不存在。");
         if(expectedSize<0 || expectedSize>NativeFileStore.MaxFileLength)
-            throw new ArgumentException("待上传文件超过当前 64 MiB 限制。");
+            throw new ArgumentException("待上传文件超过 8 GiB 限制。");
         input=NativeFileStore.Normalize(input);
         if(materialCategory!=null &&
            (materialCategory is not ("申请材料" or "通知文件" or "证书文件" or "其他材料") ||

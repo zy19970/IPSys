@@ -8,11 +8,17 @@ on:
       - "demo/ui-preview.html"
       - ".github/workflows/web-windows.yml"
   workflow_dispatch:
+    inputs:
+      large_file_smoke:
+        description: 'Run a real >2 GiB SQLCipher upload/download on this Windows runner'
+        type: boolean
+        required: false
+        default: false
 
 jobs:
   smoke:
     runs-on: windows-latest
-    timeout-minutes: 25
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -138,6 +144,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Export script syntax failed' }
           node src/IPSys.Web/tests/export-smoke.cjs
           if ($LASTEXITCODE -ne 0) { throw 'Directory/ZIP export smoke failed' }
+          node src/IPSys.Web/tests/zip64-smoke.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'ZIP64 large-offset header smoke failed' }
           node src/IPSys.Web/tests/ui-main-smoke.cjs
           if ($LASTEXITCODE -ne 0) { throw 'Merged UI structure smoke failed' }
           node src/IPSys.Web/tests/search-smoke.cjs
@@ -161,6 +169,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'UI preview JavaScript syntax failed' }
       - name: Verify SQLCipher and local HTTP roundtrip
         shell: pwsh
+        env:
+          IPSYS_LARGE_FILE_SMOKE: ${{ ((github.event_name == 'workflow_dispatch' && inputs.large_file_smoke) || contains(github.event.head_commit.message, '[large-file-test]')) && '1' || '0' }}
         run: |
           $report = Join-Path $env:RUNNER_TEMP 'ipsys-web-smoke.txt'
           $env:IPSYS_SMOKE_REPORT = $report

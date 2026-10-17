@@ -18,6 +18,8 @@ static class WebSmoke
     public static async Task Run(string address,Vault vault)
     {
         using var client=new HttpClient{BaseAddress=new Uri(address)};
+        bool large=Environment.GetEnvironmentVariable("IPSYS_LARGE_FILE_SMOKE")=="1";
+        if(large)client.Timeout=TimeSpan.FromHours(2);
         string dir=Path.Combine(Path.GetTempPath(),"IPSys-V2-"+
             Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
@@ -70,6 +72,7 @@ static class WebSmoke
             await NativeFolderHttpSmoke.VerifyAsync(client);
             await NativeArchiveHttpSmoke.VerifyAsync(client);
             await NativeFileHttpSmoke.VerifyAsync(client);
+            if(large)await NativeLargeFileHttpSmoke.VerifyAsync(client,project);
             await NativeFileLinkHttpSmoke.VerifyAsync(client);
             await NativeFileAssociateSmoke.VerifyAsync(client);
             await NativeFileCopyHttpSmoke.VerifyAsync(client);

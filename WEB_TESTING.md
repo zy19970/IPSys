@@ -1,5 +1,7 @@
 # IPSys Windows 验收与回归记录
 
+> **超 2 GiB 容量专项（2026-10-17，待最终实机验收）**：当前源码已经将单文件上限提升为 8 GiB，补齐 Kestrel/V2/MCP/网页校验、浏览器大文件流式下载及 ZIP64，新增大于 2 GiB SQLCipher/HTTP 数据往返可选专项和 ZIP64 自动测试。详细执行与安全边界见 [LARGE_FILE_TESTING.md](./LARGE_FILE_TESTING.md)。此说明只代表功能代码，不表示已有真实超过 2 GiB 用户实机结果；下文历史 64 MiB 上限属于对应旧构建。
+
 > **当前唯一测试入口（2026-10-17 接口收敛完成）**：源码 [`2620c109`](https://github.com/zy19970/IPSys/commit/2620c109043f779eeb57f411210f99bb2f21e554) 经 [Windows CI #39019604428](https://github.com/zy19970/IPSys/actions/runs/39019604428) **completed/success**，覆盖 Debug/Release、正式 stdio **59 个无 `v2_*` 前缀工具**、真实 SQLCipher/HTTP、原名项目/合同/IP CRUD、Node UI/导出检查。新版本本机 Agent 验收采用 [MCP_INTERFACE_CLEANUP_TEST.md](./MCP_INTERFACE_CLEANUP_TEST.md)；历史 `MCP_AGENT_FINAL_RETEST.md` 与 `MCP_TEST_RESULTS/2026-10-17/` 对应旧 **70** 工具/16 列表版本，原始结果 `PASS28/FAIL0/BLOCKED9` 仍为历史事实。当前 **13 个数组型列表**，本机真实跨权限、第二用户/会话、GUI 撤权及 ISS-016～018 修复后的独立黑盒复测尚待实际执行。不要把自动 CI 和历史实机两种验证级别混为一谈。
 
 
@@ -227,7 +229,7 @@ Windows CI 必须验证显式同用户管道 ACL/owner 校验、12 路以上并�
 | 门槛 | 当前状态 | 验收重点 |
 | --- | --- | --- |
 | T01 加密 | CI 基础通过，正式目标环境已验收 | 错密无法解密、没有静默明文降级 |
-| T02 超大文件 | **目标未达**，真实单文件上限 64 MiB；用户已通过的文件大小未知 | 2 GiB+ 分块往返及 5–20 GiB 目标库、SHA-256、内存 |
+| T02 超大文件 | **8 GiB 容量代码已实现、真实超 2 GiB 专项待跑**；历史实机测试大小未知 | 2 GiB+ 分块往返及 5–20 GiB 目标库、SHA-256、内存 |
 | T03 中断/SSD | 未测完整矩阵 | 写满、取消、断电/移动 SSD 拔出后不出现有效半成品 |
 | T04 手工备份 | 未完整验收 | 安全退出后复制、在新路径独立解密并逐文件哈希 |
 | T05 目录导出 | CI 通过、人工未全测 | Edge/Chrome 文件夹权限、重复名字、取消及 ZIP 部分失败 |
