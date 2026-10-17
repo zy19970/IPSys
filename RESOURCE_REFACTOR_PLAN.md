@@ -1,5 +1,7 @@
 # IPSys 统一资源内核重构方案与执行进度
 
+> **最新 MCP 第二批业务接口验收（2026-10-17）**：`main@6f8aede` 通过 [Windows CI #38989490476](https://github.com/zy19970/IPSys/actions/runs/38989490476) **completed/success**，新增 7 个业务工具；合同复制保留共享 FileId，目录移动及混排排序继续复用原生 SQLCipher V2 路由，无额外物理表或旧库迁移。跨权限客户端/长文件运行仍待实机。
+>
 > **MCP 第一批可靠性收尾更新（2026-10-17）**：`main@30ce4a1` 在 [Windows CI #38988662134](https://github.com/zy19970/IPSys/actions/runs/38988662134) **completed/success**，已覆盖 8 路静默管道饱和恢复、SID/SessionId 会话身份和 HTTP 400/404 写入日志确定失败重放；不改变 SQLCipher V2 模型与工具接口。后续仍按 N4 用户实机/权限/长任务/故障注入推进。
 >
 > 确认日期：2026-10-15。编制基线：`main@0b70bbe47dedef016ab218cb4e8b427e1d571140`。

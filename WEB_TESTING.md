@@ -1,5 +1,13 @@
 # IPSys Windows 验收与回归记录
 
+> **最新自动验收（2026-10-17）**：第二批 MCP 业务接口补齐源码 `6f8aede` 经 [Windows CI #38989490476](https://github.com/zy19970/IPSys/actions/runs/38989490476) **completed/success**；新增工具的真实 SQLCipher/命名管道集成回归已覆盖复制合同及共享附件、FileId 反向关联、移动目录/资料与列表混排排序、项目合同及普通档案排序、拒绝错误/越权输入。跨权限 WorkBuddy、不同登录会话及长任务仍待实机。
+
+### MCP 第二批业务接口专项验证（2026-10-17）
+
+本次新增 `copy_contract`、`list_file_links`、`move_folder`、`list_folder_entries`、`reorder_entries`、`reorder_records`、`reorder_archive_records`。自动测试见 `NativeMcpSmoke.cs` 和 `NativeMcpArchiveSmoke.cs`；使用新建可丢弃 SQLCipher V2 库，测试合同原件共享、关联拆分、父级更新、混排数据库顺序、错误请求不落库。
+
+用户实机验收请从 Codex/WorkBuddy 重新执行 tools/list 开始；先记录复制前的 FolderId、FileId、LinkId 和排序，再执行携唯一 `request_id` 的复制或排序，核对网页展示、回收站和附件实际下载是否一致。公司业务档案必须完整提供 `reorder_entries.items`；跨用户/提权或非提权的 MCP 连接、超时故障仍单独验收，不因为 CI 通过视为已验证。
+
 > **最新自动验收（2026-10-17）**：MCP 第一批可靠性收尾提交 `30ce4a1` 经 [Windows CI #38988662134](https://github.com/zy19970/IPSys/actions/runs/38988662134) **completed/success**，包含新增空闲管道饱和/会话隔离/HTTP 404 失败重放测试；不同 Windows 用户、跨提权等级和长文件任务仍是实机待测。
 
 ## 当前优先：N4 清理与 SQLCipher V2 完整实机验收（2026-10-16）

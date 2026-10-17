@@ -1,5 +1,7 @@
 # IPSys — 资料管理系统
 
+> **最新 MCP 自动验收（2026-10-17）**：第二批业务接口补齐源码 `6f8aede` 经 [Windows CI #38989490476](https://github.com/zy19970/IPSys/actions/runs/38989490476) **completed/success**；新开放 7 个本机 MCP 工具：`copy_contract`、`list_file_links`、`move_folder`、`list_folder_entries`、`reorder_entries`、`reorder_records`、`reorder_archive_records`。复用现有 V2 数据和权限。详细参数见 [MCP_CODEX.md](./MCP_CODEX.md)，真实跨权限和长文件实机验证仍待完成。
+
 > **MCP 可靠性最新验收（2026-10-17）**：提交 `30ce4a1` 增加空闲连接限时释放、同用户不同登录会话隔离、400/404 确定性失败记录及实际管道回归，[Windows CI #38988662134](https://github.com/zy19970/IPSys/actions/runs/38988662134) **completed/success**；真实 WorkBuddy 跨权限/多会话和长文件任务仍待实机。
 
 > **当前开发状态（2026-10-17）**：正式新库及业务入口全部使用 SQLCipher V2 Folder/File/版本/关联；N4 已完成旧物理表/路由收敛和 31 个停用 Store/Provider/HTTP/历史测试源码删除，复用的业务校验已移入 `BusinessRules.cs`。MCP 的 P0 并发修复、第一批写操作安全、第二批文件列表分页和第三批 14 项业务操作补齐均已完成代码及 Windows 自动验收；最新业务源码 `080a599` 对应 [Windows CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431) **completed/success**。Edge/Chrome、真实 Codex/WorkBuddy 双 Agent、长时间文件任务、大文件、故障注入及 T01–T09 仍待用户实机验证。

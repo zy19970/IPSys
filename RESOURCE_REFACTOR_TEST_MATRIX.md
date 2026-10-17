@@ -1,5 +1,7 @@
 # IPSys 统一资源内核重构：R0-02 回归与差异矩阵
 
+> **MCP 第二批业务接口自动验收（2026-10-17）**：`6f8aede` / [Windows CI #38989490476](https://github.com/zy19970/IPSys/actions/runs/38989490476) **completed/success**，新增合同复制、文件反向链接、移动业务目录、混排及项目/合同/档案排序回归（真实 SQLCipher/命名管道）。不同 Windows 用户、跨提权 WorkBuddy、并发长文件与故障注入仍为实机待测。
+>
 > **新增 MCP 专项验收（2026-10-17）**：`30ce4a1` / [Windows CI #38988662134](https://github.com/zy19970/IPSys/actions/runs/38988662134) **completed/success**，新增管道首报文超时/八路饱和恢复、登录会话隔离和 404 失败日志重放自动回归；MIC 跨权限、真实多登录用户、长任务故障注入仍需实机。
 >
 > **现行用法（2026-10-17）**：N2-04 V2 全业务与 N4 旧 Schema/源码清理已通过 Windows CI；MCP P0 及三批安全、分页和 14 项业务工具补齐亦已自动验收，最新业务代码 `080a599` 对应 [CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431) **completed/success**。F01–F17 继续保留核心 Folder/File 行为检查，MCP 新能力实测按 [WEB_TESTING.md](./WEB_TESTING.md) 专项矩阵推进；Edge/Chrome、Codex/WorkBuddy、2 GiB+ 与 T01–T09 仍待用户实机。

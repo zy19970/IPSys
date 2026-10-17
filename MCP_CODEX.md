@@ -1,5 +1,23 @@
 # IPSys 本机 Codex MCP
 
+> **最新 MCP 业务接口补齐（2026-10-17）**：源码 `6f8aede` 的 [Windows CI #38989490476](https://github.com/zy19970/IPSys/actions/runs/38989490476) **completed/success**。Debug/Release、MCP stdio、真实 SQLCipher/HTTP 与原有 Node 回归均通过。新增 7 个 V2 原生业务工具；上一轮空闲管道/会话隔离与失败日志修复继续有效。跨权限 WorkBuddy、多 Windows 用户/会话与长文件故障注入仍待实机。
+
+## 第二批 MCP 业务接口补齐（2026-10-17）
+
+现有 `--mcp` stdio 通道新增以下工具（工具清单须由 Agent 刷新），仍复用 IPSys 本机已授权 HTTP、SQLCipher V2 事务与 `request_id` 幂等日志：
+
+| 工具 | 参数与约束 |
+| --- | --- |
+| `copy_contract` | `workspace, contract_id`；同区同项目新建合同 FolderId，复制有效附件 LinkId 但共享原 FileId 及版本 |
+| `list_file_links` | `workspace, file_id`；按 FileId 返回当前有效/可见所属 FolderId、LinkId，不读取字节 |
+| `move_folder` | `workspace=company, kind=archive_folder/archive, entry_id, parent_id`；只用于公司 achievement 业务档案。目录 parent_id 可省略、null 或 0 表示根；资料必须指定正整数父目录，禁止自引用/循环 |
+| `list_folder_entries` | `workspace=company, parent_id`；parent_id=0 表示业务档案根，返回同级目录和资料混排 |
+| `reorder_entries` | `workspace=company, parent_id, items`；items 是完整排列的 `{kind:"folder"|"record",id:FolderId}`，缺失/重复/过期排列由业务路由拒绝 |
+| `reorder_records` | `workspace, kind=project/contract, ids`；选中的记录按 ids 排序，未选择的记录占原槽位 |
+| `reorder_archive_records` | `workspace, section, ids`；要求模块全部有效档案 ID。公司 achievement 混排应使用 `reorder_entries` |
+
+本批自动测试覆盖新合同业务属性、共享附件及原件版本、反向链接、删除一个链接不影响另一链接、混排持久化、错误排序和目录环路拒绝、跨工作区读取拒绝。已有工具及 11 个 `v2_*` 兼容名称不变；Windows 真实权限组合及大文件长时间操作尚未实机验证。
+
 > **最新 MCP 可靠性源码（2026-10-17）**：提交 [30ce4a1](https://github.com/zy19970/IPSys/commit/30ce4a15f02932a24244a37410e6cb8bf55dc9a1) 已经 [Windows CI #38988662134](https://github.com/zy19970/IPSys/actions/runs/38988662134) **completed/success**；Debug、Release 单 EXE、真实 SQLCipher/命名管道、stdio、Node 回归通过。下方 6cb1e6b 与 1fa0d27 为前批历史验收；同用户不同真实会话、管理员/普通权限 WorkBuddy 和长任务仍待实机。
 
 > **当前版本（2026-10-17）**：N4 与 MCP 三批功能均已完成；新增针对 WorkBuddy 黑盒任务书 ISS-1～ISS-10 的安全/并发/协议/语义修复，源码 `6cb1e6b` 对应 [Windows CI #38939165516](https://github.com/zy19970/IPSys/actions/runs/38939165516) **completed/success**。Windows Debug/Release、正式 stdio、SQLCipher/HTTP、Node 回归通过；管理员与普通用户混合、WorkBuddy Bash 沙箱和不同用户隔离仍待用户电脑逐项实测。下方历史阶段保留追溯，以现行操作章节为准。
