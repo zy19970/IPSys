@@ -1,5 +1,14 @@
 # IPSys 本机 Codex MCP
 
+> **2026-10-17 实机黑盒第一轮修复（ISS-001/002/015）**：源码 `a18a004` + `22276bf`，最终 [Windows CI #38996186466](https://github.com/zy19970/IPSys/actions/runs/38996186466) **completed/success**。现有 **69 个 MCP 工具不变**，原有 16 个数组返回的列表工具在 `tools/call` 中可正常输出 JSON 数组；明确的 HTTP 400/404/非繁忙 409 及已识别的本地前置业务拒绝记为 `done/businessOk=false`（错误结果可同号重放），仅真实未知执行结果维持 `uncertain`。崩溃留下的无活动执行者 `pending` 在首次查询时持久收敛成 `uncertain`，`result` 包含 `reason=host_restarted`、`interruptedAt`、`resumeSupported=false`；禁止自动恢复或整批重传。源代码 CI 不代替用户电脑的跨权限与强制重启复测。
+
+## 第一轮黑盒修复使用与恢复说明
+
+`list_projects`、`list_trash`、`list_file_links`、`list_folder_entries` 等仍返回数组根，不强制包装成 `{items:[]}`；原工具和 `v2_*` 输出合同保留。确定性业务失败的 `state=done` 不等于成功，必须检查 `businessOk=false`、`result.status=failed` 及 `httpStatus/error`。修正业务参数后要使用新的 `request_id`；同号同参数可重放已知失败记录，不能把该编号用于新的不同操作。网络断开、上传取消、宿主崩溃及其他未知结果仍应查询 `get_operation_result` 并核对真实 FileId/LinkId；旧 `pending` 查询收敛为 `uncertain` 并不是证明未落库。
+
+本机 Agent 复测优先执行 `t02_lists.py` 的 16 工具/17 调用，然后测试 `delete_file`、`reorder_entries`、`move_folder`、`upload_files(kind=archive)` 的明确失败日志，最后用新建可丢弃库执行 `inject.py`、重启及 `t09_restart.py`。本轮的 Windows CI 只模拟无活动执行者的遗留 pending，真实 Windows 管理员/普通权限、第二登录用户/会话以及强杀宿主后恢复仍由实机复测确认。
+
+
 > **最新 MCP 第三批可靠性验收（2026-10-17）**：源码 `6593333` 实现异步上传，`3701ad4` 修复 Stream 编译推断，`5ff60bd` 和 `c58dc2f` 修复关联与取消竞态断言，最终 [Windows CI #38991226637](https://github.com/zy19970/IPSys/actions/runs/38991226637) **completed/success**。新增 3 个工具，当前共 **69** 个。Debug/Release、MCP stdio、真实 SQLCipher/HTTP 冒烟和单 EXE 发布通过；真实跨权限/多 Agent 大文件/强制断线仍待实机。
 
 ## 第三批 MCP 长时间文件任务（2026-10-17）

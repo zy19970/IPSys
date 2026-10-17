@@ -1,5 +1,15 @@
 # IPSys Windows 验收与回归记录
 
+> **实机黑盒第一轮三项缺陷修复（2026-10-17）**：来源为用户提交的独立 Agent 黑盒报告（基线 `9d37c49`，37 项中 24 PASS、4 FAIL、9 BLOCKED）；源码 `a18a004` + `22276bf`，最终 [Windows CI #38996186466](https://github.com/zy19970/IPSys/actions/runs/38996186466) **completed/success**。修复 P0 ISS-001 的数组根节点错误、P1 ISS-002 的确定性业务拒绝误记 `uncertain`、P1 ISS-015 的崩溃遗留 `pending`。自动回归新增 16 个原名/v2 列表工具的 JSON-RPC `tools/call` 路径、400/404/409/本地校验操作日志、模拟孤儿 pending 的 SQLCipher 状态收敛与同号防重；真实 Codex/WorkBuddy、跨 Windows 提升级别/用户和进程强杀恢复仍待用户电脑。
+
+### MCP 黑盒第一轮实机复测门禁
+
+1. **ISS-001**：本机刷新 MCP 工具清单后执行 `t02_lists.py`，17 次列表调用应全部正常、`isError=false`，结果仍为数组；继而验证 `list_file_links → delete_file/restore_file_link`、`list_folder_entries → reorder_entries`、`list_trash → restore_trash` 的完整工作流。
+2. **ISS-002**：执行 `t06_business.py archive` 与 `t07_extras.py`。对错误 LinkId、缺失完整排序、目录自移、资料移根、archive 缺/错 section、未关联 FileId 更新版本等前置拒绝，携 `request_id` 查询应是 `done/businessOk=false`、`result.status=failed`。与在途网络故障保留的 `uncertain` 区分；只修改参数后必须换编号。
+3. **ISS-015**：创建新的可丢弃测试任务，上传期间强制终止 GUI 宿主，再解锁、开启 MCP，原编号第一次查询应从遗留 `pending` 持久归为 `uncertain`；返回 `result.reason=host_restarted`、`interruptedAt`、`resumeSupported=false`，`cancel_task` 和同号重入不能重新执行。首先核实原件实际归属与 SHA；不得从“崩溃”推断整批上传事务回滚。
+4. **既有保护**：工具总数 69、SID+SessionId 隔离、8 空闲客户端有界释放、12–24 并发读、大文件 64 MiB SHA、一份 FileId 多处关联及完整版本、未知结果不得自动重试。未运行的实机权限组合继续保留 `BLOCKED`，不标记通过。
+
+
 > **第三批长任务已自动验收（2026-10-17）**：源码最终 `c58dc2f` 对应 [Windows CI #38991226637](https://github.com/zy19970/IPSys/actions/runs/38991226637) **completed/success**。三个新工具及异步成功/状态查询/同号防重复/取消记录在 Debug、Release 实际 SQLCipher/MCP 回归通过。早期编译 CS0173、测试的全目录计数假设和取消竞态均已修复。Windows 真实跨权限双 Agent、大文件与进程故障注入未实机测试。
 
 ### 第三批 MCP 异步上传回归（2026-10-17）

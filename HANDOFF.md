@@ -1,5 +1,8 @@
 # IPSys 跨会话交接（2026-10-17：N4 与 MCP 三批自动验收完成）
 
+> **2026-10-17 本机 Agent 黑盒第一轮修复**：实机报告（基线 `9d37c49`）确认 16 个数组型 MCP 工具不能调用、确定性拒绝误报 unknown、宿主异常退出后遗留永久 pending。代码提交 `a18a004` + `22276bf`，最终 [Windows CI #38996186466](https://github.com/zy19970/IPSys/actions/runs/38996186466) **completed/success**，MCP 工具继续为 **69 项**。RPC 数组根现在正确处理；已知本地前置及 HTTP 409 拒绝可查询 `done/businessOk=false`；孤儿 pending 在首次查询时标为 `uncertain`，附带 `host_restarted/interruptedAt/resumeSupported=false`，不会自动重传。真实实机 Agent 必须重跑 `t02_lists.py`、`t06_business.py`、`t07_extras.py`、`t09_restart.py`；用户账号权限矩阵及强杀故障注入不得把 CI 当成实机验收。
+
+
 > **最新 MCP 第三批进度（2026-10-17）**：源码 `6593333` → `3701ad4` → `5ff60bd` → `c58dc2f`，最终 [Windows CI #38991226637](https://github.com/zy19970/IPSys/actions/runs/38991226637) **completed/success**；新增 `start_upload_task`、`get_task_status`、`cancel_task` 共三项，MCP 工具总数 **69**。复用 SQLCipher 加密操作日志，无新数据表；旧正式库不迁移。用户电脑多 Agent/跨权限、强制断线、大文件压力仍待实机验收。
 
 ## MCP 第三批长文件任务（2026-10-17）
