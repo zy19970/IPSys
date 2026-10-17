@@ -1,6 +1,6 @@
 # IPSys MCP 接口收敛后一次性回归检查
 
-> 当前源码：由 `main@575a3af` 的 V2-only 业务继续收敛 MCP 清单。**当前公开 MCP 工具预期 59 个**；`/api/v2` HTTP 和 SQLCipher V2 数据库保持不变。本任务替代此前以 **70 个工具/11 个 v2_* 别名**为前提的历史脚本断言，但不修改归档在 `MCP_TEST_RESULTS/2026-10-17/` 的原始证据。Windows CI 负责 Debug/Release、正式 stdio、SQLCipher/HTTP/Node 冒烟，跨令牌/用户与 GUI 人工场景仍需实机测。
+> **当前接口去重验收基线（2026-10-17）**：源码 [`2620c109`](https://github.com/zy19970/IPSys/commit/2620c109043f779eeb57f411210f99bb2f21e554) 已在 [Windows CI #39019604428](https://github.com/zy19970/IPSys/actions/runs/39019604428) **completed/success**，验证正式 stdio 59 唯一工具、无 `v2_*`、真实 SQLCipher/HTTP 原名业务和 Node UI 上传回归。本文件仍是下一次**真实 Windows Codex/WorkBuddy 本机复测**的操作依据；自动 CI 不能覆盖第二用户、跨权限和 GUI 故障注入。历史归档 `MCP_TEST_RESULTS/2026-10-17/` 属于之前 70 工具版本，不改写。
 
 ## 1. 工具清单与兼容迁移
 

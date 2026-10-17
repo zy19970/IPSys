@@ -1,6 +1,7 @@
-# IPSys 开发计划与验收进度（2026-10-17，N4 当前执行版）
+# IPSys 开发计划与验收进度（2026-10-17，N4 实机验收接续版）
 
-> **当前唯一执行依据**：[RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)。N2-04 主业务 V2、N4 两批新库及旧源码清理已完成自动回归；MCP P0 并发/单实例及三批安全、查询和业务功能补齐均通过 Windows CI（最新 `080a599`，[Windows CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431) **completed/success**）。下一阶段是 Edge/Chrome、Codex/WorkBuddy、桌面 Excel、复杂历史版本/导出及 T01–T09 真实故障验收；没有正式旧库迁移。
+> **当前执行依据**：[RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md) 的冻结模型 + [HANDOFF.md](./HANDOFF.md) 的最新交接。N2-04 全业务 V2、N4 两批旧物理模型/代码清理、MCP 三批功能及后续黑盒 ISS-001～018 修复均已提交；2026-10-17 接口收敛 [`2620c109`](https://github.com/zy19970/IPSys/commit/2620c109043f779eeb57f411210f99bb2f21e554) 将公开 MCP 工具从 70 减为 **59**，删除 11 个重复 `v2_*` 名称并清理前端无效旧式上传分支， [Windows CI #39019604428](https://github.com/zy19970/IPSys/actions/runs/39019604428) **completed/success**。旧 V1 数据迁移/回填已取消。**下一阶段主要为当前 59 工具的真实 Agent/Windows 权限复测、N4 复杂业务及 T01–T09 故障安全验证；尚未正式发布。**
+
 
 ## 1. 产品和已确认架构
 
@@ -21,7 +22,7 @@ IPSys 用户可见名称为「资料管理系统」，采用 Windows WinForms �
 | **N3-02** | **Windows CI 通过** | 同 FileId 多 Folder 关联/解绑/恢复、历史版本和字节保护 [CI #38759311477](https://github.com/zy19970/IPSys/actions/runs/38759311477) |
 | **N3-03** | **Windows CI 通过** | 不同 FileId 同区复用物理内容、跨区重新写入原件，通过 [CI #38762437581](https://github.com/zy19970/IPSys/actions/runs/38762437581) |
 | **N3-04** | **Windows CI 通过** | SQLCipher writing 暂存、同内容含异名查重、原件名/目录路径提示、明确选择与取消清理；[CI #38820367132](https://github.com/zy19970/IPSys/actions/runs/38820367132) |
-| **N2-03-01** | **Windows CI 通过** | 新增 11 项 `v2_*` MCP 项目/合同/IP 操作，经手动授权、本机管道和 HTTP 仅访问 V2 `folders`；[CI #38822708366](https://github.com/zy19970/IPSys/actions/runs/38822708366)。旧 14 工具暂保留，未双写 |
+| **N2-03-01（历史）** | **当时 CI 通过，现行工具名已收敛** | 当时新增的 11 个 `v2_*` MCP 别名曾用于验证同一 V2 `folders`；在 [`2620c109`](https://github.com/zy19970/IPSys/commit/2620c109043f779eeb57f411210f99bb2f21e554) 中已删除对外别名，当前只保留 59 个无前缀工具。旧 [CI #38822708366](https://github.com/zy19970/IPSys/actions/runs/38822708366) 为历史证据 |
 | **N2-03-02** | **原生 CI 通过（历史阶段）** | IP V2 FolderId/FileId/LinkId/版本后台闭环 [CI #38824119576](https://github.com/zy19970/IPSys/actions/runs/38824119576)；当时尚未切换的网页/Excel/MCP 后续已完成 |
 | **N2-03-04** | **CI 通过（历史阶段）** | IP 网页、原件和 Excel 接入 V2，[CI #38828523508](https://github.com/zy19970/IPSys/actions/runs/38828523508)；当时待开发的搜索、回收站、MCP、跨区复制后续已完成 |
 | **N2-03-05** | **Windows CI #38831972597 已通过** | IP 原名 MCP CRUD、统一搜索及 V2 回收站使用唯一 FolderId；跨区整 IP 文件夹含多份文件历史在同一个 SQLCipher 事务中复制/移动，源工作区和目标工作区的 FileObject 物理独立；拒绝不安全的物理永久删除。 |
@@ -32,18 +33,19 @@ IPSys 用户可见名称为「资料管理系统」，采用 Windows WinForms �
 | **N2-03 项目合同完整业务链路** | **Windows CI 已通过** | Excel 项目导入/导出、合同只读导出，搜索结果采用真实 V2 FolderId/FileId；V2 项目/合同回收站与共享 LinkId 的保护；完整项目携全部合同和多版原件的单 SQLCipher 事务复制移动，跨区独立 FileObject；[CI #38848010379](https://github.com/zy19970/IPSys/actions/runs/38848010379) success。 |
 | **N2-04 分类档案与综合资料统一接入** | **正式网页及外围 V2 全链路自动回归通过** | 现有业务档案、资质、个人分类与综合资料页面、固定 Excel、统一搜索、回收站、文件版本/共享及整记录跨区原件复制已接入 SQLCipher V2；db79b82 补齐目录/档案/综合资料 MCP CRUD、原件上传与查询；6a7b1ff 修复全模块 ZIP/文件夹历史版本导出旧 business ID，并将所有已停用旧业务 HTTP 仅注册于 --smoke。最终 [Windows CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) **success**，自动化主链路达到 N2-04 交付门槛；下一阶段 N4 清理旧表/Store 与历史测试适配，Edge/Chrome 人工验收仍未完成。 |
 | **MCP P0 与 P1 第一批** | **自动验收通过** | 并发管道/单实例与数值/`null` 参数；加密 `request_id` 操作日志、批量结果明细、三重 FileId/LinkId/FolderId 核验、撤权和超时；[CI #38917944549](https://github.com/zy19970/IPSys/actions/runs/38917944549)、[CI #38923795350](https://github.com/zy19970/IPSys/actions/runs/38923795350) |
-| **MCP 第二批** | **自动验收通过** | `list_files` 单 SQL、`list_files_page` 1–200 分页及筛选、旧名/`v2_*` 响应兼容、真实 stdio 工具参数测试；[CI #38927263017](https://github.com/zy19970/IPSys/actions/runs/38927263017) |
+| **MCP 第二批（历史）** | **自动验收通过** | `list_files` 单 SQL、`list_files_page` 1–200 分页及筛选；当时同时支持原名/`v2_*`，重复别名现已删除。[CI #38927263017](https://github.com/zy19970/IPSys/actions/runs/38927263017) |
 | **MCP 第三批 14 项业务补齐** | **自动验收通过** | 合同局部编辑、文件属性/版本及指定版本下载、关联/恢复/复制、四类资料转移、统一搜索、回收站查询/恢复；[Windows CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431)（`080a599`），用户实机和长任务待测 |
 
-全部正式业务网页、MCP、Excel、搜索/回收站、历史文件导出均使用 V2。N4 第一批完成旧建表/开库/正式与测试路由收敛，第二批删除 31 份停用实现并保留纯业务验证，源码 `b3c8f3b` [CI #38911635273](https://github.com/zy19970/IPSys/actions/runs/38911635273) success。MCP 新增加密操作日志、单查询分页和 14 项正式业务工具，并在源码 `080a599` 的 [Windows CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431) 完成整套自动回归。
+正式网页、MCP、Excel、搜索/回收站和原件导出只读写 V2。N4 两批旧物理层及 31 份停用源码裁剪已在 [CI #38911635273](https://github.com/zy19970/IPSys/actions/runs/38911635273) 验证。之后的 MCP 并发、请求幂等、异步长文件、安全隔离、业务工具补齐及 ISS-001～018 修复均已进入 `main`。在历史 70 工具版本上，用户独立实机黑盒报告 `MCP_TEST_RESULTS/2026-10-17/` 为 **37 项 PASS28 / FAIL0 / BLOCKED9**、ISS-001～015 **15/15 PASS**；ISS-016～018 的后续修复通过 [CI #39014009578](https://github.com/zy19970/IPSys/actions/runs/39014009578)，而最新 MCP 59 工具与前端旧上传死分支清理通过 [CI #39019604428](https://github.com/zy19970/IPSys/actions/runs/39019604428)。这些新提交尚无同一条件下的新一轮独立用户实机黑盒报告，不应混作已经全部实测。
 
 
-## 3. 下一步实际施工顺序（N4 业务边界与用户实机）
+## 3. 下一步实际施工顺序（先验收，再继续功能开发）
 
-1. **N1/N2-01～04/N3-01～04 已完成对应自动验收**：全业务 V2 整合通过 [CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886)，不再把 N2-04 作为下一项重做。
-2. **N4 旧物理表、路由和源码清理已完成自动验收**：新建/打开/测试仅使用 V2，旧 Store/Provider、历史端点与无效烟测共删除 31 份源码，保留 V2 共用业务校验；[CI #38911635273](https://github.com/zy19970/IPSys/actions/runs/38911635273) success。接续是边界回归和实机/安全，不再删除已裁剪的旧代码。
-3. **N4 边界和自动回归**：文件选填属性 UI、版本/回收站引用、祖先目录搜索、重叠与同名导出、ZIP 取消；Windows Debug/Release/单 EXE、SQLCipher HTTP、Node UI/PDF/ZIP、MCP 和 Excel。
-4. **N4 实机与安全**：Edge/Chrome、真实 Codex 和桌面 Excel，T01–T09 超大文件/SSD 故障/磁盘满/备份/退出及工作区隔离；依据结果再判断正式交付。
+1. **当前版本 MCP 一次性定点验收**：客户端刷新工具清单，按 [MCP_INTERFACE_CLEANUP_TEST.md](./MCP_INTERFACE_CLEANUP_TEST.md) 核验 **59** 个唯一工具、无 `v2_*`、**13** 个数组型列表、项目/合同/IP 原名工具与 V2 HTTP FolderId 对应；并复测 ISS-016～018 及文件共享/查重/版本和异步任务。
+2. **补齐 9 项历史 BLOCKED 真实权限/GUI 场景**：管理员/普通完整性级别、另一个 Windows 用户/会话、Codex/WorkBuddy 组合、授权及撤销流程；拒绝以模拟 ACL 或降低 MIC 冒充安全通过。
+3. **N4 复杂边界**：File 选填属性 UI、版本回收站引用、祖先目录搜索、父子目录同时勾选、同名 ZIP/文件夹、导出取消，Edge/Chrome、桌面 Excel、PDF/图片预览。
+4. **T01–T09 与发布门禁**：数据盘故障/拔出、磁盘不足、长任务中退出/取消、手工备份副本一致性、未来受控升级、大文件上限/ZIP64 需求与实际范围。未验证的风险保留待测，不扩展为已经支持 2 GiB+。
+5. **确认新的实际需求后再继续开发**：优先解决实机复测能复现的缺陷，不再重复 N2-04 或 N4 已完成的旧表清理。24 并发 p95 较旧轮升高但缺可比环境对照，单列性能观察项而非已确诊缺陷。
 
 ## 4. 安全、兼容和发布边界
 

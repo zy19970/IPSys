@@ -1,17 +1,11 @@
 # IPSys 统一资源内核重构方案与执行进度
 
-> **MCP 第三批长文件任务（2026-10-17）**：`main@c58dc2f` 对应 [Windows CI #38991226637](https://github.com/zy19970/IPSys/actions/runs/38991226637) **completed/success**；扩展异步上传/状态轮询/取消共三项 MCP 工具，依赖当前 GUI 进程内存进度和既有 SQLCipher `mcp_operations` 最终日志，无新增数据库表、无旧库迁移。双 Agent/MIC、64 MiB 及强制断线仍须实机。
+> **当前总览（2026-10-17）**：V2 资源内核及全部正式业务入口已统一，N4 旧数据库物理表、旧 HTTP 与 31 份停用业务源码清理结束；现行唯一业务数据源是 SQLCipher V2 的 Folder/File/Link/Version。MCP 已完成 P0/P1 可靠性、业务接口扩充和 ISS-001～018 收敛：2026-10-17 [`2620c109`](https://github.com/zy19970/IPSys/commit/2620c109043f779eeb57f411210f99bb2f21e554) 对外清单从 70 去重到 **59**（不再暴露 `v2_*` 11 个兼容别名），前端正式上传统一 SHA-256 prepare/resolve； [Windows CI #39019604428](https://github.com/zy19970/IPSys/actions/runs/39019604428) **completed/success**。当前工作重点是 59 工具本机 Agent 实测、9 项历史 BLOCKED 权限/GUI 场景和 N4/T01–T09 数据安全/复杂文件边界。**不可把旧 70 工具黑盒报告直接记作当前 59 工具的实测通过。**
 >
-> **最新 MCP 第二批业务接口验收（2026-10-17）**：`main@6f8aede` 通过 [Windows CI #38989490476](https://github.com/zy19970/IPSys/actions/runs/38989490476) **completed/success**，新增 7 个业务工具；合同复制保留共享 FileId，目录移动及混排排序继续复用原生 SQLCipher V2 路由，无额外物理表或旧库迁移。跨权限客户端/长文件运行仍待实机。
+> **冻结资源模型不变**：Folder 无版本；File 有 FileId/选填属性/独立版本；FolderFileLink 是归属；FileObject 为内容；同区可共享 FileId 或仅复用内容，跨区仅独立复制。项目可独立，合同必须属于项目。仍处开发阶段，旧数据库全是测试数据，不迁移、不回填、不做旧版兼容。
 >
-> **MCP 第一批可靠性收尾更新（2026-10-17）**：`main@30ce4a1` 在 [Windows CI #38988662134](https://github.com/zy19970/IPSys/actions/runs/38988662134) **completed/success**，已覆盖 8 路静默管道饱和恢复、SID/SessionId 会话身份和 HTTP 400/404 写入日志确定失败重放；不改变 SQLCipher V2 模型与工具接口。后续仍按 N4 用户实机/权限/长任务/故障注入推进。
+> **文档分工**：本文件负责模型及历史实施基线；当前开发优先级以 [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md) 为准；跨会话快速接续以 [HANDOFF.md](./HANDOFF.md) 为准；测试入口为 [RESOURCE_REFACTOR_TEST_MATRIX.md](./RESOURCE_REFACTOR_TEST_MATRIX.md)、[MCP_INTERFACE_CLEANUP_TEST.md](./MCP_INTERFACE_CLEANUP_TEST.md) 和 [WEB_TESTING.md](./WEB_TESTING.md)。历史日期、SHA、CI 均保留为其当时节点，不再作为现在 HEAD。
 >
-> 确认日期：2026-10-15。编制基线：`main@0b70bbe47dedef016ab218cb4e8b427e1d571140`。
->
-> **本文件是现行 V2 架构与 N4 进度唯一入口（2026-10-17）。** N2-04 正式业务和 N4 两批新库/路由/旧源码清理均已通过自动验收；MCP P0 并发/单实例和 P1 三批写入安全、分页性能、14 项业务工具补齐也已完成，最近业务源码 `080a599` 对应 [CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431) **completed/success**。下一阶段集中实机 Edge/Chrome、Codex/WorkBuddy 双客户端、大量资料/文件历史与复杂导出、Excel 及 T01–T09/大文件故障验证；不迁移旧测试数据库。
->
-> 每次后续实质开发均先重新阅读 `https://github.com/zy19970/AIGT-templates/main/AGENTS.md` 和 `AI_RULES/GIT_OPERATIONS.md`、IPSys 当前主分支的完整 Git 历史、本文件与相关源码。不得只凭聊天上下文判断进度。
-
 ## 2026-10-16 再次确认：不迁移旧测试库，直接启用全新统一数据库
 
 **用户于 2026-10-16 再次确认：项目仍处于开发阶段，没有旧数据库需要迁移；所有现有数据库都是测试数据，无需兼容、迁移、回填或保存旧数据。** IPSys 后续采用 SQLCipher v2 新资料库；旧文件不会被软件自动覆盖，也不提供自动迁移。打开旧版测试库时必须提示创建新库。此前各阶段为了旧表兼容而规划的 R1-04-03-02、R1-04-03-03、R4 数据迁移环节停止执行，相关历史记录仅用于追溯。
@@ -25,7 +19,8 @@
 3. N3 让所有附件走 files、file_versions、file_objects/chunks、folder_file_links；实现文件可选属性、共享逻辑 FileId、独立文件内容复用、跨工作区物理隔离、同内容提示用户三选一和版本历史。
 4. N4 接入前端/检索/导出，跑完整业务、MCP、Excel、PDF 预览、回收站、Windows 单 EXE 测试，清理已停用的旧业务及附件表和兼容代码。
 
-**当前 N4 已完成和遗留（2026-10-17）**：旧 `records/attachments/chunks` 不再由新库创建，正式/测试 HTTP 不再注册 V1，31 份旧 Store/Provider/端点/测试源码已删除并将 V2 共用校验移入 `BusinessRules.cs`。MCP 已完成 P0 8 客户端/唯一 GUI 宿主、第一批 `request_id` 幂等日志/参数和批量上传安全、第二批 `list_files_page` 与单 SQL 查询、第三批合同/文件版本/共享/跨区转移/搜索/回收站 14 工具，最新 [CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431) success。**剩余**：File 选填属性 UI、复杂历史版本/共享/目录重叠/ZIP 同名/取消、真实 Codex/WorkBuddy + Edge/Chrome + Excel、64 MiB 上传上限之后的 2 GiB+ 目标及 T01–T09 现场数据安全。
+**当前 N4 已完成和待验收（2026-10-17）**：V2-only 数据库创建/打开、正式和 `--smoke` V2 路由、31 份旧源码裁剪及全部业务接入已在历史 Windows CI 验证；MCP 的安全、分页、复制/转移、异步状态、恢复、清理与错误语义修复也已进入现行代码。此前 70 工具独立黑盒报告 PASS28/FAIL0/BLOCKED9；ISS-016～018 修复的 [CI #39014009578](https://github.com/zy19970/IPSys/actions/runs/39014009578) 和 59 工具接口去重的 [CI #39019604428](https://github.com/zy19970/IPSys/actions/runs/39019604428) 均 success。**仍待**：当前 59 工具 Agent 实测、9 个跨权限/GUI BLOCKED、File 选填属性 UI、复杂历史/共享/导出及 Edge/Chrome、Excel、磁盘异常、退出和备份副本一致性。V2 单原件 64 MiB 为现实上限，不能将未来 2 GiB+ 目标当成已实现。
+
 
 ---
 ## 1. 冻结的资源模型

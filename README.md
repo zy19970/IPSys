@@ -3,21 +3,21 @@
 > **接口现状（2026-10-17）**：SQLCipher 业务数据仅使用 V2 Folder/File/Link/Version 一套模型；HTTP 正式业务路径使用 `/api/v2`。MCP 对外保留 59 个无版本前缀的工具（`v2_*` 11 个重复别名已移除），现行使用与测试详见 [MCP_CODEX.md](./MCP_CODEX.md) 和 [MCP_INTERFACE_CLEANUP_TEST.md](./MCP_INTERFACE_CLEANUP_TEST.md)。历史 70 工具的实机测试归档不作修改。
 
 
-> **第三批 MCP 功能已自动验收（2026-10-17）**：源码 `c58dc2f` 对应 [Windows CI #38991226637](https://github.com/zy19970/IPSys/actions/runs/38991226637) **completed/success**。新增 `start_upload_task` 异步文件上传、`get_task_status` 状态/发送字节轮询和 `cancel_task` 主动取消，MCP 工具总数 **69**。上传先记录 SQLCipher 加密请求编号、同号不会重复写入；在途取消可能为 `uncertain`，需人工核对原件与 LinkId。具体使用见 [MCP_CODEX.md](./MCP_CODEX.md)。Windows 实机跨权限和长文件故障测试仍待执行。
+> **历史节点：第三批 MCP 功能已自动验收（2026-10-17）**：源码 `c58dc2f` 对应 [Windows CI #38991226637](https://github.com/zy19970/IPSys/actions/runs/38991226637) **completed/success**。新增 `start_upload_task` 异步文件上传、`get_task_status` 状态/发送字节轮询和 `cancel_task` 主动取消，当时 MCP 工具总数 **69**。上传先记录 SQLCipher 加密请求编号、同号不会重复写入；在途取消可能为 `uncertain`，需人工核对原件与 LinkId。具体使用见 [MCP_CODEX.md](./MCP_CODEX.md)。Windows 实机跨权限和长文件故障测试仍待执行。
 
-> **最新 MCP 自动验收（2026-10-17）**：第二批业务接口补齐源码 `6f8aede` 经 [Windows CI #38989490476](https://github.com/zy19970/IPSys/actions/runs/38989490476) **completed/success**；新开放 7 个本机 MCP 工具：`copy_contract`、`list_file_links`、`move_folder`、`list_folder_entries`、`reorder_entries`、`reorder_records`、`reorder_archive_records`。复用现有 V2 数据和权限。详细参数见 [MCP_CODEX.md](./MCP_CODEX.md)，真实跨权限和长文件实机验证仍待完成。
+> **历史节点：MCP 第二批业务接口自动验收（2026-10-17）**：第二批业务接口补齐源码 `6f8aede` 经 [Windows CI #38989490476](https://github.com/zy19970/IPSys/actions/runs/38989490476) **completed/success**；新开放 7 个本机 MCP 工具：`copy_contract`、`list_file_links`、`move_folder`、`list_folder_entries`、`reorder_entries`、`reorder_records`、`reorder_archive_records`。复用现有 V2 数据和权限。详细参数见 [MCP_CODEX.md](./MCP_CODEX.md)，真实跨权限和长文件实机验证仍待完成。
 
-> **MCP 可靠性最新验收（2026-10-17）**：提交 `30ce4a1` 增加空闲连接限时释放、同用户不同登录会话隔离、400/404 确定性失败记录及实际管道回归，[Windows CI #38988662134](https://github.com/zy19970/IPSys/actions/runs/38988662134) **completed/success**；真实 WorkBuddy 跨权限/多会话和长文件任务仍待实机。
+> **历史节点：MCP 可靠性验收（2026-10-17）**：提交 `30ce4a1` 增加空闲连接限时释放、同用户不同登录会话隔离、400/404 确定性失败记录及实际管道回归，[Windows CI #38988662134](https://github.com/zy19970/IPSys/actions/runs/38988662134) **completed/success**；真实 WorkBuddy 跨权限/多会话和长文件任务仍待实机。
 
-> **当前开发状态（2026-10-17）**：正式新库及业务入口全部使用 SQLCipher V2 Folder/File/版本/关联；N4 已完成旧物理表/路由收敛和 31 个停用 Store/Provider/HTTP/历史测试源码删除，复用的业务校验已移入 `BusinessRules.cs`。MCP 的 P0 并发修复、第一批写操作安全、第二批文件列表分页和第三批 14 项业务操作补齐均已完成代码及 Windows 自动验收；最新业务源码 `080a599` 对应 [Windows CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431) **completed/success**。Edge/Chrome、真实 Codex/WorkBuddy 双 Agent、长时间文件任务、大文件、故障注入及 T01–T09 仍待用户实机验证。
+> **历史节点：N4 与 MCP 三批开发状态（2026-10-17）**：正式新库及业务入口全部使用 SQLCipher V2 Folder/File/版本/关联；N4 已完成旧物理表/路由收敛和 31 个停用 Store/Provider/HTTP/历史测试源码删除，复用的业务校验已移入 `BusinessRules.cs`。MCP 的 P0 并发修复、第一批写操作安全、第二批文件列表分页和第三批 14 项业务操作补齐均已完成代码及 Windows 自动验收；该阶段源码 `080a599` 对应 [Windows CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431) **completed/success**。Edge/Chrome、真实 Codex/WorkBuddy 双 Agent、长时间文件任务、大文件、故障注入及 T01–T09 仍待用户实机验证。
 
 IPSys 定位为**业务化文件夹式本地资料管理器**，个人资料长期归档优先、公司资料独立工作区。程序采用 WinForms + 127.0.0.1 本机网页，一个 SQLCipher 加密库保存真实原件字节。2026-10-15 用户已确认 **Folder/File 统一资源物理模型**：所有业务条目及分类为带业务属性的 Folder（无版本），只有附件为 File（独立 FileId、选填属性和历史版本）。同区多个 Folder 可引用同一个 FileId，两个独立文件也可仅复用物理原件内容；查重时显示已有文件名与路径，由用户决定；公司/个人不共享物理原件。
 
-**唯一架构和开发进度依据**：[RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)。N2-04、N4 两批旧实现清理及 MCP 三批专项改造均有通过的 Windows CI 证据（最新 [Windows CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431)）。下一步集中完成真实客户端与浏览器/Excel 的实际验收、文件历史/复杂导出边界及 T01–T09 数据安全检查；自动 CI 通过不代表可正式发布。
+**当前开发进度**：[HANDOFF.md](./HANDOFF.md) 提供下会话交接，[DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md) 管理后续优先级，[RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md) 冻结 V2 资源内核。N2-04、N4 旧实现清理、MCP 三批专项和接口收敛已通过 Windows 自动测试；最新源码 [`2620c109`](https://github.com/zy19970/IPSys/commit/2620c109043f779eeb57f411210f99bb2f21e554) 对应 [CI #39019604428](https://github.com/zy19970/IPSys/actions/runs/39019604428) success，**公开 59 个 MCP 工具**。下一阶段是最新工具清单本机 Agent 验收、剩余权限/GUI 测试、复杂业务与 T01–T09 故障安全验收，尚未正式发布。
 
 ## 产品模型与页面规则（当前统一口径）
 
-从使用者角度，资料按 **资料库 → 个人/公司工作区 → 分类容器或业务模块 → 业务记录 → 附件原件** 组织。V2 将分类及业务记录统一映射到 `folders`，附件则由 `files/file_versions/file_objects/file_chunks/folder_file_links` 管理；所有正式业务网页、原件导出和 MCP 均使用 V2 数据身份；新建库不创建旧业务表，正式与 `--smoke` 均不注册历史 V1 业务路由；11 个 `v2_*` MCP 工具只是兼容名称，不代表旧业务表。
+从使用者角度，资料按 **资料库 → 个人/公司工作区 → 分类容器或业务模块 → 业务记录 → 附件原件** 组织。V2 将分类及业务记录统一映射到 `folders`，附件则由 `files/file_versions/file_objects/file_chunks/folder_file_links` 管理；所有正式业务网页、原件导出和 MCP 均使用 V2 数据身份；新建库不创建旧业务表，正式与 `--smoke` 均不注册历史 V1 业务路由；历史上 11 个 `v2_*` MCP 工具只是兼容名称、不代表旧业务表；现已删除，对外仅 59 个工具。
 
 | 概念 | 用途 | 现行表现 |
 | --- | --- | --- |
@@ -41,7 +41,7 @@ Visual Studio 可直接打开 `src/IPSys.Web/IPSys.Web.csproj` 调试。Release 
 dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-contained false -o .\out\IPSys-SingleExe
 ```
 
-从 [Windows Actions](https://github.com/zy19970/IPSys/actions/workflows/web-windows.yml) 获取最新成功的 `IPSys-Web-win-x64`。MCP 第三批代码 `080a599` 已通过 [Windows CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431)：Debug、Release 单 EXE、正式 stdio 握手及真实 SQLCipher/HTTP/Node 回归。后续文档提交不改变此已验收的源码。
+从 [Windows Actions](https://github.com/zy19970/IPSys/actions/workflows/web-windows.yml) 获取最新成功的 `IPSys-Web-win-x64`。最新接口去重源码 `2620c109` 已通过 [Windows CI #39019604428](https://github.com/zy19970/IPSys/actions/runs/39019604428)：Debug、Release 单 EXE、正式 stdio **59 工具**清单、真实 SQLCipher/HTTP/Node UI 回归。后续仅 Markdown 文档提交不代表重新执行了这些业务测试。
 
 ## 2. 当前实现的业务
 
@@ -86,6 +86,8 @@ dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-conta
 | [HANDOFF.md](./HANDOFF.md) | N2-04 接续点、最近成功 CI、剩余模块入口及数据安全边界 |
 | [WEB_TESTING.md](./WEB_TESTING.md) | 人工/自动验收依据及测试记录 |
 | [EXCEL_LEDGER.md](./EXCEL_LEDGER.md)、[SEARCH.md](./SEARCH.md)、[MCP_CODEX.md](./MCP_CODEX.md) | Excel、统一搜索及最新 MCP 工具/客户端操作手册（含 P0/P1、分页、14 项新工具和幂等使用方式） |
+| [MCP_INTERFACE_CLEANUP_TEST.md](./MCP_INTERFACE_CLEANUP_TEST.md) | 当前 59 工具协议、GUI 上传与本机 Agent 复测入口 |
+| [RESOURCE_REFACTOR_TEST_MATRIX.md](./RESOURCE_REFACTOR_TEST_MATRIX.md) | 当前 Folder/File 专项场景与测试证据级别 |
 | [FREEZE_AUDIT.md](./FREEZE_AUDIT.md) | 历史需求冲突与持续有效的 T01–T09 安全门槛 |
 
 **项目真实代码和最新用户确认优先于历史说明。** 开发以 `main` 为目标分支，遵守 [AIGT-templates](https://github.com/zy19970/AIGT-templates) 的 `AGENTS.md` 与 `AI_RULES/GIT_OPERATIONS.md`。

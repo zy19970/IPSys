@@ -1,124 +1,56 @@
-# IPSys 跨会话交接（2026-10-17：N4 与 MCP 三批自动验收完成）
+# IPSys 跨会话交接（2026-10-17，N4 实机验收与后续功能完善）
 
-> **当前最新 MCP 接口收敛（2026-10-17）**：在 SQLCipher V2-only 模型及真实 /api/v2 HTTP 保持不变的前提下，删除 11 个额外 `v2_*` MCP 工具名，公开工具数 **59**；仍保留 `create_project/list_projects` 等原名接口及原有网页投影列表结构，旧原生查询在内部 HTTP 冒烟核对，不是同一个 MCP 返回契约。移除前端不再可达的旧 `groupId` 同名上传分支及选择弹窗，实际 V2 SHA-256 查重/版本/共享流程不变。当前单轮回归见 [MCP_INTERFACE_CLEANUP_TEST.md](./MCP_INTERFACE_CLEANUP_TEST.md)。此前“70 工具”的报告和历史 N2-03 节点是旧构建归档，不代表当前对外清单。跨权限/GUI 手工补测仍需进行。
+> **下个会话的首要入口。** 仓库：[zy19970/IPSys](https://github.com/zy19970/IPSys)，分支 `main`；本次文档整理所依据的**最后一次源码提交**为 [`2620c109`](https://github.com/zy19970/IPSys/commit/2620c109043f779eeb57f411210f99bb2f21e554)，对应 [Windows CI #39019604428](https://github.com/zy19970/IPSys/actions/runs/39019604428) **completed/success**。本交接文档后续会有独立 docs 提交，新会话应首先重新读取最新 `main`，不要把此处写死的源码 SHA 当作未来 HEAD。  
+> **开发阶段：N2-04 统一资源主链路完成、N4 旧物理模型与旧业务接口清理完成、MCP 黑盒三轮修复及接口去重完成。仍在开发与实机验收阶段；没有宣布正式产品发布。**
 
+## 1. 下个会话如何接续
 
-> **MCP 黑盒第六轮与缺陷收敛（2026-10-17）**：用户报告已推送 [MCP_TEST_RESULTS/2026-10-17](./MCP_TEST_RESULTS/2026-10-17/MCP_TEST_REPORT.md)，被测 `d3bc77f` 环境结果为 37 项 PASS28/FAIL0/BLOCKED9，ISS-001～015 的 15 项门禁均通过。随后发现 ISS-016（前置拒绝记录为 unknown）、ISS-017（同名目录泄漏 SQLite 数字码）、ISS-018（批量上传顶层不带实际错误）；修复提交 `e3f6292`，对应 [Windows CI #39014009578](https://github.com/zy19970/IPSys/actions/runs/39014009578)。MCP **70 工具**，未改变 V2 数据模型、FileId/LinkId/版本和异步崩溃保护；本机 Agent 尚未对新提交二次实测，不能报告为已实机通过。后续优先完成 [WEB_TESTING.md](./WEB_TESTING.md) 的 ISS-016～018 定点回归，并补足 9 项 BLOCKED 的真实权限/GUI 场景。
+1. 先读取 [AIGT-templates/AGENTS.md](https://github.com/zy19970/AIGT-templates/blob/main/AGENTS.md) 和 [AI_RULES/GIT_OPERATIONS.md](https://github.com/zy19970/AIGT-templates/blob/main/AI_RULES/GIT_OPERATIONS.md)，再检查 IPSys 的 `main` HEAD、完整提交历史、相关 CI 和未合并 PR/变更。
+2. 以 [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md) 判定当前阶段，以 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md) 为资源模型及重构冻结依据；任何具体业务修改都应优先核对 [REQUIREMENTS.md](./REQUIREMENTS.md)、[UI_BASELINE.md](./UI_BASELINE.md) 和 [M0_DATA_DICTIONARY.md](./M0_DATA_DICTIONARY.md)。
+3. MCP 开发读取 [MCP_CODEX.md](./MCP_CODEX.md)；**当前对外工具清单 59 项，不再有 `v2_*` MCP 工具名**。新版本复测按 [MCP_INTERFACE_CLEANUP_TEST.md](./MCP_INTERFACE_CLEANUP_TEST.md)；[MCP_AGENT_FINAL_RETEST.md](./MCP_AGENT_FINAL_RETEST.md) 与 `MCP_TEST_RESULTS/2026-10-17/` 是旧 70 工具版本的历史资料，保留原始证据，不直接沿用旧断言。
+4. 用户已确认当前数据库均为开发测试数据，不安排 V1→V2 迁移、回填或旧格式兼容。默认直接推送 `main`，提交后验证 Windows CI 与 Git ref；不要仅为代码审核自行建 PR。新功能按实际问题决定是否需要再补 UI、真实数据库或本机 Agent 验收。
 
+## 2. 产品与已冻结的业务模型
 
-> **最终 MCP 统一复测基线（2026-10-17）**：首次实机报告中的 ISS-001、ISS-002、ISS-015 已由 `a18a004`、`22276bf` 修复；随后 `30af13d4`、`a885d368`、`2d099748`、`24822d73` 集中修复 ISS-003～014。最新 [Windows CI #39010080604](https://github.com/zy19970/IPSys/actions/runs/39010080604) completed/success。**正式 MCP 70 工具**（新增 `purge_trash`，需要 confirm=true 且限制仅清理可安全永久删除的回收站资料）。代码/文档完成后由本机 Agent 按 [MCP_AGENT_FINAL_RETEST.md](./MCP_AGENT_FINAL_RETEST.md) 一次性复测全部问题和历史回归，CI 成功不代表跨权限用户及宿主强杀实验已实机通过。
+用户可见名称是「资料管理系统」。Windows WinForms 启动器启动/退出本机服务；ASP.NET Core 仅监听 `127.0.0.1`；使用 Edge/Chrome 本地网页。网页版关闭数据库只执行关库、撤销会话，程序不退出。项目与 Web 静态资源在 `src/IPSys.Web/`，Visual Studio 可直接编译；依赖框架的 win-x64 Release 便携包为单 EXE，目标机需安装 .NET Desktop Runtime 8 x64 和 ASP.NET Core Runtime 8 x64。
 
+一份 SQLCipher 加密数据库含 **公司/个人两个隔离的工作区**。现行物理模型是 `folders`（所有分类与业务记录、无版本）、`files`（稳定 FileId、选填元数据）、`file_versions`（文件独立历史版本）、`file_objects/file_chunks`（加密实际字节）、`folder_file_links`（Folder→File 多对多链接）、`mcp_operations`（请求幂等及不确定结果日志）。同一工作区不同 Folder 可共享一个 FileId 或以不同 FileId 仅复用内容；跨工作区禁止共享 FileObject，只能独立复制。SHA-256 命中相同内容时由用户显式选择共享、复用、独立保存或取消，不自动合并。所有文件必须归属有效业务 Folder；无待整理池。
 
-> **2026-10-17 本机 Agent 黑盒第一轮修复**：实机报告（基线 `9d37c49`）确认 16 个数组型 MCP 工具不能调用、确定性拒绝误报 unknown、宿主异常退出后遗留永久 pending。代码提交 `a18a004` + `22276bf`，最终 [Windows CI #38996186466](https://github.com/zy19970/IPSys/actions/runs/38996186466) **completed/success**，MCP 工具继续为 **69 项**。RPC 数组根现在正确处理；已知本地前置及 HTTP 409 拒绝可查询 `done/businessOk=false`；孤儿 pending 在首次查询时标为 `uncertain`，附带 `host_restarted/interruptedAt/resumeSupported=false`，不会自动重传。真实实机 Agent 必须重跑 `t02_lists.py`、`t06_business.py`、`t07_extras.py`、`t09_restart.py`；用户账号权限矩阵及强杀故障注入不得把 CI 当成实机验收。
+项目可以独立存在，合同必须隶属于项目且可一对多。公司业务档案根层为分类卡片导航，内层目录和资料混排表格；公司企业资质直接表格；个人同类资料分类卡片→表格→详情；项目、合同、知识产权统一采用适合其业务的台账和详情，不为满足物理 Folder 统一而改变已冻结 UI。入口、下载、排序、复制/转移和删除保护的具体规则以 UI 基线为准。
 
+## 3. 当前实现与验证结果（不要混淆证据级别）
 
-> **最新 MCP 第三批进度（2026-10-17）**：源码 `6593333` → `3701ad4` → `5ff60bd` → `c58dc2f`，最终 [Windows CI #38991226637](https://github.com/zy19970/IPSys/actions/runs/38991226637) **completed/success**；新增 `start_upload_task`、`get_task_status`、`cancel_task` 共三项，MCP 工具总数 **69**。复用 SQLCipher 加密操作日志，无新数据表；旧正式库不迁移。用户电脑多 Agent/跨权限、强制断线、大文件压力仍待实机验收。
+| 模块 | 当前代码状态 | 已验证与仍需核验 |
+| --- | --- | --- |
+| 统一资源核心 | **已实现** V2-only Schema、Folder/File 业务、文件版本/关联/跨区隔离 | N1/N2/N3/N4 早期专项及当前 Windows 全量自动回归已通过；未来升级/备份等实机边界仍待验证 |
+| 项目、合同、知识产权 | **已实现** V2 CRUD、Excel、排序、复制/转移、文件及搜索/回收站 | 正式主链路 [CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) 通过，当前业务自动回归继续覆盖 |
+| 公司业务档案、企业资质、个人分类、综合资料 | **已实现** 分类导航/列表、原生归属、附件历史、固定 XLSX、搜索/导出及回收站 | V2 自动回归已通过；实际浏览器布局、选填文件属性和复杂导出仍需人工验收 |
+| 文件去重、共享、版本与导出 | **已实现** SHA-256/显式选择、FileId/LinkId/Version、PDF Canvas 预览、文件夹/ZIP 下载 | 单文件仍限 **64 MiB**，ZIP 不支持 ZIP64（<4 GiB）；超大文件、磁盘异常和同名/重叠路径实机验证不完整 |
+| MCP 客户端 | **已实现** 同用户命名管道、手动授权、幂等日志、异步上传/取消、文件操作、业务转移、搜索与回收站，共 **59 个工具** | 原 70 项清单去重与前端旧上传分支清理 [CI #39019604428](https://github.com/zy19970/IPSys/actions/runs/39019604428) **success**；真实跨权限、第二用户及部分 GUI 组合仍待补测 |
+| 客户端与发布 | WinForms、内嵌页面、单 EXE Release；Debug/Release/stdio/SQLCipher/HTTP/Node UI/导出冒烟 | 最近源码 CI **success**；不能将自动测试等同于完整 Windows 实机安全/故障注入验收 |
 
-## MCP 第三批长文件任务（2026-10-17）
+注意历史 Agent 黑盒报告的被测构建是 `d3bc77f`（**70 工具**），其 37 项结果为 **PASS 28 / FAIL 0 / BLOCKED 9**，ISS-001～015 **15/15 PASS**。报告随后发现 ISS-016～018；源代码 [`e3f6292`](https://github.com/zy19970/IPSys/commit/e3f62921aad6e7cef16a7fa8bf498ff0c7392636) 针对三项修复、[CI #39014009578](https://github.com/zy19970/IPSys/actions/runs/39014009578) **success**，但**未收到这三项补丁之后的独立 Agent 黑盒复测报告**。再后来的 `2620c109` 移除了 11 个 `v2_*` 重复对外工具并通过 [CI #39019604428](https://github.com/zy19970/IPSys/actions/runs/39019604428)；旧历史报告不可被改写为当前 59 工具实测结果。
 
-核心文件：`McpLocalTasks.cs` 为当前 GUI 宿主的异步任务与进度管理；`McpLocalIpFiles.cs` 在发送文件流时计字节；`McpLocalSafety.cs` 先登记加密 `pending`，最终维护 `done/uncertain` 及结果；`McpLocal.cs` 注册三个工具，`NativeMcpSmoke.cs` 验证同号防重和取消边界。异步上传必须携 `request_id`；取消发生在上传前时 uncertain 可能无结果，HTTP 在途取消可有部分已成功文件；不得自动重试。Windows CI 最终 [Windows CI #38991226637](https://github.com/zy19970/IPSys/actions/runs/38991226637) success，实机混合权限/长任务仍待开展。
+## 4. MCP 当前唯一口径与核心代码
 
-> **最新 MCP 业务接口补齐（2026-10-17）**：源码 `6f8aede` 已经 [Windows CI #38989490476](https://github.com/zy19970/IPSys/actions/runs/38989490476) **completed/success**；新增合同复制、文件反向关联、企业业务档案移动与混排查询排序、项目合同及普通档案排序共 7 个工具。业务直接复用原生 V2 HTTP 和 SQLCipher；此前 `30ce4a1` 的空闲连接/会话隔离修复已包含。后续主要为真实多 Agent 权限矩阵、长文件任务与故障注入，暂无旧库迁移需求。
+现行公开工具名为 `list_projects`、`create_project`、`list_contracts`、`create_ip`、`upload_files`、`list_files_page`、`start_upload_task`、`get_task_status`、`cancel_task`、`get_operation_result`、`purge_trash` 等 **59 个无 `v2_*` 前缀**的名称。原名工具均操作 V2 实体；原名 `list_projects/list_contracts/list_ips` 返回原来的网页友好数组，**不是** `FolderSnapshot(folder.ref.id/businessData)`；若需要原生数据结构，内部可用授权 HTTP `/api/v2/folders/{workspace}/{kind}`。HTTP 的 `/api/v2` 是当前有效接口版本，不是待删除的 V1 遗留层。客户端必须刷新 `tools/list` 和脚本的 59/13 列表断言。
 
-> **本轮最新源码与验收（2026-10-17）**：`30ce4a1` 完成 MCP 空闲管道有界等待、SID/SessionId 隔离、明确 HTTP 400/404 业务失败日志；[Windows CI #38988662134](https://github.com/zy19970/IPSys/actions/runs/38988662134) **completed/success**。此前业务基线 `080a599` 和管道 ACL 补强 `1fa0d27` 均已包含在现行 main 中。跨提权/跨登录会话/不同真实用户及长文件任务仍待实机。
+`McpLocal.cs` 为工具登记、stdio/命名管道入口和 V2 HTTP 分发；`McpLocalSafety.cs` 为参数、加密 `request_id`/日志、`done/uncertain` 判定；`McpLocalTasks.cs` 为异步任务/查询/取消；`McpLocalV2.cs` 是**现行原生 Folder HTTP 的内部实现文件**，尽管文件名有 V2，也不能删除；`McpLocalIpFiles.cs`、`McpLocalArchive.cs`、`McpLocalExtras.cs` 承担附件、档案和其它业务操作。对异常返回，`done` 表示日志已结束，必须查看 `businessOk`；断线或上传在途的 `uncertain` 不得盲目重做。旧宿主崩溃遗留 `pending` 会在查询时收敛为 `uncertain`，禁止自动重传。
 
-> **最新交接基线（2026-10-17）**：正式新库及全部业务使用 SQLCipher V2，N4 旧物理表/路由/31 份旧 Store/Provider/过时测试源码已清理（[CI #38911635273](https://github.com/zy19970/IPSys/actions/runs/38911635273) success）。MCP P0 并发单实例、第一批安全、第二批单 SQL 分页、第三批 14 项合同/文件/转移/搜索/回收站工具完成，最新业务代码 `080a599` 的 [CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431) completed/success，之后 `7b7c714` 只同步了三份文档。下一步验证 Edge/Chrome、Codex/WorkBuddy 双 Agent、桌面 Excel、文件属性 UI/历史版本/导出、2 GiB+ 和 T01–T09；没有旧正式数据库迁移。
+`Program.cs` 挂载原生路由；`ResourceSchemaV2.cs/Vault.cs` 为新库 Schema、加密和会话；`NativeFolder* / NativeFile* / NativeArchive* / RecycleStore / SearchStore` 为正式业务后端。前端 `wwwroot/app.js`、`ip-v2.js`、`export.js`、`pdf-preview.js` 保持有效：`app.js` 不可达的旧 `groupId` 上传回退已经清除，正式上传经 V2 SHA-256 prepare/resolve。尚存在供界面预览/Node UI 测试调用的 `mock` 页面，它们是**仍在使用的设计样例**，不是 V1 数据库读写入口，不应未经单独审查就删除。
 
-## MCP 第一批可靠性收尾（2026-10-17）
+## 5. 建议下个会话的具体顺序
 
-本批基于上一轮 MCP 静态审查，收敛三项：空闲/半报文客户端首请求 5 秒超时以防占满全部 8 个管道槽位；SID + Windows 登录 SessionId 命名隔离与 Local 单 GUI 宿主一致；带 request_id 的明确 HTTP 400/404 拒绝被持久化为 done/businessOk=false 结果并允许同编号重放。未知网络与写入异常依然 uncertain，防止重复副作用。新增真实管道饱和、会话命名和失败状态冒烟。最终源码提交与 Actions 验收状态须以 GitHub 最新结果为准；真实 MIC 提权/非提权 WorkBuddy、不同真实用户和多 Agent 大文件仍待用户实机。
+**建议先验收、后继续增加业务功能**；目前没有必要再次执行全库重构或回退到旧 V1 迁移问题。
 
-## MCP P1 第一批已验收（2026-10-16）
+1. **先做接口去重后的本机定点复测**：取最新 `main` 重新编译并刷新 Codex/WorkBuddy 工具发现，核实 **59 工具、没有 `v2_*`、13 个数组型列表**，原名项目/合同/IP CRUD 与 HTTP V2 FolderId 一致；按 [MCP_INTERFACE_CLEANUP_TEST.md](./MCP_INTERFACE_CLEANUP_TEST.md) 验证文件共享/历史、前端上传与错误结果。优先连带复测 ISS-016～018 的新修复，确认没有新缺陷。
+2. **补齐用户实机中尚为 BLOCKED 的 9 项**：Windows 普通/管理员权限、第二个真实用户/会话、Codex 与 WorkBuddy 组合、授权/撤权及 GUI 手工流程。首先核对每项阻塞条件是否具备，不应为了使其 PASS 而放宽管道 ACL、MIC 或 UAC。
+3. **N4 真实业务边界**：选填文件属性的完整 UI、共享版本更新后的各位置、目录祖先搜索跳转、父子目录重叠/同名 ZIP/文件夹导出、下载与取消恢复，真实 Edge/Chrome 和桌面 XLSX 导入导出。现有前端 `mock` 仅属于设计展示，不得误判为已接入真实资料库的新模块。
+4. **T01–T09 数据安全/发布门禁**：磁盘空间不足、移动盘/SSD 中断、文件任务退出/取消、数据库完整性、备份副本一致性、未来受控版本升级；2 GiB+ 目标和 ZIP64 属未来边界，**当前单文件 64 MiB 不应宣称可上传更大文件**。
+5. 仅在上述结果明确后，依据用户的新优先级安排后续产品功能、性能优化或正式发布准备。黑盒 24 并发 p95 曾升至约 1,956 ms（旧轮约 475 ms），**没有隔离变量的证据证明是数据库膨胀引起**，需等环境一致的性能对比再立缺陷。
 
-代码 [a6d5bf4](https://github.com/zy19970/IPSys/commit/a6d5bf43274368f421fd578c5a69f9cfc27e5337) 经 [Windows CI #38923795350](https://github.com/zy19970/IPSys/actions/runs/38923795350) **completed/success**。MCP 新增 `McpLocalSafety.cs`、加密库 `mcp_operations` 请求日志表、可选写操作幂等 `request_id`、`get_operation_result` 状态查询；批量上传完整明细与 `isError`，三元组 `delete_file(owner_id=FolderId,file_id=FileId,link_id=LinkId)`，禁用授权可以通知在途请求取消，未知参数严格拒绝和已连接响应等待超时。旧版按 `file_id=LinkId` 删除的 MCP 调用不再兼容；需更新 Codex/WorkBuddy 工具列表。 `pending/uncertain` 严禁自动重做，因崩溃窗口不保证绝对 exactly-once；批量上传非整批事务。用户本机长任务/故障注入尚未验收，不迁移旧测试数据库。
+## 6. 最小验证与文档管理约定
 
-## MCP 第二批已验收（2026-10-16）
+修改 C#/JS 或工具契约时，以 `.github/workflows/web-windows.yml` 实际 Windows CI、`--smoke` SQLCipher/HTTP/MCP 和 Node UI/导出测试为最低匹配回归，状态明确区分代码已实现、Windows CI 已通过、用户实机已通过、未测/失败。修改 Markdown 后核对链接、引用版本与实际 Git diff；不要仅因文档提交重新声称完成了一次业务回归。
 
-源码提交 [bfab1a8](https://github.com/zy19970/IPSys/commit/bfab1a8aead2a65cf375b2fe5429776befe26970) 通过 [Windows CI #38927263017](https://github.com/zy19970/IPSys/actions/runs/38927263017) **completed/success**。新增 `NativeMcpFileQuery.cs` 和本机授权只读 `/api/v2/mcp/files/{workspace}`，直接 SQL 一次查询 Folder/File/FileVersion/Link，使用递归有效 Folder 屏蔽软删父目录，替换 MCP `list_files` N+1 HTTP 访问并保持原有数组契约；新增 `list_files_page` 支持 kind/owner_id/name/offset/limit(1–200) 和 hasMore/nextOffset。仍保留全部 11 个 `v2_*` 兼容别名，避免旧客户端失效；原名与 v2 列表结果形态有区别，已在 MCP_CODEX 中明确。测试覆盖分页、归档筛选、IP 文件工具业务调用和发布版 stdio `tools/call`。首次 f0454e4 因 NativeMcpSmoke 模式变量 CS0165 CI 失败，bfab1a8 修正后全绿。下一阶段是第三批已存在的 V2 HTTP 业务能力封装为 MCP（优先合同编辑、文件属性/版本、分享、转移/搜索/回收站），以及真实 Codex/WorkBuddy/大量记录下的性能和交互测试；不要把未实测视为通过。
-
-## MCP 权限边界独立复核及补强（2026-10-17）
-
-在十项黑盒问题源码修复 `6cb1e6b` 通过 [CI #38939165516](https://github.com/zy19970/IPSys/actions/runs/38939165516) 后，进一步发现管理员宿主与非提升同用户客户端仍可能受 Windows 强制完整性级别（MIC）限制；不应直接降低 MIC，也不能仅凭 TokenUser DACL 自动通过判定实机跨级正常。针对残余风险提交 `1fa0d27` 并通过 [CI #38941986213](https://github.com/zy19970/IPSys/actions/runs/38941986213) completed/success：客户端 ACL/身份拒绝转为明确中文诊断，Windows CI 增真实管道 Owner/DACL 仅允许 TokenUser/SYSTEM 的回归检查。**用户本机尚须继续完成管理员宿主＋非提升 WorkBuddy/Bash、不同 Windows 用户拒绝和长期多客户端文件任务的实测**；建议普通权限运行唯一 IPSys 宿主，禁止绕过权限隔离。
-
-## 最新黑盒问题 ISS-1～ISS-10 修复状态（2026-10-17）
-
-基于用户提供的 WorkBuddy 黑盒修复任务书逐项独立核对，已按保守安全方案修复。源码 [6cb1e6b](https://github.com/zy19970/IPSys/commit/6cb1e6b0d30031d2c1e55f5e34de720ad0fa0e62)，[Windows CI #38939165516](https://github.com/zy19970/IPSys/actions/runs/38939165516) **completed/success**。安全：Windows TokenUser SID 显式 ACL/pipe Owner 身份核对，同 Windows 用户不同提升级别的联通目标，保留跨用户拒绝；业务：文件列表 5 秒有界数据库锁等待，只有明确执行前 409 可有限重试且不污染 request_id；协议：只返回受支持的 2025-06-18、空行忽略、stderr UTF-8、404 资源/ID、文件历史 UTC Z；语义：move 目标新 ID/源软删除、日志 state done 与 businessOk 区别、搜索 kind=file 和回收站 kind=v2_file/v2_ip_file 的映射，以及 MCP 中立名称。扩展真实 SQLCipher 与发布版 stdio 自动回归，未降低文件版本完整性或历史工具契约。
-
-**未实测**：用户电脑管理员宿主和普通权限 Agent、WorkBuddy Bash 沙箱、不同真实 Windows 用户拒绝、多 Agent 64 MiB 长操作、旧测试目录脚本 `conc2.py`/ `cli_nonadmin.py`/ `blankline_test.py` 的完整执行。应下载新 exe 并按 [WEB_TESTING.md](./WEB_TESTING.md) 复测；不能将 CI success 当作上述现场复测 success。建议优先用普通用户权限启动 IPSys，避免低权限 Agent 借管理员宿主间接访问管理员文件。
-
-## 最新 MCP 使用与实际验收入口（2026-10-17）
-
-现行手册为 [MCP_CODEX.md](./MCP_CODEX.md)。在同一 Windows 用户下先运行唯一 WinForms 宿主、解锁数据库并手动开启 MCP，再刷新 Codex/WorkBuddy 的 `tools/list`；新工具包括 update_contract、get_file_details、update_file_metadata、download_file_version、associate_file、restore_file_link、copy_file、transfer_project/ip/archive/general、search_records、list_trash 和 restore_trash。MCP 删除文件关联须校验 FolderId/FileId/LinkId，写入推荐 `request_id` 并用 get_operation_result 诊断丢失结果；pending/uncertain 不可盲目重做。下载路径是宿主电脑本机绝对新文件，64 MiB 单原件上限不变。双 Agent 长任务、磁盘/权限/异常中断尚无用户实机验收。
-
-## MCP 第三批业务工具补齐（2026-10-17）
-
-源码 `080a599cfcc07fc990e379c54b34f709011e1996` 对应 [Windows CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431) **completed/success**。本批新增 `McpLocalExtras.cs` 提供 14 个正式 MCP 工具：update_contract、get_file_details、update_file_metadata、download_file_version、associate_file、copy_file、restore_file_link、transfer_project、transfer_ip、transfer_archive、transfer_general、search_records、list_trash、restore_trash。所有新增工具复用 V2 已有 HTTP 业务事务、同一已授权 SQLCipher 会话，写操作适用 `request_id` 日志。完整业务回归已验证合同编辑、查询、文件属性、下载禁止覆盖、共享关联、文件复制、项目/IP/档案/综合资料转移和回收站恢复。宿主本机下载路径必须是绝对路径且不存在，不能覆盖原件。与其他 V2 文件操作一样，单文件仍限 64 MiB。下一轮应以真实 Codex/WorkBuddy 工具列表加载、跨工作区大文件、文件夹访问权限和长任务故障注入为主；旧库测试数据无需迁移。
-
-## 1. 用户最终意图和冻结规则
-
-IPSys 用户界面名称是「资料管理系统」，以**个人资料长期归档**为优先，公司资料独立工作区；单用户本地 WinForms + 127.0.0.1 Web/Edge/Chrome，单个加密 SQLCipher 资料库保存真实文件字节。Release 为依赖系统安装 .NET Desktop Runtime 8 x64 和 ASP.NET Core Runtime 8 x64 的单 EXE。
-
-所有分类、项目、合同、知识产权、证书、个人经历/成果和综合资料统一为 **Folder**，业务字段按类型区分；只有附件是 **File**。Folder 有业务属性与排序、没有版本；File 有稳定身份、可选属性、独立版本历史。一个 FileId 可关联同区多个 Folder，升级版本时各处同步；两个独立 FileId 可只共用加密字节而各持版本；哈希/内容相同须展示已有文件名和文件夹路径，由用户选择共享文件身份、仅复用字节、独立保存或取消。公司与个人不共享实际 FileObject，文件不可长期无归属。取消旧测试数据库迁移/兼容/回填，不覆盖旧文件。
-
-项目三类型；合同必须属于有效项目且只能从项目详情新增；知识产权七类型等结构化字段、金额显示 `0.00` 按 [M0_DATA_DICTIONARY.md](./M0_DATA_DICTIONARY.md)。不恢复自动备份、无归属文件池、正文 OCR、材料清单或自动提醒。
-
-## 2. 已冻结 UI
-
-个人优先；公司侧栏为企业资质、业务档案、公司项目、知识产权、综合资料；个人侧栏按身份与资质、知识产权与著作、科研与合作项目、成果与奖励、学术与社会活动、其他资料划分。工作台 **3×2** 入口卡片、紧凑表格、长名称优先、勾选/序号/持久排序。公司资质直接表格；公司业务档案**根层七系统分类纯导航卡片**（无下载/勾选，自建空分类可删），内层分类与资料任意混排表格、目录仅「打开」、资料「下载」、选目录后工具栏递归导出；个人分类卡片→台账→详情；项目/IP 台账→详情；综合资料保留原卡片视图。详情与名称点击和项目合同关系遵守 [UI_BASELINE.md](./UI_BASELINE.md)。
-
-网页「关闭数据库」只关库并返回登录，不结束 WinForms 和本地 HTTP 服务；仅原生窗口 X/退出按钮关闭程序，上传过程中按安全三选项处理。
-
-## 3. 已实现的代码与尚存过渡态
-
-| 部分 | 实际状态 |
-| --- | --- |
-| 历史旧业务能力 | 旧独立 Store 曾实现项目/合同/IP/分类资料、附件/版本、Excel、PDF.js、ZIP、搜索和 MCP；正式业务现均走 V2；旧 Schema/Store/测试适配进入 N4 清理，不再当作生产数据入口 |
-| R0/R1 | `Program.cs` 职责拆分及旧表 Folder 抽象/读写/复制转移已通过相应历史 CI，属临时兼容层 |
-| **N1** | `ResourceSchemaV2.cs` 创建 Folder/File/版本/物理字节/关联新库及约束， [CI #38740628571](https://github.com/zy19970/IPSys/actions/runs/38740628571) 通过 |
-| **N2-01** | `NativeFolderStore.cs`、`NativeFolderEndpoints.cs` 实现新表项目/合同/IP CRUD， [CI #38743939004](https://github.com/zy19970/IPSys/actions/runs/38743939004) 通过 |
-| **N2-02** | `NativeArchiveStore.cs`、`NativeArchiveOrder.cs` 实现新表档案/综合资料 CRUD、混排排序/移动， [CI #38747066932](https://github.com/zy19970/IPSys/actions/runs/38747066932) 通过 |
-| **N3-01** | 独立原生 File 上传/属性/历史版本/下载/初始归属已完成，[CI #38754995418](https://github.com/zy19970/IPSys/actions/runs/38754995418) 成功；现有 IP 与项目合同网页已在后续 N2-03 接入，其他模块待切换 |
-| **N3-02** | 同 FileId 多 Folder 关联/解绑/恢复已通过 [CI #38759311477](https://github.com/zy19970/IPSys/actions/runs/38759311477)；现有 IP 与项目合同网页已在后续 N2-03 接入，其他模块待切换 |
-| **N3-03** | 独立 FileId 同区复用加密原件内容/跨区独立物理复制已通过 [CI #38762437581](https://github.com/zy19970/IPSys/actions/runs/38762437581)；现有 IP 与项目合同网页已在后续 N2-03 接入，其他模块待切换 |
-| **N3-04** | 原生 SQLCipher 文件准备/异名查重/三选一或取消、writing 清理与一次性票据通过 [CI #38820367132](https://github.com/zy19970/IPSys/actions/runs/38820367132)；现有 IP 与项目合同网页已在后续 N2-03 接入，其他模块待切换 |
-| **N2-03-01** | 原生 V2 项目/合同/IP MCP 11 项 `v2_*` 命令已通过真实本机管道→HTTP→SQLCipher [CI #38822708366](https://github.com/zy19970/IPSys/actions/runs/38822708366)，仅写 V2 `folders`；旧 14 项工具暂保留 |
-| **N2-03-02** | 知识产权 FolderId→V2 File/Link/Version 原生端到端业务 API 与文件分类、共享/解绑/恢复已通过 Windows CI #38824119576；旧原生 UI 入口暂不变 |
-| **N2-03-03** | 知识产权固定 XLSX 导入/导出已接入 V2 `folders.kind=ip` 身份，原申请号重复判断、筛选 FolderId、8 MiB/5000 行校验、更新保留附件字节，经真实 SQLCipher/HTTP [CI #38825202078](https://github.com/zy19970/IPSys/actions/runs/38825202078) 验收；旧 Excel 路由仍属过渡期 |
-| **N2-03-04** | 现有知识产权网页已接入 V2 FolderId/FileId/LinkId/版本：列表、详情、CRUD、排序、Excel/原件上传查重、下载/预览与 ZIP/文件夹导出。功能提交 d214d20a，单 EXE 脚本修复 f480fca6，UI 断言 d8ded0b9，渲染修复 c56ce21f；最终 CI #38828523508 已通过验收。其余 IP 搜索/回收站、原名 MCP 与跨区复制已在 N2-03-05/06 完成 |
-| **N2-03-05** | 旧名 IP MCP CRUD 与 V2 FolderId、统一搜索与 V2 回收站、完整原件版本跨区单事务复制移动已通过 [CI #38831972597](https://github.com/zy19970/IPSys/actions/runs/38831972597)。跨区 FileObject 独立；不可安全回收的共享物理历史禁止冒险永久清理 | 
-| **N2-03-06** | MCP `upload_files(kind=ip)` 写 V2、`list_ip_files/delete_ip_file` 查询/解除关联、查重显式选择、追加版本已通过 [CI #38833862535](https://github.com/zy19970/IPSys/actions/runs/38833862535) | 
-| **N2-03-07-01** | 项目/合同现有网页、真实父项目合同、原件 FileId/LinkId/版本、用户决定内容复用、排序、合同及链接同事务复制、下载与文件夹 ZIP 已对齐 V2，Windows CI #38836041449 成功 |
-| **N2-03-07-02-01 MCP** | 当时的项目合同原名 MCP、附件与通用 list_files/delete_file 已切 V2，[CI #38845050570](https://github.com/zy19970/IPSys/actions/runs/38845050570) success；当时后续 Excel/搜索/回收站及完整复制也已在后续 N2-03 完成，实机仍待 N4 |
-| **N2-03 项目合同全链路** | 项目固定 XLSX V2 导入导出、合同只读导出、搜索结果与回收站身份统一、完整项目及所属合同全部原件历史跨区事务复制/移动已通过 [Windows CI #38848010379](https://github.com/zy19970/IPSys/actions/runs/38848010379)；失败测试后旧适配类型隔离已修复 |
-| **N2-04（正式 V2 主链路自动验收完成）** | 企业资质、个人分类、公司业务档案与综合资料现有网页、原件历史、共享、归档 Excel、搜索、回收站、整记录转移都已用 V2；db79b82 增加 12 项档案/目录/综合资料 MCP 工具并使 upload_files/list_files 支持全部五类；6a7b1ff 将 ZIP/文件夹全版本导出也固定使用 FileId+Version，不再访问旧文件 ID，正式环境旧业务路由关闭、只有 --smoke 测试注册；[CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) success。下一阶段 N4 清理旧表/Store 及只为历史测试留存的 API，再做 Edge/Chrome 真实用户操作验收。 |
-
-**源码切换边界（N4 已验证）**：正式和 `--smoke` 都只注册 V2，`Vault` 不再创建旧业务表；本次又删除了 31 个旧数据库 Store、逻辑 Folder Provider、旧接口/身份投影及未使用的历史回归 C#。V2 仍需的 `ProjectInput/ContractInput/IpInput/ArchiveInput/FolderMutationInput`、字段校验、归档混排排序输入被迁入 `BusinessRules.cs`，`FolderSnapshot` 留在 `FolderModel.cs`，XLSX 读写保留在 `ExcelLedger.cs`。[Windows CI #38911635273](https://github.com/zy19970/IPSys/actions/runs/38911635273) success；不等于 Edge/Chrome 用户实机完成。
-
-## 4. 接续开发的唯一顺序
-
-1. **N3-01 已完成**：独立 `/api/v2/files` 支持 FileId、选填属性、加密字节分块与 SHA-256、原生 FileVersion/历史下载，上传与初次 Folder 归属同事务；[CI #38754995418](https://github.com/zy19970/IPSys/actions/runs/38754995418) 已通过。
-2. **N3-02 已完成**：同区多个有效 Folder 共用 FileId，文件属性和版本在所有有效位置同步；解除某一位置只软删除该链接，新版本不会自动让旧链接复活。全部链接解除后原件历史仍保留，可从原 Folder 查询已解除链接并显式恢复。详见 [CI #38759311477](https://github.com/zy19970/IPSys/actions/runs/38759311477)。
-3. **N3-03 已完成**：`NativeFileCopyStore`/`NativeFileCopyEndpoints` 支持明确的 `reuse-content`（仅同工作区，不同 FileId 与 FileVersion 共用完成的 FileObject）和 `independent-content`（重新复制全部有效版本字节并生成独立 FileObject，跨区强制使用）；属性及后续版本独立、目标 Folder 链接同事务，SQLCipher/HTTP 通过 [CI #38762437581](https://github.com/zy19970/IPSys/actions/runs/38762437581)。
-4. **N3-04 已通过原生 Store/HTTP CI**：`NativeFileChoiceStore/Resolve/Endpoints` 在 `prepare` 暂存 SQLCipher writing 块并计算 SHA-256，返回同区最新版已有文件名与 Folder 路径。用户明确选择 `share-file`、`reuse-content`、`independent` 或取消；已完成原件不自动合并，取消、关库/重开清理未确认块，30 分钟票据有效期、当前一个待确认上传。[CI #38820367132](https://github.com/zy19970/IPSys/actions/runs/38820367132) 已通过。
-5. **N2-03-01 已完成**：`McpLocalV2.cs` 借助既有手动 MCP 开关、当前 Windows 用户的命名管道与会话令牌调用原生 `/api/v2/folders`，将项目、合同、知识产权查询、创建、修改和删除注册为 11 项独立 `v2_*` 工具。合同父项目、工作区、属性更新及软删恢复经真实 SQLCipher 通过 [CI #38822708366](https://github.com/zy19970/IPSys/actions/runs/38822708366)，保证不写旧业务表。
-6. **N2-03-02 已完成**：`NativeIpFileStore` 和 `NativeIpFileEndpoints` 将知识产权 `folders.kind=ip` 的真实 FolderId 绑定 V2 附件列表、分类原件上传、文件详情、追加版本、历史字节下载、共享关联与单条解绑/恢复。原生 IP CRUD 使用 `/api/v2/folders`；经过 SQLCipher/HTTP 真实回归验证有效归属、同区共享最新版本、目录属性变更不产生文件版本、跨 IP/跨区隔离、删除/恢复及旧表不双写。[CI #38824119576](https://github.com/zy19970/IPSys/actions/runs/38824119576) 成功（首轮编译因测试遗漏 Tags，占位修复后通过）。
-7. **N2-03-03 已完成**：`ExcelLedger` 的 V2 IP 分层适配和 `NativeIpExcelEndpoints` 提供 `/api/v2/excel/{workspace}/ip/template`、`export`、`import`；固定 20 列、跳过/更新/另建策略继续有效，但实际使用 V2 FolderId 和 `attributes_json`，导入不碰旧专利表，不复制跨工作区附件。CI #38825202078 测试真实 Excel 旧格式兼容导入、V2 筛选导出/更新、附件链接及历史原件保持不变。
-8. **N2-03-04 当时实施记录（后续已完成）**：新增 NativeIpUiEndpoints，按 V2 IP FolderId 聚合列表/原件 FileId/LinkId/历史版本，ip-v2.js 负责内容查重和明确选择；现有 app.js 知识产权列表、CRUD、Excel、文件历史与下载、跨 IP 共享、单位置解绑、文件夹/ZIP 导出使用 V2。新增材料类别在上传 resolve 同事务落库，并嵌入单 EXE。Node+HTTP 测试经历了旧 UI 断言及提示字符串修复，最新 CI #38828523508 已通过；该部分未做用户 Edge/Chrome 实机。
-9. **N2-03-05 完成**：原有 MCP 的 `list_ips/create_ip/update_ip/delete_ip`、知识产权全局搜索/原件 FileId 与回收站、整记录含所有原件版本的跨公司/个人复制移动已通过 Windows [CI #38831972597](https://github.com/zy19970/IPSys/actions/runs/38831972597)。跨区物理 FileObject 必须独立，复制失败整体回滚。
-10. **N2-03-06 完成**：新增 `McpLocalIpFiles.cs`；`upload_files(kind=ip)`、`list_ip_files`、`delete_ip_file` 均通过已授权本机 V2 HTTP，不再混用旧链接；同内容时必须由调用方显式确认复用选项，原件更新仍保留所有版本。[CI #38833862535](https://github.com/zy19970/IPSys/actions/runs/38833862535) 已成功。
-11. **N2-03-07-01 已完成**：`NativeProjectContractUiEndpoints.cs` 将现有项目与合同台账、项目所属合同、文件列表/历史版本映射到新库 FolderId/FileId，并提供原生排序及合同复制时同事务关联现有原件；`app.js` 项目合同 CRUD、附件内容查重与用户选择、版本上传、共享/解绑、预览下载及 ZIP/文件夹导出已切 V2。`ip-v2.js` 共用文件确认流程，`export.js` 提供原生 FileId 下载。[CI #38836041449](https://github.com/zy19970/IPSys/actions/runs/38836041449) 真实 SQLCipher HTTP、Node UI、Windows Debug/Release 通过。**项目 Excel 和项目跨工作区复制当前禁止调用旧表**。
-12. **N4 第一批已完成**：新库建表、打开验证、会话完整性诊断、回收站、正式/测试 HTTP 及完整 V2 冒烟在 [Windows CI #38905217041](https://github.com/zy19970/IPSys/actions/runs/38905217041) success，已经不需要 N2-04 旧业务接口回退。
-13. **N2-03（历史阶段已完成）**：全部正式业务 API/MCP/Excel 已切换 V2，不再按旧计划重做 N2-03；本轮继续下方 N4 清理与验收。
-14. **N4 接续（下一项）**：旧实现清理已通过 CI #38911635273，MCP 三批完成 [CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431)。本轮转入文件属性 UI、FileId 多位置历史/解绑恢复/跨工作区副本、重叠同名目录/ZIP 取消与 Edge/Chrome、真实 Codex/WorkBuddy/Excel、T01–T09 安全验收。
-
-旧测试数据全可丢弃，旧库不做迁移，拒绝打开旧库且不能覆盖源文件。**T08 是新版库版本识别和未来升级安全，而不是旧测试数据升级。**
-
-## 5. 验收与执行规则
-
-N1/N2 通过 Windows CI 不等于整个 V2 应用已验证。旧单文件上传上限仍 64 MiB；2 GiB+ 目标、SSD 故障、磁盘耗尽、手工备份一致性、密码修改与压缩尚未完整验收，不能声称正式发布完成。不在没有包含新数据的有效外部备份时删除来源文件。
-
-按 AIGT-templates 的 `AGENTS.md` 与 `AI_RULES/GIT_OPERATIONS.md` 工作，先核对主分支完整提交历史和当前源码，明确子任务后最小改动、针对性测试、直接提交 `main`、检查 CI 和 ref，并更新 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md) 的进度证据与 [RESOURCE_REFACTOR_TEST_MATRIX.md](./RESOURCE_REFACTOR_TEST_MATRIX.md) 的状态。需求与 UI 分别见 [REQUIREMENTS.md](./REQUIREMENTS.md)、[UI_BASELINE.md](./UI_BASELINE.md)，实机记录见 [WEB_TESTING.md](./WEB_TESTING.md)。
-
-## N2-04 自动验收完成与 N4 交接（2026-10-16）
-
-正式业务档案、企业资质、个人分类及综合资料正式网页在 N2-04 完成 V2 接入（`02619b2`、`db79b82`、`6a7b1ff`）。本次 N4 又由 `0b0dfec` 取消旧表建库和开库旧 Ensure、旧 HTTP 注册及旧综合回归，`013fa1e` 后 [Windows CI #38905217041](https://github.com/zy19970/IPSys/actions/runs/38905217041) completed/success。**旧源码裁剪已经完成，当前仅剩复杂边界及正式实机安全验收**，不要误将旧历史段落的 N2-03/N2-04 列为待开发。
+[RESOURCE_REFACTOR_TEST_MATRIX.md](./RESOURCE_REFACTOR_TEST_MATRIX.md) 是 Folder/File 场景测试矩阵，[WEB_TESTING.md](./WEB_TESTING.md) 保存长期验收记录，历史黑盒材料归档于 [MCP_TEST_RESULTS/2026-10-17/](./MCP_TEST_RESULTS/2026-10-17/MCP_TEST_REPORT.md)。[DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md) 负责阶段与下一步，[MCP_CODEX.md](./MCP_CODEX.md) 负责工具使用，本文只负责**最新状态与可执行的跨会话交接**。避免在多个文件重复积累“最新 CI”历史段落；历史过程通过 Git 提交和既有报告追溯。

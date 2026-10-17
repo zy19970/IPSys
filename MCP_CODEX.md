@@ -1,16 +1,18 @@
 # IPSys 本机 Codex MCP
 
+> **当前已验证构建**：[`2620c109`](https://github.com/zy19970/IPSys/commit/2620c109043f779eeb57f411210f99bb2f21e554) / [Windows CI #39019604428](https://github.com/zy19970/IPSys/actions/runs/39019604428) **success**（59 工具、无 `v2_*`、SQLCipher/HTTP、Debug/Release/Node 回归）；本机 Codex/WorkBuddy 新一轮实测尚待进行。此处其余 69/70 工具、11 个 `v2_*` 等描述均为历史时间点记录，**下个会话一律以本文开头的 59 工具清单为准**，并参照 [HANDOFF.md](./HANDOFF.md)。
+
 > **当前唯一接口口径（2026-10-17 接口收敛）**：MCP 对外暴露 **59 个无版本前缀的工具**，原来的 11 个 `v2_*` 业务别名已下线；`create_project`、`update_ip`、`list_contracts` 等原名接口仍操作 SQLCipher V2 Folder/File 数据模型。项目/合同/IP 三个 `list_*` 继续输出网页友好结构（包含 `id` 和相应扁平化业务字段）；原生 `FolderSnapshot` 可在授权的 HTTP `/api/v2/folders/{workspace}/{kind}` 查询，但不再单独占用 MCP 工具名称。既有 70 工具黑盒报告和 `v2_*` 用例只适用于历史版本；新实机测试使用 [MCP_INTERFACE_CLEANUP_TEST.md](./MCP_INTERFACE_CLEANUP_TEST.md)。HTTP `/api/v2`、数据表、FileId/LinkId 与版本机制未改变。
 
 `v2_list_projects`→`list_projects`、`v2_list_contracts`→`list_contracts`、`v2_list_ips`→`list_ips`：调用参数不变，但**返回结构不完全相同**，调用者必须按当前原名接口的 `id` 等字段取值，不能继续读取 `folder.ref.id`。其余 8 个 `v2_*` 写操作改为对应原名，参数和数据含义不变。客户端应刷新 MCP 工具清单；已注册旧名称的 Agent 需要替换工具调用后再连接。
 
 
-> **第六轮本机 Agent 黑盒复测及残余修复（2026-10-17）**：报告归档在 [MCP_TEST_RESULTS/2026-10-17](./MCP_TEST_RESULTS/2026-10-17/MCP_TEST_REPORT.md)。被测构建 `d3bc77f` 实际为 **37 项 PASS 28 / FAIL 0 / BLOCKED 9**，原 ISS-001～015 门禁 **15/15** 成功。实测另外发现 ISS-016（两处明确前置拒绝误标 uncertain）、ISS-017（同名目录内部约束码）、ISS-018（批量上传顶层错误泛化）；源码修复见 [`e3f6292`](https://github.com/zy19970/IPSys/commit/e3f62921aad6e7cef16a7fa8bf498ff0c7392636)，Windows CI [#39014009578](https://github.com/zy19970/IPSys/actions/runs/39014009578)。**后续补丁仅有 CI/自动冒烟依据，尚未经本机 Agent 再次实测**；当前工具数仍 **70**。跨权限、第二 Windows 用户/会话及 GUI 手工撤权用例仍需单独补测。
+> **历史：第六轮本机 Agent 黑盒复测及残余修复（2026-10-17）**：报告归档在 [MCP_TEST_RESULTS/2026-10-17](./MCP_TEST_RESULTS/2026-10-17/MCP_TEST_REPORT.md)。被测构建 `d3bc77f` 实际为 **37 项 PASS 28 / FAIL 0 / BLOCKED 9**，原 ISS-001～015 门禁 **15/15** 成功。实测另外发现 ISS-016（两处明确前置拒绝误标 uncertain）、ISS-017（同名目录内部约束码）、ISS-018（批量上传顶层错误泛化）；源码修复见 [`e3f6292`](https://github.com/zy19970/IPSys/commit/e3f62921aad6e7cef16a7fa8bf498ff0c7392636)，Windows CI [#39014009578](https://github.com/zy19970/IPSys/actions/runs/39014009578)。**该历史阶段后续补丁仅有 CI/自动冒烟依据，尚未经本机 Agent 再次实测**；当时工具数为 **70**。跨权限、第二 Windows 用户/会话及 GUI 手工撤权用例仍需单独补测。
 
 明确的业务拒绝（如 `restore_trash` 查无目标或 `create_archive_folder` 父 ID 非正数）现在留存 `done/businessOk=false`；在途取消与网络结果未知继续保留 `uncertain`。创建同级重名目录明确提示名称冲突，不显示 SQLite 内部码。同步 `upload_files` 失败时，`tools/call` 的顶层 `message/error` 对单文件给实际原因、多文件给失败数量及首个原因，`files[]` 仍保留逐文件结果。测试时不要复用修改了业务参数的旧 `request_id`，以及不得假定 24 路并发延迟升高必然由数据库体积造成。
 
 
-> **最终 MCP 黑盒缺陷修复（2026-10-17）**：剩余 ISS-003～ISS-014 已按安全边界实现，源码提交 `30af13d4`、`a885d368`、`2d099748`、`24822d73`；最终 [Windows CI #39010080604](https://github.com/zy19970/IPSys/actions/runs/39010080604) **completed/success**。**现有 MCP 共 70 个工具**，在原 69 个基础上新增 `purge_trash`。包括 JSON-RPC 批请求明确拒绝、先初始化、统一结构化错误信封、按 IP 类型说明状态、按当前同区匹配规则提示共享/复用约束、UNC/网络路径明确拒绝、上传取消区分原因、下载目标中文错误以及安全地永久清理无附件的已删除资料。原先三批“69 工具”属于历史版本，不用于当前验收。**单轮完整实机复测入口**：[MCP_AGENT_FINAL_RETEST.md](./MCP_AGENT_FINAL_RETEST.md)。实机权限矩阵仍需 Agent 实际执行。
+> **历史：MCP 黑盒缺陷修复阶段（2026-10-17）**：剩余 ISS-003～ISS-014 已按安全边界实现，源码提交 `30af13d4`、`a885d368`、`2d099748`、`24822d73`；最终 [Windows CI #39010080604](https://github.com/zy19970/IPSys/actions/runs/39010080604) **completed/success**。**当时 MCP 共 70 个工具**，在原 69 个基础上新增 `purge_trash`。包括 JSON-RPC 批请求明确拒绝、先初始化、统一结构化错误信封、按 IP 类型说明状态、按当前同区匹配规则提示共享/复用约束、UNC/网络路径明确拒绝、上传取消区分原因、下载目标中文错误以及安全地永久清理无附件的已删除资料。原先三批“69 工具”属于历史版本，不用于当前验收。**单轮完整实机复测入口**：[MCP_AGENT_FINAL_RETEST.md](./MCP_AGENT_FINAL_RETEST.md)。实机权限矩阵仍需 Agent 实际执行。
 
 ## 新增 `purge_trash` 与最终安全边界
 
@@ -19,16 +21,16 @@
 上传源路径与下载输出路径须是 IPSys 宿主机器的本地盘符绝对路径，UNC/网络共享路径不允许。取消上传时仍保留在途 HTTP 结果未知的 `uncertain`，按 `cancelReason`（`user_cancel/authorization_revoked/host_stopping`）判断触发原因，不能仅凭取消指令断言未入库。协议 `tools/call` 的失败响应现在是结构化 JSON 文本，客户端解析 `ok/code/message/retryable` 以及可选的 `httpStatus`；真实业务失败仍应通过 `get_operation_result` 查询幂等日志。不允许直接复用失败参数的新编号或自动重传不确定结果。
 
 
-> **2026-10-17 实机黑盒第一轮修复（ISS-001/002/015）**：源码 `a18a004` + `22276bf`，最终 [Windows CI #38996186466](https://github.com/zy19970/IPSys/actions/runs/38996186466) **completed/success**。现有 **69 个 MCP 工具不变**，原有 16 个数组返回的列表工具在 `tools/call` 中可正常输出 JSON 数组；明确的 HTTP 400/404/非繁忙 409 及已识别的本地前置业务拒绝记为 `done/businessOk=false`（错误结果可同号重放），仅真实未知执行结果维持 `uncertain`。崩溃留下的无活动执行者 `pending` 在首次查询时持久收敛成 `uncertain`，`result` 包含 `reason=host_restarted`、`interruptedAt`、`resumeSupported=false`；禁止自动恢复或整批重传。源代码 CI 不代替用户电脑的跨权限与强制重启复测。
+> **历史：2026-10-17 实机黑盒第一轮修复（ISS-001/002/015）**：源码 `a18a004` + `22276bf`，最终 [Windows CI #38996186466](https://github.com/zy19970/IPSys/actions/runs/38996186466) **completed/success**。当时 **69 个 MCP 工具不变**，原有 16 个数组返回的列表工具在 `tools/call` 中可正常输出 JSON 数组；明确的 HTTP 400/404/非繁忙 409 及已识别的本地前置业务拒绝记为 `done/businessOk=false`（错误结果可同号重放），仅真实未知执行结果维持 `uncertain`。崩溃留下的无活动执行者 `pending` 在首次查询时持久收敛成 `uncertain`，`result` 包含 `reason=host_restarted`、`interruptedAt`、`resumeSupported=false`；禁止自动恢复或整批重传。源代码 CI 不代替用户电脑的跨权限与强制重启复测。
 
 ## 第一轮黑盒修复使用与恢复说明
 
-`list_projects`、`list_trash`、`list_file_links`、`list_folder_entries` 等仍返回数组根，不强制包装成 `{items:[]}`；原工具和 `v2_*` 输出合同保留。确定性业务失败的 `state=done` 不等于成功，必须检查 `businessOk=false`、`result.status=failed` 及 `httpStatus/error`。修正业务参数后要使用新的 `request_id`；同号同参数可重放已知失败记录，不能把该编号用于新的不同操作。网络断开、上传取消、宿主崩溃及其他未知结果仍应查询 `get_operation_result` 并核对真实 FileId/LinkId；旧 `pending` 查询收敛为 `uncertain` 并不是证明未落库。
+`list_projects`、`list_trash`、`list_file_links`、`list_folder_entries` 等仍返回数组根，不强制包装成 `{items:[]}`；在该历史版本中，原工具和 `v2_*` 返回契约并存；当前 `v2_*` 已删除。确定性业务失败的 `state=done` 不等于成功，必须检查 `businessOk=false`、`result.status=failed` 及 `httpStatus/error`。修正业务参数后要使用新的 `request_id`；同号同参数可重放已知失败记录，不能把该编号用于新的不同操作。网络断开、上传取消、宿主崩溃及其他未知结果仍应查询 `get_operation_result` 并核对真实 FileId/LinkId；旧 `pending` 查询收敛为 `uncertain` 并不是证明未落库。
 
 本机 Agent 复测优先执行 `t02_lists.py` 的 16 工具/17 调用，然后测试 `delete_file`、`reorder_entries`、`move_folder`、`upload_files(kind=archive)` 的明确失败日志，最后用新建可丢弃库执行 `inject.py`、重启及 `t09_restart.py`。本轮的 Windows CI 只模拟无活动执行者的遗留 pending，真实 Windows 管理员/普通权限、第二登录用户/会话以及强杀宿主后恢复仍由实机复测确认。
 
 
-> **最新 MCP 第三批可靠性验收（2026-10-17）**：源码 `6593333` 实现异步上传，`3701ad4` 修复 Stream 编译推断，`5ff60bd` 和 `c58dc2f` 修复关联与取消竞态断言，最终 [Windows CI #38991226637](https://github.com/zy19970/IPSys/actions/runs/38991226637) **completed/success**。新增 3 个工具，当前共 **69** 个。Debug/Release、MCP stdio、真实 SQLCipher/HTTP 冒烟和单 EXE 发布通过；真实跨权限/多 Agent 大文件/强制断线仍待实机。
+> **历史：MCP 第三批可靠性验收（2026-10-17）**：源码 `6593333` 实现异步上传，`3701ad4` 修复 Stream 编译推断，`5ff60bd` 和 `c58dc2f` 修复关联与取消竞态断言，最终 [Windows CI #38991226637](https://github.com/zy19970/IPSys/actions/runs/38991226637) **completed/success**。该阶段新增 3 个工具，当时共 **69** 个。Debug/Release、MCP stdio、真实 SQLCipher/HTTP 冒烟和单 EXE 发布通过；真实跨权限/多 Agent 大文件/强制断线仍待实机。
 
 ## 第三批 MCP 长时间文件任务（2026-10-17）
 

@@ -1,6 +1,6 @@
 # IPSys 技术设计：SQLCipher V2 当前实现与安全验收（2026-10-17）
 
-> 截至业务源码 `080a599`，新建/开库、正式与 `--smoke` 路由以及业务 Store 均只使用 V2；N4 已移除 31 份旧 Store/Provider/旧端点及测试源码。MCP 已完成 P0 并发与单实例、第一批幂等/撤权/参数安全、第二批单 SQL 查询与分页、第三批合同/文件/转移/搜索/回收站共 14 个工具补齐，[Windows CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431) **completed/success**。仍待 Edge/Chrome、Codex/WorkBuddy、大文件及 T01–T09 实机验证。
+> **现行技术基线（2026-10-17）**：SQLCipher V2-only 业务及 N4 旧表、31 份旧源码清理已完成；MCP P0/P1、业务操作、ISS-001～018 修复进入主线。[`2620c109`](https://github.com/zy19970/IPSys/commit/2620c109043f779eeb57f411210f99bb2f21e554) 去掉 11 个 `v2_*` MCP 重复别名和旧前端上传死分支，公开 **59** 个工具；[Windows CI #39019604428](https://github.com/zy19970/IPSys/actions/runs/39019604428) success。底层 V2 HTTP、文件身份、共享、版本及 SHA-256 显式选择不变。70 工具版历史实机 PASS28/FAIL0/BLOCKED9，最新 59 工具尚需独立本机 Agent 复测。最新交接见 [HANDOFF.md](./HANDOFF.md)。
 
 ## 1. 运行与安全边界
 
@@ -37,7 +37,7 @@ V2 强制工作区组合约束、合同有效父项目、合法 Folder 父级/�
 
 ### N3-01 原生 File 基础服务（2026-10-15 已通过 CI）
 
-`NativeFileStore.cs` / `NativeFileEndpoints.cs` 通过独立 `/api/v2/files` 接口实现 FileId 创建（必须绑定有效 FolderId）、原件加密分块上传与 SHA-256/长度校验、同事务版本和首条 FolderFileLink 写入；文件名必填、说明/标签/编号/日期/版本说明选填，可编辑属性且不修改历史版本。历史版本保留原始文件名并按版本下载。上传不完整、取消时事务回滚，无残留有效文件。独立 `NativeFileStoreSmoke` 和 `NativeFileHttpSmoke` 在真实 SQLCipher 与 HTTP 中通过身份/跨区隔离、原件往返、版本、事务回滚及数据库重开，[Windows CI #38754995418](https://github.com/zy19970/IPSys/actions/runs/38754995418) 成功。**N3-02 关联、N3-03 独立 FileId 内容复用、N3-04 原生查重与用户确认 API 均已通过 CI；现有 IP、项目/合同网页已接入查重确认弹窗；归档/综合资料与完整 Edge/Chrome 实机验收仍待完成。** 旧单文件 64 MiB 上限在此基础链路继续适用。
+`NativeFileStore.cs` / `NativeFileEndpoints.cs` 通过独立 `/api/v2/files` 接口实现 FileId 创建（必须绑定有效 FolderId）、原件加密分块上传与 SHA-256/长度校验、同事务版本和首条 FolderFileLink 写入；文件名必填、说明/标签/编号/日期/版本说明选填，可编辑属性且不修改历史版本。历史版本保留原始文件名并按版本下载。上传不完整、取消时事务回滚，无残留有效文件。独立 `NativeFileStoreSmoke` 和 `NativeFileHttpSmoke` 在真实 SQLCipher 与 HTTP 中通过身份/跨区隔离、原件往返、版本、事务回滚及数据库重开，[Windows CI #38754995418](https://github.com/zy19970/IPSys/actions/runs/38754995418) 成功。**N3-02 关联、N3-03 独立 FileId 内容复用、N3-04 原生查重与用户确认 API 均已通过 CI；全部正式业务类型均经 V2 SHA-256 prepare/resolve 上传；Edge/Chrome 实际交互及复杂文件边界仍待实机验收。** 旧单文件 64 MiB 上限在此基础链路继续适用。
 
 ### N3-02 同一 FileId 的多位置关联（已通过 CI）
 
@@ -61,10 +61,10 @@ V2 强制工作区组合约束、合同有效父项目、合法 Folder 父级/�
 
 [UI_BASELINE.md](./UI_BASELINE.md) 是交互权威：个人工作区优先，公司五栏目及 3×2 工作台，企业资质直接表格；业务档案根七分类卡片纯导航、内层目录/资料混排表格；个人分类卡片→台账；项目/IP 台账→详情。V2 的统一物理 Folder 不能作为统一改变这些界面的理由。
 
-`export.js` 的全部模块 ZIP/文件夹附件下载都使用 V2 FileId+FileVersion；默认最新版，历史版需明确选择。`SearchStore` 已覆盖各模块、附件选填属性和 Folder 祖先名；正式搜索是 `/api/v2/search/{workspace}`。全部固定列 XLSX、原名及 `v2_*` MCP 都接 V2（合同 Excel 只读），MCP 本机手动授权不变。ZIP 不支持 ZIP64（小于 4 GiB），同名、父子目录重叠、取消和真实浏览器跳转待实机验证。
+`export.js` 的全部模块 ZIP/文件夹附件下载都使用 V2 FileId+FileVersion；默认最新版，历史版需明确选择。`SearchStore` 已覆盖各模块、附件选填属性和 Folder 祖先名；正式搜索是 `/api/v2/search/{workspace}`。全部固定列 XLSX 和现行 59 个无版本前缀的 MCP 工具都接 V2（合同 Excel 只读）；额外 11 个 `v2_*` 别名已在接口去重阶段删除。MCP 手动授权规则不变。ZIP 不支持 ZIP64（小于 4 GiB），同名、父子目录重叠、取消和真实浏览器跳转待实机验证。
 
 ## 6. 验收、风险与发布
 
-N1/N2/N3 正式业务、N4 两批旧表和源码清理、MCP 三批专项均已通过 Windows 自动回归（最新业务源码 `080a599`，[Windows CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431) success）。MCP 实现为手动授权的多个 stdio 子进程→同用户命名管道（最多 8 连接）→唯一 WinForms 宿主→带会话 Token 的 V2 HTTP；`list_files` 单次查询、`list_files_page` 限 1–200；新增业务工具共 14 项。当前不实现超过 64 MiB 的单文件支持，2 GiB+ 目标、ZIP64、SSD 异常、磁盘不足、安全退出、备份一致性及 Edge/Chrome/Agent 实机仍待验收。
+N1/N2/N3 正式业务、N4 两批旧表/源码清理、MCP 三批专项及后续黑盒缺陷修复均已通过对应 Windows 自动回归；**当前最新源码 `2620c109`，[Windows CI #39019604428](https://github.com/zy19970/IPSys/actions/runs/39019604428) success**。MCP 实现为手动授权的多个 stdio 子进程→同用户命名管道（最多 8 连接）→唯一 WinForms 宿主→带会话 Token 的 V2 HTTP；`list_files` 单次查询、`list_files_page` 限 1–200；历史阶段曾按批次新增 14 项业务工具；当前对外工具总数 59 项。当前不实现超过 64 MiB 的单文件支持，2 GiB+ 目标、ZIP64、SSD 异常、磁盘不足、安全退出、备份一致性及 Edge/Chrome/Agent 实机仍待验收。
 
 具体接续见 [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md)、[RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)；测试记录见 [WEB_TESTING.md](./WEB_TESTING.md)。
