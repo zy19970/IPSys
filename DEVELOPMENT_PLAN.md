@@ -1,5 +1,8 @@
 # IPSys 开发计划与验收进度（2026-10-17，N4 实机验收接续版）
 
+> **T02 超 2 GiB 功能进展（2026-10-17）**：V2 单文件上限已调整为 **8 GiB**，正式直接上传和 prepare/resolve 查重确认均已通过 **2,147,495,993 字节**的 Windows SQLCipher/HTTP 流式 SHA-256 上传下载往返；[Windows CI #39023923481](https://github.com/zy19970/IPSys/actions/runs/39023923481) 与 [#39024449728](https://github.com/zy19970/IPSys/actions/runs/39024449728) success。ZIP64 Node 结构回归成功。下一步是用户 Edge/Chrome 实机、ZIP64 解压互操作与 T03/T04 中断/备份安全验证，见 [LARGE_FILE_TESTING.md](./LARGE_FILE_TESTING.md)。
+
+
 > **当前执行依据**：[RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md) 的冻结模型 + [HANDOFF.md](./HANDOFF.md) 的最新交接。N2-04 全业务 V2、N4 两批旧物理模型/代码清理、MCP 三批功能及后续黑盒 ISS-001～018 修复均已提交；2026-10-17 接口收敛 [`2620c109`](https://github.com/zy19970/IPSys/commit/2620c109043f779eeb57f411210f99bb2f21e554) 将公开 MCP 工具从 70 减为 **59**，删除 11 个重复 `v2_*` 名称并清理前端无效旧式上传分支， [Windows CI #39019604428](https://github.com/zy19970/IPSys/actions/runs/39019604428) **completed/success**。旧 V1 数据迁移/回填已取消。**下一阶段主要为当前 59 工具的真实 Agent/Windows 权限复测、N4 复杂业务及 T01–T09 故障安全验证；尚未正式发布。**
 
 

@@ -2,6 +2,12 @@
 
 > 2026-10-17 实施方案。现行 V2 文件大小上限为 **8 GiB（8 × 1024³ bytes）/单文件**。该限制是本次引入的安全容量保护，不代表磁盘空间或数据库大小可以无限增长。是否实机验收通过，以 Windows CI 和用户目标电脑上的真实测试结果为准。
 
+## 当前已取得的自动验收证据（2026-10-17）
+
+两轮专项 Windows CI 均 **completed/success**：[Windows CI #39023923481](https://github.com/zy19970/IPSys/actions/runs/39023923481) 与 [#39024449728](https://github.com/zy19970/IPSys/actions/runs/39024449728)。第一轮（`c60033a5`）验证 **2,147,495,993 字节**的真实 SQLCipher V2 **直接上传→完整下载**，上传/下载均核验 SHA-256 与 64 位字节数。第二轮（`d608be26`）改为正式网页所依赖的 **prepare→同内容 SHA-256 检查→independent resolve→完整下载**，同样进行了大于 2 GiB 的实际往返，且保持 1 MiB 流缓冲。两轮同时完成 Debug/Release、MCP 协议、ZIP64 结构与其它现有自动回归。新加入的浏览器流式下载模拟测试验证完整写入/不足长度 abort，最新 Windows CI 可见报告。
+
+**证据边界**：以上属于 GitHub Windows Runner 上的真实加密数据库与 HTTP 流，以及浏览器写入逻辑模拟，不等于用户目标电脑上的 Edge/Chrome 文件选择器、ZIP64 第三方解压、磁盘断开、容量不足或有效备份实测。不能据此宣称 T02/T03/T04 所有安全门槛已完成。
+
 ## 一、链路与设计
 
 1. **网页上传与追加版本**：浏览器直接以 File/Blob 作为 request body，不用 FileReader/arrayBuffer 读取全部原件。ASP.NET Core Kestrel 保持其它 API 原有 66 MiB 默认请求上限；仅在两个原件上传入口（/api/v2/files/{workspace}/upload、/versions 及 /prepare）通过 IHttpMaxRequestBodySizeFeature 提升为 8 GiB。上传请求必须提供 Content-Length，超限拒绝。

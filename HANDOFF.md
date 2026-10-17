@@ -1,5 +1,8 @@
 # IPSys 跨会话交接（2026-10-17，N4 实机验收与后续功能完善）
 
+> **超 2 GiB 文件进度（最新）**：在不改变 V2 Schema 的情况下，将单文件上限提升至 **8 GiB**、Web/MCP 保留流式上传、浏览器大文件下载改为用户选择文件后流式保存，并补充 ZIP64。真实 Windows SQLCipher/HTTP **2 GiB + 12,345 字节**直接上传与 prepare→resolve 两条路径及各自 SHA256 下载校验均在 [Windows CI #39023923481](https://github.com/zy19970/IPSys/actions/runs/39023923481) 与 [#39024449728](https://github.com/zy19970/IPSys/actions/runs/39024449728) success。大文件下载、复制和跨工作区转移使用长任务超时。新版本桌面文件选择、第三方 ZIP64 解压、断电/拔盘、有效备份仍待实机；测试见 [LARGE_FILE_TESTING.md](./LARGE_FILE_TESTING.md)。旧“64 MiB”以及历史 CI 仅对应先前阶段。
+
+
 > **下个会话的首要入口。** 仓库：[zy19970/IPSys](https://github.com/zy19970/IPSys)，分支 `main`；本次文档整理所依据的**最后一次源码提交**为 [`2620c109`](https://github.com/zy19970/IPSys/commit/2620c109043f779eeb57f411210f99bb2f21e554)，对应 [Windows CI #39019604428](https://github.com/zy19970/IPSys/actions/runs/39019604428) **completed/success**。本交接文档后续会有独立 docs 提交，新会话应首先重新读取最新 `main`，不要把此处写死的源码 SHA 当作未来 HEAD。  
 > **开发阶段：N2-04 统一资源主链路完成、N4 旧物理模型与旧业务接口清理完成、MCP 黑盒三轮修复及接口去重完成。仍在开发与实机验收阶段；没有宣布正式产品发布。**
 

@@ -1,5 +1,8 @@
 # IPSys — 资料管理系统
 
+> **超 2 GiB 原件专项（2026-10-17）**：新 V2 单文件代码上限 **8 GiB**，数据库采用 1 MiB 分块增量 SHA-256。直接上传和网页实际使用的 prepare→resolve 均已对 **2 GiB + 12,345 字节**执行真实 SQLCipher/HTTP 上传与流式下载校验，两轮 Windows CI success：[Windows CI #39023923481](https://github.com/zy19970/IPSys/actions/runs/39023923481) 与 [#39024449728](https://github.com/zy19970/IPSys/actions/runs/39024449728)。ZIP64 结构回归已通过；Edge/Chrome 实际保存、第三方解压、移动磁盘异常与备份安全仍需在可丢弃测试库中验收，操作见 [LARGE_FILE_TESTING.md](./LARGE_FILE_TESTING.md)。
+
+
 > **接口现状（2026-10-17）**：SQLCipher 业务数据仅使用 V2 Folder/File/Link/Version 一套模型；HTTP 正式业务路径使用 `/api/v2`。MCP 对外保留 59 个无版本前缀的工具（`v2_*` 11 个重复别名已移除），现行使用与测试详见 [MCP_CODEX.md](./MCP_CODEX.md) 和 [MCP_INTERFACE_CLEANUP_TEST.md](./MCP_INTERFACE_CLEANUP_TEST.md)。历史 70 工具的实机测试归档不作修改。
 
 
