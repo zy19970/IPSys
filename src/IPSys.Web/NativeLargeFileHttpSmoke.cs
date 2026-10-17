@@ -67,10 +67,10 @@ static class NativeLargeFileHttpSmoke
             }
             expected=Convert.ToHexString(hash.GetHashAndReset());
         }
-        Console.WriteLine("LARGE FILE SMOKE: starting streaming upload "+TestBytes+" bytes");
+        Console.WriteLine("LARGE FILE SMOKE: starting prepared streaming upload "+TestBytes+" bytes");
         using var generated=new RepeatingStream(TestBytes,pattern);
         using var req=new HttpRequestMessage(HttpMethod.Post,
-            "/api/v2/files/company/upload?folderId="+folderId);
+            "/api/v2/files/company/prepare?folderId="+folderId);
         req.Headers.TryAddWithoutValidation("X-File-Name",
             Uri.EscapeDataString("large-over-2GiB.bin"));
         req.Content=new StreamContent(generated);
@@ -79,12 +79,23 @@ static class NativeLargeFileHttpSmoke
             HttpCompletionOption.ResponseHeadersRead);
         uploaded.EnsureSuccessStatusCode();
         var metadata=await uploaded.Content.ReadFromJsonAsync<JsonElement>();
-        long fileId=metadata.GetProperty("fileId").GetInt64();
         Check(metadata.GetProperty("size").GetInt64()==TestBytes,
-            "upload size truncated to Int32");
+            "prepared size truncated to Int32");
         Check(metadata.GetProperty("sha256").GetString()==expected,
-            "upload SHA-256 mismatch");
-        Console.WriteLine("LARGE FILE SMOKE: upload hash and length confirmed");
+            "prepared SHA-256 mismatch");
+        string ticket=metadata.GetProperty("ticket").GetString()
+            ??throw new IOException("LARGE FILE SMOKE: missing preparation ticket");
+        using var resolved=await client.PostAsJsonAsync(
+            $"/api/v2/files/company/prepared/{ticket}/resolve",
+            new NativeFileDecision("independent"));
+        resolved.EnsureSuccessStatusCode();
+        var persisted=await resolved.Content.ReadFromJsonAsync<JsonElement>();
+        long fileId=persisted.GetProperty("fileId").GetInt64();
+        Check(persisted.GetProperty("size").GetInt64()==TestBytes,
+            "confirmed file size truncated");
+        Check(persisted.GetProperty("sha256").GetString()==expected,
+            "confirmed file digest mismatch");
+        Console.WriteLine("LARGE FILE SMOKE: prepared, hashed and confirmed");
         using var response=await client.GetAsync(
             $"/api/v2/files/company/{fileId}/versions/1/download",
             HttpCompletionOption.ResponseHeadersRead);
@@ -104,6 +115,6 @@ static class NativeLargeFileHttpSmoke
         Check(received==TestBytes,"download byte count mismatch");
         Check(Convert.ToHexString(digest.GetHashAndReset())==expected,
             "download SHA-256 mismatch");
-        Console.WriteLine("LARGE FILE SMOKE PASS: >2 GiB upload/download; constant-memory SHA-256");
+        Console.WriteLine("LARGE FILE SMOKE PASS: >2 GiB prepared/confirmed upload and download; constant-memory SHA-256");
     }
 }

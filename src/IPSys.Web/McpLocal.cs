@@ -269,6 +269,10 @@ static partial class McpLocal
             },["workspace","request_id"])];
     }
 
+    private static bool LongFileOperation(string name)=>name is
+        "upload_files" or "download_file_version" or "copy_file" or
+        "transfer_project" or "transfer_ip" or "transfer_archive" or "transfer_general";
+
     private static object Success(JsonElement id,object value)=>new {jsonrpc="2.0",id,result=value};
     private static object Error(JsonElement id,int code,string msg)=>new {
         jsonrpc="2.0",id,error=new {code,message=msg}
@@ -504,7 +508,7 @@ static partial class McpLocal
         using var reader=new StreamReader(pipe,new UTF8Encoding(false),false,1024,true);
         await writer.WriteLineAsync(JsonSerializer.Serialize(new {name,arguments=fields},Json));
         string? line;
-        try { line=await reader.ReadLineAsync().WaitAsync(name=="upload_files"?TimeSpan.FromHours(3):TimeSpan.FromMinutes(12)); }
+        try { line=await reader.ReadLineAsync().WaitAsync(LongFileOperation(name)?TimeSpan.FromHours(3):TimeSpan.FromMinutes(12)); }
         catch(TimeoutException ex)
         {
             throw new IOException("MCP 请求等待超时，执行结果可能不确定。"+
@@ -779,7 +783,7 @@ static partial class McpLocal
         if(!vault.McpEnabled)throw new IOException("MCP 未授权：请在 IPSys 的系统设置中手动开启本机 MCP。");
         string workspace=Workspace(args);
         using var client=new HttpClient {BaseAddress=new Uri(address),
-            Timeout=name=="upload_files"?TimeSpan.FromHours(3):TimeSpan.FromMinutes(10)};
+            Timeout=LongFileOperation(name)?TimeSpan.FromHours(3):TimeSpan.FromMinutes(10)};
         using var cancelOnExit=stop.Register(static state=>
             ((HttpClient)state!).CancelPendingRequests(),client);
         client.DefaultRequestHeaders.TryAddWithoutValidation("X-IPSys-Token",vault.SessionToken);
