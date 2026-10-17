@@ -208,6 +208,8 @@ function selectSpace(next){
   el('globalSearch').value='';el('sidebarDbName').textContent=dbName;
   el('chooseWorkspace').hidden=true;el('unlocked').hidden=false;
   refresh();
+  // The vault-owned deletion task survives browser reload and workspace choice.
+  void resumeTrashPurgeStatus();
 }
 mountStaticIcons();
 document.querySelectorAll('[data-workspace-choice]').forEach(b=>b.onclick=()=>selectSpace(b.dataset.workspaceChoice));

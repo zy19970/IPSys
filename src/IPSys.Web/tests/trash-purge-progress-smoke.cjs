@@ -15,6 +15,9 @@ assert.ok(section.includes("state.state==='succeeded'")&&
  section.includes('await refresh()')&&
  section.includes('!trashPurgeTaskActive'),
  'only successful server state allows UI to announce permanent deletion');
+assert.ok(app.includes('void resumeTrashPurgeStatus();')&&
+ app.includes('async function resumeTrashPurgeStatus()'),
+ 'Browser reload and workspace re-selection must reattach to the running task');
 assert.ok(section.includes("status.bytesDone")&&section.includes("status.bytesTotal"),
  'progress must use actual deleted bytes, not a fake timer');
 assert.ok(section.includes('status.state')&&section.includes("state.error"),
