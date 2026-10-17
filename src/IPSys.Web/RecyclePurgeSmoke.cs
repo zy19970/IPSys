@@ -121,6 +121,53 @@ static class RecyclePurgeSmoke
                 Check(Scalar(db,"SELECT COUNT(*) FROM file_chunks WHERE object_id=$id;",reusedObj)==0,
                     "last independent FileId removal reclaims shared physical bytes");
 
+                // Real byte progress is transactional: an interrupted delete
+                // must restore every data chunk and the tombstoned LinkId.
+                byte[] large=new byte[2*1024*1024+9];
+                for(int i=0;i<large.Length;i++)large[i]=(byte)(i%251);
+                var progressFile=NativeFileStore.UploadAsync(db,"company",a,null,
+                    new NativeFileMetadataInput("进度回收.bin"),null,large.LongLength,
+                    new MemoryStream(large),CancellationToken.None)
+                    .GetAwaiter().GetResult();
+                long progressLink=Link(db,progressFile.FileId,a);
+                long progressObject=Scalar(db,
+                    "SELECT object_id FROM file_versions WHERE file_id=$id;",progressFile.FileId);
+                Check(NativeFileLinkStore.Unlink(db,"company",progressFile.FileId,progressLink),
+                    "progress fixture tombstone");
+                var progressItems=new[]{new RecycleKey("v2_file",progressLink,"")};
+                using(var canceled=new CancellationTokenSource())
+                {
+                    bool caught=false;
+                    try
+                    {
+                        RecycleStore.Change(db,"company",progressItems,true,
+                            (done,total,stage)=>
+                            {
+                                Check(total==large.LongLength,"accurate planned bytes");
+                                if(done>0)canceled.Cancel();
+                            },canceled.Token);
+                    }
+                    catch(OperationCanceledException){caught=true;}
+                    Check(caught,"requested cancellation before commit must rollback");
+                }
+                Check(Scalar(db,
+                    "SELECT COUNT(*) FROM folder_file_links WHERE id=$id AND deleted=1;",progressLink)==1,
+                    "canceled purge preserves restorable tombstone");
+                Check(Scalar(db,
+                    "SELECT COUNT(*) FROM file_chunks WHERE object_id=$id;",progressObject)==3,
+                    "canceled purge restores all three SQLCipher chunks");
+                var reports=new List<(long Done,long Total,string Stage)>();
+                Check(RecycleStore.Change(db,"company",progressItems,true,
+                    (done,total,stage)=>reports.Add((done,total,stage))),
+                    "reported purge succeeds");
+                Check(reports.Any(x=>x.Stage=="正在清理加密原件数据块" &&
+                     x.Done==large.LongLength && x.Total==large.LongLength),
+                    "progress counts actual removed bytes");
+                Check(reports.Last().Stage=="数据清理已执行，正在提交事务",
+                    "commit is distinguished from physical deletion");
+                Check(Scalar(db,"SELECT COUNT(*) FROM file_chunks WHERE object_id=$id;",progressObject)==0,
+                    "success physically reclaims orphan chunks");
+
                 // The other workspace must never lose its own physical object.
                 var personalFile=NativeFileStore.UploadAsync(db,"personal",personal,null,
                     new NativeFileMetadataInput("私人.bin"),null,payload.Length,

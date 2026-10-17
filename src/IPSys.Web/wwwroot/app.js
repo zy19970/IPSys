@@ -34,7 +34,7 @@ let globalHits=[],globalPending=false,globalError='',globalTruncated=false,globa
 let token=sessionStorage.getItem('ip-token')||'';
 let dbName=sessionStorage.getItem('ip-db')||'';
 let mcpEnabled=false;
-let space=null,creating=false,resuming=false,localFileTaskActive=false;
+let space=null,creating=false,resuming=false,localFileTaskActive=false,trashPurgeTaskActive=false;
 let page='dashboard',detail=null,archiveGroup=null,archiveFolderId=null,archiveFolders=[],archiveFolderEditingId=null,archiveSelectedFolders=new Set(),archiveEntryOrders={},editingId=null,projectEditingId=null,projectRows=[],ipEditingId=null,ipRows=[],contractEditingId=null,contractProjectId=null,contractRows=[],businessFileRows=[],trashRows=[],pendingBusinessUpload=null,pendingAssocId=null,archiveRows={certificate:[],achievement:[],academic:[]},archiveEditingId=null,archiveTransferId=null,archiveTransferMode=null,liveRows=[],filterName='',filterKind='全部类型',filterState='全部状态',selected=new Set(),certificateSelected=new Set(),certificateDeleteBusy=false;
 let ledgerOrders={},ledgerMutationBusy=false;
 const companyNav=[['dashboard','工作台','▦'],['certificate','企业资质','▣'],['achievement','业务档案','▤'],['researchProject','公司项目','▤'],['ip','知识产权','◇'],['general','综合资料','▥']];
@@ -143,7 +143,7 @@ const isProject=k=>k==='researchProject'||k==='horizontalProject';
 const MAX_ORIGINAL_BYTES=8*1024*1024*1024;
 const fmtSize=n=>n>=1024*1024*1024?(n/1024/1024/1024).toFixed(2)+' GiB':
  n>=1024*1024?(n/1024/1024).toFixed(1)+' MiB':(n/1024).toFixed(1)+' KiB';
-window.addEventListener('beforeunload',ev=>{if(localFileTaskActive){ev.preventDefault();ev.returnValue='';}});
+window.addEventListener('beforeunload',ev=>{if(localFileTaskActive||trashPurgeTaskActive){ev.preventDefault();ev.returnValue='';}});
 function notice(message,bad=false){const e=el('toast');e.textContent=message;e.className=bad?'visible bad':'visible';clearTimeout(notice.timer);notice.timer=setTimeout(()=>e.className='',4300);}
 async function api(path,opts={}){
   const headers=new Headers(opts.headers||{});
@@ -169,7 +169,7 @@ function screen(unlocked){
   el('locked').hidden=unlocked;
   el('chooseWorkspace').hidden=!unlocked||!!space;
   el('unlocked').hidden=!unlocked||!space;
-  if(unlocked){el('dbNameChoice').textContent=dbName;if(space){el('sidebarDbName').textContent=dbName;refresh();}}
+  if(unlocked){el('dbNameChoice').textContent=dbName;if(space){el('sidebarDbName').textContent=dbName;refresh();resumeTrashPurgeStatus();}}
 }
 function mode(value){
   creating=value;
@@ -1649,14 +1649,111 @@ function syncTrashPurgeSelection(){
   all.indeterminate=selected>0&&selected<checks.length;
  }
 }
+// Permanent deletion runs on the WinForms-owned server independently of the
+// browser request. A snapshot GET bypasses the SQLCipher write semaphore.
+let trashPurgePolling=false,trashPurgeObserved=null;
+function trashPurgePanel(){
+ let p=document.getElementById('trashPurgeProgress');
+ if(p)return p;
+ p=document.createElement('section');p.id='trashPurgeProgress';
+ p.className='upload-progress';p.setAttribute('role','region');
+ p.setAttribute('aria-label','永久删除进度');
+ p.innerHTML='<div class="upload-progress-heading"><strong>永久删除进度</strong>'+
+  '<span id="trashPurgeCount"></span></div>'+
+  '<div class="upload-progress-meter"><progress id="trashPurgeMeter" max="100"></progress>'+
+  '<strong id="trashPurgePercent">准备中</strong></div>'+
+  '<div id="trashPurgeBytes" class="upload-progress-bytes"></div>'+
+  '<div id="trashPurgeStage" class="upload-progress-stage" role="status" aria-live="polite"></div>'+
+  '<div class="upload-progress-actions"><button type="button" class="btn btn-sm" id="trashPurgeClose" hidden>关闭</button></div>';
+ p.hidden=true;document.body.append(p);
+ p.querySelector('#trashPurgeClose').onclick=()=>{if(!trashPurgeTaskActive)p.hidden=true;};
+ return p;
+}
+function renderTrashPurge(status){
+ const panel=trashPurgePanel();panel.hidden=false;
+ const field=(id,text)=>panel.querySelector('#'+id).textContent=text;
+ const done=['succeeded','failed','canceled'].includes(status.state);
+ trashPurgeTaskActive=!done;
+ field('trashPurgeCount','共 '+status.count+' 条记录');
+ const total=status.bytesTotal,bytes=status.bytesDone;
+ const meter=panel.querySelector('#trashPurgeMeter');
+ if(status.state==='succeeded'){meter.value=100;field('trashPurgePercent','完成');}
+ else if(total>0){
+  const percent=Math.min(100,Math.floor(bytes/total*100));
+  meter.value=percent;field('trashPurgePercent',percent+'%');
+ }else{
+  meter.removeAttribute('value');
+  field('trashPurgePercent',done?'—':'处理中');
+ }
+ field('trashPurgeBytes',total>0?
+  '已清理加密文件数据 '+fmtSize(bytes)+' / '+fmtSize(total):
+  '仅关联或元数据清理时，没有需要释放的原件字节');
+ field('trashPurgeStage',status.stage+(status.error?'：'+status.error:'')+
+  (done?'。数据库文件大小不一定立即缩小。':'。未提交完成前不代表删除成功。'));
+ panel.querySelector('#trashPurgeClose').hidden=!done;
+}
+async function trackTrashPurge(taskId,workspace){
+ if(trashPurgePolling)return;
+ trashPurgePolling=true;trashPurgeTaskActive=true;
+ try{
+  while(space===workspace&&token){
+   let state;
+   try{
+    state=await(await api('/api/trash/'+workspace+'/purge-task')).json();
+    if(state.taskId!==taskId)throw Error('删除任务身份已变化，请检查回收站。');
+    renderTrashPurge(state);
+   }catch(error){
+    const p=trashPurgePanel();p.hidden=false;
+    p.querySelector('#trashPurgeStage').textContent=
+     '暂时无法获取删除进度：'+error.message+'。正在重试查询服务器，删除结果尚未确认。';
+    await new Promise(resolve=>setTimeout(resolve,1200));
+    continue;
+   }
+   if(['succeeded','failed','canceled'].includes(state.state)){
+    if(state.state==='succeeded'){
+     try{await refresh();notice('已永久删除 '+state.count+' 条回收站记录');}
+     catch{notice('删除已提交，但列表刷新失败，请重新进入回收站。',true);}
+    }else notice(state.error||'删除未完成，数据库已回滚。',true);
+    break;
+   }
+   await new Promise(resolve=>setTimeout(resolve,550));
+  }
+ }finally{trashPurgePolling=false;trashPurgeTaskActive=false;}
+}
+async function resumeTrashPurgeStatus(){
+ if(trashPurgePolling||!space||!token)return;
+ const workspace=space;
+ try{
+  const response=await fetch('/api/trash/'+workspace+'/purge-task',{
+   headers:{'X-IPSys-Token':token},cache:'no-store'});
+  if(response.status===404)return;
+  if(!response.ok)return;
+  const state=await response.json();
+  renderTrashPurge(state);
+  if(!['succeeded','failed','canceled'].includes(state.state))
+   void trackTrashPurge(state.taskId,workspace);
+ }catch{/* Database status is still available through the normal UI. */}
+}
 async function changeTrash(operation,indices){
  const items=[...new Set(indices)].map(i=>trashRows[i]).filter(Boolean)
    .map(r=>({kind:r.kind,id:r.id,section:r.section||''}));
  if(!items.length)return notice('请先勾选资料。',true);
+ if(trashPurgeTaskActive)return notice('已有永久删除任务正在执行，请查看进度面板。',true);
  if(operation==='purge'&&!confirm('确定永久删除选中的 '+items.length+' 条回收站记录？\n文件关联将永久移除；如无其它引用，还会清理其历史版本和物理数据。\n此操作不可恢复，数据库文件大小可能不会立即缩小。'))return;
  try{
-  await api('/api/trash/'+space+'/'+operation,{method:'POST',json:{items}});
-  await refresh();notice(operation==='restore'?'资料已恢复':'资料已永久删除');
+  if(operation==='purge'){
+   const workspace=space;
+   const result=await(await api('/api/trash/'+workspace+'/purge-task',
+    {method:'POST',json:{items}})).json();
+   trashPurgeTaskActive=true;
+   const panel=trashPurgePanel();panel.hidden=false;
+   panel.querySelector('#trashPurgeClose').hidden=true;
+   panel.querySelector('#trashPurgeStage').textContent='请求已接收，正在查询服务端删除进度…';
+   void trackTrashPurge(result.taskId,workspace);
+   return;
+  }
+  await api('/api/trash/'+space+'/restore',{method:'POST',json:{items}});
+  await refresh();notice('资料已恢复');
  }catch(e){notice(e.message,true);}
 }
 function businessAssocOptions(){

@@ -166,12 +166,103 @@ static class RecycleStore
         using var cmd=InTransaction(db,tx,workspace,sql,id);
         return (long)cmd.ExecuteScalar()!;
     }
+    // Snapshot candidate objects before the transaction. This is only a
+    // display denominator: the actual deleted bytes come from chunk records.
+    // The caller serializes DB access with Vault.Gate for the full operation.
+    private static long PlannedReclaimBytes(SqliteConnection db,string workspace,
+        IReadOnlyList<RecycleKey> items)
+    {
+        var selected=items.Where(x=>x.Kind is "v2_file" or "v2_ip_file")
+            .Select(x=>x.Id).ToHashSet();
+        var candidateFiles=new HashSet<long>();
+        foreach(long linkId in selected)
+        {
+            using var cmd=db.CreateCommand();
+            cmd.CommandText="SELECT file_id FROM folder_file_links WHERE workspace=$w AND id=$id;";
+            cmd.Parameters.AddWithValue("$w",workspace);
+            cmd.Parameters.AddWithValue("$id",linkId);
+            if(cmd.ExecuteScalar() is long file)candidateFiles.Add(file);
+        }
+        var unlinkedFiles=new HashSet<long>();
+        foreach(long file in candidateFiles)
+        {
+            using var cmd=db.CreateCommand();
+            cmd.CommandText="SELECT id FROM folder_file_links WHERE workspace=$w AND file_id=$id;";
+            cmd.Parameters.AddWithValue("$w",workspace);
+            cmd.Parameters.AddWithValue("$id",file);
+            var links=new List<long>();
+            using(var reader=cmd.ExecuteReader())
+                while(reader.Read())links.Add(reader.GetInt64(0));
+            if(links.All(selected.Contains))unlinkedFiles.Add(file);
+        }
+        var objects=new HashSet<long>();
+        foreach(long file in unlinkedFiles)
+        {
+            using var cmd=db.CreateCommand();
+            cmd.CommandText="SELECT object_id FROM file_versions WHERE workspace=$w AND file_id=$id;";
+            cmd.Parameters.AddWithValue("$w",workspace);
+            cmd.Parameters.AddWithValue("$id",file);
+            using var reader=cmd.ExecuteReader();
+            while(reader.Read())objects.Add(reader.GetInt64(0));
+        }
+        long total=0;
+        foreach(long obj in objects)
+        {
+            using var references=db.CreateCommand();
+            references.CommandText="SELECT file_id FROM file_versions WHERE workspace=$w AND object_id=$id;";
+            references.Parameters.AddWithValue("$w",workspace);
+            references.Parameters.AddWithValue("$id",obj);
+            var files=new List<long>();
+            using(var reader=references.ExecuteReader())
+                while(reader.Read())files.Add(reader.GetInt64(0));
+            if(!files.All(unlinkedFiles.Contains))continue;
+            using var size=db.CreateCommand();
+            size.CommandText="SELECT size FROM file_objects WHERE workspace=$w AND id=$id;";
+            size.Parameters.AddWithValue("$w",workspace);
+            size.Parameters.AddWithValue("$id",obj);
+            total=checked(total+Convert.ToInt64(size.ExecuteScalar()));
+        }
+        return total;
+    }
+    private static void DeleteChunksWithProgress(SqliteConnection db,SqliteTransaction tx,
+        string workspace,long objectId,long total,ref long removed,
+        Action<long,long,string> report,CancellationToken cancellation)
+    {
+        // 32 MiB for standard 1 MiB chunks; never delete a multi-GiB BLOB in
+        // one opaque SQL statement. Rollback protects every batch until commit.
+        while(true)
+        {
+            cancellation.ThrowIfCancellationRequested();
+            using var pick=InTransaction(db,tx,workspace,"""
+                SELECT idx,length(bytes) FROM file_chunks
+                WHERE workspace=$w AND object_id=$id ORDER BY idx LIMIT 32;
+                """,objectId);
+            int count=0,last=-1;long bytes=0;
+            using(var rd=pick.ExecuteReader())
+                while(rd.Read())
+                {
+                    count++;last=rd.GetInt32(0);bytes+=rd.GetInt64(1);
+                }
+            if(count==0)break;
+            using var delete=InTransaction(db,tx,workspace,"""
+                DELETE FROM file_chunks WHERE workspace=$w AND object_id=$id
+                  AND idx<=$last;
+                """,objectId);
+            delete.Parameters.AddWithValue("$last",last);
+            if(delete.ExecuteNonQuery()!=count)
+                throw new IOException("加密原件清理计数不一致，已回滚事务。");
+            removed=checked(removed+bytes);
+            report(removed,total,"正在清理加密原件数据块");
+        }
+    }
     // The only irreversible path for original bytes: first remove the exact
     // tombstoned LinkId, then delete a FileId only when ZERO links remain,
     // including links in other folders and tombstones still restorable there.
     private static void PurgeFileLink(SqliteConnection db,SqliteTransaction tx,
-        string workspace,RecycleKey item)
+        string workspace,RecycleKey item,long total,ref long removed,
+        Action<long,long,string>? report,CancellationToken cancellation)
     {
+        cancellation.ThrowIfCancellationRequested();
         long fileId=Count(db,tx,workspace,
             "SELECT file_id FROM folder_file_links WHERE id=$id AND workspace=$w AND deleted=1;",
             item.Id);
@@ -203,9 +294,14 @@ static class RecycleStore
             if(Count(db,tx,workspace,
                 "SELECT COUNT(*) FROM file_versions WHERE workspace=$w AND object_id=$id;",
                 objectId)!=0)continue;
-            using(var chunks=InTransaction(db,tx,workspace,
-                "DELETE FROM file_chunks WHERE workspace=$w AND object_id=$id;",objectId))
+            if(report is null)
+            {
+                using var chunks=InTransaction(db,tx,workspace,
+                    "DELETE FROM file_chunks WHERE workspace=$w AND object_id=$id;",objectId);
                 chunks.ExecuteNonQuery();
+            }
+            else DeleteChunksWithProgress(db,tx,workspace,objectId,total,
+                ref removed,report,cancellation);
             using(var obj=InTransaction(db,tx,workspace,
                 "DELETE FROM file_objects WHERE workspace=$w AND id=$id AND state='ready';",
                 objectId))
@@ -216,7 +312,8 @@ static class RecycleStore
         }
     }
     public static bool Change(SqliteConnection db,string workspace,
-        IReadOnlyList<RecycleKey> items,bool purge)
+        IReadOnlyList<RecycleKey> items,bool purge,
+        Action<long,long,string>? report=null,CancellationToken cancellation=default)
     {
         if(items.Count is <1 or >200 || items.Distinct().Count()!=items.Count)return false;
         if(items.Any(x=>!Deleted(db,workspace,x)))return false;
@@ -243,17 +340,23 @@ static class RecycleStore
                     throw new InvalidOperationException("记录仍有关联目录或文件历史，禁止永久删除。");
             }
         }
+        cancellation.ThrowIfCancellationRequested();
+        long total=purge && report!=null?PlannedReclaimBytes(db,workspace,items):0;
+        long removed=0;
+        report?.Invoke(0,total,"正在处理回收站关联");
         using var tx=db.BeginTransaction();
         if(purge)
         {
             // Purge selected tombstoned links first. A single FileId may occur
             // in multiple selected folders; its bytes are reclaimed only last.
             foreach(var item in items.Where(x=>x.Kind is "v2_file" or "v2_ip_file"))
-                PurgeFileLink(db,tx,workspace,item);
+                PurgeFileLink(db,tx,workspace,item,total,ref removed,report,cancellation);
             foreach(var item in items.Where(x=>x.Kind is not ("v2_file" or "v2_ip_file")))
                 Apply(db,tx,workspace,item,true);
         }
         else foreach(var item in items)Apply(db,tx,workspace,item,false);
+        cancellation.ThrowIfCancellationRequested();
+        report?.Invoke(removed,total,"数据清理已执行，正在提交事务");
         tx.Commit();
         return true;
     }
@@ -265,6 +368,61 @@ static class RecycleEndpoints
         Results.Json(new {error=message},statusCode:status);
     public static void Map(WebApplication app)
     {
+        app.MapGet("/api/trash/{workspace}/purge-task",(HttpContext ctx,Vault v,string workspace)=>
+        {
+            if(!v.Allowed(ctx))return Results.Unauthorized();
+            if(!Vault.WorkspaceValid(workspace))return Fail("无效工作区。");
+            var state=v.LastRecyclePurge?.Snapshot();
+            return state is null || state.Workspace!=workspace
+                ?Results.NotFound():Results.Json(state);
+        });
+        app.MapPost("/api/trash/{workspace}/purge-task",(
+            HttpContext ctx,Vault v,string workspace,RecycleRequest request)=>
+        {
+            if(!v.Allowed(ctx))return Results.Unauthorized();
+            if(!Vault.WorkspaceValid(workspace))return Fail("无效工作区。");
+            if(request.Items is null || request.Items.Count is <1 or >200 ||
+               request.Items.Distinct().Count()!=request.Items.Count)
+                return Fail("请选择 1 至 200 条不重复的回收站记录。");
+            if(!v.TryBeginFileTask(ctx,out var cancellation))
+                return Fail("已有文件任务正在执行或程序准备退出。",409);
+            var items=request.Items.ToArray();
+            var job=new RecyclePurgeJob(workspace,items.Length);
+            v.SetRecyclePurge(job);
+            // No HttpContext or HTTP cancellation token is retained: closing the
+            // page never silently cancels an irreversible database transaction.
+            _=Task.Run(async ()=>
+            {
+                bool entered=false;
+                try
+                {
+                    await v.Gate.WaitAsync(cancellation);
+                    entered=true;
+                    bool changed=RecycleStore.Change(v.Db,workspace,items,true,
+                        job.Report,cancellation);
+                    if(!changed)throw new InvalidOperationException(
+                        "回收站记录已变化，未执行永久删除。");
+                    job.Finish();
+                }
+                catch(OperationCanceledException)
+                {
+                    job.Fail("",true);
+                }
+                catch(Exception ex)
+                {
+                    string error=ex is SqliteException sqlite
+                        ?"SQLCipher 清理受约束或存储错误："+sqlite.SqliteErrorCode
+                        :ex.Message;
+                    job.Fail(error,false);
+                }
+                finally
+                {
+                    if(entered)v.Gate.Release();
+                    v.CompleteFileTask();
+                }
+            });
+            return Results.Json(new {taskId=job.Snapshot().TaskId},statusCode:202);
+        });
         app.MapGet("/api/trash/{workspace}",async(HttpContext ctx,Vault v,string workspace)=>
         {
             if(!v.Allowed(ctx))return Results.Unauthorized();

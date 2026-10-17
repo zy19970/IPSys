@@ -9,6 +9,15 @@ sealed class Vault : IDisposable
     internal NativeFilePreparation? PendingFile { get; set; }
     private readonly object _taskSync = new();
     private TaskCompletionSource<bool>? _fileTaskCompletion;
+    private RecyclePurgeJob? _lastRecyclePurge;
+    public RecyclePurgeJob? LastRecyclePurge
+    {
+        get { lock(_taskSync)return _lastRecyclePurge; }
+    }
+    public void SetRecyclePurge(RecyclePurgeJob task)
+    {
+        lock(_taskSync)_lastRecyclePurge=task;
+    }
     private CancellationTokenSource? _fileTaskCancellation;
     private bool _exitRequested;
     private bool _mcpEnabled;
@@ -177,6 +186,7 @@ sealed class Vault : IDisposable
         {
             if (_db != null) NativeFileChoiceStore.CleanupWriting(_db);
             PendingFile = null;
+            _lastRecyclePurge = null;
             // Keep the existing connection state if disposal fails so the caller
             // can report a close failure rather than silently treating it as safe.
             _db?.Dispose();

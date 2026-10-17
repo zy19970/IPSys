@@ -1,5 +1,9 @@
 # IPSys Windows 验收与回归记录
 
+> **永久删除进度专项（2026-10-18）**：永久删除批次采用后台任务而非同步等待 HTTP 请求。新测试 `RecyclePurgeSmoke` 验证分块实际删除字节、预期总量、提交状态与中断事务全部回滚；`RecyclePurgeTaskHttpSmoke` 在临时 SQLCipher V2 库经真实 HTTP 验证任务创建、无 Gate 阻塞的状态查询、最终下载不可访问与重复删除报告失败；`trash-purge-progress-smoke.cjs` 校验 25% 真实进度、字节删除达 100% 但事务尚未提交时不可显示成功、失败/完成及无物理数据情况。目标 Edge/Chrome 应实测 2GiB+ 进度、任务期间关库/多次触发防护、刷新页面恢复结果。SQLite 数据库文件本身可能暂不缩小。
+
+
+
 > **原件永久删除专项（2026-10-18）**：新增 SQLCipher V2 测试 `RecyclePurgeSmoke` 和知识产权 HTTP 回收站测试，核验单 LinkId 永久删除、同 FileId 多文件夹仍可下载、另一个独立 FileId 复用物理数据不受误删、最后引用移除后文件历史/物理分块清理、V2 旧触发器原位更新、跨工作区不互相影响。UI/MCP 的 `purge_trash` 已开放 `v2_file/v2_ip_file`；应使用可丢弃测试库复测，慎用真实唯一文件。注意 DELETE 释放 SQLite 内部空间不等于磁盘上的数据库文件立刻收缩。
 
 

@@ -1,5 +1,9 @@
 # IPSys 跨会话交接（2026-10-17，N4 实机验收与后续功能完善）
 
+> **回收站大文件永久删除进度（2026-10-18）**：网页不再同步等待整个 `/api/trash/{workspace}/purge`。新增 `POST /api/trash/{workspace}/purge-task` 创建宿主内存任务，`GET /api/trash/{workspace}/purge-task` 不等待 SQLCipher Gate，返回任务状态/真实分块已删除字节/预计可回收总字节/失败原因。仅服务器提交数据库事务后标记 succeeded；途中失败/安全退出取消则回滚。Web 固定面板显示数据块回收百分比及“事务提交中”阶段，支持重开页面恢复轮询，删除执行时禁止关库；空原件共享引用只显示关联/元数据处理，不编造字节进度。旧同步 purge HTTP/MCP 行为保留。新增 SQLCipher 回滚回归、独立 HTTP 任务轮询和 UI 状态测试；实际 2GiB SSD 操作仍需目标机验收。
+
+
+
 > **回收站原件永久删除修复（2026-10-18）**：此前 `RecycleStore.Change(purge)` 对所有 `v2_file/v2_ip_file` LinkId 一律抛出“共享原件物理回收尚未提供”，导致上传后在回收站永久删除任何附件都失败。现增加引用计数保护的事务清理：先删除精确 LinkId，任意其它活跃/软删关联存在则保留 FileId/Version/Chunk；最后引用消失后回收该 FileId 的全部版本及不被其它 FileId/版本引用的 SQLCipher Object/Chunks。兼容当前 V2 数据库的旧 chunk_delete_ready 触发器，仅原位升级触发器保护条件，不迁移业务数据。注意 SQLCipher/SQLite 删除后数据库文件不一定自动缩小；磁盘压缩另行验证。新增 `RecyclePurgeSmoke` 和知识产权 HTTP 实际永久删除测试，结果以本次 Windows CI 为准。
 
 
