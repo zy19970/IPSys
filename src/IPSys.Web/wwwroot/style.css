@@ -206,14 +206,6 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 .certificate-ledger .certificate-toolbar-actions{display:flex;align-items:center;gap:8px;margin-left:auto;padding-left:24px;border-left:1px solid var(--line);flex:0 0 auto}
 .certificate-ledger .certificate-toolbar-actions>.btn{height:36px;padding:6px 14px}
 .certificate-ledger .certificate-sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-.certificate-ledger .certificate-export{position:relative}
-.certificate-ledger .certificate-export-trigger{display:flex;align-items:center;gap:9px;justify-content:center;min-height:36px;padding:6px 13px;list-style:none;user-select:none}
-.certificate-ledger .certificate-export-trigger::-webkit-details-marker{display:none}
-.certificate-ledger .certificate-export-trigger span{font-size:12px;color:var(--muted)}
-.certificate-ledger .certificate-export[open]>.certificate-export-trigger{background:var(--pale);border-color:#a4ccd0}
-.certificate-ledger .certificate-export-options{position:absolute;top:calc(100% + 6px);right:0;z-index:20;min-width:185px;background:white;border:1px solid var(--line);border-radius:8px;box-shadow:0 12px 28px #27374721;padding:5px}
-.certificate-ledger .certificate-export-options button{display:block;width:100%;text-align:left;border-radius:5px;padding:9px 12px;white-space:nowrap;font-size:13px}
-.certificate-ledger .certificate-export-options button:hover,.certificate-ledger .certificate-export-options button:focus-visible{background:var(--pale);color:var(--primary)}
 .certificate-ledger .data th,.certificate-ledger .data td{padding-top:10px;padding-bottom:10px}
 @media(max-width:1200px){
  .certificate-ledger .certificate-toolbar-filter{order:3;flex:1 1 100%;max-width:none;margin-left:0;justify-content:flex-start;flex-wrap:wrap}
@@ -243,15 +235,6 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 .compact-ledger-actions{display:flex;align-items:center;justify-self:end;gap:8px;margin-left:0;padding-left:18px;border-left:1px solid var(--line);flex-wrap:wrap;justify-content:flex-end}
 .compact-ledger-actions>.btn{min-height:36px;padding:6px 13px}
 .compact-ledger-actions #ledgerExportCount{white-space:nowrap;font-size:12px;color:var(--muted)}
-.compact-ledger-export{position:relative}
-.compact-ledger-export-trigger{display:flex;align-items:center;justify-content:center;min-height:36px;padding:6px 13px;list-style:none;user-select:none}
-.compact-ledger-export-trigger::-webkit-details-marker{display:none}
-.compact-ledger-export[open]>.compact-ledger-export-trigger{background:var(--pale);border-color:#a4ccd0}
-.compact-ledger-export-options{position:absolute;top:calc(100% + 6px);right:0;z-index:22;min-width:190px;padding:5px;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 12px 28px #27374721}
-.compact-ledger-export-options button{display:block;width:100%;text-align:left;padding:9px 12px;border:0;border-radius:5px;background:transparent;color:var(--ink);font-size:13px;white-space:nowrap}
-.compact-ledger-export-options button:hover,.compact-ledger-export-options button:focus-visible{background:var(--pale);color:var(--primary)}
-.compact-ledger-export-options .btn,.compact-ledger-export-options .btn.primary{background:transparent;color:var(--ink);border:0;box-shadow:none}
-.compact-ledger-export-options .btn:hover,.compact-ledger-export-options .btn.primary:hover{background:var(--pale);color:var(--primary)}
 
 .compact-ledger .data th,.compact-ledger .data td{padding-top:10px;padding-bottom:10px}
 .compact-ledger .tablefoot{padding:7px 16px;font-size:12px}
@@ -441,21 +424,8 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 .archivecategory .archive-root-delete:hover{border-color:#cf8787;background:#fff7f7}
 .archivecategory .archive-root-delete:focus-visible{outline:2px solid #bd6666;outline-offset:2px}
 #archiveCreateDialog .dialogactions{justify-content:flex-start}
-/* Align live category-ledger headers with the enterprise-certificate header. */
-.archive-category-ledger>.compact-ledger-toolbar{display:flex;align-items:center;gap:24px}
-.archive-category-ledger .compact-ledger-title{flex:0 0 230px;max-width:230px;min-width:0;gap:10px}
-.archive-category-ledger .compact-ledger-filters{flex:1 1 auto;width:auto;max-width:none;min-width:0;justify-self:auto;justify-content:flex-start;gap:10px}
+/* Archive toolbar uses the shared grid; business-specific search field width remains configurable. */
 .archive-category-ledger .compact-ledger-filters>.field.wide{flex:1 1 300px;max-width:590px;min-width:160px}
-.archive-category-ledger .compact-ledger-actions{flex:0 0 auto;justify-self:auto;margin-left:auto;padding-left:24px}
-@media(max-width:1200px){
- .archive-category-ledger>.compact-ledger-toolbar{flex-wrap:wrap;gap:12px}
- .archive-category-ledger .compact-ledger-title{flex:1 1 auto;max-width:none}
- .archive-category-ledger .compact-ledger-filters{order:3;flex:1 1 100%;width:100%;justify-content:flex-start;max-width:none}
-}
-@media(max-width:630px){
- .archive-category-ledger .compact-ledger-filters>.field.wide{flex:1 1 100%;max-width:none}
- .archive-category-ledger .compact-ledger-actions{padding-left:12px}
-}
 
 /* Trash: destructive batch action is red only for a nonempty selection. */
 .btn.trash-purge-selected.is-active:not(:disabled){background:#bd3446;border-color:#bd3446;color:#fff}
@@ -694,10 +664,26 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 .ui-info-grid .info strong{overflow-wrap:anywhere}
 .ui-navigation-card{border-radius:var(--ui-component-radius);transition:border-color .15s,box-shadow .15s}
 .ui-navigation-card:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+/* Canonical export dropdown for every business ledger. */
 .ui-export-menu{position:relative}
-.ui-export-menu :is(.compact-ledger-export-options,.certificate-export-options){
- border-radius:var(--ui-component-radius);
- box-shadow:0 12px 28px #27374721;
+.ui-export-menu > summary{
+ display:flex;align-items:center;justify-content:center;gap:9px;
+ min-height:var(--ui-control-height);padding:6px 13px;list-style:none;user-select:none;
+}
+.ui-export-menu > summary::-webkit-details-marker{display:none}
+.ui-export-menu[open] > summary{background:var(--pale);border-color:#a4ccd0}
+.ui-export-menu > .ui-export-options{
+ position:absolute;top:calc(100% + 6px);right:0;z-index:22;
+ min-width:190px;padding:5px;background:#fff;border:1px solid var(--line);
+ border-radius:var(--ui-component-radius);box-shadow:0 12px 28px #27374721;
+}
+.ui-export-menu > .ui-export-options button{
+ display:block;width:100%;text-align:left;padding:9px 12px;
+ border:0;border-radius:5px;background:transparent;color:var(--ink);
+ font-size:13px;white-space:nowrap;
+}
+.ui-export-menu > .ui-export-options :is(button,.btn,.btn.primary):is(:hover,:focus-visible){
+ background:var(--pale);color:var(--primary);
 }
 .ui-selection-count{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
 .ui-dialog{border-radius:var(--ui-component-radius);max-width:calc(100vw - 24px)}

@@ -161,4 +161,19 @@ for(const style of ['.ui-list-toolbar{','.ui-section-header{','.ui-table-viewpor
 const dialogsHtml=[...html.matchAll(/<dialog\b[^>]*>/g)].map(m=>m[0]);
 assert.ok(dialogsHtml.length>=9&&dialogsHtml.every(x=>x.includes('input-dialog')),
  'All modal dialogs should share the form shell while retaining their own fields');
+// Export dropdowns must have one renderer and one visual rule regardless
+// of the module that supplies its original folder/ZIP/Excel buttons.
+assert.ok(js.includes("function foldUiExportButtons(actions,variant='compact'){")&&
+ js.includes("foldUiExportButtons(actions,'compact')")&&
+ js.includes("foldUiExportButtons(certificateActions,'certificate')")&&
+ js.includes("function closeUiExportMenus(event){")&&
+ !js.includes('<details class="certificate-export">'),
+ 'Project/contract/IP/archive and enterprise certificate exports must share one renderer');
+assert.ok(css.includes('.ui-export-menu > .ui-export-options button{')&&
+ css.includes('.ui-export-menu[open] > summary{')&&
+ !css.includes('.certificate-ledger .certificate-export-options{position:absolute')&&
+ !css.includes('.compact-ledger-export-options{position:absolute'),
+ 'Common export-menu presentation must have one CSS owner');
+assert.ok(!css.includes('.archive-category-ledger>.compact-ledger-toolbar{display:flex'),
+ 'Archive category header must use the shared grid rather than its retired private flex layout');
 console.log('UI COMPONENT CONTRACT PASS: 9 shared categories, five file owners, stable contract actions');

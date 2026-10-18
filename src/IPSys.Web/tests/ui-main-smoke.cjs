@@ -911,15 +911,11 @@ assert.ok(realArchiveCtx.__certAll.includes('2026')&&
  'Company certificate table must show remarks and direct download actions');
 assert.ok(realArchiveCtx.__certAll.includes('certificate-toolbar-filter')&&
  realArchiveCtx.__certAll.includes('data-action="archiveAdd"')&&
- realArchiveCtx.__certAll.includes('class="certificate-export-options"'),
- 'Direct list must keep the integrated filter, new record, and single export menu');
-assert.ok(realArchiveCtx.__certAll.includes('<summary class="btn certificate-export-trigger"')&&
- (realArchiveCtx.__certAll.match(/<summary /g)||[]).length===1&&
- (realArchiveCtx.__certAll.match(/class="certificate-export-options"/g)||[]).length===1,
- 'Certificate top bar must offer exactly one visible export trigger');
+ !realArchiveCtx.__certAll.includes('<summary '),
+ 'Certificate renderer provides three export actions for the common runtime menu');
 for(const [action,label] of [['moduleExportFolder','导出附件文件夹'],['moduleExportZip','导出 ZIP'],['excelExport','导出 Excel']])
  assert.ok(realArchiveCtx.__certAll.includes('data-action="'+action+'"')&&
- realArchiveCtx.__certAll.includes(label),'All original export formats must remain inside one menu');
+ realArchiveCtx.__certAll.includes(label),'All original export formats must retain their exact commands for the shared menu');
 assert.ok(realArchiveCtx.__certAll.indexOf('certificate-toolbar-title')<
  realArchiveCtx.__certAll.indexOf('certificate-toolbar-filter')&&
  realArchiveCtx.__certAll.indexOf('certificate-toolbar-filter')<
@@ -974,11 +970,10 @@ assert.ok(css.includes('.certificate-ledger .data .certificate-check{width:44px;
  'Checkbox, sequence and move controls should use compact table columns');
 assert.ok(css.includes('.certificate-ledger .data th.certificate-size,.certificate-ledger .data td.certificate-size{width:124px;min-width:105px;white-space:nowrap'),
  'Size column should have a compact width and prevent unit wrapping');
-assert.ok(css.includes('.certificate-ledger .certificate-toolbar{display:flex')&&
- css.includes('.certificate-ledger .certificate-toolbar-filter input{flex:1 1 300px;max-width:590px;min-width:160px')&&
- css.includes('.certificate-ledger .certificate-export-options{position:absolute')&&
+assert.ok(css.includes('.certificate-ledger .certificate-toolbar-filter input{flex:1 1 300px;max-width:590px;min-width:160px')&&
+ css.includes('.ui-export-menu > .ui-export-options{')&&
  css.includes('@media(max-width:630px)'),
- 'Compact toolbar must grow the search field, position export menu and wrap on narrow screens');
+ 'Certificate search and export options use the shared visual shell');
 assert.ok(js.includes("['.compact-ledger-title,.certificate-toolbar-title','ui-toolbar-title']")&&
  js.includes("['.compact-ledger-filters,.certificate-toolbar-filter','ui-toolbar-filters']")&&
  js.includes("['.compact-ledger-actions,.certificate-toolbar-actions','ui-toolbar-actions']")&&
@@ -1009,8 +1004,9 @@ assert.ok(toolbarFilterRules[0][1].includes('grid-column:2;grid-row:1;')&&
  toolbarFilterRules[1][1].includes('grid-column:1/-1;grid-row:2;')&&
  toolbarFilterRules[2][1].includes('grid-column:1;grid-row:2'),
  'Centered list filters must retain their approved responsive grid positions');
-assert.ok(js.includes("target.closest('.certificate-export-options')")&&
- js.includes("if(event.key==='Escape')el('content').querySelector('.certificate-export[open]')"),
+assert.ok(js.includes("function closeUiExportMenus(event){")&&
+ js.includes("event.target.closest('.ui-export-options button')")&&
+ js.includes("if(event.key==='Escape')closeUiExportMenus()"),
  'Export menu must close on action selection and Escape');
 assert.ok(js.includes("data-export-kind=\"archive\" data-export-section=\"certificate\""),
  'Certificate menu original exports must continue using the existing archive export APIs');
@@ -1268,15 +1264,11 @@ for(const rule of ['.data.ledger-record-table','.ledger-record-order-cell .btn',
  '.archive-tablewrap .data.ledger-record-table td:nth-child(2)',
  '.ledger-batch-delete[hidden]'])
  assert.ok(css.includes(rule),'Record table sizing / hidden delete missing '+rule);
-// Category table toolbars follow enterprise certificates: title at left, growing search and separate right actions.
-for(const rule of [
- '.archive-category-ledger>.compact-ledger-toolbar{display:flex;align-items:center;gap:24px}',
- '.archive-category-ledger .compact-ledger-title{flex:0 0 230px;max-width:230px;',
- '.archive-category-ledger .compact-ledger-filters{flex:1 1 auto;width:auto;max-width:none;',
- '.archive-category-ledger .compact-ledger-filters>.field.wide{flex:1 1 300px;max-width:590px;',
- '.archive-category-ledger .compact-ledger-actions{flex:0 0 auto;justify-self:auto;margin-left:auto;',
- '.archive-category-ledger .compact-ledger-filters{order:3;flex:1 1 100%;width:100%;'
-])assert.ok(css.includes(rule),'Certificate-style category header layout missing: '+rule);
+// Category ledgers use the shared grid rather than obsolete flex overrides.
+assert.ok(css.includes('.ui-list-toolbar:is(.certificate-toolbar,.compact-ledger-toolbar){')&&
+ css.includes('.archive-category-ledger .compact-ledger-filters>.field.wide{')&&
+ !css.includes('.archive-category-ledger>.compact-ledger-toolbar{display:flex'),
+ 'Category lists must not revive private layout geometry');
 // Category archive column tracks match enterprise certificates, with one flexible name track.
 for(const rule of [
  '.data.ledger-record-table.ledger-archive-category-table col.archive-col-check{width:42px}',
@@ -1395,11 +1387,15 @@ assert.ok(js.includes("if(detail?.kind==='project')return {kind:'contract',secti
  for(const source of ["function compactBusinessListToolbar(content)","compactBusinessListToolbar(content);",
    "'projectExportFolder','projectExportZip','ipExportFolder','ipExportZip'",
    "'moduleExportFolder','moduleExportZip','excelExport'",
-   "if(event.key==='Escape')el('content').querySelectorAll('.compact-ledger-export[open]')"])
+   "if(event.key==='Escape')closeUiExportMenus()"])
   assert.ok(js.includes(source),'Unified compact toolbar missing behavior: '+source);
- for(const source of ["compact-ledger-toolbar","compact-ledger-filters","compact-ledger-export-options",
-   "compact-ledger .recordgrid","@media(max-width:1350px)"])
+ for(const source of ["compact-ledger-toolbar","compact-ledger-filters",
+   "compact-ledger .recordgrid","@media(max-width:1440px)"])
   assert.ok(css.includes(source),'Unified compact toolbar missing responsive style: '+source);
+ assert.ok(js.includes("function foldUiExportButtons(actions,variant='compact'){")&&
+  js.includes("foldUiExportButtons(actions,'compact')")&&
+  js.includes("foldUiExportButtons(certificateActions,'certificate')"),
+  'All ledger export menus must use a single shared renderer');
  for(const marker of ["function generalList(){","function ipList(){","function projectList(k){",
    "function contractList(){","function realArchiveCards(k){","function realArchiveTable(k,category){"])
   assert.ok(js.includes(marker),'Preserve the original ledger/card renderer: '+marker);
@@ -1442,7 +1438,7 @@ assert.ok(js.includes("if(detail?.kind==='project')return {kind:'contract',secti
  const compactHelper=js.slice(js.indexOf('function compactBusinessListToolbar('),
   js.indexOf('function heading(',js.indexOf('function compactBusinessListToolbar(')));
  const compactVM=vm.createContext({document:{createElement:tag=>new CompactNode(tag)}});
- vm.runInContext(compactHelper+'\nglobalThis.compact=compactBusinessListToolbar;',compactVM);
+ vm.runInContext(compactHelper+'\nglobalThis.compact=compactBusinessListToolbar;globalThis.fold=foldUiExportButtons;',compactVM);
  function compactFixture(recordMode){
   const content=new CompactNode(),header=new CompactNode(),filter=new CompactNode(),
    card=new CompactNode(),tools=new CompactNode(),line=new CompactNode();
@@ -1497,23 +1493,32 @@ assert.ok(js.includes("if(detail?.kind==='project')return {kind:'contract',secti
  compactFixture('table');
  compactFixture('cards');
  compactFixture('folders');
+ // Enterprise certificates now use the same runtime menu constructor.
+ const certificateActions=new CompactNode();
+ for(const action of ['moduleExportFolder','moduleExportZip','excelExport']){
+  const button=new CompactNode('button');button.dataset.action=action;certificateActions.append(button);
+ }
+ compactVM.fold(certificateActions,'certificate');
+ const sharedMenu=certificateActions.children.find(x=>x.tag==='details');
+ assert.ok(sharedMenu&&sharedMenu.classList.contains('ui-export-menu')&&
+  sharedMenu.classList.contains('certificate-export')&&
+  sharedMenu.children[1].classList.contains('ui-export-options'),
+  'Certificate export controls must use the shared menu renderer');
+ assert.deepEqual(sharedMenu.children[1].children.map(x=>x.dataset.action),
+  ['moduleExportFolder','moduleExportZip','excelExport'],
+  'Certificate folder/ZIP/Excel actions must survive shared dropdown normalization');
 
  // Shared ledger layout: both sides of the query group should receive equal free space,
  // with title and business actions anchored to their own grid tracks.
- assert.ok(css.includes('.compact-ledger>.compact-ledger-toolbar{display:grid;grid-template-columns:max-content minmax(0,1fr) max-content;'),
-  'Compact ledger should use three balanced grid tracks rather than pushing the query left');
- assert.ok(css.includes('.compact-ledger-filters{display:flex;align-items:center;justify-content:center;justify-self:center;')&&
-  css.includes('width:100%;max-width:850px;flex-wrap:nowrap}'),
-  'Query group must be horizontally centered within its available middle track');
- assert.ok(css.includes('.compact-ledger-actions{display:flex;align-items:center;justify-self:end;')&&
-  css.includes('margin-left:0;padding-left:18px;border-left:1px solid var(--line);'),
-  'Business actions remain right-aligned and visually separated without flex auto-margin');
- assert.ok(css.includes('.compact-ledger>.compact-ledger-toolbar{grid-template-columns:minmax(0,1fr) auto}')&&
-  css.includes('.compact-ledger-filters{grid-column:1/-1;grid-row:2;justify-self:stretch;justify-content:flex-start;max-width:none;flex-wrap:wrap}'),
-  'Narrow widths should show title/actions above a full-width query row');
- assert.ok(css.includes('.certificate-ledger .certificate-toolbar-filter{')&&
-  !js.includes('compactBusinessListToolbar(content) && page===\'certificate\''),
-  'The separately approved company certificate toolbar must not be changed by shared grid styling');
+ assert.ok(css.includes('.ui-list-toolbar:is(.certificate-toolbar,.compact-ledger-toolbar){')&&
+  css.includes('grid-template-columns:max-content minmax(0,1fr) max-content;')&&
+  css.includes('@media(max-width:1440px){')&&
+  css.includes('.ui-list-toolbar > .ui-toolbar-filters{'),
+  'All business ledgers must share the responsive grid');
+ assert.ok(css.includes('.ui-export-menu > .ui-export-options button{')&&
+  !css.includes('.certificate-ledger .certificate-export-options{position:absolute')&&
+  !css.includes('.compact-ledger-export-options{position:absolute'),
+  'Export dropdown presentation must have one canonical CSS source');
 
 // The responsive-ledger contract is checked against actual renderer fixtures;
 // business fields and their semantic colgroup tracks must remain in sync.

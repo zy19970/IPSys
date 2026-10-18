@@ -349,24 +349,35 @@ function compactBusinessListToolbar(content){
  for(const parent of [pageHeading.querySelector('.actions'),ledgerTools.querySelector('.actions')]){
   if(parent)while(parent.firstChild)actions.append(parent.firstChild);
  }
- const exportButtons=Array.from(actions.querySelectorAll('button[data-action]')).filter(button=>
-  ['projectExportFolder','projectExportZip','ipExportFolder','ipExportZip',
-   'moduleExportFolder','moduleExportZip','excelExport'].includes(button.dataset.action));
- if(exportButtons.length>=2){
-  const menu=document.createElement('details');menu.className='compact-ledger-export';
-  const trigger=document.createElement('summary');trigger.className='btn compact-ledger-export-trigger';
-  trigger.textContent='导出 ▾';trigger.setAttribute('aria-label','选择导出方式');
-  const choices=document.createElement('div');choices.className='compact-ledger-export-options';
-  choices.setAttribute('role','group');choices.setAttribute('aria-label','导出方式');
-  exportButtons[0].before(menu);
-  for(const button of exportButtons)choices.append(button);
-  menu.append(trigger,choices);
- }
+ foldUiExportButtons(actions,'compact');
  toolbar.append(actions);
  pageHeading.remove();filterPanel.remove();ledgerTools.remove();
  ledger.classList.add('compact-ledger');ledger.prepend(toolbar);
 }
 
+
+// One menu renderer for every ledger. Only action metadata differs by module.
+function foldUiExportButtons(actions,variant='compact'){
+ if(!actions||actions.querySelector('details.ui-export-menu'))return;
+ const exportButtons=Array.from(actions.querySelectorAll('button[data-action]')).filter(button=>
+  ['projectExportFolder','projectExportZip','ipExportFolder','ipExportZip',
+   'moduleExportFolder','moduleExportZip','excelExport'].includes(button.dataset.action));
+ if(exportButtons.length<2)return;
+ const prefix=variant==='certificate'?'certificate':'compact-ledger';
+ const menu=document.createElement('details');
+ menu.className=prefix+'-export ui-export-menu';
+ const trigger=document.createElement('summary');
+ trigger.className='btn '+prefix+'-export-trigger';
+ trigger.textContent='导出 ▾';
+ trigger.setAttribute('aria-label','选择导出方式');
+ const choices=document.createElement('div');
+ choices.className=prefix+'-export-options ui-export-options';
+ choices.setAttribute('role','group');
+ choices.setAttribute('aria-label','导出方式');
+ exportButtons[0].before(menu);
+ for(const button of exportButtons)choices.append(button);
+ menu.append(trigger,choices);
+}
 
 /* Common DOM contract: module renderers own data, shared roots own presentation.
    Every route passes through this single role normalization before display. */
@@ -1319,14 +1330,12 @@ async function moveCompanyCertificate(id,direction){
  }
 }
 function certificateExportMenu(rows){
+ // Render the same three existing commands; foldUiExportButtons builds the
+ // identical dropdown used by projects, contracts, IP and archive ledgers.
  const attrs=' data-export-kind="archive" data-export-section="certificate" data-export-ids="'+rows.map(r=>r.id).join(',')+'"';
- return '<details class="certificate-export">'+
-  '<summary class="btn certificate-export-trigger" aria-label="选择导出格式">导出 <span aria-hidden="true">▾</span></summary>'+
-  '<div class="certificate-export-options" role="group" aria-label="企业资质导出方式">'+
-  '<button type="button" data-action="moduleExportFolder"'+attrs+'>导出附件文件夹</button>'+
+ return '<button type="button" data-action="moduleExportFolder"'+attrs+'>导出附件文件夹</button>'+
   '<button type="button" data-action="moduleExportZip"'+attrs+'>导出 ZIP</button>'+
-  '<button type="button" data-action="excelExport" data-excel-kind="archive" data-excel-section="certificate">导出 Excel</button>'+
-  '</div></details>';
+  '<button type="button" data-action="excelExport" data-excel-kind="archive" data-excel-section="certificate">导出 Excel</button>';
 }
 function companyCertificateAttachment(recordId){
  // Prefer the latest uploaded original. Multiple attachments are not restricted.
@@ -2170,6 +2179,8 @@ function render(){
    archiveSections.includes(page)?(space==='company'&&page==='certificate'?realCompanyCertificateList():realArchiveCards(page)):
    page==='search'?searchPage():page==='settings'?settingsPage():trashPage();
  compactBusinessListToolbar(content);
+ const certificateActions=content.querySelector('.certificate-toolbar-actions');
+ if(certificateActions)foldUiExportButtons(certificateActions,'certificate');
  decorateLedgerControls(content);
  decorateAttachmentRows(content);
  normalizeUiComponents(content);
@@ -2309,12 +2320,14 @@ el('content').addEventListener('scroll',closeAttachmentMenu,{capture:true,passiv
 window.addEventListener('resize',closeAttachmentMenu);
 function openLiveRecord(id){detail={kind:'general',id};page='general';render();el('content').scrollTo(0,0);}
 function openMockRecord(kind,id){if(page!==kind)archiveGroup=null;detail={kind,id};page=kind;render();el('content').scrollTo(0,0);}
-el('content').addEventListener('click',async ev=>{
- const expandedExport=el('content').querySelector('.certificate-export[open]');
- if(expandedExport&&!ev.target.closest('.certificate-export'))expandedExport.removeAttribute('open');
- for(const menu of el('content').querySelectorAll('.compact-ledger-export[open]')){
-  if(!ev.target.closest('.compact-ledger-export')||ev.target.closest('.compact-ledger-export-options button'))menu.removeAttribute('open');
+function closeUiExportMenus(event){
+ for(const menu of el('content').querySelectorAll('.ui-export-menu[open]')){
+  if(!event||!menu.contains(event.target)||event.target.closest('.ui-export-options button'))
+   menu.removeAttribute('open');
  }
+}
+el('content').addEventListener('click',async ev=>{
+ closeUiExportMenus(ev);
  // Root category cards only navigate; deletion is separate and never opens a card.
  const deleteFolderButton=ev.target.closest('[data-archive-folder-delete]');
  if(deleteFolderButton&&space==='company'&&page==='achievement'&&archiveFolderId===null){
@@ -2355,7 +2368,6 @@ el('content').addEventListener('click',async ev=>{
   return;
  }
  const target=ev.target.closest('button');if(!target)return;
- if(target.closest('.certificate-export-options'))target.closest('.certificate-export')?.removeAttribute('open');
  if(target.hasAttribute('data-archive-folder-back')&&space==='company'&&page==='achievement'){
   const current=archiveFolders.find(f=>f.id===archiveFolderId);
   openArchiveFolder(current?.parentId??null);return;
@@ -2852,8 +2864,7 @@ el('content').addEventListener('change',async ev=>{
  }
 });
 el('content').addEventListener('keydown',event=>{
- if(event.key==='Escape')el('content').querySelector('.certificate-export[open]')?.removeAttribute('open');
- if(event.key==='Escape')el('content').querySelectorAll('.compact-ledger-export[open]').forEach(menu=>menu.removeAttribute('open'));
+ if(event.key==='Escape')closeUiExportMenus();
  if((event.key==='Enter'||event.key===' ')&&event.target.matches('[data-archive-category],[data-archive-folder-id],[data-live-card],[data-mock-card]')){event.preventDefault();event.target.click();return;}
  if(event.key==='Enter'&&event.target.id==='filterSearch'){event.preventDefault();el('content').querySelector('[data-action=filter]')?.click();}
 });
