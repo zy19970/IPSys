@@ -58,8 +58,11 @@ const child=id=>created[0].querySelector('#'+id);
 const blob=new Blob(['1234567890']);
 (async()=>{
  assert.equal(upload.begin(2),true);
+ assert.equal(upload.status().active,true);
+ assert.equal(upload.status().count,2);
  assert.equal(upload.begin(1),false,'no parallel upload batches');
  upload.file({name:'big.pdf',size:10},1);
+ assert.equal(upload.status().index,1,'workspace prompt shows the active batch position');
  const first=upload.request('/api/v2/files/company/prepare',{method:'POST',
   headers:{'X-File-Name':'big.pdf','Content-Type':'application/octet-stream'},body:blob},'token');
  let xhr=FakeXHR.all.at(-1);
@@ -85,6 +88,7 @@ const blob=new Blob(['1234567890']);
  xhr.onload();
  await assert.rejects(second,/有待确认文件/);
  upload.finish({completed:1,errors:['another.pdf：有待确认文件']});
+ assert.equal(upload.status().active,false,'workspace prompt stops after upload finishes');
  assert.match(child('uploadProgressStage').textContent,/已保存 1，失败 1/);
  assert.equal(child('uploadProgressClose').hidden,false);
  assert.equal(child('uploadProgressCancel').hidden,true);

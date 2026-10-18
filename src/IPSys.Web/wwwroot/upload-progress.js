@@ -146,7 +146,11 @@
    xhr.send(opts.body);
   });
  }
- const api={begin,file,transfer,stage,finish,cancel,cancelled,signal,request};
+ // Read-only status for workspace navigation; never expose mutable task state.
+ function status(){
+  return {active:!!state?.active,count:state?.count??0,index:state?.index??0};
+ }
+ const api={begin,file,transfer,stage,finish,cancel,cancelled,signal,request,status};
  Object.defineProperty(api,'onActiveChanged',{
   set(callback){onActiveChanged=callback;},
   get(){return onActiveChanged;}

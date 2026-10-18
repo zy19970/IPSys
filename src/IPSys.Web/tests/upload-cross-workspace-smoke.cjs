@@ -30,6 +30,48 @@ assert.ok(!general.includes('liveRows.some('),
 assert.ok(!business.includes('await refresh()')&&!general.includes('await refresh()'),
  'refreshes must not compete with streaming the next batch file for SQLCipher Gate');
 
+// Exercise the real workspace-switch entry rather than checking prompt text
+// alone. Canceling must be side-effect free; accepting must keep upload alive.
+{
+ const choices=[],renders=[];
+ let accept=false;
+ const dummyElements=new Map();
+ const ctx={
+  token:'token',space:'company',dbName:'test.db',globalSerial:9,
+  globalHits:['old'],globalQuery:'old',globalPending:true,globalError:'old',
+  page:'general',detail:{kind:'general',id:7},
+  archiveGroup:'archive',archiveFolderId:123,archiveFolders:[7],
+  archiveSelectedFolders:new Set([7]),archiveEntryOrders:{a:1},
+  ledgerOrders:{b:1},projectRows:[1],ipRows:[2],contractRows:[3],
+  businessFileRows:[4],trashRows:[5],archiveRows:{certificate:[6]},
+  filterName:'keep',filterKind:'全部类型',filterState:'全部状态',
+  selected:new Set([1]),certificateSelected:new Set([2]),
+  localFileTaskActive:true,trashPurgeTaskActive:false,
+  api:{uploadProgress:{status:()=>({active:true,count:2,index:1})}},
+  confirm:message=>{choices.push(message);return accept;},
+  el:id=>{if(!dummyElements.has(id))dummyElements.set(id,{});return dummyElements.get(id);},
+  render:()=>renders.push(ctx.space),
+  refreshSidebar(){throw Error('SQLCipher refresh must be deferred during upload');},
+  resumeTrashPurgeStatus(){throw Error('Do not read from Vault during active upload');}
+ };
+ vm.runInNewContext(select+'\nthis.switchSpace=selectSpace;',ctx);
+ ctx.switchSpace('company');
+ assert.equal(choices.length,0,'selecting current workspace never prompts');
+ ctx.switchSpace('personal');
+ assert.equal(choices.length,1,'switching during active batch requires confirmation');
+ assert.match(choices[0],/第 1 \/ 2 份/);
+ assert.match(choices[0],/仍保存到开始上传时的原工作区/);
+ assert.match(choices[0],/等上传结束后才能加载/);
+ assert.equal(ctx.space,'company','cancel must preserve original workspace');
+ assert.equal(ctx.globalSerial,9,'cancel must not alter UI search/navigation');
+ assert.equal(ctx.detail.id,7,'cancel must preserve the current record');
+ assert.equal(renders.length,0,'cancel must not rerender the current page');
+ accept=true;
+ ctx.switchSpace('personal');
+ assert.equal(ctx.space,'personal','confirm permits navigation');
+ assert.deepEqual(renders,['personal'],'confirmed switch shows busy page only');
+ assert.equal(ctx.localFileTaskActive,true,'navigation must not cancel the upload');
+}
 (async()=>{
  const files=[{name:'part1.bin',size:300},{name:'part2.bin',size:500}];
  const bus=[];

@@ -205,9 +205,22 @@ el('openForm').onsubmit=async event=>{
   }catch(error){notice(error.message,true);}finally{el('submitOpen').disabled=false;}
 };
 function selectSpace(next){
-  if(!token)return;
+  if(!token||space===next)return;
+  // Prompt BEFORE changing navigation state so cancel preserves the current
+  // workspace, any selection, and the existing upload queue unchanged.
+  if(localFileTaskActive){
+    const upload=api.uploadProgress.status();
+    const current=Math.max(1,upload.index);
+    const count=upload.count;
+    const target=next==='personal'?'个人资料':'公司资料';
+    const prefix=count>1?'正在批量上传附件（第 '+current+' / '+count+' 份）':
+      '正在上传附件';
+    if(!confirm(prefix+'。\n\n切换到'+target+
+      '不会取消上传，文件仍保存到开始上传时的原工作区。'+
+      '\n新工作区的资料需要等上传结束后才能加载。'+
+      '\n\n建议等待上传完成后再切换。是否仍要继续？'))return;
+  }
   globalSerial++;globalHits=[];globalQuery='';globalPending=false;globalError='';
-  if(space===next)return;
   space=next;page='dashboard';detail=null;archiveGroup=null;archiveFolderId=null;archiveFolders=[];archiveSelectedFolders.clear();archiveEntryOrders={};ledgerOrders={};projectRows=[];ipRows=[];contractRows=[];businessFileRows=[];trashRows=[];archiveRows={certificate:[],achievement:[],academic:[]};filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();certificateSelected.clear();
   el('globalSearch').value='';el('sidebarDbName').textContent=dbName;
   el('chooseWorkspace').hidden=true;el('unlocked').hidden=false;
