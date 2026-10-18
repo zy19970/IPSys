@@ -1515,45 +1515,68 @@ assert.ok(fixtureControls?.hidden&&fixtureControls.children.length===5,
 assert.equal(attachGroupFixture.children.length,1,
  'Inline buttons below the file line must disappear');
 
-// Project detail: single heading per section; action buttons remain in section bar.
-assert.ok(js.includes('所属合同 <span class="detailsection-count"')&&
- js.includes('项目附件 <span class="detailsection-count"')&&
- js.includes('id="projectAttachmentSelectAll"')&&
- js.includes('id="projectAttachmentExportZip" disabled')&&
- js.includes('data-action="businessUpload">＋ 上传附件'),
- 'Project contract/attachment headings need inline count and controls');
-assert.ok(js.includes("return (kind==='project'?'':'<div class=\"tabletools\">")&&
- js.includes("exportCheck(f,kind==='ip'?'v2ip':'v2file',latest)")&&
- !js.includes("(kind==='project'?'':exportCheck("),
- 'Project own attachment has a selectable checkbox with no duplicate toolbar');
-assert.ok(fileListCtx.__projectAttachment.includes('FILE-CHECK')&&
- !fileListCtx.__projectAttachment.includes('class="tabletools"')&&
- !fileListCtx.__projectAttachment.includes('data-action="businessUpload"'),
- 'Project attachment renderer must retain a select checkbox without its nested action bar');
-assert.ok(fileListCtx.__onlyVersion.includes('class="tabletools"')&&
- fileListCtx.__onlyVersion.includes('data-action="businessUpload"'),
- 'Other attachment modules should keep their original toolbar');
-assert.ok(css.includes('.detailsectionhead .detailsection-count{')&&
- css.includes('.project-attachment-actions{'),
- 'Project title toolbar needs the new responsive styles');
+// Unified real attachment section: no record type should retain nested
+// upload, duplicate count or bottom export bars.
+for(const kind of ['project','contract','ip','archive','general']){
+ assert.ok(js.includes("attachmentHeaderActions('"+kind+"')"),
+  'Missing shared detail attachment header for '+kind);
+}
+assert.ok(js.includes('function attachmentSectionTitle(')&&
+ js.includes('function attachmentHeaderActions(')&&
+ js.includes('function syncAttachmentSelection(')&&
+ js.includes('syncAttachmentSelection();'),
+ 'All attachment types must use one title, actions and selection-state contract');
+assert.ok(!js.includes("return (kind==='project'?'':'<div class=\"tabletools\">")&&
+ !js.includes('function exportButtons(){')&&
+ !js.includes("files.length?exportButtons()"),
+ 'No legacy business attachment top or bottom toolbar may remain');
+for(const name of ['__onlyVersion','__history','__projectAttachment']){
+ assert.ok(fileListCtx[name].includes('FILE-CHECK')&&
+ !fileListCtx[name].includes('class="tabletools"')&&
+ !fileListCtx[name].includes('class="export-tools"'),
+ 'Each original list must contain checkboxes but not another toolbar: '+name);
+}
+assert.ok(js.includes("attachmentSectionTitle('合同附件',businessFileCount('contract',c.id))")&&
+ js.includes("attachmentSectionTitle('项目附件',businessFileCount('project',p.id))")&&
+ js.includes("attachmentSectionTitle('知识产权附件',businessFileCount('ip',row.id))")&&
+ js.includes("attachmentSectionTitle('附件资料',businessFileCount('archive',record.id,page))"),
+ 'All business attachment titles must display real per-owner unique-file counts');
+for(const selector of ['.attachment-header-actions{','.attachment-header-actions .attachment-select-all{',
+ '.attachment-header-actions .attachment-selected{','.attachment-header-actions #businessMaterialCategory{'])
+ assert.ok(css.includes(selector),'Missing unified attachment heading styling: '+selector);
+
 (() => {
- const all={checked:false,disabled:false,indeterminate:false},
-  count={textContent:''},button={disabled:true},
-  latest={dataset:{exportLatest:'1'},checked:false},
-  history={dataset:{},checked:false};
- all.closest=()=>({querySelectorAll:()=>[latest,history]});
- const ids={projectAttachmentSelectAll:all,projectAttachmentSelectedCount:count,
-  projectAttachmentExportZip:button};
- const start=js.indexOf('function syncProjectAttachmentSelection(){');
- const part=js.slice(start,js.indexOf('function selectedOriginals(){',start));
- const runner=vm.createContext({el:id=>ids[id]});
- vm.runInContext(part+'\nglobalThis.update=syncProjectAttachmentSelection;',runner);
- runner.update();
- assert.ok(button.disabled&&!all.checked&&count.textContent==='已选 0 份');
- latest.checked=true;runner.update();
- assert.ok(!button.disabled&&all.checked&&count.textContent==='已选 1 份');
- history.checked=true;runner.update();
+ const headStart=js.indexOf('function attachmentSectionTitle(');
+ const headEnd=js.indexOf('function selectedOriginals(){',headStart);
+ assert.ok(headStart>0&&headEnd>headStart);
+ const select={checked:false,disabled:false,indeterminate:false},
+  count={textContent:''},folder={disabled:true},zip={disabled:true},
+  current={checked:false,dataset:{exportLatest:'1'}},
+  old={checked:false,dataset:{}};
+ const target={attachmentSelectAll:select,attachmentSelectedCount:count,
+  attachmentExportFolder:folder,attachmentExportZip:zip};
+ select.closest=()=>({querySelectorAll:()=>[current,old]});
+ const context=vm.createContext({el:id=>target[id],escapeHtml:String});
+ vm.runInContext(js.slice(headStart,headEnd)+
+  '\nglobalThis.makeHeader=attachmentHeaderActions;globalThis.updateHeader=syncAttachmentSelection;',context);
+ for(const kind of ['project','contract','ip','archive','general']){
+  const markup=context.makeHeader(kind);
+  assert.ok(markup.includes('id="attachmentSelectAll"')&&
+   markup.includes('id="attachmentExportFolder"')&&
+   markup.includes('id="attachmentExportZip"')&&
+   markup.includes('data-action="'+(kind==='general'?'upload':'businessUpload')+'"'),
+   'Shared toolbar selection/upload/export missing for '+kind);
+  if(kind==='ip')assert.ok(markup.includes('id="businessMaterialCategory"'));
+  if(kind==='archive')assert.ok(markup.includes('id="businessReuseExisting"'));
+ }
+ context.updateHeader();
+ assert.ok(folder.disabled&&zip.disabled&&!select.checked&&count.textContent==='已选 0 份');
+ current.checked=true;context.updateHeader();
+ assert.ok(!folder.disabled&&!zip.disabled&&select.checked&&count.textContent==='已选 1 份');
+ old.checked=true;context.updateHeader();
  assert.equal(count.textContent,'已选 2 份');
- latest.checked=false;runner.update();
- assert.ok(!all.checked&&!button.disabled,'Historical selection remains exportable');
+ current.checked=false;context.updateHeader();
+ assert.ok(!select.checked&&!zip.disabled&&!folder.disabled,'Historic revision remains individually exportable');
+ current.checked=true;old.checked=false;context.updateHeader();
+ assert.ok(select.checked&&!select.indeterminate,'All current versions selected should check the header');
 })();

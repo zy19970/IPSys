@@ -441,8 +441,8 @@ function realDetail(){
  '<div class="detailbody infogrid"><div class="info"><label>资料名称</label><strong>'+escapeHtml(r.title)+'</strong></div>'+
  '<div class="info"><label>所属工作区</label><strong>'+(space==='company'?'公司资料':'个人资料')+'</strong></div>'+
  '<div class="info"><label>已归档原件</label><strong>'+groups.size+' 份</strong></div></div></section>'+
- '<section class="white detailsection"><div class="detailsectionhead"><h2>附件资料</h2>'+
- '<button class="btn primary" data-action="upload">＋ 上传原件</button></div><div class="detailbody">'+
+ '<section class="white detailsection"><div class="detailsectionhead"><h2>'+attachmentSectionTitle('附件资料',groups.size)+'</h2>'+
+ attachmentHeaderActions('general')+'</div><div class="detailbody">'+
  '<input type="file" id="uploadInput" multiple hidden><p class="hint">支持更新指定同名原件或单独归档新原件，保留可展开的历史版本。单文件上限 8 GiB。</p>'+
  ([...groups.values()].map(g=>{g.sort((a,b)=>b.version-a.version||b.id-a.id);
  return '<div class="business-file-group">'+fileLine(g[0],g.length>1,true)+
@@ -451,7 +451,7 @@ function realDetail(){
  (g.length>1?'<details><summary>查看历史版本（'+(g.length-1)+'）</summary>'+
  g.slice(1).map(f=>fileLine(f,true)).join('')+'</details>':'')+'</div>';}).join('')||
  '<div class="empty">暂无附件，点击“上传原件”开始归档。</div>')+
- (r.files.length?exportButtons():'')+'</div></section>'+
+ '</div></section>'+
  '<section class="white detailsection"><div class="detailsectionhead"><h2>关联资料</h2>'+stamp()+
  '</div><div class="empty">跨业务记录关联将在后续统一实现</div></section>';
 }
@@ -529,7 +529,7 @@ function ipDetail(){
   '<button class="btn" data-action="ipMove">转移工作区</button>'+
   '<button class="btn" data-action="ipDelete">删除</button>')+
  section('基本信息','<div class="infogrid">'+fields+'</div>')+
- section('知识产权附件',businessAttachmentList('ip',row.id));
+ section(attachmentSectionTitle('知识产权附件',businessFileCount('ip',row.id)),businessAttachmentList('ip',row.id),attachmentHeaderActions('ip'));
 }
 function ipUpdateStatus(chosen=''){
  const type=el('ip-ipType').value;
@@ -611,7 +611,7 @@ function contractDetail(){
  contractFieldLabels.map(([field,label])=>infoRow(label,
    field==='amount'?(c.amount?contractMoney(c.amount):''):c[field])).join('')+
  '</div>')+
- section('合同附件',businessAttachmentList('contract',c.id));
+ section(attachmentSectionTitle('合同附件',businessFileCount('contract',c.id)),businessAttachmentList('contract',c.id),attachmentHeaderActions('contract'));
 }
 function showContractForm(projectId,id=null){
  const parent=projectRows.find(p=>p.id===projectId);
@@ -798,23 +798,32 @@ function exportCheck(file,source='v2file',latest=false){
   ' data-export-source="'+source+'" data-export-id="'+file.id+'"'+
   (latest?' data-export-latest="1"':'')+'> 导出此版</label>';
 }
-function exportButtons(){
- return '<div class="export-tools"><span>只导出手动勾选的原件（含可单独勾选的历史版本）</span>'+
- '<div class="actions"><label class="export-check"><input type="checkbox" class="export-checkall"> 全选附件</label>'+ 
- '<button class="btn" data-action="exportFolder">导出至文件夹</button>'+
- '<button class="btn primary" data-action="exportZip">导出 ZIP</button></div></div>';
+// Every real record uses this common attachment heading instead of a nested toolbar.
+function attachmentSectionTitle(title,count){
+ return escapeHtml(title)+' <span class="detailsection-count">'+count+' 份</span>';
 }
-// Scoped project-attachment selection; full project export keeps its own scope.
-function syncProjectAttachmentSelection(){
- const all=el('projectAttachmentSelectAll');if(!all)return;
+function attachmentHeaderActions(kind){
+ const category=kind==='ip'?'<label class="attachment-category-picker" for="businessMaterialCategory">材料类别</label>'+
+  '<select id="businessMaterialCategory">'+['申请材料','通知文件','证书文件','其他材料'].map(x=>'<option>'+x+'</option>').join('')+'</select>':'';
+ const reuse=kind==='archive'?'<label class="file-dedup-choice"><input type="checkbox" id="businessReuseExisting"> 同内容复用存储</label>':'';
+ return '<div class="attachment-header-actions">'+category+reuse+
+  '<label class="export-check attachment-select-all"><input type="checkbox" class="export-checkall" id="attachmentSelectAll"> 全选</label>'+
+  '<span class="attachment-selected" id="attachmentSelectedCount">已选 0 份</span>'+
+  '<button type="button" class="btn" data-action="exportFolder" id="attachmentExportFolder" disabled>导出已选文件夹</button>'+
+  '<button type="button" class="btn" data-action="exportZip" id="attachmentExportZip" disabled>导出已选 ZIP</button>'+
+  '<button type="button" class="btn primary" data-action="'+(kind==='general'?'upload':'businessUpload')+'">＋ 上传附件</button></div>';
+}
+function syncAttachmentSelection(){
+ const all=el('attachmentSelectAll');if(!all)return;
  const section=all.closest('.detailsection');
- const choices=[...section.querySelectorAll('.export-filecheck')];
- const latest=choices.filter(box=>box.dataset.exportLatest==='1');
- const count=choices.filter(box=>box.checked).length;
- const selected=el('projectAttachmentSelectedCount');
+ const checks=[...section.querySelectorAll('.export-filecheck')];
+ const latest=checks.filter(box=>box.dataset.exportLatest==='1');
+ const count=checks.filter(box=>box.checked).length;
+ const selected=el('attachmentSelectedCount');
  if(selected)selected.textContent='已选 '+count+' 份';
- const exportButton=el('projectAttachmentExportZip');
- if(exportButton)exportButton.disabled=count===0;
+ for(const id of ['attachmentExportFolder','attachmentExportZip']){
+  const button=el(id);if(button)button.disabled=count===0;
+ }
  all.disabled=latest.length===0;
  all.checked=latest.length>0&&latest.every(box=>box.checked);
  all.indeterminate=latest.some(box=>box.checked)&&!all.checked;
@@ -886,9 +895,6 @@ function businessAttachmentList(kind,ownerId,section=''){
   if(!groups.has(key))groups.set(key,[]);
   groups.get(key).push(f);
  }
- const category=kind==='ip'?'<label for="businessMaterialCategory">附件材料类别</label>'+
- '<select id="businessMaterialCategory">'+
- ['申请材料','通知文件','证书文件','其他材料'].map(x=>'<option>'+x+'</option>').join('')+'</select>':'';
  const line=(f,showVersion,latest=false)=>'<div class="fileline"><span class="fileicon">'+
  escapeHtml(f.name.split('.').pop().slice(0,4).toUpperCase())+'</span>'+
  '<span class="filedesc"><strong>'+escapeHtml(f.name)+'</strong><small>'+(showVersion?'v'+f.version+' · ':'')+
@@ -897,18 +903,14 @@ function businessAttachmentList(kind,ownerId,section=''){
  exportCheck(f,kind==='ip'?'v2ip':'v2file',latest)+'<button class="btn btn-sm" data-preview-business="'+f.id+'">预览</button>'+
  '<button class="btn btn-sm" data-business-download="'+f.id+'">下载</button>'+
  '<button class="btn btn-sm" data-business-delete="'+f.id+'">移除</button></div>';
- return (kind==='project'?'':'<div class="tabletools"><b>原件附件 '+groups.size+' 份</b><div class="actions">'+category+
- (['ip','contract'].includes(kind)?'':'<label class="file-dedup-choice"><input type="checkbox" id="businessReuseExisting"> 同内容复用存储</label>')+
- '<button class="btn primary" data-action="businessUpload">＋ 上传原件</button></div></div>')+
- '<p class="hint">'+(['ip','project','contract','archive'].includes(kind)?'按内容摘要查重：无重复自动独立保存；发现相同内容时再选择共享、复用或独立保存。支持文件历史版本。':'同名原件可选择更新已有版本链，或作为独立新文件归档；同工作区共享引用自动显示新版本。')+' 单文件上限 8 GiB。</p>'+
+ return '<p class="hint">'+(['ip','project','contract','archive'].includes(kind)?'按内容摘要查重：无重复自动独立保存；发现相同内容时再选择共享、复用或独立保存。支持文件历史版本。':'同名原件可选择更新已有版本链，或作为独立新文件归档；同工作区共享引用自动显示新版本。')+' 单文件上限 8 GiB。</p>'+
  ([...groups.values()].map(g=>{g.sort((a,b)=>b.version-a.version||b.id-a.id);
   return '<div class="business-file-group">'+line(g[0],g.length>1,true)+
    (['ip','project','contract','archive'].includes(kind)?'<button class="btn btn-sm" data-v2-ip-version="'+g[0].id+'">上传新版本</button>':'')+
    '<button class="btn btn-sm" data-business-associate="'+g[0].id+'">'+(['ip','project','contract'].includes(kind)?'共享到其它资料':'复制／移动关联')+'</button>'+ 
    (g.length>1?'<details><summary>查看历史版本（'+(g.length-1)+'）</summary>'+
     g.slice(1).map(f=>line(f,true)).join('')+'</details>':'')+'</div>';}).join('')||
- '<p class="hint">暂无附件，可上传原始文件。</p>')+
- (kind!=='project'&&files.length?exportButtons():'');
+ '<p class="hint">暂无附件，可上传原始文件。</p>');
 }
 async function uploadBusinessAttachment(file,meta,workspace){
  return IPSysNativeIp.upload(api,file,meta,workspace);
@@ -1063,13 +1065,7 @@ function projectDetail(){
  section('所属合同 <span class="detailsection-count">'+contractRows.filter(c=>c.projectId===p.id).length+' 份</span>',
   projectContracts(p.id),
   '<button type="button" class="btn primary" data-action="contractAdd">＋ 新增合同</button>')+
- section('项目附件 <span class="detailsection-count">'+businessFileCount('project',p.id)+' 份</span>',
-  businessAttachmentList('project',p.id),
-  '<div class="project-attachment-actions">'+
-  '<label class="export-check project-attachment-select-all"><input type="checkbox" class="export-checkall" id="projectAttachmentSelectAll"> 全选</label>'+
-  '<span class="project-attachment-selected" id="projectAttachmentSelectedCount">已选 0 份</span>'+
-  '<button type="button" class="btn" data-action="exportZip" id="projectAttachmentExportZip" disabled>导出已选 ZIP</button>'+
-  '<button type="button" class="btn primary" data-action="businessUpload">＋ 上传附件</button></div>');
+ section(attachmentSectionTitle('项目附件',businessFileCount('project',p.id)),businessAttachmentList('project',p.id),attachmentHeaderActions('project'));
 }
 function showProjectForm(id=null){
  projectEditingId=id;
@@ -1537,7 +1533,7 @@ function realArchiveDetail(){
  infoRow('类别',record.category)+
  (space==='company'&&page==='achievement'?infoRow('年份',record.year):'')+
  infoRow('备注',record.remarks)+infoRow('标签',record.tags))+'</div>')+
- section('附件资料',businessAttachmentList('archive',record.id,page));
+ section(attachmentSectionTitle('附件资料',businessFileCount('archive',record.id,page)),businessAttachmentList('archive',record.id,page),attachmentHeaderActions('archive'));
 }
 function showArchiveForm(id=null){
  const record=id===null?null:(archiveRows[page]||[]).find(r=>r.id===id);
@@ -2147,7 +2143,7 @@ function render(){
  compactBusinessListToolbar(content);
  decorateLedgerControls(content);
  decorateAttachmentRows(content);
- syncProjectAttachmentSelection();
+ syncAttachmentSelection();
  const searchBox=el('filterSearch');if(searchBox)searchBox.value=filterName;
  syncCompanyCertificateSelectionUi();
 }
@@ -2772,8 +2768,7 @@ el('content').addEventListener('change',async ev=>{
   if(files.length&&detail?.kind==='general')await uploadGeneralBatch(id,files);
  }
  if(ev.target.matches('.export-checkall')){
-  const scope=detail?.kind==='project'?el('content'):
-   ev.target.closest('.module-export')||ev.target.closest('.detailsection')||el('content');
+  const scope=ev.target.closest('.detailsection')||ev.target.closest('.module-export')||el('content');
   const files=scope.querySelectorAll('.export-filecheck');
   files.forEach(box=>box.checked=ev.target.checked&&box.dataset.exportLatest==='1');
  }
@@ -2783,7 +2778,7 @@ el('content').addEventListener('change',async ev=>{
   if(all)all.checked=[...scope.querySelectorAll('.export-filecheck[data-export-latest="1"]')]
     .every(box=>box.checked);
  }
- if(ev.target.matches('.export-filecheck,#projectAttachmentSelectAll'))syncProjectAttachmentSelection();
+ if(ev.target.matches('.export-filecheck,.export-checkall'))syncAttachmentSelection();
  if(ev.target.matches('.ledger-export-all')){
   el('content').querySelectorAll('.ledger-export-row').forEach(box=>box.checked=ev.target.checked);
  }

@@ -628,12 +628,20 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 
 /* Project detail: each section has one heading/toolbar, never two stacked bars. */
 .detailsectionhead .detailsection-count{font-size:12px;font-weight:500;color:var(--muted);white-space:nowrap;margin-left:6px}
-.project-attachment-actions{display:flex;gap:9px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
-.project-attachment-actions .project-attachment-select-all{font-size:13px;color:#526879;cursor:pointer;gap:6px}
-.project-attachment-actions .project-attachment-select-all input{width:16px;height:16px;accent-color:var(--primary);cursor:pointer}
-.project-attachment-actions .project-attachment-selected{font-size:12px;color:#708391;white-space:nowrap}
-.project-attachment-actions .btn{flex:none}
+.attachment-header-actions{display:flex;gap:9px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+.attachment-header-actions .attachment-select-all{font-size:13px;color:#526879;cursor:pointer;gap:6px}
+.attachment-header-actions .attachment-select-all input{width:16px;height:16px;accent-color:var(--primary);cursor:pointer}
+.attachment-header-actions .attachment-selected{font-size:12px;color:#708391;white-space:nowrap}
+.attachment-header-actions .btn{flex:none}
 @media(max-width:860px){
  .detailsectionhead{flex-wrap:wrap}
- .project-attachment-actions{width:100%;justify-content:flex-start}
+ .attachment-header-actions{width:100%;justify-content:flex-start}
 }
+/* The same attachment toolbar is used by contracts, projects, IP, archives and general files. */
+.attachment-header-actions{min-width:0}
+.attachment-header-actions .attachment-category-picker{font-size:12px;color:#627484;white-space:nowrap}
+.attachment-header-actions #businessMaterialCategory{
+ min-width:100px;max-width:130px;padding:6px 8px;
+ border:1px solid #dfe5eb;border-radius:6px;background:#fff;font-size:12px;
+}
+.attachment-header-actions .file-dedup-choice{margin:0;white-space:nowrap}
