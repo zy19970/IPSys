@@ -502,14 +502,14 @@ function ipList(){
  '<section class="white"><div class="tabletools"><b>业务台账 '+rows.length+' 条记录</b>'+
  '<div class="actions"><span id="ledgerExportCount">已选 0 条</span>'+
  '<button class="btn" data-action="ipExportFolder">导出附件文件夹</button><button class="btn primary" data-action="ipExportZip">导出附件 ZIP</button>'+excelExportButton('ip')+'</div></div>'+
- '<div class="tablewrap"><table class="data ledger-ip-table"><thead><tr><th><input type="checkbox" id="ledgerExportAll" class="ledger-export-all" aria-label="全选当前知识产权"></th><th>名称</th><th>知识产权类型</th><th>申请/登记号</th><th>状态</th><th>当前权利人</th><th>申请/登记日期</th><th>附件</th></tr></thead><tbody>'+
+ '<div class="tablewrap"><table class="data ledger-ip-table"><thead><tr><th><input type="checkbox" id="ledgerExportAll" class="ledger-export-all" aria-label="全选当前知识产权"></th><th>名称</th><th class="ip-type-cell">知识产权类型</th><th class="ip-code-cell">申请/登记号</th><th class="ip-status-cell">状态</th><th>当前权利人</th><th class="ip-date-cell">申请/登记日期</th><th>附件</th></tr></thead><tbody>'+
  (rows.length?rows.map(r=>{const v=r.data;return '<tr><td><input type="checkbox" class="ledger-export-row" value="'+r.id+'" aria-label="选择知识产权 '+escapeHtml(v.name)+'"></td>'+
  '<td><button class="link" data-ip-id="'+r.id+'">'+escapeHtml(v.name)+'</button></td>'+
- '<td>'+escapeHtml(v.ipType)+'</td>'+
- '<td>'+escapeHtml(v.applicationNo||v.registrationNo||'—')+'</td>'+
- '<td>'+escapeHtml(v.status||'—')+'</td>'+
+ '<td class="ip-type-cell">'+escapeHtml(v.ipType)+'</td>'+
+ '<td class="ip-code-cell">'+escapeHtml(v.applicationNo||v.registrationNo||'—')+'</td>'+
+ '<td class="ip-status-cell">'+escapeHtml(v.status||'—')+'</td>'+
  '<td>'+escapeHtml(v.rightHolders||'—')+'</td>'+
- '<td>'+escapeHtml(v.applicationDate||v.registrationDate||'—')+'</td>'+
+ '<td class="ip-date-cell">'+escapeHtml(v.applicationDate||v.registrationDate||'—')+'</td>'+
  '<td>'+businessFileCount('ip',r.id)+'</td></tr>';}).join(''):'<tr><td colspan="8" class="empty">暂无知识产权记录，点击新建。</td></tr>')+
  '</tbody></table></div><div class="tablefoot">共 '+rows.length+' 条记录 · 数据保存在当前 SQLCipher 库</div></section>';
 }

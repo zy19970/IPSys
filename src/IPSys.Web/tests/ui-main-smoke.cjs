@@ -424,10 +424,16 @@ assert.ok(ipCtx.__ip.includes('data-ip-id="32"'),'Real IP rows must link to stor
 assert.ok(ipCtx.__ip.includes('excelExport')&&!ipCtx.__ip.includes('ledger-excel'),'One Excel button beside IP ZIP');
 assert.ok(ipCtx.__ip.includes('data-action="ipExportFolder"')&&ipCtx.__ip.includes('data-action="ipExportZip"'),'IP ledger must directly export selected records');
 assert.ok(!ipCtx.__ip.includes('选择记录附件')&&!ipCtx.__ip.includes('module-export'),'IP ledger must not render a second selection panel');
-assert.ok(ipCtx.__ip.includes('<table class="data ledger-ip-table">'),
- 'Knowledge-property ledger needs a separate long-name-friendly column layout');
+assert.ok(ipCtx.__ip.includes('<table class="data ledger-ip-table">')&&
+ ipCtx.__ip.includes('<colgroup><col class="ip-col-check"><col class="ip-col-name">')&&
+ ['ip-col-type','ip-col-code','ip-col-status','ip-col-holder','ip-col-date','ip-col-files']
+  .every(name=>ipCtx.__ip.includes('<col class="'+name+'">')),
+ 'IP ledger must declare named semantic colgroup tracks before sequence/order decoration');
 assert.ok(ipCtx.__ip.includes('class="ledger-export-row"')&&ipCtx.__ip.includes('ledgerExportAll'),
  'IP ledger must allow selecting multiple actual records');
+for(const name of ['ip-type-cell','ip-code-cell','ip-status-cell','ip-date-cell'])
+ assert.ok(ipCtx.__ip.includes('class="'+name+'"'),
+  'IP register field must retain its semantic no-wrap class: '+name);
 assert.ok(!ipCtx.__ip.includes('仅演示'),'Real IP ledger must not use mock labels');
 assert.equal(ipCtx.__types.length,7,'Exactly seven M0 IP types must be selectable');
 
@@ -1218,18 +1224,44 @@ for(const rule of [
 ])assert.ok(css.includes(rule),'Project register compact column sizing missing: '+rule);
 assert.ok(!css.includes('.data.ledger-record-table.ledger-project-table th:nth-child(4){width:'),
  'Project title must receive the remaining available width instead of a fixed narrow track');
-// The IP register must give right-holder names some of the space formerly
-// left unused after the short application/registration date.
+// IP width is stable regardless of resolution: semantic colgroup, minimum
+// table width and horizontal scrolling rather than one-character wrapping.
 for(const token of [
- '.data.ledger-record-table.ledger-ip-table th:nth-child(3){width:30%}',
- '.data.ledger-record-table.ledger-ip-table th:nth-child(6){width:92px}',
- '.data.ledger-record-table.ledger-ip-table th:nth-child(7){width:240px}',
- '.data.ledger-record-table.ledger-ip-table th:nth-child(8){width:150px}',
- '.data.ledger-record-table.ledger-ip-table th:nth-child(9){width:76px}',
- '.data.ledger-record-table.ledger-ip-table th:nth-child(7){width:180px}',
- '.data.ledger-record-table.ledger-ip-table th:nth-child(8){width:132px}',
- '@media(max-width:1400px)', '.data.ledger-record-table.ledger-ip-table{min-width:1060px}'
-])assert.ok(css.includes(token),'Missing IP register holder/date width allocation: '+token);
+ '.data.ledger-record-table.ledger-ip-table{min-width:1360px;table-layout:fixed}',
+ ...['check','sequence','name','type','code','status','holder','date','files','order']
+   .map(name=>'.data.ledger-record-table.ledger-ip-table col.ip-col-'+name+'{width:'),
+ '.data.ledger-record-table.ledger-ip-table col.ip-col-holder{width:245px}',
+ '.data.ledger-record-table.ledger-ip-table col.ip-col-date{width:140px}',
+ ...['type','code','status','date'].map(name=>
+  '.data.ledger-record-table.ledger-ip-table .ip-'+name+'-cell'),
+ 'white-space:nowrap;overflow-wrap:normal;word-break:normal'
+])assert.ok(css.includes(token),'IP table missing durable semantic column sizing: '+token);
+assert.ok(!css.includes('.data.ledger-record-table.ledger-ip-table th:nth-child(7){width:'),
+ 'IP table column width must not be coupled to injected control column indices');
+// Check representative viewport widths: any shortfall is horizontal scroll,
+// never shrinking an entire IP type or registration code to a single character.
+const ipTracks=['check','sequence','type','code','status','holder','date','files','order'];
+const fixedIpPixels=ipTracks.reduce((sum,name)=>{
+ const selector='.data.ledger-record-table.ledger-ip-table col.ip-col-'+name+'{width:';
+ const pos=css.indexOf(selector);
+ assert.ok(pos>=0,'missing fixed IP track '+name);
+ const pixels=Number(css.slice(pos+selector.length).match(/^(\d+)px}/)?.[1]);
+ assert.ok(pixels>0,'invalid width for IP track '+name);
+ return sum+pixels;
+},0);
+const ipMin=Number(css.match(/\.data\.ledger-record-table\.ledger-ip-table\{min-width:(\d+)px;table-layout:fixed}/)?.[1]);
+assert.ok(ipMin>=fixedIpPixels+260,'IP register must preserve at least 260px for record titles');
+assert.ok(css.includes('.tablewrap{overflow:auto;'),'table must support horizontal scrolling');
+for(const viewport of [900,1100,1360,1680]){
+ const effectiveTableWidth=Math.max(viewport,ipMin);
+ assert.ok(effectiveTableWidth-fixedIpPixels>=260,
+  'IP type and registration code must not collapse at '+viewport+'px');
+}
+assert.ok(js.includes("if(scope.kind==='ip'){")&&
+ js.includes("seq.className='ip-col-sequence'")&&
+ js.includes("order.className='ip-col-order'")&&
+ js.includes("cols.children[0].after(seq)")&&js.includes('cols.append(order)'),
+ 'IP sequence and sorting tracks must be inserted alongside their actual cells');
 // All business ledgers should show their final controls without horizontal overflow on desktop.
 assert.ok(css.includes('.data.ledger-record-table{width:100%;min-width:0;table-layout:fixed;white-space:normal}'),
  'Record tables should fill the desktop pane rather than reserve a rigid 850px width');

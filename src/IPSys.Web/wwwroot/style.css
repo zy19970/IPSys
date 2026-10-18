@@ -335,21 +335,25 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 .ledger-batch-delete:hover:not(:disabled){background:#fff5f5;border-color:#c98a94}
 .ledger-batch-delete[hidden],.ledger-selected-count[hidden]{display:none!important}
 
-/* Knowledge-property register: give long right-holder names room; cap sparse date space. */
-.data.ledger-record-table.ledger-ip-table th:nth-child(3){width:30%}
-.data.ledger-record-table.ledger-ip-table th:nth-child(6){width:92px}
-.data.ledger-record-table.ledger-ip-table th:nth-child(7){width:240px}
-.data.ledger-record-table.ledger-ip-table th:nth-child(8){width:150px}
-.data.ledger-record-table.ledger-ip-table th:nth-child(9){width:76px}
-@media(max-width:1400px){
- .data.ledger-record-table.ledger-ip-table th:nth-child(3){width:28%}
- .data.ledger-record-table.ledger-ip-table th:nth-child(6){width:80px}
- .data.ledger-record-table.ledger-ip-table th:nth-child(7){width:180px}
- .data.ledger-record-table.ledger-ip-table th:nth-child(8){width:132px}
- .data.ledger-record-table.ledger-ip-table th:nth-child(9){width:64px}
-}
-@media(max-width:1200px){
- .data.ledger-record-table.ledger-ip-table{min-width:1060px}
+/* IP ledger: explicit semantic tracks with a readable intrinsic minimum.
+   Title takes spare width; reducing viewport width scrolls horizontally instead
+   of turning type/code into vertical one-character columns. */
+.data.ledger-record-table.ledger-ip-table{min-width:1360px;table-layout:fixed}
+.data.ledger-record-table.ledger-ip-table col.ip-col-check{width:42px}
+.data.ledger-record-table.ledger-ip-table col.ip-col-sequence{width:58px}
+.data.ledger-record-table.ledger-ip-table col.ip-col-name{width:auto}
+.data.ledger-record-table.ledger-ip-table col.ip-col-type{width:126px}
+.data.ledger-record-table.ledger-ip-table col.ip-col-code{width:180px}
+.data.ledger-record-table.ledger-ip-table col.ip-col-status{width:110px}
+.data.ledger-record-table.ledger-ip-table col.ip-col-holder{width:245px}
+.data.ledger-record-table.ledger-ip-table col.ip-col-date{width:140px}
+.data.ledger-record-table.ledger-ip-table col.ip-col-files{width:72px}
+.data.ledger-record-table.ledger-ip-table col.ip-col-order{width:100px}
+.data.ledger-record-table.ledger-ip-table .ip-type-cell,
+.data.ledger-record-table.ledger-ip-table .ip-code-cell,
+.data.ledger-record-table.ledger-ip-table .ip-status-cell,
+.data.ledger-record-table.ledger-ip-table .ip-date-cell{
+ white-space:nowrap;overflow-wrap:normal;word-break:normal
 }
 
 /* Project register: names can be very long; short fields should not reserve equal-width tracks. */
