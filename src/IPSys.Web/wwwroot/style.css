@@ -293,8 +293,9 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 .certificate-ledger .data{width:100%;min-width:0;table-layout:fixed}
 .certificate-ledger .data col.certificate-col-check{width:42px}
 .certificate-ledger .data col.certificate-col-sequence{width:54px}
-.certificate-ledger .data col.certificate-col-name{width:auto}
-.certificate-ledger .data col.certificate-col-file{width:26%}
+/* Six other tracks total 544px: 42+54+110+160+96+82. Split the remainder equally. */
+.certificate-ledger .data col.certificate-col-name,
+.certificate-ledger .data col.certificate-col-file{width:calc(50% - 272px)}
 .certificate-ledger .data col.certificate-col-size{width:110px}
 .certificate-ledger .data col.certificate-col-remarks{width:160px}
 .certificate-ledger .data col.certificate-col-order{width:96px}
@@ -305,6 +306,7 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 .certificate-ledger .data .certificate-action{width:82px;min-width:0;padding-left:4px;padding-right:4px;text-align:center}
 .certificate-ledger .certificate-order .btn{min-width:32px;padding:5px}
 .certificate-ledger .data td:nth-child(3),.certificate-ledger .data td:nth-child(4){max-width:none;white-space:normal;overflow-wrap:anywhere}
+.certificate-ledger .data td:nth-child(3) .link{display:inline-block;max-width:100%;white-space:normal;overflow-wrap:anywhere;word-break:break-word}
 .certificate-ledger .certificate-batch-delete{color:#a9424e;border-color:#e6cbd0}
 .certificate-ledger .certificate-batch-delete:hover:not(:disabled){background:#fff5f5;border-color:#c98a94}
 

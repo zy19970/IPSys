@@ -805,8 +805,7 @@ assert.ok(realArchiveCtx.__certAll.includes('data-action="certificateBatchDelete
  !realArchiveCtx.__certSelected.includes('data-action="certificateBatchDelete" hidden')&&
  realArchiveCtx.__certAll.includes('<colgroup>')&&
  realArchiveCtx.__certAll.includes('certificate-col-action')&&
- css.includes('.certificate-ledger .data col.certificate-col-name{width:auto}')&&
- css.includes('.certificate-ledger .data col.certificate-col-file{width:26%}')&&
+ css.includes('.certificate-ledger .data col.certificate-col-name,\n.certificate-ledger .data col.certificate-col-file{width:calc(50% - 272px)}')&&
  css.includes('.certificate-ledger .data col.certificate-col-remarks{width:160px}')&&
  css.includes('.certificate-ledger .archive-tablewrap .data td:nth-child(2){min-width:0')&&
  css.includes('table-layout:fixed'),
@@ -1283,6 +1282,30 @@ assert.ok(css.includes('.certificate-ledger .data{width:100%;min-width:0;table-l
  'Company certificate ledger should also fit the desktop pane');
 assert.ok(css.includes('@media(max-width:900px)')&&css.includes('min-width:760px'),
  'On truly narrow windows keep a scrollable minimum for readable table columns');
+// Only two enterprise-certificate fields flex equally: name + uploaded filename.
+// The other six established tracks must retain their exact, current widths.
+const certificateFixedColumns=[
+ ['check',42],['sequence',54],['size',110],
+ ['remarks',160],['order',96],['action',82]
+];
+const fixedSum=certificateFixedColumns.reduce((total,[key,px])=>{
+ assert.ok(css.includes('.certificate-ledger .data col.certificate-col-'+key+'{width:'+px+'px}'),
+  'Enterprise certificate fixed column changed unexpectedly: '+key);
+ return total+px;
+},0);
+assert.equal(fixedSum,544,'Certificate flex formula assumes a fixed-column total of 544 CSS px');
+assert.ok(css.includes('.certificate-ledger .data col.certificate-col-name,\n.certificate-ledger .data col.certificate-col-file{width:calc(50% - 272px)}'),
+ 'Certificate name and attachment must share one width rule');
+assert.ok(css.includes('.certificate-ledger .data{min-width:1180px}')&&
+ css.includes('.certificate-ledger .data td:nth-child(3) .link{display:inline-block;max-width:100%;white-space:normal;overflow-wrap:anywhere;word-break:break-word}'),
+ 'Long certificate names must wrap within their equal-width track while the table scrolls on narrow screens');
+for(const width of [1180,1360,1600,1920]){
+ const nameWidth=width*.5-272,attachmentWidth=width*.5-272;
+ assert.ok(nameWidth>=318);
+ assert.equal(nameWidth,attachmentWidth,'Name and attachment column widths must match');
+ assert.equal(nameWidth+attachmentWidth+fixedSum,width,
+  'Equal dynamic tracks must consume only the remaining table width');
+}
 // Check SQLCipher ordering metadata is applied across module arrays, not only to the DOM.
 const helpers=js.slice(js.indexOf('function ledgerScope(){'),js.indexOf('function render(){'));
 assert.ok(helpers.length>3000,'Generic ledger helper span was not found');
