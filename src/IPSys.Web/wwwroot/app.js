@@ -372,6 +372,9 @@ function compactBusinessListToolbar(content){
    Every route passes through this single role normalization before display. */
 const uiComponentRoots=[
  ['.compact-ledger-toolbar,.certificate-toolbar,.tabletools','ui-list-toolbar'],
+ ['.compact-ledger-title,.certificate-toolbar-title','ui-toolbar-title'],
+ ['.compact-ledger-filters,.certificate-toolbar-filter','ui-toolbar-filters'],
+ ['.compact-ledger-actions,.certificate-toolbar-actions','ui-toolbar-actions'],
  ['.detailsectionhead','ui-section-header'],
  ['.tablewrap','ui-table-viewport'],
  ['table.data','ui-data-table'],

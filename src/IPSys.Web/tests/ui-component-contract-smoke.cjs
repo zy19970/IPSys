@@ -10,6 +10,9 @@ const html=fs.readFileSync(path.join(root,'wwwroot','index.html'),'utf8');
 
 const matrix={
  'ui-list-toolbar':['.compact-ledger-toolbar','.certificate-toolbar','.tabletools'],
+ 'ui-toolbar-title':['.compact-ledger-title','.certificate-toolbar-title'],
+ 'ui-toolbar-filters':['.compact-ledger-filters','.certificate-toolbar-filter'],
+ 'ui-toolbar-actions':['.compact-ledger-actions','.certificate-toolbar-actions'],
  'ui-section-header':['.detailsectionhead'],
  'ui-table-viewport':['.tablewrap'],
  'ui-data-table':['table.data'],
@@ -90,6 +93,19 @@ assert.ok(js.includes("attachmentFileGroup(g,'general')")&&
  !js.includes('const line=(f,showVersion'),
  'General and business records must call the same physical attachment renderer');
 
+// Business and certificate list headers use one responsive three-slot layout.
+assert.ok(css.includes('.ui-list-toolbar:is(.certificate-toolbar,.compact-ledger-toolbar){')&&
+ css.includes('grid-template-columns:max-content minmax(0,1fr) max-content;')&&
+ css.includes('.ui-list-toolbar > .ui-toolbar-filters{')&&
+ css.includes('grid-column:2;grid-row:1;')&&
+ css.includes('.ui-list-toolbar > .ui-toolbar-actions{')&&
+ css.includes('grid-column:3;grid-row:1;'),
+ 'Wide business/certificate/archive headers must align title, filters and actions in one row');
+assert.ok(css.includes('@media(max-width:1440px){')&&
+ css.includes('grid-column:1/-1;grid-row:2;')&&
+ css.includes('@media(max-width:860px){')&&
+ css.includes('grid-column:1;grid-row:3;'),
+ 'Shared header must wrap predictably on medium and narrow viewports');
 for(const [kind,call] of [
  ['project',"attachmentHeaderActions('project')"],
  ['contract',"attachmentHeaderActions('contract')"],

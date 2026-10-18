@@ -810,6 +810,14 @@ assert.ok(realArchiveCtx.__certAll.includes('data-action="certificateBatchDelete
  css.includes('.certificate-ledger .archive-tablewrap .data td:nth-child(2){min-width:0')&&
  css.includes('table-layout:fixed'),
  'Certificate batch delete and fixed utility columns must render correctly');
+assert.ok(realArchiveCtx.__certAll.includes('certificate-toolbar-title')&&
+ realArchiveCtx.__certAll.includes('certificate-toolbar-filter')&&
+ realArchiveCtx.__certAll.includes('certificate-toolbar-actions')&&
+ js.includes("toolbar.className='compact-ledger-toolbar'")&&
+ js.includes("titleGroup.className='compact-ledger-title'")&&
+ js.includes("filters.className='compact-ledger-filters'")&&
+ js.includes("actions.className='compact-ledger-actions'"),
+ 'Certificate and compact ledgers must expose corresponding title/filter/actions slots');
 assert.ok(js.includes('all.indeterminate=count>0&&count<visible.length')&&
  js.includes('syncCompanyCertificateSelectionUi();')&&
  js.includes("case 'certificateBatchDelete':")&&
@@ -937,12 +945,19 @@ assert.ok(css.includes('.certificate-ledger .certificate-toolbar{display:flex')&
  css.includes('.certificate-ledger .certificate-export-options{position:absolute')&&
  css.includes('@media(max-width:630px)'),
  'Compact toolbar must grow the search field, position export menu and wrap on narrow screens');
-assert.ok(css.includes('.certificate-ledger .certificate-toolbar-title{display:flex;flex:0 0 170px;flex-direction:row;align-items:baseline;')&&
- css.includes('.certificate-ledger .certificate-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:24px;')&&
- css.includes('.certificate-ledger .certificate-toolbar-filter{display:flex;align-items:center;justify-content:flex-start;flex:1 1 840px;max-width:940px;min-width:0;margin-left:clamp(0px,calc(20vw - 280px),70px);')&&
- css.includes('.certificate-ledger .certificate-toolbar-actions{display:flex;align-items:center;gap:8px;margin-left:auto;padding-left:24px;border-left:1px solid var(--line);')&&
- css.includes('.certificate-ledger .certificate-toolbar-filter{order:3;flex:1 1 100%;max-width:none;margin-left:0;justify-content:flex-start;flex-wrap:wrap}'),
- 'Company certificate toolbar must shift filters moderately right only on wide desktops, keeping actions separated and responsive wrapping intact');
+assert.ok(js.includes("['.compact-ledger-title,.certificate-toolbar-title','ui-toolbar-title']")&&
+ js.includes("['.compact-ledger-filters,.certificate-toolbar-filter','ui-toolbar-filters']")&&
+ js.includes("['.compact-ledger-actions,.certificate-toolbar-actions','ui-toolbar-actions']")&&
+ css.includes('.ui-list-toolbar:is(.certificate-toolbar,.compact-ledger-toolbar){')&&
+ css.includes('grid-template-columns:max-content minmax(0,1fr) max-content;')&&
+ css.includes('.ui-list-toolbar > .ui-toolbar-filters{')&&
+ css.includes('grid-column:2;grid-row:1;')&&
+ css.includes('.ui-list-toolbar > .ui-toolbar-actions{')&&
+ css.includes('grid-column:3;grid-row:1;')&&
+ css.includes('@media(max-width:1440px){')&&
+ css.includes('grid-column:1/-1;grid-row:2;')&&
+ css.includes('@media(max-width:860px){'),
+ 'Company certificates, projects, IP and archive ledgers must share a three-slot responsive toolbar rather than independent flex/grid layouts');
 assert.ok(js.includes("target.closest('.certificate-export-options')")&&
  js.includes("if(event.key==='Escape')el('content').querySelector('.certificate-export[open]')"),
  'Export menu must close on action selection and Escape');

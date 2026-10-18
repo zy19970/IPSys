@@ -700,3 +700,58 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
  .ui-list-toolbar :is(.actions,.compact-ledger-actions,.certificate-toolbar-actions){flex-wrap:wrap}
  .ui-dialog{max-height:calc(100vh - 24px)}
 }
+
+/* Shared list header layout contract. Certificate, business ledgers and archive
+   category ledgers use the same three slots, with business-only fields inside. */
+.ui-list-toolbar:is(.certificate-toolbar,.compact-ledger-toolbar){
+ display:grid;
+ grid-template-columns:max-content minmax(0,1fr) max-content;
+ align-items:center;
+ column-gap:18px;
+ row-gap:10px;
+ padding:12px 16px;
+}
+.ui-list-toolbar > .ui-toolbar-title{
+ grid-column:1;grid-row:1;
+ display:flex;align-items:baseline;flex:0 0 auto;
+ min-width:0;max-width:none;gap:8px;
+}
+.ui-list-toolbar > .ui-toolbar-filters{
+ grid-column:2;grid-row:1;
+ display:flex;align-items:center;justify-content:flex-start;
+ flex:initial;order:0;justify-self:stretch;
+ min-width:0;width:100%;max-width:none;
+ margin:0;gap:9px;flex-wrap:nowrap;
+}
+.ui-list-toolbar > .ui-toolbar-actions{
+ grid-column:3;grid-row:1;
+ display:flex;align-items:center;justify-content:flex-end;justify-self:end;
+ flex:0 0 auto;order:0;margin:0;padding-left:18px;
+ gap:8px;border-left:1px solid var(--line);flex-wrap:nowrap;
+}
+.ui-list-toolbar > .ui-toolbar-filters input:not([type="checkbox"]){
+ min-width:0;
+}
+@media(max-width:1440px){
+ .ui-list-toolbar:is(.certificate-toolbar,.compact-ledger-toolbar){
+  grid-template-columns:minmax(0,1fr) max-content;
+ }
+ .ui-list-toolbar > .ui-toolbar-title{grid-column:1;grid-row:1}
+ .ui-list-toolbar > .ui-toolbar-actions{grid-column:2;grid-row:1}
+ .ui-list-toolbar > .ui-toolbar-filters{
+  grid-column:1/-1;grid-row:2;
+  order:0;flex:initial;justify-self:stretch;
+  min-width:0;max-width:none;width:100%;margin:0;flex-wrap:wrap;
+ }
+}
+@media(max-width:860px){
+ .ui-list-toolbar:is(.certificate-toolbar,.compact-ledger-toolbar){
+  grid-template-columns:minmax(0,1fr);
+ }
+ .ui-list-toolbar > .ui-toolbar-title{grid-column:1;grid-row:1}
+ .ui-list-toolbar > .ui-toolbar-filters{grid-column:1;grid-row:2}
+ .ui-list-toolbar > .ui-toolbar-actions{
+  grid-column:1;grid-row:3;justify-self:start;
+  margin:0;padding-left:0;border-left:0;flex-wrap:wrap;
+ }
+}
