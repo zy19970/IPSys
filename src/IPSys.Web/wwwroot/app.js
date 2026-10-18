@@ -755,6 +755,11 @@ async function importExcel(kind,file,section=''){
  }catch(error){notice('Excel 导入失败：'+error.message,true);}
 }
 
+// Only project-type badges receive enlarged text and category-specific colors.
+function projectTypePill(type){
+ const category=type==='科研项目'?'research':type==='横向项目'?'horizontal':'other';
+ return '<span class="project-type-pill project-type-'+category+'">'+escapeHtml(type||'—')+'</span>';
+}
 function projectList(k){
  const rows=projectViewRows(k), visible=rows.filter(p=>
   [p.name,p.projectNo,p.leader,p.undertakingOrg].join(' ').toLowerCase().includes(filterName.toLowerCase()) &&
@@ -778,7 +783,7 @@ function projectList(k){
   '<colgroup><col class="project-col-check"><col class="project-col-type"><col class="project-col-name">'+
   '<col class="project-col-code"><col class="project-col-date"><col class="project-col-files"></colgroup><thead><tr><th><input type="checkbox" id="ledgerExportAll" class="ledger-export-all" aria-label="全选当前项目"></th><th>项目类型</th><th>项目名称</th><th>项目编号</th><th>开始日期</th><th>附件</th></tr></thead><tbody>'+
  (visible.length?visible.map(p=>'<tr><td><input type="checkbox" class="ledger-export-row" value="'+p.id+'" aria-label="选择项目 '+escapeHtml(p.name)+'"></td>'+
- '<td>'+pill(p.projectType)+'</td>'+
+ '<td>'+projectTypePill(p.projectType)+'</td>'+
  '<td><button class="link" data-project-id="'+p.id+'">'+escapeHtml(p.name)+'</button></td><td>'+escapeHtml(p.projectNo||'—')+'</td>'+
  '<td>'+escapeHtml(p.startDate||'—')+'</td>'+
  '<td>'+businessFileCount('project',p.id)+'</td></tr>').join(''):

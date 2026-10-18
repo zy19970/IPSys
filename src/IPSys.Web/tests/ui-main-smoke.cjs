@@ -355,13 +355,13 @@ assert.ok(projectCtx.__project.includes('<table class="data ledger-project-table
  'Project lists must opt into the long-name-first column sizing');
 assert.ok(projectCtx.__project.includes('<th>项目类型</th><th>项目名称</th><th>项目编号</th>'),
  'Project type must precede project name in the header');
-assert.ok(projectCtx.__project.indexOf('class="pill"')<
+assert.ok(projectCtx.__project.indexOf('class="project-type-pill project-type-research"')<
  projectCtx.__project.indexOf('data-project-id="12"'),
  'Project type cell must precede the clickable project-name cell');
 assert.ok(projectCtx.__project.includes('data-nav="contract"')&&projectCtx.__project.includes('查看全部合同'),
  'Contract aggregate remains accessible from the company project ledger');
-assert.ok(projectCtx.__project.includes('class="pill"')&&projectCtx.__project.includes('科研项目'),
- 'Project type must display as a tag in every row');
+assert.ok(projectCtx.__project.includes('class="project-type-pill project-type-research"')&&projectCtx.__project.includes('科研项目'),
+ 'Research projects must have their own scoped, readable badge');
 vm.runInContext(
  "projectRows=["+
  "{id:12,name:'科研甲',projectType:'科研项目',projectNo:'R-12'},"+
@@ -373,6 +373,15 @@ vm.runInContext(
  projectCtx);
 for(const name of ['科研甲','横向乙','其他丙'])
  assert.ok(projectCtx.__allProjects.includes(name),'Company project view missing '+name);
+for(const name of ['project-type-research','project-type-horizontal','project-type-other'])
+ assert.ok(projectCtx.__allProjects.includes('project-type-pill '+name),
+  'Each project category needs its own distinguishable badge: '+name);
+assert.ok(css.includes('.ledger-project-table .project-type-pill{')&&
+ css.includes('font-size:14px;line-height:1.4;font-weight:650;white-space:nowrap;')&&
+ ['.ledger-project-table .project-type-research{',
+ '.ledger-project-table .project-type-horizontal{',
+ '.ledger-project-table .project-type-other{'].every(selector=>css.includes(selector)),
+ 'Project type labels must be legible and visually distinct without modifying global pill styles');
 assert.ok(projectCtx.__horizontalOnly.includes('横向乙')&&
  !projectCtx.__horizontalOnly.includes('科研甲')&&!projectCtx.__horizontalOnly.includes('其他丙'),
  'Project type must filter one common ledger, preserving all types');
@@ -1257,11 +1266,11 @@ for(const viewport of [900,1100,1360,1680]){
  assert.ok(effectiveTableWidth-fixedIpPixels>=260,
   'IP type and registration code must not collapse at '+viewport+'px');
 }
-assert.ok(js.includes("if(scope.kind==='ip'){")&&
- js.includes("seq.className='ip-col-sequence'")&&
- js.includes("order.className='ip-col-order'")&&
- js.includes("cols.children[0].after(seq)")&&js.includes('cols.append(order)'),
- 'IP sequence and sorting tracks must be inserted alongside their actual cells');
+assert.ok(js.includes("cols&&['ip','project','contract'].includes(scope.kind)")&&
+ js.includes("seqCol.className=prefix+'-col-sequence'")&&
+ js.includes("orderCol.className=prefix+'-col-order'")&&
+ js.includes("cols.children[0].after(seqCol)")&&js.includes("cols.append(orderCol)"),
+ 'IP/project/contract sequence and sorting tracks must be inserted alongside their actual cells');
 // All business ledgers should show their final controls without horizontal overflow on desktop.
 assert.ok(css.includes('.data.ledger-record-table{width:100%;min-width:0;table-layout:fixed;white-space:normal}'),
  'Record tables should fill the desktop pane rather than reserve a rigid 850px width');
