@@ -34,7 +34,7 @@ let globalHits=[],globalPending=false,globalError='',globalTruncated=false,globa
 let token=sessionStorage.getItem('ip-token')||'';
 let dbName=sessionStorage.getItem('ip-db')||'';
 let mcpEnabled=false;
-let space=null,creating=false,resuming=false,localFileTaskActive=false,trashPurgeTaskActive=false;
+let space=null,creating=false,resuming=false,localFileTaskActive=false,trashPurgeTaskActive=false,vaultCompactTaskActive=false,vaultCompactPolling=false;
 let page='dashboard',detail=null,archiveGroup=null,archiveFolderId=null,archiveFolders=[],archiveFolderEditingId=null,archiveSelectedFolders=new Set(),archiveEntryOrders={},editingId=null,projectEditingId=null,projectRows=[],ipEditingId=null,ipRows=[],contractEditingId=null,contractProjectId=null,contractRows=[],businessFileRows=[],trashRows=[],pendingBusinessUpload=null,pendingAssocId=null,archiveRows={certificate:[],achievement:[],academic:[]},archiveEditingId=null,archiveTransferId=null,archiveTransferMode=null,liveRows=[],filterName='',filterKind='全部类型',filterState='全部状态',selected=new Set(),certificateSelected=new Set(),certificateDeleteBusy=false;
 let ledgerOrders={},ledgerMutationBusy=false;
 const companyNav=[['dashboard','工作台','▦'],['certificate','企业资质','▣'],['achievement','业务档案','▤'],['researchProject','公司项目','▤'],['ip','知识产权','◇'],['general','综合资料','▥']];
@@ -143,7 +143,7 @@ const isProject=k=>k==='researchProject'||k==='horizontalProject';
 const MAX_ORIGINAL_BYTES=8*1024*1024*1024;
 const fmtSize=n=>n>=1024*1024*1024?(n/1024/1024/1024).toFixed(2)+' GiB':
  n>=1024*1024?(n/1024/1024).toFixed(1)+' MiB':(n/1024).toFixed(1)+' KiB';
-window.addEventListener('beforeunload',ev=>{if(localFileTaskActive||trashPurgeTaskActive){ev.preventDefault();ev.returnValue='';}});
+window.addEventListener('beforeunload',ev=>{if(localFileTaskActive||trashPurgeTaskActive||vaultCompactTaskActive){ev.preventDefault();ev.returnValue='';}});
 function notice(message,bad=false){const e=el('toast');e.textContent=message;e.className=bad?'visible bad':'visible';clearTimeout(notice.timer);notice.timer=setTimeout(()=>e.className='',4300);}
 async function api(path,opts={}){
   const headers=new Headers(opts.headers||{});
@@ -226,13 +226,17 @@ function selectSpace(next){
   el('chooseWorkspace').hidden=true;el('unlocked').hidden=false;
   // One Vault/Gate serves both workspaces and all file tasks.
   // Keep the active upload queue tied to its original workspace.
-  if(trashPurgeTaskActive||localFileTaskActive){render();return;}
+  if(trashPurgeTaskActive||vaultCompactTaskActive||localFileTaskActive){render();return;}
   refreshSidebar();
-  el('content').innerHTML='<section class="white empty">正在确认数据库是否存在永久删除任务…</section>';
-  void resumeTrashPurgeStatus().then(active=>{
+  el('content').innerHTML='<section class="white empty">正在确认数据库后台任务…</section>';
+  void resumeVaultCompactStatus().then(compacting=>{
    if(space!==next||!token)return;
-   if(active)render();
-   else void refreshWhenFileTaskIdle(next);
+   if(compacting){render();return;}
+   return resumeTrashPurgeStatus().then(active=>{
+    if(space!==next||!token)return;
+    if(active)render();
+    else void refreshWhenFileTaskIdle(next);
+   });
   }).catch(error=>{
    if(space!==next||!token)return;
    el('content').innerHTML='<section class="white empty">无法确认数据库任务状态：'+
@@ -249,11 +253,11 @@ async function refreshWhenFileTaskIdle(workspace){
  try{
   while(token&&space===workspace){
    const task=await(await api('/api/task')).json();
-   if(!task.active&&!localFileTaskActive&&!trashPurgeTaskActive){
+   if(!task.active&&!localFileTaskActive&&!trashPurgeTaskActive&&!vaultCompactTaskActive){
     if(space===workspace&&token)await refresh();
     return;
    }
-   if(!localFileTaskActive&&!trashPurgeTaskActive){
+   if(!localFileTaskActive&&!trashPurgeTaskActive&&!vaultCompactTaskActive){
     refreshSidebar();
     el('content').innerHTML='<section class="white empty">'+
      '<h2>加密资料库正在处理文件任务</h2>'+
@@ -271,7 +275,7 @@ async function refreshWhenFileTaskIdle(workspace){
 function setPage(next){if(space==='company'&&next==='horizontalProject')next='researchProject';globalSerial++;globalHits=[];globalQuery='';globalPending=false;globalError='';page=next;detail=null;archiveGroup=null;archiveFolderId=null;filterName='';filterKind='全部类型';filterState='全部状态';selected.clear();archiveSelectedFolders.clear();certificateSelected.clear();el('globalSearch').value='';render();}
 async function refresh(){
   if(!token||!space)return;
-  if(trashPurgeTaskActive||localFileTaskActive){render();return;}
+  if(trashPurgeTaskActive||vaultCompactTaskActive||localFileTaskActive){render();return;}
   const requestedSpace=space;
   try{const archiveSections=space==='personal'?['certificate','achievement','academic']:['certificate','achievement'];
   const [native,projects,ips,contracts,nativeProjectFiles,trash,mcpAccess]=await Promise.all([
@@ -1767,7 +1771,112 @@ function searchPage(){
  return out;
 }
 function settingsPage(){return heading('系统设置','数据库管理与已确认的维护操作','<button class="btn" data-nav="trash">查看回收站</button>')+
- `<section class="white detailsection"><div class="detailsectionhead"><h2>当前加密数据库</h2></div><div class="detailbody"><div class="minirow"><span>数据库文件</span><strong>${escapeHtml(dbName)}</strong></div><div class="minirow"><span>加密状态</span><span class="realflag">SQLCipher 已启用</span></div><div class="minirow"><span>数据库完整性检查</span><button class="btn" data-action="check">立即检查</button></div><div id="checkResult" class="hint"></div><div class="minirow"><span>本机 Codex MCP</span><span class="actions"><span class="hint">${mcpEnabled?'已开启':'默认关闭'}</span><button class="btn" data-action="mcpToggle">${mcpEnabled?'关闭 MCP':'开启 MCP'}</button></span></div><p class="hint">仅允许当前 Windows 用户通过本机 Codex MCP 操作已解锁的数据库；关库或退出自动失效。开启后 Codex 可新增项目、合同及原件。</p><div class="minirow"><span>关闭当前数据库</span><button class="btn" data-action="lock">关闭数据库</button></div><p class="hint">手动备份需安全退出程序后在 Windows 资源管理器复制加密库。</p></div></section>`;}
+ `<section class="white detailsection"><div class="detailsectionhead"><h2>当前加密数据库</h2></div><div class="detailbody"><div class="minirow"><span>数据库文件</span><strong>${escapeHtml(dbName)}</strong></div><div class="minirow"><span>加密状态</span><span class="realflag">SQLCipher 已启用</span></div><div class="minirow"><span>数据库完整性检查</span><button class="btn" data-action="check">立即检查</button></div><div id="checkResult" class="hint"></div><div class="minirow"><span>压缩数据库</span><span class="actions"><span id="vaultCompactInfo" class="muted">正在读取数据库空间信息…</span><button class="btn" id="vaultCompactButton" data-action="vaultCompact" disabled>压缩数据库</button></span></div><p class="hint">永久删除释放的空间可被后续写入复用。压缩仅在手动确认后执行，可能耗时较长并需要额外磁盘空间。</p><div class="minirow"><span>本机 Codex MCP</span><span class="actions"><span class="hint">${mcpEnabled?'已开启':'默认关闭'}</span><button class="btn" data-action="mcpToggle">${mcpEnabled?'关闭 MCP':'开启 MCP'}</button></span></div><p class="hint">仅允许当前 Windows 用户通过本机 Codex MCP 操作已解锁的数据库；关库或退出自动失效。开启后 Codex 可新增项目、合同及原件。</p><div class="minirow"><span>关闭当前数据库</span><button class="btn" data-action="lock">关闭数据库</button></div><p class="hint">手动备份需安全退出程序后在 Windows 资源管理器复制加密库。</p></div></section>`;}
+async function loadVaultCompactInfo(){
+ const label=el('vaultCompactInfo'),button=el('vaultCompactButton');
+ if(!label||!button||vaultCompactTaskActive)return;
+ button.disabled=true;
+ try{
+  const info=await(await api('/api/vault/compact/info')).json();
+  if(!label.isConnected)return;
+  label.textContent='当前 '+fmtSize(info.fileBytes)+' · 空闲页约 '+fmtSize(info.reusableBytes);
+  button.disabled=!info.canCompact;
+  button.title=info.canCompact?'手动重整 SQLCipher 数据库':
+   '磁盘或系统临时目录剩余空间不足';
+ }catch(error){
+  if(label.isConnected)label.textContent='无法读取空间信息：'+error.message;
+ }
+}
+function vaultCompactPanel(){
+ let p=el('vaultCompactProgress');if(p)return p;
+ p=document.createElement('section');p.id='vaultCompactProgress';
+ p.className='upload-progress';p.setAttribute('role','region');
+ p.setAttribute('aria-label','数据库压缩进度');
+ p.innerHTML='<div class="upload-progress-heading"><strong>数据库压缩</strong>'+
+  '<span id="vaultCompactState">准备中</span></div>'+
+  '<div class="upload-progress-meter"><progress id="vaultCompactMeter"></progress>'+
+  '<strong>数据库整理</strong></div>'+
+  '<div id="vaultCompactSizes" class="upload-progress-bytes"></div>'+
+  '<div id="vaultCompactStage" class="upload-progress-stage" role="status" aria-live="polite"></div>'+
+  '<div class="upload-progress-actions"><button type="button" id="vaultCompactClose" class="btn btn-sm" hidden>关闭</button></div>';
+ p.hidden=true;document.body.append(p);
+ p.querySelector('#vaultCompactClose').onclick=()=>{if(!vaultCompactTaskActive)p.hidden=true;};
+ return p;
+}
+function renderVaultCompact(status){
+ const p=vaultCompactPanel();p.hidden=false;
+ const terminal=['succeeded','failed','canceled'].includes(status.state);
+ vaultCompactTaskActive=!terminal;
+ p.querySelector('#vaultCompactState').textContent=status.state==='succeeded'?'已完成':
+  status.state==='failed'?'失败':status.state==='canceled'?'已取消':'处理中';
+ const meter=p.querySelector('#vaultCompactMeter');
+ if(terminal)meter.value=status.state==='succeeded'?100:0;
+ else meter.removeAttribute('value');
+ p.querySelector('#vaultCompactSizes').textContent=status.bytesBefore?
+  '压缩前 '+fmtSize(status.bytesBefore)+(status.bytesAfter?' · 压缩后 '+fmtSize(status.bytesAfter):''):
+  '等待服务器开始';
+ p.querySelector('#vaultCompactStage').textContent=status.stage+
+  (status.error?'：'+status.error:'')+
+  (terminal?'':'。请保持程序和磁盘连接，SQLite 不提供可靠的压缩百分比。');
+ p.querySelector('#vaultCompactClose').hidden=!terminal;
+}
+async function trackVaultCompact(taskId){
+ if(vaultCompactPolling)return;
+ vaultCompactPolling=true;vaultCompactTaskActive=true;
+ try{
+  while(token){
+   let state;
+   try{
+    state=await(await api('/api/vault/compact/task')).json();
+    if(state.taskId!==taskId)throw Error('压缩任务身份已变化');
+    renderVaultCompact(state);
+   }catch(error){
+    const p=vaultCompactPanel();p.hidden=false;
+    p.querySelector('#vaultCompactStage').textContent=
+     '压缩状态暂时无法获取：'+error.message+'；将继续重试，不代表任务失败。';
+    await new Promise(resolve=>setTimeout(resolve,1300));continue;
+   }
+   if(['succeeded','failed','canceled'].includes(state.state)){
+    if(state.state==='succeeded'){
+     notice('数据库压缩完成：'+fmtSize(state.bytesBefore)+' → '+fmtSize(state.bytesAfter));
+    }else notice('数据库压缩未完成：'+(state.error||state.stage),true);
+    if(space&&token)void refreshWhenFileTaskIdle(space);
+    break;
+   }
+   await new Promise(resolve=>setTimeout(resolve,700));
+  }
+ }finally{vaultCompactPolling=false;vaultCompactTaskActive=false;}
+}
+async function resumeVaultCompactStatus(){
+ if(vaultCompactPolling||!token)return vaultCompactTaskActive;
+ const response=await fetch('/api/vault/compact/task',{
+  headers:{'X-IPSys-Token':token},cache:'no-store'});
+ if(response.status===404)return false;
+ if(response.status===401){token='';sessionStorage.clear();screen(false);throw Error('数据库登录已失效');}
+ if(!response.ok)throw Error('查询压缩任务状态失败：HTTP '+response.status);
+ const state=await response.json();
+ const active=!['succeeded','failed','canceled'].includes(state.state);
+ if(active){renderVaultCompact(state);void trackVaultCompact(state.taskId);}
+ return active;
+}
+async function startVaultCompact(){
+ if(vaultCompactTaskActive||localFileTaskActive||trashPurgeTaskActive)
+  return notice('已有数据库文件任务，暂不能压缩。',true);
+ try{
+  const info=await(await api('/api/vault/compact/info')).json();
+  if(!info.canCompact)return notice('磁盘可用空间不足：数据库所在卷及系统临时目录均需额外空间。',true);
+  if(!confirm('准备压缩当前加密数据库。\n\n'+
+   '数据库文件：'+fmtSize(info.fileBytes)+'\n'+
+   '内部可复用空间（估算）：'+fmtSize(info.reusableBytes)+'\n'+
+   '磁盘及临时目录建议预留：'+fmtSize(info.requiredFreeBytes)+'\n\n'+
+   '此操作可能需要较长时间。期间禁止其它写入，请保持程序运行并避免断开外接磁盘。\n'+
+   '不会自动创建备份，建议重要资料先安全退出并复制数据库文件。\n\n确认开始压缩？'))return;
+  const result=await(await api('/api/vault/compact',{method:'POST',json:{confirm:true}})).json();
+  vaultCompactTaskActive=true;
+  render();
+  void trackVaultCompact(result.taskId);
+ }catch(error){notice('无法启动数据库压缩：'+error.message,true);}
+}
 function trashPage(){
  const names={project:'项目',contract:'合同',ip:'知识产权',archive:space==='company'?'资质与业务档案':'证件与成果',file:'业务附件',general:'综合资料',general_file:'综合资料附件',v2_file:'文件关联',v2_ip_file:'知识产权原件关联'};
  return heading('回收站','当前工作区的真实已删除记录与附件',
@@ -2180,8 +2289,12 @@ function render(){
  closeAttachmentMenu();
  refreshSidebar();
  const content=el('content');
- if(trashPurgeTaskActive||localFileTaskActive){
-  content.innerHTML=trashPurgeTaskActive?
+ if(trashPurgeTaskActive||vaultCompactTaskActive||localFileTaskActive){
+  content.innerHTML=vaultCompactTaskActive?
+   '<section class="white empty"><h2>正在压缩加密数据库</h2>'+
+   '<p>SQLCipher 正在独占数据库重整数据页，其他业务操作需要等待。</p>'+
+   '<p>右下角显示实际任务阶段。请不要强制关闭程序或断开数据库所在磁盘。</p></section>':
+   trashPurgeTaskActive?
    '<section class="white empty"><h2>加密资料库正在永久删除原件</h2>'+
    '<p>公司与个人工作区使用同一个 SQLCipher 数据库。当前删除事务占用数据库，暂缓加载资料，避免界面长时间等待。</p>'+
    '<p>右下角显示真实删除进度。只有服务器提交完成后才会自动读取当前工作区。</p></section>':
@@ -2207,6 +2320,7 @@ function render(){
  syncAttachmentSelection();
  const searchBox=el('filterSearch');if(searchBox)searchBox.value=filterName;
  syncCompanyCertificateSelectionUi();
+ if(!detail&&page==='settings')void loadVaultCompactInfo();
 }
 async function uploadGeneralBatch(id,files){
  if(localFileTaskActive||!api.uploadProgress.begin(files.length))
@@ -2800,6 +2914,7 @@ el('content').addEventListener('click',async ev=>{
     notice(mcpEnabled?'已启用本机 Codex MCP':'已关闭本机 Codex MCP');
    }catch(e){notice(e.message,true);}break;
   case 'check':try{const status=await(await api('/api/check')).json();const out=el('checkResult');if(out)out.textContent='完整性：'+status.result+'；未完成附件：'+status.incomplete;notice(status.result==='ok'?'数据库完整性检查通过':'数据库检查异常',status.result!=='ok');}catch(e){notice(e.message,true);}break;
+  case 'vaultCompact':await startVaultCompact();break;
   case 'lock':await closeDb();break;
   default:notice('当前仅展示界面设计，尚未接入该业务功能');
  }

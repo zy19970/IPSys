@@ -10,6 +10,15 @@ sealed class Vault : IDisposable
     private readonly object _taskSync = new();
     private TaskCompletionSource<bool>? _fileTaskCompletion;
     private RecyclePurgeJob? _lastRecyclePurge;
+    private VaultCompactJob? _lastVaultCompact;
+    public VaultCompactJob? LastVaultCompact
+    {
+        get { lock(_taskSync)return _lastVaultCompact; }
+    }
+    public void SetVaultCompact(VaultCompactJob job)
+    {
+        lock(_taskSync)_lastVaultCompact=job;
+    }
     public RecyclePurgeJob? LastRecyclePurge
     {
         get { lock(_taskSync)return _lastRecyclePurge; }
@@ -187,6 +196,7 @@ sealed class Vault : IDisposable
             if (_db != null) NativeFileChoiceStore.CleanupWriting(_db);
             PendingFile = null;
             _lastRecyclePurge = null;
+            _lastVaultCompact = null;
             // Keep the existing connection state if disposal fails so the caller
             // can report a close failure rather than silently treating it as safe.
             _db?.Dispose();

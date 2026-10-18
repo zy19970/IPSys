@@ -88,6 +88,7 @@ static class WebSmoke
             await NativeArchiveUiHttpSmoke.VerifyAsync(client);
             await NativeIpSearchRecycleHttpSmoke.VerifyAsync(client);
             await RecyclePurgeTaskHttpSmoke.VerifyAsync(client);
+            await VaultCompactHttpSmoke.VerifyAsync(client);
             await NativeIpTransferHttpSmoke.VerifyAsync(client);
             await SearchSmoke.VerifyAsync(client);
 

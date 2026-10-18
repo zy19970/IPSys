@@ -164,6 +164,13 @@ assert.ok(!js.includes('businessReuseExisting')&&!js.includes('duplicateMode:')&
  !css.includes('.file-dedup-choice'),
  'Do not reintroduce obsolete duplicate storage switches alongside automatic content checking');
 
+assert.ok(js.includes('vaultCompactButton') &&
+ js.includes('function startVaultCompact()') &&
+ js.includes('function vaultCompactPanel()') &&
+ js.includes("case 'vaultCompact'") &&
+ js.includes('vaultCompactTaskActive'),
+ 'Manual compact action must share the existing task lock and status UI');
+
 assert.ok(js.includes('data-ledger-actions')&&
  js.includes("table.closest('.detailsection')?.querySelector('[data-ledger-actions]')")&&
  !js.includes("table.closest('.detailsection')?.querySelector('.tabletools')"),

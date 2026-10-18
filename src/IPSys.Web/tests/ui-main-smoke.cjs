@@ -1035,6 +1035,25 @@ assert.ok(js.includes("case 'mcpToggle'")&&js.includes("api('/api/mcp'")&&
  js.includes("'开启 MCP'")&&js.includes("'关闭 MCP'"),
  'MCP settings toggle must be visible and use authenticated API');
 
+// Manual SQLCipher VACUUM must be a real Settings action, not a mock button.
+const compactSettings=js.slice(js.indexOf('function settingsPage(){'),js.indexOf('function trashPage(){'));
+assert.ok(compactSettings.includes('id="vaultCompactButton"')&&
+ compactSettings.includes('data-action="vaultCompact"')&&
+ compactSettings.includes('id="vaultCompactInfo"')&&
+ js.includes("case 'vaultCompact':await startVaultCompact();break;")&&
+ js.includes("api('/api/vault/compact/info')")&&
+ js.includes("api('/api/vault/compact',{method:'POST',json:{confirm:true}})")&&
+ js.includes("api('/api/vault/compact/task')")&&
+ js.includes("function resumeVaultCompactStatus()")&&
+ js.includes('vaultCompactTaskActive')&&
+ js.includes('if(!info.canCompact)')&&
+ js.includes("task.active"),
+ 'Manual encrypted compaction needs preflight, confirmation, task gating and lock-free status');
+assert.ok(js.includes('正在压缩加密数据库')&&
+ js.includes('SQLite 不提供可靠的压缩百分比')&&
+ js.includes("'当前 '+fmtSize(info.fileBytes)"),
+ 'No fake percentage may be displayed during VACUUM');
+
 // B06 UX: latest-version-only select all, record-level multiple selection and single-version labels.
 for(const phrase of ["class=\"ledger-export-row\"","class=\"ledger-export-all\"",
  "case 'projectExportFolder'","case 'projectExportZip'",

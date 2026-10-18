@@ -123,6 +123,7 @@ NativeIpTransferEndpoints.Map(app, Fail);
 NativeProjectTransferEndpoints.Map(app, Fail);
 
 RecycleEndpoints.Map(app);
+VaultCompactEndpoints.Map(app);
 
 SessionEndpoints.MapDiagnostics(app);
 
@@ -141,6 +142,7 @@ if (smoke)
         ResourceSchemaV2Smoke.Run();
         NativeFileStoreSmoke.Run();
         RecyclePurgeSmoke.Run();
+        VaultCompactSmoke.Run();
         NativeFileLinkStoreSmoke.Run();
         NativeFileCopyStoreSmoke.Run();
         NativeFileChoiceStoreSmoke.Run();

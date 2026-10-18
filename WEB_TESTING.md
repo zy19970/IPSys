@@ -582,3 +582,9 @@ dotnet publish .\src\IPSys.Web\IPSys.Web.csproj -c Release -r win-x64 --self-con
 进一步审计发现现有 app.js 的项目/合同/IP 及档案、综合资料 selectedOriginals、projectOriginals、ipOriginals、archiveRecordZipOriginals、moduleOriginals 构造的源字段仍可能回落到旧 business_files ID，且 export.js 在 ZIP/文件夹导出时仍访问旧 `/api/business-files/{workspace}/download/{id}`，造成正式页面能预览却无法完整导出原件。[提交 6a7b1ff](https://github.com/zy19970/IPSys/commit/6a7b1ffe882aaa114c9d90af7011068cad7fd330) 将所有这些来源一律转换为 V2 FileId+Version；浏览器导出对无效身份、未定义版本、非法工作区和错误大小提前拒绝，导出只调用 `/api/v2/files` 或 `/api/v2/ip`。Node 实际导出测试覆盖多个项目/合同同名附件、全部版本、递归档案目录、多轮导出、ZIP 中一份原件丢失时局部失败及错误 FileId 的禁止导出。
 
 同一提交在 Program.cs 对旧项目、合同、IP、公司档案、综合资料、旧 Excel/Folder/业务附件 HTTP 仅在 `--smoke` 运行时注册，正式运行只暴露 V2 业务路径；SearchLedgerEndpoints 的 `/api/search` 和旧 `/api/ledger` 同样只限 `--smoke`，而 `/api/v2/search` 始终注册。已有真实 SQLCipher HTTP/MCP 冒烟使用一次性 --smoke 数据库，历史回归继续可跑；静态 Node 审计强制正式页面和导出脚本不得引用旧原件下载接口。首轮 [Windows CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886) **completed/success**，覆盖 Debug、Release、SQLCipher/HTTP/MCP、Node 页面/ZIP/PDF 和 Windows 单 EXE。**这不是旧业务表的物理删除：N4 仍需清理旧 Schema、Store、兼容测试代码，并进行 Edge/Chrome 用户实机验收。**所有历史数据库为可丢弃测试库，无迁移任务。
+
+## 手动 SQLCipher 数据库压缩
+
+打开设置页，确认显示当前库文件大小及空闲页空间估算，点击“压缩数据库”并核对额外磁盘空间和二次确认。压缩期间尝试关闭数据库、并发上传或永久删除，任务锁应拒绝写入；从页面退出再进入仍可通过后台任务状态恢复观察。完成后检查压缩前后文件大小、执行数据库完整性检查，核实项目附件、共享原件和历史版本可读取。由于 VACUUM 没有可靠字节进度，界面应只显示阶段与最终文件大小，不显示虚构完成百分比。程序不得自动备份或在普通删除后自动压缩。
+
+自动测试使用临时加密库验证文件收缩、加密密钥、原件数据完整性及真实 HTTP 状态查询；用户的正式资料库不参与测试。

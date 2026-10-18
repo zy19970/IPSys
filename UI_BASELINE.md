@@ -54,6 +54,10 @@ IPSys 是业务化文件夹式本地资料管理器。用户面对的是「加�
 
 10. **UI 共用组件约束**：所有业务页面共享公共设计变量、列表工具栏、数据表格、详情标题/信息网格、附件行/版本分组、导航卡片、选择状态、导出菜单和弹窗基础样式。当前实际代码使用 `normalizeUiComponents()` 统一加组件标记，附件统一由 `attachmentFileRow()` 与 `attachmentFileGroup()` 渲染，项目内所属合同的批量控件使用稳定的 `data-ledger-actions` 分区标题插槽；各模块不得复制独立的“同功能另一套组件”。业务差异、使用方名单、回归门禁以 [UI_COMPONENT_MATRIX.md](./UI_COMPONENT_MATRIX.md) 为准。真实浏览器视觉回归须另行实测，自动 DOM/源码检查不能替代。
 
+## 资料库手动压缩
+
+系统设置新增手动“压缩数据库”按钮。点击时显示当前 SQLCipher 数据库占用、空闲页估算与保守预留空间，二次确认后启动后台 VACUUM。任务复用文件写锁、数据库 Gate 和退出等待机制；压缩开始前、完成后分别执行 integrity_check，显示阶段与最终大小，不承诺虚构的实时百分比。操作不自动备份、不自动触发、也不改变 FileId、LinkId、版本或加密口令。空间不足时禁止启动，外接设备应保持连接。
+
 ## 6. 代码与验收分界
 
 公司业务档案、企业资质、个人分类、综合资料、项目/合同与知识产权已通过 V2 网页及附件/Excel/MCP/搜索/回收站/导出自动回归；N4 旧 Schema/Store/历史接口已完成清理。MCP P0、写操作安全、文件分页及 14 项新增业务工具不会改变本文件的 UI 结构。剩余 Edge/Chrome 人工操作、复杂导出与 T01–T09 安全验收见 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md)、[WEB_TESTING.md](./WEB_TESTING.md)。
