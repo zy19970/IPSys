@@ -1448,7 +1448,8 @@ for(const [selector,width] of [
  ['.data.ledger-record-table.ledger-archive-category-table','1020px'],
  ['.data.ledger-trash-table','950px']
 ]){
- assert.ok(css.includes(selector+'{min-width:'+width+'}'),
+ const rules=css.split(selector+'{').slice(1).map(part=>part.split('}')[0]);
+ assert.ok(rules.some(rule=>rule.split(';').some(declaration=>declaration.trim()==='min-width:'+width)),
    'Ledger min-width should survive viewport and DPI changes: '+selector);
 }
 assert.ok(css.includes('.data.ledger-record-table .ledger-fixed-cell{white-space:nowrap;overflow-wrap:normal;word-break:normal;')&&
