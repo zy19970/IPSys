@@ -569,3 +569,59 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 .ledger-project-table .project-type-other{
  background:#f1f3f5;color:#586574;border-color:#dce2e7;
 }
+
+/* Attachment explorer: each row is a table-like card. Primary click previews;
+   right-click (or Shift+F10) reveals existing original/version operations. */
+.business-file-group{
+ border:1px solid #e1e8ed;border-radius:9px;background:#fff;
+ margin:9px 0;overflow:visible;
+}
+.business-file-group .attachment-row{
+ display:grid;grid-template-columns:20px 36px minmax(0,1fr) 72px;
+ align-items:center;column-gap:12px;min-height:64px;
+ padding:10px 14px;border:0;border-radius:8px;
+ cursor:pointer;transition:background-color .12s,box-shadow .12s;
+}
+.business-file-group .attachment-row:hover{background:#f4f9fa}
+.business-file-group .attachment-row:focus-visible{
+ outline:2px solid var(--primary);outline-offset:-2px;background:var(--pale);
+}
+.attachment-select{width:20px;display:flex;align-items:center;justify-content:center}
+.attachment-select .export-check{gap:0;font-size:0;line-height:1}
+.attachment-select .export-filecheck{width:16px;height:16px;margin:0;cursor:pointer;accent-color:var(--primary)}
+.attachment-row .fileicon{width:36px;height:38px}
+.attachment-row .filedesc strong{font-size:14px;line-height:1.5;font-weight:650}
+.attachment-row .filedesc small{font-size:12px;line-height:1.5}
+.attachment-row-hint{font-size:11px;color:#8395a2;text-align:right;white-space:nowrap;user-select:none}
+.attachment-history{border-top:1px solid #e7edf1;padding:0 10px 9px}
+.attachment-history>summary{
+ cursor:pointer;user-select:none;color:#5f7685;font-size:12px;
+ padding:8px 12px;
+}
+.attachment-history .attachment-row{min-height:52px;margin-top:4px;background:#f8fafc}
+.attachment-history .attachment-row:hover{background:#edf5f6}
+.attachment-context-menu{
+ position:fixed;z-index:80;width:max-content;min-width:176px;max-width:min(310px,calc(100vw - 16px));
+ padding:5px;background:#fff;border:1px solid #dce4e9;border-radius:9px;
+ box-shadow:0 12px 34px #26394d27;
+}
+.attachment-context-menu button{
+ display:block;width:100%;padding:10px 13px;
+ border-radius:5px;text-align:left;font-size:13px;line-height:1.4;white-space:nowrap;
+}
+.attachment-context-menu button:hover,
+.attachment-context-menu button:focus-visible{background:var(--pale);color:var(--primary);outline:none}
+.attachment-context-menu button.danger{color:#b34350}
+.attachment-context-menu button.danger:hover,
+.attachment-context-menu button.danger:focus-visible{background:#fff0f1;color:#a12d3d}
+.attachment-text-preview{
+ width:100%;max-width:100%;min-height:180px;max-height:65vh;overflow:auto;
+ margin:0;padding:20px;background:#fff;color:#273747;
+ font:13px/1.7 Consolas,"Microsoft YaHei UI",monospace;
+ white-space:pre-wrap;overflow-wrap:anywhere;tab-size:4;
+}
+@media(max-width:740px){
+ .business-file-group .attachment-row{grid-template-columns:18px 32px minmax(0,1fr);column-gap:8px;padding:9px}
+ .attachment-row-hint{display:none}
+ .attachment-row .filedesc strong{font-size:13px}
+}

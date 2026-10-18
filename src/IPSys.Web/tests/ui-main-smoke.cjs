@@ -1458,3 +1458,58 @@ assert.ok(css.includes('.data.ledger-record-table .ledger-fixed-cell{white-space
 assert.ok(js.includes('<col class="trash-col-check">')&&
  css.includes('.data.ledger-trash-table col.trash-col-action{width:188px}'),
  'Trash keeps predictable width for selection and permanent-delete controls');
+
+
+// Table-card attachment UI: operations remain wired to existing V2 handlers.
+for(const piece of ['function decorateAttachmentRows(content){',
+ "group.querySelectorAll('.fileline')","commands.append(button)",
+ "row.append(hint,commands)","decorateAttachmentRows(content);",
+ "el('content').addEventListener('contextmenu'",
+ "row.querySelector('[data-preview-business],[data-preview-general]')?.click()",
+ "showAttachmentMenu(row,event.clientX,event.clientY)","command?.click()"])
+ assert.ok(js.includes(piece),'Missing attachment card interaction '+piece);
+for(const command of ['data-preview-business','data-preview-general','data-business-download',
+ 'data-download','data-v2-ip-version','data-business-associate',
+ 'data-business-delete','data-general-file-delete'])
+ assert.ok(js.includes("'"+command+"'"),'Missing preserved file command '+command);
+for(const key of ["event.key==='ContextMenu'","event.shiftKey&&event.key==='F10'",
+ "event.key==='Escape'","window.addEventListener('resize',closeAttachmentMenu)"])
+ assert.ok(js.includes(key),'Missing keyboard/dismiss behavior '+key);
+for(const rule of ['.business-file-group .attachment-row{','.attachment-context-menu{',
+ '.attachment-history','.attachment-text-preview{'])
+ assert.ok(css.includes(rule),'Missing attachment UI CSS '+rule);
+assert.ok(js.includes("const textFiles=['txt','md','csv','json','log','xml','yaml','yml','ini'];")&&
+ js.includes("file.size>2*1024*1024")&&js.includes('pre.textContent=text')&&
+ !js.includes('pre.innerHTML=text'),
+ 'TXT and Markdown preview must use a bounded, HTML-inert text node');
+
+// Exercise the pure DOM-restructuring part using a minimal node fixture.
+const attachmentDecoratorSource=js.slice(js.indexOf('function decorateAttachmentRows('),
+ js.indexOf('const attachmentContextMenu=',js.indexOf('function decorateAttachmentRows(')));
+assert.ok(attachmentDecoratorSource.length>100);
+const mkAttach=(tag)=>{const n={tag,children:[],attributes:{},classSet:new Set(),
+ classList:{add(c){n.classSet.add(c)}},setAttribute(k,v){n.attributes[k]=v},
+ append(...cs){for(const c of cs){if(c.parent)c.parent.children.splice(c.parent.children.indexOf(c),1);c.parent=n;n.children.push(c)}},
+ prepend(c){if(c.parent)c.parent.children.splice(c.parent.children.indexOf(c),1);c.parent=n;n.children.unshift(c)},
+ matches(q){return q.split(',').some(x=>x.trim()==='button['+Object.keys(n.attributes)[0]+']')}
+ };return n};
+const attachRowFixture=mkAttach('div'),attachGroupFixture=mkAttach('div'),
+ attachSelectionFixture=mkAttach('label');
+const attachCmdFixture=['data-preview-business','data-business-download','data-business-delete',
+ 'data-v2-ip-version','data-business-associate'].map(attr=>{const el=mkAttach('button');el.attributes[attr]='42';return el});
+attachRowFixture.append(attachSelectionFixture,...attachCmdFixture.slice(0,3));
+attachGroupFixture.append(attachRowFixture,...attachCmdFixture.slice(3));
+attachRowFixture.querySelector=q=>q==='.filedesc strong'?{textContent:'测试.pdf'}:
+ q===':scope > .export-check'?attachSelectionFixture:null;
+attachGroupFixture.querySelector=q=>q===':scope > .fileline'?attachRowFixture:null;
+attachGroupFixture.querySelectorAll=q=>q==='.fileline'?[attachRowFixture]:[];
+const attachmentVm=vm.createContext({document:{createElement:mkAttach}});
+vm.runInContext(attachmentDecoratorSource+'\nglobalThis.decorate=decorateAttachmentRows;',attachmentVm);
+attachmentVm.decorate({querySelectorAll:q=>q==='.business-file-group'?[attachGroupFixture]:[]});
+const fixtureControls=attachRowFixture.children.find(n=>n.className==='attachment-commands');
+assert.ok(attachRowFixture.classSet.has('attachment-row')&&attachRowFixture.tabIndex===0);
+assert.ok(attachRowFixture.children.some(n=>n.className==='attachment-select'&&n.children.includes(attachSelectionFixture)));
+assert.ok(fixtureControls?.hidden&&fixtureControls.children.length===5,
+ 'All original file commands must be moved to hidden context actions');
+assert.equal(attachGroupFixture.children.length,1,
+ 'Inline buttons below the file line must disappear');
