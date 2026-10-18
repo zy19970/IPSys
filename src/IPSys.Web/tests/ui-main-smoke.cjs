@@ -1115,17 +1115,19 @@ assert.ok(v2IpJs.includes('share-file')&&v2IpJs.includes('reuse-content')&&
  'Byte deduplication requires explicit share/reuse/independent/cancel choice');
 assert.ok(html.includes('id="filePreviewDialog"')&&html.includes('id="filePreviewClose"'),
  'Original file preview must have an accessible closeable dialog');
-assert.ok(js.includes('data-preview-business=')&&js.includes('data-preview-general=')&&
+assert.ok(js.includes("const preview=general?'data-preview-general':'data-preview-business'")&&
+ js.includes("'<button class=\"btn btn-sm\" '+preview+'=\"'+f.id")&&
  js.includes("URL.revokeObjectURL(activePreviewUrl)"),
- 'Both original-file stores must provide preview and release temporary blob URLs');
+ 'The shared attachment renderer must provide previews for both file stores and release blob URLs');
 assert.ok(js.includes("await ensurePdfViewer()")&&
  js.includes("activePdfViewer=renderer.create(body,bytes)")&&
  js.includes("activePdfViewer.destroy()")&&
  !js.includes("view.src=previewUrl+'#view=FitH'"),
  'PDF preview must use the offline Canvas renderer instead of Chromium iframe');
 
-assert.ok(js.includes('data-general-file-delete=')&&js.includes("case 'deleteRecord'"),
- 'Legacy general records and originals must expose the trash actions');
+assert.ok(js.includes("const remove=general?'data-general-file-delete':'data-business-delete'")&&
+ js.includes("case 'deleteRecord'"),
+ 'The shared file renderer must expose the correct trash action for general records');
 assert.ok(js.includes("IPSysNativeIp.upload(api,file,{kind:'general',ownerId:id},workspace)")&&
  js.includes("IPSysNativeIp.newVersion(api,f,space)")&&
  v2IpJs.includes('"/versions"'),
