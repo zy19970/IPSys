@@ -51,6 +51,17 @@ for(const [selector,element] of uiElements){
 }
 assert.ok(thisSet.has('ui-dialog'),'Static form dialogs should inherit common visual shell');
 
+// General-document cards share whole-card navigation semantics with category cards.
+assert.ok(js.includes('data-${action}-card="${Number(record.id)}" role="button" tabindex="0"')&&
+ js.includes("const recordCard=ev.target.closest('[data-live-card],[data-mock-card]');")&&
+ js.includes("if(recordCard&&!ev.target.closest('button,a,input,select,textarea,label'))")&&
+ js.includes("openLiveRecord(Number(recordCard.dataset.liveCard))")&&
+ js.includes("openMockRecord(page,Number(recordCard.dataset.mockCard))")&&
+ js.includes("event.target.matches('[data-archive-category],[data-archive-folder-id],[data-live-card],[data-mock-card]')"),
+ 'Personal other-material and company comprehensive document tiles must both be mouse/keyboard clickable without hijacking their inner detail buttons');
+assert.ok(css.includes('.archivecard:is([data-live-card],[data-mock-card]){cursor:pointer}')&&
+ css.includes('.archivecard:is([data-live-card],[data-mock-card]):focus-visible{'),
+ 'Record-card visual affordances and keyboard focus should match category cards');
 const start=js.indexOf('function attachmentFileRow(');
 const end=js.indexOf('function businessAttachmentList(',start);
 assert.ok(start>0&&end>start,'Shared attachment renderer not found');

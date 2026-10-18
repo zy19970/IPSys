@@ -1114,7 +1114,7 @@ function archiveCard(record,options={}){
  const fileCount=options.fileCount??(Array.isArray(record.files)?record.files.length:(record.files??0));
  const real=options.real===true;
  const action=real?'live':'mock';
- return `<article class="archivecard${real?' archivecard-real':''}">
+ return `<article class="archivecard${real?' archivecard-real':''}" data-${action}-card="${Number(record.id)}" role="button" tabindex="0" aria-label="查看${escapeHtml(headingText)}详情">
    <div class="archivecard-head">
      <div class="archivecard-titlewrap">
        <span class="archivecard-symbol" aria-hidden="true">▤</span>
@@ -2340,6 +2340,15 @@ el('content').addEventListener('click',async ev=>{
   }
   return;
  }
+ // General-document cards use the same whole-card navigation as category cards.
+ // Inner "查看详情" buttons retain their existing delegated click handlers.
+ const recordCard=ev.target.closest('[data-live-card],[data-mock-card]');
+ if(recordCard&&!ev.target.closest('button,a,input,select,textarea,label')){
+  if(recordCard.hasAttribute('data-live-card'))
+   openLiveRecord(Number(recordCard.dataset.liveCard));
+  else openMockRecord(page,Number(recordCard.dataset.mockCard));
+  return;
+ }
  const attachmentRow=ev.target.closest('.attachment-row');
  if(attachmentRow&&!ev.target.closest('button,input,label,summary,a')){
   attachmentRow.querySelector('[data-preview-business],[data-preview-general]')?.click();
@@ -2845,7 +2854,7 @@ el('content').addEventListener('change',async ev=>{
 el('content').addEventListener('keydown',event=>{
  if(event.key==='Escape')el('content').querySelector('.certificate-export[open]')?.removeAttribute('open');
  if(event.key==='Escape')el('content').querySelectorAll('.compact-ledger-export[open]').forEach(menu=>menu.removeAttribute('open'));
- if((event.key==='Enter'||event.key===' ')&&event.target.matches('[data-archive-category],[data-archive-folder-id]')){event.preventDefault();event.target.click();return;}
+ if((event.key==='Enter'||event.key===' ')&&event.target.matches('[data-archive-category],[data-archive-folder-id],[data-live-card],[data-mock-card]')){event.preventDefault();event.target.click();return;}
  if(event.key==='Enter'&&event.target.id==='filterSearch'){event.preventDefault();el('content').querySelector('[data-action=filter]')?.click();}
 });
 el('globalSearch').onkeydown=event=>{

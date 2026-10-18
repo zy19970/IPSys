@@ -38,6 +38,14 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 }
 .archivecard:hover{border-color:#b7d2d5;box-shadow:0 5px 18px #243e4d0c}
 .archivecard-real{border-color:#d2e5e3}
+/* General-record cards are full-surface navigation targets, like category cards. */
+.archivecard:is([data-live-card],[data-mock-card]){cursor:pointer}
+.archivecard:is([data-live-card],[data-mock-card]):hover{
+ border-color:var(--primary);background:#fcfefe;
+}
+.archivecard:is([data-live-card],[data-mock-card]):focus-visible{
+ outline:2px solid var(--primary);outline-offset:3px;
+}
 .archivecard-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
 .archivecard-titlewrap{display:flex;align-items:flex-start;gap:10px;min-width:0;flex:1}
 .archivecard-symbol{

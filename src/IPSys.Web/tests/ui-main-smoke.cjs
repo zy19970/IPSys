@@ -252,6 +252,31 @@ for(const section of ['personalIdentity','personalAchievement','personalAcademic
  assert.ok(!snapshots[section].includes('<table'),'Tables are not allowed in archive sections: '+section);
 }
 // Only the project ledger loses status/leader. Their values remain on the detail page.
+// Test actual delegated card routing with nested buttons shielded from duplicate clicks.
+const recordCardStart=js.indexOf("const recordCard=ev.target.closest('[data-live-card],[data-mock-card]');");
+const recordCardEnd=js.indexOf("const attachmentRow=ev.target.closest('.attachment-row');",recordCardStart);
+assert.ok(recordCardStart>0&&recordCardEnd>recordCardStart);
+const recordCardRouting=new Function('ev','openLiveRecord','openMockRecord','page',
+ js.slice(recordCardStart,recordCardEnd));
+const tileCalls=[];
+function clickRecordTile(kind,id,insideButton){
+ const node={dataset:{[kind==='live'?'liveCard':'mockCard']:String(id)},
+  hasAttribute:x=>x==='data-'+kind+'-card'};
+ const target={closest:selector=>
+  selector==='[data-live-card],[data-mock-card]'?node:
+  selector==='button,a,input,select,textarea,label'?(insideButton?{}:null):null};
+ recordCardRouting({target},value=>tileCalls.push(['live',value]),
+  (p,value)=>tileCalls.push(['mock',p,value]),'general');
+}
+clickRecordTile('live',41,false);
+clickRecordTile('mock',5,false);
+clickRecordTile('live',41,true);
+assert.equal(JSON.stringify(tileCalls),JSON.stringify([['live',41],['mock','general',5]]),
+ 'Cards should open by clicking the surface, while nested buttons remain independent');
+assert.ok(js.includes("event.target.matches('[data-archive-category],[data-archive-folder-id],[data-live-card],[data-mock-card]')")&&
+ js.includes("event.preventDefault();event.target.click();return;"),
+ 'Enter and Space must operate both archive category and real document cards');
+
 const projectColumnLabels=JSON.parse(vm.runInContext("JSON.stringify(columns('researchProject').map(x=>x[1]))",cardsCtx));
 const horizontalColumnLabels=JSON.parse(vm.runInContext("JSON.stringify(columns('horizontalProject').map(x=>x[1]))",cardsCtx));
 const patentColumnLabels=JSON.parse(vm.runInContext("JSON.stringify(columns('ip').map(x=>x[1]))",cardsCtx));
@@ -268,6 +293,15 @@ for(const section of ['personalPatent','companyPatent']){
 }
 assert.ok(snapshots.personalReal.includes('data-live-id="41"'),'Real personal card must open stored record');
 assert.ok(snapshots.companyReal.includes('data-live-id="21"'),'Real company card must open stored record');
+for(const [workspace,html,id] of [['personal',snapshots.personalReal,41],['company',snapshots.companyReal,21]]){
+ assert.ok(html.includes('data-live-card="'+id+'" role="button" tabindex="0"')&&
+  html.includes('data-live-id="'+id+'"')&&
+  html.includes('aria-label="查看'),
+  'General document tiles in '+workspace+' must allow both full-surface and explicit button navigation');
+}
+assert.ok(css.includes('.archivecard:is([data-live-card],[data-mock-card]){cursor:pointer}')&&
+ css.includes('.archivecard:is([data-live-card],[data-mock-card]):focus-visible{'),
+ 'General document tiles must indicate full-surface pointer and keyboard focus');
 assert.ok(snapshots.personalReal.includes('附件 <strong>2</strong> 份'),'Real attachment count must derive from actual database objects');
 assert.ok(snapshots.personalReal.includes('个人&lt;资料&amp;测试&gt;'),'Untrusted card title must be escaped');
 assert.ok(snapshots.personalIdentity.includes('data-archive-category="身份证明"'),'Category card must open the category ledger');
