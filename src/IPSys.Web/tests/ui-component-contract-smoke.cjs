@@ -161,6 +161,11 @@ for(const style of ['.ui-list-toolbar{','.ui-section-header{','.ui-table-viewpor
 const dialogsHtml=[...html.matchAll(/<dialog\b[^>]*>/g)].map(m=>m[0]);
 assert.ok(dialogsHtml.length>=9&&dialogsHtml.every(x=>x.includes('input-dialog')),
  'All modal dialogs should share the form shell while retaining their own fields');
+// Both certificate and compact ledgers must mount identical structural slots.
+assert.ok(js.includes("function createUiListToolbar(title,filters,actions,variant='compact'){")&&
+ js.includes("const toolbar=createUiListToolbar(titleGroup,filters,actions);")&&
+ js.includes("original.replaceWith(createUiListToolbar(title,filters,actions,'certificate'))"),
+ 'A single toolbar shell factory must serve every ledger');
 // Export dropdowns must have one renderer and one visual rule regardless
 // of the module that supplies its original folder/ZIP/Excel buttons.
 assert.ok(js.includes("function foldUiExportButtons(actions,variant='compact'){")&&

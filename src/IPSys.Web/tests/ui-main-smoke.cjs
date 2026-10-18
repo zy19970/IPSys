@@ -1392,6 +1392,9 @@ assert.ok(js.includes("if(detail?.kind==='project')return {kind:'contract',secti
  for(const source of ["compact-ledger-toolbar","compact-ledger-filters",
    "compact-ledger .recordgrid","@media(max-width:1440px)"])
   assert.ok(css.includes(source),'Unified compact toolbar missing responsive style: '+source);
+ assert.ok(js.includes("function createUiListToolbar(title,filters,actions,variant='compact'){")&&
+  js.includes("original.replaceWith(createUiListToolbar(title,filters,actions,'certificate'))"),
+  'Certificate and other ledgers must use the same structural toolbar factory');
  assert.ok(js.includes("function foldUiExportButtons(actions,variant='compact'){")&&
   js.includes("foldUiExportButtons(actions,'compact')")&&
   js.includes("foldUiExportButtons(certificateActions,'certificate')"),
@@ -1438,7 +1441,7 @@ assert.ok(js.includes("if(detail?.kind==='project')return {kind:'contract',secti
  const compactHelper=js.slice(js.indexOf('function compactBusinessListToolbar('),
   js.indexOf('function heading(',js.indexOf('function compactBusinessListToolbar(')));
  const compactVM=vm.createContext({document:{createElement:tag=>new CompactNode(tag)}});
- vm.runInContext(compactHelper+'\nglobalThis.compact=compactBusinessListToolbar;globalThis.fold=foldUiExportButtons;',compactVM);
+ vm.runInContext(compactHelper+'\nglobalThis.compact=compactBusinessListToolbar;globalThis.fold=foldUiExportButtons;globalThis.shell=createUiListToolbar;',compactVM);
  function compactFixture(recordMode){
   const content=new CompactNode(),header=new CompactNode(),filter=new CompactNode(),
    card=new CompactNode(),tools=new CompactNode(),line=new CompactNode();
@@ -1473,7 +1476,9 @@ assert.ok(js.includes("if(detail?.kind==='project')return {kind:'contract',secti
   content.lookup={':scope > .heading':header,':scope > .white.filter':filter};
   compactVM.compact(content);
   assert.ok(card.classList.contains('compact-ledger'),'Unified toolbar must decorate real record/container');
-  assert.equal(card.children[0].className,'compact-ledger-toolbar');
+  assert.ok(card.children[0].classList.contains('compact-ledger-toolbar')&&
+   card.children[0].classList.contains('ui-list-toolbar'),
+   'Common factory must create the compact ledger toolbar shell');
   assert.ok(card.children.includes(body),'Record table or category cards must remain in place');
   assert.ok(header.removed&&filter.removed&&tools.removed,'Redundant header/filter/tool rows must be removed');
   assert.equal(input.getAttribute('aria-label'),'名称 / 编号','Moved search must have accessible label');
@@ -1494,6 +1499,15 @@ assert.ok(js.includes("if(detail?.kind==='project')return {kind:'contract',secti
  compactFixture('cards');
  compactFixture('folders');
  // Enterprise certificates now use the same runtime menu constructor.
+ const certificateTitle=new CompactNode(),certificateFilters=new CompactNode(),
+  certificateToolbarActions=new CompactNode();
+ const certificateShell=compactVM.shell(certificateTitle,certificateFilters,certificateToolbarActions,'certificate');
+ assert.ok(certificateShell.classList.contains('certificate-toolbar')&&
+  certificateShell.classList.contains('ui-list-toolbar')&&
+  certificateShell.children[0].classList.contains('ui-toolbar-title')&&
+  certificateShell.children[1].classList.contains('ui-toolbar-filters')&&
+  certificateShell.children[2].classList.contains('ui-toolbar-actions'),
+  'Certificates and compact ledgers must be assembled by one toolbar-shell factory');
  const certificateActions=new CompactNode();
  for(const action of ['moduleExportFolder','moduleExportZip','excelExport']){
   const button=new CompactNode('button');button.dataset.action=action;certificateActions.append(button);

@@ -10,7 +10,7 @@
 
 | 共用组件 | 统一代码／样式入口 | 必须覆盖的使用方 | 业务差异与禁改边界 | 回归验证 |
 | --- | --- | --- | --- | --- |
-| 列表工具栏（ListToolbar） | `compactBusinessListToolbar()` + `normalizeUiComponents()`；所有 `.compact-ledger-toolbar` 与 `.certificate-toolbar` 都注册 `ui-list-toolbar`，子节点统一为 `ui-toolbar-title`／`ui-toolbar-filters`／`ui-toolbar-actions`，在 `style.css` 由一套三栏网格和 1440px／860px 响应式规则控制 | 公司项目、合同、知识产权、各个人台账、公司业务档案、企业资质、综合资料列表 | 企业资质筛选字段、档案层级、项目类型/状态和导出功能可以不同；宽屏标题/搜索/操作同行，中间查询与筛选控件作为一组居中；窄屏进入第二排后，筛选组以共用最大宽度 960px 居于整个标题栏中央，小屏统一按槽位依次换行，不能让某一页用独立 `flex-basis` 推挤空白 | `ui-main-smoke.cjs` 与 `ui-component-contract-smoke.cjs` 检查三个共用槽位及响应式规则；Edge/Chrome 实际视觉比较 |
+| 列表工具栏（ListToolbar） | `createUiListToolbar()` 生成三槽位公共 DOM 外壳；`compactBusinessListToolbar()` 仅整理旧列表节点，`normalizeUiComponents()` 将企业资质原始节点挂载到同一外壳；所有 `.compact-ledger-toolbar` 与 `.certificate-toolbar` 都注册 `ui-list-toolbar`，子节点统一为 `ui-toolbar-title`／`ui-toolbar-filters`／`ui-toolbar-actions`，在 `style.css` 由一套三栏网格和 1440px／860px 响应式规则控制 | 公司项目、合同、知识产权、各个人台账、公司业务档案、企业资质、综合资料列表 | 企业资质筛选字段、档案层级、项目类型/状态和导出功能可以不同；宽屏标题/搜索/操作同行，中间查询与筛选控件作为一组居中；窄屏进入第二排后，筛选组以共用最大宽度 960px 居于整个标题栏中央，小屏统一按槽位依次换行，不能让某一页用独立 `flex-basis` 推挤空白 | `ui-main-smoke.cjs` 与 `ui-component-contract-smoke.cjs` 检查三个共用槽位及响应式规则；Edge/Chrome 实际视觉比较 |
 | 数据表格（DataTable） | `decorateLedgerControls()`、`ledgerScope()`、`syncLedgerSelection()`、`ui-data-table`、`ui-table-viewport` | 公司项目、合同总表及项目内合同、知识产权、公司业务档案混排、个人多记录台账、企业资质、回收站 | 企业资质专用多选与审批字段、回收站永久删除、档案目录／记录混排不应强行改成普通记录 | UI DOM 控件测试、数据库持久排序检查、列宽与横向滚动检查 |
 | 详情标题与基本信息（DetailHeader / InfoGrid） | `heading()`、`section()`、`infoRow()`、`ui-section-header`、`ui-info-grid` | 项目、合同、知识产权、业务档案、综合资料、个人记录 | 字段及区块数量按业务字典；合同须有所属项目；项目可显示状态和负责人 | 基本信息 HTML、返回入口、字段展示与响应式检查 |
 | 附件（AttachmentPanel / FileRow） | `attachmentSectionTitle()`、`attachmentHeaderActions()`、`attachmentFileRow()`、`attachmentFileGroup()`、`businessAttachmentList()`、`decorateAttachmentRows()`、`syncAttachmentSelection()` | **项目、合同、知识产权、归档资料、综合资料五类均必须覆盖** | IP 才有材料类别；归档资料保留字节复用选项；综合资料用独立上传入口；文件版本、共享／移除权限与业务归属不能改变 | 五种记录都渲染真实文件行、历史版本、多选、右键、预览；不能重复出现内外两套工具栏 |
@@ -30,7 +30,7 @@
 
 ## 单点修改生效原则（2026-10-18）
 
-1. **视觉与响应式**：统一修改 `style.css` 中 `--ui-*` 和 `.ui-*` 公共规则。企业资质、项目、合同、知识产权、业务档案共用三槽位 `ui-list-toolbar`，业务语义列宽按场景单独配置。
+1. **视觉与响应式**：统一修改 `style.css` 中 `--ui-*` 和 `.ui-*` 公共规则。`createUiListToolbar()` 是所有真实列表标题、筛选与操作三个槽位的唯一 DOM 组装函数，企业资质与 compact 台账只提供不同的业务内容。企业资质、项目、合同、知识产权、业务档案共用三槽位 `ui-list-toolbar`，业务语义列宽按场景单独配置。
 2. **导出菜单**：`foldUiExportButtons(actions,variant)` 是所有台账导出下拉结构唯一创建者，负责按钮收纳、触发器、菜单与可访问名称；`variant` 只兼容模块旧类名。单击菜单项、区域外和 Escape 都使用 `closeUiExportMenus`，不再由证书模块另写菜单。
 3. **附件**：`attachmentFileRow`、`attachmentFileGroup`、`attachmentHeaderActions` 分别是文件行、版本分组及详情操作栏的统一入口，五类真实记录必须复用。知识产权材料类别、档案复用选择及项目整体导出属于业务差异。
 4. **表格**：项目、合同、知识产权、归档资料统一依靠 `decorateLedgerControls` 处理通用多选/序号/排序；企业资质八列台账暂由 `syncCompanyCertificateSelectionUi` 保持独立业务选择边界，公共外观使用 `.ui-data-table`。合并交互前需补齐行为等价回归。

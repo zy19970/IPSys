@@ -326,7 +326,6 @@ function compactBusinessListToolbar(content){
  const filterLine=filterPanel?.querySelector('.filterline');
  const title=pageHeading?.querySelector('h1');
  if(!pageHeading||!filterPanel||!ledger?.classList.contains('white')||!ledgerTools||!filterLine||!title)return;
- const toolbar=document.createElement('div');toolbar.className='compact-ledger-toolbar';
  const titleGroup=document.createElement('div');titleGroup.className='compact-ledger-title';
  const back=pageHeading.querySelector('[data-archive-back="cards"],[data-archive-folder-back]');
  if(back)titleGroup.append(back);
@@ -336,7 +335,6 @@ function compactBusinessListToolbar(content){
   const summary=document.createElement('span');summary.className='compact-ledger-count';
   summary.textContent=count.textContent.trim();titleGroup.append(summary);
  }
- toolbar.append(titleGroup);
  const filters=document.createElement('div');filters.className='compact-ledger-filters';
  for(const field of filterLine.querySelectorAll('.field')){
   const label=field.querySelector('label');
@@ -344,13 +342,12 @@ function compactBusinessListToolbar(content){
   if(label&&control&&!control.getAttribute('aria-label'))control.setAttribute('aria-label',label.textContent.trim());
  }
  while(filterLine.firstChild)filters.append(filterLine.firstChild);
- toolbar.append(filters);
  const actions=document.createElement('div');actions.className='compact-ledger-actions';
  for(const parent of [pageHeading.querySelector('.actions'),ledgerTools.querySelector('.actions')]){
   if(parent)while(parent.firstChild)actions.append(parent.firstChild);
  }
  foldUiExportButtons(actions,'compact');
- toolbar.append(actions);
+ const toolbar=createUiListToolbar(titleGroup,filters,actions);
  pageHeading.remove();filterPanel.remove();ledgerTools.remove();
  ledger.classList.add('compact-ledger');ledger.prepend(toolbar);
 }
@@ -379,6 +376,18 @@ function foldUiExportButtons(actions,variant='compact'){
  menu.append(trigger,choices);
 }
 
+// Canonical toolbar shell. Modules supply their own fields and action handlers,
+// but neither certificates nor compact ledgers construct a second layout.
+function createUiListToolbar(title,filters,actions,variant='compact'){
+ const bar=document.createElement('div');
+ bar.className=(variant==='certificate'?'certificate-toolbar':'compact-ledger-toolbar')+' ui-list-toolbar';
+ for(const [node,role] of [[title,'ui-toolbar-title'],[filters,'ui-toolbar-filters'],[actions,'ui-toolbar-actions']]){
+  node.classList.add(role);
+  bar.append(node);
+ }
+ return bar;
+}
+
 /* Common DOM contract: module renderers own data, shared roots own presentation.
    Every route passes through this single role normalization before display. */
 const uiComponentRoots=[
@@ -396,6 +405,16 @@ const uiComponentRoots=[
  ['.ledger-selected-count,.certificate-selected-count,.attachment-selected','ui-selection-count']
 ];
 function normalizeUiComponents(content){
+ // Enterprise certificate tables use the same toolbar shell as compact ledgers.
+ // Moving existing nodes keeps filters, selected count and delegated handlers.
+ const original=content.querySelector?.('.certificate-toolbar');
+ if(original){
+  const title=original.querySelector('.certificate-toolbar-title');
+  const filters=original.querySelector('.certificate-toolbar-filter');
+  const actions=original.querySelector('.certificate-toolbar-actions');
+  if(title&&filters&&actions)
+   original.replaceWith(createUiListToolbar(title,filters,actions,'certificate'));
+ }
  for(const [selector,role] of uiComponentRoots){
   for(const element of content.querySelectorAll(selector))element.classList.add(role);
  }
