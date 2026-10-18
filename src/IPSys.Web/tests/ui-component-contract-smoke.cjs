@@ -121,7 +121,7 @@ for(const [index,rule] of centerRules.entries()){
 }
 assert.ok(toolbarFilterRules[0][1].includes('grid-column:2;grid-row:1;')&&
  toolbarFilterRules[1][1].includes('grid-column:1/-1;grid-row:2;')&&
- toolbarFilterRules[2][1].includes('grid-column:1;grid-row:2;'),
+ toolbarFilterRules[2][1].includes('grid-column:1;grid-row:2'),
  'Centered list filters must retain their approved responsive grid positions');
 for(const [kind,call] of [
  ['project',"attachmentHeaderActions('project')"],
