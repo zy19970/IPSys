@@ -805,7 +805,7 @@ assert.ok(realArchiveCtx.__certAll.includes('data-action="certificateBatchDelete
  !realArchiveCtx.__certSelected.includes('data-action="certificateBatchDelete" hidden')&&
  realArchiveCtx.__certAll.includes('<colgroup>')&&
  realArchiveCtx.__certAll.includes('certificate-col-action')&&
- css.includes('.certificate-ledger .data col.certificate-col-name,\n.certificate-ledger .data col.certificate-col-file{width:calc(50% - 272px)}')&&
+ css.replace(/\r/g,'').includes('.certificate-ledger .data col.certificate-col-name,\n.certificate-ledger .data col.certificate-col-file{width:calc(50% - 272px)}')&&
  css.includes('.certificate-ledger .data col.certificate-col-remarks{width:160px}')&&
  css.includes('.certificate-ledger .archive-tablewrap .data td:nth-child(2){min-width:0')&&
  css.includes('table-layout:fixed'),
@@ -1294,7 +1294,7 @@ const fixedSum=certificateFixedColumns.reduce((total,[key,px])=>{
  return total+px;
 },0);
 assert.equal(fixedSum,544,'Certificate flex formula assumes a fixed-column total of 544 CSS px');
-assert.ok(css.includes('.certificate-ledger .data col.certificate-col-name,\n.certificate-ledger .data col.certificate-col-file{width:calc(50% - 272px)}'),
+assert.ok(css.replace(/\r/g,'').includes('.certificate-ledger .data col.certificate-col-name,\n.certificate-ledger .data col.certificate-col-file{width:calc(50% - 272px)}'),
  'Certificate name and attachment must share one width rule');
 assert.ok(css.includes('.certificate-ledger .data{min-width:1180px}')&&
  css.includes('.certificate-ledger .data td:nth-child(3) .link{display:inline-block;max-width:100%;white-space:normal;overflow-wrap:anywhere;word-break:break-word}'),
