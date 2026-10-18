@@ -81,8 +81,18 @@
   api.uploadProgress.stage("原件已加密暂存，正在查找相同内容…");
   let finished=false;
   try{
-   api.uploadProgress.stage("请在弹窗中选择共享、复用或独立保存；尚未正式归档。");
-   const choice=await selectMatch(file,prepared.matches,api.uploadProgress.signal());
+   // A unique original has only one meaningful action. Do not make the
+   // user confirm it for every small file in a batch. Duplicates still require
+   // an explicit decision because they may share FileId or physical bytes.
+   const matches=prepared.matches||[];
+   let choice;
+   if(matches.length){
+    api.uploadProgress.stage("检测到相同内容，请选择共享、复用或独立保存。");
+    choice=await selectMatch(file,matches,api.uploadProgress.signal());
+   }else{
+    api.uploadProgress.stage("未发现相同内容，正在自动独立保存…");
+    choice={choice:"independent"};
+   }
    if(!choice)return null;
    api.uploadProgress.stage("已选择保存方式，正在提交文件关联与版本记录…");
    const result=await(await api(path+"/prepared/"+prepared.ticket+"/resolve",

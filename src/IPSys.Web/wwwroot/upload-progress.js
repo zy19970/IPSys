@@ -5,7 +5,7 @@
  const fmt=bytes=>bytes>=1024**3?(bytes/1024**3).toFixed(2)+' GiB':
   bytes>=1024**2?(bytes/1024**2).toFixed(1)+' MiB':
   (bytes/1024).toFixed(0)+' KiB';
- let state=null,controller=null,activeXhr=null,panel=null;
+ let state=null,controller=null,activeXhr=null,panel=null,autoCloseTimer=null;
  function mount(){
   if(panel)return panel;
   panel=document.createElement('section');
@@ -32,6 +32,9 @@
  function stage(message){if(state?.active)field('uploadProgressStage',message);}
  function begin(count){
   if(state?.active)return false;
+  // If a new batch starts before the previous success notification disappears,
+  // the old timer must not hide the new batch's progress.
+  if(autoCloseTimer!==null){clearTimeout(autoCloseTimer);autoCloseTimer=null;}
   controller=new AbortController();
   state={active:true,cancelled:false,count,index:0,file:null,started:0,sent:0};
   mount().hidden=false;
@@ -95,6 +98,16 @@
   field('uploadProgressBytes',wasCancelled?'已终止本次传输。':
    '以服务器保存结果为准；已发送 100% 不代表已入库。');
   onActiveChanged?.(false);
+  // Show success briefly and hide the panel automatically. Keep any failed,
+  // canceled, partial or uncertain batch visible so the user can read it.
+  if(!wasCancelled&&completed===state.count&&errors.length===0&&
+     skipped===0&&unprocessed===0&&warnings.length===0){
+   const finishedState=state;
+   autoCloseTimer=setTimeout(()=>{
+    autoCloseTimer=null;
+    if(state===finishedState&&!state.active)panel.hidden=true;
+   },1800);
+  }
  }
  let onActiveChanged=null;
  // The token is set by the authenticated app.js API wrapper; never log it.

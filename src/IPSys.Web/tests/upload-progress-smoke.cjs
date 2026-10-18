@@ -47,10 +47,18 @@ class FakeXHR{
  send(body){this.body=body;}
  abort(){this.wasAborted=true;this.onabort?.();}
 }
-const events=[];
+const events=[],timers=new Map();
+let nextTimerId=0;
+const schedule=(callback,delay)=>{
+ assert.equal(delay,1800,'success is shown briefly before auto-close');
+ const id=++nextTimerId;timers.set(id,callback);return id;
+};
+const cancelTimer=id=>timers.delete(id);
+const flushTimers=()=>{const all=[...timers.values()];timers.clear();all.forEach(fn=>fn());};
 const sandbox={document,window:{dispatchEvent:event=>events.push(event.type)},
  Event,XMLHttpRequest:FakeXHR,Blob,DOMException,AbortController,Date,Math,
- Object,Number,JSON,Promise,Error,Set,Map,String,globalThis:null};
+ Object,Number,JSON,Promise,Error,Set,Map,String,setTimeout:schedule,
+ clearTimeout:cancelTimer,globalThis:null};
 sandbox.globalThis=sandbox;
 vm.runInNewContext(source,sandbox,{filename:'upload-progress.js'});
 const upload=sandbox.IPSysUploadProgress;
@@ -105,5 +113,25 @@ const blob=new Blob(['1234567890']);
  assert.ok(events.includes('ipsys-upload-cancel'),'cancel also dismisses dedup dialogs');
  upload.finish({completed:0});
  assert.match(child('uploadProgressStage').textContent,/已请求取消/);
- console.log('UPLOAD PROGRESS SMOKE PASS: progress, server confirmation, HTTP failures, cancel and batch states');
+ assert.equal(timers.size,0,'cancel must keep the panel visible');
+ // A fully committed successful batch automatically closes after 1.8 seconds.
+ assert.equal(upload.begin(1),true);
+ upload.file({name:'ok.bin',size:10},1);
+ upload.finish({completed:1});
+ assert.equal(created[0].hidden,false,'success remains briefly readable');
+ assert.equal(timers.size,1,'success schedules one close');
+ flushTimers();
+ assert.equal(created[0].hidden,true,'successful upload auto-hides the panel');
+ // A new upload may start within the old success timer; it must stay visible.
+ assert.equal(upload.begin(1),true);
+ upload.finish({completed:1});
+ assert.equal(timers.size,1);
+ assert.equal(upload.begin(1),true,'finished task permits another upload');
+ assert.equal(timers.size,0,'a newer batch cancels the old timer');
+ flushTimers();
+ assert.equal(created[0].hidden,false,'old timeout must not hide a new upload');
+ upload.finish({completed:0,errors:['simulated failure']});
+ assert.equal(timers.size,0,'failed upload must preserve the error summary');
+ assert.equal(created[0].hidden,false);
+ console.log('UPLOAD PROGRESS SMOKE PASS: progress, server confirmation, failure/cancel and success auto-hide');
 })().catch(e=>{console.error(e);process.exitCode=1;});
