@@ -585,9 +585,7 @@ function contractList(){
 }
 function projectContracts(projectId){
  const subset=contractRows.filter(c=>c.projectId===projectId);
- return '<div class="tabletools"><b>所属合同 '+subset.length+' 份</b>'+
- '<button class="btn primary" data-action="contractAdd">＋ 新建合同</button></div>'+
- (subset.length?'<div class="tablewrap"><table class="data ledger-contract-table ledger-contract-children">'+
+ return (subset.length?'<div class="tablewrap"><table class="data ledger-contract-table ledger-contract-children">'+
   '<colgroup><col class="contract-col-name"><col class="contract-col-no">'+
   '<col class="contract-col-date"><col class="contract-col-amount"></colgroup><thead><tr><th>合同名称</th><th>合同编号</th><th>签订日期</th><th>金额（人民币元）</th></tr></thead><tbody>'+
  subset.map(c=>'<tr><td><button class="link" data-contract-id="'+c.id+'">'+escapeHtml(c.name)+'</button></td>'+
@@ -806,6 +804,21 @@ function exportButtons(){
  '<button class="btn" data-action="exportFolder">导出至文件夹</button>'+
  '<button class="btn primary" data-action="exportZip">导出 ZIP</button></div></div>';
 }
+// Scoped project-attachment selection; full project export keeps its own scope.
+function syncProjectAttachmentSelection(){
+ const all=el('projectAttachmentSelectAll');if(!all)return;
+ const section=all.closest('.detailsection');
+ const choices=[...section.querySelectorAll('.export-filecheck')];
+ const latest=choices.filter(box=>box.dataset.exportLatest==='1');
+ const count=choices.filter(box=>box.checked).length;
+ const selected=el('projectAttachmentSelectedCount');
+ if(selected)selected.textContent='已选 '+count+' 份';
+ const exportButton=el('projectAttachmentExportZip');
+ if(exportButton)exportButton.disabled=count===0;
+ all.disabled=latest.length===0;
+ all.checked=latest.length>0&&latest.every(box=>box.checked);
+ all.indeterminate=latest.some(box=>box.checked)&&!all.checked;
+}
 function selectedOriginals(){
  const items=[];
  for(const checkbox of document.querySelectorAll('.export-filecheck:checked')){
@@ -881,12 +894,12 @@ function businessAttachmentList(kind,ownerId,section=''){
  '<span class="filedesc"><strong>'+escapeHtml(f.name)+'</strong><small>'+(showVersion?'v'+f.version+' · ':'')+
  (f.category?escapeHtml(f.category)+' · ':'')+fmtSize(f.size)+
  ' · SHA-256 '+escapeHtml(f.sha256.slice(0,12))+'…</small></span>'+
- (kind==='project'?'':exportCheck(f,kind==='ip'?'v2ip':'v2file',latest))+'<button class="btn btn-sm" data-preview-business="'+f.id+'">预览</button>'+
+ exportCheck(f,kind==='ip'?'v2ip':'v2file',latest)+'<button class="btn btn-sm" data-preview-business="'+f.id+'">预览</button>'+
  '<button class="btn btn-sm" data-business-download="'+f.id+'">下载</button>'+
  '<button class="btn btn-sm" data-business-delete="'+f.id+'">移除</button></div>';
- return '<div class="tabletools"><b>原件附件 '+groups.size+' 份</b><div class="actions">'+category+
- (['ip','project','contract'].includes(kind)?'':'<label class="file-dedup-choice"><input type="checkbox" id="businessReuseExisting"> 同内容复用存储</label>')+
- '<button class="btn primary" data-action="businessUpload">＋ 上传原件</button></div></div>'+
+ return (kind==='project'?'':'<div class="tabletools"><b>原件附件 '+groups.size+' 份</b><div class="actions">'+category+
+ (['ip','contract'].includes(kind)?'':'<label class="file-dedup-choice"><input type="checkbox" id="businessReuseExisting"> 同内容复用存储</label>')+
+ '<button class="btn primary" data-action="businessUpload">＋ 上传原件</button></div></div>')+
  '<p class="hint">'+(['ip','project','contract','archive'].includes(kind)?'按内容摘要查重：无重复自动独立保存；发现相同内容时再选择共享、复用或独立保存。支持文件历史版本。':'同名原件可选择更新已有版本链，或作为独立新文件归档；同工作区共享引用自动显示新版本。')+' 单文件上限 8 GiB。</p>'+
  ([...groups.values()].map(g=>{g.sort((a,b)=>b.version-a.version||b.id-a.id);
   return '<div class="business-file-group">'+line(g[0],g.length>1,true)+
@@ -1047,8 +1060,16 @@ function projectDetail(){
  infoRow('项目状态',p.projectStatus)+infoRow('开始日期',p.startDate)+
  infoRow('结束日期',p.endDate)+infoRow('辅助分类',p.category)+
  infoRow('标签',p.tags)+infoRow('备注',p.remarks)+'</div>')+
- section('所属合同',projectContracts(p.id))+
- section('项目自身附件',businessAttachmentList('project',p.id));
+ section('所属合同 <span class="detailsection-count">'+contractRows.filter(c=>c.projectId===p.id).length+' 份</span>',
+  projectContracts(p.id),
+  '<button type="button" class="btn primary" data-action="contractAdd">＋ 新增合同</button>')+
+ section('项目附件 <span class="detailsection-count">'+businessFileCount('project',p.id)+' 份</span>',
+  businessAttachmentList('project',p.id),
+  '<div class="project-attachment-actions">'+
+  '<label class="export-check project-attachment-select-all"><input type="checkbox" class="export-checkall" id="projectAttachmentSelectAll"> 全选</label>'+
+  '<span class="project-attachment-selected" id="projectAttachmentSelectedCount">已选 0 份</span>'+
+  '<button type="button" class="btn" data-action="exportZip" id="projectAttachmentExportZip" disabled>导出已选 ZIP</button>'+
+  '<button type="button" class="btn primary" data-action="businessUpload">＋ 上传附件</button></div>');
 }
 function showProjectForm(id=null){
  projectEditingId=id;
@@ -2126,6 +2147,7 @@ function render(){
  compactBusinessListToolbar(content);
  decorateLedgerControls(content);
  decorateAttachmentRows(content);
+ syncProjectAttachmentSelection();
  const searchBox=el('filterSearch');if(searchBox)searchBox.value=filterName;
  syncCompanyCertificateSelectionUi();
 }
@@ -2478,6 +2500,7 @@ el('content').addEventListener('click',async ev=>{
   case 'exportFolder':
   case 'exportZip':{
    const originals=selectedOriginals();
+   if(!originals.length){notice('请先勾选要导出的附件。',true);break;}
    if(!globalThis.IPSysExport){notice('导出模块仍在初始化，请重试。',true);break;}
    await globalThis.IPSysExport.start(target.dataset.action==='exportFolder'?'folder':'zip',originals);
    break;
@@ -2760,6 +2783,7 @@ el('content').addEventListener('change',async ev=>{
   if(all)all.checked=[...scope.querySelectorAll('.export-filecheck[data-export-latest="1"]')]
     .every(box=>box.checked);
  }
+ if(ev.target.matches('.export-filecheck,#projectAttachmentSelectAll'))syncProjectAttachmentSelection();
  if(ev.target.matches('.ledger-export-all')){
   el('content').querySelectorAll('.ledger-export-row').forEach(box=>box.checked=ev.target.checked);
  }

@@ -455,7 +455,7 @@ for(const action of ['contractAdd','contractEdit','contractCopy','contractDelete
  assert.ok(js.includes("case '"+action+"'"),'Missing real contract action '+action);
 assert.ok(js.includes('data-contract-id='),'Real contract items must link to saved IDs');
 assert.ok(js.includes('data-contract-back-project'),'Contract detail must return to owning project');
-assert.ok(js.includes("section('所属合同',projectContracts(p.id))"),'Project details must list real children');
+assert.ok(js.includes("projectContracts(p.id),")&&js.includes('＋ 新增合同</button>'),'Project details must list child contracts and title-bar creation');
 assert.ok(js.includes("json:{contract:data,...(id===null?{parentId:projectId}:{})}"),
  'New contracts must be created from their project ID');
 const contractFrom=js.indexOf('const contractFieldLabels=');
@@ -473,7 +473,7 @@ vm.runInContext(preamble+
 assert.ok(contractContext.__contracts.includes('data-contract-id="31"'),'Contract summary must open actual record IDs');
 assert.ok(contractContext.__contracts.includes('测试科研项目'),'Contract summary must show parent project name');
 assert.ok(!contractContext.__contracts.includes('data-action="contractAdd"'),'No free-standing create contract action');
-assert.ok(contractContext.__owned.includes('data-action="contractAdd"'),'Project detail must offer adding a child contract');
+assert.ok(!contractContext.__owned.includes('data-action="contractAdd"')&&js.includes('data-action="contractAdd">＋ 新增合同</button>'),'Contract create button must move to section heading');
 assert.ok(contractContext.__owned.includes('data-contract-id="31"'),'Project detail must list only owned contracts');
 assert.deepEqual(Array.from(contractContext.__display),['—','0.00','12.30']);
 
@@ -983,7 +983,7 @@ for(const phrase of ["class=\"ledger-export-row\"","class=\"ledger-export-all\""
 for(const needle of ["projectOriginals(ids)","ipOriginals(ids)",
  "quickExportButtons(visible,'contract')","quickExportButtons(rows,'general')",
  "quickExportButtons(rows,'archive',k)","case 'exportFolder'","case 'exportZip'",
- "section('所属合同',projectContracts(p.id))"])
+ "projectContracts(p.id),"])
  assert.ok(js.includes(needle),'Selected-original export wiring missing: '+needle);
 assert.ok(js.includes("b06Script.src='/export.js'"),'The embedded ZIP/folder engine must load from localhost');
 
@@ -994,13 +994,14 @@ assert.ok(fileListStart>0&&fileListEnd>fileListStart,'Missing business file rend
 const fileListCtx=vm.createContext({sessionStorage:{getItem:()=>null},document:exportDocument});
 vm.runInContext(preamble+
  
- '\nfunction exportCheck(){return "";}\nfunction exportButtons(){return "";}'+
+ '\nfunction exportCheck(){return "FILE-CHECK";}\nfunction exportButtons(){return "";}'+
  '\nfunction businessFiles(){return globalThis.filesForTest;}'+
  '\ncontractRows=[];'+js.slice(fileListStart,fileListEnd)+
  '\nglobalThis.filesForTest=[{id:2,name:"test.pdf",category:"申请材料",groupId:"group-A",version:2,size:123,sha256:"0123456789abcdef"}];'+
  '\nglobalThis.__onlyVersion=businessAttachmentList("ip",1);'+
  '\nglobalThis.filesForTest.push({id:1,name:"test.pdf",category:"申请材料",groupId:"group-A",version:1,size:120,sha256:"0123456789abcdef"});'+
- '\nglobalThis.__history=businessAttachmentList("ip",1);',fileListCtx);
+ '\nglobalThis.__history=businessAttachmentList("ip",1);'+
+ '\nglobalThis.__projectAttachment=businessAttachmentList("project",1);',fileListCtx);
 assert.ok(!fileListCtx.__onlyVersion.includes('<small>v2'),'Single surviving revision must not show v2');
 assert.ok(fileListCtx.__history.includes('<small>v2'),'Two effective revisions must show version history');
 
@@ -1513,3 +1514,46 @@ assert.ok(fixtureControls?.hidden&&fixtureControls.children.length===5,
  'All original file commands must be moved to hidden context actions');
 assert.equal(attachGroupFixture.children.length,1,
  'Inline buttons below the file line must disappear');
+
+// Project detail: single heading per section; action buttons remain in section bar.
+assert.ok(js.includes('所属合同 <span class="detailsection-count"')&&
+ js.includes('项目附件 <span class="detailsection-count"')&&
+ js.includes('id="projectAttachmentSelectAll"')&&
+ js.includes('id="projectAttachmentExportZip" disabled')&&
+ js.includes('data-action="businessUpload">＋ 上传附件'),
+ 'Project contract/attachment headings need inline count and controls');
+assert.ok(js.includes("return (kind==='project'?'':'<div class=\"tabletools\">")&&
+ js.includes("exportCheck(f,kind==='ip'?'v2ip':'v2file',latest)")&&
+ !js.includes("(kind==='project'?'':exportCheck("),
+ 'Project own attachment has a selectable checkbox with no duplicate toolbar');
+assert.ok(fileListCtx.__projectAttachment.includes('FILE-CHECK')&&
+ !fileListCtx.__projectAttachment.includes('class="tabletools"')&&
+ !fileListCtx.__projectAttachment.includes('data-action="businessUpload"'),
+ 'Project attachment renderer must retain a select checkbox without its nested action bar');
+assert.ok(fileListCtx.__onlyVersion.includes('class="tabletools"')&&
+ fileListCtx.__onlyVersion.includes('data-action="businessUpload"'),
+ 'Other attachment modules should keep their original toolbar');
+assert.ok(css.includes('.detailsectionhead .detailsection-count{')&&
+ css.includes('.project-attachment-actions{'),
+ 'Project title toolbar needs the new responsive styles');
+(() => {
+ const all={checked:false,disabled:false,indeterminate:false},
+  count={textContent:''},button={disabled:true},
+  latest={dataset:{exportLatest:'1'},checked:false},
+  history={dataset:{},checked:false};
+ all.closest=()=>({querySelectorAll:()=>[latest,history]});
+ const ids={projectAttachmentSelectAll:all,projectAttachmentSelectedCount:count,
+  projectAttachmentExportZip:button};
+ const start=js.indexOf('function syncProjectAttachmentSelection(){');
+ const part=js.slice(start,js.indexOf('function selectedOriginals(){',start));
+ const runner=vm.createContext({el:id=>ids[id]});
+ vm.runInContext(part+'\nglobalThis.update=syncProjectAttachmentSelection;',runner);
+ runner.update();
+ assert.ok(button.disabled&&!all.checked&&count.textContent==='已选 0 份');
+ latest.checked=true;runner.update();
+ assert.ok(!button.disabled&&all.checked&&count.textContent==='已选 1 份');
+ history.checked=true;runner.update();
+ assert.equal(count.textContent,'已选 2 份');
+ latest.checked=false;runner.update();
+ assert.ok(!all.checked&&!button.disabled,'Historical selection remains exportable');
+})();
