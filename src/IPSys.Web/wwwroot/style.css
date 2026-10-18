@@ -501,3 +501,54 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 .upload-progress-stage{font-size:12px;color:#4e6572;margin-top:8px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:130px;overflow:auto}
 .upload-progress-actions{display:flex;justify-content:flex-end;margin-top:11px}
 @media(max-width:740px){.upload-progress{right:10px;bottom:10px;width:calc(100vw - 20px)}}
+
+/* Responsive ledger widths: stable short fields, elastic record names,
+   and horizontal scrolling inside the table on narrow/dpi-scaled windows. */
+.tablewrap{max-width:100%;min-width:0;overflow-x:auto;overscroll-behavior-x:contain}
+.data.ledger-record-table .ledger-fixed-cell{white-space:nowrap;overflow-wrap:normal;word-break:normal;font-variant-numeric:tabular-nums}
+/* Projects: fixed category/number/date/count and selection/order controls. */
+.data.ledger-record-table.ledger-project-table{min-width:1140px}
+.data.ledger-record-table.ledger-project-table col.project-col-check{width:42px}
+.data.ledger-record-table.ledger-project-table col.project-col-sequence{width:58px}
+.data.ledger-record-table.ledger-project-table col.project-col-type{width:116px}
+.data.ledger-record-table.ledger-project-table col.project-col-name{width:auto}
+.data.ledger-record-table.ledger-project-table col.project-col-code{width:180px}
+.data.ledger-record-table.ledger-project-table col.project-col-date{width:140px}
+.data.ledger-record-table.ledger-project-table col.project-col-files{width:72px}
+.data.ledger-record-table.ledger-project-table col.project-col-order{width:100px}
+/* Contract total and per-project tables share fixed metadata tracks. */
+.data.ledger-record-table.ledger-contract-table{min-width:1230px}
+.data.ledger-record-table.ledger-contract-table.ledger-contract-children{min-width:1030px}
+.data.ledger-record-table.ledger-contract-table col.contract-col-check{width:42px}
+.data.ledger-record-table.ledger-contract-table col.contract-col-sequence{width:58px}
+.data.ledger-record-table.ledger-contract-table col.contract-col-name{width:auto}
+.data.ledger-record-table.ledger-contract-table col.contract-col-project{width:230px}
+.data.ledger-record-table.ledger-contract-table col.contract-col-no{width:180px}
+.data.ledger-record-table.ledger-contract-table col.contract-col-date{width:140px}
+.data.ledger-record-table.ledger-contract-table col.contract-col-amount{width:170px}
+.data.ledger-record-table.ledger-contract-table col.contract-col-order{width:100px}
+/* Certificates contain two variable-length names: record and source filename. */
+.certificate-ledger .data{min-width:1180px}
+.certificate-ledger .data .certificate-check,
+.certificate-ledger .data .certificate-sequence,
+.certificate-ledger .data .certificate-size,
+.certificate-ledger .data .certificate-order,
+.certificate-ledger .data .certificate-action{white-space:nowrap;overflow-wrap:normal;word-break:normal}
+.certificate-ledger .data th{white-space:nowrap}
+/* Archive attachment is a short count, not a variable-width filename. */
+.data.ledger-record-table.ledger-archive-category-table{min-width:1020px}
+.data.ledger-record-table.ledger-archive-category-table col.archive-col-attachment{width:110px}
+.data.ledger-record-table.ledger-archive-category-table.company-business-archive{min-width:1080px}
+.data.ledger-record-table.ledger-archive-category-table.company-business-archive col.archive-col-attachment{width:100px}
+.data.ledger-record-table.ledger-archive-category-table.company-business-archive col.archive-col-remarks{width:210px}
+.data.ledger-record-table.ledger-archive-category-table.company-business-archive col.archive-col-order{width:100px}
+/* Trash: retain safe, legible space for category and destructive operations. */
+.data.ledger-trash-table{width:100%;min-width:950px;table-layout:fixed;white-space:normal}
+.data.ledger-trash-table col.trash-col-check{width:42px}
+.data.ledger-trash-table col.trash-col-kind{width:130px}
+.data.ledger-trash-table col.trash-col-name{width:auto}
+.data.ledger-trash-table col.trash-col-parent{width:230px}
+.data.ledger-trash-table col.trash-col-action{width:188px}
+.data.ledger-trash-table th{white-space:nowrap}
+.data.ledger-trash-table :is(th,td):is(:first-child,:nth-child(2),:last-child){white-space:nowrap;overflow-wrap:normal;word-break:normal}
+.data.ledger-trash-table td:nth-child(3),.data.ledger-trash-table td:nth-child(4){overflow-wrap:anywhere}

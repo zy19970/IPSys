@@ -1413,3 +1413,38 @@ assert.ok(js.includes("if(detail?.kind==='project')return {kind:'contract',secti
  assert.ok(css.includes('.certificate-ledger .certificate-toolbar-filter{')&&
   !js.includes('compactBusinessListToolbar(content) && page===\'certificate\''),
   'The separately approved company certificate toolbar must not be changed by shared grid styling');
+
+// The responsive-ledger contract is checked against actual renderer fixtures;
+// business fields and their semantic colgroup tracks must remain in sync.
+const tableTrackShapes=[
+ [projectCtx.__project,'project-col-check','project-col-name','project-col-date','project-col-files'],
+ [contractContext.__contracts,'contract-col-name','contract-col-project','contract-col-date','contract-col-amount'],
+ [contractContext.__owned,'contract-col-name','contract-col-no','contract-col-date','contract-col-amount'],
+ [ipCtx.__ip,'ip-col-check','ip-col-name','ip-col-code','ip-col-date']
+];
+for(const [markup,...tracks] of tableTrackShapes){
+ assert.ok(markup.includes('<colgroup>')&&markup.includes('</colgroup>'),
+   'A real register must expose semantic columns');
+ for(const track of tracks)assert.ok(markup.includes('<col class="'+track+'">'),
+   'Missing semantic column '+track);
+}
+assert.ok(js.includes("cols&&['ip','project','contract'].includes(scope.kind)")&&
+ js.includes("if(prefix==='contract')")&&
+ js.includes("cols.children.length===head.cells.length"),
+ 'DOM control insertion must keep matching semantic tracks and fixed fields');
+for(const [selector,width] of [
+ ['.data.ledger-record-table.ledger-project-table','1140px'],
+ ['.data.ledger-record-table.ledger-contract-table','1230px'],
+ ['.data.ledger-record-table.ledger-contract-table.ledger-contract-children','1030px'],
+ ['.data.ledger-record-table.ledger-archive-category-table','1020px'],
+ ['.data.ledger-trash-table','950px']
+]){
+ assert.ok(css.includes(selector+'{min-width:'+width+'}'),
+   'Ledger min-width should survive viewport and DPI changes: '+selector);
+}
+assert.ok(css.includes('.data.ledger-record-table .ledger-fixed-cell{white-space:nowrap;overflow-wrap:normal;word-break:normal;')&&
+ css.includes('.tablewrap{max-width:100%;min-width:0;overflow-x:auto;'),
+ 'Short fields must not break per character and overflowing tables must scroll internally');
+assert.ok(js.includes('<col class="trash-col-check">')&&
+ css.includes('.data.ledger-trash-table col.trash-col-action{width:188px}'),
+ 'Trash keeps predictable width for selection and permanent-delete controls');

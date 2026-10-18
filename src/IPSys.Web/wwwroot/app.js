@@ -571,7 +571,9 @@ function contractList(){
  '<div class="field wide"><label>名称 / 编号 / 所属项目</label><input id="filterSearch" placeholder="搜索合同或项目"></div>'+
  '<button class="btn primary" data-action="filter">查询</button><button class="btn" data-action="clearFilter">重置</button></div></section>'+
  '<section class="white"><div class="tabletools"><b>合同台账 '+visible.length+' 条记录</b><div class="actions">'+quickExportButtons(visible,'contract')+'</div></div>'+
- '<div class="tablewrap"><table class="data"><thead><tr>'+
+ '<div class="tablewrap"><table class="data ledger-contract-table ledger-contract-summary">'+
+  '<colgroup><col class="contract-col-name"><col class="contract-col-project"><col class="contract-col-no">'+
+  '<col class="contract-col-date"><col class="contract-col-amount"></colgroup><thead><tr>'+
  '<th>合同名称</th><th>所属项目</th><th>合同编号</th><th>签订日期</th><th>合同金额（人民币元）</th>'+
  '</tr></thead><tbody>'+
  (visible.length?visible.map(c=>'<tr>'+
@@ -585,7 +587,9 @@ function projectContracts(projectId){
  const subset=contractRows.filter(c=>c.projectId===projectId);
  return '<div class="tabletools"><b>所属合同 '+subset.length+' 份</b>'+
  '<button class="btn primary" data-action="contractAdd">＋ 新建合同</button></div>'+
- (subset.length?'<div class="tablewrap"><table class="data"><thead><tr><th>合同名称</th><th>合同编号</th><th>签订日期</th><th>金额（人民币元）</th></tr></thead><tbody>'+
+ (subset.length?'<div class="tablewrap"><table class="data ledger-contract-table ledger-contract-children">'+
+  '<colgroup><col class="contract-col-name"><col class="contract-col-no">'+
+  '<col class="contract-col-date"><col class="contract-col-amount"></colgroup><thead><tr><th>合同名称</th><th>合同编号</th><th>签订日期</th><th>金额（人民币元）</th></tr></thead><tbody>'+
  subset.map(c=>'<tr><td><button class="link" data-contract-id="'+c.id+'">'+escapeHtml(c.name)+'</button></td>'+
  '<td>'+escapeHtml(c.contractNo||'—')+'</td><td>'+escapeHtml(c.signDate||'—')+'</td>'+
  '<td>'+contractMoney(c.amount)+'</td></tr>').join('')+
@@ -770,7 +774,9 @@ function projectList(k){
  '<div class="actions"><span id="ledgerExportCount">已选 0 条</span>'+
  '<button class="btn" data-action="projectExportFolder">导出附件文件夹</button>'+
  '<button class="btn primary" data-action="projectExportZip">导出附件 ZIP</button>'+excelExportButton('project')+'</div></div>'+
- '<div class="tablewrap"><table class="data ledger-project-table"><thead><tr><th><input type="checkbox" id="ledgerExportAll" class="ledger-export-all" aria-label="全选当前项目"></th><th>项目类型</th><th>项目名称</th><th>项目编号</th><th>开始日期</th><th>附件</th></tr></thead><tbody>'+
+ '<div class="tablewrap"><table class="data ledger-project-table">'+
+  '<colgroup><col class="project-col-check"><col class="project-col-type"><col class="project-col-name">'+
+  '<col class="project-col-code"><col class="project-col-date"><col class="project-col-files"></colgroup><thead><tr><th><input type="checkbox" id="ledgerExportAll" class="ledger-export-all" aria-label="全选当前项目"></th><th>项目类型</th><th>项目名称</th><th>项目编号</th><th>开始日期</th><th>附件</th></tr></thead><tbody>'+
  (visible.length?visible.map(p=>'<tr><td><input type="checkbox" class="ledger-export-row" value="'+p.id+'" aria-label="选择项目 '+escapeHtml(p.name)+'"></td>'+
  '<td>'+pill(p.projectType)+'</td>'+
  '<td><button class="link" data-project-id="'+p.id+'">'+escapeHtml(p.name)+'</button></td><td>'+escapeHtml(p.projectNo||'—')+'</td>'+
@@ -1679,7 +1685,9 @@ function trashPage(){
  '<button class="btn" data-action="trashRestoreSelected">恢复勾选</button>'+
  '<button type="button" class="btn trash-purge-selected" data-action="trashPurgeSelected" disabled>永久删除</button></div></div>'+
  '<p class="hint">永久删除附件会先移除所选关联；同一个文件仍被其它位置引用时保留全部版本，仅当不再有任何关联时清理文件版本与未被其它文件共享的原件数据。数据库已释放空间可供后续写入复用，数据库文件大小不一定立即缩小。操作不可撤销。</p>'+
- '<div class="tablewrap"><table class="data"><thead><tr><th><input type="checkbox" id="trashAll"></th>'+
+ '<div class="tablewrap"><table class="data ledger-trash-table">'+
+  '<colgroup><col class="trash-col-check"><col class="trash-col-kind"><col class="trash-col-name">'+
+  '<col class="trash-col-parent"><col class="trash-col-action"></colgroup><thead><tr><th><input type="checkbox" id="trashAll"></th>'+
  '<th>类别</th><th>名称</th><th>原归属</th><th>操作</th></tr></thead><tbody>'+
  (trashRows.length?trashRows.map((r,i)=>'<tr><td><input class="trashcheck" type="checkbox" value="'+i+'"></td>'+
  '<td>'+escapeHtml(names[r.kind]||r.kind)+'</td><td>'+escapeHtml(r.name)+'</td><td>'+
@@ -1898,16 +1906,19 @@ function decorateLedgerControls(content){
  const last=document.createElement('th');last.className='ledger-record-order-cell';last.textContent='排序';
  if(archiveSequence)head.lastElementChild.before(last);
  else head.append(last);
- // The IP colgroup has eight business tracks before decoration. Adding
- // sequence/order controls must add matching semantic width tracks too.
- if(scope.kind==='ip'){
-  const cols=table.querySelector('colgroup');
-  if(cols){
-   const seq=document.createElement('col');seq.className='ip-col-sequence';
-   cols.children[0].after(seq);
-   const order=document.createElement('col');order.className='ip-col-order';
-   cols.append(order);
+ // All real ledgers declare semantic tracks. Match DOM-inserted
+ // selection, sequence and order controls with their width tracks.
+ const cols=table.querySelector('colgroup');
+ if(cols&&['ip','project','contract'].includes(scope.kind)){
+  const prefix=scope.kind;
+  if(prefix==='contract'){
+   const checkCol=document.createElement('col');checkCol.className='contract-col-check';
+   cols.prepend(checkCol);
   }
+  const seqCol=document.createElement('col');seqCol.className=prefix+'-col-sequence';
+  cols.children[0].after(seqCol);
+  const orderCol=document.createElement('col');orderCol.className=prefix+'-col-order';
+  cols.append(orderCol);
  }
  rows.forEach(({tr,id},index)=>{
   tr.dataset.ledgerRecordId=String(id);
@@ -1964,6 +1975,18 @@ function decorateLedgerControls(content){
     cell.append(btn);
    }
   });
+ }
+ // Fixed-field semantics apply to header and real cells after DOM decoration.
+ // Long titles, upload filenames and remarks remain free to wrap.
+ if(cols&&cols.children.length===head.cells.length){
+  const fixedTrack=/^(?:ip-col-(?:check|sequence|type|code|status|date|files|order)|project-col-(?:check|sequence|type|code|date|files|order)|contract-col-(?:check|sequence|no|date|amount|order)|archive-col-(?:check|sequence|year|attachment|size|order|action))$/;
+  for(let i=0;i<cols.children.length;i++){
+   if(!fixedTrack.test(cols.children[i].className))continue;
+   head.cells[i].classList.add('ledger-fixed-cell');
+   for(const tr of body.rows){
+    if(tr.cells.length===head.cells.length)tr.cells[i].classList.add('ledger-fixed-cell');
+   }
+  }
  }
  const empty=body.querySelector('td[colspan]');
  if(empty&&rows.length===0)empty.colSpan+=archiveSequence?2:scope.kind==='contract'?3:2;
