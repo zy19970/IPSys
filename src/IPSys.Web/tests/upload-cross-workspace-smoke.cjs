@@ -14,11 +14,11 @@ const render=slice('function render(){','async function uploadGeneralBatch(');
 const business=slice('async function uploadBusinessBatch(', 'async function previewOriginal(');
 const general=slice('async function uploadGeneralBatch(', 'async function download(');
 const taskWait=slice('async function refreshWhenFileTaskIdle(', 'function setPage(');
-assert.ok(select.includes('if(trashPurgeTaskActive||localFileTaskActive){render();return;}'),
+assert.ok(select.includes('if(trashPurgeTaskActive||vaultCompactTaskActive||localFileTaskActive){render();return;}'),
  'switching workspace during upload must not enqueue database reads');
-assert.ok(refresh.includes('if(trashPurgeTaskActive||localFileTaskActive){render();return;}'),
+assert.ok(refresh.includes('if(trashPurgeTaskActive||vaultCompactTaskActive||localFileTaskActive){render();return;}'),
  'module refresh during upload must not enqueue database reads');
-assert.ok(render.includes('if(trashPurgeTaskActive||localFileTaskActive)')&&
+assert.ok(render.includes('if(trashPurgeTaskActive||vaultCompactTaskActive||localFileTaskActive)')&&
  render.includes('原件正在上传')&&render.includes('右下角可查看上传进度'),
  'the new workspace must display clear busy status without removing progress');
 assert.ok(app.includes('if(!active&&space&&token)void refreshWhenFileTaskIdle(space);'),
@@ -46,7 +46,7 @@ assert.ok(!business.includes('await refresh()')&&!general.includes('await refres
   businessFileRows:[4],trashRows:[5],archiveRows:{certificate:[6]},
   filterName:'keep',filterKind:'全部类型',filterState:'全部状态',
   selected:new Set([1]),certificateSelected:new Set([2]),
-  localFileTaskActive:true,trashPurgeTaskActive:false,
+  localFileTaskActive:true,trashPurgeTaskActive:false,vaultCompactTaskActive:false,
   api:{uploadProgress:{status:()=>({active:true,count:2,index:1})}},
   confirm:message=>{choices.push(message);return accept;},
   el:id=>{if(!dummyElements.has(id))dummyElements.set(id,{});return dummyElements.get(id);},
@@ -118,7 +118,7 @@ assert.ok(!business.includes('await refresh()')&&!general.includes('await refres
 
  let polls=0,reads=0;
  const waiting={
-  token:'session',space:'personal',localFileTaskActive:false,trashPurgeTaskActive:false,
+  token:'session',space:'personal',localFileTaskActive:false,trashPurgeTaskActive:false,vaultCompactTaskActive:false,
   api:async path=>{
    assert.equal(path,'/api/task');polls++;
    return {json:async()=>({active:polls===1})};
