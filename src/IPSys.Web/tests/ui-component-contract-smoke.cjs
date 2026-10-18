@@ -95,9 +95,20 @@ for(const [kind,source,preview,remove] of [
   'Different record attachment routes must have the same full interaction set: '+kind);
  assert.ok(output.includes('v2 ·')&&output.includes('v1 ·'),
   'Version metadata missing on '+kind);
+ assert.ok(output.includes('class="attachment-file-summary"')&&
+  /<strong[^>]*>&lt;test&gt;&amp;\.txt<\/strong><small[^>]*>/.test(output)&&
+  output.includes('1024 B · SHA-256 '+(kind==='general'?'0123456789abcdef…':'0123456789ab…')),
+  'Filename, file size and abbreviated SHA must share one inline summary: '+kind);
  assert.ok(output.includes('&lt;test&gt;&amp;.txt')&&!output.includes('<test>'),
   'User-uploaded attachment names must be escaped');
 }
+assert.ok(js.includes('function attachmentSectionTitle(title,count){')&&
+ js.includes("class=\"attachment-section-tip\"")&&
+ !js.includes("return '<p class=\"hint\">'+(['ip','project','contract','archive']")&&
+ css.includes('.attachment-file-summary{')&&
+ css.includes('.attachment-row-actions{')&&
+ css.includes('.attachment-row-actions>.attachment-more{'),
+ 'Shared attachment title and file-line layout must have a single reusable implementation');
 assert.ok(js.includes("attachmentFileGroup(g,'general')")&&
  js.includes('attachmentFileGroup(g,kind)')&&
  !js.includes('const fileLine=(f,showVersion')&&

@@ -24,7 +24,7 @@
 
 1. 页面渲染完成后依次执行 `compactBusinessListToolbar(content)`（公共菜单在此创建）、企业资质的 `foldUiExportButtons(certificateActions,'certificate')`、`decorateLedgerControls(content)`、`decorateAttachmentRows(content)`、`normalizeUiComponents(content)`、`syncAttachmentSelection()`。公共样式只根据 `ui-*` 标记和公共设计变量维护，不要求每页复制同一段样式。列表的标题、筛选与操作必须分别接入 `ui-toolbar-title`、`ui-toolbar-filters`、`ui-toolbar-actions`；企业资质与分类档案同样使用此契约，不通过私有 flex 宽度控制最终布局。
 2. 项目详情「所属合同」表格中的勾选、已选数量及批量删除统一写入带有 `data-ledger-actions` 的分区标题栏插槽，禁止依赖过去已被移除的 `.tabletools`。其它台账仍使用实际列表工具栏插槽。
-3. 所有真实记录附件必须调用 `attachmentFileGroup()` → `attachmentFileRow()`，业务范围由 `kind` 决定；综合资料与其它四类使用方共用文件名、图标、版本、勾选、预览、下载、移除的呈现。改变 `AttachmentPanel` 时检查五种记录，不能只修改项目。
+3. 所有真实记录附件必须调用 `attachmentFileGroup()` → `attachmentFileRow()`，业务范围由 `kind` 决定；综合资料与其它四类使用方共用文件名、图标、版本、勾选、预览、下载、移除的呈现。文件名、大小与 SHA 使用同一 `attachment-file-summary` 水平行（长文件名及摘要溢出省略），原长段提示压缩到 `attachmentSectionTitle()`；详情右侧操作由 `decorateAttachmentRows()` 统一为预览／下载／更多，更多与右键共同复用 `showAttachmentMenu()`，窄屏优先保留更多入口。改变 `AttachmentPanel` 时检查五种记录及历史版本，不能只修改项目。
 4. 附件历史以逻辑原件组为单位，不因上传多个版本而使“附件 n 份”增加；根分类和项目整体导出使用已冻结的业务规则。
 5. 公共弹窗只统一外壳和用户反馈；确认与服务端写操作仍必须调用既有接口，不得由样式组件假定成功或越过安全确认。
 
@@ -32,7 +32,7 @@
 
 1. **视觉与响应式**：统一修改 `style.css` 中 `--ui-*` 和 `.ui-*` 公共规则。`createUiListToolbar()` 是所有真实列表标题、筛选与操作三个槽位的唯一 DOM 组装函数，企业资质与 compact 台账只提供不同的业务内容。企业资质、项目、合同、知识产权、业务档案共用三槽位 `ui-list-toolbar`，业务语义列宽按场景单独配置。
 2. **导出菜单**：`foldUiExportButtons(actions,variant)` 是所有台账导出下拉结构唯一创建者，负责按钮收纳、触发器、菜单与可访问名称；`variant` 只兼容模块旧类名。单击菜单项、区域外和 Escape 都使用 `closeUiExportMenus`，不再由证书模块另写菜单。
-3. **附件**：`attachmentFileRow`、`attachmentFileGroup`、`attachmentHeaderActions` 分别是文件行、版本分组及详情操作栏的统一入口，五类真实记录必须复用。知识产权材料类别、档案复用选择及项目整体导出属于业务差异。
+3. **附件**：`attachmentFileRow`、`attachmentFileGroup`、`attachmentHeaderActions` 分别是文件行、版本分组及详情操作栏的统一入口，五类真实记录必须复用。文件名、大小、SHA 必须横向邻接，不允许在正常宽度下固定拆为上下两行；右侧按钮与“更多”菜单由同一 DOM 装饰函数生成，历史版本沿用同一文件行结构。知识产权材料类别、档案复用选择及项目整体导出属于业务差异。
 4. **表格**：项目、合同、知识产权、归档资料统一依靠 `decorateLedgerControls` 处理通用多选/序号/排序；企业资质八列台账暂由 `syncCompanyCertificateSelectionUi` 保持独立业务选择边界，公共外观使用 `.ui-data-table`。合并交互前需补齐行为等价回归。
 5. **卡片和弹窗**：卡片外观与键盘焦点统一，分类导航卡片与真实记录卡片分别保留不同跳转含义。弹窗使用公共外壳，业务输入和敏感操作确认独立配置。
 6. **回归**：修改共用组件时检查矩阵所有使用方，运行主 UI 冒烟与组件契约，再运行 Windows 全量 CI，最后在 Edge/Chrome 核对窄屏、缩放、长名称及菜单行为。Node 源码/DOM 检查不等同于真实视觉验收。

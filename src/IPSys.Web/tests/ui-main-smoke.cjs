@@ -1064,8 +1064,17 @@ vm.runInContext(preamble+
  '\nglobalThis.filesForTest.push({id:1,name:"test.pdf",category:"申请材料",groupId:"group-A",version:1,size:120,sha256:"0123456789abcdef"});'+
  '\nglobalThis.__history=businessAttachmentList("ip",1);'+
  '\nglobalThis.__projectAttachment=businessAttachmentList("project",1);',fileListCtx);
-assert.ok(!fileListCtx.__onlyVersion.includes('<small>v2'),'Single surviving revision must not show v2');
-assert.ok(fileListCtx.__history.includes('<small>v2'),'Two effective revisions must show version history');
+assert.ok(!fileListCtx.__onlyVersion.includes('>v2 · '),'Single surviving revision must not show v2');
+assert.ok(fileListCtx.__history.includes('>v2 · '),'Two effective revisions must show version history');
+for(const name of ['__onlyVersion','__history','__projectAttachment']){
+ const output=fileListCtx[name];
+ assert.ok(output.includes('class="attachment-file-summary"')&&
+  /<strong[^>]*>test\.pdf<\/strong><small[^>]*>/.test(output)&&
+  output.includes('0.1 KiB · SHA-256 0123456789ab…'),
+  'Common file row must place filename, size, SHA on a single horizontal summary: '+name);
+ assert.ok(!output.includes('<p class="hint">按内容摘要查重'),
+  'The long file instructions must not occupy a dedicated row: '+name);
+}
 
 // Trash bulk purge becomes red only when records are selected; no selection is inert.
 assert.ok(js.includes('data-action="trashPurgeSelected" disabled>永久删除</button>'),
@@ -1575,7 +1584,8 @@ assert.ok(js.includes('<col class="trash-col-check">')&&
 // Table-card attachment UI: operations remain wired to existing V2 handlers.
 for(const piece of ['function decorateAttachmentRows(content){',
  "group.querySelectorAll('.fileline')","commands.append(button)",
- "row.append(hint,commands)","decorateAttachmentRows(content);",
+ "row.append(actions,commands)","decorateAttachmentRows(content);",
+ "showAttachmentMenu(row,rect.right,rect.bottom+4,window.innerWidth<=740)",
  "el('content').addEventListener('contextmenu'",
  "row.querySelector('[data-preview-business],[data-preview-general]')?.click()",
  "showAttachmentMenu(row,event.clientX,event.clientY)","command?.click()"])
@@ -1599,7 +1609,7 @@ assert.ok(js.includes("const textFiles=['txt','md','csv','json','log','xml','yam
 const attachmentDecoratorSource=js.slice(js.indexOf('function decorateAttachmentRows('),
  js.indexOf('const attachmentContextMenu=',js.indexOf('function decorateAttachmentRows(')));
 assert.ok(attachmentDecoratorSource.length>100);
-const mkAttach=(tag)=>{const n={tag,children:[],attributes:{},classSet:new Set(),
+const mkAttach=(tag)=>{const n={tag,children:[],attributes:{},dataset:{},classSet:new Set(),
  classList:{add(c){n.classSet.add(c)}},setAttribute(k,v){n.attributes[k]=v},
  append(...cs){for(const c of cs){if(c.parent)c.parent.children.splice(c.parent.children.indexOf(c),1);c.parent=n;n.children.push(c)}},
  prepend(c){if(c.parent)c.parent.children.splice(c.parent.children.indexOf(c),1);c.parent=n;n.children.unshift(c)},
@@ -1621,10 +1631,25 @@ attachmentVm.decorate({querySelectorAll:q=>q==='.business-file-group'?[attachGro
 const fixtureControls=attachRowFixture.children.find(n=>n.className==='attachment-commands');
 assert.ok(attachRowFixture.classSet.has('attachment-row')&&attachRowFixture.tabIndex===0);
 assert.ok(attachRowFixture.children.some(n=>n.className==='attachment-select'&&n.children.includes(attachSelectionFixture)));
-assert.ok(fixtureControls?.hidden&&fixtureControls.children.length===5,
- 'All original file commands must be moved to hidden context actions');
+const fixtureActions=attachRowFixture.children.find(n=>n.className==='attachment-row-actions');
+assert.ok(fixtureActions?.children.length===3&&fixtureActions.children[0]===attachCmdFixture[0]&&
+ fixtureActions.children[1]===attachCmdFixture[1]&&
+ fixtureActions.children[2].dataset.attachmentMore==='1',
+ 'Preview and download are visible, and the More menu is independently clickable');
+assert.ok(fixtureControls?.hidden&&fixtureControls.children.length===3&&
+ fixtureControls.children.includes(attachCmdFixture[2]),
+ 'Remove, new-version and sharing actions must remain available in the context menu');
 assert.equal(attachGroupFixture.children.length,1,
- 'Inline buttons below the file line must disappear');
+ 'Auxiliary buttons below the file line must be moved into the shared row');
+
+assert.ok(js.includes("function showAttachmentMenu(row,x,y,includePrimary=true)")&&
+ js.includes("if(more){")&&
+ js.includes("row.querySelector('button['+attr+']')"),
+ 'Right-click and visible More button must use the same existing file commands');
+for(const style of ['.attachment-file-summary{','.attachment-row-actions{',
+ '.attachment-row-actions>.attachment-more{','.detailsectionhead .attachment-section-tip{',
+ '.attachment-row-actions>.btn:not(.attachment-more){display:none}'])
+ assert.ok(css.includes(style),'Missing shared compact attachment layout: '+style);
 
 // Unified real attachment section: no record type should retain nested
 // upload, duplicate count or bottom export bars.

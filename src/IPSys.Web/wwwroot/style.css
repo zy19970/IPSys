@@ -557,9 +557,9 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
  margin:9px 0;overflow:visible;
 }
 .business-file-group .attachment-row{
- display:grid;grid-template-columns:20px 36px minmax(0,1fr) 72px;
- align-items:center;column-gap:12px;min-height:64px;
- padding:10px 14px;border:0;border-radius:8px;
+ display:grid;grid-template-columns:20px 36px minmax(0,1fr) auto;
+ align-items:center;column-gap:12px;min-height:60px;
+ padding:9px 14px;border:0;border-radius:8px;
  cursor:pointer;transition:background-color .12s,box-shadow .12s;
 }
 .business-file-group .attachment-row:hover{background:#f4f9fa}
@@ -570,9 +570,21 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 .attachment-select .export-check{gap:0;font-size:0;line-height:1}
 .attachment-select .export-filecheck{width:16px;height:16px;margin:0;cursor:pointer;accent-color:var(--primary)}
 .attachment-row .fileicon{width:36px;height:38px}
-.attachment-row .filedesc strong{font-size:14px;line-height:1.5;font-weight:650}
-.attachment-row .filedesc small{font-size:12px;line-height:1.5}
-.attachment-row-hint{font-size:11px;color:#8395a2;text-align:right;white-space:nowrap;user-select:none}
+/* Filename, size and SHA stay together, with long values truncated gracefully. */
+.attachment-file-summary{display:flex;align-items:baseline;gap:12px;min-width:0;max-width:100%;white-space:nowrap}
+.attachment-row .filedesc{min-width:0;overflow:hidden}
+.attachment-row .filedesc strong{
+ display:block;flex:0 1 auto;min-width:0;max-width:60%;overflow:hidden;
+ white-space:nowrap;text-overflow:ellipsis;font-size:14px;line-height:1.5;font-weight:650
+}
+.attachment-row .filedesc small{
+ display:block;flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;
+ white-space:nowrap;font-size:12px;line-height:1.5;color:#8093a5
+}
+.attachment-row-actions{display:flex;align-items:center;gap:8px;justify-content:flex-end;white-space:nowrap}
+.attachment-row-actions>.btn{min-height:34px;padding:5px 11px}
+.attachment-row-actions>.attachment-more{min-width:34px;padding:5px 8px;font-size:18px;line-height:1;letter-spacing:1px}
+.attachment-row-actions>.attachment-more:hover,.attachment-row-actions>.attachment-more:focus-visible{border-color:var(--primary)}
 .attachment-history{border-top:1px solid #e7edf1;padding:0 10px 9px}
 .attachment-history>summary{
  cursor:pointer;user-select:none;color:#5f7685;font-size:12px;
@@ -601,13 +613,22 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
  white-space:pre-wrap;overflow-wrap:anywhere;tab-size:4;
 }
 @media(max-width:740px){
- .business-file-group .attachment-row{grid-template-columns:18px 32px minmax(0,1fr);column-gap:8px;padding:9px}
- .attachment-row-hint{display:none}
+ .business-file-group .attachment-row{grid-template-columns:18px 32px minmax(0,1fr) auto;column-gap:8px;padding:8px}
+ .attachment-row .fileicon{width:32px;height:34px}
+ .attachment-file-summary{gap:6px}
  .attachment-row .filedesc strong{font-size:13px}
+ .attachment-row .filedesc small{font-size:11px}
+ /* On narrow screens preview remains available by row click, download via More. */
+ .attachment-row-actions>.btn:not(.attachment-more){display:none}
+ .attachment-row-actions{gap:0}
 }
 
 /* Project detail: each section has one heading/toolbar, never two stacked bars. */
 .detailsectionhead .detailsection-count{font-size:12px;font-weight:500;color:var(--muted);white-space:nowrap;margin-left:6px}
+.detailsectionhead .attachment-section-tip{
+ margin-left:12px;color:#8798a7;font-size:12px;font-weight:400;
+ line-height:1.5;white-space:normal
+}
 .attachment-header-actions{display:flex;gap:9px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
 .attachment-header-actions .attachment-select-all{font-size:13px;color:#526879;cursor:pointer;gap:6px}
 .attachment-header-actions .attachment-select-all input{width:16px;height:16px;accent-color:var(--primary);cursor:pointer}

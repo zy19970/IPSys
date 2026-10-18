@@ -490,7 +490,6 @@ function realDetail(){
   infoRow('已归档原件',groups.size+' 份')+'</div>')+
  section(attachmentSectionTitle('附件资料',groups.size),
   '<input type="file" id="uploadInput" multiple hidden>'+
-  '<p class="hint">支持更新指定同名原件或单独归档新原件，保留可展开的历史版本。单文件上限 8 GiB。</p>'+
   ([...groups.values()].map(g=>attachmentFileGroup(g,'general')).join('')||
    '<div class="empty">暂无附件，点击“上传附件”开始归档。</div>'),
   attachmentHeaderActions('general'))+
@@ -841,7 +840,8 @@ function exportCheck(file,source='v2file',latest=false){
 }
 // Every real record uses this common attachment heading instead of a nested toolbar.
 function attachmentSectionTitle(title,count){
- return escapeHtml(title)+' <span class="detailsection-count">'+count+' 份</span>';
+ return escapeHtml(title)+' <span class="detailsection-count">'+count+' 份</span>'+
+  '<span class="attachment-section-tip">支持历史版本 · 单文件上限 8 GiB</span>';
 }
 function attachmentHeaderActions(kind){
  const category=kind==='ip'?'<label class="attachment-category-picker" for="businessMaterialCategory">材料类别</label>'+
@@ -935,12 +935,17 @@ function attachmentFileRow(f,kind,showVersion=false,latest=false){
  const preview=general?'data-preview-general':'data-preview-business';
  const downloadAttr=general?'data-download':'data-business-download';
  const remove=general?'data-general-file-delete':'data-business-delete';
+ const name=escapeHtml(f.name);
+ const sha=String(f.sha256||'');
+ const metadata=(showVersion?'v'+f.version+' · ':'')+
+  (!general&&f.category?escapeHtml(f.category)+' · ':'')+
+  fmtSize(f.size)+' · SHA-256 '+escapeHtml(sha.slice(0,general?16:12))+(sha.length>(general?16:12)?'…':'');
  return '<div class="fileline"><span class="fileicon">'+
   escapeHtml(f.name.split('.').pop().slice(0,4).toUpperCase())+'</span>'+
-  '<span class="filedesc"><strong>'+escapeHtml(f.name)+'</strong><small>'+
-  (showVersion?'v'+f.version+' · ':'')+
-  (!general&&f.category?escapeHtml(f.category)+' · ':'')+
-  fmtSize(f.size)+' · SHA-256 '+escapeHtml(f.sha256.slice(0,general?16:12))+'…</small></span>'+
+  '<span class="filedesc"><span class="attachment-file-summary">'+
+  '<strong title="'+name+'">'+name+'</strong>'+
+  '<small title="'+escapeHtml(metadata)+'">'+metadata+'</small>'+
+  '</span></span>'+
   exportCheck(f,source,latest)+
   '<button class="btn btn-sm" '+preview+'="'+f.id+'">预览</button>'+
   '<button class="btn btn-sm" '+downloadAttr+'="'+f.id+'">'+(general?'下载原件':'下载')+'</button>'+
@@ -966,8 +971,7 @@ function businessAttachmentList(kind,ownerId,section=''){
   if(!groups.has(key))groups.set(key,[]);
   groups.get(key).push(f);
  }
- return '<p class="hint">'+(['ip','project','contract','archive'].includes(kind)?'按内容摘要查重：无重复自动独立保存；发现相同内容时再选择共享、复用或独立保存。支持文件历史版本。':'同名原件可选择更新已有版本链，或作为独立新文件归档；同工作区共享引用自动显示新版本。')+' 单文件上限 8 GiB。</p>'+
- ([...groups.values()].map(g=>attachmentFileGroup(g,kind)).join('')||
+ return ([...groups.values()].map(g=>attachmentFileGroup(g,kind)).join('')||
  '<p class="hint">暂无附件，可上传原始文件。</p>');
 }
 async function uploadBusinessAttachment(file,meta,workspace){
@@ -2249,16 +2253,24 @@ function decorateAttachmentRows(content){
    const choice=row.querySelector(':scope > .export-check');
    if(choice)select.append(choice);
    row.prepend(select);
+   const actions=document.createElement('span');actions.className='attachment-row-actions';
    const commands=document.createElement('span');commands.className='attachment-commands';commands.hidden=true;
    for(const button of [...row.children]){
-    if(button.matches('button[data-preview-business],button[data-preview-general],button[data-business-download],button[data-download],button[data-business-delete],button[data-general-file-delete]'))commands.append(button);
+    if(button.matches('button[data-preview-business],button[data-preview-general],button[data-business-download],button[data-download]'))
+     actions.append(button);
+    else if(button.matches('button[data-business-delete],button[data-general-file-delete]'))
+     commands.append(button);
    }
    if(row===current)for(const button of [...group.children]){
     if(button.matches('button[data-v2-ip-version],button[data-business-associate]'))commands.append(button);
    }
-   const hint=document.createElement('span');hint.className='attachment-row-hint';
-   hint.textContent='右键操作';hint.setAttribute('aria-hidden','true');
-   row.append(hint,commands);
+   const more=document.createElement('button');more.type='button';
+   more.className='btn btn-sm attachment-more';
+   more.dataset.attachmentMore='1';more.textContent='···';
+   more.setAttribute('aria-label','更多附件操作');
+   more.setAttribute('aria-haspopup','menu');
+   actions.append(more);
+   row.append(actions,commands);
   }
   group.querySelector('details')?.classList.add('attachment-history');
  }
@@ -2281,9 +2293,11 @@ function closeAttachmentMenu(){
  attachmentContextMenu.replaceChildren();
  attachmentMenuRow=null;
 }
-function showAttachmentMenu(row,x,y){
+function showAttachmentMenu(row,x,y,includePrimary=true){
  closeAttachmentMenu();
- const commands=attachmentMenuActions.filter(([attr])=>row.querySelector('button['+attr+']'));
+ const commands=attachmentMenuActions.filter(([attr])=>
+  (includePrimary||!['data-preview-business','data-preview-general','data-business-download','data-download'].includes(attr))&&
+  row.querySelector('button['+attr+']'));
  if(!commands.length)return;
  attachmentMenuRow=row;
  for(const [attr,caption] of commands){
@@ -2379,6 +2393,12 @@ el('content').addEventListener('click',async ev=>{
   if(recordCard.hasAttribute('data-live-card'))
    openLiveRecord(Number(recordCard.dataset.liveCard));
   else openMockRecord(page,Number(recordCard.dataset.mockCard));
+  return;
+ }
+ const more=ev.target.closest('[data-attachment-more]');
+ if(more){
+  const row=more.closest('.attachment-row'),rect=more.getBoundingClientRect();
+  if(row)showAttachmentMenu(row,rect.right,rect.bottom+4,window.innerWidth<=740);
   return;
  }
  const attachmentRow=ev.target.closest('.attachment-row');
