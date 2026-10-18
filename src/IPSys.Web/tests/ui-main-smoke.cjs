@@ -847,7 +847,8 @@ assert.ok(realArchiveCtx.__certAll.includes('data-action="certificateBatchDelete
 assert.ok(realArchiveCtx.__certAll.includes('certificate-toolbar-title')&&
  realArchiveCtx.__certAll.includes('certificate-toolbar-filter')&&
  realArchiveCtx.__certAll.includes('certificate-toolbar-actions')&&
- js.includes("toolbar.className='compact-ledger-toolbar'")&&
+ js.includes("const toolbar=createUiListToolbar(titleGroup,filters,actions)")&&
+ js.includes("bar.className=(variant==='certificate'?'certificate-toolbar':'compact-ledger-toolbar')+' ui-list-toolbar'")&&
  js.includes("titleGroup.className='compact-ledger-title'")&&
  js.includes("filters.className='compact-ledger-filters'")&&
  js.includes("actions.className='compact-ledger-actions'"),
