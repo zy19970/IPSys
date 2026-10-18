@@ -718,9 +718,9 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
 }
 .ui-list-toolbar > .ui-toolbar-filters{
  grid-column:2;grid-row:1;
- display:flex;align-items:center;justify-content:flex-start;
- flex:initial;order:0;justify-self:stretch;
- min-width:0;width:100%;max-width:none;
+ display:flex;align-items:center;justify-content:center;
+ flex:initial;order:0;justify-self:center;
+ min-width:0;width:100%;max-width:960px;
  margin:0;gap:9px;flex-wrap:nowrap;
 }
 .ui-list-toolbar > .ui-toolbar-actions{
@@ -740,8 +740,8 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
  .ui-list-toolbar > .ui-toolbar-actions{grid-column:2;grid-row:1}
  .ui-list-toolbar > .ui-toolbar-filters{
   grid-column:1/-1;grid-row:2;
-  order:0;flex:initial;justify-self:stretch;
-  min-width:0;max-width:none;width:100%;margin:0;flex-wrap:wrap;
+  order:0;flex:initial;justify-self:center;justify-content:center;
+  min-width:0;max-width:960px;width:100%;margin:0;flex-wrap:wrap;
  }
 }
 @media(max-width:860px){

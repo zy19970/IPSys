@@ -106,6 +106,23 @@ assert.ok(css.includes('@media(max-width:1440px){')&&
  css.includes('@media(max-width:860px){')&&
  css.includes('grid-column:1;grid-row:3;'),
  'Shared header must wrap predictably on medium and narrow viewports');
+
+/* The shared filter cluster stays horizontally centered, whether on the first
+   grid row or on its own second row. This must cover all list consumers. */
+const toolbarFilterRules=[...css.replace(/\r/g,'').matchAll(/\.ui-list-toolbar > \.ui-toolbar-filters\s*\{([^}]+)\}/g)];
+assert.equal(toolbarFilterRules.length,3,
+ 'Shared toolbar must keep the default, two-row and narrow viewport filter rules');
+const centerRules=toolbarFilterRules.slice(0,2).map(match=>match[1]);
+for(const [index,rule] of centerRules.entries()){
+ assert.ok(rule.includes('justify-self:center')&&
+  rule.includes('justify-content:center')&&
+  rule.includes('max-width:960px'),
+  'The common list filter group must center as a unit, in row '+(index+1));
+}
+assert.ok(toolbarFilterRules[0][1].includes('grid-column:2;grid-row:1;')&&
+ toolbarFilterRules[1][1].includes('grid-column:1/-1;grid-row:2;')&&
+ toolbarFilterRules[2][1].includes('grid-column:1;grid-row:2;'),
+ 'Centered list filters must retain their approved responsive grid positions');
 for(const [kind,call] of [
  ['project',"attachmentHeaderActions('project')"],
  ['contract',"attachmentHeaderActions('contract')"],
