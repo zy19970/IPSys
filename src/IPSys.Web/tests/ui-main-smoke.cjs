@@ -1218,14 +1218,18 @@ for(const rule of [
 ])assert.ok(css.includes(rule),'Project register compact column sizing missing: '+rule);
 assert.ok(!css.includes('.data.ledger-record-table.ledger-project-table th:nth-child(4){width:'),
  'Project title must receive the remaining available width instead of a fixed narrow track');
-// Narrow the sparse IP status, right-holder and attachment columns; give name a wider track.
+// The IP register must give right-holder names some of the space formerly
+// left unused after the short application/registration date.
 for(const token of [
  '.data.ledger-record-table.ledger-ip-table th:nth-child(3){width:30%}',
  '.data.ledger-record-table.ledger-ip-table th:nth-child(6){width:92px}',
- '.data.ledger-record-table.ledger-ip-table th:nth-child(7){width:128px}',
+ '.data.ledger-record-table.ledger-ip-table th:nth-child(7){width:240px}',
+ '.data.ledger-record-table.ledger-ip-table th:nth-child(8){width:150px}',
  '.data.ledger-record-table.ledger-ip-table th:nth-child(9){width:76px}',
+ '.data.ledger-record-table.ledger-ip-table th:nth-child(7){width:180px}',
+ '.data.ledger-record-table.ledger-ip-table th:nth-child(8){width:132px}',
  '@media(max-width:1400px)', '.data.ledger-record-table.ledger-ip-table{min-width:1060px}'
-])assert.ok(css.includes(token),'Missing IP ledger width allocation: '+token);
+])assert.ok(css.includes(token),'Missing IP register holder/date width allocation: '+token);
 // All business ledgers should show their final controls without horizontal overflow on desktop.
 assert.ok(css.includes('.data.ledger-record-table{width:100%;min-width:0;table-layout:fixed;white-space:normal}'),
  'Record tables should fill the desktop pane rather than reserve a rigid 850px width');
