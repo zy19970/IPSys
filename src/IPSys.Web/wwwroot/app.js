@@ -492,8 +492,7 @@ function realDetail(){
   '<input type="file" id="uploadInput" multiple hidden>'+
   ([...groups.values()].map(g=>attachmentFileGroup(g,'general')).join('')||
    '<div class="empty">暂无附件，点击“上传附件”开始归档。</div>'),
-  attachmentHeaderActions('general'))+
- section('关联资料','<div class="empty">跨业务记录关联将在后续统一实现</div>',stamp());
+  attachmentHeaderActions('general'));
 }
 function columns(k){
  if(k==='ip')return [['name','名称'],['type','知识产权类型'],['code','申请/登记号'],['status','状态'],['owner','当前权利人'],['date','申请/登记日期'],['files','附件']];
@@ -846,8 +845,7 @@ function attachmentSectionTitle(title,count){
 function attachmentHeaderActions(kind){
  const category=kind==='ip'?'<label class="attachment-category-picker" for="businessMaterialCategory">材料类别</label>'+
   '<select id="businessMaterialCategory">'+['申请材料','通知文件','证书文件','其他材料'].map(x=>'<option>'+x+'</option>').join('')+'</select>':'';
- const reuse=kind==='archive'?'<label class="file-dedup-choice"><input type="checkbox" id="businessReuseExisting"> 同内容复用存储</label>':'';
- return '<div class="attachment-header-actions">'+category+reuse+
+ return '<div class="attachment-header-actions">'+category+
   '<label class="export-check attachment-select-all"><input type="checkbox" class="export-checkall" id="attachmentSelectAll"> 全选</label>'+
   '<span class="attachment-selected" id="attachmentSelectedCount">已选 0 份</span>'+
   '<button type="button" class="btn" data-action="exportFolder" id="attachmentExportFolder" disabled>导出已选文件夹</button>'+
@@ -1010,9 +1008,9 @@ async function previewOriginal(file,url){
  const images=['png','jpg','jpeg','gif','webp','bmp'];
  const textFiles=['txt','md','csv','json','log','xml','yaml','yml','ini'];
  if(extension!=='pdf'&&!images.includes(extension)&&!textFiles.includes(extension))
-  return notice('该格式暂不支持网页预览，请右键选择“下载”打开原件。',true);
+  return notice('该格式暂不支持网页预览，请使用附件行的“下载”操作打开原件。',true);
  if(textFiles.includes(extension)&&file.size>2*1024*1024)
-  return notice('超过 2 MiB 的文本原件请右键下载后查看。',true);
+  return notice('超过 2 MiB 的文本原件请下载后查看。',true);
  try{
   const response=await api(url);
   if(serial!==previewSerial)return;
@@ -1769,8 +1767,7 @@ function searchPage(){
  return out;
 }
 function settingsPage(){return heading('系统设置','数据库管理与已确认的维护操作','<button class="btn" data-nav="trash">查看回收站</button>')+
- `<section class="white detailsection"><div class="detailsectionhead"><h2>当前加密数据库</h2></div><div class="detailbody"><div class="minirow"><span>数据库文件</span><strong>${escapeHtml(dbName)}</strong></div><div class="minirow"><span>加密状态</span><span class="realflag">SQLCipher 已启用</span></div><div class="minirow"><span>数据库完整性检查</span><button class="btn" data-action="check">立即检查</button></div><div id="checkResult" class="hint"></div><div class="minirow"><span>本机 Codex MCP</span><span class="actions"><span class="hint">${mcpEnabled?'已开启':'默认关闭'}</span><button class="btn" data-action="mcpToggle">${mcpEnabled?'关闭 MCP':'开启 MCP'}</button></span></div><p class="hint">仅允许当前 Windows 用户通过本机 Codex MCP 操作已解锁的数据库；关库或退出自动失效。开启后 Codex 可新增项目、合同及原件。</p><div class="minirow"><span>关闭当前数据库</span><button class="btn" data-action="lock">关闭数据库</button></div></div></section>`+
- section('尚未接入的设置项','<div class="minirow"><span>修改数据库密码</span>'+stamp()+'</div><div class="minirow"><span>记录类别与标签</span>'+stamp()+'</div><p class="hint">手动备份需安全退出程序后在 Windows 资源管理器复制加密库。</p>');}
+ `<section class="white detailsection"><div class="detailsectionhead"><h2>当前加密数据库</h2></div><div class="detailbody"><div class="minirow"><span>数据库文件</span><strong>${escapeHtml(dbName)}</strong></div><div class="minirow"><span>加密状态</span><span class="realflag">SQLCipher 已启用</span></div><div class="minirow"><span>数据库完整性检查</span><button class="btn" data-action="check">立即检查</button></div><div id="checkResult" class="hint"></div><div class="minirow"><span>本机 Codex MCP</span><span class="actions"><span class="hint">${mcpEnabled?'已开启':'默认关闭'}</span><button class="btn" data-action="mcpToggle">${mcpEnabled?'关闭 MCP':'开启 MCP'}</button></span></div><p class="hint">仅允许当前 Windows 用户通过本机 Codex MCP 操作已解锁的数据库；关库或退出自动失效。开启后 Codex 可新增项目、合同及原件。</p><div class="minirow"><span>关闭当前数据库</span><button class="btn" data-action="lock">关闭数据库</button></div><p class="hint">手动备份需安全退出程序后在 Windows 资源管理器复制加密库。</p></div></section>`;}
 function trashPage(){
  const names={project:'项目',contract:'合同',ip:'知识产权',archive:space==='company'?'资质与业务档案':'证件与成果',file:'业务附件',general:'综合资料',general_file:'综合资料附件',v2_file:'文件关联',v2_ip_file:'知识产权原件关联'};
  return heading('回收站','当前工作区的真实已删除记录与附件',
@@ -2598,8 +2595,7 @@ el('content').addEventListener('click',async ev=>{
    pendingBusinessUpload={
     kind:detail.kind,ownerId:detail.id,
     section:detail.kind==='archive'?page:'',
-    category:detail.kind==='ip'?(el('businessMaterialCategory')?.value||'其他材料'):'',
-    duplicateMode:el('businessReuseExisting')?.checked?'reuse':'independent'
+    category:detail.kind==='ip'?(el('businessMaterialCategory')?.value||'其他材料'):''
    };
    const chooser=el('businessFileInput');chooser.value='';chooser.click();
    break;
@@ -2974,7 +2970,7 @@ el('archiveForm').onsubmit=async event=>{
    try{
     await uploadBusinessAttachment(attachment,{
      kind:'archive',ownerId:recordId,section:'certificate',
-     category:'',mode:'new',duplicateMode:'independent'
+     category:''
     },workspace);
    }catch(error){attachmentError=error.message;}
   }

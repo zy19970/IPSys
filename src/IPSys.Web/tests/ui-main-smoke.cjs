@@ -1581,6 +1581,20 @@ assert.ok(js.includes('<col class="trash-col-check">')&&
  'Trash keeps predictable width for selection and permanent-delete controls');
 
 
+// Production record and settings pages should not show controls with no backend action.
+const realDetailCode=js.slice(js.indexOf('function realDetail(){'),js.indexOf('function columns(k){'));
+const settingsCode=js.slice(js.indexOf('function settingsPage(){'),js.indexOf('function trashPage(){'));
+assert.ok(!realDetailCode.includes('跨业务记录关联将在后续统一实现')&&
+ !settingsCode.includes('尚未接入的设置项')&&
+ !settingsCode.includes('修改数据库密码')&&
+ settingsCode.includes('手动备份需安全退出程序')&&
+ settingsCode.includes('data-action="check"')&&
+ settingsCode.includes('data-action="mcpToggle"'),
+ 'Real UI should hide unsupported placeholders but retain working settings and backup guidance');
+assert.ok(js.includes('请使用附件行的“下载”操作打开原件。')&&
+ !js.includes('请右键选择“下载”打开原件。'),
+ 'Attachment preview guidance must match the inline download action');
+
 // Table-card attachment UI: operations remain wired to existing V2 handlers.
 for(const piece of ['function decorateAttachmentRows(content){',
  "group.querySelectorAll('.fileline')","commands.append(button)",
@@ -1702,9 +1716,25 @@ for(const selector of ['.attachment-header-actions{','.attachment-header-actions
    markup.includes('id="attachmentExportZip"')&&
    markup.includes('data-action="'+(kind==='general'?'upload':'businessUpload')+'"'),
    'Shared toolbar selection/upload/export missing for '+kind);
-  if(kind==='ip')assert.ok(markup.includes('id="businessMaterialCategory"'));
-  if(kind==='archive')assert.ok(markup.includes('id="businessReuseExisting"'));
+  if(kind==='ip')assert.ok(markup.includes('id="businessMaterialCategory"'),
+   'Only knowledge-property uploads need material classification');
+  else assert.ok(!markup.includes('id="businessMaterialCategory"'),
+   'Material category should not leak into unrelated records: '+kind);
+  assert.ok(!markup.includes('businessReuseExisting')&&
+   !markup.includes('同内容复用存储'),
+   'No attachment header should expose the obsolete duplicate-storage checkbox: '+kind);
  }
+ // V2 prepare/resolve makes duplicate decisions only after identifying content.
+ assert.ok(!js.includes('businessReuseExisting')&&
+  !js.includes('duplicateMode:')&&
+  !css.includes('.file-dedup-choice')&&
+  v2IpJs.includes('const matches=prepared.matches||[];')&&
+  v2IpJs.includes('choice=await selectMatch(file,matches,api.uploadProgress.signal());')&&
+  v2IpJs.includes('choice={choice:"independent"};'),
+  'Remove obsolete pre-upload reuse mode without weakening conditional duplicate resolution');
+ assert.ok(js.includes("category:detail.kind==='ip'?(el('businessMaterialCategory')?.value||'其他材料'):''"),
+  'Keep IP-only attachment material category intact');
+
  context.updateHeader();
  assert.ok(folder.disabled&&zip.disabled&&!select.checked&&count.textContent==='已选 0 份');
  current.checked=true;context.updateHeader();

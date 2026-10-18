@@ -154,10 +154,15 @@ for(const [kind,call] of [
 ]){
  assert.ok(js.includes(call),'Detail attachment header coverage: '+kind);
 }
-assert.ok(js.includes("section('基本信息','<div class=\"infogrid\">'")&&
- js.includes("section('关联资料'")&&
- js.includes("infoRow('所属工作区'"),
- 'General detail must use the same section/info primitives as business details');
+const realGeneralDetail=js.slice(js.indexOf('function realDetail(){'),js.indexOf('function columns(k){'));
+assert.ok(realGeneralDetail.includes("section('基本信息','<div class=\"infogrid\">'")&&
+ realGeneralDetail.includes("infoRow('所属工作区'")&&
+ realGeneralDetail.includes("attachmentHeaderActions('general')")&&
+ !realGeneralDetail.includes("section('关联资料'"),
+ 'Real general detail must keep its shared info/attachment panels without a dead associated-records panel');
+assert.ok(!js.includes('businessReuseExisting')&&!js.includes('duplicateMode:')&&
+ !css.includes('.file-dedup-choice'),
+ 'Do not reintroduce obsolete duplicate storage switches alongside automatic content checking');
 
 assert.ok(js.includes('data-ledger-actions')&&
  js.includes("table.closest('.detailsection')?.querySelector('[data-ledger-actions]')")&&

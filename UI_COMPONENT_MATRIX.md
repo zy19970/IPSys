@@ -13,7 +13,7 @@
 | 列表工具栏（ListToolbar） | `createUiListToolbar()` 生成三槽位公共 DOM 外壳；`compactBusinessListToolbar()` 仅整理旧列表节点，`normalizeUiComponents()` 将企业资质原始节点挂载到同一外壳；所有 `.compact-ledger-toolbar` 与 `.certificate-toolbar` 都注册 `ui-list-toolbar`，子节点统一为 `ui-toolbar-title`／`ui-toolbar-filters`／`ui-toolbar-actions`，在 `style.css` 由一套三栏网格和 1440px／860px 响应式规则控制 | 公司项目、合同、知识产权、各个人台账、公司业务档案、企业资质、综合资料列表 | 企业资质筛选字段、档案层级、项目类型/状态和导出功能可以不同；宽屏标题/搜索/操作同行，中间查询与筛选控件作为一组居中；窄屏进入第二排后，筛选组以共用最大宽度 960px 居于整个标题栏中央，小屏统一按槽位依次换行，不能让某一页用独立 `flex-basis` 推挤空白 | `ui-main-smoke.cjs` 与 `ui-component-contract-smoke.cjs` 检查三个共用槽位及响应式规则；Edge/Chrome 实际视觉比较 |
 | 数据表格（DataTable） | `decorateLedgerControls()`、`ledgerScope()`、`syncLedgerSelection()`、`ui-data-table`、`ui-table-viewport` | 公司项目、合同总表及项目内合同、知识产权、公司业务档案混排、个人多记录台账、企业资质、回收站 | 企业资质专用多选与审批字段、回收站永久删除、档案目录／记录混排不应强行改成普通记录 | UI DOM 控件测试、数据库持久排序检查、列宽与横向滚动检查 |
 | 详情标题与基本信息（DetailHeader / InfoGrid） | `heading()`、`section()`、`infoRow()`、`ui-section-header`、`ui-info-grid` | 项目、合同、知识产权、业务档案、综合资料、个人记录 | 字段及区块数量按业务字典；合同须有所属项目；项目可显示状态和负责人 | 基本信息 HTML、返回入口、字段展示与响应式检查 |
-| 附件（AttachmentPanel / FileRow） | `attachmentSectionTitle()`、`attachmentHeaderActions()`、`attachmentFileRow()`、`attachmentFileGroup()`、`businessAttachmentList()`、`decorateAttachmentRows()`、`syncAttachmentSelection()` | **项目、合同、知识产权、归档资料、综合资料五类均必须覆盖** | IP 才有材料类别；归档资料保留字节复用选项；综合资料用独立上传入口；文件版本、共享／移除权限与业务归属不能改变 | 五种记录都渲染真实文件行、历史版本、多选、右键、预览；不能重复出现内外两套工具栏 |
+| 附件（AttachmentPanel / FileRow） | `attachmentSectionTitle()`、`attachmentHeaderActions()`、`attachmentFileRow()`、`attachmentFileGroup()`、`businessAttachmentList()`、`decorateAttachmentRows()`、`syncAttachmentSelection()` | **项目、合同、知识产权、归档资料、综合资料五类均必须覆盖** | 仅知识产权需要材料类别；五类附件统一按 SHA 内容查重，无重复直接独立保存、有重复再弹窗选择共享、复用内容或独立保存，不再提供上传前复用复选框；综合资料使用独立上传入口；文件版本、共享／移除权限与业务归属不变 | 五种记录都渲染真实文件行、历史版本、多选、右键、预览；不能重复出现内外两套工具栏 |
 | 分类／导航卡片（NavigationCard） | `archiveCard()`、`realArchiveCategoryCard()`、`dashboard()` 及 `ui-navigation-card` | 工作台、个人资料分类、公司业务档案根分类、个人其他资料和公司综合资料真实记录卡片 | 分类根卡片进入台账或目录；一般资料真实卡片整卡单击与 Enter／空格均打开详情，保留内部“查看详情”按钮且避免重复触发；分类根卡片不配置下载／多选 | UI 主冒烟及组件契约必须同时覆盖个人和公司真实卡片、整卡点击／键盘、按钮独立操作；窄屏卡片布局 |
 | 多选／排序（Selection / Ordering） | `syncLedgerSelection()`、`syncCompanyCertificateSelectionUi()`、`syncAttachmentSelection()`、公共 `ui-selection-count` | 项目、合同、知识产权、企业资质、归档资料、附件及回收站 | 选中范围依业务语义；附件全选默认只含最新版、历史版本可单选；档案目录混排和回收站永久删除单独处理 | 选中／取消／全选／半选、禁用和持久排序，跨页相互不干扰 |
 | 导出（ExportMenu） | `quickExportButtons()` 提供业务动作，`certificateExportMenu()` 提供企业资质动作；所有列表下拉菜单由 `foldUiExportButtons()` 统一生成、`closeUiExportMenus()` 统一关闭，视觉源为 `style.css .ui-export-menu/.ui-export-options` | 项目、合同、知识产权、企业资质、档案、综合资料及附件栏 | 项目顶部导出包含合同附件；附件区仅导出已选；Excel 不带原件；空附件不得误报完成 | `export-smoke.cjs`，导出动作路由／原件数量及 ZIP 结构 |
@@ -32,10 +32,17 @@
 
 1. **视觉与响应式**：统一修改 `style.css` 中 `--ui-*` 和 `.ui-*` 公共规则。`createUiListToolbar()` 是所有真实列表标题、筛选与操作三个槽位的唯一 DOM 组装函数，企业资质与 compact 台账只提供不同的业务内容。企业资质、项目、合同、知识产权、业务档案共用三槽位 `ui-list-toolbar`，业务语义列宽按场景单独配置。
 2. **导出菜单**：`foldUiExportButtons(actions,variant)` 是所有台账导出下拉结构唯一创建者，负责按钮收纳、触发器、菜单与可访问名称；`variant` 只兼容模块旧类名。单击菜单项、区域外和 Escape 都使用 `closeUiExportMenus`，不再由证书模块另写菜单。
-3. **附件**：`attachmentFileRow`、`attachmentFileGroup`、`attachmentHeaderActions` 分别是文件行、版本分组及详情操作栏的统一入口，五类真实记录必须复用。文件名、大小、SHA 必须横向邻接，不允许在正常宽度下固定拆为上下两行；右侧按钮与“更多”菜单由同一 DOM 装饰函数生成，历史版本沿用同一文件行结构。知识产权材料类别、档案复用选择及项目整体导出属于业务差异。
+3. **附件**：`attachmentFileRow`、`attachmentFileGroup`、`attachmentHeaderActions` 分别是文件行、版本分组及详情操作栏的统一入口，五类真实记录必须复用。文件名、大小、SHA 必须横向邻接，不允许在正常宽度下固定拆为上下两行；右侧按钮与“更多”菜单由同一 DOM 装饰函数生成，历史版本沿用同一文件行结构。知识产权材料类别及项目整体导出属于业务差异，内容复用由重复检测弹窗统一决定。
 4. **表格**：项目、合同、知识产权、归档资料统一依靠 `decorateLedgerControls` 处理通用多选/序号/排序；企业资质八列台账暂由 `syncCompanyCertificateSelectionUi` 保持独立业务选择边界，公共外观使用 `.ui-data-table`。合并交互前需补齐行为等价回归。
 5. **卡片和弹窗**：卡片外观与键盘焦点统一，分类导航卡片与真实记录卡片分别保留不同跳转含义。弹窗使用公共外壳，业务输入和敏感操作确认独立配置。
 6. **回归**：修改共用组件时检查矩阵所有使用方，运行主 UI 冒烟与组件契约，再运行 Windows 全量 CI，最后在 Edge/Chrome 核对窄屏、缩放、长名称及菜单行为。Node 源码/DOM 检查不等同于真实视觉验收。
+
+## 旧式界面入口审查（2026-10-18）
+
+- 附件上传去重：移除仅归档资料显示的“同内容复用存储”复选框及未被 V2 上传器消费的 `duplicateMode` 参数。统一由 `ip-v2.js` 在准备上传并计算摘要后判断，内容唯一时自动独立保存，检测到相同内容时再提供共享文件、仅复用字节、独立保存、取消选项。IP 材料类别仍真实参与上传请求并保留。
+- 过时提示：不再指引用户必须通过右键下载；文件行有可见下载快捷按钮，窄屏从“更多”进入。右键菜单仍保留。
+- 仅示意项：已删除真实综合资料详情中尚未实现的“关联资料”空白区块，以及设置页中不具备操作能力的密码修改、记录类别与标签占位分区。设置页的真实检查、MCP、关库及手动备份说明继续保留。演示路径的虚构数据和提示属于明确的演示环境，不以真实功能冒充，未改变其入口。
+- 回归守护：`ui-main-smoke.cjs`、`ui-component-contract-smoke.cjs` 检查五类附件页没有旧复用控件、材料类别仅出现在 IP、统一上传重复分支未失效，以及生产详情不显示无效占位内容。
 
 ## 修改与验收流程
 
