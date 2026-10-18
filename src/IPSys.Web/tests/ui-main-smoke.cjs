@@ -988,7 +988,7 @@ for(const needle of ["projectOriginals(ids)","ipOriginals(ids)",
 assert.ok(js.includes("b06Script.src='/export.js'"),'The embedded ZIP/folder engine must load from localhost');
 
 // When only one effective revision survives, never display its stored historical version number.
-const fileListStart=js.indexOf('function businessAttachmentList(');
+const fileListStart=js.indexOf('function attachmentFileRow(');
 const fileListEnd=js.indexOf('async function uploadBusinessAttachment(',fileListStart);
 assert.ok(fileListStart>0&&fileListEnd>fileListStart,'Missing business file renderer');
 const fileListCtx=vm.createContext({sessionStorage:{getItem:()=>null},document:exportDocument});
@@ -1580,3 +1580,23 @@ for(const selector of ['.attachment-header-actions{','.attachment-header-actions
  current.checked=true;old.checked=false;context.updateHeader();
  assert.ok(select.checked&&!select.indeterminate,'All current versions selected should check the header');
 })();
+
+// UI component standardization must preserve the shared renderer and the
+// stable child-contract batch-action slot through every page refresh.
+for(const marker of ['function attachmentFileRow(', 'function attachmentFileGroup(',
+ "attachmentFileGroup(g,'general')","attachmentFileGroup(g,kind)",
+ 'function normalizeUiComponents(content){','normalizeUiComponents(content);',
+ 'data-ledger-actions','uiComponentRoots']){
+ assert.ok(js.includes(marker),'Shared UI component missing: '+marker);
+}
+assert.ok(js.includes("table.closest('.detailsection')?.querySelector('[data-ledger-actions]')"),
+ 'Project-owned contract table batch actions must use a stable title-bar slot');
+assert.ok(!js.includes("table.closest('.detailsection')?.querySelector('.tabletools')"),
+ 'Removed nested toolbars must never be an implied behavior contract');
+assert.ok(css.includes('.ui-detail-ledger-actions:not(:has(> :not([hidden]))){display:none}'),
+ 'The child-contract actions slot should not leave blank space when unused');
+for(const cls of ['.ui-list-toolbar{','.ui-data-table :is(th,td)',
+ '.ui-section-header{','.ui-navigation-card{','.ui-dialog{',
+ '.ui-export-menu{','.ui-info-grid{','.ui-selection-count{']){
+ assert.ok(css.includes(cls),'Missing shared UI styling contract: '+cls);
+}

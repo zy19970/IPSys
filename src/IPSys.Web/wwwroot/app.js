@@ -367,6 +367,27 @@ function compactBusinessListToolbar(content){
  ledger.classList.add('compact-ledger');ledger.prepend(toolbar);
 }
 
+
+/* Common DOM contract: module renderers own data, shared roots own presentation.
+   Every route passes through this single role normalization before display. */
+const uiComponentRoots=[
+ ['.compact-ledger-toolbar,.certificate-toolbar,.tabletools','ui-list-toolbar'],
+ ['.detailsectionhead','ui-section-header'],
+ ['.tablewrap','ui-table-viewport'],
+ ['table.data','ui-data-table'],
+ ['.infogrid','ui-info-grid'],
+ ['.fileline','ui-file-item'],
+ ['.archivecard,.dashboard-choice','ui-navigation-card'],
+ ['.compact-ledger-export,.certificate-export,.module-export','ui-export-menu'],
+ ['.ledger-selected-count,.certificate-selected-count,.attachment-selected','ui-selection-count']
+];
+function normalizeUiComponents(content){
+ for(const [selector,role] of uiComponentRoots){
+  for(const element of content.querySelectorAll(selector))element.classList.add(role);
+ }
+ for(const dialog of document.querySelectorAll('dialog.input-dialog'))
+  dialog.classList.add('ui-dialog');
+}
 function heading(name,subtitle,actions='',breadcrumbBack=''){
  const nameHtml='<h1>'+escapeHtml(name)+'</h1>';
  const titleHtml=breadcrumbBack?'<div class="heading-title-row">'+breadcrumbBack+nameHtml+'</div>':nameHtml;
@@ -424,36 +445,23 @@ function realDetail(){
  if(!r)return heading('记录详情','记录不存在或当前工作区无权访问')+'<button class="btn" data-nav="general">返回台账</button>';
  const groups=new Map();
  for(const f of r.files){const key=f.groupId||f.name;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(f);}
- const fileLine=(f,showVersion,latest=false)=>'<div class="fileline"><span class="fileicon">'+escapeHtml(f.name.split('.').pop().slice(0,4).toUpperCase())+'</span>'+
- '<span class="filedesc"><strong>'+escapeHtml(f.name)+'</strong><small>'+(showVersion?'v'+f.version+' · ':'')+fmtSize(f.size)+
- ' · SHA-256 '+escapeHtml(f.sha256.slice(0,16))+'…</small></span>'+
- exportCheck(f,'general',latest)+
- '<button class="btn btn-sm" data-preview-general="'+f.id+'">预览</button>'+
- '<button class="btn btn-sm" data-download="'+f.id+'">下载原件</button>'+
- '<button class="btn btn-sm" data-general-file-delete="'+f.id+'">移除</button></div>';
  return heading(r.title,title('general')+' / 记录详情 · 当前加密库真实数据',
  '<button class="btn" data-nav="general">← 返回台账</button>'+
  '<button class="btn" data-action="editRecord">修改名称</button>'+
  '<button class="btn" data-action="generalCopy">复制</button>'+
  '<button class="btn" data-action="generalMove">转移</button>'+
  '<button class="btn" data-action="deleteRecord">删除资料</button>')+
- '<section class="white detailsection"><div class="detailsectionhead"><h2>基本信息</h2></div>'+
- '<div class="detailbody infogrid"><div class="info"><label>资料名称</label><strong>'+escapeHtml(r.title)+'</strong></div>'+
- '<div class="info"><label>所属工作区</label><strong>'+(space==='company'?'公司资料':'个人资料')+'</strong></div>'+
- '<div class="info"><label>已归档原件</label><strong>'+groups.size+' 份</strong></div></div></section>'+
- '<section class="white detailsection"><div class="detailsectionhead"><h2>'+attachmentSectionTitle('附件资料',groups.size)+'</h2>'+
- attachmentHeaderActions('general')+'</div><div class="detailbody">'+
- '<input type="file" id="uploadInput" multiple hidden><p class="hint">支持更新指定同名原件或单独归档新原件，保留可展开的历史版本。单文件上限 8 GiB。</p>'+
- ([...groups.values()].map(g=>{g.sort((a,b)=>b.version-a.version||b.id-a.id);
- return '<div class="business-file-group">'+fileLine(g[0],g.length>1,true)+
-  '<button class="btn btn-sm" data-v2-ip-version="'+g[0].id+'">上传新版本</button>'+
-  '<button class="btn btn-sm" data-business-associate="'+g[0].id+'">共享到其它资料</button>'+
- (g.length>1?'<details><summary>查看历史版本（'+(g.length-1)+'）</summary>'+
- g.slice(1).map(f=>fileLine(f,true)).join('')+'</details>':'')+'</div>';}).join('')||
- '<div class="empty">暂无附件，点击“上传原件”开始归档。</div>')+
- '</div></section>'+
- '<section class="white detailsection"><div class="detailsectionhead"><h2>关联资料</h2>'+stamp()+
- '</div><div class="empty">跨业务记录关联将在后续统一实现</div></section>';
+ section('基本信息','<div class="infogrid">'+
+  infoRow('资料名称',r.title)+
+  infoRow('所属工作区',space==='company'?'公司资料':'个人资料')+
+  infoRow('已归档原件',groups.size+' 份')+'</div>')+
+ section(attachmentSectionTitle('附件资料',groups.size),
+  '<input type="file" id="uploadInput" multiple hidden>'+
+  '<p class="hint">支持更新指定同名原件或单独归档新原件，保留可展开的历史版本。单文件上限 8 GiB。</p>'+
+  ([...groups.values()].map(g=>attachmentFileGroup(g,'general')).join('')||
+   '<div class="empty">暂无附件，点击“上传附件”开始归档。</div>'),
+  attachmentHeaderActions('general'))+
+ section('关联资料','<div class="empty">跨业务记录关联将在后续统一实现</div>',stamp());
 }
 function columns(k){
  if(k==='ip')return [['name','名称'],['type','知识产权类型'],['code','申请/登记号'],['status','状态'],['owner','当前权利人'],['date','申请/登记日期'],['files','附件']];
@@ -887,6 +895,36 @@ function ipOriginals(ids){
 function businessFileCount(kind,ownerId,section=''){
  return new Set(businessFiles(kind,ownerId,section).map(f=>f.groupId||f.name+'\u0000'+f.category)).size;
 }
+// Shared original-file row and version group: used by every real detail page.
+function attachmentFileRow(f,kind,showVersion=false,latest=false){
+ const general=kind==='general';
+ const source=general?'general':kind==='ip'?'v2ip':'v2file';
+ const preview=general?'data-preview-general':'data-preview-business';
+ const downloadAttr=general?'data-download':'data-business-download';
+ const remove=general?'data-general-file-delete':'data-business-delete';
+ return '<div class="fileline"><span class="fileicon">'+
+  escapeHtml(f.name.split('.').pop().slice(0,4).toUpperCase())+'</span>'+
+  '<span class="filedesc"><strong>'+escapeHtml(f.name)+'</strong><small>'+
+  (showVersion?'v'+f.version+' · ':'')+
+  (!general&&f.category?escapeHtml(f.category)+' · ':'')+
+  fmtSize(f.size)+' · SHA-256 '+escapeHtml(f.sha256.slice(0,general?16:12))+'…</small></span>'+
+  exportCheck(f,source,latest)+
+  '<button class="btn btn-sm" '+preview+'="'+f.id+'">预览</button>'+
+  '<button class="btn btn-sm" '+downloadAttr+'="'+f.id+'">'+(general?'下载原件':'下载')+'</button>'+
+  '<button class="btn btn-sm" '+remove+'="'+f.id+'">移除</button></div>';
+}
+function attachmentFileGroup(group,kind){
+ const g=group.slice().sort((a,b)=>b.version-a.version||b.id-a.id);
+ const primary=g[0];
+ const versionAllowed=['general','ip','project','contract','archive'].includes(kind);
+ const associateLabel=['general','ip','project','contract'].includes(kind)?'共享到其它资料':'复制／移动关联';
+ return '<div class="business-file-group">'+attachmentFileRow(primary,kind,g.length>1,true)+
+  (versionAllowed?'<button class="btn btn-sm" data-v2-ip-version="'+primary.id+'">上传新版本</button>':'')+
+  '<button class="btn btn-sm" data-business-associate="'+primary.id+'">'+associateLabel+'</button>'+
+  (g.length>1?'<details><summary>查看历史版本（'+(g.length-1)+'）</summary>'+
+   g.slice(1).map(f=>attachmentFileRow(f,kind,true)).join('')+'</details>':'')+
+  '</div>';
+}
 function businessAttachmentList(kind,ownerId,section=''){
  const files=businessFiles(kind,ownerId,section);
  const groups=new Map();
@@ -895,21 +933,8 @@ function businessAttachmentList(kind,ownerId,section=''){
   if(!groups.has(key))groups.set(key,[]);
   groups.get(key).push(f);
  }
- const line=(f,showVersion,latest=false)=>'<div class="fileline"><span class="fileicon">'+
- escapeHtml(f.name.split('.').pop().slice(0,4).toUpperCase())+'</span>'+
- '<span class="filedesc"><strong>'+escapeHtml(f.name)+'</strong><small>'+(showVersion?'v'+f.version+' · ':'')+
- (f.category?escapeHtml(f.category)+' · ':'')+fmtSize(f.size)+
- ' · SHA-256 '+escapeHtml(f.sha256.slice(0,12))+'…</small></span>'+
- exportCheck(f,kind==='ip'?'v2ip':'v2file',latest)+'<button class="btn btn-sm" data-preview-business="'+f.id+'">预览</button>'+
- '<button class="btn btn-sm" data-business-download="'+f.id+'">下载</button>'+
- '<button class="btn btn-sm" data-business-delete="'+f.id+'">移除</button></div>';
  return '<p class="hint">'+(['ip','project','contract','archive'].includes(kind)?'按内容摘要查重：无重复自动独立保存；发现相同内容时再选择共享、复用或独立保存。支持文件历史版本。':'同名原件可选择更新已有版本链，或作为独立新文件归档；同工作区共享引用自动显示新版本。')+' 单文件上限 8 GiB。</p>'+
- ([...groups.values()].map(g=>{g.sort((a,b)=>b.version-a.version||b.id-a.id);
-  return '<div class="business-file-group">'+line(g[0],g.length>1,true)+
-   (['ip','project','contract','archive'].includes(kind)?'<button class="btn btn-sm" data-v2-ip-version="'+g[0].id+'">上传新版本</button>':'')+
-   '<button class="btn btn-sm" data-business-associate="'+g[0].id+'">'+(['ip','project','contract'].includes(kind)?'共享到其它资料':'复制／移动关联')+'</button>'+ 
-   (g.length>1?'<details><summary>查看历史版本（'+(g.length-1)+'）</summary>'+
-    g.slice(1).map(f=>line(f,true)).join('')+'</details>':'')+'</div>';}).join('')||
+ ([...groups.values()].map(g=>attachmentFileGroup(g,kind)).join('')||
  '<p class="hint">暂无附件，可上传原始文件。</p>');
 }
 async function uploadBusinessAttachment(file,meta,workspace){
@@ -1064,6 +1089,7 @@ function projectDetail(){
  infoRow('标签',p.tags)+infoRow('备注',p.remarks)+'</div>')+
  section('所属合同 <span class="detailsection-count">'+contractRows.filter(c=>c.projectId===p.id).length+' 份</span>',
   projectContracts(p.id),
+  '<div class="ui-detail-ledger-actions" data-ledger-actions></div>'+
   '<button type="button" class="btn primary" data-action="contractAdd">＋ 新增合同</button>')+
  section(attachmentSectionTitle('项目附件',businessFileCount('project',p.id)),businessAttachmentList('project',p.id),attachmentHeaderActions('project'));
 }
@@ -2024,7 +2050,7 @@ function decorateLedgerControls(content){
  const empty=body.querySelector('td[colspan]');
  if(empty&&rows.length===0)empty.colSpan+=archiveSequence?2:scope.kind==='contract'?3:2;
  const toolbar=detail?.kind==='project'?
-  table.closest('.detailsection')?.querySelector('.tabletools'):
+  table.closest('.detailsection')?.querySelector('[data-ledger-actions]'):
   content.querySelector('.compact-ledger-actions')||content.querySelector('.tabletools .actions');
  if(toolbar){
   const status=document.createElement('span');status.className='ledger-selected-count';status.hidden=true;
@@ -2143,6 +2169,7 @@ function render(){
  compactBusinessListToolbar(content);
  decorateLedgerControls(content);
  decorateAttachmentRows(content);
+ normalizeUiComponents(content);
  syncAttachmentSelection();
  const searchBox=el('filterSearch');if(searchBox)searchBox.value=filterName;
  syncCompanyCertificateSelectionUi();

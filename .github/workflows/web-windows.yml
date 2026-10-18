@@ -160,6 +160,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Large streamed browser download/cancellation test failed' }
           node src/IPSys.Web/tests/ui-main-smoke.cjs
           if ($LASTEXITCODE -ne 0) { throw 'Merged UI structure smoke failed' }
+          node src/IPSys.Web/tests/ui-component-contract-smoke.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Cross-module UI component contract failed' }
           node src/IPSys.Web/tests/search-smoke.cjs
           if ($LASTEXITCODE -ne 0) { throw 'Real workspace search UI smoke failed' }
           node --check src/IPSys.Web/wwwroot/pdf-preview.js

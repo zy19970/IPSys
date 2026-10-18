@@ -645,3 +645,56 @@ dialog{border:1px solid var(--line);border-radius:13px;padding:26px;box-shadow:0
  border:1px solid #dfe5eb;border-radius:6px;background:#fff;font-size:12px;
 }
 .attachment-header-actions .file-dedup-choice{margin:0;white-space:nowrap}
+
+/* UI component contract v1: shared design tokens and reusable roots.
+   Business-specific column widths and actions stay in their own modules. */
+:root{
+ --ui-control-height:36px;
+ --ui-toolbar-gap:10px;
+ --ui-component-radius:8px;
+ --ui-heading-size:19px;
+ --ui-section-heading-size:14px;
+ --ui-card-outline:#dce5eb;
+}
+.ui-list-toolbar{gap:var(--ui-toolbar-gap)}
+.ui-list-toolbar :is(.btn,button:not(.link):not(.certificate-rowcheck)){
+ min-height:var(--ui-control-height);
+}
+.ui-list-toolbar :is(input:not([type="checkbox"]),select){
+ min-height:var(--ui-control-height);
+ border-radius:6px;
+ font-size:13px;
+}
+.ui-list-toolbar :is(h1,.compact-ledger-title h1,.certificate-toolbar-title h1){
+ font-size:var(--ui-heading-size);line-height:1.35;
+}
+.ui-list-toolbar :is(.actions,.compact-ledger-actions,.certificate-toolbar-actions){
+ align-items:center;gap:8px;
+}
+.ui-section-header{min-height:40px;gap:10px}
+.ui-section-header h2{font-size:var(--ui-section-heading-size);line-height:1.4}
+.ui-section-header :is(.btn,.attachment-header-actions .btn){white-space:nowrap}
+.ui-detail-ledger-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ui-detail-ledger-actions:not(:has(> :not([hidden]))){display:none}
+.ui-table-viewport{min-width:0;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain}
+.ui-data-table :is(th,td){vertical-align:middle}
+.ui-data-table :is(input[type="checkbox"]){accent-color:var(--primary)}
+.ui-info-grid{min-width:0}
+.ui-info-grid .info{min-width:0}
+.ui-info-grid .info strong{overflow-wrap:anywhere}
+.ui-navigation-card{border-radius:var(--ui-component-radius);transition:border-color .15s,box-shadow .15s}
+.ui-navigation-card:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.ui-export-menu{position:relative}
+.ui-export-menu :is(.compact-ledger-export-options,.certificate-export-options){
+ border-radius:var(--ui-component-radius);
+ box-shadow:0 12px 28px #27374721;
+}
+.ui-selection-count{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.ui-dialog{border-radius:var(--ui-component-radius);max-width:calc(100vw - 24px)}
+.ui-dialog .dialogactions{display:flex;align-items:center;justify-content:flex-end;gap:9px;flex-wrap:wrap}
+.ui-dialog .dialogactions .btn{min-height:var(--ui-control-height)}
+@media(max-width:860px){
+ .ui-section-header{flex-wrap:wrap}
+ .ui-list-toolbar :is(.actions,.compact-ledger-actions,.certificate-toolbar-actions){flex-wrap:wrap}
+ .ui-dialog{max-height:calc(100vh - 24px)}
+}
