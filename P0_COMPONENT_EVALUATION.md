@@ -2,6 +2,12 @@
 
 > 对应 [ONEDRIVE_REFACTOR_PLAN.md](./ONEDRIVE_REFACTOR_PLAN.md) 的 P0。状态：**选型试验已建立；候选组件未获得整体采用许可**。下面的“源码确认”“自动回归”“真实浏览器”是不同证据等级。不得将试验页面当成已实现的 IPSys 新 UI。
 
+## 首轮实际自动验证（2026-10-20）
+
+GitHub Actions：[`IPSys OneDrive P0 candidate experiment #39289242137`](https://github.com/zy19970/IPSys/actions/runs/39289242137)，**completed / success**，Windows 托管 Runner。已通过 `npm install`、`npm test`（输出 `P0 FIXTURE IDENTITY / MIXED ORDER CONTRACT PASS`）、`npm run build`（Vite 6.4.2）、本地 HTML/CSS/JS bundle 检查以及构建产物上传。静态 bundle 中 JavaScript 约 327.56 kB（gzip 约 111.11 kB）；[构建产物](https://github.com/zy19970/IPSys/actions/runs/39289242137/artifacts/12203274471) 包含 `dist` 和 CI 安装生成的 `package-lock.json`。
+
+**验证界限**：这一成功只证实实际第三方 React 包可以在 Windows CI 上打包、静态身份 fixture 通过；不等于候选自身通过真实浏览器的混排、多选、右键及文件操作行为，也未验证 WinForms 单 EXE 嵌入、稳定依赖锁的仓库冻结及完整第三方依赖许可证。G05 排序冲突继续为阻断项，P0 整体尚未完成。
+
 ## 1. 实际候选调查
 
 | 维度 | Cubone React File Manager | harryy2510 React File Browser |
