@@ -1,0 +1,56 @@
+name: IPSys OneDrive P0 candidate experiment
+
+on:
+  push:
+    branches:
+      - work/onedrive-file-manager
+    paths:
+      - experiments/onedrive-p0/**
+      - P0_COMPONENT_EVALUATION.md
+      - .github/workflows/onedrive-p0.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  trial:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: experiments/onedrive-p0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install pinned direct candidate dependencies
+        run: npm install --no-audit --no-fund
+      - name: Check V2 synthetic identity and mixed ordering
+        run: npm test
+      - name: Bundle candidate UI without runtime CDN
+        run: npm run build
+      - name: Check self-contained static experiment
+        shell: pwsh
+        run: |
+          $entry = 'dist/index.html'
+          if (-not (Test-Path -LiteralPath $entry)) { throw 'P0 HTML missing' }
+          $assets = @(Get-ChildItem 'dist/assets' -File)
+          if (@($assets | Where-Object Extension -eq '.js').Count -eq 0) {
+            throw 'P0 bundled JS missing'
+          }
+          if (@($assets | Where-Object Extension -eq '.css').Count -eq 0) {
+            throw 'P0 bundled CSS missing'
+          }
+          if ((Get-Content $entry -Raw) -match 'src="https?://|href="https?://') {
+            throw 'P0 page uses remote scripts or styles'
+          }
+          Write-Host 'P0 synthetic React candidate static bundle PASS'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ipsys-onedrive-p0-candidate
+          path: |
+            experiments/onedrive-p0/dist/**
+            experiments/onedrive-p0/package-lock.json
+          retention-days: 14
