@@ -2522,6 +2522,21 @@ function fileTaskBusy() {
   return fileTaskActive || !!CapabilityApi.uploadProgress.status().active;
 }
 
+/* export.js 会调旧壳的 `notice(message, isError)` 报导出结果与失败原因。
+   旧 app.js 删掉后它是未定义引用 —— 第一次导出就在 renderReport 里抛
+   ReferenceError,表现是"ZIP 生成完但保存失败、报告为空"。
+   这里补同名适配,签名与旧壳一致。 */
+function notice(message, bad = false) {
+  toast(String(message ?? ""), { ms: 5200, tone: bad ? "error" : "" });
+}
+
+/* export.js 的 openResponse() 里 `api(url,{signal})` 是自由变量,旧壳里对应
+   全局 `async function api(...)`。留着不补,下载原件会抛 ReferenceError,
+   被逐文件 catch 吞掉,最终表现为"每个附件都失败、ZIP 一个都打不进去"。 */
+async function api(path, opts = {}) {
+  return VaultStore.api(path, opts);
+}
+
 /* ---------------- 上传 ---------------- */
 
 const UPLOADABLE_KINDS = ["project", "archive", "ip", "general"];
@@ -2631,6 +2646,99 @@ function walkNodes(visit) {
   walk(ROOT, (n) => visit(n));
 }
 
+/* ---------------- 导出 ---------------- */
+
+const EXPORTABLE_KINDS = new Set(["project", "archive", "ip", "general"]);
+
+/* 附件上方的 archive_folder 目录链(不含分类根)。export.js 用它在 ZIP 里重建目录树。 */
+function archivePathOf(node) {
+  const chain = [];
+  let cur = findParent(node.id);
+  while (cur && cur.biz?.kind === "archive_folder") {
+    chain.unshift({ id: cur.biz.id, name: cur.name });
+    cur = findParent(cur.id);
+  }
+  return chain;
+}
+
+/* 翻译成 export.js 的 selected[] 元素。
+   validOriginal() 的硬约束:source ∈ {v2file,v2ip}、workspace、fileId>0、version>0、size≥0;
+   当 source==='v2ip' 时还要求 ownerId>0。漏一项整批导出会被直接拒掉。 */
+function exportEntryOf(node, owner, path) {
+  const meta = VaultStore.fileMeta.get(node.id);
+  if (!meta || !owner) return null;
+  const ownerKind = node.biz?.ownerKind || owner.biz?.kind || "";
+  if (!EXPORTABLE_KINDS.has(ownerKind)) return null;
+
+  const entry = {
+    kind: ownerKind,
+    source: ownerKind === "ip" ? "v2ip" : "v2file",
+    workspace: VaultStore.ws,
+    ownerId: owner.biz?.id,
+    ownerName: owner.name,
+    section: node.biz?.section || "",
+    fileId: meta.fileId,
+    version: meta.version,
+    name: node.name,
+    size: node.size || 0,
+  };
+  if (path && path.length) entry.archiveFolderPath = path;
+  return entry;
+}
+
+/* 深度优先摊平:选中一个目录就等于选中它下面的所有附件。 */
+function collectExportEntries(node) {
+  const out = [];
+
+  if (node.type === "file") {
+    const entry = exportEntryOf(node, findParent(node.id), archivePathOf(node));
+    if (entry) out.push(entry);
+    return out;
+  }
+
+  const visit = (cur, owner, path) => {
+    if (cur.type === "file") {
+      const entry = exportEntryOf(cur, owner, path);
+      if (entry) out.push(entry);
+      return;
+    }
+    const kind = cur.biz?.kind;
+    let nextOwner = owner;
+    let nextPath = path;
+    if (kind === "archive_folder") {
+      nextPath = [...path, { id: cur.biz.id, name: cur.name }];
+    } else if (EXPORTABLE_KINDS.has(kind)) {
+      nextOwner = cur;
+    } else if (cur.id === "root") {
+      nextOwner = null;
+      nextPath = [];
+    }
+    for (const child of cur.children || []) visit(child, nextOwner, nextPath);
+  };
+
+  visit(node, null, []);
+  return out;
+}
+
+/* 导出入口:单个附件直接下载,其余打包成 ZIP。
+   目录结构、重名去重、ZIP64、超 4 GiB 分卷全由 export.js 负责。 */
+async function exportNodes(nodes) {
+  const list = (nodes || []).filter(Boolean);
+  if (!list.length) return toast("请先选择要导出的内容");
+
+  if (list.length === 1 && list[0].type === "file") return downloadFile(list[0].id);
+
+  const exporter = globalThis.IPSysExport;
+  if (!exporter) return toast("导出组件未加载,请刷新页面");
+  if (exporter.isActive()) return toast("已有导出任务,请先完成或取消");
+
+  const selected = [];
+  for (const node of list) selected.push(...collectExportEntries(node));
+  if (!selected.length) return toast("选中的内容里没有可导出的附件");
+
+  await exporter.start("zip", selected);
+}
+
 
 /* ===== js/interactions.js ===== */
 /* ==========================================================================
@@ -2642,11 +2750,11 @@ function walkNodes(visit) {
 
 /* ---------------- 基础 UI ---------------- */
 
-function toast(msg, { action, onAction, ms = 3400 } = {}) {
+function toast(msg, { action, onAction, ms = 3400, tone = "" } = {}) {
   const host = $("#toasts");
   if (!host) return;
   const el = document.createElement("div");
-  el.className = "toast";
+  el.className = tone ? `toast is-${tone}` : "toast";
   el.innerHTML = `<span>${esc(msg)}</span>`;
   if (action) {
     const b = document.createElement("button");
@@ -3650,7 +3758,7 @@ function showItemMenu(id, x, y) {
   const html = [
     isFolder ? MI("open", "folder", "打开") : MI("open", "eye", "预览"),
     isFolder && b.kind !== "archive_folder" ? MI("props", "info", "属性") : "",
-    !isFolder ? MI("download", "download", "下载") : "",
+    MI("download", "download", isFolder ? "打包下载" : "下载"),
     !isFolder ? MI("newver", "upload", "上传新版本") : "",
     !isFolder && b.ownerKind === "ip" ? MI("assoc", "copy", "共享到其它知识产权") : "",
     '<div class="ctx-sep"></div>',
@@ -3663,7 +3771,7 @@ function showItemMenu(id, x, y) {
   showCtx(x, y, html, {
     open: () => (isFolder ? Drive.openFolder(id) : previewFile(id)),
     props: () => RecordForms.edit(item),
-    download: () => downloadFile(id),
+    download: () => (isFolder ? exportNodes([item]) : downloadFile(id)),
     newver: () => uploadNewVersion(item),
     assoc: () => associateOriginal(item),
     rename: () => toast("重命名请点「修改」或右键「属性」"),
@@ -3741,9 +3849,9 @@ function bindSelectionBar() {
   $("#selClear").addEventListener("click", () => Drive.clearSelection());
 
   $("#selDownload").addEventListener("click", () => {
-    const items = Drive.selectedItems.filter((i) => i.type === "file");
-    if (!items.length) return toast("请选择附件后再下载");
-    items.forEach((i, idx) => setTimeout(() => downloadFile(i.id), idx * 300));
+    const items = Drive.selectedItems;
+    if (!items.length) return toast("请选择要下载的内容");
+    void exportNodes(items);
   });
 
   $("#selDelete").addEventListener("click", () => {

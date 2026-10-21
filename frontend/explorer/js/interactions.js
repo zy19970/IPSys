@@ -7,11 +7,11 @@
 
 /* ---------------- 基础 UI ---------------- */
 
-function toast(msg, { action, onAction, ms = 3400 } = {}) {
+function toast(msg, { action, onAction, ms = 3400, tone = "" } = {}) {
   const host = $("#toasts");
   if (!host) return;
   const el = document.createElement("div");
-  el.className = "toast";
+  el.className = tone ? `toast is-${tone}` : "toast";
   el.innerHTML = `<span>${esc(msg)}</span>`;
   if (action) {
     const b = document.createElement("button");
@@ -1015,7 +1015,7 @@ function showItemMenu(id, x, y) {
   const html = [
     isFolder ? MI("open", "folder", "打开") : MI("open", "eye", "预览"),
     isFolder && b.kind !== "archive_folder" ? MI("props", "info", "属性") : "",
-    !isFolder ? MI("download", "download", "下载") : "",
+    MI("download", "download", isFolder ? "打包下载" : "下载"),
     !isFolder ? MI("newver", "upload", "上传新版本") : "",
     !isFolder && b.ownerKind === "ip" ? MI("assoc", "copy", "共享到其它知识产权") : "",
     '<div class="ctx-sep"></div>',
@@ -1028,7 +1028,7 @@ function showItemMenu(id, x, y) {
   showCtx(x, y, html, {
     open: () => (isFolder ? Drive.openFolder(id) : previewFile(id)),
     props: () => RecordForms.edit(item),
-    download: () => downloadFile(id),
+    download: () => (isFolder ? exportNodes([item]) : downloadFile(id)),
     newver: () => uploadNewVersion(item),
     assoc: () => associateOriginal(item),
     rename: () => toast("重命名请点「修改」或右键「属性」"),
@@ -1106,9 +1106,9 @@ function bindSelectionBar() {
   $("#selClear").addEventListener("click", () => Drive.clearSelection());
 
   $("#selDownload").addEventListener("click", () => {
-    const items = Drive.selectedItems.filter((i) => i.type === "file");
-    if (!items.length) return toast("请选择附件后再下载");
-    items.forEach((i, idx) => setTimeout(() => downloadFile(i.id), idx * 300));
+    const items = Drive.selectedItems;
+    if (!items.length) return toast("请选择要下载的内容");
+    void exportNodes(items);
   });
 
   $("#selDelete").addEventListener("click", () => {

@@ -1405,6 +1405,8 @@ svg { display: block; flex: none; }
   pointer-events: auto;
   max-width: 520px;
 }
+/* 失败态:能力层用 notice(msg, true) 报错,要和普通提示区分开 */
+.toast.is-error { background: var(--danger); }
 .toast.leaving { animation: toastOut .16s var(--ease) forwards; }
 @keyframes toastIn {
   from { opacity: 0; transform: translateY(10px) scale(.97); }
