@@ -155,6 +155,78 @@ const VaultStore = {
 
   /* 后端回收站是扁平的 {kind,id,name,section,parent} 列表,
      kind 用 v2_* 前缀区分资源类型。这里翻译成可浏览的节点。 */
+  /* ---- 服务端搜索 ----
+     后端按名称、编号、备注、标签、签约方、原件名等业务字段在整库范围检索。
+     前端只保留一个本地兜底(见 app.js 的 localSearch),权威结果从这里来。 */
+  async search(ws, q) {
+    const text = String(q ?? "").trim();
+    if (!text) return { query: "", results: [], truncated: false };
+    return this.getJson(
+      `/api/v2/search/${encodeURIComponent(ws)}?q=${encodeURIComponent(text)}`
+    );
+  },
+
+  /* 命中项只带 kind/id/section,节点本身仍从已加载的树里取 ——
+     这样双击、右键、导出、详情面板全部沿用现有语义,不必单开一套只读节点。
+     取不到说明这条数据在本次加载之后变了,直接丢弃并计数。 */
+  resolveHits(response) {
+    const out = [];
+    const seen = new Set();
+    for (const hit of response?.results || []) {
+      const node = this.nodeOfHit(hit);
+      if (node && !seen.has(node.id)) {
+        seen.add(node.id);
+        out.push(node);
+      }
+    }
+    return out;
+  },
+
+  /* 命中项 → 树节点 id。附件归 owner 管,所以分两步。 */
+  nodeOfHit(hit) {
+    const id = Number(hit?.id) || 0;
+    if (!id) return null;
+    if (hit.kind === "file") {
+      const owner = findById(this.ownerIdOfHit(hit));
+      if (!owner) return null;
+      const meta = this.fileMeta;
+      return (owner.children || []).find((c) => meta.get(c.id)?.fileId === id) || null;
+    }
+    const nodeId =
+      hit.kind === "project"
+        ? `p:${id}`
+        : hit.kind === "contract"
+        ? `c:${id}`
+        : hit.kind === "ip"
+        ? `i:${id}`
+        : hit.kind === "archive"
+        ? `a:${hit.section}:${id}`
+        : hit.kind === "general"
+        ? `g:${id}`
+        : "";
+    return nodeId ? findById(nodeId) : null;
+  },
+
+  /* 附件的 ownerKind 用的是后端 FolderKinds 的字面值(project/contract/ip/archive/general) */
+  ownerIdOfHit(hit) {
+    const id = Number(hit?.ownerId) || 0;
+    if (!id) return "";
+    switch (hit.ownerKind) {
+      case "project":
+        return `p:${id}`;
+      case "contract":
+        return `c:${id}`;
+      case "ip":
+        return `i:${id}`;
+      case "archive":
+        return `a:${hit.section}:${id}`;
+      case "general":
+        return `g:${id}`;
+      default:
+        return "";
+    }
+  },
+
   async loadRecycle(ws) {
     const KIND_MAP = {
       project: { typeName: "项目", folder: true },

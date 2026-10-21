@@ -164,6 +164,7 @@ jobs:
           $tests = [ordered]@{
             'ui-assets-smoke.cjs'              = 'Shell asset contract (load order, bridge globals, fresh bundle) failed'
             'ui-tree-smoke.cjs'                = 'Drive tree (project / contract / original) smoke failed'
+            'explorer-capabilities-smoke.cjs'  = 'Streaming download / server search / purge progress failed'
             'upload-progress-smoke.cjs'        = 'Real upload progress/multiphase state smoke failed'
             'upload-unique-autosave-smoke.cjs' = 'Unique original auto-save and duplicate confirmation smoke failed'
             'export-smoke.cjs'                 = 'Directory/ZIP export smoke failed'

@@ -133,6 +133,15 @@ const Drive = {
     ready: false,
     loadError: null,
     wsPending: null,
+    /* 搜索:本地兜底 + 服务端权威结果。searchQuery 记的是 searchHits 对应的
+       关键词,输入一变就失效,列表立刻退回本地匹配,不会停在旧结果上。 */
+    searchHits: null,
+    searchQuery: "",
+    searchPending: false,
+    searchTruncated: false,
+    searchMissed: 0,
+    searchError: "",
+    searchSerial: 0,
   },
 
   /* ---------- derived ---------- */
@@ -141,24 +150,35 @@ const Drive = {
     return findById(this.state.folderId) || ROOT;
   },
 
+  /* 本地搜索只在已加载的树上做字符串匹配,用来给服务端结果到达前兜底。
+     它覆盖不了备注、签约方、原件名这类服务端才查的字段,所以不当作最终结果。 */
+  localSearch(q, recycleOnly) {
+    const needle = q.toLowerCase();
+    if (recycleOnly) return RECYCLE.filter((i) => i.name.toLowerCase().includes(needle));
+    const out = [];
+    walk(ROOT, (n) => {
+      if (n === ROOT) return;
+      /* 搜索同时覆盖文件夹名与业务编号 */
+      const hay = [n.name, n.biz?.code, n.biz?.status, n.biz?.owner, n.biz?.tags]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      if (hay.includes(needle)) out.push(n);
+    });
+    return out;
+  },
+
   get sourceItems() {
     const s = this.state;
     let out;
 
     if (s.query.trim()) {
-      const q = s.query.trim().toLowerCase();
-      const pool = s.view === "recycle" ? RECYCLE : allFiles(ROOT);
-      /* 搜索同时覆盖文件夹名与业务编号 */
-      const flat = [];
-      walk(ROOT, (n) => {
-        if (n === ROOT) return;
-        const hay = [n.name, n.biz?.code, n.biz?.status, n.biz?.owner, n.biz?.tags]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        if (hay.includes(q)) flat.push(n);
-      });
-      out = s.view === "recycle" ? pool.filter((i) => i.name.toLowerCase().includes(q)) : flat;
+      /* 服务端结果优先;还没回来(或已经过期)就先给本地匹配,
+         这样打字时列表不会空一下再跳出来。 */
+      out =
+        s.searchQuery === s.query.trim() && Array.isArray(s.searchHits)
+          ? s.searchHits
+          : this.localSearch(s.query.trim(), s.view === "recycle");
     } else {
       switch (s.view) {
         case "home":
@@ -314,6 +334,77 @@ const Drive = {
     }
   },
 
+  /* ---------- 搜索 ---------- */
+
+  /* 清空搜索状态。serial 自增一次,正在飞的服务端请求回来时会自己作废,
+     不会把上一个关键词的结果盖到新界面上。 */
+  resetSearch() {
+    const s = this.state;
+    s.searchSerial++;
+    s.searchHits = null;
+    s.searchQuery = "";
+    s.searchPending = false;
+    s.searchTruncated = false;
+    s.searchMissed = 0;
+    s.searchError = "";
+  },
+
+  async runSearch(raw) {
+    const q = String(raw ?? "").trim();
+    const serial = ++this.state.searchSerial;
+    const ws = VaultStore.ws;
+    const s = this.state;
+
+    /* 旧结果立刻作废,列表先退回本地匹配 */
+    s.searchHits = null;
+    s.searchQuery = "";
+    s.searchError = "";
+    s.searchTruncated = false;
+    s.searchMissed = 0;
+
+    if (!q) {
+      s.searchPending = false;
+      this.render();
+      return;
+    }
+
+    s.searchPending = true;
+    this.render();
+
+    try {
+      const data = await VaultStore.search(ws, q);
+      if (serial !== s.searchSerial) return;
+      const hits = VaultStore.resolveHits(data);
+      s.searchHits = hits;
+      s.searchTruncated = !!data.truncated;
+      s.searchMissed = Math.max(0, (data.results || []).length - hits.length);
+      s.searchQuery = q;
+    } catch (e) {
+      if (serial !== s.searchSerial) return;
+      /* 服务端挂了就把本地结果留在屏幕上,而不是给用户一片空白 */
+      s.searchError = e.message || "搜索失败";
+      s.searchQuery = q;
+    } finally {
+      if (serial === s.searchSerial) {
+        s.searchPending = false;
+        this.render();
+      }
+    }
+  },
+
+  /* 搜索结果的状态条:截断 / 失效命中 / 服务端失败退回本地。
+     没有要说的事就返回空串,不占版面。 */
+  searchNote() {
+    const s = this.state;
+    if (!s.query.trim() || s.searchQuery !== s.query.trim()) return "";
+    const bits = [];
+    if (s.searchError) bits.push(`服务端检索失败(${esc(s.searchError)}),下面是本地已加载内容的结果`);
+    if (s.searchTruncated) bits.push("同类命中过多,每种类型只显示前 60 条");
+    if (s.searchMissed) bits.push(`${s.searchMissed} 项在资料库中已变化,未列入`);
+    if (!bits.length) return "";
+    return `<div class="search-note">${icon("info", 15)}<span>${bits.join(" · ")}</span></div>`;
+  },
+
   get sortedItems() {
     const { sortBy, sortDir } = this.state;
     const dir = sortDir === "asc" ? 1 : -1;
@@ -366,11 +457,15 @@ const Drive = {
     this.state.selection.clear();
     this.state.anchorId = null;
     this.state.query = "";
+    this.resetSearch();
     const si = $("#searchInput");
     if (si) si.value = "";
     $("#searchWrap")?.classList.remove("has-value");
     this.enterContext();
     this.render();
+    /* 进回收站时把服务端还在跑的彻底删除任务接回来,否则刷新一次就再也
+       看不到删除是否成功 */
+    if (view === "recycle") void resumePurge();
   },
 
   openFolder(id) {
@@ -381,6 +476,7 @@ const Drive = {
     this.state.folderId = id;
     this.state.selection.clear();
     this.state.query = "";
+    this.resetSearch();
     const si = $("#searchInput");
     if (si) si.value = "";
     this.enterContext();
@@ -669,7 +765,8 @@ const Drive = {
       return;
     }
 
-    root.innerHTML = useGrid ? this.renderGrid(items) : this.renderList(items);
+    /* 状态条只在有结果时才有意义 —— 没有结果时 emptyHtml 自己会说明白 */
+    root.innerHTML = this.searchNote() + (useGrid ? this.renderGrid(items) : this.renderList(items));
   },
 
   /* ---------- 首页 ---------- */
@@ -946,7 +1043,17 @@ const Drive = {
   emptyHtml() {
     const s = this.state;
     if (s.query.trim()) {
-      return `<div class="empty">${icon("search", 44)}<h3>没有找到“${esc(s.query)}”</h3><p>请检查拼写,或尝试其他关键词。</p></div>`;
+      if (s.searchPending) {
+        return `<div class="empty"><div class="spinner"></div><h3>正在检索资料库</h3>
+          <p>关键词:${esc(s.query.trim())}</p></div>`;
+      }
+      if (s.searchError) {
+        return `<div class="empty">${icon("info", 44)}<h3>检索失败</h3>
+          <p>${esc(s.searchError)}</p>
+          <p>本地已加载的内容里也没有匹配项。</p></div>`;
+      }
+      return `<div class="empty">${icon("search", 44)}<h3>没有找到“${esc(s.query)}”</h3>
+        <p>已在整库检索名称、编号、备注、标签与原件名。</p></div>`;
     }
     if (s.view === "recycle") {
       return `<div class="empty">${icon("trash", 44)}<h3>回收站是空的</h3><p>删除的记录会在这里保留 30 天。</p></div>`;

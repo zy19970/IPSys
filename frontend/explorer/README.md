@@ -66,15 +66,35 @@ node tools/bundle.cjs
 
 能力层不是"旧代码遗留"，它们承载新壳没有的能力，且自建 DOM、不依赖壳的元素 id。新壳通过全局对象调用它们。
 
-## 已知能力缺口（换壳时丢掉的，尚未接回）
+## 换壳时丢掉、现已接回的三项能力
 
-这三项旧壳有、新壳没有。不是"未实现"，是接手时就没有对应的新实现，**接回前别当成已完成**。
+三项都在换壳初期确实缺失过，现在都已按旧壳语义接回。留着这一节是为了说明它们的**契约**，改动前先看这里。
 
-| 能力 | 旧壳做法 | 新壳现状 | 影响 |
-|---|---|---|---|
-| 大文件流式下载 | `saveOriginalToDisk()` 用 File System Access API 边下边写盘，带字节完整性校验，超 4 GiB 不分块也能落盘 | `downloadFile()` 走 `res.blob()`，整个文件进内存再触发下载 | 几百 MB 的 PDF/压缩包会明显卡顿，超大文件可能直接失败 |
-| 服务端搜索 | `runGlobalSearch()` 打 `/api/v2/search/{ws}?q=`，跨全库检索记录与附件名 | 只有本地过滤（对已加载的当前目录） | 找不到未展开目录里的东西 |
-| 彻底删除进度 | `/api/trash/{ws}/purge-task` 异步任务 + 字节进度面板 + 跨工作区轮询，提交完成前不宣告成功 | `recycleAction(op="purge")` 同步调 `/api/trash/{ws}/purge` + toast | 大批量删除时无进度、无"未提交完成前不代表删除成功"的语义 |
+### 大文件流式下载（`interactions.js`）
+
+- 超过 32 MiB 走 File System Access API：`showSaveFilePicker` → `createWritable()` → 按 `ReadableStream` 分块写盘，不再把整个文件塞进内存。
+- **拾取器必须排在所有网络请求之前**。它需要点击带来的用户激活，先 `await` 一次网络再调就会被浏览器拒绝，只剩全量进内存一条路。测试里钉死了这条。
+- 写入前逐块比对 `node.size`：超了立刻中止，少了判为失败并 `writer.abort()` —— 磁盘上不留半个原件。
+- 不足 32 MiB 或浏览器不支持时退回 `res.blob()` + `<a download>`，同样校验 `blob.size`。
+
+### 服务端搜索（`store.js` + `app.js`）
+
+- `VaultStore.search(ws, q)` 打 `GET /api/v2/search/{ws}?q=`，后端按名称、编号、备注、标签、签约方、原件名在整库检索。
+- 命中项只带 `kind/id/section`，`VaultStore.resolveHits()` 把它们映射回**已加载的树节点**（`p:` / `c:` / `i:` / `a:section:` / `g:` / `f:linkId:version`）。映射不上的直接丢弃并计数，不拿近似节点顶替。
+- 打字停顿 180ms 后发请求；服务端结果到达前用 `Drive.localSearch()` 兜底，列表不会空一下再跳出来。
+- `runSearch` 带 serial：关键词一变，在飞的旧请求回来会自动作废。`openFolder` / `navigate` / `enterWorkspace` / `refreshCurrent` 都要 `resetSearch()` —— 树一重建，旧命中就是孤儿节点。
+- 结果有截断、有失效命中、或服务端失败退回本地时，列表上方出一行 `search-note` 说明，不静默降级。
+
+### 彻底删除进度（`bridge.js`）
+
+- `POST /api/trash/{ws}/purge-task` 只负责受理并返回 `taskId`，清理在服务端独立执行；浏览器轮询 `GET /api/trash/purge-task`（**Vault 级，不带 workspace**）。
+- 面板复用 `.upload-progress` 系列类名，显示「已清理加密原件数据 X / Y」与阶段文案。
+- `bytesDone / bytesTotal` 到 100% 也不宣告成功：只有 `state === "succeeded"`（事务已提交）才算删除成功，`failed` / `canceled` 一律按回滚处理。
+- 轮询会校验 `taskId` 与 `workspace`，防止把服务端新开的任务当成自己的。
+- 单次上限 200 条（后端限制），超了明确提示分批，不让它无声失败。
+- `purgeTaskActive` 计入 `fileTaskBusy()`：删除进行中禁止切换工作区。刷新页面或重进回收站时 `resumePurge()` 把任务接回来。
+
+## 合同跟着项目走
 
 合同（`kind="contract"`）**跟着项目走**：合同是所属项目下的一个子节点，合同的原件再挂在合同下，树里就是真实的 `项目 / 合同 / 原件` 三层。
 
@@ -87,9 +107,7 @@ node tools/bundle.cjs
 
 对应测试 `ui-tree-smoke.cjs`（三层结构、汇总、孤儿防护）与 `export-smoke.cjs` 的合同段落。
 
-还有三项没接回，见上表：流式下载、服务端搜索、彻底删除进度。
-
-对应的旧测试（`large-download-smoke` / `search-smoke` / `trash-purge-progress-smoke` / `ui-main-smoke` / `ui-component-contract-smoke` / `upload-cross-workspace-smoke` / `preview-smoke`）已随旧壳删除。能力层自己的不变量仍由 7 个测试守着，见下节。
+旧壳遗留的 7 个测试（`large-download-smoke` / `search-smoke` / `trash-purge-progress-smoke` / `ui-main-smoke` / `ui-component-contract-smoke` / `upload-cross-workspace-smoke` / `preview-smoke`）已随旧壳删除，其中前三项的能力由 `explorer-capabilities-smoke.cjs` 接手续守。
 
 ## 测试
 
@@ -101,6 +119,9 @@ node src/IPSys.Web/tests/zip64-smoke.cjs                  # ZIP64 大偏移头
 node src/IPSys.Web/tests/pdf-canvas-smoke.cjs             # PDF 画布渲染/翻页/缩放
 node src/IPSys.Web/tests/ui-tree-smoke.cjs                # 项目/合同/附件三层与汇总
 node src/IPSys.Web/tests/ui-assets-smoke.cjs              # 壳资产契约（见下）
+node src/IPSys.Web/tests/explorer-capabilities-smoke.cjs  # 流式下载 / 服务端搜索 / 删除进度
 ```
 
 `ui-assets-smoke.cjs` 是换壳后新增的门，守四件事：页面加载顺序与 csproj 嵌入路径、`bridge.js` 是否补齐了能力层依赖的自由变量（`notice` / `api` / `uploadFile` / `uploadProgress`，这两处都真实炸过）、`dist/` 是否等于一次全新打包、以及若干与壳无关的产品不变量（无内联 `onclick`、无外部请求、无 `/api/exit`、名称转义、工作区切换拦文件任务）。
+
+`explorer-capabilities-smoke.cjs` 守三项接回的能力：搜索命中映射（6 种 kind 全走真节点，失效命中丢弃、重复折叠）、拾取器必须排在任何网络请求之前、流式写入要有中止与字节校验、`purgeTaskActive` 必须计入 `fileTaskBusy()`、同步 purge 路由不许再被调用。

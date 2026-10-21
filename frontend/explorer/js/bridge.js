@@ -40,8 +40,11 @@ const CapabilityApi = Object.assign(
 );
 
 /* 能力层任务是否在跑 —— 工作区切换要据此互斥,否则切走时上传还在发,
-   结果会落到新工作区的路径上。 */
+   结果会落到新工作区的路径上。彻底删除也算文件任务:它同样占着服务端的
+   文件任务槽,而且中途切工作区会让进度面板失去归属。 */
 let fileTaskActive = false;
+let purgeTaskActive = false;
+
 CapabilityApi.uploadProgress.onActiveChanged = (active) => {
   fileTaskActive = !!active;
   if (!active) {
@@ -51,7 +54,9 @@ CapabilityApi.uploadProgress.onActiveChanged = (active) => {
 };
 
 function fileTaskBusy() {
-  return fileTaskActive || !!CapabilityApi.uploadProgress.status().active;
+  return (
+    fileTaskActive || purgeTaskActive || !!CapabilityApi.uploadProgress.status().active
+  );
 }
 
 /* export.js 会调旧壳的 `notice(message, isError)` 报导出结果与失败原因。
@@ -277,4 +282,201 @@ async function exportNodes(nodes) {
   if (!selected.length) return toast("选中的内容里没有可导出的附件");
 
   await exporter.start("zip", selected);
+}
+
+/* ---------------- 彻底删除(服务端任务 + 字节进度) ----------------
+   POST /api/trash/{ws}/purge-task 只负责受理并返回 taskId,真正的清理在服务端
+   独立执行,浏览器轮询 GET /api/trash/purge-task 的快照。任务按整个 Vault 计,
+   不按工作区 —— 所以用的是不带 workspace 的那个端点。
+   进度 100% 也不等于事务已提交,只有 state=succeeded 才能宣告成功。 */
+
+const PURGE_POLL_MS = 550;
+const PURGE_DONE = new Set(["succeeded", "failed", "canceled"]);
+
+let purgeTracking = false;
+
+function purgePanel() {
+  let p = $("#trashPurgeProgress");
+  if (p) return p;
+  p = document.createElement("section");
+  p.id = "trashPurgeProgress";
+  p.className = "upload-progress";
+  p.setAttribute("role", "region");
+  p.setAttribute("aria-label", "彻底删除进度");
+  p.innerHTML = `
+    <div class="upload-progress-heading"><strong>彻底删除进度</strong><span id="trashPurgeCount"></span></div>
+    <div class="upload-progress-meter">
+      <progress id="trashPurgeMeter" max="100"></progress>
+      <strong id="trashPurgePercent">准备中</strong>
+    </div>
+    <div class="upload-progress-bytes" id="trashPurgeBytes"></div>
+    <div class="upload-progress-stage" id="trashPurgeStage" role="status" aria-live="polite"></div>
+    <div class="upload-progress-actions">
+      <button type="button" class="btn btn-sm" id="trashPurgeClose" hidden>关闭</button>
+    </div>`;
+  p.hidden = true;
+  document.body.append(p);
+  p.querySelector("#trashPurgeClose").addEventListener("click", () => {
+    if (!purgeTaskActive) p.hidden = true;
+  });
+  return p;
+}
+
+function renderPurge(state) {
+  const panel = purgePanel();
+  const field = (id) => panel.querySelector(`#${id}`);
+  const done = PURGE_DONE.has(state.state);
+  const total = Number(state.bytesTotal) || 0;
+  const bytes = Number(state.bytesDone) || 0;
+
+  panel.hidden = false;
+  field("trashPurgeCount").textContent = `共 ${state.count} 条记录`;
+
+  const meter = field("trashPurgeMeter");
+  if (state.state === "succeeded") {
+    meter.value = 100;
+    field("trashPurgePercent").textContent = "完成";
+  } else if (total > 0) {
+    const percent = Math.min(100, Math.floor((bytes / total) * 100));
+    meter.value = percent;
+    field("trashPurgePercent").textContent = `${percent}%`;
+  } else {
+    /* 只清元数据时没有总字节数,用不确定态而不是假装 0% */
+    meter.removeAttribute("value");
+    field("trashPurgePercent").textContent = done ? "—" : "处理中";
+  }
+
+  field("trashPurgeBytes").textContent =
+    total > 0
+      ? `已清理加密原件数据 ${fmtSize(bytes)} / ${fmtSize(total)}`
+      : "本次只清理关联或元数据,没有需要释放的原件字节";
+
+  field("trashPurgeStage").textContent =
+    `${state.stage || ""}${state.error ? `:${state.error}` : ""}` +
+    (done ? "。数据库文件大小不一定立即缩小。" : "。事务提交前不代表删除成功。");
+
+  field("trashPurgeClose").hidden = !done;
+}
+
+/* 404 = 没有任务,不是错误,直接用 fetch 而不是 VaultStore.api —— api() 会把
+   404 当成失败抛出来,分不清「没任务」和「查询失败」。 */
+async function purgeSnapshot() {
+  const headers = VaultStore.token ? { "X-IPSys-Token": VaultStore.token } : {};
+  const res = await fetch("/api/trash/purge-task", { headers, cache: "no-store" });
+  if (res.status === 404) return null;
+  if (res.status === 401) {
+    VaultStore.token = "";
+    VaultStore.locked = true;
+    throw new Error("登录已失效,请重新解锁资料库");
+  }
+  if (!res.ok) throw new Error(`删除进度查询失败:HTTP ${res.status}`);
+  return res.json();
+}
+
+async function trackPurge(taskId, workspace) {
+  if (purgeTracking) return;
+  purgeTracking = true;
+  purgeTaskActive = true;
+  try {
+    while (VaultStore.token) {
+      let state;
+      try {
+        state = await purgeSnapshot();
+        /* 身份对不上说明这一轮已经结束、服务端另开了新任务 —— 不能把别人的
+           进度当成自己的,更不能据此宣告成功。 */
+        if (!state || state.taskId !== taskId || state.workspace !== workspace) {
+          throw new Error("删除任务身份已变化,请检查回收站");
+        }
+        renderPurge(state);
+      } catch (e) {
+        const panel = purgePanel();
+        panel.hidden = false;
+        panel.querySelector("#trashPurgeStage").textContent =
+          `暂时无法获取删除进度:${e.message}。正在重试查询服务端,删除结果尚未确认。`;
+        await new Promise((r) => setTimeout(r, 1200));
+        continue;
+      }
+
+      if (PURGE_DONE.has(state.state)) {
+        if (state.state === "succeeded") {
+          try {
+            await refreshCurrent();
+            Drive.clearSelection();
+            toast(`已彻底删除 ${state.count} 条记录`);
+          } catch {
+            /* 服务端已经提交了,刷新失败不能让用户以为删除失败了 */
+            toast("删除已提交,但列表刷新失败,请重新进入回收站", { tone: "error" });
+          }
+        } else {
+          toast(state.error || "删除未完成,数据库已回滚", { tone: "error", ms: 6000 });
+        }
+        break;
+      }
+      await new Promise((r) => setTimeout(r, PURGE_POLL_MS));
+    }
+  } finally {
+    purgeTracking = false;
+    purgeTaskActive = false;
+  }
+}
+
+/* 真正发起彻底删除。调用方只负责确认对话框,进度与结果都归这里。 */
+async function purgeTrash(nodes) {
+  const items = (nodes || [])
+    .map((n) => {
+      const r = n.biz?.raw;
+      if (!r) return null;
+      return { kind: r.kind, id: r.id, section: r.section || "" };
+    })
+    .filter(Boolean);
+
+  if (!items.length) return toast("这些条目缺少回收站标识");
+  if (purgeTaskActive) return toast("已有彻底删除任务在执行,请看右下角进度");
+  /* 后端单次上限 200 条:超了直接说清楚,不要让它无声失败 */
+  if (items.length > 200) {
+    return toast(`一次最多彻底删除 200 条,当前选中 ${items.length} 条,请分批操作`, {
+      ms: 6000,
+      tone: "error",
+    });
+  }
+
+  const workspace = VaultStore.ws;
+  const panel = purgePanel();
+  panel.hidden = false;
+  panel.querySelector("#trashPurgeClose").hidden = true;
+  panel.querySelector("#trashPurgeCount").textContent = `共 ${items.length} 条记录`;
+  panel.querySelector("#trashPurgeMeter").removeAttribute("value");
+  panel.querySelector("#trashPurgePercent").textContent = "准备中";
+  panel.querySelector("#trashPurgeBytes").textContent = "";
+  panel.querySelector("#trashPurgeStage").textContent = "请求已受理,正在查询服务端删除进度…";
+  purgeTaskActive = true;
+
+  try {
+    const task = await VaultStore.api(`/api/trash/${workspace}/purge-task`, {
+      method: "POST",
+      json: { items },
+    }).then((r) => r.json());
+    void trackPurge(task.taskId, workspace);
+  } catch (e) {
+    purgeTaskActive = false;
+    panel.hidden = true;
+    toast(e.message, { ms: 6000, tone: "error" });
+  }
+}
+
+/* 刷新页面或重进回收站时把还在跑的任务接回来 —— 否则用户一关页面就再也
+   看不到删除是否成功,只能靠猜。 */
+async function resumePurge() {
+  if (purgeTracking || purgeTaskActive || !VaultStore.token) return false;
+  let state;
+  try {
+    state = await purgeSnapshot();
+  } catch {
+    return false;
+  }
+  if (!state) return false;
+  renderPurge(state);
+  if (PURGE_DONE.has(state.state)) return false;
+  void trackPurge(state.taskId, state.workspace);
+  return true;
 }

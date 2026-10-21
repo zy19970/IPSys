@@ -191,6 +191,8 @@ async function enterWorkspace(ws) {
   Drive.state.ready = false;
   Drive.state.loadError = null;
   Drive.state.wsPending = ws;
+  /* 命中项是旧树里的节点引用,重建树之后全部作废 */
+  Drive.resetSearch();
   Drive.render();
 
   try {
@@ -202,6 +204,8 @@ async function enterWorkspace(ws) {
     Drive.navigate("home");
     const av = $("#btnAvatar");
     if (av) av.title = VaultStore.dbName || ME.name;
+    /* 上次关页面时可能还有一个彻底删除任务在跑,接回来继续看进度 */
+    void resumePurge();
   } catch (e) {
     Drive.state.ready = false;
     Drive.state.loadError = e.message;
@@ -665,6 +669,7 @@ function bindNav() {
       Drive.state.folderId = quick.dataset.quick;
       Drive.state.selection.clear();
       Drive.state.query = "";
+      Drive.resetSearch();
       const si = $("#searchInput");
       if (si) si.value = "";
       Drive.enterContext();
@@ -1185,6 +1190,8 @@ function bindSearch() {
   const wrap = $("#searchWrap");
   let timer = null;
 
+  /* 打字停顿 180ms 后发服务端检索。本地匹配在 runSearch 里先顶上,
+     所以这里不用再单独 render 一次。 */
   input.addEventListener("input", () => {
     wrap.classList.toggle("has-value", !!input.value);
     clearTimeout(timer);
@@ -1193,26 +1200,37 @@ function bindSearch() {
       Drive.state.selection.clear();
       Drive.resetSort();
       if (Drive.state.query.trim() && Drive.state.view === "home") Drive.state.view = "files";
-      Drive.render();
+      void Drive.runSearch(Drive.state.query);
     }, 180);
   });
 
-  $("#searchClear").addEventListener("click", () => {
+  const clear = () => {
     input.value = "";
     wrap.classList.remove("has-value");
     Drive.state.query = "";
+    Drive.resetSearch();
     Drive.resetSort();
     Drive.render();
+  };
+
+  $("#searchClear").addEventListener("click", () => {
+    clear();
     input.focus();
   });
 
   input.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
-      input.value = "";
-      wrap.classList.remove("has-value");
-      Drive.state.query = "";
-      Drive.render();
+      clear();
       input.blur();
+      return;
+    }
+    /* 回车跳过防抖,立刻检索 —— 关键词长的时候不用干等那 180ms */
+    if (e.key === "Enter") {
+      e.preventDefault();
+      clearTimeout(timer);
+      Drive.state.query = input.value;
+      if (Drive.state.query.trim() && Drive.state.view === "home") Drive.state.view = "files";
+      void Drive.runSearch(Drive.state.query);
     }
   });
 }
@@ -1365,6 +1383,10 @@ async function recycleAction(nodes, op) {
   }
 
   try {
+    /* 彻底删除走服务端任务,进度与结果由 bridge.js 的 purgeTrash 接管 ——
+       它自己会校验 items 并在右下角显示字节进度,成功与否看事务提交。 */
+    if (op === "purge") return purgeTrash(nodes);
+
     const items = nodes
       .map((n) => {
         const r = n.biz?.raw;
@@ -1375,12 +1397,12 @@ async function recycleAction(nodes, op) {
 
     if (!items.length) return toast("这些条目缺少回收站标识");
 
-    await VaultStore.api(`/api/trash/${VaultStore.ws}/${op}`, { method: "POST", json: { items } });
-    toast(op === "restore" ? `已还原 ${items.length} 项` : `已彻底删除 ${items.length} 项`);
+    await VaultStore.api(`/api/trash/${VaultStore.ws}/restore`, { method: "POST", json: { items } });
+    toast(`已还原 ${items.length} 项`);
     Drive.clearSelection();
     await refreshCurrent();
   } catch (e) {
-    toast(e.message, { ms: 6000 });
+    toast(e.message, { ms: 6000, tone: "error" });
   }
 }
 
@@ -1393,6 +1415,8 @@ async function refreshCurrent() {
   const keep = Drive.state.folderId;
   const view = Drive.state.view;
   await VaultStore.loadAll(VaultStore.ws);
+  /* 树重建了,旧的搜索命中项指向已经不在树里的节点,全部作废 */
+  Drive.resetSearch();
   const node = findById(keep);
   Drive.state.ready = true;
   if (node) {
@@ -1421,13 +1445,84 @@ function fileUrlOf(id) {
   return `/api/v2/files/${VaultStore.ws}/${meta.fileId}/versions/${meta.version}/download`;
 }
 
+/* 大文件阈值:32 MiB 以下用 blob 更快,以上就必须边下边写盘 ——
+   blob 会把整个文件读进内存,几百 MB 的原件会把标签页拖死。 */
+const STREAM_MIN_BYTES = 32 * 1024 * 1024;
+
+function canStreamDownload() {
+  return typeof window.showSaveFilePicker === "function";
+}
+
+/* 边下边写。写入失败一律 abort,磁盘上不留半个文件 ——
+   半个附件比没有附件更危险,用户会以为下载成功了。 */
+async function streamToDisk(handle, url, node) {
+  const expected = Number(node.size) || 0;
+  const writer = await handle.createWritable();
+  let written = 0;
+  let ok = false;
+  try {
+    const res = await VaultStore.api(url);
+    if (!res.body) throw new Error("浏览器不支持流式下载");
+    const reader = res.body.getReader();
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        written += value.byteLength;
+        /* 后端声明的长度是唯一可信的边界,超了立刻停 */
+        if (expected && written > expected) throw new Error("原件长度异常,已中止");
+        await writer.write(value);
+      }
+    } finally {
+      reader.releaseLock();
+    }
+    /* 少一个字节也算失败:这是完整的原件,不是尽力而为的缓存 */
+    if (expected && written !== expected) {
+      throw new Error(`原件下载不完整:${fmtSize(written)} / ${fmtSize(expected)}`);
+    }
+    await writer.close();
+    ok = true;
+    toast(`已保存:${node.name}(${fmtSize(written)})`);
+  } finally {
+    if (!ok) {
+      try {
+        await writer.abort();
+      } catch {}
+    }
+  }
+}
+
 async function downloadFile(id) {
   const url = fileUrlOf(id);
   const node = findById(id);
   if (!url || !node) return toast("附件信息缺失");
+
+  /* 拾取器必须趁用户点击的激活还没失效时打开,所以排在所有网络请求之前。
+     放到请求之后会抛 SecurityError,那样就只剩「全量进内存」一条路。 */
+  if ((Number(node.size) || 0) >= STREAM_MIN_BYTES && canStreamDownload()) {
+    let handle = null;
+    try {
+      handle = await window.showSaveFilePicker({ suggestedName: node.name });
+    } catch (e) {
+      /* 用户取消就到此为止;其它错误退回 blob 路径,不让下载彻底不可用 */
+      if (e?.name === "AbortError") return;
+    }
+    if (handle) {
+      try {
+        await streamToDisk(handle, url, node);
+      } catch (e) {
+        if (e?.name === "AbortError") return;
+        toast(`下载失败:${e.message}`, { ms: 6000, tone: "error" });
+      }
+      return;
+    }
+  }
+
   try {
     const res = await VaultStore.api(url);
     const blob = await res.blob();
+    const expected = Number(node.size) || 0;
+    if (expected && blob.size !== expected) throw new Error("原件下载长度异常");
     const obj = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = obj;
@@ -1438,7 +1533,7 @@ async function downloadFile(id) {
     setTimeout(() => URL.revokeObjectURL(obj), 60000);
     toast(`已下载:${node.name}`);
   } catch (e) {
-    toast(e.message, { ms: 6000 });
+    toast(e.message, { ms: 6000, tone: "error" });
   }
 }
 
