@@ -564,6 +564,9 @@ const Drive = {
 
     $("#btnDetailToggle")?.classList.toggle("is-active", s.detailOpen);
 
+    /* Excel 导入导出只在有台账的分类页出现(见 excel.js) */
+    renderExcelButtons();
+
     $$("#viewRoot .row, #viewRoot .tile, #viewRoot .photo-cell").forEach((el) => {
       el.classList.toggle("is-selected", s.selection.has(el.dataset.id));
     });

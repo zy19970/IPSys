@@ -253,6 +253,7 @@ function bootInteractions() {
   bindSettings();
   bindKeyboard();
   bindOverlays();
+  bindExcelActions();
 }
 
 function bindLockScreen() {

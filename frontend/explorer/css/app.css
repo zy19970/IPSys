@@ -2313,3 +2313,11 @@ dialog h2 { font-size: 18px; margin-bottom: 10px; }
 .filedesc strong { font-size: 13px; display: block; line-height: 1.35; }
 .filedesc small { font-size: 11px; color: var(--text-2); display: block; }
 .actions { display: flex; gap: 9px; align-items: center; flex-wrap: wrap; }
+
+/* —— Excel 台账导入导出（excel.js）—— */
+.excel-actions { display: flex; gap: 6px; }
+.excel-choice { display: flex; flex-direction: column; gap: 9px; margin-top: 15px; }
+.excel-choice .btn { text-align: left; white-space: normal; justify-content: flex-start; height: auto; padding: 8px 14px; }
+.excel-report { width: min(580px, calc(100vw - 28px)); }
+.excel-errors { max-height: 220px; overflow: auto; margin-top: 10px; }
+.excel-errors p { margin: 4px 0; font-size: 12px; color: var(--danger); }

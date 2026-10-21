@@ -13,8 +13,9 @@ const ROOT = path.resolve(__dirname, "..");
 const OUT = path.join(ROOT, "dist");
 
 /* bridge 是本壳与 wwwroot 能力层之间的适配:它只做形状转换,不引业务逻辑。
-   放在 interactions 之前,保证交互层运行时适配对象已就位。 */
-const ORDER = ["js/icons.js", "js/data.js", "js/store.js", "js/app.js", "js/forms.js", "js/bridge.js", "js/interactions.js"];
+   excel 是唯一从旧壳移植的业务代码(/api/v2/excel/* 全在旧 app.js 里)。
+   两者都放在 interactions 之前,保证交互层运行时已就位。 */
+const ORDER = ["js/icons.js", "js/data.js", "js/store.js", "js/app.js", "js/forms.js", "js/bridge.js", "js/excel.js", "js/interactions.js"];
 
 fs.mkdirSync(OUT, { recursive: true });
 

@@ -1,6 +1,6 @@
 # IPSys Explorer — 新前端壳
 
-零依赖原生 JS。无构建框架，无 npm 依赖，`tools/bundle.cjs` 用 Node 内置模块把 6 个源文件拼成单个 `dist/app.js`。
+零依赖原生 JS。无构建框架，无 npm 依赖，`tools/bundle.cjs` 用 Node 内置模块把 8 个源文件拼成单个 `dist/app.js`。
 
 ## 为什么是三个文件
 
@@ -12,30 +12,36 @@ dist/index.html   dist/style.css   dist/app.js
 
 ## 目录
 
+**源码（唯一真源，只维护这里）**
+
 ```
 index.html              源页面
 css/app.css             源样式
 js/icons.js             图标与分类色（Drive.nodeMark 是唯一取图标入口）
-js/data.js              数据层（mock，换后端只改这里）
+js/data.js              树模型与格式化工具
 js/store.js             VaultStore：接口调用、目录树、工作区
 js/app.js               渲染管线 + 状态机
-js/forms.js             表单
+js/forms.js             记录表单
+js/bridge.js            能力层适配：请求对象形状 + 上传/导出编排
+js/excel.js             Excel 台账导入导出
 js/interactions.js      事件委托、右键、拖拽、对话框、设置面板
 tools/bundle.cjs        打包脚本（Node 内置模块，零依赖）
-preview/server.cjs      本地预览服务（mock 后端，端口 8776）
-preview/capture.cjs     截图脚本（CDP，端口 9223）
-dist/                   产物，必须提交
+```
+
+**产物（由 bundle 生成，不要手改）**
+
+```
+dist/index.html   dist/style.css   dist/app.js
 ```
 
 ## 命令
 
 ```bash
-# 打包（改完 js/css/index.html 必须执行）
+# 打包：改完 js/ 或 css/ 或 index.html 必须执行
 node tools/bundle.cjs
-
-# 本地预览（mock 后端，不发 CSP）
-PORT=8776 node preview/server.cjs
 ```
+
+看效果直接启动 `IPSys.Web.exe`（真实后端 + 真实 CSP）。没有独立的 mock 预览服务——壳与后端在同一个仓库里，多一套 mock 只会让"本地正常、上线坏掉"的差异藏起来。
 
 ## 改代码的硬约束
 
