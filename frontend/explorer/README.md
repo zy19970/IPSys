@@ -28,7 +28,7 @@ js/interactions.js      事件委托、右键、拖拽、对话框、设置面�
 tools/bundle.cjs        打包脚本（Node 内置模块，零依赖）
 ```
 
-**产物（由 bundle 生成，不要手改）**
+**产物（构建时生成，不入库）**
 
 ```
 dist/index.html   dist/style.css   dist/app.js
@@ -41,11 +41,17 @@ dist/index.html   dist/style.css   dist/app.js
 node tools/bundle.cjs
 ```
 
+`dotnet build` 会自动跑这一步（`IPSys.Web.csproj` 的 `BundleExplorerShell` 目标，在 `BeforeBuild` 前），所以正常开发只要编译就行。
+
+- 装好 Node：每次编译自动重新打包，产物永远跟源码一致。
+- 没装 Node 但已有 `dist/`：构建继续，输出警告——**改过源码的话这是旧产物**。
+- 没装 Node 且没有 `dist/`：构建直接报错，提示安装 Node。
+
 看效果直接启动 `IPSys.Web.exe`（真实后端 + 真实 CSP）。没有独立的 mock 预览服务——壳与后端在同一个仓库里，多一套 mock 只会让"本地正常、上线坏掉"的差异藏起来。
 
 ## 改代码的硬约束
 
-1. **改完必须 bundle**。dll 里嵌的是 `dist/`，不是源码。改了 `js/*.js` 不 bundle，页面毫无变化——这是最容易白忙半天的坑。
+1. **改了源码必须重新编译**。dll 里嵌的是 `dist/`，不是源码。`dotnet build` 会先自动 bundle 再嵌入，但直接双击已有的 exe 看不到任何变化——这是最容易白忙半天的坑。
 2. **类名不许改**。`wwwroot/` 下的能力层脚本（`ip-v2.js` / `upload-progress.js` / `export.js` / `pdf-preview.js`）会自建 DOM 并按类名找节点。改 `.pdf-*`、`.export-status`、`.upload-progress*` 会让它们找不到自己。
 3. **顶层对象带前缀**。`Drive` / `VaultStore` / `RecordForms`，不要用 `App` / `Store` 这类通用名——浏览器扩展会注入同名全局，踩过一次，表现为永远加载不完。
 4. **新增内联样式要先确认 CSP**。`Program.cs` 的 `style-src` 若不含 `'unsafe-inline'`，`style="..."` 会被静默丢弃；预览服务不发 CSP，本地看不出来。
