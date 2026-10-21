@@ -11,3 +11,7 @@ artifacts/
 # 前端产物：由 frontend/explorer/tools/bundle.cjs 生成，不入库。
 # 源码只有一份（frontend/explorer/{index.html,css,js}），产物在构建时重新生成。
 frontend/explorer/dist/
+
+# 本机构建产物与 IDE 缓存：不属于源码，也不要进提交。
+**/.vs/
+build-retest/
