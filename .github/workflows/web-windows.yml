@@ -2,10 +2,10 @@ name: IPSys Windows build and smoke
 
 on:
   push:
-    branches: [main]
+    branches: [main, "work/onedrive-file-manager"]
     paths:
       - "src/IPSys.Web/**"
-      - "demo/ui-preview.html"
+      - "frontend/explorer/**"
       - ".github/workflows/web-windows.yml"
   workflow_dispatch:
     inputs:
@@ -24,6 +24,11 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
+      # The shell is bundled from frontend/explorer by an MSBuild target that
+      # shells out to Node, so the toolchain has to be present before any build.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
       - name: Verify Visual Studio Debug embedded web assets
         shell: pwsh
         run: |
@@ -138,49 +143,37 @@ jobs:
       - name: Verify browser JavaScript syntax
         shell: pwsh
         run: |
-          node --check src/IPSys.Web/wwwroot/upload-progress.js
-          if ($LASTEXITCODE -ne 0) { throw 'Upload progress script syntax failed' }
-          node src/IPSys.Web/tests/upload-progress-smoke.cjs
-          if ($LASTEXITCODE -ne 0) { throw 'Real upload progress/multiphase state smoke failed' }
-          node src/IPSys.Web/tests/upload-unique-autosave-smoke.cjs
-          if ($LASTEXITCODE -ne 0) { throw 'Unique original auto-save and duplicate confirmation smoke failed' }
-          node src/IPSys.Web/tests/upload-cross-workspace-smoke.cjs
-          if ($LASTEXITCODE -ne 0) { throw 'Upload cross-workspace SQLCipher Gate UI smoke failed' }
-          node src/IPSys.Web/tests/trash-purge-progress-smoke.cjs
-          if ($LASTEXITCODE -ne 0) { throw 'Recycle physical-purge progress UI smoke failed' }
-          node --check src/IPSys.Web/wwwroot/app.js
-          if ($LASTEXITCODE -ne 0) { throw 'Main application JavaScript syntax failed' }
-          node --check src/IPSys.Web/wwwroot/export.js
-          if ($LASTEXITCODE -ne 0) { throw 'Export script syntax failed' }
-          node src/IPSys.Web/tests/export-smoke.cjs
-          if ($LASTEXITCODE -ne 0) { throw 'Directory/ZIP export smoke failed' }
-          node src/IPSys.Web/tests/zip64-smoke.cjs
-          if ($LASTEXITCODE -ne 0) { throw 'ZIP64 large-offset header smoke failed' }
-          node src/IPSys.Web/tests/large-download-smoke.cjs
-          if ($LASTEXITCODE -ne 0) { throw 'Large streamed browser download/cancellation test failed' }
-          node src/IPSys.Web/tests/ui-main-smoke.cjs
-          if ($LASTEXITCODE -ne 0) { throw 'Merged UI structure smoke failed' }
-          node src/IPSys.Web/tests/ui-component-contract-smoke.cjs
-          if ($LASTEXITCODE -ne 0) { throw 'Cross-module UI component contract failed' }
-          node src/IPSys.Web/tests/search-smoke.cjs
-          if ($LASTEXITCODE -ne 0) { throw 'Real workspace search UI smoke failed' }
-          node --check src/IPSys.Web/wwwroot/pdf-preview.js
-          if ($LASTEXITCODE -ne 0) { throw 'PDF canvas viewer syntax failed' }
-          node --check src/IPSys.Web/wwwroot/pdfjs/pdf.min.js
-          if ($LASTEXITCODE -ne 0) { throw 'Offline PDF.js syntax failed' }
-          node --check src/IPSys.Web/wwwroot/pdfjs/pdf.worker.min.js
-          if ($LASTEXITCODE -ne 0) { throw 'Offline PDF.js worker syntax failed' }
-          node src/IPSys.Web/tests/pdf-canvas-smoke.cjs
-          if ($LASTEXITCODE -ne 0) { throw 'PDF canvas rendering/zoom/pagination test failed' }
-          node src/IPSys.Web/tests/preview-smoke.cjs
-          if ($LASTEXITCODE -ne 0) { throw 'PDF preview integration smoke failed' }
-          $source = Get-Content demo/ui-preview.html -Raw
-          $scriptMatch = [regex]::Match($source, '(?s)<script>(.*?)</script>')
-          if (-not $scriptMatch.Success) { throw 'No embedded UI preview script found' }
-          $scriptFile = Join-Path $env:RUNNER_TEMP 'ipsys-ui-preview.js'
-          [System.IO.File]::WriteAllText($scriptFile, $scriptMatch.Groups[1].Value)
-          node --check $scriptFile
-          if ($LASTEXITCODE -ne 0) { throw 'UI preview JavaScript syntax failed' }
+          $scripts = @(
+            'src/IPSys.Web/wwwroot/ip-v2.js',
+            'src/IPSys.Web/wwwroot/upload-progress.js',
+            'src/IPSys.Web/wwwroot/export.js',
+            'src/IPSys.Web/wwwroot/pdf-preview.js',
+            'src/IPSys.Web/wwwroot/pdfjs/pdf.min.js',
+            'src/IPSys.Web/wwwroot/pdfjs/pdf.worker.min.js',
+            'frontend/explorer/dist/app.js')
+          foreach ($file in $scripts) {
+            node --check $file
+            if ($LASTEXITCODE -ne 0) { throw "JavaScript syntax failed: $file" }
+          }
+          Write-Host 'Capability layer, bundled shell and offline PDF.js syntax: PASS'
+      - name: Verify UI and capability smoke tests
+        shell: pwsh
+        run: |
+          # Ordered on purpose: ui-assets-smoke asserts that dist/ matches a fresh
+          # bundle of the sources, so it must run before anything reads dist/.
+          $tests = [ordered]@{
+            'ui-assets-smoke.cjs'              = 'Shell asset contract (load order, bridge globals, fresh bundle) failed'
+            'upload-progress-smoke.cjs'        = 'Real upload progress/multiphase state smoke failed'
+            'upload-unique-autosave-smoke.cjs' = 'Unique original auto-save and duplicate confirmation smoke failed'
+            'export-smoke.cjs'                 = 'Directory/ZIP export smoke failed'
+            'zip64-smoke.cjs'                  = 'ZIP64 large-offset header smoke failed'
+            'pdf-canvas-smoke.cjs'             = 'PDF canvas rendering/zoom/pagination test failed'
+          }
+          foreach ($name in $tests.Keys) {
+            node "src/IPSys.Web/tests/$name"
+            if ($LASTEXITCODE -ne 0) { throw $tests[$name] }
+          }
+          Write-Host 'All web smoke tests: PASS'
       - name: Verify SQLCipher and local HTTP roundtrip
         shell: pwsh
         env:

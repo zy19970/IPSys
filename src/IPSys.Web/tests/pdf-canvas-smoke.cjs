@@ -15,16 +15,26 @@ function gitSha(bytes){
 }
 assert.equal(gitSha(pdfJS),'4d430208fdaff174b880faf78aa90eb5280ce90e');
 assert.equal(gitSha(worker),'6bbfaeede7465b9270475dd9028e2b7022a2a832');
-const app=fs.readFileSync(path.join(root,'app.js'),'utf8');
-const css=fs.readFileSync(path.join(root,'style.css'),'utf8');
+// The shell moved out of wwwroot to frontend/explorer; pdf-preview.js stayed put.
+const shell=path.resolve(__dirname,'../../../frontend/explorer');
+const app=fs.readFileSync(path.join(shell,'js/interactions.js'),'utf8');
+const css=fs.readFileSync(path.join(shell,'css/app.css'),'utf8');
 const program=fs.readFileSync(path.resolve(__dirname,'../Program.cs'),'utf8');
-assert.ok(!app.includes("view.src=previewUrl+'#view=FitH'"),'Native PDF iframe path must be removed');
-assert.ok(app.includes("activePdfViewer=renderer.create(body,bytes)")&&
- app.includes("activePdfViewer.destroy()"),'PDF canvas viewer must mount and release');
+assert.ok(!app.includes('#view=FitH'),'Native PDF iframe path must be removed');
+assert.ok(app.includes('viewer.create(body, buffer)')&&
+ app.includes('pdfViewer?.destroy?.()'),'PDF canvas viewer must mount and release');
 assert.ok(program.includes("worker-src 'self'")&&
  program.includes('"/pdfjs/pdf.worker.min.js"'),'Worker must be local and allowed by CSP');
-assert.ok(css.includes('.preview-body.pdf-mode{display:flex')&&
- css.includes('.pdf-canvas-area{flex:1'),'PDF must occupy actual modal viewport');
+function cssBlock(selector){
+ const at=css.indexOf(selector);
+ assert.ok(at>=0,'Stylesheet must style '+selector);
+ const open=css.indexOf('{',at);
+ return css.slice(open,css.indexOf('}',open));
+}
+assert.ok(/display:\s*flex/.test(cssBlock('.pdf-mode'))&&
+ /flex-direction:\s*column/.test(cssBlock('.pdf-mode')),'PDF must occupy actual modal viewport');
+assert.ok(/flex:\s*1/.test(cssBlock('.pdf-canvas-area'))&&
+ /min-height:\s*0/.test(cssBlock('.pdf-canvas-area')),'Canvas area must own the leftover height');
 
 const elements=[];
 function node(tag){

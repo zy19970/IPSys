@@ -2,24 +2,35 @@
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
+const path=require('node:path');
 const source=fs.readFileSync('src/IPSys.Web/wwwroot/upload-progress.js','utf8');
 const adapter=fs.readFileSync('src/IPSys.Web/wwwroot/ip-v2.js','utf8');
-const app=fs.readFileSync('src/IPSys.Web/wwwroot/app.js','utf8');
-const html=fs.readFileSync('src/IPSys.Web/wwwroot/index.html','utf8');
-assert.ok(html.indexOf('/upload-progress.js')<html.indexOf('/ip-v2.js')&&
- html.indexOf('/ip-v2.js')<html.indexOf('/app.js'),
- 'Upload progress must load before the native V2 adapter and main app');
+/* Shell sources live in frontend/explorer; the capability scripts stayed in wwwroot. */
+const shell=path.resolve(__dirname,'../../../frontend/explorer');
+const bridge=fs.readFileSync(path.join(shell,'js/bridge.js'),'utf8');
+const html=fs.readFileSync(path.join(shell,'index.html'),'utf8');
+/* What actually matters: every capability script must define its global before
+   the shell bundle runs — bridge.js reads globalThis.IPSysUploadProgress at the
+   top level, so a later load order makes CapabilityApi.uploadProgress undefined
+   and every upload dies on the first line. The relative order among the four
+   capability scripts is irrelevant. */
+const before=file=>html.indexOf(file);
+assert.ok(before('/upload-progress.js')>0&&before('/ip-v2.js')>0&&before('/app.js')>0,
+ 'index.html must load the capability layer and the shell bundle');
+for(const file of ['/upload-progress.js','/ip-v2.js','/export.js','/pdf-preview.js'])
+ assert.ok(before(file)<before('/app.js'),
+  file+' must load before /app.js so its global exists when the shell boots');
 assert.ok(adapter.includes('api.uploadFile(path+"/prepare?folderId="')&&
  adapter.includes('api.uploadFile(record.kind==="ip"')&&
  adapter.includes('api.uploadProgress.stage("已选择保存方式')&&
  adapter.includes('signal:api.uploadProgress.signal()'),
  'Both V2 create and version upload must stream with progress and await server confirmation');
-assert.ok(app.includes('api.uploadProgress.begin(files.length)')&&
- app.includes('api.uploadProgress.finish({completed,errors,skipped,warnings})')&&
- app.includes('api.uploadProgress.onActiveChanged=active=>{') &&
- app.includes('localFileTaskActive=active;') &&
- app.includes('if(!active&&space&&token)void refreshWhenFileTaskIdle(space);'),
- 'Both batch paths must keep persistent progress and beforeunload lock');
+assert.ok(bridge.includes('progress.begin(list.length)')&&
+ bridge.includes('progress.finish({ completed, errors, skipped })')&&
+ bridge.includes('CapabilityApi.uploadProgress.onActiveChanged = (active) =>')&&
+ bridge.includes('fileTaskActive = !!active;')&&
+ bridge.includes('setTimeout(() => refreshCurrent().catch(() => {}), 450)'),
+ 'The shell must hand the whole batch to the capability layer and reload only once it is idle');
 
 class FakeNode{
  constructor(){

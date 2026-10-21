@@ -65,3 +65,30 @@ node tools/bundle.cjs
 | `src/IPSys.Web/wwwroot/` | 能力层：PDF 预览、ZIP 导出、上传去重与多阶段进度 |
 
 能力层不是"旧代码遗留"，它们承载新壳没有的能力，且自建 DOM、不依赖壳的元素 id。新壳通过全局对象调用它们。
+
+## 已知能力缺口（换壳时丢掉的，尚未接回）
+
+这三项旧壳有、新壳没有。不是"未实现"，是接手时就没有对应的新实现，**接回前别当成已完成**。
+
+| 能力 | 旧壳做法 | 新壳现状 | 影响 |
+|---|---|---|---|
+| 大文件流式下载 | `saveOriginalToDisk()` 用 File System Access API 边下边写盘，带字节完整性校验，超 4 GiB 不分块也能落盘 | `downloadFile()` 走 `res.blob()`，整个文件进内存再触发下载 | 几百 MB 的 PDF/压缩包会明显卡顿，超大文件可能直接失败 |
+| 服务端搜索 | `runGlobalSearch()` 打 `/api/v2/search/{ws}?q=`，跨全库检索记录与附件名 | 只有本地过滤（对已加载的当前目录） | 找不到未展开目录里的东西 |
+| 彻底删除进度 | `/api/trash/{ws}/purge-task` 异步任务 + 字节进度面板 + 跨工作区轮询，提交完成前不宣告成功 | `recycleAction(op="purge")` 同步调 `/api/trash/{ws}/purge` + toast | 大批量删除时无进度、无"未提交完成前不代表删除成功"的语义 |
+
+合同（`kind="contract"`）的附件目前**挂不上树**：后端 `/api/v2/ui/project-files/{ws}` 按合同自己的 folderId 返回，新壳只按项目 id 挂载，于是合同附件取不到、也导不出。旧壳把它按 `项目/合同/文件` 组织进 ZIP。这条属于待定需求（合同要不要挂回项目详情），不是回归。
+
+对应的旧测试（`large-download-smoke` / `search-smoke` / `trash-purge-progress-smoke` / `ui-main-smoke` / `ui-component-contract-smoke` / `upload-cross-workspace-smoke` / `preview-smoke`）已随旧壳删除。能力层自己的不变量仍由 6 个测试守着，见下节。
+
+## 测试
+
+```bash
+node src/IPSys.Web/tests/upload-progress-smoke.cjs        # 上传进度/取消/阶段
+node src/IPSys.Web/tests/upload-unique-autosave-smoke.cjs # 去重与自动保存
+node src/IPSys.Web/tests/export-smoke.cjs                 # 目录/ZIP 导出与桥接投影
+node src/IPSys.Web/tests/zip64-smoke.cjs                  # ZIP64 大偏移头
+node src/IPSys.Web/tests/pdf-canvas-smoke.cjs             # PDF 画布渲染/翻页/缩放
+node src/IPSys.Web/tests/ui-assets-smoke.cjs              # 壳资产契约（见下）
+```
+
+`ui-assets-smoke.cjs` 是换壳后新增的门，守四件事：页面加载顺序与 csproj 嵌入路径、`bridge.js` 是否补齐了能力层依赖的自由变量（`notice` / `api` / `uploadFile` / `uploadProgress`，这两处都真实炸过）、`dist/` 是否等于一次全新打包、以及若干与壳无关的产品不变量（无内联 `onclick`、无外部请求、无 `/api/exit`、名称转义、工作区切换拦文件任务）。
