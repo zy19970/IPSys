@@ -1,6 +1,13 @@
-# P0 开源文件管理器选型与集成可行性记录
+# P0 开源文件管理器选型与集成可行性记录（已作废）
 
-> 对应 [ONEDRIVE_REFACTOR_PLAN.md](./ONEDRIVE_REFACTOR_PLAN.md) 的 P0。状态：**选型试验已建立；候选组件未获得整体采用许可**。下面的“源码确认”“自动回归”“真实浏览器”是不同证据等级。不得将试验页面当成已实现的 IPSys 新 UI。
+> **本文已于 2026-10-21 作废，仅作历史留档。**
+>
+> 本文的核心结论仍然成立且已被采纳：两个候选 React 组件（Cubone / harryy2510）都不满足
+> 「Folder 与 FileLink 按 position 混排」和 LinkId/FileId 稳定身份，组件路线不通。
+> 结论导向的「自研薄壳」即现行 `frontend/explorer/`（零依赖原生 JS）。本文引用的试验代码
+> `experiments/onedrive-p0/` 已随分支清理一并删除。
+
+> 原文：对应 [ONEDRIVE_REFACTOR_PLAN.md](./ONEDRIVE_REFACTOR_PLAN.md) 的 P0。状态：**选型试验已建立；候选组件未获得整体采用许可**。下面的“源码确认”“自动回归”“真实浏览器”是不同证据等级。不得将试验页面当成已实现的 IPSys 新 UI。
 
 ## 首轮实际自动验证（2026-10-20）
 

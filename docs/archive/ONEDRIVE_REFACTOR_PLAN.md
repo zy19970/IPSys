@@ -1,6 +1,13 @@
-# IPSys OneDrive 风格统一文件管理器重构实施方案
+# IPSys OneDrive 风格统一文件管理器重构实施方案（已作废）
 
-> 状态：方案基线 v1.0，2026-10-20。后续开发以本文为实施入口；涉及已冻结的业务规则时，以 REQUIREMENTS.md 的最新有效覆盖条款为准，本文只覆盖新的呈现与交互方向。
+> **本文已于 2026-10-21 作废，仅作历史留档，不得再作为实施依据。**
+>
+> 作废原因：本文假设前端采用 React + Vite 构建链，与其配套的 P0 试验线
+> （`experiments/onedrive-p0/`）已被撤销。现行方案是零依赖原生 JS，源码位于
+> `frontend/explorer/`，由 `tools/bundle.cjs` 打包成 `dist/` 后以 `EmbeddedResource`
+> 编入 `IPSys.Web.dll`。业务语义（信息架构、Row 对象、命令语义）仍可参考，技术选型部分全部失效。
+
+> 原文状态：方案基线 v1.0，2026-10-20。后续开发以本文为实施入口；涉及已冻结的业务规则时，以 REQUIREMENTS.md 的最新有效覆盖条款为准，本文只覆盖新的呈现与交互方向。
 >
 > 仓库：zy19970/IPSys；**唯一开发分支：work/onedrive-file-manager**；来源 main：c22ea1f836b5e3763780a674f1cbb1f56fb68d05。
 >
