@@ -124,7 +124,13 @@ async function importLedger(categoryId) {
   const input = document.createElement("input");
   input.type = "file";
   input.accept = ".xlsx";
+  /* 必须挂进 DOM 再 click:游离节点的选择器在部分环境下不触发事件,
+     自动化测试也拿不到它的节点句柄。 */
+  input.hidden = true;
+  document.body.append(input);
+  input.addEventListener("cancel", () => input.remove(), { once: true });
   input.addEventListener("change", async () => {
+    input.remove();
     const file = input.files?.[0];
     if (!file) return;
     if (file.size > 8 * 1024 * 1024) {
