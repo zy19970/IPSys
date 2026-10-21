@@ -11,7 +11,7 @@ static class NativeFolderStore
             throw new ArgumentException("该业务类型尚未接入新库。");
     }
 
-    private static (string Name,string Json) Payload(string kind, FolderMutationInput x, bool create)
+    private static (string Name,string Json) Payload(string kind, FolderMutationInput x)
     {
         if (x.Archive is not null || x.ArchiveFolder is not null ||
             x.General is not null || x.Section is not null)
@@ -26,11 +26,13 @@ static class NativeFolderStore
                     ProjectStatus=string.IsNullOrWhiteSpace(x.Project.ProjectStatus)
                         ? "筹备中" : x.Project.ProjectStatus.Trim()};
                 return (p.Name!,JsonSerializer.Serialize(p));
+            // The owning project is resolved by ContractOwner and stored in
+            // folders.parent_id; it is deliberately NOT part of the attributes.
             case FolderKinds.Contract when x.Contract is not null && x.Project is null &&
-                x.Ip is null && (create ? x.ParentId is > 0 : x.ParentId is null):
+                x.Ip is null:
                 if (ContractRules.Validate(x.Contract) is string ce) throw new ArgumentException(ce);
                 var c=x.Contract with {Name=x.Contract.Name!.Trim(),
-                    Amount=x.Contract.Amount?.Trim()};
+                    Amount=x.Contract.Amount?.Trim(),ProjectId=null};
                 return (c.Name!,JsonSerializer.Serialize(c));
             case FolderKinds.Ip when x.Ip is not null && x.Project is null &&
                 x.Contract is null && x.ParentId is null:
@@ -38,8 +40,40 @@ static class NativeFolderStore
                 var ip=IpRules.Normalize(x.Ip);
                 return (ip.Name!,JsonSerializer.Serialize(ip));
             default:
-                throw new ArgumentException("文件夹业务属性或合同父级不符合要求。");
+                throw new ArgumentException(
+                    "业务属性与文件夹类型不匹配，或缺少必需的业务字段。");
         }
+    }
+
+    /* 合同的所属项目有三个等价写法：顶层 parentId（历史口径）、顶层 projectId、
+       以及 contract.projectId —— 客户端把 GET /api/v2/ui/contracts 返回的对象
+       原样回传时最常见的是第三种。同时出现且互相矛盾时必须拒绝：猜一个会让
+       合同挂到调用方没预期的项目下，而这种错误在界面上看不出来。 */
+    private static long? ContractOwner(FolderMutationInput x)
+    {
+        var candidates=new List<(string Source,long Value)>();
+        if(x.ParentId is long parent)candidates.Add(("parentId",parent));
+        if(x.ProjectId is long project)candidates.Add(("projectId",project));
+        if(x.Contract?.ProjectId is long nested)candidates.Add(("contract.projectId",nested));
+        if(candidates.Count==0)return null;
+        var values=candidates.Select(c=>c.Value).Distinct().ToArray();
+        if(values.Length>1)
+            throw new ArgumentException("合同所属项目冲突："+string.Join("、",
+                candidates.Select(c=>c.Source+"="+c.Value))+"。");
+        if(values[0]<=0)
+            throw new ArgumentException("合同所属项目必须是有效的项目 ID。");
+        return values[0];
+    }
+
+    private static long? ParentOf(SqliteConnection db,ResourceRef r)
+    {
+        using var cmd=db.CreateCommand();
+        cmd.CommandText="""
+            SELECT parent_id FROM folders
+            WHERE workspace=$w AND kind=$kind AND id=$id AND deleted=0;
+            """;
+        Bind(cmd,r);
+        return cmd.ExecuteScalar() is long parent?parent:null;
     }
 
     private static bool ActiveProject(SqliteConnection db,string workspace,long id)
@@ -54,9 +88,18 @@ static class NativeFolderStore
     public static long Create(SqliteConnection db,string workspace,string kind,FolderMutationInput input)
     {
         Scope(workspace,kind);
-        var (name,json)=Payload(kind,input,true);
-        if(kind==FolderKinds.Contract && !ActiveProject(db,workspace,input.ParentId!.Value))
-            throw new KeyNotFoundException("合同所属项目不存在。");
+        var (name,json)=Payload(kind,input);
+        long? target=input.ParentId;
+        if(kind==FolderKinds.Contract)
+        {
+            long owner=ContractOwner(input)??throw new ArgumentException(
+                "创建合同必须指定所属项目：请提供顶层 parentId 或 projectId，"
+                +"把合同对象原样回传时 contract.projectId 也接受。");
+            if(!ActiveProject(db,workspace,owner))
+                throw new KeyNotFoundException(
+                    $"合同所属项目不存在、已删除或不属于当前工作区：{owner}。");
+            target=owner;
+        }
         using var cmd=db.CreateCommand();
         cmd.CommandText="""
             INSERT INTO folders(workspace,kind,parent_id,name,attributes_json)
@@ -64,7 +107,7 @@ static class NativeFolderStore
             """;
         cmd.Parameters.AddWithValue("$w",workspace);
         cmd.Parameters.AddWithValue("$kind",kind);
-        cmd.Parameters.AddWithValue("$parent",(object?)input.ParentId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$parent",(object?)target ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$name",name);
         cmd.Parameters.AddWithValue("$json",json);
         return (long)cmd.ExecuteScalar()!;
@@ -86,7 +129,17 @@ static class NativeFolderStore
     public static bool Update(SqliteConnection db,ResourceRef r,FolderMutationInput input)
     {
         Reference(r);
-        var (name,json)=Payload(r.Kind,input,false);
+        var (name,json)=Payload(r.Kind,input);
+        /* 读-改-写是正常用法，所以更新时接受回传的归属字段；只有真的想换项目
+           才拒绝 —— 合同换项目会让历史附件、导出层级和项目汇总全部错位。 */
+        if(r.Kind==FolderKinds.Contract && ContractOwner(input) is long wanted)
+        {
+            long? current=ParentOf(db,r);
+            if(current!=wanted)
+                throw new ArgumentException(
+                    $"合同不能更换所属项目：当前属于项目 {current?.ToString()??"(已删除)"}，"
+                    +$"请求为 {wanted}。");
+        }
         using var cmd=db.CreateCommand();
         cmd.CommandText="""
             UPDATE folders SET name=$name,attributes_json=$json

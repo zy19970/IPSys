@@ -112,6 +112,8 @@ MCP 自己的回归在 `--smoke` 里（`NativeMcpSmoke` + `NativeMcpArchiveSmoke
 
 - 数据来源：`GET /api/v2/ui/contracts/{ws}` 返回合同的 `projectId`，`store.js` 的 `buildTree` 据此把合同挂到项目下；合同原件的 `folderId` 本身就是合同 folder id，所以附件照样按 ownerId 挂载，不需要额外映射。
 - 新建：站在项目里时，「新建」菜单只剩「新建合同」（顶层分类在项目内都建不了，列出来只会误导）；项目节点右键也有「新建合同」。两者都带当前项目的 id 走 `parentId`，拿不到归属就拒绝建。
+- 归属写法：`POST /api/v2/folders/{ws}/contract` 接受 `parentId`、顶层 `projectId`、`contract.projectId` 三种等价写法（后者是把 `GET /api/v2/ui/contracts` 的对象原样回传时的形状）；同时出现且矛盾会 400 并列出两个值，不猜。`projectId` 只是请求别名，真实归属始终是 `folders.parent_id`，属性 JSON 里不会存第二份。
+- 更新：带回来的 `projectId` 与当前一致就放行（读-改-写是正常用法），真的想换项目 → 400「合同不能更换所属项目」。合同换项目会让附件、导出层级和项目汇总一起错位。
 - 编辑：详情面板「修改」/ 右键「属性」走 `RecordForms.contract`，字段是合同编号、签订日期、金额、签约方、类别、标签、备注。
 - 导出：`EXPORTABLE_KINDS` 含 `contract`，`exportEntryOf` 为合同补 `projectId`/`projectName`，`export.js` 的 `owner()` 用它们还原 `项目/合同/文件` 目录。
 - 合同不计入「N 条记录」（`summary()` 与 `recordCount()` 的 `RECORD_KINDS` 都不含它），但它的原件计入附件数与占用。

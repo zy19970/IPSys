@@ -1,11 +1,18 @@
 using System.Globalization;
+using System.Text.Json.Serialization;
 
 record ProjectInput(string? Name, string? ProjectType, string? ProjectNo, string? Leader,
     string? UndertakingOrg, string? StartDate, string? EndDate, string? ProjectStatus,
     string? Category, string? Remarks, string? Tags);
 
+// ProjectId is a request alias only: the real owner is folders.parent_id. Callers
+// routinely echo back a contract object returned by GET /api/v2/ui/contracts, so
+// the alias is accepted on write and cleared before the attributes JSON is stored.
+// JsonIgnore(WhenWritingNull) keeps attributes_json byte-identical to before this
+// field existed - the property is read from requests but never serialized.
 record ContractInput(string? Name, string? ContractNo, string? SignDate, string? Amount,
-    string? SigningParties, string? Category, string? Remarks, string? Tags);
+    string? SigningParties, string? Category, string? Remarks, string? Tags,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] long? ProjectId = null);
 
 record IpInput(
     string? Name, string? IpType, string? Status,
@@ -32,7 +39,9 @@ record FolderMutationInput(
     ArchiveInput? Archive = null,
     ArchiveFolderInput? ArchiveFolder = null,
     string? Section = null,
-    TitleInput? General = null);
+    TitleInput? General = null,
+    // 与 parentId 等价的顶层别名，合同专用；解析与冲突判定见 ContractOwner。
+    long? ProjectId = null);
 
 // Pure V2 business rules: no obsolete SQL writes or schema upgrades.
 static class ProjectRules

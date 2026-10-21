@@ -28,7 +28,7 @@ static class NativeProjectContractUiHttpSmoke
             Uri.EscapeDataString(name));
         return await Json(await client.SendAsync(request));
     }
-    public static async Task VerifyAsync(HttpClient client)
+    public static async Task VerifyAsync(HttpClient client,Vault vault)
     {
         string suffix=Guid.NewGuid().ToString("N")[..8];
         string name="V2UI项目"+suffix;
@@ -52,6 +52,82 @@ static class NativeProjectContractUiHttpSmoke
                 name="本项目合同"+suffix,contractNo="CT-"+suffix,
                 amount="2100.50",remarks="合同备注"}}));
         long contractId=contract.GetProperty("id").GetInt64();
+
+        /* 归属项目有三个等价写法：顶层 parentId、顶层 projectId、contract.projectId。
+           最后一种是把 GET /api/v2/ui/contracts 的对象原样回传时的形状，旧实现
+           会把它静默丢掉再回一句"合同父级不符合要求"。 */
+        var nestedOwner=await Json(await client.PostAsJsonAsync(
+            "/api/v2/folders/company/contract",
+            new{contract=new{name="嵌套归属合同"+suffix,projectId=secondId}}));
+        long nestedId=nestedOwner.GetProperty("id").GetInt64();
+        var aliasedOwner=await Json(await client.PostAsJsonAsync(
+            "/api/v2/folders/company/contract",
+            new{projectId=secondId,contract=new{name="顶层别名合同"+suffix}}));
+        long aliasedId=aliasedOwner.GetProperty("id").GetInt64();
+        var owned=await client.GetFromJsonAsync<JsonElement>(
+            "/api/v2/ui/contracts/company");
+        Check(owned.EnumerateArray().Count(x=>
+                (x.GetProperty("id").GetInt64()==nestedId||
+                 x.GetProperty("id").GetInt64()==aliasedId) &&
+                x.GetProperty("projectId").GetInt64()==secondId)==2,
+              "contract owner accepts parentId, projectId and contract.projectId alike");
+
+        /* 真正的归属只存在 folders.parent_id。属性 JSON 里再存一份就会漂移：
+           改了 parent_id 却留下旧 projectId，导出层级和项目汇总会对不上。 */
+        using(var raw=vault.Db.CreateCommand())
+        {
+            raw.CommandText="""
+                SELECT attributes_json FROM folders
+                WHERE workspace='company' AND kind='contract' AND id IN ($a,$b);
+                """;
+            raw.Parameters.AddWithValue("$a",nestedId);
+            raw.Parameters.AddWithValue("$b",aliasedId);
+            int rows=0;
+            using var rd=raw.ExecuteReader();
+            while(rd.Read())
+            {
+                rows++;
+                Check(!rd.GetString(0).Contains("projectId",StringComparison.Ordinal),
+                    "projectId must never be persisted inside attributes_json");
+            }
+            Check(rows==2,"both aliased contracts must exist in the folders table");
+        }
+
+        using(var conflict=await client.PostAsJsonAsync(
+            "/api/v2/folders/company/contract",
+            new{parentId=projectId,projectId=secondId,contract=new{name="归属矛盾"+suffix}}))
+        {
+            string text=await conflict.Content.ReadAsStringAsync();
+            Check(conflict.StatusCode==HttpStatusCode.BadRequest&&
+                  text.Contains("冲突",StringComparison.Ordinal),
+                "contradictory owner fields must be rejected with both values named");
+        }
+        using(var orphan=await client.PostAsJsonAsync(
+            "/api/v2/folders/company/contract",
+            new{contract=new{name="无归属"+suffix}}))
+        {
+            string text=await orphan.Content.ReadAsStringAsync();
+            Check(orphan.StatusCode==HttpStatusCode.BadRequest&&
+                  text.Contains("parentId",StringComparison.Ordinal),
+                "an ownerless contract must name the field that fixes it");
+        }
+
+        /* 读-改-写是正常用法：归属一致时要接受，真的想换项目才拒绝。 */
+        using(var rewrite=await client.PutAsJsonAsync(
+            $"/api/v2/folders/company/contract/{contractId}",
+            new{contract=new{name="本项目合同"+suffix,contractNo="CT-"+suffix,
+                amount="2100.50",remarks="合同备注",projectId=projectId}}))
+            Check(rewrite.StatusCode==HttpStatusCode.OK,
+                "round-tripping an unchanged projectId must not be treated as a move");
+        using(var moved=await client.PutAsJsonAsync(
+            $"/api/v2/folders/company/contract/{contractId}",
+            new{contract=new{name="本项目合同"+suffix,projectId=secondId}}))
+        {
+            string text=await moved.Content.ReadAsStringAsync();
+            Check(moved.StatusCode==HttpStatusCode.BadRequest&&
+                  text.Contains("不能更换所属项目",StringComparison.Ordinal),
+                "moving a contract to another project must be refused");
+        }
 
         var projects=await client.GetFromJsonAsync<JsonElement>(
             "/api/v2/ui/projects/company");

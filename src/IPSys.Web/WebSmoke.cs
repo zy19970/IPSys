@@ -80,7 +80,7 @@ static class WebSmoke
             await NativeIpFileHttpSmoke.VerifyAsync(client);
             await NativeIpExcelHttpSmoke.VerifyAsync(client);
             await NativeIpUiHttpSmoke.VerifyAsync(client);
-            await NativeProjectContractUiHttpSmoke.VerifyAsync(client);
+            await NativeProjectContractUiHttpSmoke.VerifyAsync(client,vault);
             await NativeProjectMilestoneSmoke.VerifyAsync(client);
             await NativeArchiveGeneralMilestoneSmoke.VerifyAsync(client);
             await NativeArchiveUiHttpSmoke.VerifyAsync(client);

@@ -97,7 +97,9 @@ static class NativeFolderEndpoints
                 catch(ArgumentException ex){return Bad(ex.Message);}
                 catch(InvalidOperationException ex){return Bad(ex.Message,409);}
                 catch(Microsoft.Data.Sqlite.SqliteException ex){return Bad(FolderConstraintMessage(ex,kind),409);}
-                catch(KeyNotFoundException){return Results.NotFound();}
+                // 404 with the reason: an empty body leaves the caller guessing
+                // whether the project id was wrong, deleted or in another workspace.
+                catch(KeyNotFoundException ex){return Bad(ex.Message,404);}
             }
             finally{v.Gate.Release();}
         });
