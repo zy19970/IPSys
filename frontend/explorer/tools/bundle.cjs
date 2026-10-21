@@ -12,7 +12,9 @@ const path = require("path");
 const ROOT = path.resolve(__dirname, "..");
 const OUT = path.join(ROOT, "dist");
 
-const ORDER = ["js/icons.js", "js/data.js", "js/store.js", "js/app.js", "js/forms.js", "js/interactions.js"];
+/* bridge 是本壳与 wwwroot 能力层之间的适配:它只做形状转换,不引业务逻辑。
+   放在 interactions 之前,保证交互层运行时适配对象已就位。 */
+const ORDER = ["js/icons.js", "js/data.js", "js/store.js", "js/app.js", "js/forms.js", "js/bridge.js", "js/interactions.js"];
 
 fs.mkdirSync(OUT, { recursive: true });
 

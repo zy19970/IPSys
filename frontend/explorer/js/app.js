@@ -1196,8 +1196,5 @@ function bootStaticIcons() {
   set("icoSelDownload", icon("download", 17));
   set("selClear", icon("close", 14));
   set("detailClose", icon("close", 15));
-  set("upToggle", icon("chevronDown", 15));
-  set("upClosePanel", icon("close", 15));
-  set("icoUpCloud", icon("cloud", 15));
   set("icoSelDelete", icon("trash", 17));
 }

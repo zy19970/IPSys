@@ -1,5 +1,5 @@
 /* 资料库前端 — 由 tools/bundle.cjs 生成,请勿直接编辑。
-   源文件: js/icons.js → js/data.js → js/store.js → js/app.js → js/forms.js → js/interactions.js */
+   源文件: js/icons.js → js/data.js → js/store.js → js/app.js → js/forms.js → js/bridge.js → js/interactions.js */
 
 /* ===== js/icons.js ===== */
 /* ==========================================================================
@@ -2074,9 +2074,6 @@ function bootStaticIcons() {
   set("icoSelDownload", icon("download", 17));
   set("selClear", icon("close", 14));
   set("detailClose", icon("close", 15));
-  set("upToggle", icon("chevronDown", 15));
-  set("upClosePanel", icon("close", 15));
-  set("icoUpCloud", icon("cloud", 15));
   set("icoSelDelete", icon("trash", 17));
 }
 
@@ -2468,6 +2465,173 @@ const RecordForms = {
 };
 
 
+/* ===== js/bridge.js ===== */
+/* ==========================================================================
+   能力层适配（bridge）
+   --------------------------------------------------------------------------
+   `src/IPSys.Web/wwwroot/` 下的四个脚本不是本壳的源码,它们有自建 DOM 与固定的
+   对外契约。这里的职责只有两件:**把 VaultStore 包装成它们期望的请求对象形状**,
+   以及**把本壳的节点翻译成它们要的参数**。不复制任何业务逻辑。
+
+   为什么要这一层:ip-v2.js 要求 `api` 同时是三样东西 ——
+     1. `api(path, {method,json,signal})` → Response
+     2. `api.uploadFile(path, {method,headers,body})` → {ok,status,json()}
+     3. `api.uploadProgress` → IPSysUploadProgress
+   普通 JSON 请求走 fetch,上传必须走 XHR(只有 XHR 能拿到真实字节进度),
+   两者共用同一个 token,所以只能在外层拼一个混合对象。
+   ========================================================================== */
+
+/* 单个原件上限。后端 Kestrel 的 MaxRequestBodySize 是 66 MiB,但 prepare 端点
+   会放宽到 8 GiB,与旧壳保持一致。 */
+const MAX_ORIGINAL_BYTES = 8 * 1024 ** 3;
+
+const CapabilityApi = Object.assign(
+  (path, opts = {}) => VaultStore.api(path, opts),
+  {
+    uploadProgress: globalThis.IPSysUploadProgress,
+
+    async uploadFile(path, opts) {
+      try {
+        return await this.uploadProgress.request(path, opts, VaultStore.token);
+      } catch (error) {
+        /* 上传走 XHR,不经过 VaultStore.api,所以 401 要在这里自己收口:
+           否则界面会停在一个已失效的 token 上,后续每个请求都静默失败。 */
+        if (error?.status === 401) {
+          VaultStore.token = "";
+          VaultStore.locked = true;
+          showLogin("登录已失效,请重新解锁资料库");
+        }
+        throw error;
+      }
+    },
+  }
+);
+
+/* 能力层任务是否在跑 —— 工作区切换要据此互斥,否则切走时上传还在发,
+   结果会落到新工作区的路径上。 */
+let fileTaskActive = false;
+CapabilityApi.uploadProgress.onActiveChanged = (active) => {
+  fileTaskActive = !!active;
+  if (!active) {
+    /* 取消时服务端还要回滚暂存对象,晚一点刷新才看得到真实结果。 */
+    setTimeout(() => refreshCurrent().catch(() => {}), 450);
+  }
+};
+
+function fileTaskBusy() {
+  return fileTaskActive || !!CapabilityApi.uploadProgress.status().active;
+}
+
+/* ---------------- 上传 ---------------- */
+
+const UPLOADABLE_KINDS = ["project", "archive", "ip", "general"];
+
+/* 批量上传:去重提示、阶段文案、取消全部由 ip-v2 + upload-progress 负责,
+   这里只做「一次 begin / 逐件 file / 一次 finish」的编排。 */
+async function uploadAttachments(files, node) {
+  const list = Array.from(files || []);
+  if (!list.length) return;
+
+  const ownerId = node?.biz?.id;
+  const kind = node?.biz?.kind;
+  if (!ownerId || !UPLOADABLE_KINDS.includes(kind)) {
+    return toast("当前记录无法接收附件");
+  }
+
+  const progress = CapabilityApi.uploadProgress;
+  if (!progress.begin(list.length)) return toast("已有文件任务,请等待完成");
+
+  const workspace = VaultStore.ws;
+  const meta = { kind, ownerId };
+  const errors = [];
+  let completed = 0;
+  let skipped = 0;
+
+  try {
+    for (let i = 0; i < list.length; i++) {
+      if (progress.cancelled()) break;
+      progress.file(list[i], i + 1);
+
+      if (list[i].size > MAX_ORIGINAL_BYTES) {
+        errors.push(`${list[i].name}:超过 8 GiB`);
+        continue;
+      }
+
+      try {
+        const saved = await globalThis.IPSysNativeIp.upload(CapabilityApi, list[i], meta, workspace);
+        /* null = 用户在去重对话框里点了「取消上传」 */
+        if (saved) completed++;
+        else skipped++;
+      } catch (e) {
+        if (progress.cancelled() || e?.name === "AbortError") {
+          skipped++;
+          break;
+        }
+        errors.push(`${list[i].name}:${e.message}`);
+      }
+    }
+  } finally {
+    progress.finish({ completed, errors, skipped });
+  }
+}
+
+/* ---------------- 上传新版本 / 关联原件 ---------------- */
+
+/* 把本壳的附件节点翻译成 ip-v2 需要的 record。
+   附件节点自己不记 ownerId,要顺着父节点找(fileMeta 只有 fileId/version)。 */
+function recordOfAttachment(node) {
+  const meta = VaultStore.fileMeta.get(node.id);
+  if (!meta) return null;
+  const owner = findParent(node.id);
+  return {
+    kind: node.biz?.ownerKind || owner?.biz?.kind || "",
+    ownerId: owner?.biz?.id ?? null,
+    fileId: meta.fileId,
+    version: meta.version,
+    category: node.biz?.category || "其他材料",
+    name: node.name,
+  };
+}
+
+async function uploadNewVersion(node) {
+  if (!node || node.type !== "file") return;
+  const record = recordOfAttachment(node);
+  if (!record?.fileId || !record.ownerId) return toast("附件信息缺失,无法上传新版本");
+
+  const result = await globalThis.IPSysNativeIp.newVersion(CapabilityApi, record, VaultStore.ws);
+  if (result === true) toast("新版本已保存");
+  else if (result instanceof Error) toast(result.message, { ms: 6000 });
+}
+
+async function associateOriginal(node) {
+  if (!node || node.type !== "file") return;
+  const record = recordOfAttachment(node);
+  if (!record?.fileId) return toast("附件信息缺失");
+
+  /* ip-v2.associate 期望 records 里每项是 {id, ownerId, data:{name}}。 */
+  const records = [];
+  walkNodes((n) => {
+    if (n.type === "folder" && n.biz?.kind === "ip" && n.biz?.id != null) {
+      records.push({ id: n.biz.id, ownerId: n.biz.id, data: { name: n.name } });
+    }
+  });
+  if (records.length < 2) return toast("当前工作区还没有其它知识产权记录");
+
+  const ok = await globalThis.IPSysNativeIp.associate(
+    CapabilityApi,
+    { ...record, kind: "ip", ownerId: record.ownerId },
+    VaultStore.ws,
+    records
+  );
+  if (ok) toast("已共享到目标知识产权");
+}
+
+/* 遍历当前已加载的整棵树(含未展开的分支)。 */
+function walkNodes(visit) {
+  walk(ROOT, (n) => visit(n));
+}
+
+
 /* ===== js/interactions.js ===== */
 /* ==========================================================================
    交互层 — OneDrive 的指针/键盘模型
@@ -2688,6 +2852,12 @@ async function switchWorkspace(ws) {
     toast("正在加载，请稍候");
     return;
   }
+  /* 上传/导出还在跑时切工作区,请求会落到新工作区的路径上,服务端收到的是
+     错配的 folderId;导出则是把旧工作区的树画到新界面上。直接挡住。 */
+  if (fileTaskBusy()) {
+    toast("文件任务进行中,完成后再切换工作区", { ms: 5000 });
+    return;
+  }
   const cur = VaultStore.ws === "company" ? "company" : "personal";
   if (ws === cur) {
     toast(ws === "personal" ? "当前已在个人工作区" : "当前已在企业工作区");
@@ -2718,7 +2888,6 @@ function bootInteractions() {
   bindSettings();
   bindKeyboard();
   bindOverlays();
-  bindUploadPanel();
 }
 
 function bindLockScreen() {
@@ -3482,6 +3651,8 @@ function showItemMenu(id, x, y) {
     isFolder ? MI("open", "folder", "打开") : MI("open", "eye", "预览"),
     isFolder && b.kind !== "archive_folder" ? MI("props", "info", "属性") : "",
     !isFolder ? MI("download", "download", "下载") : "",
+    !isFolder ? MI("newver", "upload", "上传新版本") : "",
+    !isFolder && b.ownerKind === "ip" ? MI("assoc", "copy", "共享到其它知识产权") : "",
     '<div class="ctx-sep"></div>',
     isFolder && b.kind !== "archive_folder" ? MI("rename", "rename", "重命名", "F2") : "",
     b.kind !== "archive_folder" ? MI("delete", "trash", "删除", "Del", true) : "",
@@ -3493,6 +3664,8 @@ function showItemMenu(id, x, y) {
     open: () => (isFolder ? Drive.openFolder(id) : previewFile(id)),
     props: () => RecordForms.edit(item),
     download: () => downloadFile(id),
+    newver: () => uploadNewVersion(item),
+    assoc: () => associateOriginal(item),
     rename: () => toast("重命名请点「修改」或右键「属性」"),
     delete: () => deleteNodes([...Drive.state.selection].map((i) => findById(i) || RECYCLE.find((n) => n.id === i)).filter(Boolean)),
   });
@@ -3994,7 +4167,8 @@ async function previewFile(id) {
 function pickFiles() {
   const node = findById(Drive.state.folderId);
   if (!node || node.type !== "folder") return toast("请先进入一条记录,再上传附件");
-  if (nodeTag(node.id) === "k") return toast("请先进入具体记录,再上传附件");
+  if (nodeTag(node.id) === "k" || node.biz?.kind === "archive_folder")
+    return toast("请先进入具体记录,再上传附件");
 
   const input = document.createElement("input");
   input.type = "file";
@@ -4004,133 +4178,9 @@ function pickFiles() {
   });
   input.click();
 }
-
-const UploadQueue = [];
-let uploading = false;
-
 function uploadFiles(files, node) {
-  if (!node || node.type !== "folder") return;
-  const ownerId = node.biz?.id;
-  if (!ownerId) return toast("当前记录无法接收附件");
-
-  for (const f of files) {
-    UploadQueue.push({ file: f, node, ownerId, progress: 0, state: "wait" });
-  }
-  openUploadPanel();
-  pumpUpload();
-}
-
-function bindUploadPanel() {
-  $("#upClosePanel")?.addEventListener("click", closeUploadPanel);
-  $("#upToggle")?.addEventListener("click", () => $("#uploadPanel").classList.toggle("collapsed"));
-  $("#upPause")?.addEventListener("click", () => toast("暂停需要在原客户端操作"));
-}
-
-function openUploadPanel() {
-  $("#uploadPanel").classList.add("show", "expanded");
-  renderUpload();
-}
-
-function closeUploadPanel() {
-  $("#uploadPanel").classList.remove("show", "expanded");
-}
-
-function renderUpload() {
-  const list = $("#upList");
-  if (!list) return;
-  list.innerHTML = UploadQueue.map(
-    (it) => `<div class="upl-row ${it.state === "done" ? "is-done" : it.state === "error" ? "is-error" : ""}">
-      <span class="upl-name">${esc(it.file.name)}</span>
-      <span class="upl-pct">${it.state === "done" ? "已完成" : it.state === "error" ? "失败" : Math.round(it.progress) + "%"}</span>
-      <div class="upl-bar"><div class="upl-fill" style="width:${it.progress}%"></div></div>
-      ${it.state === "error" ? `<span class="upl-err">${esc(it.message || "")}</span>` : ""}
-    </div>`
-  ).join("");
-
-  const done = UploadQueue.filter((i) => i.state === "done").length;
-  const sum = $("#upSum");
-  if (sum) sum.textContent = `${done} / ${UploadQueue.length}`;
-  const ft = $("#upFooterText");
-  if (ft) ft.textContent = done === UploadQueue.length ? "全部完成" : "正在上传…";
-}
-
-async function pumpUpload() {
-  if (uploading) return;
-  uploading = true;
-
-  while (UploadQueue.some((i) => i.state === "wait")) {
-    const it = UploadQueue.find((i) => i.state === "wait");
-    it.state = "run";
-    renderUpload();
-
-    try {
-      await uploadOne(it);
-      it.progress = 100;
-      it.state = "done";
-    } catch (e) {
-      it.state = "error";
-      it.message = e.message;
-    }
-    renderUpload();
-  }
-
-  uploading = false;
-  const failed = UploadQueue.filter((i) => i.state === "error").length;
-  if (failed) toast(`${failed} 个文件上传失败`, { ms: 6000 });
-  else toast(`已上传 ${UploadQueue.length} 个文件`);
-
-  UploadQueue.length = 0;
-  setTimeout(closeUploadPanel, 1600);
-  await refreshCurrent();
-}
-
-function uploadOne(it) {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    const qs = `?folderId=${it.ownerId}`;
-
-    xhr.open("POST", `/api/v2/files/${VaultStore.ws}/prepare${qs}`);
-    xhr.setRequestHeader("Content-Type", "application/octet-stream");
-    xhr.setRequestHeader("X-File-Name", encodeURIComponent(it.file.name));
-    if (VaultStore.token) xhr.setRequestHeader("X-IPSys-Token", VaultStore.token);
-
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable) {
-        it.progress = (e.loaded / e.total) * 90;
-        renderUpload();
-      }
-    };
-
-    xhr.onload = async () => {
-      if (xhr.status < 200 || xhr.status >= 300) {
-        let msg = `上传失败:${xhr.status}`;
-        try {
-          msg = JSON.parse(xhr.responseText).error || msg;
-        } catch {}
-        return reject(new Error(msg));
-      }
-
-      let prepared;
-      try {
-        prepared = JSON.parse(xhr.responseText);
-      } catch {
-        return reject(new Error("暂存响应无法解析"));
-      }
-
-      try {
-        await VaultStore.api(`/api/v2/files/${VaultStore.ws}/prepared/${prepared.ticket}/resolve`, {
-          method: "POST",
-          json: { choice: "independent" },
-        });
-        it.progress = 100;
-        renderUpload();
-        resolve();
-      } catch (e) {
-        reject(e);
-      }
-    };
-
-    xhr.onerror = () => reject(new Error("网络中断"));
-    xhr.send(it.file);
-  });
+  /* 上传全流程交给能力层编排:prepare → 相同内容检测 → resolve。
+     进度、阶段文案、取消、失败明细由 IPSysUploadProgress 自带面板负责,
+     本壳不再自己维护队列与进度条。 */
+  void uploadAttachments(files, node);
 }

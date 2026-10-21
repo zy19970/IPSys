@@ -217,6 +217,12 @@ async function switchWorkspace(ws) {
     toast("正在加载，请稍候");
     return;
   }
+  /* 上传/导出还在跑时切工作区,请求会落到新工作区的路径上,服务端收到的是
+     错配的 folderId;导出则是把旧工作区的树画到新界面上。直接挡住。 */
+  if (fileTaskBusy()) {
+    toast("文件任务进行中,完成后再切换工作区", { ms: 5000 });
+    return;
+  }
   const cur = VaultStore.ws === "company" ? "company" : "personal";
   if (ws === cur) {
     toast(ws === "personal" ? "当前已在个人工作区" : "当前已在企业工作区");
@@ -247,7 +253,6 @@ function bootInteractions() {
   bindSettings();
   bindKeyboard();
   bindOverlays();
-  bindUploadPanel();
 }
 
 function bindLockScreen() {
@@ -1011,6 +1016,8 @@ function showItemMenu(id, x, y) {
     isFolder ? MI("open", "folder", "打开") : MI("open", "eye", "预览"),
     isFolder && b.kind !== "archive_folder" ? MI("props", "info", "属性") : "",
     !isFolder ? MI("download", "download", "下载") : "",
+    !isFolder ? MI("newver", "upload", "上传新版本") : "",
+    !isFolder && b.ownerKind === "ip" ? MI("assoc", "copy", "共享到其它知识产权") : "",
     '<div class="ctx-sep"></div>',
     isFolder && b.kind !== "archive_folder" ? MI("rename", "rename", "重命名", "F2") : "",
     b.kind !== "archive_folder" ? MI("delete", "trash", "删除", "Del", true) : "",
@@ -1022,6 +1029,8 @@ function showItemMenu(id, x, y) {
     open: () => (isFolder ? Drive.openFolder(id) : previewFile(id)),
     props: () => RecordForms.edit(item),
     download: () => downloadFile(id),
+    newver: () => uploadNewVersion(item),
+    assoc: () => associateOriginal(item),
     rename: () => toast("重命名请点「修改」或右键「属性」"),
     delete: () => deleteNodes([...Drive.state.selection].map((i) => findById(i) || RECYCLE.find((n) => n.id === i)).filter(Boolean)),
   });
@@ -1523,7 +1532,8 @@ async function previewFile(id) {
 function pickFiles() {
   const node = findById(Drive.state.folderId);
   if (!node || node.type !== "folder") return toast("请先进入一条记录,再上传附件");
-  if (nodeTag(node.id) === "k") return toast("请先进入具体记录,再上传附件");
+  if (nodeTag(node.id) === "k" || node.biz?.kind === "archive_folder")
+    return toast("请先进入具体记录,再上传附件");
 
   const input = document.createElement("input");
   input.type = "file";
@@ -1533,133 +1543,9 @@ function pickFiles() {
   });
   input.click();
 }
-
-const UploadQueue = [];
-let uploading = false;
-
 function uploadFiles(files, node) {
-  if (!node || node.type !== "folder") return;
-  const ownerId = node.biz?.id;
-  if (!ownerId) return toast("当前记录无法接收附件");
-
-  for (const f of files) {
-    UploadQueue.push({ file: f, node, ownerId, progress: 0, state: "wait" });
-  }
-  openUploadPanel();
-  pumpUpload();
-}
-
-function bindUploadPanel() {
-  $("#upClosePanel")?.addEventListener("click", closeUploadPanel);
-  $("#upToggle")?.addEventListener("click", () => $("#uploadPanel").classList.toggle("collapsed"));
-  $("#upPause")?.addEventListener("click", () => toast("暂停需要在原客户端操作"));
-}
-
-function openUploadPanel() {
-  $("#uploadPanel").classList.add("show", "expanded");
-  renderUpload();
-}
-
-function closeUploadPanel() {
-  $("#uploadPanel").classList.remove("show", "expanded");
-}
-
-function renderUpload() {
-  const list = $("#upList");
-  if (!list) return;
-  list.innerHTML = UploadQueue.map(
-    (it) => `<div class="upl-row ${it.state === "done" ? "is-done" : it.state === "error" ? "is-error" : ""}">
-      <span class="upl-name">${esc(it.file.name)}</span>
-      <span class="upl-pct">${it.state === "done" ? "已完成" : it.state === "error" ? "失败" : Math.round(it.progress) + "%"}</span>
-      <div class="upl-bar"><div class="upl-fill" style="width:${it.progress}%"></div></div>
-      ${it.state === "error" ? `<span class="upl-err">${esc(it.message || "")}</span>` : ""}
-    </div>`
-  ).join("");
-
-  const done = UploadQueue.filter((i) => i.state === "done").length;
-  const sum = $("#upSum");
-  if (sum) sum.textContent = `${done} / ${UploadQueue.length}`;
-  const ft = $("#upFooterText");
-  if (ft) ft.textContent = done === UploadQueue.length ? "全部完成" : "正在上传…";
-}
-
-async function pumpUpload() {
-  if (uploading) return;
-  uploading = true;
-
-  while (UploadQueue.some((i) => i.state === "wait")) {
-    const it = UploadQueue.find((i) => i.state === "wait");
-    it.state = "run";
-    renderUpload();
-
-    try {
-      await uploadOne(it);
-      it.progress = 100;
-      it.state = "done";
-    } catch (e) {
-      it.state = "error";
-      it.message = e.message;
-    }
-    renderUpload();
-  }
-
-  uploading = false;
-  const failed = UploadQueue.filter((i) => i.state === "error").length;
-  if (failed) toast(`${failed} 个文件上传失败`, { ms: 6000 });
-  else toast(`已上传 ${UploadQueue.length} 个文件`);
-
-  UploadQueue.length = 0;
-  setTimeout(closeUploadPanel, 1600);
-  await refreshCurrent();
-}
-
-function uploadOne(it) {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    const qs = `?folderId=${it.ownerId}`;
-
-    xhr.open("POST", `/api/v2/files/${VaultStore.ws}/prepare${qs}`);
-    xhr.setRequestHeader("Content-Type", "application/octet-stream");
-    xhr.setRequestHeader("X-File-Name", encodeURIComponent(it.file.name));
-    if (VaultStore.token) xhr.setRequestHeader("X-IPSys-Token", VaultStore.token);
-
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable) {
-        it.progress = (e.loaded / e.total) * 90;
-        renderUpload();
-      }
-    };
-
-    xhr.onload = async () => {
-      if (xhr.status < 200 || xhr.status >= 300) {
-        let msg = `上传失败:${xhr.status}`;
-        try {
-          msg = JSON.parse(xhr.responseText).error || msg;
-        } catch {}
-        return reject(new Error(msg));
-      }
-
-      let prepared;
-      try {
-        prepared = JSON.parse(xhr.responseText);
-      } catch {
-        return reject(new Error("暂存响应无法解析"));
-      }
-
-      try {
-        await VaultStore.api(`/api/v2/files/${VaultStore.ws}/prepared/${prepared.ticket}/resolve`, {
-          method: "POST",
-          json: { choice: "independent" },
-        });
-        it.progress = 100;
-        renderUpload();
-        resolve();
-      } catch (e) {
-        reject(e);
-      }
-    };
-
-    xhr.onerror = () => reject(new Error("网络中断"));
-    xhr.send(it.file);
-  });
+  /* 上传全流程交给能力层编排:prepare → 相同内容检测 → resolve。
+     进度、阶段文案、取消、失败明细由 IPSysUploadProgress 自带面板负责,
+     本壳不再自己维护队列与进度条。 */
+  void uploadAttachments(files, node);
 }

@@ -1199,113 +1199,6 @@ svg { display: block; flex: none; }
 }
 
 /* ==========================================================================
-   Upload panel
-   ========================================================================== */
-
-.upload-panel {
-  position: fixed;
-  right: 20px;
-  bottom: 20px;
-  width: 348px;
-  background: var(--surface);
-  border: 1px solid var(--stroke-2);
-  border-radius: var(--r-lg);
-  box-shadow: var(--shadow-16);
-  z-index: 150;
-  display: none;
-  flex-direction: column;
-  overflow: hidden;
-  animation: panelIn .2s var(--ease-out);
-}
-.upload-panel.open { display: flex; }
-
-@keyframes panelIn {
-  from { opacity: 0; transform: translateY(12px) scale(.98); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-.up-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 8px 10px 14px;
-  border-bottom: 1px solid var(--stroke-1);
-}
-.up-head h4 { margin: 0; font-size: 13px; font-weight: 600; flex: 1; }
-.up-head .up-sum { font-size: 11.5px; color: var(--text-2); font-weight: 400; }
-
-.up-list { max-height: 260px; overflow-y: auto; padding: 4px; }
-
-.up-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 7px 8px;
-  border-radius: var(--r-sm);
-  position: relative;
-}
-.up-item:hover { background: var(--surface-subtle); }
-
-.up-info { flex: 1; min-width: 0; }
-.up-name {
-  font-size: 12.5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.up-meta {
-  font-size: 11px;
-  color: var(--text-2);
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin-top: 1px;
-}
-.up-meta .dot { width: 2px; height: 2px; border-radius: 50%; background: currentColor; opacity: .6; }
-.up-meta.done { color: var(--success); }
-.up-meta.error { color: var(--danger); }
-
-.up-bar {
-  height: 2px;
-  background: var(--stroke-2);
-  border-radius: 1px;
-  margin-top: 5px;
-  overflow: hidden;
-}
-.up-bar > i {
-  display: block;
-  height: 100%;
-  width: 0;
-  background: var(--brand);
-  border-radius: 1px;
-  transition: width .25s linear;
-}
-.up-item.is-done .up-bar > i { background: var(--success); }
-.up-item.is-error .up-bar > i { background: var(--danger); }
-
-.up-close {
-  width: 24px; height: 24px;
-  display: flex; align-items: center; justify-content: center;
-  border-radius: var(--r-sm);
-  color: var(--text-2);
-  opacity: 0;
-  flex: none;
-}
-.up-item:hover .up-close { opacity: 1; }
-.up-close:hover { background: var(--surface-pressed); }
-
-/* Speed pill */
-.up-footer {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
-  border-top: 1px solid var(--stroke-1);
-  font-size: 11.5px;
-  color: var(--text-2);
-}
-
-/* ==========================================================================
    Modal / dialog
    ========================================================================== */
 
@@ -1632,7 +1525,6 @@ svg { display: block; flex: none; }
    所有 .mask 同为 300,而 #confirmMask 在 DOM 里比设置面板靠前,
    不同层级就会导致确认框被盖住、看着像点了没反应。 */
 #confirmMask { z-index: 380; }
-.upload-panel.show { display: flex; }
 .ctx-item kbd {
   margin-left: auto;
   font: inherit;
@@ -2373,3 +2265,49 @@ svg { display: block; flex: none; }
 
 /* 原生 progress 兜底（能力层也用裸 <progress>） */
 progress { accent-color: var(--brand); }
+
+/* —— 能力层自建的模态对话框（ip-v2.js 的 selectMatch / associate）——
+   它们用原生 <dialog class="input-dialog">,不是本壳的 .mask/.dialog 体系,
+   所以这里只能按元素与旧类名兜住。类名同样不许改。 */
+dialog {
+  border: 1px solid var(--stroke-1);
+  border-radius: var(--r-xl);
+  padding: 26px;
+  box-shadow: var(--shadow-16);
+  max-width: min(520px, 92vw);
+  width: 100%;
+  background: var(--surface);
+  color: var(--text-1);
+}
+dialog::backdrop { background: rgba(0, 0, 0, .36); }
+dialog h3 { font-size: 17px; margin: 0 0 8px; font-weight: 600; }
+dialog h2 { font-size: 18px; margin-bottom: 10px; }
+
+.hint { font-size: 12px; line-height: 1.7; color: var(--text-3); margin: 12px 0 0; }
+
+.dialogactions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 23px; }
+.dialogactions.wrap { flex-wrap: wrap; }
+
+/* 旧壳的 .btn.primary 在新壳里叫 .btn.solid。能力层的类名改不了,补别名。 */
+.btn.primary {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+  font-weight: 600;
+}
+.btn.primary:hover { background: var(--brand-hover); border-color: var(--brand-hover); }
+.btn.primary:active { background: var(--brand-pressed); }
+
+/* 去重对话框里每个候选原件一行 */
+.fileline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--stroke-1);
+  padding: 10px 0;
+}
+.fileline:last-child { border: 0; }
+.filedesc { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.filedesc strong { font-size: 13px; display: block; line-height: 1.35; }
+.filedesc small { font-size: 11px; color: var(--text-2); display: block; }
+.actions { display: flex; gap: 9px; align-items: center; flex-wrap: wrap; }
