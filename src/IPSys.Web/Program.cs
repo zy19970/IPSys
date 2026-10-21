@@ -40,8 +40,6 @@ byte[] pdfScript = EmbeddedWebAssets.Read("pdf.min.js");
 byte[] pdfWorker = EmbeddedWebAssets.Read("pdf.worker.min.js");
 byte[] pdfPreviewScript = EmbeddedWebAssets.Read("pdf-preview.js");
 byte[] pdfJsLicense = EmbeddedWebAssets.Read("pdfjs.LICENSE.txt");
-// The approved evolving UI draft lives in demo/ui-preview.html and is embedded as-is.
-byte[] previewHtml = EmbeddedWebAssets.Read("ui-preview.html");
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
     Args = Array.Empty<string>(),
@@ -70,7 +68,10 @@ app.Use(async (ctx, next) =>
     ctx.Response.Headers["Cache-Control"] = "no-store";
     ctx.Response.Headers["X-Content-Type-Options"] = "nosniff";
     ctx.Response.Headers["Content-Security-Policy"] =
-        "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; " +
+        // style-src needs unsafe-inline: the explorer shell writes inline styles for
+        // category icon plates, progress widths and dialog sizing. Trade-off accepted
+        // for the shell swap; moving those to CSS classes is tracked as follow-up debt.
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; " +
         "connect-src 'self'; worker-src 'self'; frame-src blob:; object-src 'none'; frame-ancestors 'none'; base-uri 'none'";
     await next();
 });
@@ -86,16 +87,6 @@ app.MapGet("/pdfjs/pdf.min.js", () => Results.Bytes(pdfScript, contentType: "tex
 app.MapGet("/pdfjs/pdf.worker.min.js", () => Results.Bytes(pdfWorker, contentType: "text/javascript; charset=utf-8"));
 app.MapGet("/pdf-preview.js", () => Results.Bytes(pdfPreviewScript, contentType: "text/javascript; charset=utf-8"));
 app.MapGet("/pdfjs/LICENSE.txt", () => Results.Bytes(pdfJsLicense, contentType: "text/plain; charset=utf-8"));
-// Isolate the single-file mock UI in an opaque-origin CSP sandbox. It needs
-// inline handlers/styles, but must not acquire application origin or network access.
-app.MapGet("/ui-preview", (HttpContext ctx) =>
-{
-    ctx.Response.Headers["Content-Security-Policy"] =
-        "sandbox allow-scripts; default-src 'none'; script-src 'unsafe-inline'; " +
-        "style-src 'unsafe-inline'; img-src data:; connect-src 'none'; " +
-        "object-src 'none'; base-uri 'none'; form-action 'none'";
-    return Results.Bytes(previewHtml, contentType: "text/html; charset=utf-8");
-});
 
 SessionEndpoints.Map(app, Fail);
 

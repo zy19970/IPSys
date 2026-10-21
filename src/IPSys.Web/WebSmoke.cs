@@ -34,22 +34,20 @@ static class WebSmoke
             string uploadProgressJs=await client.GetStringAsync("/upload-progress.js");
             string export=await client.GetStringAsync("/export.js");
             string pdf=await client.GetStringAsync("/pdf-preview.js");
-            if(!landing.Contains("id=\"chooseWorkspace\"")||
-                !landing.Contains("id=\"sidebar\"")||
+            if(!landing.Contains("id=\"lockScreen\"")||
+                !landing.Contains("id=\"appShell\"")||
+                !landing.Contains("id=\"wsSwitchBtn\"")||
+                !landing.Contains("id=\"content\"")||
                 !landing.Contains("src=\"/ip-v2.js\"")||
-                !css.Contains(":root")||!app.Contains("IPSysNativeIp.load")||
+                !css.Contains(":root")||!app.Contains("VaultStore")||
                 !ip.Contains("IPSysNativeIp")||!uploadProgressJs.Contains("IPSysUploadProgress")||
                 !export.Contains("IPSys")||
                 pdf.Length<100)
                 throw new IOException("内嵌网页和 V2 原件脚本不完整。");
-            using(var preview=await client.GetAsync("/ui-preview"))
-            {
-                preview.EnsureSuccessStatusCode();
-                string policy=preview.Headers.GetValues("Content-Security-Policy").Single();
-                if(!policy.Contains("sandbox allow-scripts")||
-                   !policy.Contains("connect-src 'none'"))
-                    throw new IOException("UI 预览安全沙箱失效。");
-            }
+            // The shell moved to frontend/explorer; the mock-UI sandbox route is gone for good.
+            using(var retired=await client.GetAsync("/ui-preview"))
+                if(retired.StatusCode!=HttpStatusCode.NotFound)
+                    throw new IOException("已下线的 /ui-preview 不应再可访问。");
 
             using(var legacy=await client.GetAsync("/api/projects/company"))
                 if(legacy.StatusCode!=HttpStatusCode.NotFound)
