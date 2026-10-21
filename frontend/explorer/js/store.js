@@ -136,8 +136,9 @@ const VaultStore = {
     this.error = null;
     const w = encodeURIComponent(ws);
 
-    const [projects, archive, ip, projectFiles] = await Promise.all([
+    const [projects, contracts, archive, ip, projectFiles] = await Promise.all([
       this.getJson(`/api/v2/ui/projects/${w}`).catch(() => []),
+      this.getJson(`/api/v2/ui/contracts/${w}`).catch(() => []),
       this.getJson(`/api/v2/ui/archive/${w}`).catch(() => ({})),
       this.getJson(`/api/v2/ui/ip/${w}`).catch(() => ({})),
       this.getJson(`/api/v2/ui/project-files/${w}`).catch(() => []),
@@ -146,7 +147,7 @@ const VaultStore = {
     this.biz.clear();
     this.fileMeta.clear();
 
-    ROOT = this.buildTree({ ws, projects, archive, ip, projectFiles });
+    ROOT = this.buildTree({ ws, projects, contracts, archive, ip, projectFiles });
     RECYCLE = await this.loadRecycle(ws);
     this.loading = false;
     return ROOT;
@@ -192,7 +193,7 @@ const VaultStore = {
 
   /* ---------------- 建树 ---------------- */
 
-  buildTree({ ws, projects, archive, ip, projectFiles }) {
+  buildTree({ ws, projects, contracts, archive, ip, projectFiles }) {
     const root = F("我的文件", { id: "root", mtime: Date.now() });
     root.children = [];
 
@@ -254,6 +255,38 @@ const VaultStore = {
       return node;
     };
 
+    /* ---- 合同 ----
+       合同跟着项目走:合同节点是所属项目的一个子节点,合同自己的附件再挂在
+       合同下面,于是「项目 / 合同 / 原件」三层在树里是真实层级,不用另外拼。
+       后端 project-files 里合同附件的 folderId 就是合同 folder 自己的 id,
+       所以附件照样由 attach() 按 ownerId 挂载,这里只负责把合同节点建出来。 */
+    const contractsByProject = new Map();
+    for (const c of contracts || []) {
+      const node = F(c.name || `合同 ${c.id}`, { id: `c:${c.id}` });
+      node.mtime = toTs(c.signDate);
+      node.dateLabel = c.signDate || "";
+      node.biz = {
+        kind: "contract",
+        typeName: "合同",
+        status: "",
+        code: c.contractNo || "",
+        owner: c.signingParties || "",
+        amount: c.amount || "",
+        start: c.signDate || "",
+        category: c.category || "",
+        remarks: c.remarks || "",
+        tags: c.tags || "",
+        projectId: c.projectId,
+        projectName: c.projectName || "",
+        raw: c,
+        id: c.id,
+      };
+      this.biz.set(node.id, node.biz);
+      attach(node, c.id);
+      if (!contractsByProject.has(c.projectId)) contractsByProject.set(c.projectId, []);
+      contractsByProject.get(c.projectId).push(node);
+    }
+
     /* ---- 各分类的记录 ----
        分类的顺序、名称、有无全部由 WS_CATS 决定,这里只负责把数据装进去。 */
 
@@ -310,7 +343,15 @@ const VaultStore = {
             id: p.id,
           };
           this.biz.set(node.id, node.biz);
-          return attach(node, p.id);
+          const own = attach(node, p.id);
+          /* 合同和项目自己的附件同层。合同节点已由上面建好并 attach 过,
+             这里只做合并与统一排序,避免两段各自的排序规则不一致。 */
+          const subs = contractsByProject.get(p.id);
+          if (subs?.length) {
+            node.children = [...own.children, ...subs].sort((a, b) => cmpName(a, b));
+            node.size = node.children.reduce((s, k) => s + (k.size || 0), 0);
+          }
+          return node;
         }),
 
       ip: () =>

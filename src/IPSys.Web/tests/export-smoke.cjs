@@ -173,6 +173,30 @@ assert.deepEqual(JSON.parse(JSON.stringify(exporter.makePlan(projectEntries).map
  '研发项目/报告.pdf','研发项目/报告 (2).pdf','横向项目/报告.pdf',
 ],'Same-named files inside one record must be suffixed, not merged');
 
+// Contracts live inside their project, so a project export must reproduce the
+// three levels 项目 / 合同 / 原件 instead of flattening the contract away.
+const withContract=folder('k:project','公司项目',{kind:'k'},[
+ folder('p:1','研发项目',{kind:'project',id:1},[
+  attachment('f:1:1','报告.pdf',3,'project',{fileId:101,version:1}),
+  folder('c:11','合同A',{kind:'contract',id:11,projectId:1,projectName:'研发项目'},[
+   attachment('f:11:1','附件.pdf',7,'contract',{fileId:201,version:1}),
+  ]),
+ ]),
+]);
+const contractEntries=Array.from(shellCtx.collect(withContract));
+assert.deepEqual(Array.from(contractEntries,x=>x.fileId),[101,201],
+ 'A project export must include the originals inside its contracts');
+const contractEntry=contractEntries.find(x=>x.fileId===201);
+assert.equal(contractEntry.kind,'contract','The contract must stay a contract, not be relabelled as its project');
+assert.equal(contractEntry.ownerId,11);
+assert.equal(contractEntry.ownerName,'合同A');
+assert.equal(contractEntry.projectId,1,'export.js needs projectId to nest the contract under its project');
+assert.equal(contractEntry.projectName,'研发项目');
+assert.equal(contractEntry.source,'v2file','Contract originals download through the plain file route');
+assert.deepEqual(JSON.parse(JSON.stringify(exporter.makePlan(contractEntries).map(x=>x.path))),[
+ '研发项目/报告.pdf','研发项目/合同A/附件.pdf',
+],'ZIP must keep the project / contract / file hierarchy');
+
 // IP attachments download through their own route.
 const ip=folder('k:ip','知识产权',{kind:'k'},[
  folder('i:5','一种专利',{kind:'ip',id:5},[
@@ -181,9 +205,11 @@ const ip=folder('k:ip','知识产权',{kind:'k'},[
 ]);
 assert.equal(Array.from(shellCtx.collect(ip))[0].source,'v2ip','IP attachments keep the v2ip route');
 // Records the shell cannot export must be dropped, not silently mislabelled.
+// (A renamed recycle-bin entry is the realistic case: it has a name and a size
+// but no download identity the exporter can trust.)
 const unknown=folder('k:general','其他资料',{kind:'k'},[
  folder('g:7','杂项',{kind:'general',id:7},[
-  attachment('f:8:1','说明.txt',2,'contract',{fileId:601,version:1}),
+  attachment('f:8:1','说明.txt',2,'trash',{fileId:601,version:1}),
  ]),
 ]);
 assert.equal(Array.from(shellCtx.collect(unknown)).length,0,

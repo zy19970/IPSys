@@ -76,9 +76,20 @@ node tools/bundle.cjs
 | 服务端搜索 | `runGlobalSearch()` 打 `/api/v2/search/{ws}?q=`，跨全库检索记录与附件名 | 只有本地过滤（对已加载的当前目录） | 找不到未展开目录里的东西 |
 | 彻底删除进度 | `/api/trash/{ws}/purge-task` 异步任务 + 字节进度面板 + 跨工作区轮询，提交完成前不宣告成功 | `recycleAction(op="purge")` 同步调 `/api/trash/{ws}/purge` + toast | 大批量删除时无进度、无"未提交完成前不代表删除成功"的语义 |
 
-合同（`kind="contract"`）的附件目前**挂不上树**：后端 `/api/v2/ui/project-files/{ws}` 按合同自己的 folderId 返回，新壳只按项目 id 挂载，于是合同附件取不到、也导不出。旧壳把它按 `项目/合同/文件` 组织进 ZIP。这条属于待定需求（合同要不要挂回项目详情），不是回归。
+合同（`kind="contract"`）**跟着项目走**：合同是所属项目下的一个子节点，合同的原件再挂在合同下，树里就是真实的 `项目 / 合同 / 原件` 三层。
 
-对应的旧测试（`large-download-smoke` / `search-smoke` / `trash-purge-progress-smoke` / `ui-main-smoke` / `ui-component-contract-smoke` / `upload-cross-workspace-smoke` / `preview-smoke`）已随旧壳删除。能力层自己的不变量仍由 6 个测试守着，见下节。
+- 数据来源：`GET /api/v2/ui/contracts/{ws}` 返回合同的 `projectId`，`store.js` 的 `buildTree` 据此把合同挂到项目下；合同原件的 `folderId` 本身就是合同 folder id，所以附件照样按 ownerId 挂载，不需要额外映射。
+- 新建：站在项目里时，「新建」菜单只剩「新建合同」（顶层分类在项目内都建不了，列出来只会误导）；项目节点右键也有「新建合同」。两者都带当前项目的 id 走 `parentId`，拿不到归属就拒绝建。
+- 编辑：详情面板「修改」/ 右键「属性」走 `RecordForms.contract`，字段是合同编号、签订日期、金额、签约方、类别、标签、备注。
+- 导出：`EXPORTABLE_KINDS` 含 `contract`，`exportEntryOf` 为合同补 `projectId`/`projectName`，`export.js` 的 `owner()` 用它们还原 `项目/合同/文件` 目录。
+- 合同不计入「N 条记录」（`summary()` 与 `recordCount()` 的 `RECORD_KINDS` 都不含它），但它的原件计入附件数与占用。
+- 回收站不接合同（`loadRecycle` 过滤 `kind==="contract"`）：合同没有独立入口，恢复出来无处安放。
+
+对应测试 `ui-tree-smoke.cjs`（三层结构、汇总、孤儿防护）与 `export-smoke.cjs` 的合同段落。
+
+还有三项没接回，见上表：流式下载、服务端搜索、彻底删除进度。
+
+对应的旧测试（`large-download-smoke` / `search-smoke` / `trash-purge-progress-smoke` / `ui-main-smoke` / `ui-component-contract-smoke` / `upload-cross-workspace-smoke` / `preview-smoke`）已随旧壳删除。能力层自己的不变量仍由 7 个测试守着，见下节。
 
 ## 测试
 
@@ -88,6 +99,7 @@ node src/IPSys.Web/tests/upload-unique-autosave-smoke.cjs # 去重与自动保�
 node src/IPSys.Web/tests/export-smoke.cjs                 # 目录/ZIP 导出与桥接投影
 node src/IPSys.Web/tests/zip64-smoke.cjs                  # ZIP64 大偏移头
 node src/IPSys.Web/tests/pdf-canvas-smoke.cjs             # PDF 画布渲染/翻页/缩放
+node src/IPSys.Web/tests/ui-tree-smoke.cjs                # 项目/合同/附件三层与汇总
 node src/IPSys.Web/tests/ui-assets-smoke.cjs              # 壳资产契约（见下）
 ```
 

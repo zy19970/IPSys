@@ -71,7 +71,7 @@ async function api(path, opts = {}) {
 
 /* ---------------- 上传 ---------------- */
 
-const UPLOADABLE_KINDS = ["project", "archive", "ip", "general"];
+const UPLOADABLE_KINDS = ["project", "contract", "archive", "ip", "general"];
 
 /* 批量上传:去重提示、阶段文案、取消全部由 ip-v2 + upload-progress 负责,
    这里只做「一次 begin / 逐件 file / 一次 finish」的编排。 */
@@ -180,7 +180,9 @@ function walkNodes(visit) {
 
 /* ---------------- 导出 ---------------- */
 
-const EXPORTABLE_KINDS = new Set(["project", "archive", "ip", "general"]);
+/* 合同也算导出主体:export.js 的 owner() 对 kind==='contract' 有专门分支,
+   会用 projectId/projectName 建「项目 / 合同 / 文件」三层目录。 */
+const EXPORTABLE_KINDS = new Set(["project", "contract", "archive", "ip", "general"]);
 
 /* 附件上方的 archive_folder 目录链(不含分类根)。export.js 用它在 ZIP 里重建目录树。 */
 function archivePathOf(node) {
@@ -215,6 +217,12 @@ function exportEntryOf(node, owner, path) {
     size: node.size || 0,
   };
   if (path && path.length) entry.archiveFolderPath = path;
+  /* export.js 的 owner() 认这三个字段才能把合同放回它所隶属的项目下;缺了
+     projectId 会退化成项目根目录下的一层平铺。 */
+  if (ownerKind === "contract") {
+    entry.projectId = owner.biz?.projectId;
+    entry.projectName = owner.biz?.projectName || owner.name;
+  }
   return entry;
 }
 

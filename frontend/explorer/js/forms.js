@@ -371,11 +371,82 @@ const RecordForms = {
     });
   },
 
+  /* ---------------- 合同 ----------------
+     合同跟着项目走,必须有归属项目:编辑时取节点自己的 projectId,
+     新建时由调用方(项目节点的新建入口)传进来。拿不到归属就拒绝,
+     不允许建出挂不上树的合同。 */
+  contract(node, parentId) {
+    const isEdit = !!node;
+    const b = node?.biz || {};
+    const r = b.raw || {};
+    const ownerId = isEdit ? b.projectId : parentId;
+    if (!ownerId) {
+      toast("请在项目内新建合同");
+      return;
+    }
+
+    this.open({
+      title: isEdit ? "合同属性" : "新建合同",
+      submitText: isEdit ? "保存" : "创建",
+      values: isEdit
+        ? {
+            name: r.name || "",
+            contractNo: r.contractNo || "",
+            signDate: r.signDate || "",
+            amount: r.amount || "",
+            signingParties: r.signingParties || "",
+            category: r.category || "",
+            tags: r.tags || "",
+            remarks: r.remarks || "",
+          }
+        : {},
+      fields: [
+        { key: "name", label: "合同名称", span: 2, required: true },
+        { key: "contractNo", label: "合同编号" },
+        { key: "signDate", label: "签订日期", type: "date" },
+        { key: "amount", label: "合同金额" },
+        { key: "signingParties", label: "签约方" },
+        { key: "category", label: "类别" },
+        { key: "tags", label: "标签", span: 2 },
+        { key: "remarks", label: "备注", type: "textarea", span: 2 },
+      ],
+      onSubmit: async (d) => {
+        const payload = {
+          contract: {
+            name: d.name,
+            contractNo: d.contractNo,
+            signDate: d.signDate,
+            amount: d.amount,
+            signingParties: d.signingParties,
+            category: d.category,
+            tags: d.tags,
+            remarks: d.remarks,
+          },
+        };
+        if (isEdit) {
+          await VaultStore.api(`/api/v2/folders/${VaultStore.ws}/contract/${b.id}`, {
+            method: "PUT",
+            json: payload,
+          });
+        } else {
+          payload.parentId = Number(ownerId);
+          await VaultStore.api(`/api/v2/folders/${VaultStore.ws}/contract`, {
+            method: "POST",
+            json: payload,
+          });
+        }
+        toast(isEdit ? "已保存" : "已创建");
+        await refreshCurrent();
+      },
+    });
+  },
+
   /* ---------------- 分发 ---------------- */
 
   edit(node) {
     const kind = node?.biz?.kind;
     if (kind === "project") return this.project(node);
+    if (kind === "contract") return this.contract(node);
     if (kind === "archive") return this.archive(node.biz.section, node);
     if (kind === "ip") return this.ip(node);
     if (kind === "general") return this.general(node);

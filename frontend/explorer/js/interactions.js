@@ -841,6 +841,11 @@ function openNewMenu(anchor) {
     return { id: c.id, label, can: onHome || c.id === here };
   });
 
+  /* 合同不是顶层分类,它只能挂在项目下,所以不进分类表 —— 只有站在项目里
+     才出现,而且带着这个项目的 id 走。 */
+  const inProject = tag === "p" ? s.folderId.slice(2) : "";
+  if (inProject) rows.push({ id: "contract", label: "新建合同", can: true });
+
   const handlers = {
     upload: () => pickFiles(),
   };
@@ -848,6 +853,8 @@ function openNewMenu(anchor) {
     handlers[`new-${m.id}`] =
       m.id === "project"
         ? () => RecordForms.project()
+        : m.id === "contract"
+        ? () => RecordForms.contract(null, Number(inProject))
         : m.id === "ip"
         ? () => RecordForms.ip()
         : m.id === "general"
@@ -856,19 +863,28 @@ function openNewMenu(anchor) {
   }
 
   /* 站在分类里,分类已经决定了子项类型,只留这一项 —— 不让用户再选一次。
-     根目录 / 记录内部没有分类上下文,仍然全列出来但置灰,并提示先进入分类。 */
-  const items = !onHome && here ? rows.filter((m) => m.can) : rows;
+     站在项目里,唯一能建的是合同(顶层分类在这里都建不了,列出置灰项只会
+     让人以为点错了)。根目录 / 其它记录内部仍然全列出来但置灰。 */
+  const items = inProject
+    ? rows.filter((m) => m.id === "contract")
+    : !onHome && here
+    ? rows.filter((m) => m.can)
+    : rows;
 
   showCtx(
     r.left,
     r.bottom + 6,
-    items.map((m) => MI(`new-${m.id}`, `cat:${m.id}`, m.label, "", false, !m.can)).join("") +
+    items
+      .map((m) =>
+        MI(`new-${m.id}`, m.id === "contract" ? "folder" : `cat:${m.id}`, m.label, "", false, !m.can)
+      )
+      .join("") +
       '<div class="ctx-sep"></div>' +
       MI("upload", "upload", "上传文件"),
     handlers
   );
 
-  if (!onHome && !here) toast("先进入某个资料分类，才能新建记录");
+  if (!onHome && !here && !inProject) toast("先进入某个资料分类，才能新建记录");
 }
 
 /* ---------------- 内容区 ---------------- */
@@ -1015,6 +1031,9 @@ function showItemMenu(id, x, y) {
 
   const html = [
     isFolder ? MI("open", "folder", "打开") : MI("open", "eye", "预览"),
+    /* 合同挂在项目下,所以在项目节点上直接给一个建合同的入口 —— 比先打开
+       项目再点工具栏少一步。 */
+    b.kind === "project" ? MI("newcontract", "folder", "新建合同") : "",
     isFolder && b.kind !== "archive_folder" ? MI("props", "info", "属性") : "",
     MI("download", "download", isFolder ? "打包下载" : "下载"),
     !isFolder ? MI("newver", "upload", "上传新版本") : "",
@@ -1028,6 +1047,7 @@ function showItemMenu(id, x, y) {
 
   showCtx(x, y, html, {
     open: () => (isFolder ? Drive.openFolder(id) : previewFile(id)),
+    newcontract: () => RecordForms.contract(null, b.id),
     props: () => RecordForms.edit(item),
     download: () => (isFolder ? exportNodes([item]) : downloadFile(id)),
     newver: () => uploadNewVersion(item),

@@ -93,6 +93,19 @@ for(const [rel,name] of Object.entries(GLOBALS)){
   rel+' must still expose '+name);
 }
 
+/* Contracts hang off a project, which makes them an export owner and an upload
+   target. Dropping "contract" from either list does not fail loudly: the node
+   still renders, but its originals quietly disappear from every download and
+   every upload silently refuses. The detail panel also offers 修改 on any
+   record carrying a biz id, so a kind without a form is a dead button. */
+assert.match(bridge,/EXPORTABLE_KINDS\s*=\s*new Set\(\[[^\]]*"contract"/,'Contracts must stay exportable');
+assert.match(bridge,/UPLOADABLE_KINDS\s*=\s*\[[^\]]*"contract"/,'Contracts must accept attachments');
+assert.match(read('js/forms.js'),/if \(kind === "contract"\) return this\.contract\(node\)/,
+ 'Contracts need an edit form: 修改 is offered on every record with a biz id');
+const store=read('js/store.js');
+assert.ok(store.includes('contracts/${w}'),'The tree must load contracts, otherwise none of this is reachable');
+assert.ok(store.includes('contractsByProject'),'Contracts must be attached to their project, not left loose');
+
 /* ---------------- C. freshness ---------------- */
 
 const dist=path.join(SHELL,'dist');

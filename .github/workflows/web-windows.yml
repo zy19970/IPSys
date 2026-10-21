@@ -163,6 +163,7 @@ jobs:
           # bundle of the sources, so it must run before anything reads dist/.
           $tests = [ordered]@{
             'ui-assets-smoke.cjs'              = 'Shell asset contract (load order, bridge globals, fresh bundle) failed'
+            'ui-tree-smoke.cjs'                = 'Drive tree (project / contract / original) smoke failed'
             'upload-progress-smoke.cjs'        = 'Real upload progress/multiphase state smoke failed'
             'upload-unique-autosave-smoke.cjs' = 'Unique original auto-save and duplicate confirmation smoke failed'
             'export-smoke.cjs'                 = 'Directory/ZIP export smoke failed'
