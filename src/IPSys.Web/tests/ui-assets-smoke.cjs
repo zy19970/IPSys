@@ -149,4 +149,23 @@ assert.ok(switchBody.indexOf('fileTaskBusy()')<switchBody.indexOf('VaultStore'),
 assert.ok(!interactions.includes("createElement('iframe')")&&!interactions.includes('createElement("iframe")'),
  'PDF preview must stay on the canvas renderer; the Chromium plugin cannot be styled or released');
 
-console.log('UI ASSETS SMOKE PASS: load order, bridge globals, fresh bundle, product invariants');
+/* ---------------- E. MCP independence ----------------
+   The local MCP channel is stdio (-mcp) -> named pipe -> the host's own HTTP API.
+   It shares no code with the browser shell, so a shell swap must not be able to
+   take it down. Two invariants keep it that way:
+   1. the -mcp branch must return BEFORE any embedded page asset is read, so a
+      broken/missing dist cannot stop an Agent from connecting;
+   2. the pipe host must still be started by the GUI host. */
+const program=fs.readFileSync(path.join(WEB,'Program.cs'),'utf8');
+const mcpBranch=program.indexOf('args.Contains("--mcp")');
+const firstAsset=program.indexOf('EmbeddedWebAssets.Read(');
+assert.ok(mcpBranch>0,'Program.cs must keep the --mcp stdio branch');
+assert.ok(firstAsset>0&&mcpBranch<firstAsset,
+ '--mcp must exit before any EmbeddedWebAssets.Read: the MCP bridge cannot depend on '+
+ 'the browser shell assets, or a stale dist/ would break every Agent connection');
+assert.ok(program.includes('McpLocal.RunHostAsync('),
+ 'The GUI host must still start the named-pipe MCP host');
+assert.ok(!fs.readdirSync(path.join(WEB,'wwwroot')).some(f=>/^mcp/i.test(f)),
+ 'MCP must not grow a browser-side script; it is a local Agent channel');
+
+console.log('UI ASSETS SMOKE PASS: load order, bridge globals, fresh bundle, product invariants, MCP independence');

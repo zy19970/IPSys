@@ -66,6 +66,18 @@ node tools/bundle.cjs
 
 能力层不是"旧代码遗留"，它们承载新壳没有的能力，且自建 DOM、不依赖壳的元素 id。新壳通过全局对象调用它们。
 
+## 本机 MCP 与本壳无关
+
+本机 Agent 走 `IPSys.Web.exe --mcp`：stdio 上的 JSON-RPC → 命名管道 → 宿主自己的本机 HTTP API。整条链没有任何一环经过 `wwwroot/` 或 `frontend/explorer/`，所以**换壳不影响 MCP**。
+
+三条不变量（`ui-assets-smoke.cjs` 的 E 段守着）：
+
+1. `--mcp` 分支必须在任何 `EmbeddedWebAssets.Read(...)` **之前**返回。否则 dist 一旦旧了或坏了，Agent 连不上——把 MCP 的可用性绑在浏览器资源上是不该出现的耦合。
+2. 宿主侧 `McpLocal.RunHostAsync(...)` 必须仍被启动，管道才存在。
+3. MCP 不许长出浏览器侧脚本。
+
+MCP 自己的回归在 `--smoke` 里（`NativeMcpSmoke` + `NativeMcpArchiveSmoke`：管道 ACL、会话隔离、并发、幂等日志、上传），与本壳的测试互不重叠。
+
 ## 换壳时丢掉、现已接回的三项能力
 
 三项都在换壳初期确实缺失过，现在都已按旧壳语义接回。留着这一节是为了说明它们的**契约**，改动前先看这里。
@@ -122,6 +134,6 @@ node src/IPSys.Web/tests/ui-assets-smoke.cjs              # 壳资产契约（�
 node src/IPSys.Web/tests/explorer-capabilities-smoke.cjs  # 流式下载 / 服务端搜索 / 删除进度
 ```
 
-`ui-assets-smoke.cjs` 是换壳后新增的门，守四件事：页面加载顺序与 csproj 嵌入路径、`bridge.js` 是否补齐了能力层依赖的自由变量（`notice` / `api` / `uploadFile` / `uploadProgress`，这两处都真实炸过）、`dist/` 是否等于一次全新打包、以及若干与壳无关的产品不变量（无内联 `onclick`、无外部请求、无 `/api/exit`、名称转义、工作区切换拦文件任务）。
+`ui-assets-smoke.cjs` 是换壳后新增的门，守五件事：页面加载顺序与 csproj 嵌入路径、`bridge.js` 是否补齐了能力层依赖的自由变量（`notice` / `api` / `uploadFile` / `uploadProgress`，这两处都真实炸过）、`dist/` 是否等于一次全新打包、若干与壳无关的产品不变量（无内联 `onclick`、无外部请求、无 `/api/exit`、名称转义、工作区切换拦文件任务）、以及 MCP 独立性（`--mcp` 必须早于任何内嵌资源读取返回）。
 
 `explorer-capabilities-smoke.cjs` 守三项接回的能力：搜索命中映射（6 种 kind 全走真节点，失效命中丢弃、重复折叠）、拾取器必须排在任何网络请求之前、流式写入要有中止与字节校验、`purgeTaskActive` 必须计入 `fileTaskBusy()`、同步 purge 路由不许再被调用。
