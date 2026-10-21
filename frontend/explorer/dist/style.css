@@ -2062,6 +2062,15 @@ svg { display: block; flex: none; }
   margin: auto;
   object-fit: contain;
 }
+.preview-fail {
+  margin: auto;
+  max-width: 520px;
+  padding: 0 24px;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-2);
+}
 
 /* ==========================================================================
    表单

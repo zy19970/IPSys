@@ -1412,6 +1412,48 @@ async function downloadFile(id) {
   }
 }
 
+/* ---------------- 预览 ---------------- */
+
+/* pdf.min.js 有 1 MB,不进首屏:首次打开 PDF 时才注入。
+   pdf-preview.js 已在首屏加载,它只提供 create(),要求 window.pdfjsLib 已就绪。
+   旧壳用 Chromium 内嵌 PDF 插件(iframe)渲染,插件缺失或策略收紧时直接白屏,
+   所以这里统一走 canvas 阅读器 —— 与"无插件、无 CDN、不落临时文件"的口径一致。 */
+let pdfLibPromise = null;
+
+function ensurePdfViewer() {
+  if (window.pdfjsLib && window.IPSysPdfViewer) return Promise.resolve(window.IPSysPdfViewer);
+  if (!pdfLibPromise) {
+    pdfLibPromise = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = "/pdfjs/pdf.min.js";
+      script.onload = () => {
+        if (window.pdfjsLib && window.IPSysPdfViewer) resolve(window.IPSysPdfViewer);
+        else reject(new Error("离线 PDF 阅读器初始化失败。"));
+      };
+      script.onerror = () => reject(new Error("离线 PDF 组件加载失败:/pdfjs/pdf.min.js"));
+      document.head.append(script);
+    }).catch((error) => {
+      pdfLibPromise = null; // 允许下次重试
+      throw error;
+    });
+  }
+  return pdfLibPromise;
+}
+
+function openPreviewShell(name) {
+  const mask = document.createElement("div");
+  mask.className = "mask show preview-mask";
+  mask.innerHTML = `
+    <div class="preview-box">
+      <div class="preview-head">
+        <span>${esc(name)}</span>
+        <button class="icon-btn sm" data-x>${icon("close", 15)}</button>
+      </div>
+      <div class="preview-body"></div>
+    </div>`;
+  return mask;
+}
+
 async function previewFile(id) {
   const node = findById(id);
   if (!node) return;
@@ -1432,36 +1474,47 @@ async function previewFile(id) {
     return;
   }
 
+  const mask = openPreviewShell(node.name);
+  const body = mask.querySelector(".preview-body");
+  document.body.append(mask);
+
+  let pdfViewer = null;
+  let objectUrl = "";
+  const close = () => {
+    document.removeEventListener("keydown", onKey);
+    pdfViewer?.destroy?.();
+    pdfViewer = null;
+    mask.remove();
+    if (objectUrl) setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+  };
+  const onKey = (e) => {
+    if (e.key !== "Escape") return;
+    const top = document.querySelector(".mask.show.preview-mask");
+    if (top === mask) close();
+  };
+  mask.querySelector("[data-x]").addEventListener("click", close);
+  mask.addEventListener("mousedown", (e) => {
+    if (e.target === mask) close();
+  });
+  document.addEventListener("keydown", onKey);
+
   try {
     const res = await VaultStore.api(url);
-    const blob = await res.blob();
-    const obj = URL.createObjectURL(blob);
-
-    const mask = document.createElement("div");
-    mask.className = "mask show preview-mask";
-    mask.innerHTML = `
-      <div class="preview-box">
-        <div class="preview-head">
-          <span>${esc(node.name)}</span>
-          <button class="icon-btn sm" data-x>${icon("close", 15)}</button>
-        </div>
-        <div class="preview-body">${
-          isPdf
-            ? `<iframe src="${obj}" title="${esc(node.name)}"></iframe>`
-            : `<img src="${obj}" alt="${esc(node.name)}">`
-        }</div>
-      </div>`;
-    document.body.append(mask);
-    const close = () => {
-      mask.remove();
-      setTimeout(() => URL.revokeObjectURL(obj), 1000);
-    };
-    mask.querySelector("[data-x]").addEventListener("click", close);
-    mask.addEventListener("mousedown", (e) => {
-      if (e.target === mask) close();
-    });
+    if (isPdf) {
+      const buffer = await res.arrayBuffer();
+      if (!mask.isConnected) return;
+      const viewer = await ensurePdfViewer();
+      if (!mask.isConnected) return;
+      pdfViewer = viewer.create(body, buffer);
+    } else {
+      const blob = await res.blob();
+      if (!mask.isConnected) return;
+      objectUrl = URL.createObjectURL(blob);
+      body.innerHTML = `<img src="${objectUrl}" alt="${esc(node.name)}">`;
+    }
   } catch (e) {
-    toast(e.message, { ms: 6000 });
+    if (!mask.isConnected) return;
+    body.innerHTML = `<p class="preview-fail">${esc(e.message || String(e))}</p>`;
   }
 }
 
