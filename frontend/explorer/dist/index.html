@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>资料库</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<!-- ==================== 登录 ==================== -->
+<div class="lock" id="lockScreen">
+  <div class="lock-card">
+    <div class="lock-brand">
+      <span id="lockLogo"></span>
+      <span class="lock-name">资料库</span>
+    </div>
+    <h1>打开资料库</h1>
+    <p class="lock-sub">输入数据库文件路径与密码。数据全部保存在本地，不上传。</p>
+    <form id="lockForm" autocomplete="off">
+      <label class="lock-label" for="dbPath">资料库文件</label>
+      <input id="dbPath" type="text" spellcheck="false" placeholder="D:\资料库\ipsys.db">
+      <label class="lock-label" for="password">密码</label>
+      <input id="password" type="password" placeholder="数据库密码">
+      <p class="lock-hint" id="lockHint"></p>
+      <button class="btn solid lock-submit" id="submitOpen" type="submit">打开</button>
+    </form>
+  </div>
+</div>
+
+<div class="app" id="appShell" aria-hidden="true">
+
+  <!-- ==================== TOP BAR ==================== -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="brand" id="brandBtn" title="返回首页">
+        <span id="brandLogo"></span>
+        <span class="brand-name">资料库</span>
+      </button>
+
+      <span class="topbar-sep" aria-hidden="true"></span>
+
+      <button class="ws-btn" id="wsSwitchBtn" aria-haspopup="menu" aria-expanded="false" title="切换工作区">
+        <span class="ws-ico" id="wsSwitchIcon" aria-hidden="true"></span>
+        <span class="ws-label" id="wsSwitchLabel">个人工作区</span>
+        <span class="ws-caret" id="wsSwitchCaret" aria-hidden="true"></span>
+      </button>
+    </div>
+
+    <div class="topbar-center">
+      <div class="search" id="searchWrap">
+        <span id="searchIcon"></span>
+        <input id="searchInput" type="text" placeholder="搜索" autocomplete="off" spellcheck="false">
+        <button class="search-clear" id="searchClear" title="清除" aria-label="清除搜索"></button>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <button class="icon-btn" id="btnHelp" title="帮助" aria-label="帮助"></button>
+      <button class="icon-btn" id="btnSettings" title="设置" aria-label="设置"></button>
+      <button class="avatar" id="btnAvatar" title="账户" aria-label="账户"></button>
+    </div>
+  </header>
+
+  <!-- ==================== BODY ==================== -->
+  <div class="body">
+
+    <!-- ---------- Side nav ---------- -->
+    <nav class="sidenav" id="sidenav">
+      <button class="nav-btn-primary" id="btnNewSide">
+        <span id="icoNewSide"></span>
+        <span>新建</span>
+      </button>
+
+      <div class="nav-group" id="navMain"></div>
+
+      <div class="nav-sep"></div>
+
+      <div class="nav-section">
+        <span>快捷访问</span>
+        <button class="icon-btn sm" id="btnPinFolder" title="添加快捷访问"></button>
+      </div>
+      <div class="nav-group" id="navQuick"></div>
+
+      <div class="storage">
+        <div class="storage-bar"><div class="storage-fill" id="storageFill"></div></div>
+        <div class="storage-text"><b>62 GB</b> / 100 GB 已使用</div>
+      </div>
+    </nav>
+
+    <!-- ---------- Main ---------- -->
+    <main class="main" id="main">
+
+      <div class="cmdbar" id="cmdbar">
+        <button class="btn solid" id="btnNew">
+          <span id="icoNew"></span><span>新建</span>
+        </button>
+        <button class="btn" id="btnUpload">
+          <span id="icoUpload"></span><span>上传</span>
+        </button>
+        <div class="cmdbar-sep"></div>
+        <button class="btn ghost" id="btnRefresh" title="刷新">
+          <span id="icoRefresh"></span><span>刷新</span>
+        </button>
+        <button class="btn ghost" id="btnSort">
+          <span id="icoSort"></span><span>排序</span>
+          <span class="caret" id="sortCaret">▾</span>
+        </button>
+        <div class="cmdbar-sep"></div>
+        <button class="btn ghost" id="btnFilter">
+          <span id="icoFilter"></span><span>筛选</span>
+        </button>
+        <button class="btn ghost hidden" id="btnEmptyTrash">清空回收站</button>
+        <div class="spacer"></div>
+        <button class="icon-btn" id="btnViewToggle" title="切换视图"></button>
+        <button class="icon-btn" id="btnDetailToggle" title="详细信息"></button>
+      </div>
+
+      <div class="crumbbar" id="crumbbar"></div>
+
+      <div class="content" id="content">
+        <!-- 表头由 app.js 的 headHtml() 按当前列集生成:进分类是台账列,其余是通用三列 -->
+        <div class="list-head" id="listHead"></div>
+        <div id="viewRoot"></div>
+      </div>
+
+      <div class="selbar" id="selbar">
+        <span class="sel-count" id="selCount">已选择 0 项</span>
+        <button class="btn ghost" id="selDownload"><span id="icoSelDownload"></span>下载</button>
+        <button class="btn ghost" id="selDelete"><span id="icoSelDelete"></span>删除</button>
+        <button class="icon-btn sm" id="selClear" title="取消选择"></button>
+      </div>
+
+    </main>
+
+    <!-- ---------- Detail panel ---------- -->
+    <aside class="detail" id="detail">
+      <div class="detail-head">
+        <h3>详细信息</h3>
+        <button class="icon-btn sm" id="detailClose" title="关闭"></button>
+      </div>
+      <div id="detailBody"></div>
+    </aside>
+
+  </div>
+</div>
+
+<!-- ==================== OVERLAYS ==================== -->
+
+<div class="ctx" id="ctxMenu"></div>
+
+<div class="marquee" id="marquee"></div>
+<div class="drag-badge" id="dragBadge"></div>
+
+<div class="upload-panel" id="uploadPanel">
+  <div class="up-head">
+    <h4>上传</h4>
+    <span class="up-sum" id="upSum"></span>
+    <button class="icon-btn sm" id="upToggle" title="折叠"></button>
+    <button class="icon-btn sm" id="upClosePanel" title="关闭"></button>
+  </div>
+  <div class="up-list" id="upList"></div>
+  <div class="up-footer">
+    <span id="icoUpCloud"></span>
+    <span id="upFooterText">准备上传…</span>
+    <span style="flex:1"></span>
+    <button class="btn ghost" id="upPause" style="height:24px;padding:0 8px;font-size:12px">暂停全部</button>
+  </div>
+</div>
+
+<div class="mask" id="confirmMask">
+  <div class="dialog" style="width:400px">
+    <div class="dlg-head"><h2 id="confirmTitle">确认</h2></div>
+    <div class="dlg-body"><p id="confirmText" style="margin:0;font-size:13.5px;color:#616161;line-height:21px"></p></div>
+    <div class="dlg-foot">
+      <span class="spacer"></span>
+      <button class="btn" id="confirmCancel">取消</button>
+      <button class="btn solid" id="confirmOk">确定</button>
+    </div>
+  </div>
+</div>
+
+<div class="mask" id="conflictMask">
+  <div class="dialog" style="width:440px">
+    <div class="dlg-head">
+      <h2>发现同名文件</h2>
+    </div>
+    <div class="dlg-body">
+      <p style="margin:0 0 14px;font-size:13.5px;color:#616161;line-height:21px">
+        目标位置已存在 <b id="conflictName" style="color:#242424"></b>,请选择处理方式。
+      </p>
+      <label class="perm-select" style="margin-top:0">
+        <input type="radio" name="cf" value="replace" checked>
+        <div class="txt"><b>替换现有文件</b><small>保留本次上传的版本</small></div>
+      </label>
+      <label class="perm-select">
+        <input type="radio" name="cf" value="keep">
+        <div class="txt"><b>保留两个文件</b><small>新文件将重命名为「名称 (1)」</small></div>
+      </label>
+      <label class="perm-select">
+        <input type="radio" name="cf" value="skip">
+        <div class="txt"><b>跳过此文件</b><small>不上传当前文件</small></div>
+      </label>
+    </div>
+    <div class="dlg-foot">
+      <label style="font-size:12.5px;color:#616161;display:flex;align-items:center;gap:6px">
+        <input type="checkbox" id="cfApplyAll"> 对全部冲突应用
+      </label>
+      <span class="spacer"></span>
+      <button class="btn solid" id="cfOk">确定</button>
+    </div>
+  </div>
+</div>
+
+<div class="mask" id="settingsMask">
+  <div class="dialog set-dialog">
+    <div class="dlg-head">
+      <h2>设置</h2>
+      <button class="icon-btn sm" id="settingsClose" title="关闭" aria-label="关闭"></button>
+    </div>
+
+    <div class="dlg-body set-body">
+      <section class="set-group">
+        <h3>启动</h3>
+        <div class="set-row">
+          <div class="set-txt">
+            <b>打开时进入的工作区</b>
+            <small>登录后默认落在哪套资料，只影响下次打开</small>
+          </div>
+          <div class="seg" data-seg="startWs">
+            <button type="button" data-v="personal">个人</button>
+            <button type="button" data-v="company">企业</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="set-group">
+        <h3>浏览</h3>
+        <div class="set-row">
+          <div class="set-txt">
+            <b>默认视图</b>
+            <small>进入文件夹时用列表还是网格</small>
+          </div>
+          <div class="seg" data-seg="view">
+            <button type="button" data-v="list">列表</button>
+            <button type="button" data-v="grid">网格</button>
+          </div>
+        </div>
+        <div class="set-row">
+          <div class="set-txt">
+            <b>详细信息面板</b>
+            <small>选中文件时在右侧显示属性</small>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="setDetail">
+            <span class="track"><span class="knob"></span></span>
+          </label>
+        </div>
+      </section>
+
+      <section class="set-group">
+        <h3>数据库</h3>
+        <dl class="set-about">
+          <div><dt>资料库文件</dt><dd id="setDb">—</dd></div>
+          <div><dt>加密状态</dt><dd><span class="pill green">SQLCipher 已启用</span></dd></div>
+        </dl>
+
+        <div class="set-row">
+          <div class="set-txt">
+            <b>完整性检查</b>
+            <small id="setCheckMsg">检查资料库结构是否完整，并统计未完成的附件</small>
+          </div>
+          <button type="button" class="btn" id="setCheck">立即检查</button>
+        </div>
+
+        <div class="set-row">
+          <div class="set-txt">
+            <b>压缩数据库</b>
+            <small id="setCompactMsg">正在读取空间信息…</small>
+          </div>
+          <button type="button" class="btn" id="setCompact" disabled
+            title="永久删除释放的空间可被后续写入复用；压缩需额外磁盘空间，期间请勿关闭程序，不会自动备份">压缩</button>
+        </div>
+
+        <div class="set-row">
+          <div class="set-txt">
+            <b>本机 MCP 访问</b>
+            <small id="setMcpMsg">默认关闭</small>
+          </div>
+          <label class="switch" title="仅允许当前 Windows 用户通过本机 MCP 操作已解锁的资料库；关闭资料库或退出程序即自动失效">
+            <input type="checkbox" id="setMcp">
+            <span class="track"><span class="knob"></span></span>
+          </label>
+        </div>
+
+        <div class="set-row">
+          <div class="set-txt">
+            <b>关闭资料库</b>
+            <small>关闭后需要重新输入密码，程序继续运行</small>
+          </div>
+          <button type="button" class="btn" id="setLock">关闭资料库</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="dlg-foot">
+      <span class="set-foot-meta" id="setFootMeta">—</span>
+      <span class="spacer"></span>
+      <button class="btn solid" id="settingsDone">完成</button>
+    </div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script src="/app.js"></script>
+</body>
+</html>
