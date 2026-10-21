@@ -314,6 +314,12 @@
 
 <div class="toasts" id="toasts"></div>
 
+<!-- 能力层（src/IPSys.Web/wwwroot）：自建 DOM、暴露全局对象、不依赖本页元素 id。
+     pdfjs 本体 1 MB，按需动态加载，不进首屏。顺序不可调：壳依赖它们先定义全局对象。 -->
+<script src="/ip-v2.js"></script>
+<script src="/upload-progress.js"></script>
+<script src="/export.js"></script>
+<script src="/pdf-preview.js"></script>
 <script src="/app.js"></script>
 </body>
 </html>

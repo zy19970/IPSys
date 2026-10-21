@@ -2189,3 +2189,178 @@ svg { display: block; flex: none; }
 }
 
 .ctx-title{padding:7px 12px 5px;font-size:11.5px;color:var(--text-3);font-weight:600;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ==========================================================================
+   能力层组件（自旧 wwwroot/style.css 移植）
+   --------------------------------------------------------------------------
+   使用者：pdf-preview.js / export.js / upload-progress.js —— 都在 wwwroot 下,
+   由 Program.cs 独立路由提供,不属于本壳的源码。
+
+   它们自己 createElement 出面板并按类名找节点,所以**类名必须照抄**,
+   改了字母就找不到自己的 DOM。这里只把旧配色换成新 token。
+   ========================================================================== */
+
+/* —— 小号按钮：三个面板共用。旧壳有 .btn-sm,新壳只有 .btn —— */
+.btn-sm {
+  height: 26px;
+  padding: 0 9px;
+  gap: 5px;
+  font-size: 12.5px;
+}
+
+/* —— PDF canvas 预览（pdf-preview.js）—— */
+/* .pdf-mode 挂在承载容器上即可,不依赖特定父类名 */
+.pdf-mode {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 68vh;
+  min-height: 260px;
+  max-height: 70vh;
+  overflow: hidden;
+  background: var(--surface-pressed);
+}
+.pdf-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  min-height: 43px;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--stroke-2);
+  background: var(--surface);
+  flex: none;
+  overflow-x: auto;
+}
+.pdf-toolbar .btn { flex: none; white-space: nowrap; padding: 5px 11px; }
+.pdf-count {
+  color: var(--text-2);
+  font-size: 12px;
+  white-space: nowrap;
+  min-width: 56px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.pdf-canvas-area {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  overflow: auto;
+  padding: 16px;
+  background: var(--surface-pressed);
+}
+.pdf-canvas {
+  display: block;
+  max-width: none;
+  margin: 0 auto;
+  background: #fff;
+  box-shadow: var(--shadow-4);
+}
+.pdf-render-status {
+  font-size: 12px;
+  flex: none;
+  padding: 7px 12px;
+  background: var(--surface);
+  color: var(--text-2);
+  text-align: center;
+  min-height: 0;
+}
+.pdf-render-status:empty { display: none; }
+@media (max-height: 560px) {
+  .pdf-mode { height: 53vh; min-height: 155px; }
+}
+
+/* —— ZIP 导出进度条（export.js 自建 #exportStatus）—— */
+.export-status {
+  position: fixed;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  width: min(760px, calc(100vw - 24px));
+  padding: 14px 17px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--stroke-2);
+  background: var(--surface);
+  box-shadow: var(--shadow-16);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 13px;
+}
+.export-status[hidden] { display: none; }
+.export-status > span { flex: 1; min-width: 200px; }
+.export-status pre {
+  white-space: pre-wrap;
+  overflow: auto;
+  max-height: 130px;
+  width: 100%;
+  margin: 0;
+  font: inherit;
+  color: var(--text-2);
+}
+
+/* —— 上传多阶段进度面板（upload-progress.js 自建 #uploadProgress）—— */
+.upload-progress {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 32;
+  width: min(430px, calc(100vw - 36px));
+  padding: 15px 17px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--stroke-2);
+  background: var(--surface);
+  box-shadow: var(--shadow-16);
+  font-size: 13px;
+}
+.upload-progress[hidden] { display: none; }
+.upload-progress-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.upload-progress-heading strong { font-size: 15px; }
+.upload-progress-heading span { font-size: 12px; color: var(--text-3); }
+.upload-progress-file {
+  font-size: 13px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  margin-bottom: 9px;
+}
+.upload-progress-meter { display: flex; align-items: center; gap: 12px; }
+.upload-progress-meter progress {
+  width: 100%;
+  height: 6px;
+  accent-color: var(--brand);
+  flex: 1;
+  border: 0;
+  border-radius: 3px;
+  background: var(--surface-pressed);
+}
+.upload-progress-meter strong {
+  font-variant-numeric: tabular-nums;
+  min-width: 55px;
+  text-align: right;
+}
+.upload-progress-bytes { font-size: 12px; color: var(--text-3); margin-top: 5px; }
+.upload-progress-stage {
+  font-size: 12px;
+  color: var(--text-2);
+  margin-top: 8px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 130px;
+  overflow: auto;
+}
+.upload-progress-actions { display: flex; justify-content: flex-end; margin-top: 11px; }
+@media (max-width: 740px) {
+  .upload-progress { right: 10px; bottom: 10px; width: calc(100vw - 20px); }
+}
+
+/* 原生 progress 兜底（能力层也用裸 <progress>） */
+progress { accent-color: var(--brand); }
