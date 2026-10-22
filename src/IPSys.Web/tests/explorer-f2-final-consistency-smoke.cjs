@@ -12,7 +12,7 @@ function part(code,begin,end) {
  assert.ok(a>=0&&b>a,"Missing source range: "+begin);
  return code.slice(a,b);
 }
-const downloads=[],exports=[],notes=[];
+const downloads=[],exportedCalls=[],notes=[];
 const nodes=[
  {id:"p:1",name:"项目",type:"folder",biz:{kind:"project",id:1}},
  {id:"f:12:1",name:"附件.pdf",type:"file",biz:{kind:"file"}},
@@ -42,7 +42,7 @@ const sandbox=vm.createContext({
  showCtx:(x,y,markup,handlers)=>menus.push({markup,handlers}),
  archiveSortAllowed:()=>false,RecordForms:{open:opts=>dialogs.push(opts)},
  icon:()=>"",downloadFile:id=>downloads.push(id),
- exportNodes:items=>exports.push(items.map(i=>i.id)),
+ exportNodes:items=>exportedCalls.push(items.map(i=>i.id)),
  toast:msg=>notes.push(msg),
  deleteNodes:items=>deleted.push(items.map(i=>i.id)),
  recycleAction:(items,op)=>recycled.push({ids:items.map(i=>i.id),op}),
@@ -56,9 +56,9 @@ const act=cmd=>vm.runInContext(cmd,sandbox);
  act("downloadNodes([findById('f:12:1')])");
  assert.deepEqual(downloads,["f:12:1"],"Single file downloads directly");
  act("downloadNodes([findById('p:1')])");
- assert.deepEqual(exports.at(-1),["p:1"],"Folder download uses exporter");
+ assert.deepEqual(exportedCalls.at(-1),["p:1"],"Folder download uses exporter");
  act("downloadNodes([findById('p:1'),findById('f:12:1')])");
- assert.deepEqual(exports.at(-1),["p:1","f:12:1"],"Mixed selection preserves folders and files");
+ assert.deepEqual(exportedCalls.at(-1),["p:1","f:12:1"],"Mixed selection preserves folders and files");
  drive.state.view="home";
  assert.equal(act("canCreateHere()"),true);
  drive.state.view="files";
@@ -160,5 +160,5 @@ const act=cmd=>vm.runInContext(cmd,sandbox);
  assert.ok(key.indexOf('$("#formMask")')<key.indexOf('if (e.key === "Delete")'));
  // Recycle details must not advertise preview/open while soft-deleted.
  assert.match(app,/locked \? "" : isFolder/);
- console.log("EXPLORER F2-06 PASS: row/menu selection, folder exports, virtual scope, chrome, modal guards and refresh state");
+ console.log("EXPLORER F2-06 PASS: row/menu selection, folder exportedCalls, virtual scope, chrome, modal guards and refresh state");
 })().catch(err=>{console.error(err);process.exitCode=1;});
