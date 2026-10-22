@@ -119,14 +119,19 @@ const fn=name=>vm.runInContext(name,context);
  assert.ok(!candidates.some(x=>x.value==="73"),
   "A folder cannot be moved into its own descendant");
  assert.ok(candidates.some(x=>x.value==="70"));
- assert.ok(candidates.some(x=>x.value==="0"));
+ assert.ok(!candidates.some(x=>x.value==="0"),
+  "A folder already at root should not offer a no-op root target");
  await modals.at(-1).onSubmit({target:"70"});
  assert.equal(calls.at(-1).url,
   "/api/v2/folders/company/archive_folder/72/move?section=achievement");
  assert.equal(calls.at(-1).opts.json.parentId,70);
  const beforeSystem=modals.length;
+ fn("moveArchiveEntry")(child);
+ assert.ok(modals.at(-1).fields[0].options.some(x=>x.value==="0"),
+  "A nested folder may move to archive root");
+ const beforeSystem2=modals.length;
  fn("moveArchiveEntry")(parent);
- assert.equal(modals.length,beforeSystem,
+ assert.equal(modals.length,beforeSystem2,
   "A system directory cannot open the move dialog");
 
  const last=calls.length;
