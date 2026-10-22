@@ -155,27 +155,78 @@ async function uploadNewVersion(node) {
   else if (result instanceof Error) toast(result.message, { ms: 6000 });
 }
 
-async function associateOriginal(node) {
-  if (!node || node.type !== "file") return;
-  const record = recordOfAttachment(node);
-  if (!record?.fileId) return toast("附件信息缺失");
+/* F2-03：所有业务附件共用同一个 FileId/LinkId 关联操作。
+   共享只新增 LinkId；移动在服务端事务内建目标 LinkId 并注销来源 LinkId。 */
+async function associateOriginal(node, move = false) {
+  if (node?.type !== "file" || fileTaskBusy()) {
+    return toast(fileTaskBusy() ? "有文件任务正在执行，请完成后再操作" : "请选择一条附件");
+  }
+  const meta = VaultStore.metaOf(node.id);
+  const owner = findParent(node.id);
+  const sourceKind = owner?.biz?.kind;
+  const workspace = VaultStore.ws;
+  if (!meta?.fileId || !meta?.linkId || !owner?.biz?.id ||
+      !UPLOADABLE_KINDS.includes(sourceKind)) return toast("找不到有效的附件引用");
 
-  /* ip-v2.associate 期望 records 里每项是 {id, ownerId, data:{name}}。 */
-  const records = [];
-  walkNodes((n) => {
-    if (n.type === "folder" && n.biz?.kind === "ip" && n.biz?.id != null) {
-      records.push({ id: n.biz.id, ownerId: n.biz.id, data: { name: n.name } });
-    }
+  const destinations = [];
+  walkNodes((target) => {
+    if (target.type !== "folder" ||
+        !UPLOADABLE_KINDS.includes(target.biz?.kind) ||
+        !Number.isSafeInteger(Number(target.biz?.id)) ||
+        Number(target.biz.id) <= 0 ||
+        target.biz.id === owner.biz.id) return;
+    const path = (pathTo(target.id) || [])
+      .filter((n) => n.id !== "root")
+      .map((n) => n.name)
+      .join(" › ");
+    destinations.push({ value: String(target.biz.id), label: path || target.name });
   });
-  if (records.length < 2) return toast("当前工作区还没有其它知识产权记录");
+  if (!destinations.length) return toast("当前工作区没有其它可接收附件的业务记录");
+  destinations.sort((a, b) => a.label.localeCompare(b.label, "zh-CN"));
 
-  const ok = await globalThis.IPSysNativeIp.associate(
-    CapabilityApi,
-    { ...record, kind: "ip", ownerId: record.ownerId },
-    VaultStore.ws,
-    records
-  );
-  if (ok) toast("已共享到目标知识产权");
+  RecordForms.open({
+    title: move ? "移动附件关联" : "共享附件原件",
+    submitText: move ? "确认移动" : "确认共享",
+    fields: [{
+      key: "target", type: "select", label: "目标业务记录",
+      required: true, options: destinations,
+      hint: move
+        ? "移动后来源位置不再显示此附件；文件历史版本与其它共享关联保持不变。"
+        : "目标记录新增一条附件引用，不重复存储原件；所有历史版本保持共用。",
+    }],
+    onSubmit: async (data) => {
+      if (workspace !== VaultStore.ws) throw new Error("工作区已变化，请重新选择附件");
+      if (fileTaskBusy()) throw new Error("有文件任务正在执行，请完成后再操作");
+      const selected = destinations.find((d) => d.value === String(data.target));
+      if (!selected) throw new Error("目标记录无效或已变化，请重新选择");
+      const targetFolderId = Number(selected.value);
+      const target = destinations.length && (() => {
+        let found = null;
+        walkNodes((n) => {
+          if (n.type === "folder" && UPLOADABLE_KINDS.includes(n.biz?.kind) &&
+              Number(n.biz.id) === targetFolderId) found = n;
+        });
+        return found;
+      })();
+      if (!target) throw new Error("目标记录已不存在，请刷新后重试");
+      if ((target.children || []).some((child) =>
+        child.type === "file" && Number(VaultStore.metaOf(child.id)?.fileId) === Number(meta.fileId))) {
+        throw new Error("目标记录已经关联同一原件，请选择其它记录");
+      }
+      await VaultStore.api("/api/v2/files/" + workspace + "/" + meta.fileId + "/associate", {
+        method: "POST",
+        json: { linkId: meta.linkId, targetFolderId, move: !!move },
+      });
+      try {
+        await refreshCurrent();
+      } catch (e) {
+        toast("关联已提交，但列表刷新失败，请手动刷新", { tone: "error", ms: 6000 });
+        return;
+      }
+      Drive.clearSelection();
+      toast(move ? "附件已移至目标记录" : "原件已共享到目标记录");
+    },
+  });
 }
 
 /* 遍历当前已加载的整棵树(含未展开的分支)。 */
