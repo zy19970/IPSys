@@ -1,6 +1,6 @@
-# 缺陷清单 V2（13 个已识别 BUG 编号 + 1 条实现缺口 + 1 条文档缺口）
+# 缺陷清单 V2（14 个已识别 BUG 编号 + 1 条实现缺口 + 1 条文档缺口）
 
-被测源码基线：`02289ea7020861360baa0a4c49ca045f3c783aea`｜浏览器：Edge（CDP）｜测试库：`vault-v2c.db`｜复现率中的分母是本轮实际尝试次数
+被测源码基线：`02289ea7020861360baa0a4c49ca045f3c783aea`｜浏览器：Edge（CDP）｜上一轮测试库：`vault-v2c.db`；本轮为独立临时库 `v2ci-39726553781-1`｜复现率分母为各项实际尝试次数
 
 复核说明：BUG-004 为此前已证实、本轮未复跑；T-P1-02 的单独删合同子项尚未完成 UI 复测，不确认 BUG-007；R-08 原 BUG-017 判定为误报，已撤销。
 
@@ -69,6 +69,16 @@
 
 - `folderId=root` 通过 `pickFiles()` 的 folder 判断，无「先选记录」引导
 - 违反 `REQUIREMENTS.md:30/153`
+
+## BUG-018（P2，本轮 T-P2-09）PDF 预览创建后没有启动解析
+
+- **复现步骤**：在项目 A 打开附件 `PDF 两页示例.pdf`。
+- **预期**：显示 `1 / 2` 并完成第一页 Canvas 渲染；点击“下一页”后显示 `2 / 2` 并完成第二页渲染。
+- **实际**：页码为“加载中”，状态保持“正在解析 PDF…”，Canvas 仍为初始 `300×150`；两页均未渲染。
+- **复现概率**：1/1（Windows Runner、Edge CDP、有效 844B 两页 PDF）。
+- **归因**：`frontend/explorer/js/interactions.js` 的 `previewFile()` 在 `viewer.create(body, buffer)` 后未调用 `pdfViewer.open()`。`pdf-preview.js` 中实际加载 PDF.js 文档并渲染页面的逻辑只在 `open()` 内执行。
+- **证据**：`docs/retest-v2-2026-10-22/evidence/runs/v2ci-39726553781-1/T-P2-09.txt`、同目录 `browser-results.json`；完整截图和宿主日志见 [Actions artifact](https://github.com/zy19970/IPSys/actions/runs/39726553781/artifacts/12403621382)。
+- **状态**：已确认；本轮只确认缺陷，未修改产品代码。
 
 ## DOC_GAP-001（R-07）Q122 旧口径
 
