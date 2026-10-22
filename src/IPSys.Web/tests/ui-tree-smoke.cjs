@@ -105,4 +105,63 @@ assert.equal(run(`orphan.children.find(c=>c.id==='k:project').children[0].childr
    scope there, so nothing may leak into the normal tree through that path. */
 assert.ok(run(`typeof VaultStore.loadRecycle==='function'`));
 
+
+/* BUG-001：扁平 parentId 接口必须构造完整三级目录；记录不能被提升到分类根。 */
+const multilevel={
+ ws:'company',
+ projects:[{id:1,name:'项目甲'}],
+ contracts:[{id:11,name:'合同甲',projectId:1,projectName:'项目甲'}],
+ archive:{
+  folders:[
+   {id:70,name:'系统目录',parentId:null,position:0,isSystem:true},
+   {id:71,name:'二级目录',parentId:70,position:0},
+   {id:72,name:'三级目录',parentId:71,position:0},
+  ],
+  archives:[{id:91,name:'三级归档',section:'achievement',folderId:72}],
+  files:[
+   {linkId:10,fileId:510,version:1,ownerId:91,kind:'archive',name:'档案旧版',size:10},
+   {linkId:10,fileId:510,version:2,ownerId:91,kind:'archive',name:'档案新版',size:20},
+  ],
+  general:[{id:92,title:'综合资料',files:[
+   {linkId:11,fileId:511,version:1,name:'综合旧版',size:1},
+   {linkId:11,fileId:511,version:2,name:'综合新版',size:2},
+  ]}],
+ },
+ ip:{
+  rows:[{id:93,data:{name:'知识产权'}}],
+  files:[
+   {linkId:12,fileId:512,version:1,folderId:93,name:'知识产权旧版',size:5},
+   {linkId:12,fileId:512,version:2,folderId:93,name:'知识产权新版',size:7},
+   {linkId:13,fileId:512,version:2,folderId:93,name:'独立关联同一原件',size:7},
+  ],
+ },
+ projectFiles:[
+  {linkId:14,fileId:514,version:1,folderId:1,kind:'project',name:'项目旧版',size:3},
+  {linkId:14,fileId:514,version:2,folderId:1,kind:'project',name:'项目新版',size:4},
+  {linkId:15,fileId:515,version:1,folderId:11,kind:'contract',name:'合同旧版',size:6},
+  {linkId:15,fileId:515,version:2,folderId:11,kind:'contract',name:'合同新版',size:8},
+ ],
+};
+run('ROOT=VaultStore.buildTree('+JSON.stringify(multilevel)+')');
+const archivePath=Array.from(run("pathTo('a:achievement:91')"),x=>x.id);
+assert.deepEqual(archivePath,['root','k:achievement','af:70','af:71','af:72','a:achievement:91'],
+ 'A record must stay under its full three-level archive directory path');
+assert.equal(run("findParent('af:72').id"),'af:71');
+assert.equal(run("findParent('af:71').id"),'af:70');
+assert.equal(run("findById('af:70').size"),20,
+ 'Parent folder bytes must include nested record only once, at the latest version');
+
+/* BUG-002：所有业务模块只按 LinkId 展示最新版，不能按 FileId 合并共享引用。 */
+const childIds=id=>Array.from(run("findById("+JSON.stringify(id)+").children"),x=>x.id);
+assert.deepEqual(childIds('a:achievement:91'),['f:10:2']);
+assert.deepEqual(childIds('g:92'),['f:11:2']);
+assert.deepEqual(childIds('i:93').sort(),['f:12:2','f:13:2']);
+assert.deepEqual(childIds('c:11'),['f:15:2']);
+assert.deepEqual(childIds('p:1').sort(),['c:11','f:14:2']);
+assert.equal(run("VaultStore.metaOf('f:12:2').version"),2);
+assert.equal(run("findById('i:93').size"),14,
+ 'Two distinct LinkIds for one FileId each count their current version once');
+assert.equal(run("findById('p:1').size"),12,
+ 'Project rollup must count newest project and contract originals, not old versions');
+
 console.log('DRIVE TREE SMOKE PASS: project / contract / original nesting, rollups, identity, orphan guard');

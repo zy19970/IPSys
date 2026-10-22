@@ -559,12 +559,17 @@ async function lockVault() {
     danger: true,
   });
   if (!ok) return;
-  closeSettings();
   try {
     await VaultStore.api("/api/lock", { method: "POST" });
-  } catch {}
+  } catch (e) {
+    /* 服务端拒绝(例如文件任务运行中)时，不丢失浏览器会话和资料库状态。 */
+    toast("关闭资料库失败：" + (e.message || String(e)), { ms: 6000, tone: "error" });
+    return;
+  }
+  closeSettings();
   VaultStore.token = "";
-  sessionStorage.clear();
+  sessionStorage.removeItem("od-token");
+  sessionStorage.removeItem("od-db");
   location.reload();
 }
 
@@ -1330,43 +1335,73 @@ function bindOverlays() {
    ========================================================================== */
 
 async function deleteNodes(nodes) {
-  /* 业务档案的系统目录不是记录,不能删;混合选中时把它们摘出去 */
+  /* 业务档案目录不能通过此处当作记录删除。 */
   const dirs = nodes.filter((n) => (n.biz || {}).kind === "archive_folder");
   if (dirs.length) {
     nodes = nodes.filter((n) => (n.biz || {}).kind !== "archive_folder");
-    toast("业务档案的目录不能删除");
+    toast("业务档案的目录不能在这里删除");
   }
   if (!nodes.length) return;
+
+  /* 相同 LinkId 的多个历史版本只有一次解绑操作。
+     不同 LinkId 即便共用 FileId，也必须各自单独处理。 */
+  const seen = new Set();
+  const targets = [];
+  for (const node of nodes) {
+    const meta = node.type === "file" ? VaultStore.metaOf(node.id) : null;
+    const biz = node.biz || {};
+    const kind = node.type === "file" ? "file" : bizKindOf(node);
+    const key = node.type === "file"
+      ? (meta?.linkId != null ? "file:" + meta.linkId : "missing:" + node.id)
+      : "record:" + kind + ":" + biz.id + ":" + (biz.section || "");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    targets.push({ node, meta, kind });
+  }
+
   const ok = await askConfirm({
     title: "删除",
-    text: `将 ${nodes.length} 项移到回收站？可以稍后还原。`,
+    text: "将 " + targets.length + " 项移到回收站？可以稍后还原。",
     okText: "删除",
     danger: true,
   });
   if (!ok) return;
 
-  try {
-    for (const n of nodes) {
-      if (n.type === "file") {
-        const meta = VaultStore.metaOf(n.id);
-        if (!meta) {
-          toast(`${n.name}:找不到附件引用`, { ms: 5000 });
-          continue;
-        }
-        await VaultStore.api(`/api/v2/files/${VaultStore.ws}/${meta.fileId}/links/${meta.linkId}`, { method: "DELETE" });
+  let succeeded = 0;
+  const failures = [];
+  for (const { node, meta, kind } of targets) {
+    try {
+      if (node.type === "file") {
+        if (!meta?.fileId || !meta?.linkId) throw new Error("找不到有效附件引用");
+        await VaultStore.api("/api/v2/files/" + VaultStore.ws + "/" + meta.fileId +
+          "/links/" + meta.linkId, { method: "DELETE" });
       } else {
-        const b = n.biz || {};
-        const kind = bizKindOf(n);
-        if (!kind || !b.id) continue;
-        const qs = kind === "archive" ? `?section=${encodeURIComponent(b.section || "")}` : "";
-        await VaultStore.api(`/api/v2/folders/${VaultStore.ws}/${kind}/${b.id}${qs}`, { method: "DELETE" });
+        const biz = node.biz || {};
+        if (!kind || !biz.id) throw new Error("找不到业务记录标识");
+        const qs = kind === "archive" ? "?section=" + encodeURIComponent(biz.section || "") : "";
+        await VaultStore.api("/api/v2/folders/" + VaultStore.ws + "/" + kind + "/" +
+          biz.id + qs, { method: "DELETE" });
       }
+      succeeded++;
+    } catch (e) {
+      failures.push(node.name + "：" + (e.message || String(e)));
     }
-    toast(`已删除 ${nodes.length} 项`);
-    Drive.clearSelection();
+  }
+
+  Drive.clearSelection();
+  /* 部分成功或全部失败时，也必须重新查询真实服务端状态。 */
+  try {
     await refreshCurrent();
   } catch (e) {
-    toast(e.message, { ms: 6000 });
+    failures.push("刷新失败：" + (e.message || String(e)));
+  }
+  if (failures.length) {
+    const detail = failures.slice(0, 3).join("；");
+    toast("删除结果：成功 " + succeeded + " 项，失败 " + failures.length +
+      " 项。" + detail + (failures.length > 3 ? "；其他失败请逐项重试" : ""),
+      { ms: 9000, tone: "error" });
+  } else {
+    toast("已删除 " + succeeded + " 项");
   }
 }
 

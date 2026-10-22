@@ -276,11 +276,23 @@ const VaultStore = {
       byOwner.get(ownerId).push(node);
     };
 
-    for (const f of projectFiles || []) {
+
+    /* 每个 LinkId 是一条逻辑附件。只展示当前最高版本；历史版本仍由后端保存。 */
+    const latestLinks = (rows) => {
+      const latest = new Map();
+      for (const f of rows || []) {
+        if (f?.linkId == null || f.version == null) continue;
+        const key = String(f.linkId);
+        if (!latest.has(key) || Number(f.version) > Number(latest.get(key).version))
+          latest.set(key, f);
+      }
+      return [...latest.values()];
+    };
+    const attachmentNode = (f, ownerKind, extra = {}) => {
       const node = D(f.displayName || f.name || "附件", f.size, {
-        id: `f:${f.linkId}:${f.version}`,
+        id: "f:" + f.linkId + ":" + f.version,
       });
-      node.biz = { kind: "file", ownerKind: f.kind };
+      node.biz = { kind: "file", ownerKind, ...extra };
       this.fileMeta.set(node.id, {
         fileId: f.fileId,
         version: f.version,
@@ -288,34 +300,21 @@ const VaultStore = {
         name: f.name,
         sha256: f.sha256,
       });
-      push(f.folderId, node);
+      return node;
+    };
+
+    for (const f of latestLinks(projectFiles)) {
+      push(f.folderId, attachmentNode(f, f.kind));
     }
 
-    const archiveFiles = archive?.files || [];
-    for (const f of archiveFiles) {
-      const node = D(f.name || "附件", f.size, { id: `f:${f.linkId}:${f.version}` });
-      node.biz = { kind: "file", ownerKind: f.kind, section: f.section, category: f.category };
-      this.fileMeta.set(node.id, {
-        fileId: f.fileId,
-        version: f.version,
-        linkId: f.linkId,
-        name: f.name,
-        sha256: f.sha256,
-      });
-      push(f.ownerId, node);
+    for (const f of latestLinks(archive?.files)) {
+      push(f.ownerId, attachmentNode(f, f.kind, {
+        section: f.section, category: f.category,
+      }));
     }
 
-    for (const f of ip?.files || []) {
-      const node = D(f.displayName || f.name || "附件", f.size, { id: `f:${f.linkId}:${f.version}` });
-      node.biz = { kind: "file", ownerKind: "ip" };
-      this.fileMeta.set(node.id, {
-        fileId: f.fileId,
-        version: f.version,
-        linkId: f.linkId,
-        name: f.name,
-        sha256: f.sha256,
-      });
-      push(f.folderId, node);
+    for (const f of latestLinks(ip?.files)) {
+      push(f.folderId, attachmentNode(f, "ip"));
     }
 
     const attach = (node, ownerId) => {
@@ -467,18 +466,7 @@ const VaultStore = {
             id: g.id,
           };
           this.biz.set(node.id, node.biz);
-          const kids = (g.files || []).map((f) => {
-            const n = D(f.name || "附件", f.size, { id: `f:${f.linkId}:${f.version}` });
-            n.biz = { kind: "file", ownerKind: "general" };
-            this.fileMeta.set(n.id, {
-              fileId: f.fileId,
-              version: f.version,
-              linkId: f.linkId,
-              name: f.name,
-              sha256: f.sha256,
-            });
-            return n;
-          });
+          const kids = latestLinks(g.files).map((f) => attachmentNode(f, "general"));
           kids.sort((a, b) => cmpName(a, b));
           node.children = kids;
           node.size = kids.reduce((s, k) => s + (k.size || 0), 0);
@@ -488,21 +476,29 @@ const VaultStore = {
 
     /* 公司「业务档案」的一级是目录树:7 个系统目录(后端 is_system=1),
        记录按 folderId 挂进目录;目录本身不是业务记录。 */
-    const buildArchiveDirs = (records) => {
-      const dirs = (archive?.folders || [])
-        .filter((f) => f.parentId === null || f.parentId === undefined)
-        .sort((a, b) => (a.position || 0) - (b.position || 0))
-        .map((f) => {
-          const d = F(f.name || "未命名目录", { id: `af:${f.id}` });
-          d.biz = { kind: "archive_folder", typeName: "目录", id: f.id, isSystem: !!f.isSystem };
-          /* order 是后端 position:系统目录有固定业务顺序(申报与认定打头),
-             不能被拼音序打乱。见 app.js sortedItems。 */
-          d.order = Number(f.position) || 0;
-          d.children = [];
-          return d;
-        });
 
+    const buildArchiveDirs = (records) => {
+      /* 后端以扁平 parentId 表返回目录，必须挂接全层级，而不只是顶层。 */
+      const folders = archive?.folders || [];
+      const dirs = folders.map((f) => {
+        const d = F(f.name || "未命名目录", { id: "af:" + f.id });
+        d.biz = {
+          kind: "archive_folder", typeName: "目录", id: f.id, isSystem: !!f.isSystem,
+          parentId: f.parentId ?? null,
+        };
+        d.order = Number(f.position) || 0;
+        d.children = [];
+        return d;
+      });
       const byId = new Map(dirs.map((d) => [String(d.biz.id), d]));
+      const roots = [];
+      for (const f of folders) {
+        const dir = byId.get(String(f.id));
+        const parent = f.parentId == null ? null : byId.get(String(f.parentId));
+        if (parent && parent !== dir) parent.children.push(dir);
+        else roots.push(dir);
+      }
+
       const loose = [];
       for (const r of records) {
         const dir = r.biz.folderId != null ? byId.get(String(r.biz.folderId)) : null;
@@ -510,14 +506,19 @@ const VaultStore = {
         else loose.push(r);
       }
 
-      for (const d of dirs) {
-        d.children.sort((a, b) => cmpName(a, b));
-        const times = d.children.map((x) => x.mtime).filter(Boolean);
-        d.mtime = times.length ? Math.max(...times) : null;
-        d.size = d.children.reduce((n, x) => n + (x.size || 0), 0);
-      }
-      /* 目录在前(按后端 position 排),没归目录的记录跟在后面 */
-      return [...dirs, ...loose.sort((a, b) => cmpName(a, b))];
+      /* 父目录统计递归包含所有后代附件，不能漏计二三级。 */
+      const finalize = (dir) => {
+        for (const child of dir.children) {
+          if (child.biz?.kind === "archive_folder") finalize(child);
+        }
+        dir.children.sort((a, b) => cmpName(a, b));
+        const times = dir.children.map((x) => x.mtime).filter(Boolean);
+        dir.mtime = times.length ? Math.max(...times) : null;
+        dir.size = dir.children.reduce((n, x) => n + (x.size || 0), 0);
+      };
+      for (const dir of roots) finalize(dir);
+      roots.sort((a, b) => a.order - b.order);
+      return [...roots, ...loose.sort((a, b) => cmpName(a, b))];
     };
 
     root.children = catsOf(ws).map(({ id, label }, i) => {
