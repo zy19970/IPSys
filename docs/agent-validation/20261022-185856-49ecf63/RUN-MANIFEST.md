@@ -12,6 +12,7 @@
 | 远程真实 tip | `446f9a67c8e6f0fef04b15b48d96e11079ea8812`（**开工时本地落后 9 个提交，未 fetch**） |
 | 动态证据采集点 | `49ecf63`（全部 38 项） |
 | 真 HEAD 复验点 | `446f9a6`（13 项复跑 + 全量重建，逐项一致，见 §基线与复验） |
+| 交付后远程 tip | `b8b0e33`（10-22 22:32，F2-01 登录页新建库，只动登录页；见 §交付后 HEAD 继续前进） |
 | 上轮基线 | `02289ea7020861360baa0a4c49ca045f3c783aea` |
 | 相对 main | `main...work/onedrive-file-manager` = 21 commits，94 files，+11658 / −6982 |
 
@@ -38,6 +39,29 @@
 
 日志：`evidence/build.log`、`evidence/build-and-smoke.log`、`evidence/publish.log`
 
+## 验证入口（哪个 exe 才是新 UI）
+
+`build-retest/` 下同时躺着两份可执行文件，内嵌的前端**不是同一版**：
+
+| 路径 | 构建时间 | 程序集 | 内嵌前端判定 |
+|---|---|---|---|
+| `build-retest/IPSys.Web.exe` + `.dll` | **2026-10-17 14:59** | 2,839,552 B | **旧版**：`wsSwitchBtn`/`catgrid`/`listHead`/`分类目录` 命中数**全为 0** |
+| `build-retest/current/IPSys.Web.exe` | 2026-10-22 23:22 | 单文件 5,204,198 B | **新版**：以上标志全部命中，且含 F2-01 的 `创建新资料库` |
+| `src/IPSys.Web/bin/Debug/net8.0-windows/`（本轮动态测试用） | 2026-10-22 19:22 | 2,979,840 B | **新版**，同上 |
+
+`build-retest/` 被 `.gitignore` 覆盖，第一行那份是**历史发布残留**（10-17 手工 publish 到此处），
+不随仓库更新。直接双击它会打开旧 UI —— 这不能推出"V3 测的是旧界面"，是入口找错了。
+
+**判定 UI 版本的客观方法**（不靠时间戳、不靠谁的口述）：
+
+```bash
+LC_ALL=C grep -a -o "wsSwitchBtn" <程序集或单文件> | wc -l
+```
+
+命中 ≥1 为 10-20 之后的新版（顶栏工作区切换）；0 为旧版。再搜 `创建新资料库` 可确认是否含
+22:32 的 F2-01。本轮动态证据全部来自 19:22 的 Debug 产物与 19:11 的 Release 单文件；
+`t-release.cjs` 已用 `/app.js` 与 `dist/app.js` 同字节（195,284 B）证明服务端下发的就是仓库产物。
+
 ## 基线与复验（补上"确认最新 HEAD"这一步）
 
 开工时只执行了 `git rev-parse HEAD` → `49ecf63`，**没有 `git fetch`**，于是把它当成了最新。实际 `origin/work/onedrive-file-manager`
@@ -63,6 +87,21 @@
 
 复跑脚本放在 `build-retest/recheck/scripts/`（临时副本，加 `IPSYS_EVID`/`IPSYS_TMP`/`IPSYS_SHELL` 环境变量覆盖输出路径，
 **仓库内 `scripts/` 一字未改**）；复跑产出已收入 `evidence/recheck-446f9a6/`。
+
+### 交付后 HEAD 继续前进：`b8b0e33`
+
+交付提交 `591de1d` 推送后，`origin/work/onedrive-file-manager` 又前进了 3 个提交，tip 为
+`b8b0e33`（2026-10-22 22:32，`feat(explorer): F2-01 登录页安全创建新资料库入口`），
+改动 `frontend/explorer/{index.html,css/app.css,js/interactions.js}` 并新增一个 smoke。
+
+- 本轮 38 项的采集基线是 `446f9a6`；`591de1d` 仍在 HEAD 祖先链上，交付文档未丢失。
+- `b8b0e33` **只动登录页**（建库入口 + 密码二次确认 + 已有会话隐藏入口），不涉及台账列视图、
+  树构建、批量删除、附件版本、导出。受影响的用例是 **T-P2-15（建空库）** 与
+  **T-P1-01（登录层 `create:false` 判据）** —— 这两项的 V3 结论对 `b8b0e33` **不构成覆盖**，
+  下一轮必须先重跑它们。
+- 复核用发布包已按 `b8b0e33` 源码重建于 `build-retest/current/IPSys.Web.exe`（23:22）。
+  实测 `/` 12,701 B、`/app.js` 204,200 B、`/style.css` 62,528 B，三者与 `dist/` **逐字节一致**；
+  无头 Edge 打开可看到「打开资料库」页与「创建新资料库」入口，点入后标题变为「创建新资料库」。
 
 
 ## 隔离资料库

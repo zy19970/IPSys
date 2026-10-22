@@ -5,6 +5,10 @@
 - 动态证据采集 SHA：**`49ecf63`**（`work/onedrive-file-manager`），相对 `main` 21 个提交。
 - **远程真实 tip：`446f9a6`**。开工时本地落后 9 个提交且未 `fetch`，所以采集点在 `49ecf63`；二者之间 `src/ frontend/ tools/ dist/` **零差异**，
   并已在 `446f9a6` 上复跑 13 项确认逐项一致（`RUN-MANIFEST.md` §基线与复验、`evidence/recheck-446f9a6/`）。
+- **交付后 tip 又前进到 `b8b0e33`**（10-22 22:32，F2-01 登录页新建库入口，只动登录页）。本轮结论对
+  **T-P2-15（建空库）**、**T-P1-01（登录层判据）** 不构成覆盖，下一轮须先重跑这两项。见 `RUN-MANIFEST.md` §交付后 HEAD 继续前进。
+- **验证入口**：`build-retest/IPSys.Web.exe` 是 **10-17 的历史残留（旧 UI）**，不要用它验证本轮结论；
+  正确入口是 `build-retest/current/IPSys.Web.exe`（`b8b0e33` 源码重建）。见 `RUN-MANIFEST.md` §验证入口与 `TEST-DEFECTS.md` TD-16。
 - 机器：Windows 11 企业版 LTSC Build 26100 / AMD64。
 - 浏览器：Edge `155.0.4283.60`，headless=new，每次新起独立 `--user-data-dir`，只关自己起的进程。
 - 构建与冒烟：`dotnet build` 0 错误；8 个 Node 冒烟全绿；`bundle.cjs` 产出 `dist/app.js` 195284 B；`dotnet publish` 单文件 5183718 B。
@@ -61,7 +65,7 @@
 | **产品缺陷（需改代码）** | BUG-001/002/003/010/013/015/016/018/019/020/023 | 全部有动态证据 + 源码归因 |
 | **实现缺口（后端有、前端没入口）** | GAP-001（登录建库）、GAP-006（复制/移动）、GAP-014（拖放不接线且提示与事实相反） | 后端接口当轮实测可用 |
 | **文档口径** | DOC_GAP-001（`REQUIREMENTS.md` 仍写"一键清空不可用"） | 用户 2026-10-22 已授权，按钮存在不判缺陷 |
-| **测试器问题** | 15 条，全部已修正重跑 | 见 `TEST-DEFECTS.md`；其中 3 条差点造成误报，TD-14（基线未 fetch）与 TD-15（CSV 列错位）不产生红断言但会误导结论 |
+| **测试器问题** | 16 条，全部已修正重跑 | 见 `TEST-DEFECTS.md`；其中 3 条差点造成误报，TD-14（基线未 fetch）、TD-15（CSV 列错位）、TD-16（验证入口指向 10-17 旧产物）不产生红断言但会误导结论 |
 
 **特别注意**：8 个 Node 冒烟全绿，但 `pdf-canvas-smoke` 全程是对源码做字符串断言，本轮 PDF 就是"冒烟绿、界面白"的活反例。**不能拿冒烟当验收。**
 
