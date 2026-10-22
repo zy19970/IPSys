@@ -263,42 +263,51 @@ async function main() {
       "不得对同一 linkId 多次 DELETE；失败要给成功/失败数并刷新真实结果");
   })();
 
-  /* ---------- T-P2-01 重命名 / F2 / 属性 ---------- */
+  /* ---------- T-P2-01 右键/F2真实改名及恢复 ---------- */
   await (async function T_P2_01() {
-    await evalJs(`Drive.openFolder('k:project')`).catch(() => {});
-    await sleep(300);
-    const rowId = (await evalJs(`[...document.querySelectorAll('#viewRoot .row')].map(r=>r.dataset.id)`))[0];
-    const before = await evalJs(`(findById(${JSON.stringify(rowId)})||{}).name || ''`);
-    await evalJs(`(() => {
-      const row = document.querySelector('#viewRoot .row');
-      const r = row.getBoundingClientRect();
-      row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: r.left + 20, clientY: r.top + 10 }));
-      return 1;
-    })()`);
-    await sleep(300);
-    const menu = await evalJs(`[...document.querySelectorAll('#ctxMenu [data-act]')].map(b=>b.innerText.trim())`);
-    await clearToasts();
-    await evalJs(`document.querySelector('#ctxMenu [data-act="rename"]').click()`);
-    await sleep(300);
-    const toast = await evalJs(`[...document.querySelectorAll('.toast')].map(t=>t.innerText.trim()).join(' | ')`);
-    const after = await evalJs(`(findById(${JSON.stringify(rowId)})||{}).name || ''`);
-    await evalJs(`Drive.state.selection = new Set([${JSON.stringify(rowId)}]); Drive.render();`).catch(() => {});
-    await evalJs(`document.body.dispatchEvent(new KeyboardEvent('keydown',{key:'F2',bubbles:true}))`);
-    await sleep(300);
-    const toast2 = await evalJs(`[...document.querySelectorAll('.toast')].map(t=>t.innerText.trim()).join(' | ')`);
+    await evalJs("Drive.openFolder('k:project')").catch(() => {});
+    await sleep(350);
+    const rowId=(await evalJs("[...document.querySelectorAll('#viewRoot .row')].map(r=>r.dataset.id)"))[0];
+    if(!rowId) {
+      rec("T-P2-01","DYNAMIC-BROWSER","BLOCKED","没有项目行可供重命名","右键和F2都可提交真实改名");
+      return;
+    }
+    const before=await evalJs("findById("+JSON.stringify(rowId)+")?.name || ''");
+    const temporary=before+"-验收";
+    await evalJs("(() => { const row=document.querySelector('#viewRoot .row'); const r=row.getBoundingClientRect(); row.dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,clientX:r.left+20,clientY:r.top+10})); return 1; })()");
+    await sleep(200);
+    const menu=await evalJs("[...document.querySelectorAll('#ctxMenu [data-act]')].map(b=>b.innerText.trim())");
+    const hasRename=await evalJs("!!document.querySelector('#ctxMenu [data-act=\"rename\"]')");
+    if(hasRename) await evalJs("document.querySelector('#ctxMenu [data-act=\"rename\"]').click()");
+    await sleep(200);
+    const contextForm=await evalJs("!!document.querySelector('#formMask [data-key=\"name\"]')");
+    if(contextForm){
+      await evalJs("(() => {const input=document.querySelector('#formMask [data-key=\"name\"]');input.value="+JSON.stringify(temporary)+";document.querySelector('#formMask [data-submit]').click();return true;})()");
+      await waitFor("findById("+JSON.stringify(rowId)+")?.name==="+JSON.stringify(temporary),9000,"右键重命名持久化").catch(()=>{});
+    }
+    const after=await evalJs("findById("+JSON.stringify(rowId)+")?.name || ''");
+    await evalJs("document.querySelector('#formMask [data-close]')?.click()").catch(()=>{});
+    await evalJs("Drive.state.selection=new Set(["+JSON.stringify(rowId)+"]);Drive.render()");
+    await evalJs("document.body.dispatchEvent(new KeyboardEvent('keydown',{key:'F2',bubbles:true}))");
+    await sleep(250);
+    const f2Form=await evalJs("!!document.querySelector('#formMask [data-key=\"name\"]')");
+    if(f2Form){
+      await evalJs("(() => {const input=document.querySelector('#formMask [data-key=\"name\"]');input.value="+JSON.stringify(before)+";document.querySelector('#formMask [data-submit]').click();return true;})()");
+      await waitFor("findById("+JSON.stringify(rowId)+")?.name==="+JSON.stringify(before),9000,"F2恢复原名").catch(()=>{});
+    }
+    const restored=await evalJs("findById("+JSON.stringify(rowId)+")?.name || ''");
+    await evalJs("document.querySelector('#formMask [data-close]')?.click()").catch(()=>{});
     await shot("T-P2-01-rename");
-    ev("T-P2-01", [
-      `目标行 ${rowId}，名称 ${before}`,
-      `右键菜单项：${JSON.stringify(menu)}`,
-      `点「重命名」后 toast：${toast}`,
-      `按 F2 后 toast：${toast2}`,
-      `名称是否变化：${before !== after}（当前 ${after}）`,
-      "",
-      "两条入口都只弹提示，真正的改名在详情面板「修改」/右键「属性」；菜单把不可用动作画成可用项。",
+    const ok=hasRename&&contextForm&&after===temporary&&f2Form&&restored===before;
+    ev("T-P2-01",[
+      "右键菜单："+JSON.stringify(menu),
+      "原名："+before+"；右键提交后："+after+"；F2恢复后："+restored,
+      "右键进入真实表单："+contextForm+"；F2进入真实表单："+f2Form,
+      "两次实际提交成功且恢复初始测试数据："+ok,
     ].join("\n"));
-    rec("T-P2-01", "DYNAMIC-BROWSER", before === after ? "CONFIRMED_BUG" : "PASS",
-      `右键「重命名」与 F2 都只弹「${toast || toast2}」，名称未变（${before}）`,
-      "重命名真的改名，或对未实现的命令不误导");
+    rec("T-P2-01","DYNAMIC-BROWSER",ok?"PASS":"CONFIRMED_BUG",
+      "右键表单="+contextForm+"，提交改名="+(after===temporary)+"；F2表单="+f2Form+"，恢复原名="+(restored===before),
+      "右键与F2真实提交更新，并在测试结束后恢复原名");
   })();
 
   /* ---------- T-P2-02 拖放 ---------- */
@@ -337,54 +346,33 @@ async function main() {
       "内部移动真正执行，或明确说明不支持而不谎称后端缺失");
   })();
 
-  /* ---------- T-P2-03 快捷访问加号 ---------- */
+  /* ---------- T-P2-03 虚假快捷访问按钮不存在 ---------- */
   await (async function T_P2_03() {
-    await evalJs(`Drive.openFolder('root')`).catch(() => {});
-    await sleep(600);
-    const btn = await evalJs(`!!document.querySelector('#btnPinFolder')`);
-    if (btn) await clearToasts();
-    await evalJs(`document.querySelector('#btnPinFolder').click()`);
-    await sleep(300);
-    const toast = await evalJs(`[...document.querySelectorAll('.toast')].map(t=>t.innerText.trim()).join(' | ')`);
+    const button=await evalJs("!!document.querySelector('#btnPinFolder')");
     await shot("T-P2-03-pin");
-    ev("T-P2-03", [
-      "#btnPinFolder 存在=" + btn,
-      "点击后 toast：" + toast,
-      "",
-      "interactions.js:700 硬编码 toast('「快捷访问」已按资料分类自动生成')，没有任何自定义快捷方式的能力。",
-      "侧栏『快捷访问』只是六个固定分类的同义展示，不是用户可维护的快捷方式。",
+    ev("T-P2-03",[
+      "#btnPinFolder 存在="+button,
+      "快捷访问是系统固定类别，不应该展示未实现的「添加快捷访问」操作",
     ].join("\n"));
-    rec("T-P2-03", "DYNAMIC-BROWSER", btn && /自动生成/.test(toast || "") ? "CONFIRMED_BUG" : "PASS",
-      `「添加快捷访问」按钮点击后只弹「${toast}」`,
-      "按钮真能添加快捷访问；否则应不可用而不是假成功");
+    rec("T-P2-03","DYNAMIC-BROWSER",!button?"PASS":"CONFIRMED_BUG",
+      "不支持自定义快捷方式的假添加按钮"+(button?"仍然存在":"已经移除"),
+      "不存在无业务行为的快捷访问添加按钮");
   })();
 
-  /* ---------- T-P2-04 首页导入资料 ---------- */
+  /* ---------- T-P2-04 虚拟根不得打开上传文件选择器 ---------- */
   await (async function T_P2_04() {
-    await evalJs(`Drive.state.view='home'; Drive.state.folderId='root'; Drive.render();`);
-    await sleep(500);
-    const r = await evalJs(`(() => {
-      window.__pickerOpened = 0;
-      const orig = HTMLInputElement.prototype.click;
-      HTMLInputElement.prototype.click = function () { if (this.type === 'file') { window.__pickerOpened++; return; } return orig.apply(this, arguments); };
-      const b = document.querySelector('[data-page-act="upload"]');
-      if (!b) return { err: '首页没有导入资料按钮' };
-      b.click();
-      return { opened: window.__pickerOpened, folderId: Drive.state.folderId,
-               isFolder: (findById(Drive.state.folderId)||{}).type,
-               toast: [...document.querySelectorAll('.toast')].map(t=>t.innerText.trim()).join(' | ') };
-    })()`);
+    await evalJs("Drive.state.view='home';Drive.state.folderId='root';Drive.render()");
+    await sleep(300);
+    const r=await evalJs("(() => {const original=HTMLInputElement.prototype.click;let opened=0;HTMLInputElement.prototype.click=function(){if(this.type==='file'){opened++;return;}return original.apply(this,arguments);};try {const button=document.querySelector('[data-page-act=\"upload\"]');if(button)button.click();else pickFiles();return {button:!!button,opened,folderId:Drive.state.folderId,toast:[...document.querySelectorAll('.toast')].map(t=>t.innerText.trim()).join(' | ')};}finally{HTMLInputElement.prototype.click=original;}})()");
     await shot("T-P2-04-home-upload");
-    ev("T-P2-04", [
-      "首页点「导入资料」：",
-      JSON.stringify(r, null, 1),
-      "",
-      "pickFiles() 只判断当前 folderId 是不是 folder，首页 folderId=root 恰好是 folder 且没有 k: 前缀，",
-      "于是直接弹文件选择器，没有任何『先选记录』的引导。 REQUIREMENTS.md:30/153 要求先有业务记录再上传。",
+    const ok=r && r.opened===0 && (!r.button || /具体业务记录/.test(r.toast||""));
+    ev("T-P2-04",[
+      "首页无归属导入保护："+JSON.stringify(r,null,2),
+      "首页无导入入口时直接调用 pickFiles()，仍必须拒绝虚拟根上传。",
     ].join("\n"));
-    rec("T-P2-04", "DYNAMIC-BROWSER", (r && r.opened > 0) ? "CONFIRMED_BUG" : (r && r.toast ? "PASS" : "BLOCKED"),
-      `首页点导入资料后打开文件选择器 ${r && r.opened} 次（folderId=${r && r.folderId}）`,
-      "首页不得允许无归属上传，应引导先选记录");
+    rec("T-P2-04","DYNAMIC-BROWSER",ok?"PASS":"CONFIRMED_BUG",
+      "首页导入入口存在="+r.button+"，文件选择器打开次数="+r.opened+"，提示="+r.toast,
+      "虚拟根不能上传；仅进入真实业务记录才能选择附件");
   })();
 
   /* ---------- T-P2-06 键盘 ---------- */
