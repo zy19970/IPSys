@@ -1,5 +1,8 @@
 # IPSys 跨会话交接（2026-10-17，N4 实机验收与后续功能完善）
 
+> **第二阶段最新验收基线（2026-10-23）**：F2-01～F2-06 功能代码与专项自动回归已收敛，F2-06 的产品提交及测试修复截至 `ff34a8be`，Windows CI [#39818858991](https://github.com/zy19970/IPSys/actions/runs/39818858991) **completed/success**（Debug、Release、前端 Node、HTTP/Edge、SQLCipher）；随后仅增加文档提交。完整的 **[本地 Agent 验收任务书](./docs/IPSys_Explorer_Phase2_Agent_Complete_Retest.md)** 和 **[132 项 CSV 清单](./docs/IPSys_Explorer_Phase2_Agent_Test_Cases.csv)** 已推送至 `work/onedrive-file-manager`，但本地 Agent **尚未实测**，最终稳定性/数据完整性与是否合并 main 必须以本地实际报告裁决。
+
+
 > **当前优先级（2026-10-22，用户最新确认）**：先在 `work/onedrive-file-manager` 开发分支完成 **Explorer 第二阶段功能完整性收敛**（资料库创建、业务档案目录与混排排序、附件关联复制移动、业务记录转移、拖放与公共入口统一），各功能包执行匹配回归和 Windows CI；**全部功能完成后再统一由用户本地 Agent 对最新构建做全面稳定性/安全性验收**。以 [Explorer 第二阶段实施计划](./docs/EXPLORER_PHASE2_FUNCTIONAL_COMPLETENESS_2026-10-22.md) 为当前施工顺序，早期“先做完整实机验收再开发功能”只作为历史记录，不再是现阶段优先级。开发分支不自动合并 main。
 
 > **跨空间上传修复（2026-10-18）**：对大文件上传确认同类问题：当前浏览器进度面板不会消失，但跨空间 selectSpace/refresh 曾在上传进行时发起数据库查询，会等待 SQLCipher Gate；批量业务附件和综合资料附件上传还会在 `space!==workspace` 时放弃余下队列，综合资料凭已经切换/清空的 `liveRows` 错误确认原资料不存在。修复：上传期间 render/selectSpace/refresh 暂缓读取、保留独立进度面板，批次始终绑定原始 workspace/ownerId，去掉切空间自动终止队列，上传完或取消后通过不占数据库 Gate 的 `/api/task` 等待服务器完全退出文件任务再刷新当前工作区。加入 Node 真实循环模拟两类批量上传及换工作区的锁保护回归。上传程序当前在 EXE 内嵌前端，升级后需要重新编译/运行。

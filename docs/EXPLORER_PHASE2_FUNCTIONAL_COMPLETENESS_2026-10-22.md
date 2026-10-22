@@ -41,7 +41,7 @@
 
 ## 五、第二阶段之后：本地 Agent 一次性系统验收
 
-功能开发完成后，生成独立的 **`IPSys_Explorer_Phase2_Agent_Complete_Retest.md`** 与按模块列出的测试用例 CSV，交由用户本地 Agent 在最新开发分支、真实 Windows/Edge 环境和全新隔离 SQLCipher 测试库执行。此文档目前只是规划，未声称 Agent 已经测试。
+已生成独立的 [最终 Agent 实机验收任务书](./IPSys_Explorer_Phase2_Agent_Complete_Retest.md) 和 [132 项测试用例 CSV](./IPSys_Explorer_Phase2_Agent_Test_Cases.csv)，交由用户本地 Agent 在最新开发分支、真实 Windows/Edge 环境和全新隔离 SQLCipher 测试库执行。**资料已交付，但 Agent 尚未执行，测试结果栏为 NOT_RUN**。
 
 实机验收至少覆盖：
 
@@ -61,6 +61,7 @@
 - F2-03：功能完成，Windows CI #39805870827 completed/success；通用附件共享/移动采用 FileId/LinkId 原生事务，工作区隔离已覆盖。
 - F2-04：完整整记录复制/转移与合同原生事务实现，Windows CI #39809213273 completed/success（Debug、Release、Node、HTTP/Edge、SQLCipher）。
 - F2-05：内部附件拖放完成，Windows CI #39811469094 completed/success；同 F2-03 事务、确认/取消、409、任务锁与外部重复上传保护均已覆盖。
-- F2-06：前端公共入口与状态一致性修复已推送候选，新增 Node 动态回归；正式 CI 通过后再标记完成并生成本地 Agent 总体验收任务书。
-- 最终 Agent 实机全量验收：**按用户安排，全部功能完成后启动**。
+- F2-06：已完成并通过 Windows CI [#39818858991](https://github.com/zy19970/IPSys/actions/runs/39818858991)（执行源码 SHA `ff34a8be`）；统一右键/工具栏/详情下载和删除选区、虚拟根入口、刷新状态、弹窗快捷键拦截，全部专项 Node 回归通过。
+- 最终 Agent 实机全量验收：任务书 [IPSys_Explorer_Phase2_Agent_Complete_Retest.md](./IPSys_Explorer_Phase2_Agent_Complete_Retest.md) 与 [132 项 CSV](./IPSys_Explorer_Phase2_Agent_Test_Cases.csv) 已生成并推送；**待用户本地 Agent 运行，不得标记为实机通过**。
 - 工作分支：`work/onedrive-file-manager`；`main` 暂不合并。
+- **下一步唯一优先任务**：将任务书与 CSV 交给本地 Agent 执行，收集实际证据后复核缺陷；暂无新的第三阶段功能开发授权。
