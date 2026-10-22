@@ -16,15 +16,20 @@
       <span id="lockLogo"></span>
       <span class="lock-name">资料库</span>
     </div>
-    <h1>打开资料库</h1>
-    <p class="lock-sub">输入数据库文件路径与密码。数据全部保存在本地，不上传。</p>
+    <h1 id="lockHeading">打开资料库</h1>
+    <p class="lock-sub" id="lockSub">输入数据库文件路径与密码。数据全部保存在本地，不上传。</p>
     <form id="lockForm" autocomplete="off">
       <label class="lock-label" for="dbPath">资料库文件</label>
       <input id="dbPath" type="text" spellcheck="false" placeholder="D:\资料库\ipsys.db">
       <label class="lock-label" for="password">密码</label>
-      <input id="password" type="password" placeholder="数据库密码">
+      <input id="password" type="password" placeholder="数据库密码" autocomplete="current-password">
+      <div class="lock-confirm" id="createConfirmField" hidden>
+        <label class="lock-label" for="confirmPassword">确认密码</label>
+        <input id="confirmPassword" type="password" autocomplete="new-password" placeholder="再次输入数据库密码">
+      </div>
       <p class="lock-hint" id="lockHint"></p>
       <button class="btn solid lock-submit" id="submitOpen" type="submit">打开</button>
+      <button class="btn ghost lock-mode-toggle" id="switchLockMode" type="button">创建新资料库</button>
     </form>
   </div>
 </div>

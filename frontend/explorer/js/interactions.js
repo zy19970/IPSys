@@ -163,10 +163,17 @@ function showLogin(hint) {
       VaultStore.needsResume = !!s.unlocked;
       const p = $("#dbPath");
       if (p && s.suggestion) p.value = s.suggestion;
+      const createSwitch = $("#switchLockMode");
+      if (createSwitch) createSwitch.hidden = !!s.unlocked;
       if (s.unlocked) {
         if (p) p.disabled = true;
+        $("#createConfirmField")?.setAttribute("hidden", "");
+        if ($("#lockHeading")) $("#lockHeading").textContent = "重新连接资料库";
+        if ($("#submitOpen")) $("#submitOpen").textContent = "重新连接";
         const sub = $(".lock-sub");
         if (sub) sub.textContent = "资料库仍处于打开状态。输入密码即可重新连接，数据全部保存在本地。";
+      } else if (p) {
+        p.disabled = false;
       }
     })
     .catch(() => {});
@@ -264,23 +271,62 @@ function bindLockScreen() {
   const form = $("#lockForm");
   if (!form) return;
 
+  const switchMode = $("#switchLockMode");
+  let creating = false;
+  const setMode = (value) => {
+    // Session-resume mode belongs to an already open database.
+    creating = !!value && !VaultStore.needsResume;
+    const heading = $("#lockHeading");
+    if (heading) heading.textContent = creating ? "创建新资料库" : "打开资料库";
+    const intro = $("#lockSub");
+    if (intro) intro.textContent = creating
+      ? "填写新资料库的绝对路径并设置密码。已有文件不会被覆盖。"
+      : "输入数据库文件路径与密码。数据全部保存在本地，不上传。";
+    const confirm = $("#createConfirmField");
+    if (confirm) confirm.hidden = !creating;
+    const confirmInput = $("#confirmPassword");
+    if (confirmInput) confirmInput.value = "";
+    const submit = $("#submitOpen");
+    if (submit) submit.textContent = creating ? "创建并打开" : "打开";
+    if (switchMode) switchMode.textContent = creating ? "返回打开已有资料库" : "创建新资料库";
+    const hint = $("#lockHint");
+    if (hint) hint.textContent = "";
+  };
+  switchMode?.addEventListener("click", () => {
+    if (!VaultStore.needsResume) setMode(!creating);
+  });
+
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const btn = $("#submitOpen");
+    if (btn.disabled) return;
+    const hint = $("#lockHint");
+    hint.textContent = "";
+    const password = $("#password").value;
+    if (creating) {
+      if (!password || password !== $("#confirmPassword").value) {
+        hint.textContent = "两次输入的数据库密码不一致或为空。";
+        return;
+      }
+      if (!$("#dbPath").value.trim()) {
+        hint.textContent = "请输入新资料库文件的绝对路径。";
+        return;
+      }
+    }
     btn.disabled = true;
-    $("#lockHint").textContent = "";
     try {
       if (VaultStore.needsResume) {
-        await VaultStore.resume($("#password").value);
+        await VaultStore.resume(password);
       } else {
-        await VaultStore.open($("#dbPath").value.trim(), $("#password").value, false);
+        await VaultStore.open($("#dbPath").value.trim(), password, creating);
       }
       sessionStorage.setItem("od-token", VaultStore.token);
       sessionStorage.setItem("od-db", VaultStore.dbName);
       $("#password").value = "";
+      $("#confirmPassword").value = "";
       await enterWorkspace(defaultWorkspace());
     } catch (err) {
-      $("#lockHint").textContent = err.message;
+      hint.textContent = err.message;
       btn.disabled = false;
     }
   });
