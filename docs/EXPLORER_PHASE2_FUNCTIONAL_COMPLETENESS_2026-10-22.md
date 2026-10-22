@@ -58,7 +58,8 @@
 
 - F2-01：代码已完成，Windows CI #39796515957 completed/success；本地 Agent 全量验收待第二阶段结束统一开展。
 - F2-02：代码完成，Windows CI #39803595080 completed/success；后端及 Explorer 可操作多级目录、严格混排重排与父子移动。
-- F2-03：已完成 Explorer 通用附件共享/移动关联的代码与针对性行为测试，待 Windows CI 核验；与其它模块共用原生 FileId/LinkId 服务端事务，禁止跨工作区共享。
-- F2-04 至 F2-06：待实施。
+- F2-03：功能完成，Windows CI #39805870827 completed/success；通用附件共享/移动采用 FileId/LinkId 原生事务，工作区隔离已覆盖。
+- F2-04：项目/合同/知识产权/档案/综合资料整记录复制与转移接口及 Explorer 统一菜单已形成候选；合同新增原生事务，需 Windows Debug/Release + SQLCipher 端到端及 Node 模拟核验后才能关闭。
+- F2-05 至 F2-06：待实施。
 - 最终 Agent 实机全量验收：**按用户安排，全部功能完成后启动**。
 - 工作分支：`work/onedrive-file-manager`；`main` 暂不合并。

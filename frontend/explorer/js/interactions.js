@@ -1277,6 +1277,10 @@ function showItemMenu(id, x, y) {
     !isFolder ? MI("newver", "upload", "上传新版本") : "",
     !isFolder ? MI("assoc", "copy", "共享原件到其它记录") : "",
     !isFolder ? MI("assoc-move", "move", "移动附件到其它记录") : "",
+    isFolder && ["project","contract","ip","archive","general"].includes(b.kind)
+      ? MI("copy-record","copy","复制整条记录") : "",
+    isFolder && ["project","contract","ip","archive","general"].includes(b.kind)
+      ? MI("transfer-record","move","移动或跨区转移") : "",
     '<div class="ctx-sep"></div>',
     isFolder && (b.kind !== "archive_folder" || !b.isSystem)
       ? MI("rename", "rename", "重命名", "F2") : "",
@@ -1300,6 +1304,8 @@ function showItemMenu(id, x, y) {
     newver: () => uploadNewVersion(item),
     assoc: () => associateOriginal(item, false),
     "assoc-move": () => associateOriginal(item, true),
+    "copy-record": () => transferBusinessRecord(item, false),
+    "transfer-record": () => transferBusinessRecord(item, true),
     rename: () => renameNode(item),
     "sort-up": () => reorderArchiveEntry(item,-1),
     "sort-down": () => reorderArchiveEntry(item,1),
