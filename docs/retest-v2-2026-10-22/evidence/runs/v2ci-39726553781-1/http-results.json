@@ -1,0 +1,93 @@
+[
+  {
+    "id": "T-P0-01#backend",
+    "method": "DYNAMIC-HTTP",
+    "result": "PASS",
+    "observed": "folders=9, 二级 parent=1, 三级 parent=8, 记录 folderId=9",
+    "expected": "后端返回完整 parentId 链且记录归属最深目录"
+  },
+  {
+    "id": "T-P0-02#api",
+    "method": "DYNAMIC-HTTP",
+    "result": "PASS",
+    "observed": "接口返回 4 行、2 个 linkId、版本 [2,1,2,1]、总字节 118",
+    "expected": "同一 linkId 下多版本可枚举，最新版可识别"
+  },
+  {
+    "id": "T-P0-03",
+    "method": "DYNAMIC-HTTP",
+    "result": "PASS",
+    "observed": "第一次 200、第二次 409（关联已解除。）",
+    "expected": "重复删除被后端明确拒绝（409），不是静默成功"
+  },
+  {
+    "id": "T-P0-05",
+    "method": "MIXED",
+    "result": "IMPLEMENTATION_GAP",
+    "observed": "同一 fileId 在 IP-A/IP-B 各有独立 link（3 / 4）；UI 仅 IP 特例有入口",
+    "expected": "FileId 可跨记录复用且 LinkId 按目标独立；UI 提供通用入口"
+  },
+  {
+    "id": "T-P1-02#cascade",
+    "method": "DYNAMIC-HTTP",
+    "result": "PASS",
+    "observed": "整体删项目：回收站 project=true contract=false；恢复后合同回来=true",
+    "expected": "①项目整体删除后回收站不单列合同，恢复时合同一并回来"
+  },
+  {
+    "id": "T-P1-03",
+    "method": "MIXED",
+    "result": "IMPLEMENTATION_GAP",
+    "observed": "后端 move -> 200，folderId 变为 8；transfer -> 200；前端零入口",
+    "expected": "复制/转移有 UI 入口；后端可用不能当 UI 通过"
+  },
+  {
+    "id": "T-P1-04",
+    "method": "MIXED",
+    "result": "IMPLEMENTATION_GAP",
+    "observed": "后端改名 200、删空目录 200、删系统目录 409、删非空目录 409；前端无入口",
+    "expected": "自建目录有完整 CRUD，系统目录受保护；UI 提供同等入口"
+  },
+  {
+    "id": "T-P1-05",
+    "method": "MIXED",
+    "result": "IMPLEMENTATION_GAP",
+    "observed": "后端 reorder 200 且顺序生效；缺项 409；非法 id 409；前端无入口",
+    "expected": "用户可调整 position 且重启保持；临时排序不算"
+  },
+  {
+    "id": "T-P1-07",
+    "method": "DYNAMIC-HTTP",
+    "result": "BLOCKED",
+    "observed": "compact/info reusableBytes=0, canCompact=true；窗口过短无法抓拍",
+    "expected": "压缩运行期间切工作区/关库有明确反馈"
+  },
+  {
+    "id": "T-P2-07",
+    "method": "DYNAMIC-HTTP",
+    "result": "PASS",
+    "observed": "命中 2 条；IP-A 附件归属映射=true（ip/19）；无关词结果=0",
+    "expected": "文件搜索结果包含正确 ownerKind/ownerId，能映射到 IP-A 的真实附件；不存在词返回空"
+  },
+  {
+    "id": "T-P2-12",
+    "method": "DYNAMIC-HTTP",
+    "result": "PASS",
+    "observed": "Host 403 / Origin 403 / 无 token 401 / localhost 403",
+    "expected": "非法 Host、Origin 被拒，未授权业务接口不可访问"
+  },
+  {
+    "id": "R-03",
+    "method": "DYNAMIC-HTTP",
+    "result": "PASS",
+    "observed": "删 IP-B 引用后 IP-A 引用仍在（1），最新版仍可取 37B；同名附件公司/个人 fileId 不同",
+    "expected": "删一处不影响另一处；同名附件不共用物理 FileObject"
+  },
+  {
+    "id": "R-05",
+    "method": "DYNAMIC-HTTP",
+    "result": "PASS",
+    "observed": "最新版 37B / 历史 59B / DB 35471360B / 逻辑 1 条",
+    "expected": "四项分别计量，互不混淆"
+  }
+]

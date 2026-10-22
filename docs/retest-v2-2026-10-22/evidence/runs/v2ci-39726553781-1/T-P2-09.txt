@@ -1,0 +1,6 @@
+PDF 行：{"id":"f:9:1","name":"PDF 两页示例.pdf — 844 B"}
+第 1 页状态：{"pageCount":"加载中","status":"正在解析 PDF…","canvasWidth":300,"canvasHeight":150,"ready":false}
+第 2 页状态：{"pageCount":"","status":"第一页未完成渲染，未继续翻页","canvasWidth":0,"canvasHeight":0,"ready":false}
+
+判定要求：页码依次为 1 / 2、2 / 2；每页 Canvas 尺寸大于 0；渲染状态为空。
+fixture.cjs 使用带有效 xref、字体资源和准确 stream Length 的两页 PDF。

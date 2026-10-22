@@ -1,0 +1,7 @@
+搜索『档案-01』结果：["a:achievement:10","f:5:1"]
+期望档案节点：a:achievement:10；精确命中=true
+双击后位置：{"folderId":"a:achievement:10","crumbs":["我的文件","业务档案","档案-01"]}；正确跳转=true
+
+搜索『综合资料附件.txt』结果：["f:6:1"]
+期望附件节点：f:6:1；命中=true
+附件元数据与所属记录：{"nodeId":"f:6:1","parentId":"g:21","fileId":5,"linkId":6,"version":1}；fileId→linkId 映射正确=true

@@ -1,0 +1,8 @@
+搜索『专利说明书』-> {"query":"专利说明书","results":[{"kind":"file","id":3,"section":"","title":"专利说明书.txt","description":"IP-A · 专利说明书.txt","ownerKind":"ip","ownerId":19},{"kind":"file","id":3,"section":"","title":"专利说明书.txt","description":"IP-B · 专利说明书.txt","ownerKind":"ip","ownerId":20}],"truncated":false}
+
+搜索不存在的词 -> {"query":"zzz-不存在-zzz","results":[],"truncated":false}
+
+预期附件归属：ownerKind=ip，ownerId=19
+实际附件命中：{"kind":"file","id":3,"section":"","title":"专利说明书.txt","description":"IP-A · 专利说明书.txt","ownerKind":"ip","ownerId":19}
+fileId→owner/link 归属字段正确=true
+无关词无误报=true
