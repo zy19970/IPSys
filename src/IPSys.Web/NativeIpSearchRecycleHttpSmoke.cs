@@ -79,11 +79,9 @@ static class NativeIpSearchRecycleHttpSmoke
         var after=await client.GetFromJsonAsync<List<RecycleItem>>("/api/trash/company");
         Check(after!.Any(x=>x.Kind=="ip"&&x.Id==id),
             "deleted V2 IP listed in shared recycle");
-        using(var reject=await client.PostAsJsonAsync(
-            "/api/trash/company/purge",
-            new RecycleRequest([new RecycleKey("ip",id,"")])))
-            Check(reject.StatusCode==HttpStatusCode.Conflict,
-                "IP with historical original must not lose linked history");
+        // Soft-deleted owners hide downloads, but their original version
+        // history must still be preserved until explicit purge. The restore
+        // and exact byte comparison below verify recoverability.
         using(var restore=await client.PostAsJsonAsync(
             "/api/trash/company/restore",
             new RecycleRequest([new RecycleKey("ip",id,"")])))
@@ -110,6 +108,46 @@ static class NativeIpSearchRecycleHttpSmoke
             "/api/trash/company/purge",
             new RecycleRequest([new RecycleKey("ip",id,"")])))
             purgeFolder.EnsureSuccessStatusCode();
+
+        // Whole-IP permanent purge: an IP folder may still own an active
+        // LinkId (soft deletion hides rather than unlinks it). This is distinct
+        // from the detached-link purge verified above and must cascade safely.
+        using var withFile=await client.PostAsJsonAsync("/api/v2/folders/company/ip",
+            new{ip=new{name=tag+"级联删除",ipType="发明专利",status="已申请"}});
+        withFile.EnsureSuccessStatusCode();
+        long cascadeId=(await withFile.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("id").GetInt64();
+        byte[] cascadeBytes=RandomNumberGenerator.GetBytes(6271);
+        using(var upload=new HttpRequestMessage(HttpMethod.Post,
+            $"/api/v2/ip/company/{cascadeId}/files")
+            {Content=new ByteArrayContent(cascadeBytes)})
+        {
+            upload.Headers.Add("X-File-Name",
+                Uri.EscapeDataString(tag+"级联原件.pdf"));
+            using var result=await client.SendAsync(upload);
+            result.EnsureSuccessStatusCode();
+        }
+        var linked=await client.GetFromJsonAsync<JsonElement>(
+            $"/api/v2/ip/company/{cascadeId}/files");
+        long cascadeFile=linked.EnumerateArray().Single()
+            .GetProperty("fileId").GetInt64();
+        Check((await client.GetByteArrayAsync(
+            $"/api/v2/ip/company/{cascadeId}/files/{cascadeFile}/versions/1/download"))
+            .SequenceEqual(cascadeBytes),"active IP original bytes intact");
+        using(var deleted=await client.DeleteAsync(
+            $"/api/v2/folders/company/ip/{cascadeId}"))
+            deleted.EnsureSuccessStatusCode();
+        using(var cascade=await client.PostAsJsonAsync("/api/trash/company/purge",
+            new RecycleRequest([new RecycleKey("ip",cascadeId,"")])))
+            cascade.EnsureSuccessStatusCode();
+        using(var noHistory=await client.GetAsync(
+            $"/api/v2/files/company/{cascadeFile}/versions/1/download"))
+            Check(noHistory.StatusCode==HttpStatusCode.NotFound,
+                "whole-IP purge removes its last-link original versions");
+        var afterCascade=await client.GetFromJsonAsync<List<RecycleItem>>(
+            "/api/trash/company");
+        Check(!afterCascade!.Any(x=>x.Kind=="ip"&&x.Id==cascadeId),
+            "whole-IP purge clears the selected folder tombstone");
 
         var empty=await client.PostAsJsonAsync("/api/v2/folders/personal/ip",
             new{ip=new{name=tag+"无附件",ipType="发明专利",status="已申请"}});
