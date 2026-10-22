@@ -155,27 +155,182 @@ async function uploadNewVersion(node) {
   else if (result instanceof Error) toast(result.message, { ms: 6000 });
 }
 
-async function associateOriginal(node) {
-  if (!node || node.type !== "file") return;
-  const record = recordOfAttachment(node);
-  if (!record?.fileId) return toast("附件信息缺失");
+/* F2-03：所有业务附件共用同一个 FileId/LinkId 关联操作。
+   共享只新增 LinkId；移动在服务端事务内建目标 LinkId 并注销来源 LinkId。 */
+async function associateOriginal(node, move = false) {
+  if (node?.type !== "file" || fileTaskBusy()) {
+    return toast(fileTaskBusy() ? "有文件任务正在执行，请完成后再操作" : "请选择一条附件");
+  }
+  const meta = VaultStore.metaOf(node.id);
+  const owner = findParent(node.id);
+  const sourceKind = owner?.biz?.kind;
+  const workspace = VaultStore.ws;
+  if (!meta?.fileId || !meta?.linkId || !owner?.biz?.id ||
+      !UPLOADABLE_KINDS.includes(sourceKind)) return toast("找不到有效的附件引用");
 
-  /* ip-v2.associate 期望 records 里每项是 {id, ownerId, data:{name}}。 */
-  const records = [];
-  walkNodes((n) => {
-    if (n.type === "folder" && n.biz?.kind === "ip" && n.biz?.id != null) {
-      records.push({ id: n.biz.id, ownerId: n.biz.id, data: { name: n.name } });
-    }
+  const destinations = [];
+  walkNodes((target) => {
+    if (target.type !== "folder" ||
+        !UPLOADABLE_KINDS.includes(target.biz?.kind) ||
+        !Number.isSafeInteger(Number(target.biz?.id)) ||
+        Number(target.biz.id) <= 0 ||
+        target.biz.id === owner.biz.id) return;
+    const path = (pathTo(target.id) || [])
+      .filter((n) => n.id !== "root")
+      .map((n) => n.name)
+      .join(" › ");
+    destinations.push({ value: String(target.biz.id), label: path || target.name });
   });
-  if (records.length < 2) return toast("当前工作区还没有其它知识产权记录");
+  if (!destinations.length) return toast("当前工作区没有其它可接收附件的业务记录");
+  destinations.sort((a, b) => a.label.localeCompare(b.label, "zh-CN"));
 
-  const ok = await globalThis.IPSysNativeIp.associate(
-    CapabilityApi,
-    { ...record, kind: "ip", ownerId: record.ownerId },
-    VaultStore.ws,
-    records
-  );
-  if (ok) toast("已共享到目标知识产权");
+  RecordForms.open({
+    title: move ? "移动附件关联" : "共享附件原件",
+    submitText: move ? "确认移动" : "确认共享",
+    fields: [{
+      key: "target", type: "select", label: "目标业务记录",
+      required: true, options: destinations,
+      hint: move
+        ? "移动后来源位置不再显示此附件；文件历史版本与其它共享关联保持不变。"
+        : "目标记录新增一条附件引用，不重复存储原件；所有历史版本保持共用。",
+    }],
+    onSubmit: async (data) => {
+      if (workspace !== VaultStore.ws) throw new Error("工作区已变化，请重新选择附件");
+      if (fileTaskBusy()) throw new Error("有文件任务正在执行，请完成后再操作");
+      const selected = destinations.find((d) => d.value === String(data.target));
+      if (!selected) throw new Error("目标记录无效或已变化，请重新选择");
+      const targetFolderId = Number(selected.value);
+      const target = destinations.length && (() => {
+        let found = null;
+        walkNodes((n) => {
+          if (n.type === "folder" && UPLOADABLE_KINDS.includes(n.biz?.kind) &&
+              Number(n.biz.id) === targetFolderId) found = n;
+        });
+        return found;
+      })();
+      if (!target) throw new Error("目标记录已不存在，请刷新后重试");
+      if ((target.children || []).some((child) =>
+        child.type === "file" && Number(VaultStore.metaOf(child.id)?.fileId) === Number(meta.fileId))) {
+        throw new Error("目标记录已经关联同一原件，请选择其它记录");
+      }
+      await VaultStore.api("/api/v2/files/" + workspace + "/" + meta.fileId + "/associate", {
+        method: "POST",
+        json: { linkId: meta.linkId, targetFolderId, move: !!move },
+      });
+      try {
+        await refreshCurrent();
+      } catch (e) {
+        toast("关联已提交，但列表刷新失败，请手动刷新", { tone: "error", ms: 6000 });
+        return;
+      }
+      Drive.clearSelection();
+      toast(move ? "附件已移至目标记录" : "原件已共享到目标记录");
+    },
+  });
+}
+
+/* F2-04: entire business folders; not the F2-03 attachment LinkId action.
+   Whole-record copies duplicate logical FileIds and all versions; the backend
+   refuses cross-workspace physical FileObject sharing. */
+function recordTransferOptions(node, move) {
+  const kind=node?.biz?.kind;
+  const ws=VaultStore.ws;
+  if(!["project","contract","ip","archive","general"].includes(kind)) return [];
+  if(kind==="archive") {
+    const section=node.biz.section;
+    const modules={
+      achievement:["company/achievement","personal/achievement","personal/academic"],
+      academic:["company/achievement","personal/achievement","personal/academic"],
+      certificate:[ws+"/certificate"],
+    };
+    const options=(modules[section]||[]).filter(item =>
+      item===ws+"/"+section || section!=="certificate");
+    return options.filter(item => !move || item!==ws+"/"+section).map(item=>({
+      value:item,label:({ "company/achievement":"公司 · 业务档案",
+        "personal/achievement":"个人 · 成果资料",
+        "personal/academic":"个人 · 学术资料",
+        "company/certificate":"公司 · 企业资质",
+        "personal/certificate":"个人 · 资质证书" })[item]||item,
+    }));
+  }
+  return ["company","personal"].filter(w=>!move || kind==="contract" || w!==ws)
+    .map(w=>({value:w,label:w==="company"?"公司工作区":"个人工作区"}));
+}
+
+function transferBusinessRecord(node, move=false) {
+  const kind=node?.biz?.kind, id=Number(node?.biz?.id);
+  if(node?.type!=="folder" || !Number.isSafeInteger(id) || id<=0) return;
+  if(fileTaskBusy()) return toast("当前有文件任务，请完成后再操作");
+  const sourceWorkspace=VaultStore.ws;
+  const choices=recordTransferOptions(node,move);
+  if(!choices.length) return toast("当前记录没有受支持的目标工作区或类别");
+  const typeLabel={project:"项目（含全部合同）",contract:"合同",
+    ip:"知识产权",archive:"资料档案",general:"综合资料"}[kind]||"记录";
+  RecordForms.open({
+    title:(move?"移动/转移":"复制")+typeLabel,
+    submitText:move?"继续转移":"确认复制",
+    fields:[{key:"target",type:"select",label:"目标位置",required:true,
+      options:choices,hint:move
+        ?"跨工作区转移会复制完整原件历史并保留物理隔离，成功后原记录进入回收站。"
+        :"复制整个记录和全部原件历史，不删除来源记录。"}],
+    onSubmit:async data=>{
+      if(VaultStore.ws!==sourceWorkspace) throw new Error("工作区已经切换，请重新选择");
+      if(fileTaskBusy()) throw new Error("有其它文件任务正在执行");
+      if(!choices.some(opt=>opt.value===data.target))
+        throw new Error("所选位置无效，请重新选择");
+      const targetWorkspace=data.target.split("/")[0];
+      const targetSection=kind==="archive"?data.target.split("/")[1]:null;
+      const route={
+        project:"/api/v2/projects/",ip:"/api/v2/ip/",
+        general:"/api/v2/ui/general/",contract:"/api/v2/contracts/",
+        archive:"/api/v2/ui/archive/",
+      };
+      let endpoint=route[kind]+sourceWorkspace+"/";
+      if(kind==="archive") endpoint+=node.biz.section+"/"+id+"/transfer";
+      else endpoint+=id+"/transfer";
+      const payload={targetWorkspace,move:!!move};
+      if(kind==="archive") payload.targetSection=targetSection;
+      const finish=async ()=>{
+        // Response is an authoritative transaction result: never auto-retry
+        // after successful remote commit even if local refresh fails.
+        await VaultStore.api(endpoint,{method:"POST",json:payload});
+        try {
+          await refreshCurrent();
+          Drive.clearSelection();
+          toast(move?"记录已转移":"记录已复制");
+        } catch {
+          toast("事务已提交，界面刷新失败；请手动刷新验证目标记录",
+            {tone:"error",ms:6000});
+        }
+      };
+      if(kind!=="contract") return finish();
+
+      // Contracts are never free-standing. Resolve an active project in the
+      // destination workspace before opening a second target chooser.
+      const projects=await VaultStore.getJson("/api/v2/ui/projects/"+targetWorkspace);
+      if(!Array.isArray(projects))throw new Error("目标项目数据无效");
+      const projectOptions=projects.filter(x=>Number.isSafeInteger(Number(x.id)) && Number(x.id)>0)
+        .filter(x=> !(move&&sourceWorkspace===targetWorkspace &&
+          Number(node.biz.projectId)===Number(x.id)))
+        .map(x=>({value:String(x.id),label:x.name||"项目 "+x.id}));
+      if(!projectOptions.length) throw new Error("目标工作区没有其它有效项目，请先创建项目");
+      RecordForms.open({
+        title:move?"选择合同的新所属项目":"选择复制合同的所属项目",
+        submitText:move?"确认移动合同":"确认复制合同",
+        fields:[{key:"targetProjectId",type:"select",label:"目标项目",required:true,
+          options:projectOptions}],
+        onSubmit:async next=>{
+          if(VaultStore.ws!==sourceWorkspace)
+            throw new Error("工作区已变化，请重新开始");
+          if(fileTaskBusy())throw new Error("有其它文件任务正在执行");
+          if(!projectOptions.some(x=>x.value===next.targetProjectId))
+            throw new Error("目标项目无效");
+          payload.targetProjectId=Number(next.targetProjectId);
+          await finish();
+        },
+      });
+    },
+  });
 }
 
 /* 遍历当前已加载的整棵树(含未展开的分支)。 */

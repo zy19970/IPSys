@@ -88,6 +88,7 @@ static class WebSmoke
             await RecyclePurgeTaskHttpSmoke.VerifyAsync(client);
             await VaultCompactHttpSmoke.VerifyAsync(client);
             await NativeIpTransferHttpSmoke.VerifyAsync(client);
+            await NativeContractTransferHttpSmoke.VerifyAsync(client);
             await SearchSmoke.VerifyAsync(client);
 
             using(var noAuth=new HttpClient{BaseAddress=client.BaseAddress})
