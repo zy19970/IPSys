@@ -7,7 +7,7 @@ const L = require("./lib.cjs");
 
 const RUNID = process.argv[2] || "v2-" + Date.now();
 const ROOT = path.resolve(__dirname, "..");
-const EVID = path.join(ROOT, "evidence");
+const EVID = process.env.IPSYS_EVIDENCE_DIR ? path.resolve(process.env.IPSYS_EVIDENCE_DIR) : path.join(ROOT, "evidence");
 const TMP = path.resolve(ROOT, "..", "..", "build-retest", "agent-explorer-full-v2");
 L.ensureDir(EVID);
 L.ensureDir(TMP);

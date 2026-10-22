@@ -1,31 +1,80 @@
 # 生成 38 项用例表。保留原始 JSON；仅对旧版证据中的已知误判作显式复核。
-import json, csv, collections
+import json, csv, collections, os
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
-E = ROOT / 'evidence'
+RUNID = os.environ.get('IPSYS_RETEST_RUN_ID', '')
+E = Path(os.environ.get('IPSYS_EVIDENCE_DIR', ROOT / 'evidence'))
+OUT = Path(os.environ.get('IPSYS_CASES_OUTPUT', ROOT / 'IPSys_Explorer_Full_Retest_V2_Cases.csv'))
 with open(E / 'http-results.json', encoding='utf-8') as f:
     http = {r['id']: r for r in json.load(f)}
 with open(E / 'browser-results.json', encoding='utf-8') as f:
     br = {r['id']: r for r in json.load(f)}
 
 rows = []
+RESULT_SOURCES = {
+    'T-P0-01': [('http', 'T-P0-01#backend'), ('browser', 'T-P0-01')],
+    'T-P0-02': [('http', 'T-P0-02#api'), ('browser', 'T-P0-02')],
+    'T-P0-03': [('http', 'T-P0-03'), ('browser', 'T-P0-03')],
+    'T-P0-05': [('http', 'T-P0-05')],
+    'T-P1-01': [('browser', 'T-P1-01')],
+    'T-P1-03': [('http', 'T-P1-03')],
+    'T-P1-04': [('http', 'T-P1-04')],
+    'T-P1-05': [('http', 'T-P1-05')],
+    'T-P1-07': [('http', 'T-P1-07')],
+    'T-P2-01': [('browser', 'T-P2-01')],
+    'T-P2-02': [('browser', 'T-P2-02')],
+    'T-P2-03': [('browser', 'T-P2-03')],
+    'T-P2-04': [('browser', 'T-P2-04')],
+    'T-P2-06': [('browser', 'T-P2-06')],
+    'T-P2-07': [('http', 'T-P2-07'), ('browser', 'T-P2-07')],
+    'T-P2-09': [('browser', 'T-P2-09')],
+    'T-P2-11': [('browser', 'T-P2-11')],
+    'T-P2-12': [('http', 'T-P2-12')],
+    'R-03': [('http', 'R-03')],
+    'R-05': [('http', 'R-05')],
+}
+def live_records(case_id):
+    out = []
+    for source, result_id in RESULT_SOURCES.get(case_id, []):
+        record = (http if source == 'http' else br).get(result_id)
+        if record:
+            out.append((source, record))
+    return out
 def add(i, p, f, m, res, did, att, obs, exp, ev, src, notes=''):
-    # Preserve raw JSON. Apply corrections only while old inadequate observations remain.
-    if i == 'T-P2-07' and '搜索得 2 条' in obs:
-        res, did = 'BLOCKED', '-'
-        obs = ('原始实测仅查询并打开档案-01；没有验证附件搜索的 fileId→linkId 映射。'
-               '原始证据正文还把查询词误写为“专利说明书”。')
-        exp = '精确命中预期档案并跳转；附件搜索命中真实 link 节点且归属正确'
-        notes = (notes + '；原始结果只证明档案跳转；修订脚本补入附件映射检查，待复测').strip('；')
-    elif i == 'T-P2-09' and '预览画布数=' in obs:
-        res, did = 'BLOCKED', '-'
-        obs = ('原始记录只有 canvas=1；状态仍为“正在解析 PDF…”，页码为 0，'
-               '无法证明成功渲染；原 PDF fixture 结构不完整。')
-        exp = '有效两页 PDF 的第 1、2 页均渲染成功，页码正确且状态清空'
-        notes = (notes + '；已修正 fixture 与判据，需重新运行；不据旧证据判定产品缺陷').strip('；')
-    elif i == 'T-P0-02' and '行内大小' in obs:
-        obs = '同一 linkId 显示 2 行（期望 1）；原始行文字可见 37 B 与 22 B；旧大小提取正则转义错误导致记录为空字符串'
-        notes = (notes + '；原始大小提取字段无效，不代表界面未显示大小；修订脚本待复测').strip('；')
+    records = live_records(i)
+    if records:
+        raw = [r.get('result', 'BLOCKED') for _, r in records]
+        if any(x in ('FAIL', 'CONFIRMED_BUG') for x in raw):
+            res = 'CONFIRMED_BUG'
+        elif any(x == 'IMPLEMENTATION_GAP' for x in raw):
+            res = 'IMPLEMENTATION_GAP'
+        elif any(x == 'DOC_GAP' for x in raw):
+            res = 'DOC_GAP'
+        elif any(x == 'BLOCKED' for x in raw):
+            res = 'BLOCKED'
+        elif all(x == 'PASS' for x in raw):
+            res = 'PASS'
+        if res in ('PASS', 'BLOCKED'):
+            did = '-'
+        try:
+            att = str(int(att) + 1)
+        except (TypeError, ValueError):
+            att = '1'
+        if len(records) > 1:
+            m = 'MIXED'
+            obs = '；'.join(('HTTP' if source == 'http' else '浏览器') + '：' + str(r.get('observed', ''))
+                            for source, r in records)
+        else:
+            m = records[0][1].get('method', m)
+            obs = records[0][1].get('observed', obs)
+        if RUNID:
+            evidence_base = f'evidence/runs/{RUNID}/'
+            if i in ('T-P0-01', 'T-P0-02', 'T-P0-03', 'T-P2-07') and len(records) > 1:
+                ev = f'{evidence_base}{i}.txt; {evidence_base}{i}-http.txt'
+            elif (E / f'{i}.txt').exists():
+                ev = f'{evidence_base}{i}.txt'
+        if i == 'T-P2-07' and len(records) > 1:
+            m = 'MIXED'
     rows.append([i, p, f, m, res, did, att, obs, exp, ev, src, notes])
 
 add('T-P0-01','P0','三级业务档案','MIXED','CONFIRMED_BUG','BUG-001','2',br['T-P0-01']['observed'],'每层都在树中，记录归属最深处','evidence/T-P0-01.txt','frontend/explorer/js/store.js buildTree')
@@ -69,7 +118,8 @@ add('R-08','P1','版本折叠测试覆盖','STATIC','PASS','-','1','断言 f:2:1
 
 assert len(rows) == 38, f'应生成 38 项，实际 {len(rows)}'
 assert len({r[0] for r in rows}) == len(rows), '用例 ID 必须唯一'
-with open(ROOT / 'IPSys_Explorer_Full_Retest_V2_Cases.csv','w',encoding='utf-8',newline='') as f:
+OUT.parent.mkdir(parents=True, exist_ok=True)
+with open(OUT,'w',encoding='utf-8',newline='') as f:
     w = csv.writer(f)
     w.writerow(['ID','Priority','Feature','Method','Result','DefectID','AttemptCount','Observed','Expected','Evidence','SourcePath','Notes'])
     w.writerows(rows)

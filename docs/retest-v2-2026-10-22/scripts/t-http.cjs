@@ -7,7 +7,7 @@ const L = require("./lib.cjs");
 
 const RUNID = process.argv[2] || "v2b";
 const ROOT = path.resolve(__dirname, "..");
-const EVID = path.join(ROOT, "evidence");
+const EVID = process.env.IPSYS_EVIDENCE_DIR ? path.resolve(process.env.IPSYS_EVIDENCE_DIR) : path.join(ROOT, "evidence");
 const TMP = path.resolve(ROOT, "..", "..", "build-retest", "agent-explorer-full-v2");
 const cred = JSON.parse(fs.readFileSync(path.join(TMP, `vault-${RUNID}.cred.json`), "utf8"));
 const fx = JSON.parse(fs.readFileSync(path.join(EVID, "fixture.json"), "utf8"));
@@ -17,8 +17,10 @@ function rec(id, method, result, observed, expected, extra) {
   results.push(Object.assign({ id, method, result, observed, expected }, extra || {}));
   console.log(`[${result}] ${id} :: ${observed}`);
 }
+const HTTP_EVIDENCE_SUFFIX = new Set(["T-P0-01", "T-P0-02", "T-P0-03", "T-P2-07"]);
 function evFile(id, text) {
-  fs.writeFileSync(path.join(EVID, `${id}.txt`), text, "utf8");
+  const name = HTTP_EVIDENCE_SUFFIX.has(id) ? id + "-http.txt" : id + ".txt";
+  fs.writeFileSync(path.join(EVID, name), text, "utf8");
 }
 const J = (x) => JSON.stringify(x);
 async function must(label, p, body) {
@@ -258,20 +260,31 @@ async function must(label, p, body) {
       "压缩运行期间切工作区/关库有明确反馈");
   }
 
-  /* ---------------- T-P2-07 搜索（HTTP 部分） ---------------- */
+  /* ---------------- T-P2-07 搜索与附件归属映射（HTTP 部分） ---------------- */
   {
     const s1 = (await L.get("/api/v2/search/company?q=" + encodeURIComponent("专利说明书"))).data;
     const s2 = (await L.get("/api/v2/search/company?q=" + encodeURIComponent("zzz-不存在-zzz"))).data;
+    const hits = Array.isArray(s1.results) ? s1.results : [];
+    const fileHit = hits.find(x => x.kind === "file" && /专利说明书/.test(x.title || "") &&
+      Number(x.ownerId ?? x.OwnerId) === Number(fx.company.ipA));
+    const ownerKind = fileHit?.ownerKind ?? fileHit?.OwnerKind ?? "";
+    const ownerId = fileHit?.ownerId ?? fileHit?.OwnerId ?? 0;
+    const ownerMapping = !!fileHit && ownerKind === "ip" && Number(ownerId) === Number(fx.company.ipA);
+    const noFalsePositive = Array.isArray(s2.results) && s2.results.length === 0;
+    const ok = hits.length > 0 && noFalsePositive && ownerMapping;
     evFile("T-P2-07", [
-      "搜索『专利说明书』-> " + J(s1).slice(0, 900),
+      "搜索『专利说明书』-> " + J(s1).slice(0, 1600),
       "",
-      "搜索不存在的词 -> " + J(s2).slice(0, 300),
+      "搜索不存在的词 -> " + J(s2).slice(0, 500),
       "",
-      "字段核对：命中只有 kind/section/id，没有 ownerKind（全仓 grep 零命中）。",
+      "预期附件归属：ownerKind=ip，ownerId=" + fx.company.ipA,
+      "实际附件命中：" + J(fileHit),
+      "fileId→owner/link 归属字段正确=" + ownerMapping,
+      "无关词无误报=" + noFalsePositive,
     ].join("\n"));
-    rec("T-P2-07", "DYNAMIC-HTTP", s1.results && s1.results.length > 0 && s2.results && s2.results.length === 0 ? "PASS" : "FAIL",
-      `命中 ${s1.results && s1.results.length} 条；无关词 ${s2.results && s2.results.length} 条；响应无 ownerKind 字段`,
-      "服务端搜索可用，空词不误报");
+    rec("T-P2-07", "DYNAMIC-HTTP", ok ? "PASS" : "FAIL",
+      "命中 " + hits.length + " 条；IP-A 附件归属映射=" + ownerMapping + "（" + ownerKind + "/" + ownerId + "）；无关词结果=" + (s2.results && s2.results.length),
+      "文件搜索结果包含正确 ownerKind/ownerId，能映射到 IP-A 的真实附件；不存在词返回空");
   }
 
   /* ---------------- T-P2-12 安全边界 ---------------- */
