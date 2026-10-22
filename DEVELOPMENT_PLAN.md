@@ -1,5 +1,8 @@
 # IPSys 开发计划与验收进度（2026-10-17，N4 实机验收接续版）
 
+> **第二阶段最新验收基线（2026-10-23）**：F2-01～F2-06 功能代码与专项自动回归已收敛，F2-06 的产品提交及测试修复截至 `ff34a8be`，Windows CI [#39818858991](https://github.com/zy19970/IPSys/actions/runs/39818858991) **completed/success**（Debug、Release、前端 Node、HTTP/Edge、SQLCipher）；随后仅增加文档提交。完整的 **[本地 Agent 验收任务书](./docs/IPSys_Explorer_Phase2_Agent_Complete_Retest.md)** 和 **[132 项 CSV 清单](./docs/IPSys_Explorer_Phase2_Agent_Test_Cases.csv)** 已推送至 `work/onedrive-file-manager`，但本地 Agent **尚未实测**，最终稳定性/数据完整性与是否合并 main 必须以本地实际报告裁决。
+
+
 > **当前优先级（2026-10-22，用户最新确认）**：先在 `work/onedrive-file-manager` 开发分支完成 **Explorer 第二阶段功能完整性收敛**（资料库创建、业务档案目录与混排排序、附件关联复制移动、业务记录转移、拖放与公共入口统一），各功能包执行匹配回归和 Windows CI；**全部功能完成后再统一由用户本地 Agent 对最新构建做全面稳定性/安全性验收**。以 [Explorer 第二阶段实施计划](./docs/EXPLORER_PHASE2_FUNCTIONAL_COMPLETENESS_2026-10-22.md) 为当前施工顺序，早期“先做完整实机验收再开发功能”只作为历史记录，不再是现阶段优先级。开发分支不自动合并 main。
 
 > **T02 超 2 GiB 功能进展（2026-10-17）**：V2 单文件上限已调整为 **8 GiB**，正式直接上传和 prepare/resolve 查重确认均已通过 **2,147,495,993 字节**的 Windows SQLCipher/HTTP 流式 SHA-256 上传下载往返；[Windows CI #39023923481](https://github.com/zy19970/IPSys/actions/runs/39023923481) 与 [#39024449728](https://github.com/zy19970/IPSys/actions/runs/39024449728) success。ZIP64 Node 结构回归成功。下一步是用户 Edge/Chrome 实机、ZIP64 解压互操作与 T03/T04 中断/备份安全验证，见 [LARGE_FILE_TESTING.md](./LARGE_FILE_TESTING.md)。

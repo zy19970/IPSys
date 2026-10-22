@@ -738,8 +738,7 @@ function bindNav() {
     const pageAct = e.target.closest("[data-page-act]");
     if (pageAct) {
       const a = pageAct.dataset.pageAct;
-      if (a === "upload") pickFiles();
-      else if (a === "new") openNewMenu(pageAct);
+      if (a === "new") openNewMenu(pageAct);
       return;
     }
     if (e.target.closest("[data-retry]")) {
@@ -750,21 +749,33 @@ function bindNav() {
   $("#btnNewSide").addEventListener("click", (e) => openNewMenu(e.currentTarget));
 }
 
+/* 下载入口共用：单文件直下，目录与多选打包导出。 */
+function downloadNodes(nodes) {
+  if (!nodes?.length) return toast("请选择要下载的内容");
+  if (nodes.length === 1 && nodes[0].type === "file")
+    return downloadFile(nodes[0].id);
+  return exportNodes(nodes);
+}
+
+function canCreateHere() {
+  const s=Drive.state;
+  if (!s.ready || s.view === "recycle" || s.wsPending || s.query.trim()) return false;
+  if (s.view === "home") return true;
+  if (s.view !== "files") return false;
+  const id=String(s.folderId||"");
+  return id.startsWith("k:") || id.startsWith("af:") || id.startsWith("p:");
+}
+
+function safeRefresh() {
+  void refreshCurrent().then(() => toast("已刷新"))
+    .catch(e => toast("刷新失败：" + e.message,{tone:"error",ms:6000}));
+}
+
 function bindCmdbar() {
   $("#btnNew").addEventListener("click", (e) => openNewMenu(e.currentTarget));
   $("#btnUpload").addEventListener("click", () => pickFiles());
 
-  $("#btnRefresh").addEventListener("click", async () => {
-    const keep = Drive.state.folderId;
-    await enterWorkspace(VaultStore.ws);
-    const node = findById(keep);
-    if (node) {
-      Drive.state.folderId = keep;
-      Drive.state.view = "files";
-      Drive.render();
-    }
-    toast("已刷新");
-  });
+  $("#btnRefresh").addEventListener("click", safeRefresh);
 
   $("#btnEmptyTrash").addEventListener("click", () => emptyRecycle());
 
@@ -1020,6 +1031,7 @@ function moveArchiveEntry(node) {
 /* ---------------- 新建菜单 ---------------- */
 
 function openNewMenu(anchor) {
+  if (!canCreateHere()) return toast("请先进入可新建资料的分类或项目");
   const r = anchor.getBoundingClientRect();
   const s = Drive.state;
 
@@ -1104,8 +1116,25 @@ function openNewMenu(anchor) {
 
 /* ---------------- 内容区 ---------------- */
 
+/* Drag and context-menu moves must share the same backend association path.
+   Never infer a move from arbitrary text/plain or another tab's drag data. */
+function validAttachmentDrop(source, target, workspace) {
+  if (workspace !== VaultStore.ws || fileTaskBusy()) return false;
+  if (source?.type !== "file" || !canUploadFiles(target)) return false;
+  const owner = findParent(source.id);
+  const meta = VaultStore.metaOf(source.id);
+  return !!owner && owner.id !== target.id &&
+    canUploadFiles(owner) && Number(meta?.fileId) > 0 && Number(meta?.linkId) > 0;
+}
+
 function bindContent() {
   const content = $("#content");
+  let dragLink = null;
+  const internalType = "application/x-ipsys-link";
+  const clearDragHighlights = () => {
+    content.querySelectorAll(".is-drop, .is-dragging").forEach(
+      el => el.classList.remove("is-drop","is-dragging"));
+  };
 
   content.addEventListener("click", (e) => {
     const actBtn = e.target.closest("[data-row-act]");
@@ -1160,29 +1189,35 @@ function bindContent() {
     startMarquee(e);
   });
 
-  /* 拖拽:把文件拖到记录上 = 把该附件挂到这条记录 */
+  /* 内部附件拖动沿用 F2-03 的 associate 事务；外部 Files 仍上传。 */
   content.addEventListener("dragstart", (e) => {
     const row = e.target.closest(".row, .tile");
-    if (!row) return;
-    const item = findById(row.dataset.id);
-    if (!item || item.type !== "file") {
+    const source = row && findById(row.dataset.id);
+    if (!source || source.type !== "file" || !VaultStore.metaOf(source.id)?.linkId) {
       e.preventDefault();
       return;
     }
+    dragLink = {id:source.id,workspace:VaultStore.ws};
     e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", row.dataset.id);
+    e.dataTransfer.setData(internalType, source.id);
     row.classList.add("is-dragging");
   });
 
-  content.addEventListener("dragend", (e) => {
-    e.target.closest(".row, .tile")?.classList.remove("is-dragging");
+  content.addEventListener("dragend", () => {
+    dragLink = null;
+    clearDragHighlights();
   });
 
   content.addEventListener("dragover", (e) => {
     const row = e.target.closest(".row, .tile");
-    if (!row) return;
-    const item = findById(row.dataset.id);
-    if (!item || item.type !== "folder") return;
+    const target = row && findById(row.dataset.id);
+    if (!target || target.type !== "folder") return;
+    const external = e.dataTransfer?.types?.includes("Files");
+    const valid = external
+      ? canUploadFiles(target)
+      : dragLink && validAttachmentDrop(
+          findById(dragLink.id),target,dragLink.workspace);
+    if (!valid) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
     row.classList.add("is-drop");
@@ -1194,22 +1229,48 @@ function bindContent() {
 
   content.addEventListener("drop", async (e) => {
     const row = e.target.closest(".row, .tile");
-    if (!row) return;
-    row.classList.remove("is-drop");
-    const target = findById(row.dataset.id);
-    if (!target || target.type !== "folder") return;
-    e.preventDefault();
-
-    /* 外部文件拖入 → 上传到该记录 */
-    if (e.dataTransfer.files?.length) {
-      uploadFiles(e.dataTransfer.files, target);
+    const target = row && findById(row.dataset.id);
+    clearDragHighlights();
+    if (!target || target.type !== "folder") {
+      dragLink = null;
       return;
     }
+    e.preventDefault();
+    e.stopPropagation(); // Avoid duplicate upload by document-level handler.
 
-    const srcId = e.dataTransfer.getData("text/plain");
-    const src = findById(srcId);
-    if (!src || src === target) return;
-    toast("附件移动需要后端支持 link 迁移；当前请用「上传」挂到目标记录");
+    if (e.dataTransfer?.files?.length) {
+      dragLink = null;
+      if (!canUploadFiles(target))
+        return toast("请将文件拖入具体业务记录");
+      return uploadFiles(e.dataTransfer.files, target);
+    }
+
+    const sourceDrag = dragLink;
+    dragLink = null;
+    const sourceId = e.dataTransfer?.getData(internalType);
+    if (!sourceDrag || !sourceId || sourceDrag.id !== sourceId)
+      return toast("无法识别内部附件拖动，请重新操作");
+    const source = findById(sourceId);
+    if (!validAttachmentDrop(source,target,sourceDrag.workspace))
+      return toast("附件只能在同一工作区的不同业务记录间移动", {tone:"error"});
+
+    const confirmed = await askConfirm({
+      title:"移动附件",
+      text:"将「" + source.name + "」从当前记录移动到「" + target.name +
+        "」？移动会解除来源关联，但其它共享位置及文件历史版本不受影响。",
+      okText:"确认移动",
+    });
+    if (!confirmed) return;
+    // The workspace, source, target and task lock may change while a modal
+    // is open. Revalidate before asking F2-03's shared action to commit.
+    if (!validAttachmentDrop(findById(sourceId),findById(target.id),sourceDrag.workspace))
+      return toast("工作区或记录状态已变化，移动已取消", {tone:"error"});
+    try {
+      await associateOriginal(findById(sourceId),true,findById(target.id));
+    } catch (err) {
+      toast("移动附件失败：" + err.message,{tone:"error",ms:6000});
+      await refreshCurrent().catch(()=>{});
+    }
   });
 
   /* 整页拖入 */
@@ -1220,7 +1281,8 @@ function bindContent() {
     })
   );
   document.addEventListener("drop", (e) => {
-    if (!e.dataTransfer?.files?.length) return;
+    if (!e.dataTransfer?.files?.length || e.defaultPrevented) return;
+    e.preventDefault();
     const node = findById(Drive.state.folderId);
     if (canUploadFiles(node)) uploadFiles(e.dataTransfer.files, node);
     else toast("请先进入具体业务记录，再上传附件");
@@ -1252,7 +1314,9 @@ function renameNode(node) {
 function showItemMenu(id, x, y) {
   const item = findById(id) || RECYCLE.find((i) => i.id === id);
   if (!item) return;
+  if (!Drive.state.selection.has(id)) Drive.select(id, "single");
   const trash = isTrashNode(id);
+  const actionItems = Drive.selectedItems.filter(n => isTrashNode(n.id) === trash);
   const isFolder = item.type === "folder";
   const b = item.biz || {};
 
@@ -1261,8 +1325,8 @@ function showItemMenu(id, x, y) {
       MI("restore", "restore", "还原"),
       MI("purge", "trashForever", "彻底删除", "", true),
     ].join(""), {
-      restore: () => recycleAction([item], "restore"),
-      purge: () => recycleAction([item], "purge"),
+      restore: () => recycleAction(actionItems, "restore"),
+      purge: () => recycleAction(actionItems, "purge"),
     });
     return;
   }
@@ -1300,7 +1364,7 @@ function showItemMenu(id, x, y) {
     open: () => (isFolder ? Drive.openFolder(id) : previewFile(id)),
     newcontract: () => RecordForms.contract(null, b.id),
     props: () => RecordForms.edit(item),
-    download: () => (isFolder ? exportNodes([item]) : downloadFile(id)),
+    download: () => downloadNodes([item]),
     newver: () => uploadNewVersion(item),
     assoc: () => associateOriginal(item, false),
     "assoc-move": () => associateOriginal(item, true),
@@ -1311,27 +1375,27 @@ function showItemMenu(id, x, y) {
     "sort-down": () => reorderArchiveEntry(item,1),
     "move-archive": () => moveArchiveEntry(item),
     "delete-folder": () => deleteArchiveFolder(item),
-    delete: () => deleteNodes([...Drive.state.selection].map((i) => findById(i) || RECYCLE.find((n) => n.id === i)).filter(Boolean)),
+    delete: () => deleteNodes(actionItems),
   });
 }
 
 function showBlankMenu(x, y) {
   const s = Drive.state;
   if (s.view !== "files") {
-    showCtx(x, y, MI("refresh", "refresh", "刷新"), { refresh: () => enterWorkspace(VaultStore.ws) });
+    showCtx(x, y, MI("refresh", "refresh", "刷新"), { refresh: safeRefresh });
     return;
   }
   const cur = nodeTag(s.folderId) === "k" ? s.folderId.slice(2) : "";
   showCtx(
     x,
     y,
-    [MI("new", "plus", "新建"),
+    [canCreateHere() ? MI("new", "plus", "新建") : "",
       canUploadFiles(findById(s.folderId)) ? MI("upload", "upload", "上传") : "",
-      '<div class="ctx-sep"></div>', MI("refresh", "refresh", "刷新")].join(""),
+      MI("refresh", "refresh", "刷新")].filter(Boolean).join(""),
     {
       new: () => ($(`#btnNew`) ? openNewMenu($("#btnNew")) : null),
       upload: () => pickFiles(),
-      refresh: () => enterWorkspace(VaultStore.ws),
+      refresh: safeRefresh,
     }
   );
 }
@@ -1386,11 +1450,7 @@ function startMarquee(startEvt) {
 function bindSelectionBar() {
   $("#selClear").addEventListener("click", () => Drive.clearSelection());
 
-  $("#selDownload").addEventListener("click", () => {
-    const items = Drive.selectedItems;
-    if (!items.length) return toast("请选择要下载的内容");
-    void exportNodes(items);
-  });
+  $("#selDownload").addEventListener("click", () => downloadNodes(Drive.selectedItems));
 
   $("#selDelete").addEventListener("click", () => {
     const items = Drive.selectedItems;
@@ -1421,8 +1481,7 @@ function bindDetail() {
         if (one) previewFile(one.id);
         break;
       case "download":
-        items.filter((i) => i.type === "file").forEach((i) => downloadFile(i.id));
-        if (!items.some((i) => i.type === "file")) toast("文件夹不包含可直接下载的附件");
+        downloadNodes(items);
         break;
       case "delete":
         if (Drive.state.view === "recycle") recycleAction(items, "purge");
@@ -1503,6 +1562,9 @@ function bindKeyboard() {
       return;
     }
 
+    if ($("#formMask")?.classList.contains("show") ||
+        $("#confirmMask")?.classList.contains("show") ||
+        document.querySelector(".preview-mask.show")) return;
     if (e.target.matches("input, textarea, select")) return;
     if ($("#lockScreen")?.classList.contains("show")) return;
 
@@ -1710,9 +1772,16 @@ async function refreshCurrent() {
   Drive.resetSearch();
   const node = findById(keep);
   Drive.state.ready = true;
-  if (node) {
-    Drive.state.folderId = node.type === "folder" ? keep : findParent(keep)?.id || "root";
-    Drive.state.view = view === "recycle" ? "recycle" : "files";
+  Drive.state.selection = new Set([...Drive.state.selection].filter(
+    id => findById(id) || RECYCLE.some(item => item.id === id)));
+  if (view === "recycle") {
+    Drive.state.view = "recycle";
+  } else if (view === "home") {
+    Drive.state.folderId = "root";
+    Drive.state.view = "home";
+  } else if (node && node.type === "folder") {
+    Drive.state.folderId = keep;
+    Drive.state.view = "files";
   } else {
     Drive.state.folderId = "root";
     Drive.state.view = "home";
