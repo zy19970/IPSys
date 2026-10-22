@@ -777,6 +777,7 @@ function bindCmdbar() {
     const items = cols
       ? cols.map((c) => [c.k === "_name" ? "name" : c.k, c.t])
       : [["name", "名称"], ["mtime", "修改日期"], ["size", "大小"]];
+    if (Drive.isArchiveOrderScope()) items.unshift(["position","自定义顺序"]);
     showCtx(
       r.left,
       r.bottom + 6,
@@ -784,7 +785,13 @@ function bindCmdbar() {
         '<div class="ctx-sep"></div>' +
         MI("dir", "sort", s.sortDir === "asc" ? "升序" : "降序"),
       {
-        ...Object.fromEntries(items.map(([key]) => [`s-${key}`, () => sortBy(key)])),
+        ...Object.fromEntries(items.map(([key]) => [`s-${key}`, () => {
+          if (key === "position") {
+            s.sortBy = "position";
+            s.sortDir = "asc";
+            Drive.render();
+          } else sortBy(key);
+        }])),
         dir: () => {
           s.sortDir = s.sortDir === "asc" ? "desc" : "asc";
           Drive.render();
@@ -872,6 +879,144 @@ function filterExt(exts) {
   Drive.renderChrome();
 }
 
+/* 公司业务档案：Folder 目录与 Archive 记录采用相同的父级和排序规则。 */
+function archiveScope() {
+  const id = String(Drive.state.folderId || "");
+  return VaultStore.ws === "company" && Drive.state.view === "files" &&
+    !Drive.state.query.trim() && (id === "k:achievement" || id.startsWith("af:"));
+}
+
+function archiveParentId() {
+  const id = String(Drive.state.folderId || "");
+  return id.startsWith("af:") ? Number(id.slice(3)) : null;
+}
+
+function createArchiveFolder(parentId = archiveParentId()) {
+  if (VaultStore.ws !== "company" || !Number.isFinite(parentId ?? 0)) return;
+  RecordForms.open({
+    title: "新建下级目录",
+    submitText: "创建",
+    fields: [{key:"name",label:"目录名称",required:true}],
+    onSubmit: async data => {
+      await VaultStore.api("/api/v2/folders/company/archive_folder", {
+        method:"POST", json:{archiveFolder:{name:data.name,parentId}},
+      });
+      await refreshCurrent();
+      toast("目录已创建");
+    },
+  });
+}
+
+async function deleteArchiveFolder(node) {
+  if (node?.biz?.kind !== "archive_folder") return;
+  if (node.biz.isSystem) return toast("系统目录不可删除");
+  if ((node.children || []).length)
+    return toast("目录内仍有下级资料或目录，请先整理内容", {tone:"error"});
+  const approved = await askConfirm({
+    title:"删除空目录",
+    text:"确定永久删除空目录「" + node.name + "」吗？目录不会进入回收站。",
+    okText:"删除目录",danger:true,
+  });
+  if (!approved) return;
+  try {
+    await VaultStore.api("/api/v2/folders/company/archive_folder/" + node.biz.id, {
+      method:"DELETE",
+    });
+    Drive.clearSelection();
+    await refreshCurrent();
+    toast("空目录已删除");
+  } catch (e) {
+    toast("删除目录失败：" + e.message,{tone:"error",ms:6000});
+    await refreshCurrent().catch(() => {});
+  }
+}
+
+function archiveSortAllowed(node) {
+  return archiveScope() && !Drive.state.statusFilter &&
+    !Drive.state.extFilter && Drive.state.sortBy === "position" &&
+    Drive.state.sortDir === "asc" &&
+    (Drive.currentFolder.children || []).some(n => n.id === node?.id) &&
+    (node.biz?.kind === "archive_folder" ||
+      (node.biz?.kind === "archive" && node.biz?.section === "achievement"));
+}
+
+async function reorderArchiveEntry(node, direction) {
+  if (!archiveSortAllowed(node)) {
+    toast("先返回业务档案目录并切换到「自定义顺序」，再调整顺序");
+    return;
+  }
+  const parent = Drive.currentFolder;
+  const peers = [...(parent.children || [])]; // full unfiltered sibling set
+  const index = peers.findIndex(n => n.id === node.id);
+  const next = index + direction;
+  if (next < 0 || next >= peers.length) return;
+  [peers[index], peers[next]] = [peers[next], peers[index]];
+  const parentId = parent.id === "k:achievement" ? 0 : Number(parent.biz?.id);
+  const items = peers.map(n => ({
+    kind: n.biz?.kind === "archive_folder" ? "folder" : "record",
+    id: Number(n.biz?.id),
+  }));
+  try {
+    await VaultStore.api("/api/v2/folders/company/entries/reorder?section=achievement", {
+      method:"POST",json:{parentId,items},
+    });
+    await refreshCurrent();
+    toast("顺序已保存");
+  } catch (e) {
+    toast("调整排序失败：" + e.message,{tone:"error",ms:6000});
+    await refreshCurrent().catch(() => {});
+  }
+}
+
+function moveArchiveEntry(node) {
+  const biz = node?.biz || {};
+  const folder = biz.kind === "archive_folder";
+  if (VaultStore.ws !== "company" ||
+    !(folder || (biz.kind === "archive" && biz.section === "achievement"))) return;
+  if (folder && biz.isSystem) return toast("系统目录不能移动");
+  const archiveRoot = findById("k:achievement");
+  const dirs = [];
+  const visit = n => {
+    if (n?.biz?.kind === "archive_folder") {
+      // Never offer oneself or descendants as targets: they would create a cycle.
+      const ancestry = pathTo(n.id) || [];
+      if (folder && ancestry.some(p => p.id === node.id)) return;
+      dirs.push(n);
+    }
+    for (const child of n?.children || [])
+      if (child.biz?.kind === "archive_folder") visit(child);
+  };
+  visit(archiveRoot);
+  const choices = [
+    ...(folder ? [{value:"0",label:"业务档案（顶层）"}] : []),
+    ...dirs.map(n => ({
+      value:String(n.biz.id),
+      label:(pathTo(n.id)||[]).filter(p => p.id.startsWith("af:"))
+        .map(p => p.name).join(" › "),
+    })),
+  ];
+  const oldParent = biz.parentId ?? (biz.kind === "archive" ? biz.folderId : null);
+  const targetChoices = choices.filter(x => Number(x.value) !== (oldParent ?? 0));
+  if (!targetChoices.length) return toast("没有其它可以移动到的目录");
+  RecordForms.open({
+    title:folder ? "移动目录" : "移动资料",
+    submitText:"移动",
+    fields:[{key:"target",label:"目标目录",type:"select",required:true,options:targetChoices}],
+    onSubmit:async data => {
+      const target = Number(data.target);
+      if (!Number.isSafeInteger(target) || target < 0 ||
+          (!folder && target === 0)) throw new Error("请选择有效目标目录");
+      await VaultStore.api("/api/v2/folders/company/" +
+        (folder ? "archive_folder" : "archive") + "/" + biz.id +
+        "/move?section=achievement", {
+          method:"POST",json:{parentId:target || null},
+        });
+      await refreshCurrent();
+      toast("已移动至目标目录");
+    },
+  });
+}
+
 /* ---------------- 新建菜单 ---------------- */
 
 function openNewMenu(anchor) {
@@ -887,6 +1032,20 @@ function openNewMenu(anchor) {
   const inDir = tag === "af" ? "achievement" : "";
   const parentId = tag === "af" ? s.folderId.slice(3) : null;
   const here = inDir || cur;
+
+  /* 分类根目录只能新建目录；在具体目录中可新建下级目录或资料。
+     不把业务档案资料创建到无真实 FolderId 的虚拟根。 */
+  if (archiveScope()) {
+    const handlers = {
+      "new-folder": () => createArchiveFolder(archiveParentId()),
+      "new-record": () => RecordForms.archive("achievement", null, archiveParentId()),
+    };
+    showCtx(r.left,r.bottom+6,
+      MI("new-folder","folder","新建下级目录") +
+      (tag === "af" ? MI("new-record","file","新建资料") : ""),
+      handlers);
+    return;
+  }
 
   /* 菜单项直接由当前工作区的分类表生成 —— 有几个模块就几项,
      顺序也和左侧导航一致,不另写一份清单。 */
@@ -1120,7 +1279,14 @@ function showItemMenu(id, x, y) {
     '<div class="ctx-sep"></div>',
     isFolder && (b.kind !== "archive_folder" || !b.isSystem)
       ? MI("rename", "rename", "重命名", "F2") : "",
-    b.kind !== "archive_folder" ? MI("delete", "trash", "删除", "Del", true) : "",
+    archiveSortAllowed(item) ? MI("sort-up", "arrow-up", "上移") : "",
+    archiveSortAllowed(item) ? MI("sort-down", "arrow-down", "下移") : "",
+    (b.kind === "archive_folder" && !b.isSystem) ||
+      (b.kind === "archive" && b.section === "achievement")
+      ? MI("move-archive", "move", "移动至其他目录") : "",
+    b.kind === "archive_folder"
+      ? (!b.isSystem ? MI("delete-folder","trash","删除空目录","",true) : "")
+      : MI("delete", "trash", "删除", "Del", true),
   ]
     .filter(Boolean)
     .join("");
@@ -1133,6 +1299,10 @@ function showItemMenu(id, x, y) {
     newver: () => uploadNewVersion(item),
     assoc: () => associateOriginal(item),
     rename: () => renameNode(item),
+    "sort-up": () => reorderArchiveEntry(item,-1),
+    "sort-down": () => reorderArchiveEntry(item,1),
+    "move-archive": () => moveArchiveEntry(item),
+    "delete-folder": () => deleteArchiveFolder(item),
     delete: () => deleteNodes([...Drive.state.selection].map((i) => findById(i) || RECYCLE.find((n) => n.id === i)).filter(Boolean)),
   });
 }
@@ -1410,11 +1580,14 @@ function bindOverlays() {
    ========================================================================== */
 
 async function deleteNodes(nodes) {
-  /* 业务档案目录不能通过此处当作记录删除。 */
-  const dirs = nodes.filter((n) => (n.biz || {}).kind === "archive_folder");
+  const dirs = nodes.filter(n => n.biz?.kind === "archive_folder");
+  if (dirs.length === 1 && dirs.length === nodes.length) {
+    await deleteArchiveFolder(dirs[0]);
+    return;
+  }
   if (dirs.length) {
-    nodes = nodes.filter((n) => (n.biz || {}).kind !== "archive_folder");
-    toast("业务档案的目录不能在这里删除");
+    nodes = nodes.filter(n => n.biz?.kind !== "archive_folder");
+    toast("批量删除只处理业务资料；空目录请逐个删除");
   }
   if (!nodes.length) return;
 

@@ -36,9 +36,11 @@ const RecordForms = {
       let control = "";
 
       if (f.type === "select") {
-        const opts = (f.options || []).map(
-          (o) => `<option value="${esc(o)}" ${o === v ? "selected" : ""}>${esc(o)}</option>`
-        );
+        const opts = (f.options || []).map((o) => {
+          const value = typeof o === "string" ? o : o.value;
+          const label = typeof o === "string" ? o : o.label;
+          return `<option value="${esc(value)}" ${String(value) === String(v) ? "selected" : ""}>${esc(label)}</option>`;
+        });
         control = `<select data-key="${f.key}" ${f.required ? "required" : ""}>
           <option value="">${esc(f.placeholder || "请选择")}</option>${opts.join("")}</select>`;
       } else if (f.type === "textarea") {
@@ -261,7 +263,7 @@ const RecordForms = {
           });
         } else {
           /* 站在业务档案的目录里新建 → 记到该目录下(parentId) */
-          if (parentId != null) payload.parentId = Number(parentId);
+          if (parentId != null) payload.archive.folderId = Number(parentId);
           await VaultStore.api(`/api/v2/folders/${VaultStore.ws}/archive?section=${encodeURIComponent(sec)}`, {
             method: "POST",
             json: payload,

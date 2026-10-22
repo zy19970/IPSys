@@ -173,6 +173,7 @@ jobs:
             'explorer-p1-regression-smoke.cjs' = 'Explorer P1 archive ordering and API error handling regression failed'
             'explorer-p2-interactions-smoke.cjs' = 'Explorer P2 safe recycle batching and UI regression failed'
             'explorer-vault-create-smoke.cjs' = 'Explorer new-vault entry and safe session resume failed'
+            'explorer-archive-operations-smoke.cjs' = 'Explorer F2-02 archive directory actions and mixed reorder regression failed'
             'explorer-capabilities-smoke.cjs'  = 'Streaming download / server search / purge progress failed'
             'upload-progress-smoke.cjs'        = 'Real upload progress/multiphase state smoke failed'
             'upload-unique-autosave-smoke.cjs' = 'Unique original auto-save and duplicate confirmation smoke failed'
