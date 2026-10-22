@@ -56,6 +56,8 @@ def add(i, p, f, m, res, did, att, obs, exp, ev, src, notes=''):
             res = 'PASS'
         if res in ('PASS', 'BLOCKED'):
             did = '-'
+        elif i == 'T-P2-09' and res == 'CONFIRMED_BUG':
+            did = 'BUG-018'
         try:
             att = str(int(att) + 1)
         except (TypeError, ValueError):
