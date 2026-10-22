@@ -1,0 +1,16 @@
+{
+  "case_id": "E-06",
+  "priority": "P0",
+  "group": "E｜附件、关联与版本",
+  "status": "PASS",
+  "actual": "{\"move\":200,\"sourceLinksAfter\":0,\"targetLinks\":1,\"versions\":1,\"fileId\":25}",
+  "expected": "目标关联成功、来源解除，FileId 与版本链不变",
+  "workspace": "company",
+  "record_ids": "25",
+  "evidence_paths": "",
+  "notes": "移动关联后来源解除、目标建立 LinkId，FileId 与版本链不变",
+  "timestamp": "2026-10-22T17:32:10.342Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

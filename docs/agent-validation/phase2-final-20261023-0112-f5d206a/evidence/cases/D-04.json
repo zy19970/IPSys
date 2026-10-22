@@ -1,0 +1,16 @@
+{
+  "case_id": "D-04",
+  "priority": "P0",
+  "group": "D｜多级档案目录与排序",
+  "status": "PASS",
+  "actual": "{\"update\":200,\"name\":\"D04-一级改名\"}",
+  "expected": "新名称保存并在路径导航显示",
+  "workspace": "company",
+  "record_ids": "48",
+  "evidence_paths": "",
+  "notes": "自建目录改名持久化",
+  "timestamp": "2026-10-22T17:30:11.678Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

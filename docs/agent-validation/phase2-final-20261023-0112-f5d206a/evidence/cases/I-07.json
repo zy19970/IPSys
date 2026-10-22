@@ -1,0 +1,16 @@
+{
+  "case_id": "I-07",
+  "priority": "P0",
+  "group": "I｜PDF、Excel、搜索与导出",
+  "status": "PASS",
+  "actual": "{\"byName\":{\"status\":200,\"n\":2,\"hits\":[\"project#451 I07项目-I3mvjvpzv3\",\"contract#452 I07合同-I3mvjvpzv3\"]},\"byProjectNo\":{\"status\":200,\"n\":1,\"hits\":[\"project#451 I07项目-I3mvjvpzv3\"]},\"byRemark\":{\"status\":200,\"n\":1,\"hits\":[\"project#451 I07项目-I3mvjvpzv3\"]},\"byParty\":{\"status\":200,\"n\":1,\"hits\":[\"contract#452 I07合同-I3mvjvpzv3\"]},\"byContractNo\":{\"status\":200,\"n\":1,\"hits\":[\"contract#452 I07合同-I3mvjvpzv3\"]},\"byFileName\":{\"status\":200,\"n\":1,\"hits\":[\"file#175 I07附件-I3mvjvpzv3.txt\"]}}",
+  "expected": "命中记录可点击定位，检索结果不是仅文件名匹配",
+  "workspace": "company",
+  "record_ids": "451 452 175",
+  "evidence_paths": "",
+  "notes": "项目名、项目编号、备注、签约方、合同编号、附件名六路检索均在 results 中命中 —— 检索覆盖业务字段与原件名，不是只匹配文件名",
+  "timestamp": "2026-10-22T18:33:23.305Z",
+  "method": "DYNAMIC-MIXED",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

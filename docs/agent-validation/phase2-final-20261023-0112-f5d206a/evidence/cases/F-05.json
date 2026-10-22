@@ -1,0 +1,16 @@
+{
+  "case_id": "F-05",
+  "priority": "P0",
+  "group": "F｜业务整记录复制与跨区转移",
+  "status": "PASS",
+  "actual": "{\"transfer\":{\"status\":200,\"data\":{\"sourceId\":124,\"id\":125,\"sourceWorkspace\":\"company\",\"targetWorkspace\":\"personal\",\"moved\":false,\"links\":1,\"versions\":2,\"newObjects\":2}},\"sourceContract\":124,\"newContract\":125,\"sourceFile\":90,\"newFile\":91,\"srcShas\":[\"8CF0BB110097442CCFBCD07B3D8F98B54C5AB02DAA75B067161B60353FCC03FB\",\"C857FCB4D2CD75F36D958FE92B7A01AC20D6E63F467E930C0B875C178F0FCBF2\"],\"newShas\":[\"8CF0BB110097442CCFBCD07B3D8F98B54C5AB02DAA75B067161B60353FCC03FB\",\"C857FCB4D2CD75F36D958FE92B7A01AC20D6E63F467E930C0B875C178F0FCBF2\"]}",
+  "expected": "目标 FileId、物理对象不同，SHA 与内容一致",
+  "workspace": "company",
+  "record_ids": "124 125",
+  "evidence_paths": "",
+  "notes": "跨区复制两个历史版本：目标为新 FileId、versions=2、newObjects=2（物理对象独立），两个版本 SHA 与来源逐条一致",
+  "timestamp": "2026-10-22T17:40:20.972Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

@@ -1,0 +1,16 @@
+{
+  "case_id": "K-07",
+  "priority": "P0",
+  "group": "K｜大文件、并发与故障恢复",
+  "status": "PASS",
+  "actual": "{\"fileId\":null,\"sizeBytes\":null,\"rows\":1,\"recNodes\":[{\"id\":\"t:v2_file:225\",\"name\":\"K01大文件-K1mvjwlhem.bin\",\"kind\":\"v2_file\",\"size\":0}],\"confirm\":{\"ok\":true,\"text\":\"将永久删除 1 项,无法恢复。\"},\"sawActive\":true,\"settled\":true,\"samples\":[{\"hidden\":false,\"bytes\":\"\",\"pct\":\"准备中\",\"stage\":\"已确认删除 0 条，正在提交第 1 批\"},{\"hidden\":false,\"bytes\":\"已清理加密原件数据 0 B / 33.0 MB\",\"pct\":\"0%\",\"stage\":\"正在处理回收站关联。事务提交前不代表删除成功。\"},{\"hidden\":false,\"bytes\":\"已清理加密原件数据 1.3 MB / 33.0 MB\",\"pct\":\"3%\",\"stage\":\"正在清理加密原件数据块。事务提交前不代表删除成功。\"},{\"hidden\":false,\"bytes\":\"已清理加密原件数据 18.0 MB / 33.0 MB\",\"pct\":\"54%\",\"stage\":\"正在清理加密原件数据块。事务提交前不代表删除成功。\"},{\"hidden\":false,\"bytes\":\"已清理加密原件数据 33.0 MB / 33.0 MB\",\"pct\":\"100%\",\"stage\":\"数据清理已执行，正在提交事务。事务提交前不代表删除成功。\"},{\"hidden\":false,\"bytes\":\"已清理加密原件数据 33.0 MB / 33.0 MB\",\"pct\":\"完成\",\"stage\":\"已提交数据库事务，永久删除成功。数据库文件大小不一定立即缩小。\"}],\"trashLeft\":0}",
+  "expected": "删除提交正确，界面不假死",
+  "workspace": "company",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "彻底删除 33 MiB 原件时右下角进度面板展示了真实字节量与百分比（准备中 → 0% → 3% → 54%），回收站清空且界面未假死",
+  "timestamp": "2026-10-22T19:02:26.434Z",
+  "method": "DYNAMIC-UI",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

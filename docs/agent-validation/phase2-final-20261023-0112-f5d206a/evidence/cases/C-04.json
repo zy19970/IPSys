@@ -1,0 +1,16 @@
+{
+  "case_id": "C-04",
+  "priority": "P0",
+  "group": "C｜业务记录与附件 CRUD",
+  "status": "PASS",
+  "actual": "{\"update\":200,\"delete\":200,\"getAfterDelete\":404,\"restore\":200,\"restored\":{\"name\":\"C04-IP-改\",\"ipType\":\"发明专利\",\"status\":\"已授权\",\"applicants\":null,\"rightHolders\":null,\"creators\":null,\"applicationNo\":\"C04-APP\",\"applicationDate\":null,\"publicationNo\":null,\"publicationDate\":null,\"grantNoticeNo\":null,\"grantNoticeDate\":null,\"publicationInfo\":null,\"grantDate\":null,\"registrationNo\":null,\"firstPublishedDate\":null,\"registrationDate\":null,\"category\":null,\"remarks\":\"已编辑\",\"tags\":null}}",
+  "expected": "各字段可持久化，回收站恢复正确",
+  "workspace": "company",
+  "record_ids": "29",
+  "evidence_paths": "",
+  "notes": "IP 创建/编辑/软删/还原全链路字段一致",
+  "timestamp": "2026-10-22T17:28:12.673Z",
+  "method": "DYNAMIC-HTTP+UI",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

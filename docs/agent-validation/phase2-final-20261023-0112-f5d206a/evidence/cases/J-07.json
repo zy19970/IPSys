@@ -1,0 +1,16 @@
+{
+  "case_id": "J-07",
+  "priority": "P0",
+  "group": "J｜回收站、永久清理与数据库安全",
+  "status": "PASS",
+  "actual": "{\"drained\":0,\"trashBefore\":201,\"uiRows\":201,\"selected\":201,\"batches\":[200,1],\"total\":201,\"taskState\":{\"taskId\":\"c52a2cd609bd4041a682b8cb9ca4e5ed\",\"workspace\":\"company\",\"state\":\"succeeded\",\"stage\":\"已提交数据库事务，永久删除成功\",\"bytesDone\":0,\"bytesTotal\":0,\"count\":1,\"error\":null},\"toasts\":[\"已彻底删除 201 条记录\"],\"trashLeft\":0}",
+  "expected": "真实拆分批次，进度/结果与提交条数一致",
+  "workspace": "company",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "选择 201 条：前端真实切成 2 批（200 + 1）提交，服务端任务 succeeded，结果 toast 与提交条数一致（201），回收站清空 —— 不是一次性超限提交",
+  "timestamp": "2026-10-22T18:41:44.503Z",
+  "method": "DYNAMIC-UI",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

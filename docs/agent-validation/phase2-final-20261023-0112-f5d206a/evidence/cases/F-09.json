@@ -1,0 +1,16 @@
+{
+  "case_id": "F-09",
+  "priority": "P1",
+  "group": "F｜业务整记录复制与跨区转移",
+  "status": "PASS",
+  "actual": "{\"copy\":{\"status\":200,\"data\":{\"sourceId\":132,\"id\":133,\"sourceWorkspace\":\"company\",\"targetWorkspace\":\"personal\",\"moved\":false,\"files\":1,\"versions\":1,\"newObjects\":1},\"newId\":133,\"title\":\"P2F9-综合甲-Fmvjttspt\",\"srcTitle\":\"P2F9-综合甲-Fmvjttspt\",\"links\":1,\"shaOk\":true},\"move\":{\"source\":134,\"status\":200,\"data\":{\"sourceId\":134,\"id\":135,\"sourceWorkspace\":\"company\",\"targetWorkspace\":\"personal\",\"moved\":true,\"files\":1,\"versions\":1,\"newObjects\":1},\"newId\":135,\"sourceTrash\":{\"kind\":\"v2_general\",\"id\":134,\"name\":\"P2F9-综合乙-Fmvjttspt\",\"section\":\"\",\"parent\":null}}}",
+  "expected": "原记录与目标记录的附件、字段符合移动/复制语义",
+  "workspace": "company",
+  "record_ids": "132 133 134 135",
+  "evidence_paths": "",
+  "notes": "综合资料复制：标题/附件/SHA 一致且来源保留；跨区移动：目标生成、来源软删",
+  "timestamp": "2026-10-22T17:40:21.510Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

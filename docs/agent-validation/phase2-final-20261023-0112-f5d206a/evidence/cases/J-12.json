@@ -1,0 +1,16 @@
+{
+  "case_id": "J-12",
+  "priority": "P0",
+  "group": "J｜回收站、永久清理与数据库安全",
+  "status": "PASS",
+  "actual": "{\"cipher\":\"4.5.2 community\",\"integrity\":\"ok\",\"foreignKeyViolations\":[],\"orphans\":{\"versionsMissingFile\":0,\"versionsMissingObject\":0,\"readyObjectsUnreferenced\":0,\"readyObjectsWithoutChunks\":0,\"orphanChunks\":0,\"writingObjects\":0,\"linksMissingFolder\":0,\"linksMissingFile\":0},\"countsBefore\":{\"folders\":482,\"foldersDeleted\":60,\"files\":193,\"filesDeleted\":0,\"file_objects\":206,\"file_versions\":212,\"file_chunks\":270,\"folder_file_links\":213,\"linksDeleted\":6},\"countsAfter\":{\"folders\":430,\"foldersDeleted\":0,\"files\":188,\"filesDeleted\":0,\"file_objects\":202,\"file_versions\":208,\"file_chunks\":266,\"folder_file_links\":201,\"linksDeleted\":0},\"sharedObjectsBefore\":6,\"sharedObjectsAfter\":6}",
+  "expected": "检查无异常，引用和清理计数有实际 SQL 证据",
+  "workspace": "-",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "SQLCipher 4.5.2 community（PRAGMA cipher_version 非空即证明加密引擎生效）：PRAGMA integrity_check=ok，PRAGMA foreign_key_check 0 行违规，版本→文件/对象、chunk→对象、链接→文件夹/文件 六类孤儿引用全部为 0，半成品对象 0；前后计数快照见 actual（folders 482→430，objects 206→202，versions 212→208）",
+  "timestamp": "2026-10-22T18:49:15.703Z",
+  "method": "DYNAMIC-UI",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

@@ -1,0 +1,16 @@
+{
+  "case_id": "E-11",
+  "priority": "P1",
+  "group": "E｜附件、关联与版本",
+  "status": "PASS",
+  "actual": "{\"storedName\":\"E11-中文 空格 & 100% 'quote' （括号）#1.txt\",\"expected\":\"E11-中文 空格 & 100% 'quote' （括号）#1.txt\",\"downloadSha\":\"c395e4481254a9a8\",\"windowsIllegalQuote\":\"upload E11-非法\\\"引号\\\".txt -> 400 {\\\"error\\\":\\\"文件名不合法（须为原始文件名，不含路径）。\\\"}\"}",
+  "expected": "预览/下载/导出与记录显示正确转义",
+  "workspace": "company",
+  "record_ids": "27",
+  "evidence_paths": "",
+  "notes": "合法特殊字符/中文/空格/括号名称原样保存且下载一致；Windows 非法双引号被拒绝属预期",
+  "timestamp": "2026-10-22T17:32:46.526Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

@@ -1,0 +1,16 @@
+{
+  "case_id": "I-12",
+  "priority": "P1",
+  "group": "I｜PDF、Excel、搜索与导出",
+  "status": "PASS",
+  "actual": "{\"nodeReachableAfterFilter\":false,\"removedDirs\":5,\"exitCode\":0,\"warnedAboutNode\":true,\"hasCompileError\":false,\"tail\":[\"E:\\\\Github\\\\管理系统\\\\src\\\\IPSys.Web\\\\IPSys.Web.csproj(59,5): warning : 未找到 Node.js，跳过前端打包，直接使用已有的 dist/。若改动过 frontend/explorer 下的源码，这份产物是旧的。\",\"E:\\\\Github\\\\管理系统\\\\src\\\\IPSys.Web\\\\IPSys.Web.csproj(59,5): warning : 未找到 Node.js，跳过前端打包，直接使用已有的 dist/。若改动过 frontend/explorer 下的源码，这份产物是旧的。\",\"    2 个警告\",\"    0 个错误\"]}",
+  "expected": "资源打包/启动有合理兼容或明确安装前置提示",
+  "workspace": "-",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "剔除全部含 node.exe 的目录（node 确实不可达）后重新构建：exit=0、无编译错误，并以 warning 明确提示「未找到 Node.js，跳过前端打包，直接使用已有的 dist/」—— 缺 Node 不阻断编译且有前置提示",
+  "timestamp": "2026-10-22T18:32:39.147Z",
+  "method": "DYNAMIC-MIXED",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

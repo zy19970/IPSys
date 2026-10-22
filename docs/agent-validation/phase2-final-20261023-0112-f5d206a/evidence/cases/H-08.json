@@ -1,0 +1,16 @@
+{
+  "case_id": "H-08",
+  "priority": "P0",
+  "group": "H｜公共 UI 与跨页面状态",
+  "status": "PASS",
+  "actual": "{\"selBefore\":[\"c:442\",\"c:443\"],\"selAfter\":[],\"selBar\":{\"hidden\":false,\"text\":\"已选择 0 项\"},\"detailOpen\":true,\"detailText\":\"P2H-项目-Hmvjv9sb9\\n1 条记录 · 2 个附件\\n位置\\n路径\\n我的文件 / 公司项目 / P2H-项目-Hmvjv9sb9\",\"deleted\":442,\"kept\":443}",
+  "expected": "已删 ID 不再残留在选择栏或详情面板",
+  "workspace": "company",
+  "record_ids": "442 443",
+  "evidence_paths": "",
+  "notes": "删除其中一条后刷新：已删 ID 从选择集移除，详情面板随之关闭，选择栏不残留",
+  "timestamp": "2026-10-22T18:21:27.761Z",
+  "method": "DYNAMIC-BROWSER",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

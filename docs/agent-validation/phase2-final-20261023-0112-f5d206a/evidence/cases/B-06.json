@@ -1,0 +1,16 @@
+{
+  "case_id": "B-06",
+  "priority": "P0",
+  "group": "B｜建库与会话",
+  "status": "PASS",
+  "actual": "{\"before\":{\"heading\":\"重新连接资料库\",\"submit\":\"重新连接\",\"switchHidden\":true,\"confirmHidden\":true,\"pathRO\":false,\"pathDisabled\":true,\"hint\":\"\",\"lockVisible\":true},\"pathAfterEdit\":false,\"hintAfter\":\"\",\"apiCalls\":[\"http://127.0.0.1:18545/api/resume\"],\"stillUnlocked\":true}",
+  "expected": "显示重新连接；路径只读，不可新建其他库",
+  "workspace": "-",
+  "record_ids": "",
+  "evidence_paths": "evidence/probe-lock.png",
+  "notes": "令牌丢失后进入重新连接模式，路径不可改库，只走 /api/resume",
+  "timestamp": "2026-10-22T17:25:43.480Z",
+  "method": "DYNAMIC-BROWSER",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

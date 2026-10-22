@@ -1,0 +1,16 @@
+{
+  "case_id": "D-09",
+  "priority": "P0",
+  "group": "D｜多级档案目录与排序",
+  "status": "PASS",
+  "actual": "{\"before\":[{\"id\":8,\"kind\":\"folder\",\"name\":\"P2二级-A\"},{\"id\":52,\"kind\":\"folder\",\"name\":\"D06-目标目录\"}],\"submitted\":[52,8],\"reorder\":200,\"after\":[52,8]}",
+  "expected": "提交完整同级清单，重载后严格维持顺序",
+  "workspace": "company",
+  "record_ids": "8 52",
+  "evidence_paths": "",
+  "notes": "同级目录与资料混排提交完整清单后，重载顺序与提交完全一致",
+  "timestamp": "2026-10-22T17:30:11.918Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

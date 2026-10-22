@@ -1,0 +1,16 @@
+{
+  "case_id": "F-10",
+  "priority": "P0",
+  "group": "F｜业务整记录复制与跨区转移",
+  "status": "PASS",
+  "actual": "{\"create\":{\"status\":200,\"id\":136},\"transfer\":{\"status\":200,\"data\":{\"id\":137,\"files\":1,\"versions\":1}},\"newId\":137,\"newParent\":null,\"inSectionList\":true,\"links\":1,\"section\":\"achievement\"}",
+  "expected": "类别映射正确，不存在无效 FolderId",
+  "workspace": "company",
+  "record_ids": "136 137",
+  "evidence_paths": "",
+  "notes": "company/achievement → personal/achievement 兼容转移成功：新记录落在目标类别根下（parent=null）、附件随迁、业务名称一致，无跨工作区无效 FolderId",
+  "timestamp": "2026-10-22T17:40:21.614Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

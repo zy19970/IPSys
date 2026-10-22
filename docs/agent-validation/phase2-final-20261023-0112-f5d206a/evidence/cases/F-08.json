@@ -1,0 +1,16 @@
+{
+  "case_id": "F-08",
+  "priority": "P0",
+  "group": "F｜业务整记录复制与跨区转移",
+  "status": "PASS",
+  "actual": "{\"copy\":{\"status\":200,\"data\":{\"sourceId\":17,\"id\":129,\"sourceWorkspace\":\"company\",\"targetWorkspace\":\"personal\",\"moved\":false,\"files\":1,\"versions\":3,\"newObjects\":3}},\"newIp\":129,\"fieldOk\":true,\"shaOk\":true,\"srcFiles\":1,\"newFiles\":1,\"move\":{\"source\":130,\"status\":200,\"data\":{\"sourceId\":130,\"id\":131,\"sourceWorkspace\":\"company\",\"targetWorkspace\":\"personal\",\"moved\":true,\"files\":1,\"versions\":1,\"newObjects\":1},\"newIp\":131,\"sourceTrash\":{\"kind\":\"ip\",\"id\":130,\"name\":\"P2F8-待转移IP-Fmvjttspt\",\"section\":\"\",\"parent\":null},\"newLinks\":1}}",
+  "expected": "业务字段、版本与原件独立性正确",
+  "workspace": "company",
+  "record_ids": "17 129 130 131",
+  "evidence_paths": "",
+  "notes": "知识产权跨区复制：业务字段、附件版本与 SHA 一致且对象独立；跨区移动：目标完整、来源软删",
+  "timestamp": "2026-10-22T17:40:21.310Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

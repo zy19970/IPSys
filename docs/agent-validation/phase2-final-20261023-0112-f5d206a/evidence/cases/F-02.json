@@ -1,0 +1,16 @@
+{
+  "case_id": "F-02",
+  "priority": "P0",
+  "group": "F｜业务整记录复制与跨区转移",
+  "status": "PASS",
+  "actual": "{\"transfer\":{\"status\":200,\"data\":{\"sourceId\":117,\"id\":119,\"sourceWorkspace\":\"company\",\"targetWorkspace\":\"personal\",\"moved\":true,\"contracts\":1,\"links\":1,\"files\":1,\"versions\":1,\"newObjects\":1}},\"before\":{\"name\":\"P2F2-项目乙-Fmvjttspt\",\"deleted\":false,\"parent\":null,\"own\":[],\"contracts\":[{\"id\":118,\"files\":[85]}],\"allFiles\":[85]},\"target\":119,\"after\":{\"name\":\"P2F2-项目乙-Fmvjttspt\",\"deleted\":false,\"parent\":null,\"own\":[],\"contracts\":[{\"id\":120,\"files\":[86]}],\"allFiles\":[86]},\"sourceGet\":404,\"sourceInTrash\":true,\"sourceTrashEntry\":{\"kind\":\"project\",\"id\":117,\"name\":\"P2F2-项目乙-Fmvjttspt\",\"section\":\"\",\"parent\":null}}",
+  "expected": "全部目标提交成功后来源才进入回收站",
+  "workspace": "company",
+  "record_ids": "117 119",
+  "evidence_paths": "",
+  "notes": "Move 语义成立：目标项目/合同/附件完整后，来源项目才在同一事务内置 deleted=1 并出现在公司回收站",
+  "timestamp": "2026-10-22T17:40:20.665Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

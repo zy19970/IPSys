@@ -1,0 +1,16 @@
+{
+  "case_id": "G-12",
+  "priority": "P1",
+  "group": "G｜拖放、菜单与快捷键",
+  "status": "PASS",
+  "actual": "{\"ctrlA\":{\"prevented\":true,\"size\":3},\"esc\":{\"prevented\":false,\"size\":0},\"shiftRange\":[\"c:425\",\"c:426\",\"c:427\"],\"f2OpensForm\":true,\"systemFolder\":{\"sysRow\":\"af:1\",\"afterF2\":{\"form\":false,\"toasts\":[\"系统预置目录不能重命名\"]},\"menuActs\":[\"open\",\"download\",\"sort-up\",\"sort-down\"],\"afterCtxRename\":{\"form\":false,\"toasts\":[\"系统预置目录不能重命名\"]}}}",
+  "expected": "选择与操作状态一致；系统目录不会被误改",
+  "workspace": "company",
+  "record_ids": "424 425 426 427",
+  "evidence_paths": "",
+  "notes": "Ctrl+A 全选 3 项、Esc 清空、Shift 连选形成区间、F2 打开业务表单；业务档案系统目录按 F2 不打开编辑表单（不可误改）",
+  "timestamp": "2026-10-22T18:10:36.222Z",
+  "method": "DYNAMIC-BROWSER",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

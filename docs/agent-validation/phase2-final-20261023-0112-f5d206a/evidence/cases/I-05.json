@@ -1,0 +1,16 @@
+{
+  "case_id": "I-05",
+  "priority": "P0",
+  "group": "I｜PDF、Excel、搜索与导出",
+  "status": "PASS",
+  "actual": "{\"pyOut\":\"{\\\"ok\\\": true, \\\"headers\\\": [\\\"\\\\u9879\\\\u76ee\\\\u540d\\\\u79f0\\\", \\\"\\\\u9879\\\\u76ee\\\\u7c7b\\\\u522b\\\", \\\"\\\\u9879\\\\u76ee\\\\u7f16\\\\u53f7\\\", \\\"\\\\u8d1f\\\\u8d23\\\\u4eba\\\", \\\"\\\\u627f\\\\u62c5\\\\u5355\\\\u4f4d\\\", \\\"\\\\u5f00\\\\u59cb\\\\u65e5\\\\u671f\\\", \\\"\\\\u7ed3\\\\u675f\\\\u65e5\\\\u671f\\\", \\\"\\\\u9879\\\\u76ee\\\\u72b6\\\\u6001\\\", \\\"\\\\u8f85\\\\u52a9\\\\u5206\\\\u7c7b\\\", \\\"\\\\u5907\\\\u6ce8\\\", \\\"\\\\u6807\\\\u7b7e\\\"], \\\"dupno\\\": \\\"P2-A\\\", \\\"rows\\\": 120}\",\"status\":200,\"body\":{\"created\":0,\"updated\":0,\"skipped\":116,\"failed\":3,\"errors\":[{\"row\":118,\"error\":\"项目名称必须填写，最多 300 字。\"},{\"row\":119,\"error\":\"请选择科研项目、横向项目或其他项目。\"},{\"row\":120,\"error\":\"请选择科研项目、横向项目或其他项目。\"}],\"omittedErrors\":0,\"total\":119},\"before\":116,\"after\":116,\"wroteBadDate\":false,\"wroteMissing\":false}",
+  "expected": "错误定位明确，失败行不会悄悄写入",
+  "workspace": "company",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "含缺必填、非法日期、重复编号的工作簿：导入接口给出明确结果，非法行（坏日期/空名称）没有落库",
+  "timestamp": "2026-10-22T18:25:23.067Z",
+  "method": "DYNAMIC-MIXED",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

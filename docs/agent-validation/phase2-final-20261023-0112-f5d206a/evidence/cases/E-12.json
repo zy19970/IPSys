@@ -1,0 +1,16 @@
+{
+  "case_id": "E-12",
+  "priority": "P0",
+  "group": "E｜附件、关联与版本",
+  "status": "PASS",
+  "actual": "{\"linksBefore\":6,\"linksAfter\":6,\"brokenLinks\":0,\"integrity\":\"ok\",\"writingObjects\":1}",
+  "expected": "不存在已报成功但版本或文件块缺失的假提交",
+  "workspace": "company",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "上传 150ms 后强制断开：无成功关联、无残缺 Link；integrity_check 通过",
+  "timestamp": "2026-10-22T17:32:48.779Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

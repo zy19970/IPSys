@@ -1,0 +1,16 @@
+{
+  "case_id": "H-02",
+  "priority": "P1",
+  "group": "H｜公共 UI 与跨页面状态",
+  "status": "PASS",
+  "actual": "{\"contract\":[{\"act\":\"open\",\"label\":\"打开\"},{\"act\":\"props\",\"label\":\"属性\"},{\"act\":\"download\",\"label\":\"打包下载\"},{\"act\":\"copy-record\",\"label\":\"复制整条记录\"},{\"act\":\"transfer-record\",\"label\":\"移动或跨区转移\"},{\"act\":\"rename\",\"label\":\"重命名\\nF2\"},{\"act\":\"delete\",\"label\":\"删除\\nDel\"}],\"ip\":[{\"act\":\"open\",\"label\":\"打开\"},{\"act\":\"props\",\"label\":\"属性\"},{\"act\":\"download\",\"label\":\"打包下载\"},{\"act\":\"copy-record\",\"label\":\"复制整条记录\"},{\"act\":\"transfer-record\",\"label\":\"移动或跨区转移\"},{\"act\":\"rename\",\"label\":\"重命名\\nF2\"},{\"act\":\"delete\",\"label\":\"删除\\nDel\"}],\"comparable\":{\"contract\":\"copy-record:复制整条记录|delete:删除\\nDel|download:打包下载|props:属性|rename:重命名\\nF2|transfer-record:移动或跨区转移\",\"ip\":\"copy-record:复制整条记录|delete:删除\\nDel|download:打包下载|props:属性|rename:重命名\\nF2|transfer-record:移动或跨区转移\"}}",
+  "expected": "相同语义共用一致入口，不存在只吐提示的按钮",
+  "workspace": "company",
+  "record_ids": "440 441",
+  "evidence_paths": "",
+  "notes": "合同与知识产权记录的「下载/重命名/删除/属性/复制/移动」入口与文案完全一致，未出现同名不同义或只提示不执行的项",
+  "timestamp": "2026-10-22T18:21:01.922Z",
+  "method": "DYNAMIC-BROWSER",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

@@ -1,0 +1,16 @@
+{
+  "case_id": "F-03",
+  "priority": "P0",
+  "group": "F｜业务整记录复制与跨区转移",
+  "status": "PASS",
+  "actual": "{\"transfer\":{\"status\":200,\"data\":{\"sourceId\":121,\"id\":121,\"sourceWorkspace\":\"company\",\"targetWorkspace\":\"company\",\"moved\":true,\"links\":1,\"versions\":0,\"newObjects\":0}},\"contractId\":121,\"parentBefore\":12,\"parentAfter\":13,\"linkBefore\":[93],\"linkAfter\":[93]}",
+  "expected": "合同 FolderId、LinkId 不变，所属项目正确更新",
+  "workspace": "company",
+  "record_ids": "121",
+  "evidence_paths": "",
+  "notes": "同区移动是纯改父：合同 FolderId 与 LinkId 均不变，parent 由项目A改为项目B，且不产生新版本/新对象",
+  "timestamp": "2026-10-22T17:40:20.751Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

@@ -1,0 +1,16 @@
+{
+  "case_id": "E-10",
+  "priority": "P1",
+  "group": "E｜附件、关联与版本",
+  "status": "PASS",
+  "actual": "{\"p1\":{\"status\":200,\"ticket\":\"C0551A901074EC0036F82E324E79CA9DAA67045765D85A86\",\"matches\":0},\"q1\":{\"status\":200,\"data\":{\"choice\":\"independent\",\"fileId\":32,\"linkId\":37,\"size\":55,\"sha256\":\"CCB6F2D521C6AF133E3DE84BB5351BBF04FCABB1FD602F6D5B10735914EB25CE\",\"reusedContent\":false}},\"p2\":{\"status\":200,\"matches\":[{\"fileId\":32,\"name\":\"E10-A独立.txt\",\"version\":1,\"objectId\":33,\"folders\":[\"P2项目B\"]}]},\"q2\":{\"status\":200,\"data\":{\"choice\":\"reuse-content\",\"fileId\":33,\"linkId\":38,\"size\":55,\"sha256\":\"CCB6F2D521C6AF133E3DE84BB5351BBF04FCABB1FD602F6D5B10735914EB25CE\",\"reusedContent\":true}},\"p3\":{\"status\":200,\"matches\":2},\"q3\":{\"status\":200,\"data\":{\"choice\":\"share-file\",\"fileId\":32,\"linkId\":39,\"size\":55,\"sha256\":\"CCB6F2D521C6AF133E3DE84BB5351BBF04FCABB1FD602F6D5B10735914EB25CE\",\"reusedContent\":true}},\"q4\":{\"status\":409,\"data\":{\"error\":\"该文件已关联当前文件夹，无需重复共享。可选择 independent 创建独立文件，或取消本次上传。\"}},\"pD\":{\"status\":200,\"matches\":[{\"fileId\":32,\"name\":\"E10-A独立.txt\",\"version\":1,\"objectId\":33,\"folders\":[\"P2项目A\",\"P2项目B\"]},{\"fileId\":33,\"name\":\"E10-A复用.txt\",\"version\":1,\"objectId\":33,\"folders\":[\"P2项目B\"]}]},\"objects\":{\"f1\":{\"status\":200,\"name\":\"E10-A独立.txt\",\"versions\":1},\"f2\":{\"status\":200,\"name\":\"E10-A复用.txt\",\"versions\":1},\"objectIdF1\":33,\"objectIdF2\":33,\"sameObject\":true},\"linksA\":[{\"fileId\":32,\"name\":\"E10-A独立.txt\",\"link\":37},{\"fileId\":33,\"name\":\"E10-A复用.txt\",\"link\":38}],\"linksB\":[{\"fileId\":32,\"name\":\"E10-B共享.txt\",\"link\":39}],\"sha\":\"ccb6f2d521c6af133e3de84bb5351bbf04fcabb1fd602f6d5b10735914eb25ce\"}",
+  "expected": "系统给予选择并尊重决定，无自动误判",
+  "workspace": "company",
+  "record_ids": "32 33",
+  "evidence_paths": "",
+  "notes": "三分支语义成立：independent 新建 FileId 且 reusedContent=false；reuse-content 新建 FileId 但复用同一 object（reusedContent=true，SHA 一致）；share-file 复用同一 FileId 并在另一文件夹建立新链接；同一文件夹重复 share-file 被 409 显式拒绝（代码注释标注为唯一活动链接约束）",
+  "timestamp": "2026-10-22T17:36:05.079Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

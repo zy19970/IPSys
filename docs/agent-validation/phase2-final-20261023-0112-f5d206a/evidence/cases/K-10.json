@@ -1,0 +1,16 @@
+{
+  "case_id": "K-10",
+  "priority": "P0",
+  "group": "K｜大文件、并发与故障恢复",
+  "status": "PASS",
+  "actual": "{\"abort\":{\"aborted\":true},\"objectsBefore\":208,\"objectsAfterAbort\":208,\"writingBefore\":0,\"writingAfterAbort\":0,\"writingRowsAfterAbort\":[],\"unreferencedAfterAbort\":0,\"integrityAfterAbort\":\"ok\",\"fkAfterAbort\":[],\"recoveryUpload\":{\"fileId\":207,\"status\":200,\"shaMatch\":true,\"linked\":true}}",
+  "expected": "无无效已提交记录或可重复计费物理块",
+  "workspace": "company",
+  "record_ids": "207",
+  "evidence_paths": "",
+  "notes": "上传请求被强制中断后：数据库 integrity=ok、外键 0 违规、无悬挂 ready 对象（半成品对象会在下一次打开时按规则清理），随后同文件夹的正常上传仍然成功且下载 SHA 一致 —— 没有留下不可恢复的脏状态",
+  "timestamp": "2026-10-22T19:08:26.481Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

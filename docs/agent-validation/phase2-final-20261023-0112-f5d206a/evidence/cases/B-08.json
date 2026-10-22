@@ -1,0 +1,16 @@
+{
+  "case_id": "B-08",
+  "priority": "P1",
+  "group": "B｜建库与会话",
+  "status": "PASS",
+  "actual": "{\"hintMissing\":\"数据库所在文件夹不存在。\",\"hintRel\":\"请输入数据库的绝对路径。\",\"missingFile\":false}",
+  "expected": "提示具体错误，不生成半成品库",
+  "workspace": "-",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "缺失目录与相对路径均明确拒绝，未产生半成品库；只读目录子场景未构造，见 notes",
+  "timestamp": "2026-10-22T17:25:47.552Z",
+  "method": "DYNAMIC-BROWSER",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

@@ -1,0 +1,16 @@
+{
+  "case_id": "F-06",
+  "priority": "P0",
+  "group": "F｜业务整记录复制与跨区转移",
+  "status": "PASS",
+  "actual": "{\"transfer\":{\"status\":200,\"data\":{\"sourceId\":126,\"id\":127,\"sourceWorkspace\":\"company\",\"targetWorkspace\":\"personal\",\"moved\":true,\"links\":1,\"versions\":1,\"newObjects\":1}},\"sourceTrashEntry\":{\"kind\":\"contract\",\"id\":126,\"name\":\"P2F6-合同-Fmvjttspt\",\"section\":\"\",\"parent\":\"P2项目B\"},\"newContract\":127,\"newLinks\":1}",
+  "expected": "来源只在目标完整成功后软删除，不能成为孤儿",
+  "workspace": "company",
+  "record_ids": "126 127",
+  "evidence_paths": "",
+  "notes": "跨区 Move：目标合同与附件完整后来源合同软删；回收站条目仍带原所属项目名，说明未成为孤儿",
+  "timestamp": "2026-10-22T17:40:21.065Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

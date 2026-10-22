@@ -1,0 +1,16 @@
+{
+  "case_id": "B-02",
+  "priority": "P0",
+  "group": "B｜建库与会话",
+  "status": "PASS",
+  "actual": "{\"home\":{\"text\":\"个人工作台\\n\\nvault-b02.db · 0 条记录 · 0 个附件\\n\\n新建记录\\n分类目录\\n6 类\\n身份与资质\\n暂无记录\\n知识产权与著作\\n暂无记录\\n科研与合作项目\\n暂无记录\\n成果与奖励\\n暂无记录\\n学术与社会活动\\n暂无记录\\n其他资料\\n暂无记录\\n最近更新\\n查看全部\\n这个工作区还没有记录,点右上角「新建记录」开始。\\n资料库\\nvault-b02.db\\n已用 0 B\\n0 个附件\\n本地数据库，进度按 10 GB 参考刻度\",\"ws\":\"个人工作区\",\"cats\":[\"暂无记录\",\"暂无记录\",\"暂无记录\",\"暂无记录\",\"暂无记录\",\"暂无记录\"]},\"unlocked\":true,\"fileExists\":true,\"size\":114688,\"createMode\":true}",
+  "expected": "真实创建加密库并进入预期默认工作区",
+  "workspace": "personal",
+  "record_ids": "b02:E:\\Github\\管理系统\\build-retest\\phase2\\vault-b02.db",
+  "evidence_paths": "evidence/b-create.png",
+  "notes": "UI 创建加密库成功，默认进入个人工作区",
+  "timestamp": "2026-10-22T17:25:22.483Z",
+  "method": "DYNAMIC-BROWSER",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

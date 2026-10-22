@@ -1,0 +1,16 @@
+{
+  "case_id": "H-06",
+  "priority": "P0",
+  "group": "H｜公共 UI 与跨页面状态",
+  "status": "PASS",
+  "actual": "{\"deepBefore\":{\"view\":\"files\",\"folderId\":\"c:441\"},\"deepAfter\":{\"view\":\"files\",\"folderId\":\"c:441\"}}",
+  "expected": "保留当前目录，不返回工作区首页",
+  "workspace": "company",
+  "record_ids": "441",
+  "evidence_paths": "",
+  "notes": "合同内部点刷新仍停在原目录，未回到工作区首页",
+  "timestamp": "2026-10-22T18:21:20.914Z",
+  "method": "DYNAMIC-BROWSER",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

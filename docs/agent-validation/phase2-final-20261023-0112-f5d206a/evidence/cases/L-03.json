@@ -1,0 +1,16 @@
+{
+  "case_id": "L-03",
+  "priority": "P0",
+  "group": "L｜安全、视觉与最后收口",
+  "status": "PASS",
+  "actual": "{\"lockStatus\":200,\"unlockedAfterLock\":false,\"reopen\":{\"status\":200},\"countsBefore\":{\"folders\":454,\"foldersDeleted\":0,\"files\":197,\"filesDeleted\":0,\"file_objects\":211,\"file_versions\":217,\"file_chunks\":384,\"folder_file_links\":210,\"linksDeleted\":2},\"countsAfter\":{\"folders\":454,\"foldersDeleted\":0,\"files\":197,\"filesDeleted\":0,\"file_objects\":211,\"file_versions\":217,\"file_chunks\":384,\"folder_file_links\":210,\"linksDeleted\":2},\"countsIdentical\":true,\"integrityBefore\":\"ok\",\"integrityAfter\":\"ok\",\"projectsReadable\":145}",
+  "expected": "没有未声明的数据丢失或错误修改",
+  "workspace": "-",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "关库→重开这一往返后：folders/files/versions/objects/chunks/links 六项计数与关库前逐项相同，integrity 前后均为 ok，业务列表接口仍可读 —— 会话级别重启不造成未声明的数据丢失或改动（进程级重启见 A-05）",
+  "timestamp": "2026-10-22T19:10:00.328Z",
+  "method": "DYNAMIC-MIXED",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

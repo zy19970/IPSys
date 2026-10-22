@@ -1,0 +1,17 @@
+explorer-archive-operations-smoke.cjs|0|EXPLORER ARCHIVE F2-02 PASS: create, true parentId, mixed position, safe moves, deletion
+explorer-capabilities-smoke.cjs|0|EXPLORER CAPABILITIES PASS: streaming download, server search and purge progress
+explorer-f2-final-consistency-smoke.cjs|0|EXPLORER F2-06 PASS: row/menu selection, folder exportedCalls, virtual scope, chrome, modal guards and refresh state
+explorer-file-associate-smoke.cjs|0|EXPLORER F2-03 PASS: shared/moved LinkId, target scopes, duplicate, 409, workspace and task locks
+explorer-internal-dragdrop-smoke.cjs|0|EXPLORER F2-05 PASS: real drop dispatch, cancel, workspace lock, forbidden targets, 409 and single external upload
+explorer-p0-interactions-smoke.cjs|0|EXPLORER P0 INTERACTIONS PASS: logical delete dedup, partial failure refresh, refused lock preserves session
+explorer-p1-regression-smoke.cjs|0|EXPLORER P1 PASS: mixed archive order, module 500 error, trash 503 error, retry success
+explorer-p2-interactions-smoke.cjs|0|EXPLORER P2 PASS: 403 serial purge, failed-batch stop, F2 rename, safe upload target, no false pin
+explorer-record-transfer-smoke.cjs|0|EXPLORER F2-04 PASS: project/contract/IP/archive/general transfers, modules, project target and busy/409
+explorer-vault-create-smoke.cjs|0|EXPLORER VAULT CREATE PASS: create entry, confirmation, no-overwrite, normal open and secure resume
+export-smoke.cjs|0|EXPORT SMOKE PASS: naming, nested projects, archive directories, repeated folders, ZIP bytes, partial failures
+pdf-canvas-smoke.cjs|0|PDF CANVAS SMOKE PASS: offline assets, full-page Canvas, pagination, zoom, cleanup, security
+ui-assets-smoke.cjs|0|UI ASSETS SMOKE PASS: load order, bridge globals, fresh bundle, product invariants, MCP independence
+ui-tree-smoke.cjs|0|DRIVE TREE SMOKE PASS: project / contract / original nesting, rollups, identity, orphan guard
+upload-progress-smoke.cjs|0|UPLOAD PROGRESS SMOKE PASS: progress, server confirmation, failure/cancel and success auto-hide
+upload-unique-autosave-smoke.cjs|0|UPLOAD UNIQUE AUTO-SAVE AND DUPLICATE CONFIRMATION SMOKE PASS
+zip64-smoke.cjs|0|ZIP64 BIGINT RECORD SMOKE PASS

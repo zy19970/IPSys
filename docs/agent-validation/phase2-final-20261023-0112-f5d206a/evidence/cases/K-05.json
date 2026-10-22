@@ -1,0 +1,16 @@
+{
+  "case_id": "K-05",
+  "priority": "P0",
+  "group": "K｜大文件、并发与故障恢复",
+  "status": "PASS",
+  "actual": "{\"fileId\":206,\"linkId\":229,\"uploadSha\":\"5B625B239DC0887C3B477EAB57BFCF7E9B46126AED5C22FB089F7D187BD6C475\",\"size\":91,\"deleteStatus\":200,\"deleteBody\":{\"ok\":true},\"goneFromFolder\":true,\"db\":{\"writingBefore\":0,\"writingAfter\":0,\"writingRowsBefore\":[],\"missingChunks\":0,\"integrity\":\"ok\"}}",
+  "expected": "状态清晰，异步完成与 UI 不能产生竞态误报",
+  "workspace": "company",
+  "record_ids": "206 229",
+  "evidence_paths": "",
+  "notes": "上传返回后立即删除同一原件：删除请求成功、文件夹内不再出现该 link，SQLCipher 中半成品对象增量 0、无缺失 chunk 的 ready 对象 —— 异步提交与 UI 之间没有竞态误报",
+  "timestamp": "2026-10-22T19:06:56.421Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

@@ -1,0 +1,16 @@
+{
+  "case_id": "H-10",
+  "priority": "P1",
+  "group": "H｜公共 UI 与跨页面状态",
+  "status": "PASS",
+  "actual": "{\"listTitle\":\"P2H-项目-Hmvjv9sb9\",\"listSub\":\"\",\"gridTitle\":\"P2H-项目-Hmvjv9sb9\",\"sortedTitle\":\"P2H-项目-Hmvjv9sb9\",\"searchHit\":true,\"insideName\":\"我的文件\\n›\\n公司项目\\n›\\nP2H-项目-Hmvjv9sb9\"}",
+  "expected": "名称、图标、操作入口不随视图产生不同业务规则",
+  "workspace": "company",
+  "record_ids": "440",
+  "evidence_paths": "",
+  "notes": "列表/网格/改排序/搜索四种状态下同一记录名称一致，进入后标题一致，业务规则未随视图变化",
+  "timestamp": "2026-10-22T18:21:38.888Z",
+  "method": "DYNAMIC-BROWSER",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

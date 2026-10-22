@@ -1,0 +1,16 @@
+{
+  "case_id": "J-10",
+  "priority": "P0",
+  "group": "J｜回收站、永久清理与数据库安全",
+  "status": "PASS",
+  "actual": "{\"trashBefore\":30,\"buttonVisible\":true,\"prompt\":{\"shown\":true,\"title\":\"彻底删除\",\"text\":\"将永久删除 30 项,无法恢复。\"},\"toasts\":[\"已彻底删除 30 条记录\"],\"trashLeft\":0}",
+  "expected": "功能允许；不可逆提示明确，结果正确",
+  "workspace": "company",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "清空回收站可用：按钮在回收站视图可见，点击后先给出「将永久删除 30 项,无法恢复。」的不可逆提示，确认后清空 30 条并回显「已彻底删除 30 条」，服务端回收站为空",
+  "timestamp": "2026-10-22T18:44:43.824Z",
+  "method": "DYNAMIC-UI",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

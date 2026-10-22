@@ -1,0 +1,16 @@
+{
+  "case_id": "K-06",
+  "priority": "P0",
+  "group": "K｜大文件、并发与故障恢复",
+  "status": "PASS",
+  "actual": "{\"beforeWs\":\"\\n        \\n        企业工作区\\n        \\n      \",\"switched\":{\"ok\":true,\"ws\":\"个人工作区\",\"toasts\":[\"已切换到企业工作区\",\"导出完成。成功 2，失败 0，取消/未完成 0。\",\"导出完成。成功 1，失败 0，取消/未完成 0。\",\"已切换到个人工作区\"]},\"zipCount\":1,\"zipLen\":34603254,\"items\":[{\"name\":\"N04项目-Nmvjxmmkd/N06合同-Nmvjxmmkd/N06大附件-Nmvjxmmkd.bin\",\"size\":34603008,\"method\":0,\"sha\":\"91B5393E56AD3D87DDFFA50C61209B1676357721D1F5A8B880A9000011DCD4F5\"}],\"exportDone\":{\"done\":true,\"err\":null},\"personalFileNamesSample\":[\"P2个人项目附件.txt\",\"P2两页示例.pdf\",\"P2说明.txt\",\"P2示例图.png\",\"P2示例图.jpg\",\"P2示例文档.docx\",\"P2边界33M.bin\",\"P2F1-项目附件-Fmvjtrs8l.txt\"],\"onlyCompany\":true,\"bigOk\":true}",
+  "expected": "隔离及任务锁有效，不混入另一工作区文件",
+  "workspace": "company",
+  "record_ids": "227",
+  "evidence_paths": "",
+  "notes": "33 MiB 附件导出进行中切到个人工作区：切换本身成功（顶栏变为「个人工作区」），导出没有被中断也没有报错，最终 ZIP 里只有 1 个条目且落在公司侧「N04项目/N06合同」路径下，大小 34603008 字节、SHA-256 与原件一致；个人工作区同名文件 0 个混入 —— 浏览器侧逐附件拉流天然按 fileId 取数，跨区不串味",
+  "timestamp": "2026-10-22T19:26:54.524Z",
+  "method": "DYNAMIC-UI",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

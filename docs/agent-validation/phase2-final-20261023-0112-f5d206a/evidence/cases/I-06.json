@@ -1,0 +1,16 @@
+{
+  "case_id": "I-06",
+  "priority": "P1",
+  "group": "I｜PDF、Excel、搜索与导出",
+  "status": "GAP",
+  "actual": "{\"captured\":[{\"mode\":\"all\",\"ids\":null}],\"source\":\"frontend/explorer/js/excel.js:11 注释「新壳没有台账行概念,统一用 all」; excel.js:51 固定 {mode:\\\"all\\\",ids:null}\",\"uiHadSelection\":true}",
+  "expected": "输出范围与 UI 所选语义一致",
+  "workspace": "company",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "GAP：实际导出请求体恒为 mode=all、ids=null，UI 没有「筛选/选中/全部」三种范围；任务书 I-06 的前提在现有壳里不成立（已在 PLAN_REVIEW E-01 记录），无法按原判定标准执行",
+  "timestamp": "2026-10-22T18:25:07.759Z",
+  "method": "DYNAMIC-MIXED",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

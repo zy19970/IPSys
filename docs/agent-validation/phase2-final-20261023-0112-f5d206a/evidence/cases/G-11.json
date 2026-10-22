@@ -1,0 +1,16 @@
+{
+  "case_id": "G-11",
+  "priority": "P0",
+  "group": "G｜拖放、菜单与快捷键",
+  "status": "PASS",
+  "actual": "{\"formShown\":true,\"deleteOnForm\":{\"prevented\":false},\"ctrlAOnForm\":{\"prevented\":false},\"f2OnForm\":{\"prevented\":false},\"rowsAfter\":[\"c:422\",\"c:423\"],\"confirmShown\":true,\"deleteOnConfirm\":{\"prevented\":false},\"ctrlAOnConfirm\":{\"prevented\":false},\"deleteAgainOnConfirm\":{\"prevented\":false},\"contractsAlive\":true}",
+  "expected": "不能触发遮罩背后的批量删除或编辑",
+  "workspace": "company",
+  "record_ids": "421 422 423",
+  "evidence_paths": "",
+  "notes": "表单遮罩与确认框可见时 Delete/Ctrl+A/F2 均被吞掉（不 preventDefault、不触发背后批量删除或编辑），确认框不会被套开第二层",
+  "timestamp": "2026-10-22T18:10:27.805Z",
+  "method": "DYNAMIC-BROWSER",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

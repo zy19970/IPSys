@@ -1,0 +1,16 @@
+{
+  "case_id": "L-01",
+  "priority": "P0",
+  "group": "L｜安全、视觉与最后收口",
+  "status": "PASS",
+  "actual": "{\"noToken\":[{\"method\":\"GET\",\"path\":\"/api/v2/folders/company/project/:id\",\"status\":401,\"error\":null},{\"method\":\"POST\",\"path\":\"/api/v2/folders/company/project\",\"status\":401,\"error\":null},{\"method\":\"DELETE\",\"path\":\"/api/v2/files/company/:id/links/:id\",\"status\":401,\"error\":null},{\"method\":\"GET\",\"path\":\"/api/v2/files/company/:id/versions/:id/download\",\"status\":401,\"error\":null},{\"method\":\"POST\",\"path\":\"/api/v2/projects/company/:id/transfer\",\"status\":401,\"error\":null},{\"method\":\"POST\",\"path\":\"/api/trash/company/purge\",\"status\":401,\"error\":null}],\"badToken\":[{\"method\":\"GET\",\"path\":\"/api/v2/folders/company/project/:id\",\"status\":401,\"error\":null},{\"method\":\"POST\",\"path\":\"/api/v2/folders/company/project\",\"status\":401,\"error\":null},{\"method\":\"DELETE\",\"path\":\"/api/v2/files/company/:id/links/:id\",\"status\":401,\"error\":null},{\"method\":\"GET\",\"path\":\"/api/v2/files/company/:id/versions/:id/download\",\"status\":401,\"error\":null},{\"method\":\"POST\",\"path\":\"/api/v2/projects/company/:id/transfer\",\"status\":401,\"error\":null},{\"method\":\"POST\",\"path\":\"/api/trash/company/purge\",\"status\":401,\"error\":null}],\"authorizedStillWorks\":200}",
+  "expected": "服务器拒绝，不能仅靠前端按钮控制",
+  "workspace": "company",
+  "record_ids": "510 208",
+  "evidence_paths": "",
+  "notes": "无 token 与伪造 token 两种会话对「读取记录 / 新建项目 / 删除附件链接 / 下载原件 / 跨区转移 / 彻底删除」六类操作全部返回 401，恢复合法 token 后同一请求立即 200 —— 权限由服务端判定，不依赖前端按钮隐藏",
+  "timestamp": "2026-10-22T19:09:23.582Z",
+  "method": "DYNAMIC-MIXED",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

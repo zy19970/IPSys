@@ -1,0 +1,16 @@
+{
+  "case_id": "C-11",
+  "priority": "P0",
+  "group": "C｜业务记录与附件 CRUD",
+  "status": "PASS",
+  "actual": "{\"crossWorkspaceContract\":{\"status\":404,\"body\":{\"error\":\"合同所属项目不存在、已删除或不属于当前工作区：12。\"}},\"companyArchiveWithoutFolder\":{\"status\":400,\"body\":{\"error\":\"公司业务档案资料必须指定有效目录。\"}},\"personalCertificateWithoutFolder\":{\"status\":200,\"body\":{\"id\":47,\"reference\":{\"workspace\":\"personal\",\"kind\":\"archive\",\"id\":47,\"section\":\"certificate\",\"isValid\":true}},\"note\":\"个人资质/证书在设计中无目录层，允许直接建记录；这是预期而非缺陷\"}}",
+  "expected": "返回明确拒绝，不能被 UI 当成空列表或成功",
+  "workspace": "company;personal",
+  "record_ids": "47",
+  "evidence_paths": "",
+  "notes": "跨区合同 404、公司档案无目录 400 均明确拒绝；个人证书无目录成功属设计（测试器最初把它误当非法写入）",
+  "timestamp": "2026-10-22T17:29:16.922Z",
+  "method": "DYNAMIC-HTTP+UI",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

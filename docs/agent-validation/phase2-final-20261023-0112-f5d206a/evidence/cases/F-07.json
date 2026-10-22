@@ -1,0 +1,16 @@
+{
+  "case_id": "F-07",
+  "priority": "P0",
+  "group": "F｜业务整记录复制与跨区转移",
+  "status": "PASS",
+  "actual": "{\"missing\":{\"status\":404,\"data\":{\"error\":\"目标项目不存在或已经删除。\"}},\"crossWorkspaceMismatch\":{\"status\":404,\"data\":{\"error\":\"目标项目不存在或已经删除。\"}},\"before\":{\"links\":1,\"parent\":12},\"after\":{\"links\":1,\"parent\":12,\"deleted\":false}}",
+  "expected": "整个事务回滚，来源合同保持可用",
+  "workspace": "company",
+  "record_ids": "128",
+  "evidence_paths": "",
+  "notes": "目标项目不存在与工作区不匹配均 404，来源合同与附件链接完全不变（事务未开或已回滚）",
+  "timestamp": "2026-10-22T17:40:21.134Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

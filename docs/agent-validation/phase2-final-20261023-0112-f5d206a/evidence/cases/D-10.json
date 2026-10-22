@@ -1,0 +1,16 @@
+{
+  "case_id": "D-10",
+  "priority": "P1",
+  "group": "D｜多级档案目录与排序",
+  "status": "PASS",
+  "actual": "{\"submitSubset\":409,\"body\":{\"error\":\"排序内容已变化，请刷新后重试。\"},\"fullSiblingCount\":2}",
+  "expected": "不会只提交筛选子集导致隐蔽项位置丢失",
+  "workspace": "company",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "只提交 1 条子集被拒绝，避免隐藏项位置丢失",
+  "timestamp": "2026-10-22T17:30:11.924Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

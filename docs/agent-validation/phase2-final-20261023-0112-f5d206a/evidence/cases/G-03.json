@@ -1,0 +1,16 @@
+{
+  "case_id": "G-03",
+  "priority": "P0",
+  "group": "G｜拖放、菜单与快捷键",
+  "status": "PASS",
+  "actual": "{\"toOwnerRecord\":{\"modal\":false,\"toasts\":[\"附件只能在同一工作区的不同业务记录间移动\"]},\"toBlank\":{\"dropBlank\":{\"prevented\":false},\"modal\":false,\"toasts\":[\"附件只能在同一工作区的不同业务记录间移动\"]},\"toArchiveFolder\":{\"afId\":\"af:1\",\"modal\":false,\"toasts\":[\"附件只能在同一工作区的不同业务记录间移动\"]},\"linksBefore\":1,\"linksAfter\":1,\"kept\":1}",
+  "expected": "不得提交文件关联移动",
+  "workspace": "company",
+  "record_ids": "398 399",
+  "evidence_paths": "",
+  "notes": "三类非法目标（来源记录自身、空白/虚拟根、业务档案系统目录）均未弹出确认、未提交关联移动，来源关联保持 1 条；注意 (c) 在真实使用中附件行与目录行不同屏，只能验证「不写入」而非「按类别拒绝」",
+  "timestamp": "2026-10-22T18:09:26.144Z",
+  "method": "DYNAMIC-BROWSER",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

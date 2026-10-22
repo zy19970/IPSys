@@ -1,0 +1,16 @@
+{
+  "case_id": "B-03",
+  "priority": "P0",
+  "group": "B｜建库与会话",
+  "status": "PASS",
+  "actual": "{\"hint1\":\"两次输入的数据库密码不一致或为空。\",\"openRequestsMismatch\":0,\"fileAfterMismatch\":false,\"hint2\":\"两次输入的数据库密码不一致或为空。\",\"openRequestsEmpty\":0,\"fileAfterEmpty\":false}",
+  "expected": "客户端拒绝且无创建请求或残留库",
+  "workspace": "-",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "两次客户端校验均拒绝，未发出 /api/open，未产生残留库",
+  "timestamp": "2026-10-22T17:25:20.196Z",
+  "method": "DYNAMIC-BROWSER",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

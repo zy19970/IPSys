@@ -1,0 +1,16 @@
+{
+  "case_id": "F-11",
+  "priority": "P0",
+  "group": "F｜业务整记录复制与跨区转移",
+  "status": "PASS",
+  "actual": "{\"create\":{\"status\":200,\"id\":138,\"data\":{\"id\":138,\"reference\":{\"workspace\":\"company\",\"kind\":\"archive\",\"id\":138,\"section\":\"certificate\",\"isValid\":true}}},\"transfer\":{\"status\":400,\"data\":{\"error\":\"目标资料类别不兼容：科研成果可在 company/achievement 与 personal/achievement、personal/academic 之间转移；certificate 不支持跨工作区转移。\"}},\"sourceIntact\":true}",
+  "expected": "UI 不提供或服务端拒绝，不允许绕过资质边界",
+  "workspace": "company",
+  "record_ids": "138",
+  "evidence_paths": "",
+  "notes": "资质证书跨工作区被服务端以 400 明确拒绝（Module 不兼容），来源记录保持可用，边界无法绕过",
+  "timestamp": "2026-10-22T17:40:21.642Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

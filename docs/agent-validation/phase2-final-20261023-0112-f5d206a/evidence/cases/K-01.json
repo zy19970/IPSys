@@ -1,0 +1,16 @@
+{
+  "case_id": "K-01",
+  "priority": "P0",
+  "group": "K｜大文件、并发与故障恢复",
+  "status": "PASS",
+  "actual": "{\"sizeBytes\":34603008,\"clientSha\":\"51A46BCFE2A49C850934744151B996630099BE9988710A58E1830E236DE2C294\",\"sampleCount\":6,\"stages\":[\"正在发送原件…\",\"已发送 100%，正在等待服务器完成 SHA-256 校验和加密入库…\",\"上传已结束。 已保存 1，失败 0，跳过/未处理 0。\"],\"byteTexts\":[\"13.2 MiB / 33.0 MiB\",\"16.3 MiB / 33.0 MiB\",\"23.3 MiB / 33.0 MiB\",\"29.9 MiB / 33.0 MiB\",\"33.0 MiB / 33.0 MiB · 31.0 MiB/s\",\"以服务器保存结果为准；已发送 100% 不代表已入库。\"],\"server\":{\"status\":200,\"len\":34603008,\"sha\":\"51A46BCFE2A49C850934744151B996630099BE9988710A58E1830E236DE2C294\"},\"linkId\":225,\"fileId\":202,\"serverFileMeta\":{\"name\":\"K01大文件-K1mvjwlhem.bin\",\"id\":202}}",
+  "expected": "可见真实进度，最终 SHA/大小正确",
+  "workspace": "company",
+  "record_ids": "202",
+  "evidence_paths": "",
+  "notes": "33 MiB（跨过 32 MiB 流式阈值）拖放上传：进度面板依次出现「正在发送原件…」与「已发送 100%，正在等待服务器完成 SHA-256 校验和加密入库…」，采样到 6 个进度快照；服务端落盘 34603008 字节且 SHA-256 与浏览器端计算值逐字节一致",
+  "timestamp": "2026-10-22T18:58:05.816Z",
+  "method": "DYNAMIC-UI",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

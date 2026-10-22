@@ -1,0 +1,16 @@
+{
+  "case_id": "D-06",
+  "priority": "P0",
+  "group": "D｜多级档案目录与排序",
+  "status": "PASS",
+  "actual": "{\"move\":200,\"parent\":52,\"expected\":52}",
+  "expected": "路径与层级实时更新，刷新后不回退",
+  "workspace": "company",
+  "record_ids": "50",
+  "evidence_paths": "",
+  "notes": "子目录移动后父级实时更新且持久",
+  "timestamp": "2026-10-22T17:30:11.757Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

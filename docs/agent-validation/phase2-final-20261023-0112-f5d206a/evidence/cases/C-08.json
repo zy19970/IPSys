@@ -1,0 +1,16 @@
+{
+  "case_id": "C-08",
+  "priority": "P0",
+  "group": "C｜业务记录与附件 CRUD",
+  "status": "PASS",
+  "actual": "{\"delete\":200,\"keptStatus\":200,\"keptName\":\"C08-保留合同\",\"projectFilesBefore\":6,\"projectFilesAfter\":6}",
+  "expected": "其它合同和项目附件完全不受影响",
+  "workspace": "company",
+  "record_ids": "37 38",
+  "evidence_paths": "",
+  "notes": "同项目多合同删一条，另一条与项目附件均不受影响",
+  "timestamp": "2026-10-22T17:28:13.097Z",
+  "method": "DYNAMIC-HTTP+UI",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

@@ -1,0 +1,16 @@
+{
+  "case_id": "L-08",
+  "priority": "P0",
+  "group": "L｜安全、视觉与最后收口",
+  "status": "PASS",
+  "actual": "{\"total\":132,\"planTotal\":132,\"missing\":[],\"extra\":[],\"histogram\":{\"PASS\":126,\"GAP\":2,\"BLOCKED\":3,\"CONFIRMED_BUG\":1},\"confirmedBugs\":[\"I-08\"],\"blocked\":[\"A-05\",\"K-09\",\"K-11\"],\"gaps\":[\"A-02\",\"I-06\"],\"bugAudit\":[{\"id\":\"I-08\",\"priority\":\"P0\",\"notes\":\"500 分支正常（界面给出「检索失败」）；401 分支不合格：前端在 store.js:87-90 已清空 token 并置 locked=true，但既不弹锁屏也不提示需要重新登录，用户看到的是「检索失败 / 本地已加载的内容里也没有匹配项」，随后所有请求持续 401（after401={\\\"reload\\\":\\\"fail\\\",\\\"msg\\\":\\\"请求失败：401\\\"}）—— 会话静默失效且被呈现为空结果\",\"hasActual\":true,\"actualLen\":312,\"repro\":\"run-i3.cjs（401 后 token 被清但锁屏不出现、无提示）\",\"workspace\":\"company\",\"commit\":\"f5d206a\"}],\"correctedFromProbeDefect\":[{\"id\":\"K-05\",\"status\":\"PASS\",\"notes\":\"上传返回后立即删除同一原件：删除请求成功、文件夹内不再出现该 link，SQLCipher 中半成品对象增量 0、无缺失\"},{\"id\":\"K-08\",\"status\":\"PASS\",\"notes\":\"手动压缩 SQLCipher：任务 succeeded，压缩后 integrity=ok、外键 0 违规，folders\"},{\"id\":\"K-10\",\"status\":\"PASS\",\"notes\":\"上传请求被强制中断后：数据库 integrity=ok、外键 0 违规、无悬挂 ready 对象（半成品对象会在下一次打\"},{\"id\":\"K-12\",\"status\":\"PASS\",\"notes\":\"33 MiB 大文件彻底删除后再压缩：物理对象与 chunk 均已回收（objects 209→208，chunks 4\"},{\"id\":\"L-05\",\"status\":\"PASS\",\"notes\":\"1366×768 与 1920×1080 两档：首页分类卡片与台账列表均正常渲染、表头宽度随视口自适应、文档无横向溢出；\"},{\"id\":\"L-06\",\"status\":\"PASS\",\"notes\":\"在项目台账列表抽查 6 个主入口（刷新/新建/排序/详情开关/台账导出/工作区切换）全部存在且点击后都有可观测反应（to\"},{\"id\":\"A-03\",\"status\":\"PASS\",\"notes\":\"A-04/A-07 在建项目、传附件、上传 33 MiB 与双版本之后再次取指纹：真实资料库 IPSys-web-tes\"},{\"id\":\"A-04\",\"status\":\"PASS\",\"notes\":\"两工作区基准数据齐备（企业：项目 147 / 知产 10 / 档案 19；个人：17 / 8 / 13）；每类都取到带附\"},{\"id\":\"A-07\",\"status\":\"PASS\",\"notes\":\"生成并留存索引 evidence\\\\a07-fixture-index.json：2 页 PDF、1 KB 文本、JPEG\"}]}",
+  "expected": "没有把脚本异常直接算产品 BUG，最终报告可复核",
+  "workspace": "-",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "132 条任务书用例全部有落盘记录（缺 0 / 多 0）：PASS 126、CONFIRMED_BUG 1、BLOCKED 3、GAP 2。1 条 BUG 全部有非空实际值与登记过的复现脚本（I-08），BLOCKED/GAP 一条都没有被算成 PASS；另有 9 条曾被探针缺陷误判为 BUG，复核后已纠正为 PASS 并在 TEST_ERRORS_AND_BLOCKERS.md 留痕 —— 脚本异常没有被记成产品缺陷",
+  "timestamp": "2026-10-22T19:27:32.016Z",
+  "method": "DYNAMIC-MIXED",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

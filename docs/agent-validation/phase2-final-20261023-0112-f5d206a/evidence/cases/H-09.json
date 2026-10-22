@@ -1,0 +1,16 @@
+{
+  "case_id": "H-09",
+  "priority": "P1",
+  "group": "H｜公共 UI 与跨页面状态",
+  "status": "PASS",
+  "actual": "{\"intercepted\":5,\"state\":{\"toasts\":[\"刷新失败：项目加载失败：H-09 注入的 500\"],\"rows\":115,\"view\":\"files\",\"err\":\"\"}}",
+  "expected": "显示真实错误，不以已刷新或空库伪装成功",
+  "workspace": "company",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "对所有 /api/v2/ui/* 注入 500 后点刷新：界面明确提示「刷新失败」，列表保留原有内容而不是空库/已刷新的假成功",
+  "timestamp": "2026-10-22T18:21:31.827Z",
+  "method": "DYNAMIC-BROWSER",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

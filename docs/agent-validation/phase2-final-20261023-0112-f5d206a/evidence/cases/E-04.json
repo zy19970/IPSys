@@ -1,0 +1,16 @@
+{
+  "case_id": "E-04",
+  "priority": "P0",
+  "group": "E｜附件、关联与版本",
+  "status": "PASS",
+  "actual": "{\"associate\":200,\"newLink\":26,\"sourceLink\":7,\"fileId\":7}",
+  "expected": "目标有新 LinkId，FileId 相同，原件只存一份",
+  "workspace": "company",
+  "record_ids": "7 26",
+  "evidence_paths": "",
+  "notes": "目标记录生成新 LinkId，FileId 不变，原件只存一份",
+  "timestamp": "2026-10-22T17:32:10.235Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

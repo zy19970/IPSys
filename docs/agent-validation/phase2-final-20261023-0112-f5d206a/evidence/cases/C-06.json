@@ -1,0 +1,16 @@
+{
+  "case_id": "C-06",
+  "priority": "P1",
+  "group": "C｜业务记录与附件 CRUD",
+  "status": "PASS",
+  "actual": "{\"create\":[200,200,200,200],\"update\":200,\"name\":\"C06-个人获奖-改\",\"section\":\"achievement\"}",
+  "expected": "卡片入口、详情表格与记录编辑闭环",
+  "workspace": "personal",
+  "record_ids": "31 32 33 34",
+  "evidence_paths": "",
+  "notes": "个人获奖/论文/科研项目/专利四类抽样 CRUD 通过（教育/工作/兼职等为同一 Archive 表单的不同类别，未逐项展开）",
+  "timestamp": "2026-10-22T17:28:12.918Z",
+  "method": "DYNAMIC-HTTP+UI",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

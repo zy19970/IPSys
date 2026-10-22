@@ -1,0 +1,16 @@
+{
+  "case_id": "I-04",
+  "priority": "P0",
+  "group": "I｜PDF、Excel、搜索与导出",
+  "status": "PASS",
+  "actual": "{\"exportStatus\":200,\"bytes\":8961,\"isZip\":true,\"importStatus\":200,\"importBody\":\"{\\\"created\\\":116,\\\"updated\\\":0,\\\"skipped\\\":0,\\\"failed\\\":0,\\\"errors\\\":[],\\\"omittedErrors\\\":0,\\\"total\\\":116}\",\"srcCount\":116,\"newCount\":116,\"namesMatch\":true,\"fieldsOk\":\"U-Umvjupcra\",\"newDb\":\"E:\\\\Github\\\\管理系统\\\\build-retest\\\\phase2\\\\vault-i-Imvjve5mi.db\"}",
+  "expected": "记录数、字段、金额、日期及归属关系正确",
+  "workspace": "company",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "Excel 台账导出后导入全新测试库：记录数 116→116 一致、名称集合一致、业务字段（类型/编号）完整",
+  "timestamp": "2026-10-22T18:25:23.065Z",
+  "method": "DYNAMIC-MIXED",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

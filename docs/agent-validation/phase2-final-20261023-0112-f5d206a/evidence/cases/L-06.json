@@ -1,0 +1,16 @@
+{
+  "case_id": "L-06",
+  "priority": "P1",
+  "group": "L｜安全、视觉与最后收口",
+  "status": "PASS",
+  "actual": "{\"probedAt\":\"项目台账列表\",\"results\":[{\"label\":\"刷新\",\"sel\":\"#btnRefresh\",\"exists\":true,\"disabled\":false,\"hiddenByBox\":false,\"reacted\":true,\"before\":{\"toasts\":0,\"masks\":0,\"ctx\":false,\"view\":\"files\",\"folder\":\"k:project\",\"detail\":false,\"hiddenByBox\":false,\"disabled\":false},\"after\":{\"toasts\":1,\"masks\":0,\"ctx\":false,\"view\":\"files\",\"folder\":\"k:project\",\"detail\":false,\"hiddenByBox\":false,\"disabled\":false}},{\"label\":\"新建\",\"sel\":\"#btnNew\",\"exists\":true,\"disabled\":false,\"hiddenByBox\":false,\"reacted\":true,\"before\":{\"toasts\":1,\"masks\":0,\"ctx\":false,\"view\":\"files\",\"folder\":\"k:project\",\"detail\":false,\"hiddenByBox\":false,\"disabled\":false},\"after\":{\"toasts\":1,\"masks\":0,\"ctx\":true,\"view\":\"files\",\"folder\":\"k:project\",\"detail\":false,\"hiddenByBox\":false,\"disabled\":false}},{\"label\":\"排序\",\"sel\":\"#btnSort\",\"exists\":true,\"disabled\":false,\"hiddenByBox\":false,\"reacted\":true,\"before\":{\"toasts\":1,\"masks\":0,\"ctx\":false,\"view\":\"files\",\"folder\":\"k:project\",\"detail\":false,\"hiddenByBox\":false,\"disabled\":false},\"after\":{\"toasts\":1,\"masks\":0,\"ctx\":true,\"view\":\"files\",\"folder\":\"k:project\",\"detail\":false,\"hiddenByBox\":false,\"disabled\":false}},{\"label\":\"详情面板开关\",\"sel\":\"#btnDetailToggle\",\"exists\":true,\"disabled\":false,\"hiddenByBox\":false,\"reacted\":true,\"before\":{\"toasts\":1,\"masks\":0,\"ctx\":false,\"view\":\"files\",\"folder\":\"k:project\",\"detail\":false,\"hiddenByBox\":false,\"disabled\":false},\"after\":{\"toasts\":0,\"masks\":0,\"ctx\":false,\"view\":\"files\",\"folder\":\"k:project\",\"detail\":true,\"hiddenByBox\":false,\"disabled\":false}},{\"label\":\"台账导出（项目台账适用）\",\"sel\":\"#btnExcelExport\",\"exists\":true,\"disabled\":false,\"hiddenByBox\":false,\"reacted\":true,\"before\":{\"toasts\":0,\"masks\":0,\"ctx\":false,\"view\":\"files\",\"folder\":\"k:project\",\"detail\":false,\"hiddenByBox\":false,\"disabled\":false},\"after\":{\"toasts\":1,\"masks\":0,\"ctx\":false,\"view\":\"files\",\"folder\":\"k:project\",\"detail\":false,\"hiddenByBox\":false,\"disabled\":false}},{\"label\":\"工作区切换\",\"sel\":\"#wsSwitchBtn\",\"exists\":true,\"disabled\":false,\"hiddenByBox\":false,\"reacted\":true,\"before\":{\"toasts\":1,\"masks\":0,\"ctx\":false,\"view\":\"files\",\"folder\":\"k:project\",\"detail\":false,\"hiddenByBox\":false,\"disabled\":false},\"after\":{\"toasts\":1,\"masks\":0,\"ctx\":true,\"view\":\"files\",\"folder\":\"k:project\",\"detail\":false,\"hiddenByBox\":false,\"disabled\":false}}],\"trashButtonOutsideRecycle\":{\"exists\":true,\"hidden\":true},\"deadEntries\":[]}",
+  "expected": "没有点击无反应却声称功能的控件",
+  "workspace": "company",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "在项目台账列表抽查 6 个主入口（刷新/新建/排序/详情开关/台账导出/工作区切换）全部存在且点击后都有可观测反应（toast、菜单、详情面板或视图变化）；「清空回收站」在非回收站视图按设计隐藏，不存在点了没反应的伪控件",
+  "timestamp": "2026-10-22T19:11:53.224Z",
+  "method": "DYNAMIC-MIXED",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

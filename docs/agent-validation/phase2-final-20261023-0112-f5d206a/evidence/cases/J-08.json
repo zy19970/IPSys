@@ -1,0 +1,16 @@
+{
+  "case_id": "J-08",
+  "priority": "P0",
+  "group": "J｜回收站、永久清理与数据库安全",
+  "status": "PASS",
+  "actual": "{\"trashBefore\":403,\"uiRows\":403,\"selected\":403,\"batches\":[200,200,3],\"total\":403,\"taskState\":{\"taskId\":\"4793cf3c19a047bdb61f76e44237a5c4\",\"workspace\":\"company\",\"state\":\"succeeded\",\"stage\":\"已提交数据库事务，永久删除成功\",\"bytesDone\":0,\"bytesTotal\":0,\"count\":3,\"error\":null},\"toasts\":[\"已彻底删除 403 条记录\"],\"trashLeft\":0}",
+  "expected": "执行 200/200/3 三批或等价安全限额分批",
+  "workspace": "company",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "选择 403 条：按 200/200/3 三批真实提交（服务端上限正是 200），任务 succeeded，toast 与实际提交条数 403 一致",
+  "timestamp": "2026-10-22T18:42:15.846Z",
+  "method": "DYNAMIC-UI",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

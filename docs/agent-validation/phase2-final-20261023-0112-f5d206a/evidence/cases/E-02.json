@@ -1,0 +1,16 @@
+{
+  "case_id": "E-02",
+  "priority": "P0",
+  "group": "E｜附件、关联与版本",
+  "status": "PASS",
+  "actual": "{\"linkRowsForFile\":1,\"latestVersion\":2,\"v1\":\"871760d8b21d2729\",\"v2\":\"1a745e8771a92912\"}",
+  "expected": "列表每条 LinkId 只出现一行最新版，历史版本仍可访问",
+  "workspace": "company",
+  "record_ids": "7 7",
+  "evidence_paths": "",
+  "notes": "同一 linkId 在列表中只一行，历史 v1/v2 均可下载且 SHA 与上传一致",
+  "timestamp": "2026-10-22T17:32:10.188Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

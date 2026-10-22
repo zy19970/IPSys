@@ -1,0 +1,16 @@
+{
+  "case_id": "E-07",
+  "priority": "P0",
+  "group": "E｜附件、关联与版本",
+  "status": "PASS",
+  "actual": "{\"status\":409,\"body\":{\"error\":\"此原件已关联目标文件夹。\"},\"before\":1,\"after\":1}",
+  "expected": "显示冲突，无重复 LinkId，原位置未丢失",
+  "workspace": "company",
+  "record_ids": "7",
+  "evidence_paths": "",
+  "notes": "目标已关联同一 FileId 时返回冲突，未生成重复 LinkId",
+  "timestamp": "2026-10-22T17:32:10.352Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

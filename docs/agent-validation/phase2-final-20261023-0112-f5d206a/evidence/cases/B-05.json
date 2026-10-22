@@ -1,0 +1,16 @@
+{
+  "case_id": "B-05",
+  "priority": "P0",
+  "group": "B｜建库与会话",
+  "status": "PASS",
+  "actual": "{\"wrongHint\":\"数据库打开失败：SQLite Error 26: 'file is not a database'.\",\"unlockedAfterWrong\":false,\"home\":{\"text\":\"个人工作台\\n\\nvault-p2-p2b.db · 4 条记录 · 2 个附件 · 32 B\\n\\n新建记录\\n分类目录\\n6 类\\n身份与资质\\n暂无记录\\n知识产权与著作\\n1 条记录 · 1 个附件 · 14 B\\n科研与合作项目\\n1 条记录 · 1 个附件 · 18 B\\n更新 01-01\\n成果与奖励\\n1 条记录 · 0 个附件\\n学术与社会活动\\n暂无记录\\n其他资料\\n1 条记录 · 0 个附件\\n最近更新\\n查看全部\\nP2个人档案-01\\n成果与奖励 · 01-01\\n资料库\\nvault-p2-p2b.db\\n已用 32 B\\n2 个附件\\n本\",\"ws\":\"个人工作区\",\"cats\":[\"暂无记录\",\"1 条记录 · 1 个附件 · 14 B\",\"1 条记录 · 1 个附件 · 18 B\",\"成果与奖励\",\"暂无记录\",\"1 条记录 · 0 个附件\"]}}",
+  "expected": "错误密码不解锁，正确密码正常",
+  "workspace": "personal",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "错误密码不解锁，正确密码正常打开",
+  "timestamp": "2026-10-22T17:25:35.435Z",
+  "method": "DYNAMIC-BROWSER",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

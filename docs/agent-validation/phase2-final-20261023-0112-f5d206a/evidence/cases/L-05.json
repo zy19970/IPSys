@@ -1,0 +1,16 @@
+{
+  "case_id": "L-05",
+  "priority": "P1",
+  "group": "L｜安全、视觉与最后收口",
+  "status": "PASS",
+  "actual": "{\"shots\":[{\"w\":1366,\"h\":768,\"dpr\":1,\"home\":{\"cards\":5,\"cols\":3,\"overflowX\":false},\"list\":{\"rows\":146,\"headWidth\":1083,\"overflowX\":false},\"detail\":{\"open\":true,\"width\":320,\"right\":1366,\"winW\":1366},\"file\":\"l05-1366x768-Lmvjx30h2.png\"},{\"w\":1920,\"h\":1080,\"dpr\":1,\"home\":{\"cards\":5,\"cols\":5,\"overflowX\":false},\"list\":{\"rows\":146,\"headWidth\":1637,\"overflowX\":false},\"detail\":{\"open\":true,\"width\":320,\"right\":1920,\"winW\":1920},\"file\":\"l05-1920x1080-Lmvjx30h2.png\"}]}",
+  "expected": "行操作菜单、弹窗、表格纵横滚动可用",
+  "workspace": "company",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "1366×768 与 1920×1080 两档：首页分类卡片与台账列表均正常渲染、表头宽度随视口自适应、文档无横向溢出；详情面板在两档下都能打开且不越出视口右边界（截图见 evidence/shots/）",
+  "timestamp": "2026-10-22T19:11:43.548Z",
+  "method": "DYNAMIC-MIXED",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

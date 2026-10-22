@@ -1,0 +1,16 @@
+{
+  "case_id": "A-05",
+  "priority": "P1",
+  "group": "A｜环境与基线",
+  "status": "BLOCKED",
+  "actual": "{\"csprojFound\":[\"src\\\\IPSys.Web\\\\IPSys.Web.csproj\"],\"winFormsProjects\":[\"E:\\\\Github\\\\管理系统\\\\src\\\\IPSys.Web\\\\IPSys.Web.csproj\"],\"launcherExe\":true,\"note\":\"仓库仅含 src/IPSys.Web 一个 ASP.NET Core 项目，没有 WinForms 启动器工程或成品 exe；本轮以 build-retest/IPSys.Web.exe 直接承载 + 独立 --user-data-dir 的 Edge 实例做等价验证\"}",
+  "expected": "浏览器和宿主正常协同，不依赖调试专用静态页面",
+  "workspace": "-",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "BLOCKED：任务书要求的 WinForms 启动器在本仓库内不存在（src/ 下只有 IPSys.Web 一个 ASP.NET Core 项目，无 UseWindowsForms 工程），无法执行「启动器拉起 Edge 并随进程退出」这条路径；等价路径（宿主 exe + 独立 Edge 实例）已在 A-06 与 K/L 组覆盖，但不等同，故不记为 PASS",
+  "timestamp": "2026-10-22T19:17:12.238Z",
+  "method": "DYNAMIC-MIXED",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

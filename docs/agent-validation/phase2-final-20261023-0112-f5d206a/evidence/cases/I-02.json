@@ -1,0 +1,16 @@
+{
+  "case_id": "I-02",
+  "priority": "P1",
+  "group": "I｜PDF、Excel、搜索与导出",
+  "status": "PASS",
+  "actual": "{\"img\":{\"mask\":true,\"img\":true,\"natural\":1,\"src\":\"blob:http://\"},\"masksAfterImgClose\":0,\"binState\":{\"masks\":0,\"confirm\":true,\"text\":\"「I2边界-I2mvjvo4rn.bin」无法在浏览器内预览,是否下载？\"},\"reopen\":{\"masks\":1,\"canvas\":true},\"masksAfterFinalClose\":0}",
+  "expected": "正确展示或提供下载，不残留对象 URL/幽灵弹窗",
+  "workspace": "company",
+  "record_ids": "168 169",
+  "evidence_paths": "",
+  "notes": "图片预览 naturalWidth=1（真实解码）；非预览类型不建遮罩而是弹「无法在浏览器内预览」确认框；关闭后遮罩数 0，重开 PDF 只有 1 个遮罩 —— 无对象 URL 残留/幽灵弹窗",
+  "timestamp": "2026-10-22T18:32:14.543Z",
+  "method": "DYNAMIC-MIXED",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

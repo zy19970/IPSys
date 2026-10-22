@@ -1,0 +1,16 @@
+{
+  "case_id": "G-04",
+  "priority": "P0",
+  "group": "G｜拖放、菜单与快捷键",
+  "status": "PASS",
+  "actual": "{\"crossWorkspace\":{\"modal\":false,\"toasts\":[]},\"targetDeletedMidDrag\":{\"modal\":true,\"toasts\":[\"移动附件失败：请求失败：404\"]},\"sourceKept\":true,\"links\":1}",
+  "expected": "必须拒绝并保持源关联",
+  "workspace": "company",
+  "record_ids": "400 401",
+  "evidence_paths": "",
+  "notes": "拖放期间切工作区被丢弃（无确认框），目标记录被删后 drop 不产生跨区/孤儿关联，来源关联始终保留",
+  "timestamp": "2026-10-22T18:09:41.808Z",
+  "method": "DYNAMIC-BROWSER",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

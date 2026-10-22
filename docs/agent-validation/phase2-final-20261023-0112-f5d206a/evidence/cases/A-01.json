@@ -1,0 +1,16 @@
+{
+  "case_id": "A-01",
+  "priority": "P0",
+  "group": "A｜环境与基线",
+  "status": "PASS",
+  "actual": "{\"branch\":\"work/onedrive-file-manager\",\"head\":\"f5d206aec329340ad9d5f6e80fe3451b75d9bd93\",\"shortHead\":\"f5d206ae\",\"dirtyCount\":6,\"dirtyPaths\":[\"M docs/agent-validation/20261022-185856-49ecf63/REPORT.md\",\" M docs/agent-validation/20261022-185856-49ecf63/scripts/t-http.cjs\",\" M docs/agent-validation/20261022-185856-49ecf63/scripts/t-tree.cjs\",\"?? docs/agent-validation/20261022-185856-49ecf63/RECHECK-LATEST.md\",\"?? docs/agent-validation/20261022-185856-49ecf63/evidence/recheck-latest/\",\"?? docs/agent-validation/phase2-final-20261023-0112-f5d206a/\"],\"productSourceDirty\":[],\"expectBranch\":\"work/onedrive-file-manager\"}",
+  "expected": "仅在指定分支和受控测试环境操作，不覆盖其他人的修改",
+  "workspace": "-",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "当前分支 work/onedrive-file-manager，HEAD f5d206ae（f5d206aec329340ad9d5f6e80fe3451b75d9bd93）；工作树有 6 项改动，全部落在 docs/agent-validation/ 的本轮报告与证据目录，src/ 与 frontend/ 零改动 —— 未覆盖任何产品代码或他人修改，也未触碰 main",
+  "timestamp": "2026-10-22T19:17:03.178Z",
+  "method": "DYNAMIC-MIXED",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

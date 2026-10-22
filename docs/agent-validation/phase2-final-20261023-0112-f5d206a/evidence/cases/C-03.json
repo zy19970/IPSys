@@ -1,0 +1,16 @@
+{
+  "case_id": "C-03",
+  "priority": "P0",
+  "group": "C｜业务记录与附件 CRUD",
+  "status": "PASS",
+  "actual": "{\"noParent\":{\"status\":400,\"body\":{\"error\":\"创建合同必须指定所属项目：请提供顶层 parentId 或 projectId，把合同对象原样回传时 contract.projectId 也接受。\"}},\"badParent\":{\"status\":404,\"body\":{\"error\":\"合同所属项目不存在、已删除或不属于当前工作区：999999999。\"}},\"beforeContracts\":4,\"afterContracts\":4}",
+  "expected": "不产生孤儿合同，给出明确约束",
+  "workspace": "company",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "无父项目与不存在父项目均被拒绝，未生成孤儿合同",
+  "timestamp": "2026-10-22T17:28:12.542Z",
+  "method": "DYNAMIC-HTTP+UI",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

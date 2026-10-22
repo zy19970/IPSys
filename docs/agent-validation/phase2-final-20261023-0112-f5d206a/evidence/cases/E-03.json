@@ -1,0 +1,16 @@
+{
+  "case_id": "E-03",
+  "priority": "P0",
+  "group": "E｜附件、关联与版本",
+  "status": "PASS",
+  "actual": "{\"update\":200,\"versionsBefore\":3,\"versionsAfter\":3,\"description\":\"E03-备注\",\"tags\":\"E03,标签\",\"number\":\"E03-001\"}",
+  "expected": "元数据不创建假文件版本",
+  "workspace": "company",
+  "record_ids": "7",
+  "evidence_paths": "",
+  "notes": "文件备注/标签/文号更新成功，历史版本数不变（元数据不伪造新版本）",
+  "timestamp": "2026-10-22T17:32:46.443Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

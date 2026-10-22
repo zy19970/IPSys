@@ -1,0 +1,16 @@
+{
+  "case_id": "D-02",
+  "priority": "P0",
+  "group": "D｜多级档案目录与排序",
+  "status": "PASS",
+  "actual": "{\"create\":200,\"parent\":50,\"expected\":50}",
+  "expected": "资料持久归属于该目录而非虚拟根",
+  "workspace": "company",
+  "record_ids": "51",
+  "evidence_paths": "",
+  "notes": "资料持久归属于三级目录，而不是被提升到分类根",
+  "timestamp": "2026-10-22T17:30:11.643Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

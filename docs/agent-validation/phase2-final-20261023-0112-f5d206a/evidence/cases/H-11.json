@@ -1,0 +1,16 @@
+{
+  "case_id": "H-11",
+  "priority": "P1",
+  "group": "H｜公共 UI 与跨页面状态",
+  "status": "PASS",
+  "actual": "{\"beforeReload\":{\"ws\":\"企业工作区\",\"folderId\":\"p:440\",\"view\":\"files\",\"crumbs\":\"我的文件\\n›\\n公司项目\\n›\\nP2H-项目-Hmvjv9sb9\"},\"afterReload\":{\"ws\":\"个人工作区\",\"folderId\":\"root\",\"view\":\"home\",\"crumbs\":\"首页\"},\"afterWs\":{\"ws\":\"个人工作区\",\"view\":\"home\",\"folderId\":\"root\",\"crumbs\":\"首页\"},\"afterBack\":{\"ws\":\"个人工作区\",\"view\":\"home\"}}",
+  "expected": "导航面包屑、工作区标签和视图状态无交叉污染",
+  "workspace": "company",
+  "record_ids": "440",
+  "evidence_paths": "",
+  "notes": "浏览器刷新后工作区与视图自洽；切到个人后工作区标签、面包屑不再带企业记录；后退仍在个人工作区内，无交叉污染",
+  "timestamp": "2026-10-22T18:21:46.865Z",
+  "method": "DYNAMIC-BROWSER",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

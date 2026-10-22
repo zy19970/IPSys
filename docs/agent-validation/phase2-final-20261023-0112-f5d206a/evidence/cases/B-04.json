@@ -1,0 +1,16 @@
+{
+  "case_id": "B-04",
+  "priority": "P0",
+  "group": "B｜建库与会话",
+  "status": "PASS",
+  "actual": "{\"hint\":\"文件已存在；不会覆盖原数据库。\",\"sizeBefore\":35471360,\"sizeAfter\":35471360,\"mtimeSame\":true,\"reopened\":true,\"counts\":{\"projects\":2,\"ip\":2,\"general\":null,\"archive\":null}}",
+  "expected": "服务端拒绝覆盖，原库文件及原有数据可正常打开",
+  "workspace": "company",
+  "record_ids": "p2b:projects=12,13",
+  "evidence_paths": "",
+  "notes": "服务端拒绝覆盖，原库字节与修改时间未变，重新打开数据完整",
+  "timestamp": "2026-10-22T17:25:29.898Z",
+  "method": "DYNAMIC-BROWSER",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

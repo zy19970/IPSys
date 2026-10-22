@@ -1,0 +1,16 @@
+{
+  "case_id": "I-08",
+  "priority": "P0",
+  "group": "I｜PDF、Excel、搜索与导出",
+  "status": "CONFIRMED_BUG",
+  "actual": "{\"paused\":2,\"status500\":true,\"status401\":false,\"search500Text\":\"检索失败\\n\\nI-08 注入 500\\n\\n本地已加载的内容里也没有匹配项。\",\"search401\":{\"toasts\":[],\"lockShown\":false,\"tokenEmpty\":true,\"locked\":true,\"rows\":0,\"text\":\"检索失败\\n\\nI-08 注入 401\\n\\n本地已加载的内容里也没有匹配项。\"},\"after401\":{\"reload\":\"fail\",\"msg\":\"请求失败：401\"},\"sessionDeadAfter401\":true}",
+  "expected": "显示可靠失败或登录状态，不伪装成空数据",
+  "workspace": "company",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "500 分支正常（界面给出「检索失败」）；401 分支不合格：前端在 store.js:87-90 已清空 token 并置 locked=true，但既不弹锁屏也不提示需要重新登录，用户看到的是「检索失败 / 本地已加载的内容里也没有匹配项」，随后所有请求持续 401（after401={\"reload\":\"fail\",\"msg\":\"请求失败：401\"}）—— 会话静默失效且被呈现为空结果",
+  "timestamp": "2026-10-22T18:33:23.310Z",
+  "method": "DYNAMIC-MIXED",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

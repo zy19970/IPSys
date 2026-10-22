@@ -1,0 +1,16 @@
+{
+  "case_id": "G-02",
+  "priority": "P0",
+  "group": "G｜拖放、菜单与快捷键",
+  "status": "PASS",
+  "actual": "{\"srcLinks\":1,\"tgtLinks\":0,\"toasts\":[]}",
+  "expected": "无网络写操作，原关联保留",
+  "workspace": "company",
+  "record_ids": "396 397",
+  "evidence_paths": "",
+  "notes": "取消确认后无任何关联写操作，来源保留、目标未新增",
+  "timestamp": "2026-10-22T18:09:16.625Z",
+  "method": "DYNAMIC-BROWSER",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

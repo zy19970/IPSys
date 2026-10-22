@@ -1,0 +1,16 @@
+{
+  "case_id": "L-02",
+  "priority": "P0",
+  "group": "L｜安全、视觉与最后收口",
+  "status": "PASS",
+  "actual": "{\"companyRecordReadAsPersonal\":{\"project\":404,\"contract\":404},\"companyFileDownloadAsPersonal\":404,\"companyLinksAsPersonal\":404,\"crossWorkspaceDelete\":404,\"personalRecordReadAsCompany\":404,\"properCrossWorkspaceTransfer\":{\"status\":200,\"newId\":513,\"sourceId\":510}}",
+  "expected": "不能读取或重用别区 FileId、LinkId",
+  "workspace": "company",
+  "record_ids": "510 512",
+  "evidence_paths": "",
+  "notes": "同一批 FolderId/FileId/LinkId 用另一个工作区的参数访问（读记录、下载原件、删链接）全部 404，反向访问同理；合法的跨区转移必须走 transfer 并返回全新的目标 ID，不会复用原 FileId —— 两区数据不互通",
+  "timestamp": "2026-10-22T19:09:23.689Z",
+  "method": "DYNAMIC-MIXED",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

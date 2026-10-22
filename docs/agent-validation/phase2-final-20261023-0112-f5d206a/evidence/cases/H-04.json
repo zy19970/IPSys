@@ -1,0 +1,16 @@
+{
+  "case_id": "H-04",
+  "priority": "P0",
+  "group": "H｜公共 UI 与跨页面状态",
+  "status": "PASS",
+  "actual": "{\"plan\":{\"collected\":2,\"plan\":[{\"name\":\"N04甲-Nmvjxmmkd.txt\",\"size\":23},{\"name\":\"N04乙-Nmvjxmmkd.txt\",\"size\":72}]},\"zipCount\":2,\"zipLen\":553,\"items\":[{\"name\":\"N04项目-Nmvjxmmkd/N04合同甲-Nmvjxmmkd/N04甲-Nmvjxmmkd.txt\",\"size\":23,\"method\":0,\"sha\":\"33800BD4BD72CD827A0C2AABBE88C2578E399E24617B3ADA16A8EF29E2D23756\"},{\"name\":\"N04项目-Nmvjxmmkd/N04合同乙-Nmvjxmmkd/N04乙-Nmvjxmmkd.txt\",\"size\":72,\"method\":0,\"sha\":\"8DC7BF2ED0123DB3C122271DF43D20CA3C2C81522DABA864F0869D83B838D1C5\"}],\"hierOk\":true,\"shaOk\":true,\"sizeOk\":true,\"expect\":{\"a\":\"33800BD4BD72CD827A0C2AABBE88C2578E399E24617B3ADA16A8EF29E2D23756\",\"b\":\"8DC7BF2ED0123DB3C122271DF43D20CA3C2C81522DABA864F0869D83B838D1C5\"}}",
+  "expected": "打包 ZIP 完整保留层级与文件数",
+  "workspace": "company",
+  "record_ids": "225 226",
+  "evidence_paths": "",
+  "notes": "用 showSaveFilePicker shim 真正拿到 ZIP（553 字节）：选中的 2 个附件来自两张不同合同，ZIP 里各自落在「N04项目/N04合同甲」与「N04项目/N04合同乙」两条独立路径下，条目数 2、字节数与 SHA-256 均与上传原件逐条一致 —— 层级与文件数都没丢",
+  "timestamp": "2026-10-22T19:26:52.262Z",
+  "method": "DYNAMIC-UI",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

@@ -1,0 +1,16 @@
+{
+  "case_id": "D-08",
+  "priority": "P0",
+  "group": "D｜多级档案目录与排序",
+  "status": "PASS",
+  "actual": "{\"nonEmpty\":[409,{\"error\":\"系统目录或含下级资料、附件的目录不能删除。\"}],\"stillExists\":200,\"recordInside\":56,\"empty\":[200,{\"ok\":true}],\"emptyAfter\":404}",
+  "expected": "非空必须拒绝；空目录删除后不留幽灵节点",
+  "workspace": "company",
+  "record_ids": "55 56 57",
+  "evidence_paths": "",
+  "notes": "含资料的目录拒绝删除且原目录仍在；空目录删除后 404",
+  "timestamp": "2026-10-22T17:30:39.049Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

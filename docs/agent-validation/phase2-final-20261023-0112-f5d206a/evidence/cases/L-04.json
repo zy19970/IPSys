@@ -1,0 +1,16 @@
+{
+  "case_id": "L-04",
+  "priority": "P1",
+  "group": "L｜安全、视觉与最后收口",
+  "status": "PASS",
+  "actual": "{\"created\":[200,200,200],\"xssPayload\":\"<img src=x onerror=\\\"window.__xssHit=1\\\">\",\"longLen\":153,\"probe\":{\"rowCount\":145,\"injectedNodes\":0,\"xssHit\":null,\"longTextShown\":\"—\\n                \\n    \\n    \\n \",\"specialShown\":true,\"rawHasImgText\":true}}",
+  "expected": "正确 HTML 转义，无脚本注入或布局严重挤压",
+  "workspace": "company",
+  "record_ids": "515 516 517",
+  "evidence_paths": "",
+  "notes": "记录名写入 <img onerror> 与 <script> 后，列表里作为纯文本原样显示（.row-title 的 textContent 含 \"<img\"），DOM 中未产生 img/script 节点、window.__xssHit 未触发；153 字长名称与 &<>\"' 特殊字符正常展示 —— 渲染走转义而非 innerHTML 直插",
+  "timestamp": "2026-10-22T19:09:33.443Z",
+  "method": "DYNAMIC-MIXED",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

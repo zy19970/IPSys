@@ -1,0 +1,16 @@
+{
+  "case_id": "H-07",
+  "priority": "P0",
+  "group": "H｜公共 UI 与跨页面状态",
+  "status": "PASS",
+  "actual": "{\"recBefore\":{\"view\":\"recycle\"},\"recAfter\":{\"view\":\"recycle\",\"folderId\":\"c:441\"}}",
+  "expected": "仍在回收站，历史选择只包含实际存在项",
+  "workspace": "company",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "回收站内点刷新仍在回收站",
+  "timestamp": "2026-10-22T18:21:20.917Z",
+  "method": "DYNAMIC-BROWSER",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

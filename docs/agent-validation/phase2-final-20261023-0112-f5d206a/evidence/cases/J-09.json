@@ -1,0 +1,16 @@
+{
+  "case_id": "J-09",
+  "priority": "P0",
+  "group": "J｜回收站、永久清理与数据库安全",
+  "status": "PASS",
+  "actual": "{\"trashBefore\":403,\"batches\":[200,200],\"total\":400,\"taskState\":{\"taskId\":\"f0ead5e7011741faa3dd171732d6536b\",\"workspace\":\"company\",\"state\":\"succeeded\",\"stage\":\"已提交数据库事务，永久删除成功\",\"bytesDone\":0,\"bytesTotal\":0,\"count\":200,\"error\":null},\"toasts\":[\"已确认删除 200 / 403 条；J-09 注入的第二批失败。请核查剩余回收站记录\"],\"trashLeft\":203}",
+  "expected": "后续批次不继续，已提交和未提交项清晰区分",
+  "workspace": "company",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "第 2 批被注入 409 后前端立即停止，未发出第 3 批；toast 明确区分「已确认删除 200 / 403 条」，回收站实际剩 203 条 —— 已提交与未提交界限清晰，不会把未确认批次说成成功",
+  "timestamp": "2026-10-22T18:43:53.403Z",
+  "method": "DYNAMIC-UI",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

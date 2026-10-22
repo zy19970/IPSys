@@ -1,0 +1,16 @@
+{
+  "case_id": "F-01",
+  "priority": "P0",
+  "group": "F｜业务整记录复制与跨区转移",
+  "status": "PASS",
+  "actual": "{\"transfer\":{\"status\":200,\"data\":{\"sourceId\":111,\"id\":114,\"sourceWorkspace\":\"company\",\"targetWorkspace\":\"personal\",\"moved\":false,\"contracts\":2,\"links\":3,\"files\":3,\"versions\":3,\"newObjects\":3}},\"sourceProject\":111,\"targetProject\":114,\"before\":{\"name\":\"P2F1-项目甲-Fmvjttspt\",\"deleted\":false,\"parent\":null,\"own\":[79],\"contracts\":[{\"id\":112,\"files\":[80]},{\"id\":113,\"files\":[81]}],\"allFiles\":[79,80,81]},\"after\":{\"name\":\"P2F1-项目甲-Fmvjttspt\",\"deleted\":false,\"parent\":null,\"own\":[82],\"contracts\":[{\"id\":115,\"files\":[83]},{\"id\":116,\"files\":[84]}],\"allFiles\":[82,83,84]},\"sourceRetained\":{\"deleted\":false,\"contracts\":2,\"files\":3},\"shaOk\":true}",
+  "expected": "新项目/合同关系完整，来源保留且目标原件独立",
+  "workspace": "company",
+  "record_ids": "111 114",
+  "evidence_paths": "",
+  "notes": "项目/合同/附件整树复制成功：目标 2 合同 + 3 文件全部为新 FileId、SHA 一致；来源项目与附件原位保留",
+  "timestamp": "2026-10-22T17:40:20.531Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

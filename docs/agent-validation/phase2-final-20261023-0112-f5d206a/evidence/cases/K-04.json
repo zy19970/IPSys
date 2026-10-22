@@ -1,0 +1,16 @@
+{
+  "case_id": "K-04",
+  "priority": "P0",
+  "group": "K｜大文件、并发与故障恢复",
+  "status": "PASS",
+  "actual": "{\"activeBefore\":true,\"afterReload\":{\"lock\":false,\"prog\":null,\"task\":{\"active\":false,\"count\":0,\"index\":0},\"ws\":\"\\n        \\n        个人工作区\\n        \\n      \"},\"dbWriting\":0,\"duplicateLinks\":0,\"linksAfter\":[null,null]}",
+  "expected": "进度和最终状态可恢复，不产生重复原件",
+  "workspace": "company",
+  "record_ids": "501",
+  "evidence_paths": "",
+  "notes": "上传进行中刷新页面：重载后进度面板不再显示过期状态（hidden）、IPSysUploadProgress.status().active=false，未留下重复原件（同名 link 0 条），SQLCipher 中 state='writing' 的半成品对象为 0",
+  "timestamp": "2026-10-22T18:58:24.486Z",
+  "method": "DYNAMIC-UI",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

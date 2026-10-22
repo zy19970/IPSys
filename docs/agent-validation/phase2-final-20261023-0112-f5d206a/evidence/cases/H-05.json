@@ -1,0 +1,16 @@
+{
+  "case_id": "H-05",
+  "priority": "P0",
+  "group": "H｜公共 UI 与跨页面状态",
+  "status": "PASS",
+  "actual": "{\"homeBefore\":{\"view\":\"home\",\"folderId\":\"root\"},\"homeAfter\":{\"view\":\"home\",\"folderId\":\"root\",\"toasts\":[\"已刷新\"]}}",
+  "expected": "留在首页，不错误跳转文件根",
+  "workspace": "company",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "首页点刷新仍留在首页，没有跳进文件根",
+  "timestamp": "2026-10-22T18:21:20.911Z",
+  "method": "DYNAMIC-BROWSER",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

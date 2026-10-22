@@ -1,0 +1,16 @@
+{
+  "case_id": "J-11",
+  "priority": "P0",
+  "group": "J｜回收站、永久清理与数据库安全",
+  "status": "PASS",
+  "actual": "{\"trashBefore\":600,\"selected\":600,\"taskDuringRun\":{\"status\":200,\"state\":\"succeeded\",\"count\":200},\"uiDuringRun\":{\"responsive\":true,\"interacted\":true,\"rows\":600},\"afterSwitch\":{\"ws\":\"企业工作区\",\"alive\":{\"responsive\":true,\"interacted\":true,\"rows\":600}},\"taskAfterSwitch\":{\"status\":200,\"state\":\"succeeded\"},\"personalScopedTask\":{\"status\":404,\"body\":null},\"afterBack\":{\"toasts\":[\"文件任务进行中,完成后再切换工作区\",\"文件任务进行中,完成后再切换工作区\",\"已彻底删除 600 条记录\"],\"trashLeft\":0,\"finalState\":\"succeeded\"},\"afterReload\":{\"lock\":false,\"ws\":\"\\n        \\n        个人工作区\\n        \\n      \",\"alive\":{\"responsive\":true,\"interacted\":true,\"rows\":0}},\"dbAfter\":{\"integrity\":\"ok\",\"fk\":0,\"unreferenced\":0,\"orphanChunks\":0,\"writing\":0}}",
+  "expected": "任务状态可恢复，不造成 UI 假死或重复物理回收",
+  "workspace": "company",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "600 条彻底删除期间（第 2 批被刻意延迟 4 秒）尝试切到个人工作区：前端以文件任务锁明确拒绝并提示「文件任务进行中,完成后再切换工作区」，工作区标签保持企业、界面全程可交互（未假死）；GET /api/trash/purge-task 全程可查且不等待 Gate，按工作区作用域的 /api/trash/personal/purge-task 返回 404（任务按整个 Vault 计，不会串到另一个工作区）；刷新页面后回收站为空，SQLCipher 无孤儿引用、无重复物理回收。注：单批 200 条执行窗口过短（<300ms）且 purge-task 是单例快照，actual 如实记录了每次取到的 state",
+  "timestamp": "2026-10-22T18:49:12.620Z",
+  "method": "DYNAMIC-UI",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

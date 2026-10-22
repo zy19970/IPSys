@@ -1,0 +1,16 @@
+{
+  "case_id": "C-10",
+  "priority": "P1",
+  "group": "C｜业务记录与附件 CRUD",
+  "status": "PASS",
+  "actual": "{\"status\":200,\"newId\":40,\"name\":\"P2项目A\",\"contractsAtTarget\":4,\"filesAtTarget\":6,\"sourceStill\":true}",
+  "expected": "目标完整且原项目保持不变",
+  "workspace": "company->personal",
+  "record_ids": "12 40",
+  "evidence_paths": "",
+  "notes": "整项目复制生成新项目，合同与附件随之复制，原项目保留",
+  "timestamp": "2026-10-22T17:28:14.885Z",
+  "method": "DYNAMIC-HTTP+UI",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

@@ -1,0 +1,16 @@
+{
+  "case_id": "J-01",
+  "priority": "P0",
+  "group": "J｜回收站、永久清理与数据库安全",
+  "status": "PASS",
+  "actual": "{\"project\":484,\"contract\":485,\"delStatus\":200,\"inTrash\":true,\"contractAfterProjectDelete\":404,\"restoreStatus\":200,\"projectBack\":200,\"contractBack\":200,\"linksRestored\":[\"f194@v?\",\"f195@v?\"],\"downloadBefore\":{\"status\":200,\"len\":39,\"sha\":\"99F40E03CEAA57861EDBFF789090243E9254CD996529C8AE3682E36CA023773E\"},\"downloadAfter\":{\"status\":200,\"len\":39,\"sha\":\"99F40E03CEAA57861EDBFF789090243E9254CD996529C8AE3682E36CA023773E\"},\"expectSha\":\"99F40E03CEAA57861EDBFF789090243E9254CD996529C8AE3682E36CA023773E\"}",
+  "expected": "父子关系及全部附件版本都可恢复",
+  "workspace": "company",
+  "record_ids": "484 485 194 195",
+  "evidence_paths": "",
+  "notes": "软删项目后回收站可见该项目，恢复后项目/合同均 200，两个附件及其版本全部回来，第 2 版下载 SHA 与删除前逐字节一致",
+  "timestamp": "2026-10-22T18:39:37.273Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

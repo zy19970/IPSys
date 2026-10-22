@@ -1,0 +1,16 @@
+{
+  "case_id": "G-07",
+  "priority": "P0",
+  "group": "G｜拖放、菜单与快捷键",
+  "status": "PASS",
+  "actual": "{\"categoryDrop\":[],\"homeDrop\":[],\"projectLinksBefore\":0,\"projectLinksAfter\":0,\"allLinksBefore\":112,\"allLinksAfter\":112,\"silent\":true}",
+  "expected": "不得悄悄写入任意业务记录",
+  "workspace": "company",
+  "record_ids": "408",
+  "evidence_paths": "",
+  "notes": "分类页与首页拖入外部文件均未产生任何上传/关联（全工作区链接总数不变），满足「不得悄悄写入」；但两次都完全静默——提示分支被 bindContent 里前置的 preventDefault 守卫短路（interactions.js:1277-1289），已单列为缺陷",
+  "timestamp": "2026-10-22T18:10:00.526Z",
+  "method": "DYNAMIC-BROWSER",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

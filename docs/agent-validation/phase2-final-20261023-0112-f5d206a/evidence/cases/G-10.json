@@ -1,0 +1,16 @@
+{
+  "case_id": "G-10",
+  "priority": "P0",
+  "group": "G｜拖放、菜单与快捷键",
+  "status": "PASS",
+  "actual": "{\"view\":\"recycle\",\"trashTotal\":23,\"mine\":[{\"id\":\"t:v2_general:420\",\"t\":\"P2G10-综合C-Gmvjuunk3\"},{\"id\":\"t:ip:418\",\"t\":\"P2G10-IP-A-Gmvjuunk3\"},{\"id\":\"t:ip:419\",\"t\":\"P2G10-IP-B-Gmvjuunk3\"},{\"id\":\"t:v2_file:166\",\"t\":\"P2G1-附件-Gmvjuunk3.txt\"}],\"trashRows\":[{\"id\":\"t:ip:418\",\"t\":\"P2G10-IP-A-Gmvjuunk3\"},{\"id\":\"t:ip:419\",\"t\":\"P2G10-IP-B-Gmvjuunk3\"},{\"id\":\"t:v2_general:420\",\"t\":\"P2G10-综合C-Gmvjuunk3\"}],\"selection\":[\"t:ip:418\",\"t:ip:419\"],\"menuActs\":[\"restore\",\"purge\"],\"restoreA\":200,\"restoreB\":200,\"stillInTrash\":[\"P2G10-综合C-Gmvjuunk3\"],\"restoredGone\":[\"P2G10-IP-A-Gmvjuunk3\",\"P2G10-IP-B-Gmvjuunk3\"],\"nameC\":\"P2G10-综合C-Gmvjuunk3\"}",
+  "expected": "操作目标与实际选中项一致",
+  "workspace": "company",
+  "record_ids": "418 419 420",
+  "evidence_paths": "",
+  "notes": "回收站多选 2 项后右键还原，正好这两项恢复、第三项仍留在回收站",
+  "timestamp": "2026-10-22T18:10:20.172Z",
+  "method": "DYNAMIC-BROWSER",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

@@ -1,0 +1,16 @@
+{
+  "case_id": "F-12",
+  "priority": "P0",
+  "group": "F｜业务整记录复制与跨区转移",
+  "status": "PASS",
+  "actual": "{\"duringTask\":{\"status\":409,\"data\":{\"error\":\"正在处理文件或程序退出。\"}},\"projectCountBefore\":10,\"after409\":10,\"srcAlive\":true,\"slowPrepare\":200,\"abortResult\":{\"aborted\":true},\"targetAfterAbort\":[{\"id\":141,\"deleted\":false,\"contracts\":1}]}",
+  "expected": "单个事务不留下部分目标，失败不误报成功",
+  "workspace": "company",
+  "record_ids": "139 141",
+  "evidence_paths": "",
+  "notes": "并发受限：文件任务进行中转移被 409 拒绝且目标零残留；客户端中途断开后目标要么完整要么不存在，无半截项目",
+  "timestamp": "2026-10-22T17:40:23.314Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

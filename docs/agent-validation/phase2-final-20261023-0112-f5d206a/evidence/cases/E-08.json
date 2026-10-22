@@ -1,0 +1,16 @@
+{
+  "case_id": "E-08",
+  "priority": "P0",
+  "group": "E｜附件、关联与版本",
+  "status": "PASS",
+  "actual": "{\"deleteLink\":200,\"remainingIpLinks\":1,\"v1Sha\":\"871760d8b21d2729\"}",
+  "expected": "另一处仍可下载全部历史版本",
+  "workspace": "company",
+  "record_ids": "7 26",
+  "evidence_paths": "",
+  "notes": "删除一条共享关联后另一处仍在，v1 历史仍可下载",
+  "timestamp": "2026-10-22T17:32:10.385Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

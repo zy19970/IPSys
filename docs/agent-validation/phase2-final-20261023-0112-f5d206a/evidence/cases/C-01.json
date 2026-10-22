@@ -1,0 +1,16 @@
+{
+  "case_id": "C-01",
+  "priority": "P0",
+  "group": "C｜业务记录与附件 CRUD",
+  "status": "PASS",
+  "actual": "{\"createA\":200,\"createB\":200,\"storedA\":{\"name\":\"C01-科研项目\",\"projectType\":\"科研项目\",\"projectNo\":\"C01-KY\",\"leader\":\"张三\",\"undertakingOrg\":\"北矿智能\",\"startDate\":\"2026-04-01\",\"endDate\":null,\"projectStatus\":\"筹备中\",\"category\":null,\"remarks\":null,\"tags\":null},\"storedB\":{\"name\":\"C01-横向项目\",\"projectType\":\"横向项目\",\"projectNo\":\"C01-HX\",\"leader\":null,\"undertakingOrg\":null,\"startDate\":null,\"endDate\":null,\"projectStatus\":\"筹备中\",\"category\":\"横向\",\"remarks\":null,\"tags\":null}}",
+  "expected": "项目类型与名称、编号、可选字段存储正确",
+  "workspace": "company",
+  "record_ids": "25 26",
+  "evidence_paths": "",
+  "notes": "科研/横向项目字段落库正确（入口新建由 F2 表单承载，本次以 API 写入 + 读回验证字段，UI 可见性见 C-12）",
+  "timestamp": "2026-10-22T17:28:12.422Z",
+  "method": "DYNAMIC-HTTP+UI",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

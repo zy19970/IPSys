@@ -1,0 +1,16 @@
+{
+  "case_id": "J-04",
+  "priority": "P0",
+  "group": "J｜回收站、永久清理与数据库安全",
+  "status": "PASS",
+  "actual": "{\"project\":489,\"contract\":490,\"fileId\":199,\"linkId\":221,\"fileBefore\":{\"status\":200,\"versions\":1,\"name\":\"J04唯一附件-J1mvjvxyw1.bin\"},\"inTrash\":true,\"purgeStatus\":200,\"purgeBody\":{\"ok\":true,\"count\":1},\"fileAfter\":404,\"objects\":{\"before\":213,\"after\":212},\"versions\":{\"before\":219,\"after\":218},\"chunks\":{\"before\":277,\"after\":276},\"unreferencedReady\":0,\"orphanChunks\":0}",
+  "expected": "最后引用清理后物理对象按规则回收",
+  "workspace": "company",
+  "record_ids": "199 221",
+  "evidence_paths": "",
+  "notes": "唯一引用的附件永久删除后：FileId 404、物理对象数 213→212（原件按规则回收）、chunk 同步清理，未留下无引用 ready 对象",
+  "timestamp": "2026-10-22T18:39:49.359Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

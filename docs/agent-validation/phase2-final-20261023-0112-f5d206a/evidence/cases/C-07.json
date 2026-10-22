@@ -1,0 +1,16 @@
+{
+  "case_id": "C-07",
+  "priority": "P1",
+  "group": "C｜业务记录与附件 CRUD",
+  "status": "PASS",
+  "actual": "{\"empty\":{\"status\":400,\"body\":{\"error\":\"名称不能为空。\"}},\"longStatus\":200,\"mixStatus\":200,\"stored\":\"C07-中英Mixed-2026_v1\"}",
+  "expected": "显示、保存、检索及下载名称不截错",
+  "workspace": "company",
+  "record_ids": "35 36",
+  "evidence_paths": "",
+  "notes": "空名被拒；长名与中英混排名称原样保存",
+  "timestamp": "2026-10-22T17:28:12.986Z",
+  "method": "DYNAMIC-HTTP+UI",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

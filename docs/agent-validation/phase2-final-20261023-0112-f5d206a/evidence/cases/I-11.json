@@ -1,0 +1,16 @@
+{
+  "case_id": "I-11",
+  "priority": "P1",
+  "group": "I｜PDF、Excel、搜索与导出",
+  "status": "PASS",
+  "actual": "[{\"name\":\"pdf\",\"size\":793,\"sha\":\"155FD849A8203C0B93AE7244C6259CE11C9CDF175D4E3487A14D4D0C905DC6AD\",\"expected\":\"155FD849A8203C0B93AE7244C6259CE11C9CDF175D4E3487A14D4D0C905DC6AD\",\"match\":true},{\"name\":\"png\",\"size\":70,\"sha\":\"C414CD0E204DE974F73753C7E28D7638E7B3691BB8B1A2BAB6B25BB7FED7CE77\",\"expected\":\"C414CD0E204DE974F73753C7E28D7638E7B3691BB8B1A2BAB6B25BB7FED7CE77\",\"match\":true},{\"name\":\"docx\",\"size\":16,\"sha\":\"C01F765DEAF5152B1CA346EB07C0CE0A82B744453184C976D20B48A08F115F11\",\"expected\":\"C01F765DEAF5152B1CA346EB07C0CE0A82B744453184C976D20B48A08F115F11\",\"match\":true}]",
+  "expected": "逐字节与原始输入一致，至少覆盖三类文件",
+  "workspace": "company",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "PDF/PNG/DOCX 三类文件下载内容 SHA-256 与上传时记录的摘要逐字节一致",
+  "timestamp": "2026-10-22T18:25:14.381Z",
+  "method": "DYNAMIC-MIXED",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

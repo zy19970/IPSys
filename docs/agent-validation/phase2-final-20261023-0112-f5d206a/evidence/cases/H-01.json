@@ -1,0 +1,16 @@
+{
+  "case_id": "H-01",
+  "priority": "P0",
+  "group": "H｜公共 UI 与跨页面状态",
+  "status": "PASS",
+  "actual": "{\"home\":{\"folderId\":\"root\",\"view\":\"home\",\"newBtn\":{\"disabled\":false,\"cls\":\"btn solid\",\"hidden\":false},\"upBtn\":{\"disabled\":true,\"cls\":\"btn\",\"hidden\":false}},\"catProject\":{\"folderId\":\"k:project\",\"view\":\"files\",\"newBtn\":{\"disabled\":false,\"cls\":\"btn solid\",\"hidden\":false},\"upBtn\":{\"disabled\":true,\"cls\":\"btn\",\"hidden\":false}},\"project\":{\"folderId\":\"p:440\",\"view\":\"files\",\"newBtn\":{\"disabled\":false,\"cls\":\"btn solid\",\"hidden\":false},\"upBtn\":{\"disabled\":false,\"cls\":\"btn\",\"hidden\":false}},\"contract\":{\"folderId\":\"c:441\",\"view\":\"files\",\"newBtn\":{\"disabled\":true,\"cls\":\"btn solid\",\"hidden\":false},\"upBtn\":{\"disabled\":false,\"cls\":\"btn\",\"hidden\":false}},\"catArchive\":{\"folderId\":\"k:achievement\",\"view\":\"files\",\"newBtn\":{\"disabled\":false,\"cls\":\"btn solid\",\"hidden\":false},\"upBtn\":{\"disabled\":true,\"cls\":\"btn\",\"hidden\":false}},\"archiveFolder\":{\"folderId\":\"af:1\",\"view\":\"files\",\"newBtn\":{\"disabled\":false,\"cls\":\"btn solid\",\"hidden\":false},\"upBtn\":{\"disabled\":true,\"cls\":\"btn\",\"hidden\":false}}}",
+  "expected": "仅真实可执行入口启用，无虚假按钮",
+  "workspace": "company",
+  "record_ids": "440 441",
+  "evidence_paths": "",
+  "notes": "新建只在首页/分类根/项目/档案目录启用，上传只在具体记录（项目、合同）启用；合同内部不可再新建记录、分类根与目录不可上传，未见虚假按钮",
+  "timestamp": "2026-10-22T18:20:58.072Z",
+  "method": "DYNAMIC-BROWSER",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

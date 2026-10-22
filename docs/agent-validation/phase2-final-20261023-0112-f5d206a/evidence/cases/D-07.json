@@ -1,0 +1,16 @@
+{
+  "case_id": "D-07",
+  "priority": "P0",
+  "group": "D｜多级档案目录与排序",
+  "status": "PASS",
+  "actual": "{\"self\":[409,{\"error\":\"目录层级不合法、目标不可用或发生名称冲突，请重新检查目标目录。\"}],\"descendant\":[409,{\"error\":\"目录层级不合法、目标不可用或发生名称冲突，请重新检查目标目录。\"}],\"parentAfter\":1,\"chain\":{\"A\":53,\"B\":54}}",
+  "expected": "客户端不提供非法目标且服务端拒绝循环关系",
+  "workspace": "company",
+  "record_ids": "53 54",
+  "evidence_paths": "",
+  "notes": "新建 A→B 后，A 移入自身或子孙 B 均被拒绝，父级保持系统目录",
+  "timestamp": "2026-10-22T17:30:38.931Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

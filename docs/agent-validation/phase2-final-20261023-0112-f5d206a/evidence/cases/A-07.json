@@ -1,0 +1,16 @@
+{
+  "case_id": "A-07",
+  "priority": "P0",
+  "group": "A｜环境与基线",
+  "status": "PASS",
+  "actual": "{\"generatedAt\":\"2026-10-22T19:17:43.587Z\",\"tag\":\"Amvjxaz7b\",\"fixturesDir\":\"E:\\\\Github\\\\管理系统\\\\build-retest\\\\phase2\\\\fixtures\",\"destination\":{\"workspace\":\"company\",\"projectId\":522,\"contractId\":523},\"items\":[{\"name\":\"A07两页-Amvjxaz7b.pdf\",\"size\":868,\"sha256\":\"107253A25788F1C1DA0EF955C0C4EF68A3D39694A05EBA3E30FBBE49D00229D1\",\"fileId\":216,\"dest\":\"合同 523\",\"downloadStatus\":200,\"downloadSha256\":\"107253A25788F1C1DA0EF955C0C4EF68A3D39694A05EBA3E30FBBE49D00229D1\",\"roundTripEqual\":true},{\"name\":\"A07文本-Amvjxaz7b.txt\",\"size\":1320,\"sha256\":\"02718A94C4BB35AD521E9518A2E6166F63DDB6F6B6B6C87B94F25F8A283A257A\",\"fileId\":217,\"dest\":\"合同 523\",\"downloadStatus\":200,\"downloadSha256\":\"02718A94C4BB35AD521E9518A2E6166F63DDB6F6B6B6C87B94F25F8A283A257A\",\"roundTripEqual\":true},{\"name\":\"A07图片-Amvjxaz7b.jpg\",\"size\":160,\"sha256\":\"CB0501D6C1250017AF030077E00E88B9F3B81F98470699754EA5BFADD7A1E3A6\",\"fileId\":218,\"dest\":\"合同 523\",\"downloadStatus\":200,\"downloadSha256\":\"CB0501D6C1250017AF030077E00E88B9F3B81F98470699754EA5BFADD7A1E3A6\",\"roundTripEqual\":true},{\"name\":\"A07大文件-Amvjxaz7b.bin\",\"size\":34603008,\"sha256\":\"D7BBE5AB9024FA0BB6E5932A23A750782DC4A0116F8FE34399D4D6DD87707415\",\"fileId\":219,\"dest\":\"合同 523\",\"downloadStatus\":200,\"downloadSha256\":\"D7BBE5AB9024FA0BB6E5932A23A750782DC4A0116F8FE34399D4D6DD87707415\",\"roundTripEqual\":true}],\"versions\":{\"fileId\":220,\"name\":\"A07双版本-Amvjxaz7b.txt\",\"items\":[{\"version\":1,\"size\":27,\"sha256\":\"1A6120527BA2F66278BFD82E0CB31C65AAF0895EB91A0785CCBC4815DB1543C6\",\"downloadStatus\":200,\"downloadSha256\":\"1A6120527BA2F66278BFD82E0CB31C65AAF0895EB91A0785CCBC4815DB1543C6\",\"roundTripEqual\":true},{\"version\":2,\"size\":91,\"sha256\":\"56593DC73FF342FB420C1DFDF6AC27443DB039639B359CA38F2C66DB1ABE1D96\",\"downloadStatus\":200,\"downloadSha256\":\"56593DC73FF342FB420C1DFDF6AC27443DB039639B359CA38F2C66DB1ABE1D96\",\"roundTripEqual\":true}]}}",
+  "expected": "留存各原件 SHA、大小、文件名与目标目录索引",
+  "workspace": "company",
+  "record_ids": "522 523",
+  "evidence_paths": "",
+  "notes": "生成并留存索引 evidence\\a07-fixture-index.json：2 页 PDF、1 KB 文本、JPEG、33 MiB 随机二进制四个原件，外加同一文件的 v1/v2 两版（SHA 不同）；五个对象全部上传后按版本号下载回来重算 SHA-256，与索引逐条一致",
+  "timestamp": "2026-10-22T19:17:43.590Z",
+  "method": "DYNAMIC-MIXED",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

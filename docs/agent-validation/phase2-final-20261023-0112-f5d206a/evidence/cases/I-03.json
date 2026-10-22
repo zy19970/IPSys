@@ -1,0 +1,16 @@
+{
+  "case_id": "I-03",
+  "priority": "P0",
+  "group": "I｜PDF、Excel、搜索与导出",
+  "status": "PASS",
+  "actual": "{\"zipCount\":7,\"zipLen\":3132,\"entries\":[\"I2复核项目-I2mvjvo4rn/I2复核合同-I2mvjvo4rn/I2边界-I2mvjvo4rn.bin\",\"I2复核项目-I2mvjvo4rn/I2复核合同-I2mvjvo4rn/I2两版-I2mvjvo4rn.txt\",\"I2复核项目-I2mvjvo4rn/I2复核合同-I2mvjvo4rn/I2两页-I2mvjvo4rn.pdf\",\"I2复核项目-I2mvjvo4rn/I2复核合同-I2mvjvo4rn/I2图-I2mvjvo4rn.png\",\"I2复核项目-I2mvjvo4rn/I2复核合同-I2mvjvo4rn/I2长中文名称-I2mvjvo4rn-多级目录测试多级目录测试多级目录测试多级目录测试多级目录测试多级目录测试多级目录测试多级目录测试.txt\",\"I2复核项目-I2mvjvo4rn/I2复核合同-I2mvjvo4rn/I2重名-I2mvjvo4rn.txt\",\"I2复核项目-I2mvjvo4rn/I2复核合同-I2mvjvo4rn/I2重名-I2mvjvo4rn (2).txt\"],\"methodsStored\":true,\"hierOk\":true,\"v1Leak\":false,\"v2Entries\":[{\"name\":\"I2复核项目-I2mvjvo4rn/I2复核合同-I2mvjvo4rn/I2两版-I2mvjvo4rn.txt\",\"size\":47,\"crc\":1436555144,\"method\":0,\"sha\":\"65190978C815FF6E4AB4A0734A4908CFEB4D026316EDF6179F7482347E80659F\"}],\"expectSha\":\"65190978C815FF6E4AB4A0734A4908CFEB4D026316EDF6179F7482347E80659F\",\"distinctContent\":7,\"planCollected\":7}",
+  "expected": "文件内容、层级、导出策略与文件数准确",
+  "workspace": "company",
+  "record_ids": "contract",
+  "evidence_paths": "",
+  "notes": "真实 ZIP（3132 字节）：7 个条目全部落在「项目/合同」两级目录下，method=0 为原始字节；两版附件只保留最新版且 SHA-256 与 v2 一致（v1 未泄漏）；7 条内容互不重复，无覆盖遗漏",
+  "timestamp": "2026-10-22T18:33:22.092Z",
+  "method": "DYNAMIC-MIXED",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

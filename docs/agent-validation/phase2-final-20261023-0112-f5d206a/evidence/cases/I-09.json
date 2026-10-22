@@ -1,0 +1,16 @@
+{
+  "case_id": "I-09",
+  "priority": "P1",
+  "group": "I｜PDF、Excel、搜索与导出",
+  "status": "PASS",
+  "actual": "{\"hitsBefore\":9,\"afterSwitch\":{\"ws\":\"个人工作区\",\"q\":\"\",\"rows\":0,\"hits\":0,\"input\":\"\"},\"afterClear\":{\"q\":\"\",\"rows\":0,\"view\":\"home\",\"hits\":0}}",
+  "expected": "旧工作区搜索结果不残留",
+  "workspace": "company",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "企业区检索命中 9 条后切到个人：关键词、搜索框与命中集同时清空，列表不残留旧工作区结果",
+  "timestamp": "2026-10-22T18:32:24.915Z",
+  "method": "DYNAMIC-MIXED",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

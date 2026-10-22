@@ -1,0 +1,16 @@
+{
+  "case_id": "E-01",
+  "priority": "P0",
+  "group": "E｜附件、关联与版本",
+  "status": "PASS",
+  "actual": "{\"uploads\":[{\"kind\":\"project\",\"folderId\":13,\"status\":200,\"fileId\":20},{\"kind\":\"contract\",\"folderId\":14,\"status\":200,\"fileId\":21},{\"kind\":\"ip\",\"folderId\":18,\"status\":200,\"fileId\":22},{\"kind\":\"archive\",\"folderId\":10,\"status\":200,\"fileId\":23},{\"kind\":\"general\",\"folderId\":20,\"status\":200,\"fileId\":24}],\"virtualRoot\":{\"status\":404,\"body\":null}}",
+  "expected": "真实记录接收附件，虚拟分类不可上传",
+  "workspace": "company",
+  "record_ids": "20 21 22 23 24",
+  "evidence_paths": "",
+  "notes": "项目/合同/知产/档案/综合资料五类记录均接收附件；folderId=0 的虚拟根上传被拒绝",
+  "timestamp": "2026-10-22T17:32:10.157Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

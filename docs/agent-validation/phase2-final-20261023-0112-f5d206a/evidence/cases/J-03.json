@@ -1,0 +1,16 @@
+{
+  "case_id": "J-03",
+  "priority": "P0",
+  "group": "J｜回收站、永久清理与数据库安全",
+  "status": "PASS",
+  "actual": "{\"project\":489,\"contract\":490,\"fileId\":199,\"fileBefore\":{\"status\":200,\"versions\":1,\"name\":\"J03附件-J1mvjvxyw1.txt\"},\"purgeStatus\":200,\"purgeBody\":{\"ok\":true,\"count\":1},\"afterAlive\":{\"project\":404,\"contract\":404,\"file\":404},\"dbBefore\":{\"folders\":489,\"files\":199,\"objects\":213,\"links\":219},\"dbAfter\":{\"folders\":487,\"files\":198,\"objects\":212,\"links\":218},\"integrity\":\"ok\",\"fkViolations\":[],\"orphans\":{\"chunks\":0,\"verMissObj\":0,\"verMissFile\":0,\"linkMissFile\":0,\"linkMissFolder\":0,\"unreferencedReady\":0}}",
+  "expected": "事务完整级联，不留下被引用的孤儿表记录",
+  "workspace": "company",
+  "record_ids": "489 490 199",
+  "evidence_paths": "",
+  "notes": "永久删除项目后：项目/合同/附件均 404，子合同先于项目删除（parent_id RESTRICT 未被触发）；SQLCipher integrity=ok、外键 0 违规、孤儿 chunk/版本/链接引用全 0 —— 级联在单个事务内完整落地",
+  "timestamp": "2026-10-22T18:39:43.457Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

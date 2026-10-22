@@ -1,0 +1,16 @@
+{
+  "case_id": "L-07",
+  "priority": "P0",
+  "group": "L｜安全、视觉与最后收口",
+  "status": "PASS",
+  "actual": "{\"checks\":[{\"label\":\"create-project\",\"apiStatus\":200,\"apiOk\":true,\"delta\":{\"folders\":1},\"integrity\":\"ok\",\"fk\":0,\"writing\":0,\"unreferenced\":0,\"readBackStatus\":200,\"readBackName\":\"L07项目-Mmvjxj8n0\"},{\"label\":\"upload\",\"apiStatus\":200,\"apiOk\":true,\"delta\":{\"files\":1,\"file_objects\":1,\"file_versions\":1,\"file_chunks\":1,\"folder_file_links\":1},\"integrity\":\"ok\",\"fk\":0,\"writing\":0,\"unreferenced\":0,\"linkFound\":true,\"declaredSize\":26,\"uploadedSha\":\"1024F0F089E70FCA306AD96C\"},{\"label\":\"rename\",\"apiStatus\":200,\"apiOk\":true,\"delta\":{},\"integrity\":\"ok\",\"fk\":0,\"writing\":0,\"unreferenced\":0,\"nameAfter\":\"L07改名-Mmvjxj8n0\"},{\"label\":\"reject-empty-name\",\"apiStatus\":400,\"apiOk\":false,\"apiError\":\"项目名称必须填写，最多 300 字。\",\"delta\":{},\"integrity\":\"ok\",\"fk\":0,\"writing\":0,\"unreferenced\":0},{\"label\":\"cross-workspace-create\",\"apiStatus\":200,\"delta\":{\"folders\":1},\"personalReadBack\":200,\"companyReadBack\":404,\"integrity\":\"ok\",\"fk\":0,\"writing\":0,\"unreferenced\":0},{\"label\":\"soft-delete-link\",\"apiStatus\":200,\"apiOk\":true,\"delta\":{\"linksDeleted\":1},\"integrity\":\"ok\",\"fk\":0,\"writing\":0,\"unreferenced\":0,\"deleteBody\":{\"ok\":true}}],\"flags\":{\"okCreate\":true,\"okUpload\":true,\"okRename\":true,\"okReject\":true,\"okWs\":true,\"okDelete\":true,\"clean\":true}}",
+  "expected": "任何假成功、错工作区、脏状态列为独立问题",
+  "workspace": "company+personal",
+  "record_ids": "529 224",
+  "evidence_paths": "",
+  "notes": "六步逐一对照「HTTP 状态 / SQLCipher 行数增量 / 重新读回的字段」：建项目 folders+1 且读回名称一致；上传 files/objects/versions/links 各 +1 且 link 声明大小与上传字节一致；重命名 folders 零变化、名称真的改了；空名称被拒（HTTP 400）且库内零行变化，没有假成功；在个人区建项目只让个人区 +1、用公司参数读该 ID 返回 404；软删附件 linksDeleted +1、全表 link 行数不变而 objects 不变（仍被版本引用）。全过程 integrity=ok、外键 0 违规、无 writing/无孤儿对象",
+  "timestamp": "2026-10-22T19:25:27.759Z",
+  "method": "DYNAMIC-MIXED",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

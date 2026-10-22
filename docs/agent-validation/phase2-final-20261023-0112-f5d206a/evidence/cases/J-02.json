@@ -1,0 +1,16 @@
+{
+  "case_id": "J-02",
+  "priority": "P0",
+  "group": "J｜回收站、永久清理与数据库安全",
+  "status": "PASS",
+  "actual": "{\"ids\":{\"ip\":486,\"archive\":487,\"general\":488},\"delStatus\":[200,200,200],\"seenInTrash\":{\"ip\":true,\"archive\":true,\"general\":true},\"restoreStatus\":200,\"restoreBody\":{\"ok\":true,\"count\":3},\"back\":{\"ip\":200,\"archive\":200,\"general\":200},\"download\":{\"ip\":{\"status\":200,\"len\":22,\"sha\":\"2D892BF916639248272DCF4F3CA2CC7FCC8AD682EE3FB83181ED64822D74827E\"},\"archive\":{\"status\":200,\"len\":26,\"sha\":\"55D9270DEE1633F6C15050955244C850BDCCFEB9FD77A2ACC96C90C266F85BBC\"},\"general\":{\"status\":200,\"len\":26,\"sha\":\"612ED13B6617722E8D31C609BE0D81DA4BFB97FB3839C6C7BB93CB147FA85BD8\"}}}",
+  "expected": "业务字段、历史下载一致",
+  "workspace": "company",
+  "record_ids": "486 487 488",
+  "evidence_paths": "",
+  "notes": "知识产权/业务档案/综合资料三类记录软删后在回收站各自可见（v2_archive/v2_general 区分正确），一次批量恢复后三条均 200，附件下载 SHA 与删除前一致 —— 业务字段与历史下载未丢失",
+  "timestamp": "2026-10-22T18:39:37.584Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

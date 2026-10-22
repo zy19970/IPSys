@@ -1,0 +1,16 @@
+{
+  "case_id": "K-02",
+  "priority": "P0",
+  "group": "K｜大文件、并发与故障恢复",
+  "status": "PASS",
+  "actual": "{\"before\":\"\\n        \\n        企业工作区\\n        \\n      \",\"activeDuring\":true,\"menuOpen\":true,\"toastsAtClick\":[],\"after\":{\"ws\":\"\\n        \\n        企业工作区\\n        \\n      \",\"toasts\":[\"文件任务进行中,完成后再切换工作区\"]},\"stillCompany\":true}",
+  "expected": "阻止错误工作区写入且提示清楚",
+  "workspace": "company",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "上传进行中（IPSysUploadProgress.status().active=true）尝试切到个人工作区：工作区标签保持企业，界面明确提示「文件任务进行中,完成后再切换工作区」—— 不会把原件写到错误工作区",
+  "timestamp": "2026-10-22T18:58:10.188Z",
+  "method": "DYNAMIC-UI",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

@@ -1,0 +1,25 @@
+{
+  "cipherVersion": "4.5.2 community",
+  "integrity": "ok",
+  "foreignKeyViolations": [],
+  "versionsMissingFile": 0,
+  "versionsMissingObject": 0,
+  "readyObjectsUnreferenced": 0,
+  "readyObjectsWithoutChunks": 0,
+  "writingObjects": 0,
+  "orphanChunks": 0,
+  "linksMissingFolder": 0,
+  "linksMissingFile": 0,
+  "counts": {
+    "folders": 482,
+    "foldersDeleted": 60,
+    "files": 193,
+    "filesDeleted": 0,
+    "file_objects": 206,
+    "file_versions": 212,
+    "file_chunks": 270,
+    "folder_file_links": 213,
+    "linksDeleted": 6
+  },
+  "sharedObjects": 6
+}

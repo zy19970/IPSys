@@ -1,0 +1,16 @@
+{
+  "case_id": "K-03",
+  "priority": "P0",
+  "group": "K｜大文件、并发与故障恢复",
+  "status": "PASS",
+  "actual": "{\"taskDuring\":{\"status\":200,\"ok\":true,\"data\":{\"active\":true,\"exiting\":false},\"headers\":{}},\"lock\":{\"status\":409,\"body\":{\"error\":\"文件任务执行中或程序正在退出，不能关闭数据库。\"}},\"compact\":{\"status\":409,\"body\":{\"error\":\"已有上传、删除或其他文件任务正在执行。\"}},\"purgeTask\":{\"status\":409,\"body\":{\"error\":\"已有文件任务正在执行或程序准备退出。\"}},\"purgeSync\":{\"status\":409,\"body\":{\"error\":\"文件任务或退出期间不可修改数据。\"}},\"slowUploadResult\":{\"status\":200,\"body\":\"{\\\"ticket\\\":\\\"6849C57440102799074415FCADF46E7386C359B2420DA69F\\\",\\\"name\\\":\\\"K03占位-K2mvjwsk6d.bin\\\",\\\"size\\\":12582912,\\\"sha256\\\":\\\"B5D7F45605C70B143B38E011DAF9A1415AC2AB294F32FE26C6F69C59BAC038E1\\\",\\\"expiresAt\\\":\\\"2026-10-22T19:33:25.8945055+00:00\\\",\\\"matches\\\":[]}\"},\"vaultStillUnlocked\":true}",
+  "expected": "文件任务锁和中断策略有效，无死锁",
+  "workspace": "company",
+  "record_ids": "505",
+  "evidence_paths": "",
+  "notes": "12 MiB 慢速上传进行中（/api/task active=true）：关库、压缩、异步彻底删除、同步彻底删除四类操作全部返回 409 并给出明确原因，数据库仍保持解锁 —— 文件任务锁覆盖了所有写入入口，没有死锁，也没有把库关掉",
+  "timestamp": "2026-10-22T19:03:25.907Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

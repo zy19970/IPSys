@@ -1,0 +1,16 @@
+{
+  "case_id": "C-05",
+  "priority": "P1",
+  "group": "C｜业务记录与附件 CRUD",
+  "status": "PASS",
+  "actual": "{\"trashKind\":\"v2_archive\",\"restore\":200,\"get\":200,\"name\":\"C05-档案-改\",\"year\":\"2025\",\"parentId\":9,\"expectedParent\":9}",
+  "expected": "业务档案显示正确目录与字段",
+  "workspace": "company",
+  "record_ids": "30 parent=9",
+  "evidence_paths": "",
+  "notes": "档案在三级目录创建/编辑/软删，按回收站真实 kind(v2_archive) 恢复后字段与父目录均保留",
+  "timestamp": "2026-10-22T17:29:16.880Z",
+  "method": "DYNAMIC-HTTP+UI",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

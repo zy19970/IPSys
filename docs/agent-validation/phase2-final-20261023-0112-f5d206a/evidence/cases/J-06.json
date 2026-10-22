@@ -1,0 +1,16 @@
+{
+  "case_id": "J-06",
+  "priority": "P0",
+  "group": "J｜回收站、永久清理与数据库安全",
+  "status": "PASS",
+  "actual": "{\"ids\":{\"project\":494,\"contract\":495,\"ip\":496,\"general\":497,\"fileId\":200,\"ipFile\":201,\"generalFile\":202},\"purgeStatus\":200,\"purgeBody\":{\"ok\":true,\"count\":3},\"gone\":{\"project\":404,\"contract\":404,\"ip\":404,\"general\":404,\"attachment\":404},\"dbBefore\":{\"folders\":496,\"foldersDeleted\":63,\"files\":202,\"filesDeleted\":0,\"file_objects\":216,\"file_versions\":222,\"file_chunks\":280,\"folder_file_links\":222,\"linksDeleted\":6},\"dbAfter\":{\"folders\":492,\"foldersDeleted\":60,\"files\":199,\"filesDeleted\":0,\"file_objects\":213,\"file_versions\":219,\"file_chunks\":277,\"folder_file_links\":219,\"linksDeleted\":6},\"integrity\":\"ok\",\"fkViolations\":[],\"orphans\":{\"chunks\":0,\"verMissObj\":0,\"verMissFile\":0,\"linkMissFile\":0,\"linkMissFolder\":0,\"unreferencedReady\":0}}",
+  "expected": "去重与依赖顺序正确，拒绝冲突时不会部分破坏共享",
+  "workspace": "company",
+  "record_ids": "494 495 496 497",
+  "evidence_paths": "",
+  "notes": "混选项目/知识产权/综合资料一次彻底删除：项目带出的子合同与三个附件 LinkId 均正确去重并按依赖顺序清理，五类目标全部 404；integrity=ok、外键 0 违规、各类孤儿引用全 0",
+  "timestamp": "2026-10-22T18:40:01.549Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

@@ -1,0 +1,16 @@
+{
+  "case_id": "K-12",
+  "priority": "P1",
+  "group": "K｜大文件、并发与故障恢复",
+  "status": "PASS",
+  "actual": "{\"upload\":{\"fileId\":207,\"linkId\":230,\"size\":34603008,\"sha\":\"A00A86317F7E7459BC3AB872\"},\"deleteStatus\":200,\"purgeStatus\":200,\"objects\":{\"beforeDelete\":209,\"afterPurge\":208},\"chunks\":{\"beforeDelete\":414,\"afterPurge\":381},\"compact\":{\"status\":202,\"state\":\"succeeded\",\"infoBefore\":{\"fileBytes\":212480000,\"pageCount\":51875,\"freePages\":8629,\"pageSize\":4096,\"reusableBytes\":35344384,\"requiredFreeBytes\":559177728,\"availableBytes\":69731696640,\"tempAvailableBytes\":24994160640,\"canCompact\":true},\"infoAfter\":{\"fileBytes\":177135616,\"pageCount\":43246,\"freePages\":0,\"pageSize\":4096,\"reusableBytes\":0,\"requiredFreeBytes\":488488960,\"availableBytes\":69589549056,\"tempAvailableBytes\":24987389952,\"canCompact\":true}},\"integrity\":\"ok\",\"fk\":0,\"unreferenced\":0,\"orphanChunks\":0,\"readable\":true}",
+  "expected": "数据库仍可读取，空间回收和原件引用规则正确",
+  "workspace": "company",
+  "record_ids": "207",
+  "evidence_paths": "",
+  "notes": "33 MiB 大文件彻底删除后再压缩：物理对象与 chunk 均已回收（objects 209→208，chunks 414→381），压缩任务 succeeded，库 integrity=ok、无孤儿引用，业务接口仍可读",
+  "timestamp": "2026-10-22T19:08:08.008Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

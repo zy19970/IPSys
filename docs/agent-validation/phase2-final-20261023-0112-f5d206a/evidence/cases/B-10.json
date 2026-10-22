@@ -1,0 +1,16 @@
+{
+  "case_id": "B-10",
+  "priority": "P1",
+  "group": "B｜建库与会话",
+  "status": "PASS",
+  "actual": "{\"prefAfterSettings\":\"company\",\"prefAfterTopbarSwitch\":\"company\",\"relogin\":{\"text\":\"公司工作台\\n\\nvault-p2-p2b.db · 9 条记录 · 12 个附件 · 33.0 MB\\n\\n新建记录\\n分类目录\\n5 类\\n企业资质\\n暂无记录\\n更新 01-01\\n业务档案\\n1 条记录 · 1 个附件 · 24 B\\n更新 01-01\\n公司项目\\n2 条记录 · 8 个附件 · 33.0 MB\\n知识产权\\n2 条记录 · 2 个附件 · 68 B\\n综合资料\\n2 条记录 · 1 个附件 · 18 B\\n最近更新\\n查看全部\\nP2合同C2\\n公司项目 · 02-02\\nP2合同C1\\n公司项目 · 02-01\\nP2档案-01\\n业务档案 · 01-01\\nP2项目A\\n公司项目 · 01-01\\n资料库\\nvault-\",\"ws\":\"企业工作区\",\"cats\":[\"暂无记录\",\"业务档案\",\"公司项目\",\"2 条记录 · 2 个附件 · 68 B\",\"2 条记录 · 1 个附件 · 18 B\"],\"rows\":[]}}",
+  "expected": "遵守设置值；顶栏临时切换不会意外改写设置",
+  "workspace": "company",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "设置持久化，顶栏临时切换不改写，重新登录进入企业工作区",
+  "timestamp": "2026-10-22T17:26:51.747Z",
+  "method": "DYNAMIC-BROWSER",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

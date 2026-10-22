@@ -1,0 +1,16 @@
+{
+  "case_id": "D-03",
+  "priority": "P0",
+  "group": "D｜多级档案目录与排序",
+  "status": "PASS",
+  "actual": "{\"status\":400,\"body\":{\"error\":\"公司业务档案资料必须指定有效目录。\"}}",
+  "expected": "入口禁用或准确拒绝，不生成游离资料",
+  "workspace": "company",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "档案根无所属目录直接建资料被明确拒绝，不生成游离资料",
+  "timestamp": "2026-10-22T17:30:11.649Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

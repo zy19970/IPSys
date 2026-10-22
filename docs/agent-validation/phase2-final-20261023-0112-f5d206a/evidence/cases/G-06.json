@@ -1,0 +1,16 @@
+{
+  "case_id": "G-06",
+  "priority": "P0",
+  "group": "G｜拖放、菜单与快捷键",
+  "status": "PASS",
+  "actual": "{\"drop\":{\"prevented\":true,\"files\":1},\"linksBefore\":0,\"linksAfter\":1,\"matched\":[{\"fileId\":154,\"name\":\"P2G6-外拖-Gmvjuunk3.txt\"}],\"uploadPanel\":\"原件上传共 1 份P2G6-外拖-Gmvjuunk3.txt100.0%以服务器保存结果为准；已发送 100% 不代表已入库。上传已结束。 已保存 1，失败 0，跳过/未处理 0。取消上传关闭\"}",
+  "expected": "只执行一次上传，检查实际 FileId 数量",
+  "workspace": "company",
+  "record_ids": "406 407",
+  "evidence_paths": "",
+  "notes": "外部单文件拖到具体合同：只产生 1 个新 FileId、1 条新链接，未出现重复上传",
+  "timestamp": "2026-10-22T18:09:52.840Z",
+  "method": "DYNAMIC-BROWSER",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

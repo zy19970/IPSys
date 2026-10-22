@@ -1,0 +1,16 @@
+{
+  "case_id": "I-01",
+  "priority": "P0",
+  "group": "I｜PDF、Excel、搜索与导出",
+  "status": "PASS",
+  "actual": "{\"opened\":\"f:186:1\",\"count1\":\"1 / 2\",\"count2\":\"2 / 2\",\"turned\":true,\"page1\":{\"h\":\"96085aa0\",\"ink\":93,\"w\":1048,\"h2\":698},\"page2\":{\"h\":\"ab87bd74\",\"ink\":96,\"w\":1038,\"h2\":692}}",
+  "expected": "Canvas 真实渲染第一页与第二页，不只是出现工具栏",
+  "workspace": "company",
+  "record_ids": "167",
+  "evidence_paths": "",
+  "notes": "dblclick 打开两页 PDF：页码 1 / 2→2 / 2，两页 canvas 均有实际墨迹（ink>20）且像素哈希不同 —— 真实渲染而非只有工具栏",
+  "timestamp": "2026-10-22T18:32:08.511Z",
+  "method": "DYNAMIC-MIXED",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

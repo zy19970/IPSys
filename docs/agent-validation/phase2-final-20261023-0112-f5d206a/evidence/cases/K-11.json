@@ -1,0 +1,16 @@
+{
+  "case_id": "K-11",
+  "priority": "P1",
+  "group": "K｜大文件、并发与故障恢复",
+  "status": "BLOCKED",
+  "actual": "{\"reason\":\">2 GiB 单文件需要至少 2 GiB 空闲磁盘与数十分钟上传时间，且会显著改变库体积；本轮按任务书「资源不足记 BLOCKED」处理。\",\"knownLimits\":\"STREAM_MIN_BYTES=32 MiB；ZIP32_SAFE_LIMIT 与 ZIP64 分支在 export.js 中已存在但未在本轮触发\",\"coveredInstead\":\"K-01/K-12 用 33 MiB 覆盖了流式上传阈值，K-08/K-12 覆盖了压缩与回收\"}",
+  "expected": "准确记录耗时、文件 SHA 与大于 2 GiB 边界；资源不足记 BLOCKED",
+  "workspace": "-",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "BLOCKED：>2 GiB 与 ZIP64 边界未测（磁盘与时长不允许，按任务书记为 BLOCKED）",
+  "timestamp": "2026-10-22T19:08:26.496Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

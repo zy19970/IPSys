@@ -1,0 +1,16 @@
+{
+  "case_id": "D-01",
+  "priority": "P0",
+  "group": "D｜多级档案目录与排序",
+  "status": "PASS",
+  "actual": "[{\"id\":48,\"parent\":1,\"name\":\"D01-一级\"},{\"id\":49,\"parent\":48,\"name\":\"D01-二级\"},{\"id\":50,\"parent\":49,\"name\":\"D01-三级\"}]",
+  "expected": "真实 FolderId 及 parent_id 构成三层父子关系",
+  "workspace": "company",
+  "record_ids": "48 49 50",
+  "evidence_paths": "",
+  "notes": "三级目录 parent_id 链完整（系统目录→一级→二级→三级）",
+  "timestamp": "2026-10-22T17:30:11.604Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

@@ -1,0 +1,16 @@
+{
+  "case_id": "H-03",
+  "priority": "P0",
+  "group": "H｜公共 UI 与跨页面状态",
+  "status": "PASS",
+  "actual": "{\"want\":\"5A88381206FE0797871504965E5A40E036854E4387117869A4C43246114F8CB6\",\"grabs\":{\"ctx\":{\"file\":\"P2H-甲-Hmvjv9sb9.txt\",\"sha\":\"5A88381206FE0797871504965E5A40E036854E4387117869A4C43246114F8CB6\",\"size\":34,\"raw\":\"E:\\\\Github\\\\管理系统\\\\build-retest\\\\phase2\\\\evidence\\\\downloads\\\\P2H-甲-Hmvjv9sb9.txt\"},\"bar\":{\"file\":\"P2H-甲-Hmvjv9sb9.txt\",\"sha\":\"5A88381206FE0797871504965E5A40E036854E4387117869A4C43246114F8CB6\",\"size\":34,\"raw\":\"E:\\\\Github\\\\管理系统\\\\build-retest\\\\phase2\\\\evidence\\\\downloads\\\\P2H-甲-Hmvjv9sb9.txt\"},\"detail\":{\"file\":\"P2H-甲-Hmvjv9sb9.txt\",\"sha\":\"5A88381206FE0797871504965E5A40E036854E4387117869A4C43246114F8CB6\",\"size\":34,\"raw\":\"E:\\\\Github\\\\管理系统\\\\build-retest\\\\phase2\\\\evidence\\\\downloads\\\\P2H-甲-Hmvjv9sb9.txt\"}},\"selBeforeBar\":[\"f:180:1\"],\"barState\":{\"hidden\":false,\"dl\":\"btn ghost\"},\"detailActs\":[\"preview\",\"download\",\"delete\"]}",
+  "expected": "下载原件正确，操作结果一致",
+  "workspace": "company",
+  "record_ids": "161",
+  "evidence_paths": "",
+  "notes": "右键菜单、选择栏、详情面板三处下载拿到的原件 SHA 与源文件一致，结果统一",
+  "timestamp": "2026-10-22T18:21:08.816Z",
+  "method": "DYNAMIC-BROWSER",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

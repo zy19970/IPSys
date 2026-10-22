@@ -1,0 +1,16 @@
+{
+  "case_id": "G-09",
+  "priority": "P0",
+  "group": "G｜拖放、菜单与快捷键",
+  "status": "PASS",
+  "actual": "{\"selection\":[\"c:414\",\"c:415\"],\"confirmText\":\"将 2 项移到回收站？可以稍后还原。\",\"afterRows\":[\"c:416\",\"c:417\"]}",
+  "expected": "仅操作该组已选中记录，数量正确",
+  "workspace": "company",
+  "record_ids": "413 414 415 416 417",
+  "evidence_paths": "",
+  "notes": "对已选中行开菜单执行删除，正好删除该组 2 条，未选中项不受影响",
+  "timestamp": "2026-10-22T18:10:13.824Z",
+  "method": "DYNAMIC-BROWSER",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

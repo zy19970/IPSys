@@ -1,0 +1,16 @@
+{
+  "case_id": "H-12",
+  "priority": "P1",
+  "group": "H｜公共 UI 与跨页面状态",
+  "status": "PASS",
+  "actual": "[{\"w\":1366,\"h\":768,\"zoom\":1,\"overlapToolbar\":[],\"overlapNav\":[],\"colCount\":12,\"rowClickable\":true},{\"w\":1366,\"h\":768,\"zoom\":1.25,\"overlapToolbar\":[],\"overlapNav\":[],\"colCount\":12,\"rowClickable\":true},{\"w\":1920,\"h\":1080,\"zoom\":1.5,\"overlapToolbar\":[],\"overlapNav\":[],\"colCount\":12,\"rowClickable\":true},{\"w\":1920,\"h\":1080,\"zoom\":1,\"overlapToolbar\":[],\"overlapNav\":[],\"colCount\":12,\"rowClickable\":true}]",
+  "expected": "按钮不重叠，附件列/名称/排序仍可操作",
+  "workspace": "company",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "1366/1920 宽与 100%/125%/150% 缩放下命令栏按钮无重叠，列表列数正常且行仍可点选",
+  "timestamp": "2026-10-22T18:21:53.996Z",
+  "method": "DYNAMIC-BROWSER",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

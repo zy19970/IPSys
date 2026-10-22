@@ -1,0 +1,16 @@
+{
+  "case_id": "A-08",
+  "priority": "P1",
+  "group": "A｜环境与基线",
+  "status": "PASS",
+  "actual": "{\"os\":{\"platform\":\"win32\",\"release\":\"10.0.26100\",\"arch\":\"x64\",\"version\":\"Windows 11 Enterprise LTSC 2024\"},\"cpu\":{\"model\":\"11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz\",\"cores\":8},\"memGB\":31.7,\"edge\":{\"base\":\"C:/Program Files (x86)/Microsoft/Edge/Application\",\"version\":\"155.0.4283.60\"},\"node\":\"v22.22.2\",\"dotnet\":\"10.0.401\",\"app\":{\"commit\":\"f5d206a\",\"dll\":{\"size\":2839552,\"mtime\":\"2026-10-17T06:59:12.560Z\"}},\"disk\":{\"freeGB\":64.6,\"totalGB\":130},\"screenScale\":\"见 B-07 浏览器侧 devicePixelRatio（本项由 CDP 采集，不依赖系统设置猜测）\",\"isolatedRoot\":\"E:\\\\Github\\\\管理系统\\\\build-retest\\\\phase2\",\"db\":\"E:\\\\Github\\\\管理系统\\\\build-retest\\\\phase2\\\\vault-p2-p2b.db\",\"dbSizeMB\":202.6}",
+  "expected": "报告中可复现环境与容量限制",
+  "workspace": "-",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "win32 10.0.26100 / Edge 155.0.4283.60 / node v22.22.2 / dotnet 10.0.401；被测构建 f5d206a（dll 2839552 字节，2026-10-17T06:59:12.560Z）；E: 盘剩余 64.6 GB（共 130 GB），隔离库 202.6 MB —— 报告里的容量类结论都可按此复算",
+  "timestamp": "2026-10-22T19:17:12.711Z",
+  "method": "DYNAMIC-MIXED",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

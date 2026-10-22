@@ -1,0 +1,16 @@
+{
+  "case_id": "B-01",
+  "priority": "P0",
+  "group": "B｜建库与会话",
+  "status": "PASS",
+  "actual": "{\"heading\":\"打开资料库\",\"submit\":\"打开\",\"switchHidden\":false,\"confirmHidden\":true,\"pathRO\":false,\"pathDisabled\":false,\"hint\":\"\",\"lockVisible\":true}",
+  "expected": "默认显示打开已有资料库，不直接进入创建模式",
+  "workspace": "-",
+  "record_ids": "",
+  "evidence_paths": "evidence/probe-lock.png",
+  "notes": "首次进入默认打开已有库，未进入创建模式",
+  "timestamp": "2026-10-22T17:25:18.605Z",
+  "method": "DYNAMIC-BROWSER",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

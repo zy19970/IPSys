@@ -1,0 +1,16 @@
+{
+  "case_id": "C-02",
+  "priority": "P0",
+  "group": "C｜业务记录与附件 CRUD",
+  "status": "PASS",
+  "actual": "{\"createA\":200,\"createB\":200,\"update\":200,\"stored\":{\"name\":\"C02-合同A\",\"contractNo\":\"C02-01-改\",\"signDate\":\"2026-04-02\",\"amount\":\"333000\",\"signingParties\":null,\"category\":null,\"remarks\":\"编辑后备注\",\"tags\":null},\"parent\":27}",
+  "expected": "合同唯一归属项目，数据可编辑并刷新后保留",
+  "workspace": "company",
+  "record_ids": "27 28",
+  "evidence_paths": "",
+  "notes": "两条合同均挂在项目下，金额/编号/备注编辑后持久化",
+  "timestamp": "2026-10-22T17:28:12.527Z",
+  "method": "DYNAMIC-HTTP+UI",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

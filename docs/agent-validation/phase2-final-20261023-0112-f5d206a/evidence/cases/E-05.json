@@ -1,0 +1,16 @@
+{
+  "case_id": "E-05",
+  "priority": "P0",
+  "group": "E｜附件、关联与版本",
+  "status": "PASS",
+  "actual": "{\"newVersion\":{\"fileId\":7,\"version\":3,\"size\":37,\"sha256\":\"37F8BC3BA916A0DDABE8960832C1C718926A1EBE7023471BCE477B85AC2898FD\"},\"ipALatest\":3,\"generalLatest\":3,\"twoLinks\":[7,26],\"downloadSha\":\"37f8bc3ba916a0dd\"}",
+  "expected": "两处均显示同一最新历史版本",
+  "workspace": "company",
+  "record_ids": "7 7 26",
+  "evidence_paths": "",
+  "notes": "第三版上传后两个关联都显示 v3，下载内容与新版一致",
+  "timestamp": "2026-10-22T17:32:10.275Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

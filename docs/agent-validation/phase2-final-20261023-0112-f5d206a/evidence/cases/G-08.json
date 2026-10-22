@@ -1,0 +1,16 @@
+{
+  "case_id": "G-08",
+  "priority": "P0",
+  "group": "G｜拖放、菜单与快捷键",
+  "status": "PASS",
+  "actual": "{\"selectedBefore\":[\"c:410\"],\"moreMenuOn\":\"c:412\",\"menuActs\":[\"open\",\"props\",\"download\",\"copy-record\",\"transfer-record\",\"rename\",\"delete\"],\"afterRows\":[\"c:410\",\"c:411\"]}",
+  "expected": "仅删除被点击行，不误删除旧的选择",
+  "workspace": "company",
+  "record_ids": "409 410 411 412",
+  "evidence_paths": "",
+  "notes": "点未选中行的「更多→删除」只删除被点击的 C，原先选中的 A 与未选中的 B 均保留",
+  "timestamp": "2026-10-22T18:10:07.022Z",
+  "method": "DYNAMIC-BROWSER",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

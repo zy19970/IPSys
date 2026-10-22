@@ -1,0 +1,16 @@
+{
+  "case_id": "A-03",
+  "priority": "P0",
+  "group": "A｜环境与基线",
+  "status": "PASS",
+  "actual": "{\"isolatedRoot\":\"E:\\\\Github\\\\管理系统\\\\build-retest\\\\phase2\",\"db\":\"E:\\\\Github\\\\管理系统\\\\build-retest\\\\phase2\\\\vault-p2-p2b.db\",\"dbSize\":212492288,\"isoDirs\":[{\"dir\":\"E:\\\\Github\\\\管理系统\\\\build-retest\\\\phase2\\\\evidence\",\"exists\":true,\"entries\":22},{\"dir\":\"E:\\\\Github\\\\管理系统\\\\build-retest\\\\phase2\\\\profiles\",\"exists\":true,\"entries\":45},{\"dir\":\"E:\\\\Github\\\\管理系统\\\\build-retest\\\\phase2\\\\tools\",\"exists\":true,\"entries\":1},{\"dir\":\"E:\\\\Github\\\\管理系统\\\\build-retest\\\\phase2\\\\scripts\",\"exists\":true,\"entries\":37}],\"realVaultBefore\":{\"path\":\"C:/Users/Joey/Documents/IPSys-web-test.db\",\"exists\":true,\"size\":352256,\"mtimeMs\":1792472439044.053,\"mtime\":\"2026-10-20T05:00:39.044Z\"},\"realVaultAfter\":{\"path\":\"C:/Users/Joey/Documents/IPSys-web-test.db\",\"exists\":true,\"size\":352256,\"mtimeMs\":1792472439044.053,\"mtime\":\"2026-10-20T05:00:39.044Z\"},\"realVaultTouched\":false,\"note\":\"写操作发生在 A-04/A-07，收尾时再取一次真实库指纹做对比\",\"isolatedRootGrew\":[]}",
+  "expected": "真实资料库路径绝不被写入",
+  "workspace": "-",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "A-04/A-07 在建项目、传附件、上传 33 MiB 与双版本之后再次取指纹：真实资料库 IPSys-web-test.db 大小 352256 字节、mtime 2026-10-20T05:00:39.044Z，与开工前逐字节相同（未被写入）；所有新增文件只出现在隔离目录 E:\\Github\\管理系统\\build-retest\\phase2",
+  "timestamp": "2026-10-22T19:17:43.595Z",
+  "method": "DYNAMIC-MIXED",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

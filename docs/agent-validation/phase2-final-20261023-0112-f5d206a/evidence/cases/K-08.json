@@ -1,0 +1,16 @@
+{
+  "case_id": "K-08",
+  "priority": "P0",
+  "group": "K｜大文件、并发与故障恢复",
+  "status": "PASS",
+  "actual": "{\"compactStart\":202,\"task\":{\"taskId\":\"5a42e1cfd1734227b5a1b3e123a55890\",\"state\":\"succeeded\",\"stage\":\"压缩完成，SQLCipher 完整性校验通过\",\"bytesBefore\":225402880,\"bytesAfter\":177135616,\"reusableBefore\":48234496,\"error\":null},\"infoBefore\":{\"fileBytes\":225402880,\"pageCount\":55030,\"freePages\":11776,\"pageSize\":4096,\"reusableBytes\":48234496,\"requiredFreeBytes\":585023488,\"availableBytes\":69932032000,\"tempAvailableBytes\":24980402176,\"canCompact\":true},\"infoAfter\":{\"fileBytes\":177135616,\"pageCount\":43246,\"freePages\":0,\"pageSize\":4096,\"reusableBytes\":0,\"requiredFreeBytes\":488488960,\"availableBytes\":69802729472,\"tempAvailableBytes\":24994426880,\"canCompact\":true},\"countsBefore\":{\"folders\":444,\"foldersDeleted\":0,\"files\":194,\"filesDeleted\":0,\"file_objects\":208,\"file_versions\":214,\"file_chunks\":381,\"folder_file_links\":207,\"linksDeleted\":2},\"countsAfter\":{\"folders\":444,\"foldersDeleted\":0,\"files\":194,\"filesDeleted\":0,\"file_objects\":208,\"file_versions\":214,\"file_chunks\":381,\"folder_file_links\":207,\"linksDeleted\":2},\"integrityBefore\":\"ok\",\"integrityAfter\":\"ok\",\"fkAfter\":[],\"projectsStillReadable\":true}",
+  "expected": "原件仍可读；压缩后库完整且会话处理正确",
+  "workspace": "company",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "手动压缩 SQLCipher：任务 succeeded，压缩后 integrity=ok、外键 0 违规，folders/files/versions/objects 四项计数与压缩前完全一致，压缩后业务列表接口仍可正常读取",
+  "timestamp": "2026-10-22T19:07:27.584Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

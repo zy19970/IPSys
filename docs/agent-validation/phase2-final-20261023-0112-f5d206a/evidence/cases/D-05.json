@@ -1,0 +1,16 @@
+{
+  "case_id": "D-05",
+  "priority": "P0",
+  "group": "D｜多级档案目录与排序",
+  "status": "PASS",
+  "actual": "{\"rename\":[400,{\"error\":\"更换父级必须使用单独的移动操作。\"}],\"delete\":[409,{\"error\":\"系统目录或含下级资料、附件的目录不能删除。\"}],\"move\":[409,{\"error\":\"系统预设目录不能移动。\"}],\"nameAfter\":\"申报与认定\"}",
+  "expected": "系统目录完整保留且操作明确拒绝",
+  "workspace": "company",
+  "record_ids": "1",
+  "evidence_paths": "",
+  "notes": "系统目录改名/删除/移动均被拒绝，原目录完整",
+  "timestamp": "2026-10-22T17:30:11.698Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

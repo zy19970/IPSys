@@ -1,0 +1,16 @@
+{
+  "case_id": "J-05",
+  "priority": "P0",
+  "group": "J｜回收站、永久清理与数据库安全",
+  "status": "PASS",
+  "actual": "{\"fileId\":199,\"contractA\":492,\"contractB\":493,\"linkA\":221,\"linkB\":222,\"shareResolve\":{\"choice\":\"share-file\",\"fileId\":199,\"linkId\":222,\"size\":67,\"sha256\":\"F446A33D6A6283BA58AF13411C2AE2C28E581EBB461DF52BDB7A16ADC5FC9614\",\"reusedContent\":true},\"inTrash\":true,\"purgeStatus\":200,\"bStillLinked\":true,\"downloadBefore\":{\"status\":200,\"len\":67,\"sha\":\"F446A33D6A6283BA58AF13411C2AE2C28E581EBB461DF52BDB7A16ADC5FC9614\"},\"downloadAfter\":{\"status\":200,\"len\":67,\"sha\":\"F446A33D6A6283BA58AF13411C2AE2C28E581EBB461DF52BDB7A16ADC5FC9614\"},\"expectSha\":\"F446A33D6A6283BA58AF13411C2AE2C28E581EBB461DF52BDB7A16ADC5FC9614\",\"objects\":{\"before\":213,\"after\":213},\"sharedObjects\":{\"before\":6,\"after\":6}}",
+  "expected": "共享文件及历史版本可读，不能提前释放原件",
+  "workspace": "company",
+  "record_ids": "199 221 222",
+  "evidence_paths": "",
+  "notes": "同一 FileId 被两个合同共享；彻底删除 A 区那条 LinkId 后，B 区引用仍在、原件未提前释放（对象数保持 213），历史版本仍可下载且 SHA 一致",
+  "timestamp": "2026-10-22T18:39:55.403Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

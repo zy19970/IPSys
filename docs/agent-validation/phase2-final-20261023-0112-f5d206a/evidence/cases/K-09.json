@@ -1,0 +1,16 @@
+{
+  "case_id": "K-09",
+  "priority": "P0",
+  "group": "K｜大文件、并发与故障恢复",
+  "status": "BLOCKED",
+  "actual": "{\"reason\":\"MCP 并发需要两个真实 MCP 客户端通过命名管道并发调用；本环境只能通过 POST /api/mcp 切换开关，无法构造两个独立 MCP 会话。HTTP 侧已用 /api/task 与 409 覆盖了同一把文件任务锁的互斥行为（见 K-03）。\",\"mcpEndpoint\":\"GET/POST /api/mcp 仅返回与切换 enabled，不承载业务调用\"}",
+  "expected": "不挂死，超时/409 明确且对用户可理解",
+  "workspace": "-",
+  "record_ids": "",
+  "evidence_paths": "",
+  "notes": "BLOCKED：两个 MCP 客户端并发读写的互斥未取得直接证据（本环境无法构造两个 MCP 会话；同一把锁的 HTTP 侧互斥已由 K-03 覆盖）",
+  "timestamp": "2026-10-22T19:08:26.492Z",
+  "method": "DYNAMIC-HTTP",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

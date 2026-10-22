@@ -1,0 +1,16 @@
+{
+  "case_id": "C-12",
+  "priority": "P1",
+  "group": "C｜业务记录与附件 CRUD",
+  "status": "PASS",
+  "actual": "{\"workspaceLabel\":\"企业工作区\",\"first\":1,\"second\":1,\"rows\":5}",
+  "expected": "同一记录不会重复显示或消失",
+  "workspace": "company",
+  "record_ids": "46",
+  "evidence_paths": "evidence/c12-fixed.png",
+  "notes": "企业项目分类新建后恰好一行，重渲染不重复不消失（Drive.state.ws 未存工作区字段，首次用错属性名）",
+  "timestamp": "2026-10-22T17:29:36.588Z",
+  "method": "DYNAMIC-BROWSER",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}

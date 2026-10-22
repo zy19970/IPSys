@@ -1,0 +1,16 @@
+{
+  "case_id": "C-09",
+  "priority": "P1",
+  "group": "C｜业务记录与附件 CRUD",
+  "status": "PASS",
+  "actual": "{\"first\":\"C09-一致性-第一次\",\"second\":\"C09-一致性-第二次\"}",
+  "expected": "字段一致，不出现编辑后返回旧值",
+  "workspace": "company",
+  "record_ids": "39",
+  "evidence_paths": "",
+  "notes": "连续两次更新均返回最新值，无旧值回写（本次为 HTTP 更新 + 读回，UI 表单入口见 C-12）",
+  "timestamp": "2026-10-22T17:28:13.192Z",
+  "method": "DYNAMIC-HTTP+UI",
+  "run_id": "p2b",
+  "tested_commit": "f5d206a"
+}
