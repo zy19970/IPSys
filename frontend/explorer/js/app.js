@@ -880,7 +880,6 @@ const Drive = {
           <p title="${esc(dbName)} · ${esc(sub)}">${esc(dbName)} · ${esc(sub)}</p>
         </div>
         <div class="ph-acts">
-          <button class="btn" data-page-act="upload">${icon("upload", 16)}<span>导入资料</span></button>
           <button class="btn solid" data-page-act="new">${icon("plus", 16)}<span>新建记录</span></button>
         </div>
       </header>
@@ -1323,7 +1322,6 @@ function bootStaticIcons() {
   set("icoRefresh", icon("refresh", 17));
   set("icoSort", icon("sort", 17));
   set("icoFilter", icon("filter", 17));
-  set("btnPinFolder", icon("plus", 14));
   set("btnDetailToggle", icon("info", 20));
   set("icoSelDownload", icon("download", 17));
   set("selClear", icon("close", 14));

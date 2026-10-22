@@ -702,7 +702,6 @@ function bindNav() {
   });
 
   $("#btnNewSide").addEventListener("click", (e) => openNewMenu(e.currentTarget));
-  $("#btnPinFolder").addEventListener("click", () => toast("「快捷访问」已按资料分类自动生成"));
 }
 
 function bindCmdbar() {
@@ -889,8 +888,9 @@ function openNewMenu(anchor) {
         MI(`new-${m.id}`, m.id === "contract" ? "folder" : `cat:${m.id}`, m.label, "", false, !m.can)
       )
       .join("") +
-      '<div class="ctx-sep"></div>' +
-      MI("upload", "upload", "上传文件"),
+      (canUploadFiles(findById(s.folderId))
+        ? '<div class="ctx-sep"></div>' + MI("upload", "upload", "上传文件")
+        : ""),
     handlers
   );
 
@@ -1017,7 +1017,30 @@ function bindContent() {
   document.addEventListener("drop", (e) => {
     if (!e.dataTransfer?.files?.length) return;
     const node = findById(Drive.state.folderId);
-    if (node?.type === "folder") uploadFiles(e.dataTransfer.files, node);
+    if (canUploadFiles(node)) uploadFiles(e.dataTransfer.files, node);
+    else toast("请先进入具体业务记录，再上传附件");
+  });
+}
+
+/* F2 与右键重命名共用真正可提交的业务表单；自建档案目录
+   使用原生 Folder 更新接口，系统预置目录不可重命名。 */
+function renameNode(node) {
+  if (!node || node.type !== "folder") return;
+  const b = node.biz || {};
+  if (b.kind !== "archive_folder") return RecordForms.edit(node);
+  if (b.isSystem) return toast("系统预置目录不能重命名");
+  RecordForms.open({
+    title: "重命名目录",
+    fields: [{ key: "name", label: "目录名称", required: true }],
+    values: { name: node.name },
+    onSubmit: async (data) => {
+      await VaultStore.api("/api/v2/folders/company/archive_folder/" + b.id, {
+        method: "PUT",
+        json: { archiveFolder: { name: data.name, parentId: b.parentId } },
+      });
+      await refreshCurrent();
+      toast("目录名称已更新");
+    },
   });
 }
 
@@ -1049,7 +1072,8 @@ function showItemMenu(id, x, y) {
     !isFolder ? MI("newver", "upload", "上传新版本") : "",
     !isFolder && b.ownerKind === "ip" ? MI("assoc", "copy", "共享到其它知识产权") : "",
     '<div class="ctx-sep"></div>',
-    isFolder && b.kind !== "archive_folder" ? MI("rename", "rename", "重命名", "F2") : "",
+    isFolder && (b.kind !== "archive_folder" || !b.isSystem)
+      ? MI("rename", "rename", "重命名", "F2") : "",
     b.kind !== "archive_folder" ? MI("delete", "trash", "删除", "Del", true) : "",
   ]
     .filter(Boolean)
@@ -1062,7 +1086,7 @@ function showItemMenu(id, x, y) {
     download: () => (isFolder ? exportNodes([item]) : downloadFile(id)),
     newver: () => uploadNewVersion(item),
     assoc: () => associateOriginal(item),
-    rename: () => toast("重命名请点「修改」或右键「属性」"),
+    rename: () => renameNode(item),
     delete: () => deleteNodes([...Drive.state.selection].map((i) => findById(i) || RECYCLE.find((n) => n.id === i)).filter(Boolean)),
   });
 }
@@ -1077,7 +1101,9 @@ function showBlankMenu(x, y) {
   showCtx(
     x,
     y,
-    [MI("new", "plus", "新建"), MI("upload", "upload", "上传"), '<div class="ctx-sep"></div>', MI("refresh", "refresh", "刷新")].join(""),
+    [MI("new", "plus", "新建"),
+      canUploadFiles(findById(s.folderId)) ? MI("upload", "upload", "上传") : "",
+      '<div class="ctx-sep"></div>', MI("refresh", "refresh", "刷新")].join(""),
     {
       new: () => ($(`#btnNew`) ? openNewMenu($("#btnNew")) : null),
       upload: () => pickFiles(),
@@ -1280,9 +1306,12 @@ function bindKeyboard() {
       return;
     }
 
-    if (e.key === "F2") {
-      e.preventDefault();
-      if (s.selection.size === 1) toast("重命名请点「修改」或右键「属性」");
+    if (e.key === "F2" && s.selection.size === 1) {
+      const node = Drive.selectedItems[0];
+      if (node?.type === "folder") {
+        e.preventDefault();
+        renameNode(node);
+      }
       return;
     }
 
@@ -1682,11 +1711,15 @@ async function previewFile(id) {
 
 /* ---------------- 上传 ---------------- */
 
+function canUploadFiles(node) {
+  return node?.type === "folder" &&
+    ["project", "contract", "archive", "ip", "general"].includes(node.biz?.kind);
+}
+
 function pickFiles() {
   const node = findById(Drive.state.folderId);
-  if (!node || node.type !== "folder") return toast("请先进入一条记录,再上传附件");
-  if (nodeTag(node.id) === "k" || node.biz?.kind === "archive_folder")
-    return toast("请先进入具体记录,再上传附件");
+  if (!canUploadFiles(node))
+    return toast("请先进入具体业务记录，再上传附件");
 
   const input = document.createElement("input");
   input.type = "file";

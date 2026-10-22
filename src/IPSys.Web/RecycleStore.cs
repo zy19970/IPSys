@@ -260,13 +260,27 @@ static class RecycleStore
     // including links in other folders and tombstones still restorable there.
     private static void PurgeFileLink(SqliteConnection db,SqliteTransaction tx,
         string workspace,RecycleKey item,long total,ref long removed,
-        Action<long,long,string>? report,CancellationToken cancellation)
+        Action<long,long,string>? report,CancellationToken cancellation,
+        bool inherited=false)
     {
         cancellation.ThrowIfCancellationRequested();
         long fileId=Count(db,tx,workspace,
-            "SELECT file_id FROM folder_file_links WHERE id=$id AND workspace=$w AND deleted=1;",
+            inherited
+                ? "SELECT file_id FROM folder_file_links WHERE id=$id AND workspace=$w;"
+                : "SELECT file_id FROM folder_file_links WHERE id=$id AND workspace=$w AND deleted=1;",
             item.Id);
-        Apply(db,tx,workspace,item,true);
+        if(inherited)
+        {
+            // This LinkId was obtained only from a selected, deleted parent
+            // FolderId (or its contained contract). Its tombstone may still
+            // be active because deleting a parent hides but does not unlink it.
+            using var unlink=InTransaction(db,tx,workspace,
+                "DELETE FROM folder_file_links WHERE id=$id AND workspace=$w;",
+                item.Id);
+            if(unlink.ExecuteNonQuery()!=1)
+                throw new InvalidOperationException("所属记录的文件关联已变化。");
+        }
+        else Apply(db,tx,workspace,item,true);
         if(Count(db,tx,workspace,
             "SELECT COUNT(*) FROM folder_file_links WHERE workspace=$w AND file_id=$id;",
             fileId)!=0)return;
@@ -311,37 +325,71 @@ static class RecycleStore
             }
         }
     }
+    // Resolve owned descendants before deleting a tombstoned folder. A project
+    // soft delete hides its contracts and links without tombstoning them, so
+    // relying on visible trash rows or deleting just its FolderId violates FK
+    // constraints. Only descendants of explicitly selected folders are included.
+    private static (List<(long ContractId,long ProjectId)> Contracts,HashSet<long> Links)
+        ExpandFolderPurge(SqliteConnection db,string workspace,
+            IReadOnlyList<RecycleKey> items)
+    {
+        var folders=new HashSet<long>();
+        var contracts=new List<(long ContractId,long ProjectId)>();
+        foreach(var item in items.Where(x=>x.Kind is "project" or "contract" or
+            "ip" or "v2_general" or "v2_archive"))
+        {
+            folders.Add(item.Id);
+            using var children=db.CreateCommand();
+            children.CommandText="""
+                SELECT id,kind FROM folders
+                WHERE workspace=$w AND parent_id=$id;
+                """;
+            children.Parameters.AddWithValue("$w",workspace);
+            children.Parameters.AddWithValue("$id",item.Id);
+            using var reader=children.ExecuteReader();
+            while(reader.Read())
+            {
+                long childId=reader.GetInt64(0);
+                string kind=reader.GetString(1);
+                if(item.Kind=="project" && kind=="contract")
+                {
+                    contracts.Add((childId,item.Id));
+                    folders.Add(childId);
+                }
+                else throw new InvalidOperationException(
+                    "记录仍有不能级联清理的下级目录，已取消永久删除。");
+            }
+        }
+        var links=new HashSet<long>();
+        foreach(long id in folders)
+        {
+            using var cmd=db.CreateCommand();
+            cmd.CommandText="""
+                SELECT id FROM folder_file_links
+                WHERE workspace=$w AND folder_id=$folder;
+                """;
+            cmd.Parameters.AddWithValue("$w",workspace);
+            cmd.Parameters.AddWithValue("$folder",id);
+            using var reader=cmd.ExecuteReader();
+            while(reader.Read())links.Add(reader.GetInt64(0));
+        }
+        return (contracts,links);
+    }
+
     public static bool Change(SqliteConnection db,string workspace,
         IReadOnlyList<RecycleKey> items,bool purge,
         Action<long,long,string>? report=null,CancellationToken cancellation=default)
     {
         if(items.Count is <1 or >200 || items.Distinct().Count()!=items.Count)return false;
         if(items.Any(x=>!Deleted(db,workspace,x)))return false;
-        if(purge)
-        {
-            foreach(var item in items)
-            {
-                if(item.Kind is "v2_file" or "v2_ip_file")continue;
-                using var cmd=db.CreateCommand();
-                cmd.CommandText=item.Kind=="project"?"""
-                    SELECT (SELECT COUNT(*) FROM folders WHERE workspace=$w
-                      AND kind='contract' AND parent_id=$id) +
-                      (SELECT COUNT(*) FROM folder_file_links WHERE workspace=$w
-                      AND (folder_id=$id OR folder_id IN
-                        (SELECT id FROM folders WHERE workspace=$w AND kind='contract'
-                        AND parent_id=$id)));
-                    """:"""
-                    SELECT COUNT(*) FROM folder_file_links
-                    WHERE workspace=$w AND folder_id=$id;
-                    """;
-                cmd.Parameters.AddWithValue("$w",workspace);
-                cmd.Parameters.AddWithValue("$id",item.Id);
-                if((long)cmd.ExecuteScalar()!>0)
-                    throw new InvalidOperationException("记录仍有关联目录或文件历史，禁止永久删除。");
-            }
-        }
+        var descendants=purge?ExpandFolderPurge(db,workspace,items)
+            :(new List<(long ContractId,long ProjectId)>(),new HashSet<long>());
+        var fileItems=items.Where(x=>x.Kind is "v2_file" or "v2_ip_file").ToList();
+        var knownLinks=fileItems.Select(x=>x.Id).ToHashSet();
+        foreach(long id in descendants.Item2)
+            if(knownLinks.Add(id))fileItems.Add(new RecycleKey("v2_file",id,""));
         cancellation.ThrowIfCancellationRequested();
-        long total=purge && report!=null?PlannedReclaimBytes(db,workspace,items):0;
+        long total=purge && report!=null?PlannedReclaimBytes(db,workspace,fileItems):0;
         long removed=0;
         report?.Invoke(0,total,"正在处理回收站关联");
         using var tx=db.BeginTransaction();
@@ -349,8 +397,22 @@ static class RecycleStore
         {
             // Purge selected tombstoned links first. A single FileId may occur
             // in multiple selected folders; its bytes are reclaimed only last.
-            foreach(var item in items.Where(x=>x.Kind is "v2_file" or "v2_ip_file"))
-                PurgeFileLink(db,tx,workspace,item,total,ref removed,report,cancellation);
+            foreach(var item in fileItems)
+                PurgeFileLink(db,tx,workspace,item,total,ref removed,report,cancellation,
+                    descendants.Item2.Contains(item.Id));
+            // Child contracts must go before their project because parent_id
+            // is ON DELETE RESTRICT. The descendants are exclusively derived
+            // from the selected project and stay in the same rollback boundary.
+            foreach(var (childId,projectId) in descendants.Item1)
+            {
+                using var child=InTransaction(db,tx,workspace,"""
+                    DELETE FROM folders WHERE id=$id AND workspace=$w
+                      AND kind='contract' AND parent_id=$project;
+                    """,childId);
+                child.Parameters.AddWithValue("$project",projectId);
+                if(child.ExecuteNonQuery()!=1)
+                    throw new InvalidOperationException("所属合同状态已变化，已取消永久删除。");
+            }
             foreach(var item in items.Where(x=>x.Kind is not ("v2_file" or "v2_ip_file")))
                 Apply(db,tx,workspace,item,true);
         }

@@ -175,6 +175,89 @@ static class RecyclePurgeSmoke
                     .GetAwaiter().GetResult();
                 Check(NativeFileStore.DownloadInfo(db,"personal",personalFile.FileId,1)!=null,
                     "personal original independent of company cleanup");
+
+                // BUG-020: soft-deleting a project hides its active contracts and
+                // links. Purging the project must clean that exact dependent
+                // subtree transactionally, while a second project continues to
+                // own the shared FileId and its original encrypted bytes.
+                long root=Folder(db,"company","待清空项目");
+                long keeper=Folder(db,"company","仍在使用项目");
+                long contract;
+                using(var cmd=db.CreateCommand())
+                {
+                    cmd.CommandText="""
+                        INSERT INTO folders(workspace,kind,parent_id,name)
+                        VALUES('company','contract',$project,'子合同');
+                        SELECT last_insert_rowid();
+                        """;
+                    cmd.Parameters.AddWithValue("$project",root);
+                    contract=(long)cmd.ExecuteScalar()!;
+                }
+                var inherited=NativeFileStore.UploadAsync(db,"company",contract,null,
+                    new NativeFileMetadataInput("子合同原件.bin"),null,payload.Length,
+                    new MemoryStream(payload),CancellationToken.None)
+                    .GetAwaiter().GetResult();
+                long inheritedLink=Link(db,inherited.FileId,contract);
+                long keptLink=NativeFileLinkStore.Add(db,"company",inherited.FileId,
+                    new NativeFileLinkInput(keeper));
+                Check(keptLink>0,"independent shared LinkId created");
+                using(var cmd=db.CreateCommand())
+                {
+                    cmd.CommandText="""
+                        UPDATE folders SET deleted=1
+                        WHERE id=$id AND workspace='company' AND kind='project';
+                        """;
+                    cmd.Parameters.AddWithValue("$id",root);
+                    Check(cmd.ExecuteNonQuery()==1,"project soft-deleted");
+                }
+                Check(Scalar(db,
+                    "SELECT deleted FROM folder_file_links WHERE id=$id;",inheritedLink)==0,
+                    "project delete does not tombstone hidden contract link");
+                Check(RecycleStore.Change(db,"company",
+                    [new RecycleKey("project",root,"")],true),
+                    "project purge cascades contract and inherited links");
+                Check(Scalar(db,"SELECT COUNT(*) FROM folders WHERE id=$id;",root)==0 &&
+                      Scalar(db,"SELECT COUNT(*) FROM folders WHERE id=$id;",contract)==0,
+                    "parent and contract removed after their links");
+                Check(Scalar(db,
+                    "SELECT COUNT(*) FROM folder_file_links WHERE id=$id;",inheritedLink)==0,
+                    "hidden inherited LinkId removed");
+                Check(Scalar(db,
+                    "SELECT COUNT(*) FROM folder_file_links WHERE id=$id;",keptLink)==1,
+                    "shared LinkId in another project survives cascade");
+                Check(NativeFileStore.DownloadInfo(db,"company",inherited.FileId,1)!=null,
+                    "shared FileId bytes survive project purge");
+
+                // An isolated archived record with an active link must be
+                // cleaned together with its link (not blocked by FK checks).
+                long archived;
+                using(var cmd=db.CreateCommand())
+                {
+                    cmd.CommandText="""
+                        INSERT INTO folders(workspace,kind,section,name,deleted)
+                        VALUES('company','archive','certificate','已删证书',0);
+                        SELECT last_insert_rowid();
+                        """;
+                    archived=(long)cmd.ExecuteScalar()!;
+                }
+                var archiveFile=NativeFileStore.UploadAsync(db,"company",archived,null,
+                    new NativeFileMetadataInput("证书原件.bin"),null,payload.Length,
+                    new MemoryStream(payload),CancellationToken.None)
+                    .GetAwaiter().GetResult();
+                long archiveLink=Link(db,archiveFile.FileId,archived);
+                using(var cmd=db.CreateCommand())
+                {
+                    cmd.CommandText="UPDATE folders SET deleted=1 WHERE id=$id;";
+                    cmd.Parameters.AddWithValue("$id",archived);
+                    Check(cmd.ExecuteNonQuery()==1,"archive soft delete");
+                }
+                Check(RecycleStore.Change(db,"company",
+                    [new RecycleKey("v2_archive",archived,"certificate")],true),
+                    "archived record with an active link purged atomically");
+                Check(Scalar(db,"SELECT COUNT(*) FROM folders WHERE id=$id;",archived)==0 &&
+                      Scalar(db,
+                        "SELECT COUNT(*) FROM folder_file_links WHERE id=$id;",archiveLink)==0,
+                    "archived folder and inherited attachment removed");
             }
             // Existing V2 vaults originally shipped a trigger that rejects even
             // orphan-ready chunk deletion. Validation upgrades only that trigger.

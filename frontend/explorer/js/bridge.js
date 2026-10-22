@@ -294,6 +294,7 @@ const PURGE_POLL_MS = 550;
 const PURGE_DONE = new Set(["succeeded", "failed", "canceled"]);
 
 let purgeTracking = false;
+let purgeBatchActive = false;
 
 function purgePanel() {
   let p = $("#trashPurgeProgress");
@@ -373,8 +374,8 @@ async function purgeSnapshot() {
   return res.json();
 }
 
-async function trackPurge(taskId, workspace) {
-  if (purgeTracking) return;
+async function trackPurge(taskId, workspace, silent = false) {
+  if (purgeTracking) return null;
   purgeTracking = true;
   purgeTaskActive = true;
   try {
@@ -398,69 +399,102 @@ async function trackPurge(taskId, workspace) {
       }
 
       if (PURGE_DONE.has(state.state)) {
-        if (state.state === "succeeded") {
-          try {
-            await refreshCurrent();
-            Drive.clearSelection();
-            toast(`已彻底删除 ${state.count} 条记录`);
-          } catch {
-            /* 服务端已经提交了,刷新失败不能让用户以为删除失败了 */
-            toast("删除已提交,但列表刷新失败,请重新进入回收站", { tone: "error" });
+        if (!silent) {
+          if (state.state === "succeeded") {
+            try {
+              await refreshCurrent();
+              Drive.clearSelection();
+              toast(`已彻底删除 ${state.count} 条记录`);
+            } catch {
+              toast("删除已提交,但列表刷新失败,请重新进入回收站", { tone: "error" });
+            }
+          } else {
+            toast(state.error || "删除未完成,数据库已回滚", { tone: "error", ms: 6000 });
           }
-        } else {
-          toast(state.error || "删除未完成,数据库已回滚", { tone: "error", ms: 6000 });
         }
-        break;
+        return state;
       }
       await new Promise((r) => setTimeout(r, PURGE_POLL_MS));
     }
+    return null;
   } finally {
     purgeTracking = false;
-    purgeTaskActive = false;
+    if (!purgeBatchActive) purgeTaskActive = false;
   }
 }
 
-/* 真正发起彻底删除。调用方只负责确认对话框,进度与结果都归这里。 */
-async function purgeTrash(nodes) {
-  const items = (nodes || [])
-    .map((n) => {
-      const r = n.biz?.raw;
-      if (!r) return null;
-      return { kind: r.kind, id: r.id, section: r.section || "" };
-    })
-    .filter(Boolean);
-
-  if (!items.length) return toast("这些条目缺少回收站标识");
-  if (purgeTaskActive) return toast("已有彻底删除任务在执行,请看右下角进度");
-  /* 后端单次上限 200 条:超了直接说清楚,不要让它无声失败 */
-  if (items.length > 200) {
-    return toast(`一次最多彻底删除 200 条,当前选中 ${items.length} 条,请分批操作`, {
-      ms: 6000,
-      tone: "error",
-    });
+/* 服务端每项任务最多 200 条，批量清空按受控串行任务分批；
+   每批须有成功终态且任务写锁已释放后才能提交下一批。 */
+async function waitPurgeIdle() {
+  for (let n = 0; n < 90; n++) {
+    const task = await VaultStore.getJson("/api/task");
+    if (!task.active) return;
+    await new Promise((r) => setTimeout(r, 200));
   }
+  throw new Error("上一批彻底删除仍占用数据库，请稍后检查回收站");
+}
+
+/* 真正发起彻底删除。调用方只负责确认，进度与结果归这里。 */
+async function purgeTrash(nodes) {
+  const unique = new Map();
+  for (const node of nodes || []) {
+    const r = node.biz?.raw;
+    if (r?.id > 0 && r.kind) unique.set(r.kind + ":" + r.id + ":" + (r.section || ""),
+      { kind: r.kind, id: r.id, section: r.section || "" });
+  }
+  const items = [...unique.values()];
+  if (!items.length) return toast("这些条目缺少回收站标识");
+  if (purgeTaskActive) return toast("已有彻底删除任务在执行，请看右下角进度");
 
   const workspace = VaultStore.ws;
+  const batches = [];
+  for (let i = 0; i < items.length; i += 200) batches.push(items.slice(i, i + 200));
   const panel = purgePanel();
   panel.hidden = false;
   panel.querySelector("#trashPurgeClose").hidden = true;
-  panel.querySelector("#trashPurgeCount").textContent = `共 ${items.length} 条记录`;
   panel.querySelector("#trashPurgeMeter").removeAttribute("value");
   panel.querySelector("#trashPurgePercent").textContent = "准备中";
   panel.querySelector("#trashPurgeBytes").textContent = "";
-  panel.querySelector("#trashPurgeStage").textContent = "请求已受理,正在查询服务端删除进度…";
+  purgeBatchActive = true;
   purgeTaskActive = true;
+  let confirmed = 0;
 
   try {
-    const task = await VaultStore.api(`/api/trash/${workspace}/purge-task`, {
-      method: "POST",
-      json: { items },
-    }).then((r) => r.json());
-    void trackPurge(task.taskId, workspace);
+    for (let i = 0; i < batches.length; i++) {
+      if (i) await waitPurgeIdle();
+      panel.querySelector("#trashPurgeCount").textContent =
+        "共 " + items.length + " 条 · 第 " + (i + 1) + "/" + batches.length + " 批";
+      panel.querySelector("#trashPurgeStage").textContent =
+        "已确认删除 " + confirmed + " 条，正在提交第 " + (i + 1) + " 批";
+      panel.querySelector("#trashPurgeClose").hidden = true;
+      const task = await VaultStore.api("/api/trash/" + workspace + "/purge-task", {
+        method: "POST", json: { items: batches[i] },
+      }).then((r) => r.json());
+      const state = await trackPurge(task.taskId, workspace, true);
+      if (!state || state.state !== "succeeded") {
+        throw new Error(state?.error || "本批删除结果尚未确认，停止后续批次");
+      }
+      confirmed += batches[i].length;
+    }
+    try {
+      await refreshCurrent();
+      Drive.clearSelection();
+      toast("已彻底删除 " + confirmed + " 条记录");
+    } catch {
+      toast("删除已提交，但列表刷新失败，请重新进入回收站", { tone: "error" });
+    }
   } catch (e) {
+    /* 不回滚已经成功提交的批次，也绝不把未确认的批次说成成功。 */
+    try { await refreshCurrent(); } catch {}
+    toast("已确认删除 " + confirmed + " / " + items.length +
+      " 条；" + (e.message || String(e)) + "。请核查剩余回收站记录",
+      { ms: 9000, tone: "error" });
+    panel.querySelector("#trashPurgeStage").textContent =
+      "只确认完成 " + confirmed + " / " + items.length + " 条；其余未确认";
+  } finally {
+    purgeBatchActive = false;
     purgeTaskActive = false;
-    panel.hidden = true;
-    toast(e.message, { ms: 6000, tone: "error" });
+    panel.querySelector("#trashPurgeClose").hidden = false;
   }
 }
 

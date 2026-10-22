@@ -171,6 +171,7 @@ jobs:
             'ui-tree-smoke.cjs'                = 'Drive tree (project / contract / original) smoke failed'
             'explorer-p0-interactions-smoke.cjs' = 'Explorer P0 deletion and lock regression failed'
             'explorer-p1-regression-smoke.cjs' = 'Explorer P1 archive ordering and API error handling regression failed'
+            'explorer-p2-interactions-smoke.cjs' = 'Explorer P2 safe recycle batching and UI regression failed'
             'explorer-capabilities-smoke.cjs'  = 'Streaming download / server search / purge progress failed'
             'upload-progress-smoke.cjs'        = 'Real upload progress/multiphase state smoke failed'
             'upload-unique-autosave-smoke.cjs' = 'Unique original auto-save and duplicate confirmation smoke failed'
