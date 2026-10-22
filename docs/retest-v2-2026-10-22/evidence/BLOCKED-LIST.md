@@ -1,6 +1,6 @@
-# 未执行项（BLOCKED）的逐条原因
+# 未形成有效结论的测试项（BLOCKED）逐条原因
 
-本轮在 2026-10-22 10:18–11:05 之间执行。**没有一项是因为“看起来难”而跳过**，全部给出客观原因与可复跑脚本位置。
+原始复测窗口为 2026-10-22 10:18–11:05。当前 18 项尚未形成有效结论：16 项本轮未完成或仅部分执行；T-P2-07 与 T-P2-09 已尝试，但判据/证据不足，必须按修订脚本复测。以下给出原因与复跑位置。
 
 | 用例 | 原因 | 复跑方式 |
 |---|---|---|
@@ -11,7 +11,9 @@
 | T-P1-09 无 Node 构建 | 需按任务书 §7.2 复制仓库 + 子进程 PATH 隔离；本轮未跑，未卸载全局 Node。 | `git archive` 副本 + `dotnet.exe` 绝对路径 |
 | T-P1-10 A/B | A 上传新版本、B 关联后同步都未动态跑。A 不能由 B 推出。 | 浏览器上传 + `/associate` 后观察 |
 | T-P2-05 三 LinkId 部分失败 | 需 3 个不同 linkId 且第二项受控失败；本轮未构造。 | HTTP 先删第二条 link 再批量删 |
+| T-P2-07 搜索与附件命中映射 | 旧版脚本只搜索“档案-01”并验证目录跳转，未测试文件命中 fileId→linkId；原证据文字还误写查询词。新版脚本补齐两项断言，尚未重跑。 | `scripts/t-browser.cjs` 中 T-P2-07 |
 | T-P2-08 Excel 端到端 | 需真实 xlsx 导入（合法/错误/重复三策略）；未跑。 | `DOM.setFileInputFiles` |
+| T-P2-09 PDF 两页渲染 | 旧版仅检查 Canvas 存在；原始状态仍为“正在解析 PDF…”，页码为 0，故旧 PASS 无效。旧 PDF fixture 结构不完整；现已修复 fixture 和判据，尚未重跑。 | `scripts/fixture.cjs` + `scripts/t-browser.cjs` 中 T-P2-09 |
 | T-P2-10 下载边界 | 需 31/33MiB 素材（33MiB 已入库 `fileId=11`）与拾取器桩；未跑。 | 覆盖 `showSaveFilePicker` |
 | T-P2-13 离线单 EXE | 需 `dotnet publish` 单文件 Release；未跑。 | `-p:PublishSingleFile=true` |
 | T-P2-14 进度与恢复 | 未跑。 | 上传/彻底删除任务面板观察 |

@@ -39,6 +39,35 @@ async function create(kind, body) {
   return id;
 }
 
+
+/* Valid two-page PDF fixture: correct xref, font resources and stream lengths. */
+function makeTwoPagePdf() {
+  const stream = (label) => {
+    const content = "BT /F1 12 Tf 20 100 Td (" + label + ") Tj ET";
+    return "<< /Length " + Buffer.byteLength(content, "ascii") + " >>\nstream\n" + content + "\nendstream";
+  };
+  const objects = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 200] /Resources << /Font << /F1 7 0 R >> >> /Contents 5 0 R >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 200] /Resources << /Font << /F1 7 0 R >> >> /Contents 6 0 R >>",
+    stream("Page One"),
+    stream("Page Two"),
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+  ];
+  let pdf = "%PDF-1.4\n";
+  const offsets = [0];
+  for (let i = 0; i < objects.length; i++) {
+    offsets.push(Buffer.byteLength(pdf, "ascii"));
+    pdf += (i + 1) + " 0 obj\n" + objects[i] + "\nendobj\n";
+  }
+  const xrefOffset = Buffer.byteLength(pdf, "ascii");
+  pdf += "xref\n0 " + (objects.length + 1) + "\n0000000000 65535 f \n";
+  for (const offset of offsets.slice(1)) pdf += String(offset).padStart(10, "0") + " 00000 n \n";
+  pdf += "trailer\n<< /Size " + (objects.length + 1) + " /Root 1 0 R >>\nstartxref\n" + xrefOffset + "\n%%EOF\n";
+  return Buffer.from(pdf, "ascii");
+}
+
 (async () => {
   if (fs.existsSync(DB)) throw new Error("数据库已存在，换一个 runid：" + DB);
   log.add(`BASE=${L.BASE}`);
@@ -167,14 +196,7 @@ async function create(kind, body) {
 
 
   /* ---------- 预览与下载素材 ---------- */
-  const pdf = Buffer.from(
-    "%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n" +
-    "2 0 obj<</Type/Pages/Kids[3 0 R 4 0 R]/Count 2>>endobj\n" +
-    "3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]/Contents 5 0 R>>endobj\n" +
-    "4 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]/Contents 6 0 R>>endobj\n" +
-    "5 0 obj<</Length 44>>stream\nBT /F1 12 Tf 20 100 Td (Page One) Tj ET\nendstream\nendobj\n" +
-    "6 0 obj<</Length 44>>stream\nBT /F1 12 Tf 20 100 Td (Page Two) Tj ET\nendstream\nendobj\n" +
-    "trailer<</Root 1 0 R>>\n%%EOF\n", "latin1");
+  const pdf = makeTwoPagePdf();
   const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
   const docx = Buffer.concat([Buffer.from("PK\x03\x04", "latin1"), Buffer.from("fake-docx-payload")]);
   const upPdf = await L.upload(pA.id, "两页示例.pdf", pdf); upPdf.linkId = await linkIdOf("company", pA.id, upPdf.fileId);

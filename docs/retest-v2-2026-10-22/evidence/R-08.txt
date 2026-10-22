@@ -1,13 +1,16 @@
-=== R-08 测试自身的错误断言 ===
-src/IPSys.Web/tests/ui-tree-smoke.cjs:60-64
+# R-08 复核：原 BUG-017 判定为误报
 
-  assert.deepEqual(ids, ['f:2:1', 'f:3:2'],
-    'Every version of every contract original must appear as its own node');
+复核位置：`src/IPSys.Web/tests/ui-tree-smoke.cjs:62-64`
 
-这条断言把「一个版本一行」固化成了预期行为，正是 BUG-002 的成因之一：
-8 个 Node smoke 全绿，却存在 P0 版本不折叠缺陷。
+原断言：
 
-本轮实测（T-P0-02，浏览器）：同一 linkId=3 的 v1(22B)/v2(37B) 在 IP-A 记录里显示为两行。
+```js
+assert.deepEqual(Array.from(c11.children, x => x.id), ['f:2:1', 'f:3:2'],
+  'Every version of every contract original hangs off the contract');
+```
 
-修 BUG-002 时必须同步把这条断言改成「同一 linkId 只有一条可见附件，默认最新版」，
-否则新代码会被这条旧断言挡住。
+这两个节点的 ID 中，`f:2:1` 对应 `linkId=2, version=1`，`f:3:2` 对应 `linkId=3, version=2`。它们是两个不同的附件关联（不同 linkId），并非同一附件的 v1/v2。该断言验证的是合同下两个独立附件均被挂载，不是在要求同一 linkId 的每个版本各显示一行。
+
+因此，原报告将此断言判为 BUG-017 属于误报；不应为了该误判修改这条断言。与此同时，这个 smoke 用例并没有覆盖“同一 linkId 多版本只显示最新版”，该行为仍由 T-P0-02 单独验证，且当前浏览器证据已确认存在问题。
+
+判定：`R-08 = PASS（STATIC）`；`BUG-017` 撤销。

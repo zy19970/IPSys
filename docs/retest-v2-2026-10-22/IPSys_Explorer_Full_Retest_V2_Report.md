@@ -1,10 +1,10 @@
 # IPSys Explorer 全量复测报告 V2
 
 - 执行日期：2026-10-22
-- 仓库：`E:/Github/管理系统`｜分支 `work/onedrive-file-manager`｜HEAD `02289ea`
+- 测试时被测产品源码基线：`02289ea7020861360baa0a4c49ca045f3c783aea`｜交付分支 `work/onedrive-file-manager`
 - 测试库：`build-retest/agent-explorer-full-v2/vault-v2c.db`（本轮新建，随机密码仅存于同目录 `.cred.json`，不入库）
 - 浏览器：本机 Microsoft Edge（headless=new，CDP 驱动；未接管用户已开窗口）
-- 结论先行：**产品源码零改动**。38 项中 22 项完成实测/静态确证，16 项 BLOCKED 且逐条给出原因（`evidence/BLOCKED-LIST.md`）。**不建议现在合并回 main。**
+- 结论先行：**产品源码零改动**。38 项中 20 项形成有效结论，18 项 BLOCKED/待复测；旧版搜索与 PDF 测试存在判据不足，复核已撤销一项误报并修正统计。**不建议现在合并回 main。**
 
 ---
 
@@ -32,26 +32,25 @@
 | 8 个 Node smoke | 全部 exit 0（`ui-assets` / `ui-tree` / `explorer-capabilities` / `upload-progress` / `upload-unique-autosave` / `export` / `zip64` / `pdf-canvas`） |
 | 宿主 | 单实例 `EventWaitHandle`；本轮 `127.0.0.1:62293`，仅一个实例 |
 
-**基线全绿但产品有 P0**：`ui-tree-smoke:62-63` 把「一个版本一行」断言成预期（R-08），这条断言本身就是 BUG-002 的护栏。
+**Node smoke 全绿不代表版本折叠已覆盖**：`ui-tree-smoke.cjs:62-64` 中 `f:2:1` 与 `f:3:2` 是两个不同 linkId 的独立附件，原 R-08 缺陷判定为误报。该 smoke 没有覆盖同一 linkId 多版本折叠；BUG-002 由 T-P0-02 的独立动态证据确认。
 
 ---
 
 ## 3. 结果汇总
 
 | 状态 | 数量 | 说明 |
-|---|---|---|
-| PASS | 7 | T-P2-06 / 07 / 09 / 11 / 12、R-03、R-05 |
-| CONFIRMED_BUG | 8 | BUG-001/002/003/013/014/015/016/017 |
+|---|---:|---|
+| PASS | 6 | T-P2-06 / 11 / 12、R-03、R-05、R-08 |
+| CONFIRMED_BUG | 7 | BUG-001/002/003/013/014/015/016 |
 | IMPLEMENTATION_GAP | 6 | BUG-005/006/008/009/010、R-02 |
 | DOC_GAP | 1 | R-07（Q122 旧口径） |
-| BLOCKED | 16 | 逐条原因见 `evidence/BLOCKED-LIST.md` |
-| **合计** | **38** | 30 旧 + 8 新，ID 全保留 |
+| BLOCKED | 18 | 16 项原未完成，另 T-P2-07 / T-P2-09 需按修订判据复测 |
+| **合计** | **38** | **30 旧 + 8 新，ID 全保留** |
 
-- 测试项：38｜已执行并留证：22｜去重缺陷：**13 个 BUG + 1 条 DOC_GAP**
-- 方法分布：`DYNAMIC-BROWSER` 10、`DYNAMIC-HTTP` 8、`STATIC` 4、`MIXED` 6、未执行 16
-- 逐项状态见 `IPSys_Explorer_Full_Retest_V2_Cases.csv`（12 列，含 Observed/Expected/Evidence/SourcePath）
-
----
+- 测试项：38｜形成有效结论：20｜BLOCKED/待复测：18
+- 问题目录：13 个已识别产品 BUG 编号（BUG-004 本轮未复跑）、1 项实现缺口（R-02）、1 项文档缺口（R-07）；T-P1-02 的单独删合同子项尚未确认为缺陷，BUG-017 已撤销
+- 方法分布（按 CSV Method 列）：`DYNAMIC-BROWSER` 10、`DYNAMIC-HTTP` 4、`STATIC` 3、`MIXED` 8、未指定具体方法 13
+- 逐项状态见 `IPSys_Explorer_Full_Retest_V2_Cases.csv`（12 列，含 Observed/Expected/Evidence/SourcePath）；原始结果与复核判定的差异见 `evidence/RESULT-ADJUDICATION.md`
 
 ## 4. 本轮确认的缺陷（按严重度）
 
@@ -92,10 +91,6 @@
 
 `pickFiles()` 只判断当前 folderId 是不是 folder；首页 `folderId=root` 恰好通过，于是**打开了 1 次文件选择器，没有任何“先选记录”的引导**。`REQUIREMENTS.md:30/153` 要求先有业务记录再上传。
 
-### BUG-017（P1，R-08）测试把缺陷断言成预期
-
-`ui-tree-smoke.cjs:62-63` 断言 `['f:2:1','f:3:2']`（每版一行）。修 BUG-002 必须先改这条断言。
-
 ### IMPLEMENTATION_GAP（6 项）
 
 | ID | 能力 | 后端 | 前端 |
@@ -122,11 +117,13 @@
 | T-P0-03 | FAIL | **CONFIRMED_BUG** | 浏览器 409 + 服务端 0 行 / 界面 2 行 |
 | T-P0-04 | FAIL | **BLOCKED（未复跑）** | 不自动继承；上轮真实 409 证据保留 |
 | T-P1-01 | FAIL | **IMPLEMENTATION_GAP** | 判据升级为违反冻结基线 §2.1 |
-| T-P1-02 | FAIL | **①PASS / ②BLOCKED** | ①整体删项目：回收站只有 project，恢复后合同回来 |
+| T-P1-02 | FAIL | **①PASS / ②BLOCKED（不确认 BUG-007）** | ①整体删项目：回收站只有 project，恢复后合同回来 |
 | T-P1-05 | FAIL | **IMPLEMENTATION_GAP** | 后端 `entries/reorder` 实测可用；前端无入口 |
 | T-P1-10 | PASS（静态） | **BLOCKED** | A/B 未动态复跑，不能沿用 PASS |
-| T-P2-07 | PASS | **PASS** | 浏览器实测：命中 2 条，双击进入 `a:achievement:10` |
+| T-P2-07 | PASS | **BLOCKED** | 旧脚本只证明档案跳转；未测试附件命中映射，且证据文字与实际查询词不一致 |
+| T-P2-09 | PASS | **BLOCKED** | 旧判据仅检查 Canvas 存在；状态仍在解析且页码为 0，未证明渲染成功 |
 | T-P2-12 | PASS | **PASS** | Host 403 / Origin 403 / 无 token 401 / localhost 403 |
+| R-08 | BUG-017 | **PASS（误报撤销）** | `f:2:1` 与 `f:3:2` 是不同 linkId；原断言没有把同一附件版本拆成两行 |
 | R-03/R-05 | 新 | **PASS** | 删一处不影响另一处；四项计量分开 |
 
 ---
@@ -137,7 +134,7 @@
 2. **测试库隔离**：每轮新 `runid`，密码随机写入 `build-retest/.../*.cred.json`，不进 docs、不进日志。
 3. **浏览器**：CDP 驱动自带 Edge 进程（独立 `--user-data-dir`），结束时只关自己那一个进程，**不按映像名杀 msedge**。
 4. **宿主单实例**：中途重复启动触发过系统提示框，已清理；之后全轮只保留一个宿主。
-5. **未做的事**：16 项 BLOCKED 均未用静态推断冒充动态结论；`T-P2-10` 的原生拾取器、`T-P1-09` 的 PATH 隔离都未执行。
+5. **未形成结论的事项**：18 项 BLOCKED 中，16 项本轮未完成；T-P2-07 与 T-P2-09 已尝试，但原判据/证据不足，需按修订脚本重测。原始 JSON 保留旧结果，不回写成“新实测”。`T-P2-10` 的原生拾取器、`T-P1-09` 的 PATH 隔离仍未执行。
 
 ---
 
@@ -151,9 +148,9 @@
 2. BUG-003（批量删除的结果与刷新）—— 与 BUG-002 同源，版本归并后不会再对同一 linkId 发两次；
 3. BUG-006 / 009 / 010（登录建库 + 目录 CRUD + 排序）—— 入口契约；
 4. BUG-013 / 014 / 015 / 016（误导性入口）—— 文案与可见性；
-5. R-08（先改测试断言）必须排在 BUG-002 之前。
+5. 在修复 BUG-002 前，新增“同一 linkId 多版本只显示最新版”的回归用例；现有 `ui-tree-smoke` 断言本身无需修改。
 
-**合并门槛**：两个 P0 有动态回归用例（目录递归、版本归并）、`ui-tree-smoke` 断言已修正、16 项 BLOCKED 至少补掉压缩与关库两项。
+**合并门槛**：两个 P0 有动态回归用例（目录递归、版本归并）；增加同一 linkId 多版本折叠的自动化覆盖（现有 `ui-tree-smoke` 断言本身不需修改）；关库与压缩任务互斥测试完成；T-P2-07 附件搜索映射和 T-P2-09 两页 PDF 渲染通过有效判据；18 项 BLOCKED 均需逐项关闭或保留明确理由。
 
 ---
 
@@ -166,8 +163,9 @@
 | `evidence/fixture-build.log` | 建库与每个 fixture 的 HTTP 往返 |
 | `evidence/T-P0-0x.txt` / `T-P1-0x.txt` / `T-P2-0x.txt` / `R-0x.txt` | 每项的请求、返回、判定 |
 | `evidence/shots/` | 登录页、档案根、IP 附件两行、删除后、重命名、快捷访问、首页导入、键盘、搜索、PDF、三档视口 |
-| `evidence/http-results.json` / `browser-results.json` | 脚本原始结果（可复跑比对） |
-| `evidence/BLOCKED-LIST.md` | 16 项未执行的逐条原因与复跑方式 |
+| `evidence/http-results.json` / `browser-results.json` | 旧版脚本原始结果，保留原样 |
+| `evidence/RESULT-ADJUDICATION.md` | 原始结果的判定复核、误报撤销与待复测原因 |
+| `evidence/BLOCKED-LIST.md` | 18 项未形成有效结论的原因与复跑方式 |
 | `scripts/` | `lib.cjs` / `fixture.cjs` / `t-http.cjs` / `t-browser.cjs` / `gen-cases.py` |
 
 **声明**：本轮没有修复任何产品代码，没有提交或推送过产品源码；唯一的提交是 `docs/retest-v2-2026-10-22/` 下的测试交付物。

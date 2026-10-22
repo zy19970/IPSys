@@ -1,11 +1,28 @@
-# 生成 38 项用例表：已执行项从 results JSON 取实测值，未执行项如实标 BLOCKED
-import json, csv
-E = 'evidence'
-http = {r['id']: r for r in json.load(open(f'{E}/http-results.json', encoding='utf-8'))}
-br = {r['id']: r for r in json.load(open(f'{E}/browser-results.json', encoding='utf-8'))}
+# 生成 38 项用例表。保留原始 JSON；仅对旧版证据中的已知误判作显式复核。
+import json, csv, collections
+from pathlib import Path
+ROOT = Path(__file__).resolve().parents[1]
+E = ROOT / 'evidence'
+with open(E / 'http-results.json', encoding='utf-8') as f:
+    http = {r['id']: r for r in json.load(f)}
+with open(E / 'browser-results.json', encoding='utf-8') as f:
+    br = {r['id']: r for r in json.load(f)}
 
 rows = []
 def add(i, p, f, m, res, did, att, obs, exp, ev, src, notes=''):
+    # Preserve raw JSON. Apply corrections only while old inadequate observations remain.
+    if i == 'T-P2-07' and '搜索得 2 条' in obs:
+        res, did = 'BLOCKED', '-'
+        obs = ('原始实测仅查询并打开档案-01；没有验证附件搜索的 fileId→linkId 映射。'
+               '原始证据正文还把查询词误写为“专利说明书”。')
+        exp = '精确命中预期档案并跳转；附件搜索命中真实 link 节点且归属正确'
+        notes = (notes + '；原始结果只证明档案跳转；修订脚本补入附件映射检查，待复测').strip('；')
+    elif i == 'T-P2-09' and '预览画布数=' in obs:
+        res, did = 'BLOCKED', '-'
+        obs = ('原始记录只有 canvas=1；状态仍为“正在解析 PDF…”，页码为 0，'
+               '无法证明成功渲染；原 PDF fixture 结构不完整。')
+        exp = '有效两页 PDF 的第 1、2 页均渲染成功，页码正确且状态清空'
+        notes = (notes + '；已修正 fixture 与判据，需重新运行；不据旧证据判定产品缺陷').strip('；')
     rows.append([i, p, f, m, res, did, att, obs, exp, ev, src, notes])
 
 add('T-P0-01','P0','三级业务档案','MIXED','CONFIRMED_BUG','BUG-001','2',br['T-P0-01']['observed'],'每层都在树中，记录归属最深处','evidence/T-P0-01.txt','frontend/explorer/js/store.js buildTree')
@@ -14,7 +31,7 @@ add('T-P0-03','P0','同一 LinkId 重复删除','MIXED','CONFIRMED_BUG','BUG-003
 add('T-P0-04','P0','任务占用时关库','DYNAMIC-BROWSER','BLOCKED','BUG-004','0','本轮未复跑；上轮限速上传制造真实 409 已证实','拒绝后不得清 token/reload，需显示原因','evidence/BLOCKED-LIST.md','frontend/explorer/js/interactions.js lockVault','上轮证据 build-retest/agent-explorer-check/evidence/T-P0-04-lockvault-real.txt')
 add('T-P0-05','P0','跨记录引用','MIXED','IMPLEMENTATION_GAP','BUG-005','1',http['T-P0-05']['observed'],'FileId 可复用且 LinkId 独立；UI 有通用入口','evidence/T-P0-05.txt','frontend/explorer/js/bridge.js associateOriginal')
 add('T-P1-01','P1','首次创建新库','DYNAMIC-BROWSER','IMPLEMENTATION_GAP','BUG-006','1',br['T-P1-01']['observed'],'登录页提供创建资料库入口（UI_BASELINE §2.1）','evidence/T-P1-01.txt','frontend/explorer/js/interactions.js:270-280','违反冻结基线，不只是“探索未发现”')
-add('T-P1-02','P1','合同两种回收站情况','MIXED','BLOCKED','BUG-007','1','①整体删除项目 PASS（回收站只有 project，恢复后合同回来）；②单独删合同的 UI 本轮未复跑','①PASS ②合同需独立显示可恢复','evidence/T-P1-02.txt','src/IPSys.Web/RecycleStore.cs; frontend/explorer/js/store.js','禁止把 ①② 混成一个判据')
+add('T-P1-02','P1','合同两种回收站情况','MIXED','BLOCKED','-','1','①整体删除项目 PASS（回收站只有 project，恢复后合同回来）；②单独删合同的 UI 本轮未复跑','①整体删除项目后合同随项目恢复；②单独删合同的回收站呈现与恢复行为需独立验证','evidence/T-P1-02.txt','src/IPSys.Web/RecycleStore.cs; frontend/explorer/js/store.js','复合用例：①已 PASS；②未完成 UI 复测，暂不确认 BUG-007')
 add('T-P1-03','P1','复制/转移','MIXED','IMPLEMENTATION_GAP','BUG-008','1',http['T-P1-03']['observed'],'前端有复制/转移入口','evidence/T-P1-03.txt','grep transfer 零命中')
 add('T-P1-04','P1','档案目录 CRUD','MIXED','IMPLEMENTATION_GAP','BUG-009','1',http['T-P1-04']['observed'],'自建目录有新建/更名/移动/删除入口','evidence/T-P1-04.txt','frontend/explorer/js/interactions.js:1047,1334')
 add('T-P1-05','P1','手工持久排序','MIXED','IMPLEMENTATION_GAP','BUG-010','1',http['T-P1-05']['observed'],'用户可调 position 且重启保持','evidence/T-P1-05.txt','frontend/explorer/js/app.js 排序菜单')
@@ -45,13 +62,14 @@ add('R-04','P1','展示排序语义','-','BLOCKED','-','0','未执行：混排�
 add('R-05','P2','体积/最新版/历史版','DYNAMIC-HTTP','PASS','-','1',http['R-05']['observed'],'四项分别计量','evidence/R-05.txt','-')
 add('R-06','P1','关闭/切换期间活动任务','-','BLOCKED','-','0','未执行：四种任务的 busy 行为未逐项跑','每项记录拒绝/阻塞/允许与反馈','evidence/BLOCKED-LIST.md','frontend/explorer/js/bridge.js fileTaskBusy')
 add('R-07','P2','文档与最新决定','STATIC','DOC_GAP','-','1','REQUIREMENTS.md:195 仍写「不提供一键清空回收站」','仅一条 DOC_GAP，不改冻结需求','evidence/R-07.txt','REQUIREMENTS.md:85,195')
-add('R-08','P1','测试自身错误断言','STATIC','CONFIRMED_BUG','BUG-017','1','ui-tree-smoke:62-63 把「一版本一可见行」断言为预期','测试应断言同一 linkId 只有一条可见附件','evidence/R-08.txt','src/IPSys.Web/tests/ui-tree-smoke.cjs:62-63','修 BUG-002 必须先改这条断言')
+add('R-08','P1','版本折叠测试覆盖','STATIC','PASS','-','1','断言 f:2:1 与 f:3:2 的 linkId 分别为 2、3，是两个独立附件，不是同一附件的两个版本','同一 linkId 多版本折叠；不同 linkId 各保留一条可见附件','evidence/R-08.txt','src/IPSys.Web/tests/ui-tree-smoke.cjs:62-63','原 BUG-017 判定为误报；该 smoke 未覆盖同 linkId 多版本，专项动态测试仍由 T-P0-02 负责')
 
-with open('IPSys_Explorer_Full_Retest_V2_Cases.csv','w',encoding='utf-8',newline='') as f:
+assert len(rows) == 38, f'应生成 38 项，实际 {len(rows)}'
+assert len({r[0] for r in rows}) == len(rows), '用例 ID 必须唯一'
+with open(ROOT / 'IPSys_Explorer_Full_Retest_V2_Cases.csv','w',encoding='utf-8',newline='') as f:
     w = csv.writer(f)
     w.writerow(['ID','Priority','Feature','Method','Result','DefectID','AttemptCount','Observed','Expected','Evidence','SourcePath','Notes'])
     w.writerows(rows)
-
-import collections
 print('rows', len(rows))
-print(collections.Counter(r[4] for r in rows))
+print('statuses', collections.Counter(r[4] for r in rows))
+print('methods', collections.Counter(r[3] for r in rows))

@@ -423,55 +423,83 @@ async function main() {
       "Ctrl+A 全选、Esc 取消、Delete 有确认、Alt+Left 返回上级");
   })();
 
-  /* ---------- T-P2-07 搜索跳转 ---------- */
+  /* ---------- T-P2-07 搜索跳转与附件命中映射 ---------- */
   await (async function T_P2_07() {
-    await evalJs(`Drive.state.view='files'; Drive.render();`);
+    await evalJs("Drive.state.view='files'; Drive.state.folderId='root'; Drive.render();");
     await sleep(300);
-    await evalJs(`(() => { const i = document.querySelector('#searchInput'); i.value='档案-01'; i.dispatchEvent(new Event('input',{bubbles:true})); return 1; })()`);
-    await sleep(2500);
-    const rows = await evalJs(`[...document.querySelectorAll('#viewRoot .row')].map(r=>r.dataset.id)`);
-    if (rows.length) await evalJs(`document.querySelector('#viewRoot .row').dispatchEvent(new MouseEvent('dblclick',{bubbles:true}))`);
-    await sleep(900);
-    const at = await evalJs(`({ folderId: Drive.state.folderId, crumbs: [...document.querySelectorAll('[data-crumb]')].map(b=>b.innerText.trim()) })`);
+    async function search(query) {
+      await evalJs("(() => { const input=document.querySelector('#searchInput'); input.value=" + JSON.stringify(query) + "; input.dispatchEvent(new Event('input',{bubbles:true})); return true; })()");
+      await sleep(2500);
+      return await evalJs("[...document.querySelectorAll('#viewRoot .row')].map(r=>r.dataset.id)");
+    }
+    const expectedArchiveId="a:achievement:" + fx.archive.records[0];
+    const archiveRows=await search("档案-01");
+    const archiveFound=archiveRows.includes(expectedArchiveId);
+    if(archiveFound) {
+      const selector='#viewRoot .row[data-id=' + JSON.stringify(expectedArchiveId) + ']';
+      await evalJs("document.querySelector(" + JSON.stringify(selector) + ")?.dispatchEvent(new MouseEvent('dblclick',{bubbles:true}))");
+      await sleep(700);
+    }
+    const archiveAt=await evalJs("({folderId:Drive.state.folderId,crumbs:[...document.querySelectorAll('[data-crumb]')].map(b=>b.innerText.trim())})");
+    const archiveNavigated=archiveAt.folderId===expectedArchiveId;
+    await evalJs("Drive.resetSearch(); Drive.state.view='files'; Drive.state.folderId='root'; Drive.render();");
+    await sleep(250);
+    const expectedFileId="f:" + fx.files.general.linkId + ":" + fx.files.general.version;
+    const fileRows=await search("综合资料附件.txt");
+    const fileFound=fileRows.includes(expectedFileId);
+    const fileMeta=fileFound?await evalJs("(() => { const n=findById(" + JSON.stringify(expectedFileId) + "); const p=findParent(" + JSON.stringify(expectedFileId) + "); const m=VaultStore.metaOf(" + JSON.stringify(expectedFileId) + "); return {nodeId:n?.id||null,parentId:p?.id||null,fileId:m?.fileId??null,linkId:m?.linkId??null,version:m?.version??null}; })()"):null;
+    const fileMapped=!!fileMeta && fileMeta.parentId==="g:" + fx.company.general &&
+      Number(fileMeta.fileId)===Number(fx.files.general.fileId) && Number(fileMeta.linkId)===Number(fx.files.general.linkId);
     await shot("T-P2-07-search");
     ev("T-P2-07", [
-      `搜索『专利说明书』得到节点：${JSON.stringify(rows)}`,
-      `双击第一条后位置：${JSON.stringify(at)}`,
+      "搜索『档案-01』结果：" + JSON.stringify(archiveRows),
+      "期望档案节点：" + expectedArchiveId + "；精确命中=" + archiveFound,
+      "双击后位置：" + JSON.stringify(archiveAt) + "；正确跳转=" + archiveNavigated,
       "",
-      "file 命中的 id 是 fileId，必须用 fileMeta 反查 linkId 才能造出 f:link:version 节点；",
-      "前端 store.js search() 已完成这层映射（映射不上就丢弃）。",
+      "搜索『综合资料附件.txt』结果：" + JSON.stringify(fileRows),
+      "期望附件节点：" + expectedFileId + "；命中=" + fileFound,
+      "附件元数据与所属记录：" + JSON.stringify(fileMeta) + "；fileId→linkId 映射正确=" + fileMapped,
     ].join("\n"));
-    rec("T-P2-07", "DYNAMIC-BROWSER", rows.length > 0 && at && at.folderId ? "PASS" : "FAIL",
-      `搜索得 ${rows.length} 条，双击后进入 ${at && at.folderId}`,
-      "搜索命中能映射到真实节点并跳转");
-    await evalJs(`Drive.resetSearch(); Drive.render();`).catch(() => {});
+    const ok=archiveFound&&archiveNavigated&&fileFound&&fileMapped;
+    rec("T-P2-07","DYNAMIC-BROWSER",ok?"PASS":"FAIL",
+      "档案精确跳转=" + archiveNavigated + "（" + archiveAt.folderId + "）；附件命中=" + fileFound + "；归属映射=" + fileMapped,
+      "搜索必须命中预期档案节点并跳转；附件搜索必须映射到真实 link 节点及正确所属记录");
+    await evalJs("Drive.resetSearch(); Drive.render();").catch(()=>{});
   })();
 
   /* ---------- T-P2-09 PDF 预览 ---------- */
   await (async function T_P2_09() {
-    await evalJs(`Drive.openFolder('p:${fx.company.projectA}')`);
+    await evalJs("Drive.openFolder('p:" + fx.company.projectA + "')");
     await sleep(800);
-    const rows = await evalJs(`[...document.querySelectorAll('#viewRoot .row')].map(r=>({id:r.dataset.id,name:r.innerText.replace(/\\s+/g,' ').trim()}))`);
-    const pdfRow = rows.find((r) => /pdf/i.test(r.name));
-    if (!pdfRow) return rec("T-P2-09", "DYNAMIC-BROWSER", "BLOCKED", "列表里找不到 PDF 行", "PDF 预览可见");
-    await evalJs(`previewFile(${JSON.stringify(pdfRow.id)})`);
-    await sleep(3500);
-    const st = await evalJs(`({
-      overlay: !!document.querySelector('#previewMask, .preview-mask, .preview'),
-      canvases: document.querySelectorAll('canvas').length,
-      text: (document.querySelector('.preview-body, #previewBody')||{}).innerText || '',
-      pages: [...document.querySelectorAll('.pdf-page, .preview-page')].length
-    })`);
-    await shot("T-P2-09-pdf-preview");
-    ev("T-P2-09", [
-      `PDF 行：${JSON.stringify(pdfRow)}`,
-      `预览状态：${JSON.stringify(st)}`,
+    const rows=await evalJs("[...document.querySelectorAll('#viewRoot .row')].map(r=>({id:r.dataset.id,name:r.innerText.replace(/\\s+/g,' ').trim()}))");
+    const pdfRow=rows.find(r=>/pdf/i.test(r.name));
+    if(!pdfRow)return rec("T-P2-09","DYNAMIC-BROWSER","BLOCKED","列表里找不到 PDF 行","有效两页 PDF 的第 1、2 页均渲染");
+    await evalJs("previewFile(" + JSON.stringify(pdfRow.id) + ")");
+    await sleep(300);
+    async function pageState(expectedPage) {
+      const expected=JSON.stringify(expectedPage);
+      const readyExpr="(() => { const box=document.querySelector('.preview-mask'); const count=box?.querySelector('.pdf-count')?.textContent.trim(); const status=box?.querySelector('.pdf-render-status')?.textContent.trim(); const canvas=box?.querySelector('canvas.pdf-canvas'); return count===" + expected + "&&status===''&&!!canvas&&canvas.width>0&&canvas.height>0; })()";
+      try { await waitFor(readyExpr,15000,"PDF page " + expectedPage + " rendered"); } catch {}
+      const stateExpr="(() => { const box=document.querySelector('.preview-mask'); const canvas=box?.querySelector('canvas.pdf-canvas'); return {pageCount:box?.querySelector('.pdf-count')?.textContent.trim()||'',status:box?.querySelector('.pdf-render-status')?.textContent.trim()||'',canvasWidth:canvas?.width||0,canvasHeight:canvas?.height||0,ready:!!box&&box.querySelector('.pdf-count')?.textContent.trim()===" + expected + "&&box.querySelector('.pdf-render-status')?.textContent.trim()===''&&!!canvas&&canvas.width>0&&canvas.height>0}; })()";
+      return await evalJs(stateExpr);
+    }
+    const first=await pageState("1 / 2");
+    await shot("T-P2-09-pdf-page1");
+    if(first.ready)await evalJs("[...document.querySelectorAll('.preview-mask .pdf-toolbar button')].find(b=>b.textContent.trim()==='下一页')?.click()");
+    const second=first.ready?await pageState("2 / 2"):{pageCount:"",status:"第一页未完成渲染，未继续翻页",canvasWidth:0,canvasHeight:0,ready:false};
+    await shot("T-P2-09-pdf-page2");
+    ev("T-P2-09",[
+      "PDF 行：" + JSON.stringify(pdfRow),
+      "第 1 页状态：" + JSON.stringify(first),
+      "第 2 页状态：" + JSON.stringify(second),
       "",
-      "PDF 走 pdf.js + canvas（pdf-preview.js），不依赖 Chromium 内嵌插件。",
+      "判定要求：页码依次为 1 / 2、2 / 2；每页 Canvas 尺寸大于 0；渲染状态为空。",
+      "fixture.cjs 使用带有效 xref、字体资源和准确 stream Length 的两页 PDF。",
     ].join("\n"));
-    rec("T-P2-09", "DYNAMIC-BROWSER", st.canvases > 0 ? "PASS" : "FAIL",
-      `预览画布数=${st.canvases}，容器=${st.overlay}`,
-      "多页 PDF 由 canvas 正确渲染");
+    const ok=first.ready&&second.ready;
+    rec("T-P2-09","DYNAMIC-BROWSER",ok?"PASS":"FAIL",
+      "page1=" + first.ready + "(" + first.pageCount + "; " + (first.status||"status empty") + ")；page2=" + second.ready + "(" + second.pageCount + "; " + (second.status||"status empty") + ")",
+      "两页 PDF 都真实完成 Canvas 渲染，页码正确，状态清空");
   })();
 
   /* ---------- T-P2-11 响应式 ---------- */
