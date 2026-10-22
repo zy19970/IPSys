@@ -51,7 +51,7 @@ const sandbox=vm.createContext({
  findParent:id=>map.get(id)||null,pathTo,fileTaskBusy:()=>busy,
  refreshCurrent:async()=>{refresh++;if(failRefresh)throw Error("刷新失败");},
  toast:(m)=>notes.push(m),
- walk(node,fn){fn(node);for(const c of node.children||[])this.walk(c,fn);},
+ walk(node,fn){const visit=n=>{fn(n);for(const c of n.children||[])visit(c);};visit(node);},
 });
 vm.runInContext(assoc,sandbox,{filename:"bridge-file-associate.js"});
 const invoke=vm.runInContext("associateOriginal",sandbox);
