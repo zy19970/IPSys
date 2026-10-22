@@ -157,7 +157,7 @@ async function uploadNewVersion(node) {
 
 /* F2-03：所有业务附件共用同一个 FileId/LinkId 关联操作。
    共享只新增 LinkId；移动在服务端事务内建目标 LinkId 并注销来源 LinkId。 */
-async function associateOriginal(node, move = false) {
+async function associateOriginal(node, move = false, directTarget = null) {
   if (node?.type !== "file" || fileTaskBusy()) {
     return toast(fileTaskBusy() ? "有文件任务正在执行，请完成后再操作" : "请选择一条附件");
   }
@@ -184,6 +184,42 @@ async function associateOriginal(node, move = false) {
   if (!destinations.length) return toast("当前工作区没有其它可接收附件的业务记录");
   destinations.sort((a, b) => a.label.localeCompare(b.label, "zh-CN"));
 
+  // Internal drag-and-drop bypasses the chooser, but uses the exact same
+  // validate-and-commit callback as F2-03's context-menu operation.
+  const submitAssociation = async (data) => {
+    if (workspace !== VaultStore.ws) throw new Error("工作区已变化，请重新选择附件");
+    if (fileTaskBusy()) throw new Error("有文件任务正在执行，请完成后再操作");
+    const selected = destinations.find((d) => d.value === String(data.target));
+    if (!selected) throw new Error("目标记录无效或已变化，请重新选择");
+    const targetFolderId = Number(selected.value);
+    let target = null;
+    walkNodes((n) => {
+      if (n.type === "folder" && UPLOADABLE_KINDS.includes(n.biz?.kind) &&
+          Number(n.biz.id) === targetFolderId) target = n;
+    });
+    if (!target) throw new Error("目标记录已不存在，请刷新后重试");
+    if ((target.children || []).some((child) =>
+      child.type === "file" && Number(VaultStore.metaOf(child.id)?.fileId) === Number(meta.fileId))) {
+      throw new Error("目标记录已经关联同一原件，请选择其它记录");
+    }
+    await VaultStore.api("/api/v2/files/" + workspace + "/" + meta.fileId + "/associate", {
+      method: "POST",
+      json: { linkId: meta.linkId, targetFolderId, move: !!move },
+    });
+    try {
+      await refreshCurrent();
+    } catch {
+      toast("关联已提交，但列表刷新失败，请手动刷新", { tone: "error", ms: 6000 });
+      return;
+    }
+    Drive.clearSelection();
+    toast(move ? "附件已移至目标记录" : "原件已共享到目标记录");
+  };
+  if (directTarget) {
+    if (!UPLOADABLE_KINDS.includes(directTarget.biz?.kind))
+      throw new Error("只允许移动到真实业务记录");
+    return submitAssociation({ target: String(directTarget.biz.id) });
+  }
   RecordForms.open({
     title: move ? "移动附件关联" : "共享附件原件",
     submitText: move ? "确认移动" : "确认共享",
@@ -194,38 +230,7 @@ async function associateOriginal(node, move = false) {
         ? "移动后来源位置不再显示此附件；文件历史版本与其它共享关联保持不变。"
         : "目标记录新增一条附件引用，不重复存储原件；所有历史版本保持共用。",
     }],
-    onSubmit: async (data) => {
-      if (workspace !== VaultStore.ws) throw new Error("工作区已变化，请重新选择附件");
-      if (fileTaskBusy()) throw new Error("有文件任务正在执行，请完成后再操作");
-      const selected = destinations.find((d) => d.value === String(data.target));
-      if (!selected) throw new Error("目标记录无效或已变化，请重新选择");
-      const targetFolderId = Number(selected.value);
-      const target = destinations.length && (() => {
-        let found = null;
-        walkNodes((n) => {
-          if (n.type === "folder" && UPLOADABLE_KINDS.includes(n.biz?.kind) &&
-              Number(n.biz.id) === targetFolderId) found = n;
-        });
-        return found;
-      })();
-      if (!target) throw new Error("目标记录已不存在，请刷新后重试");
-      if ((target.children || []).some((child) =>
-        child.type === "file" && Number(VaultStore.metaOf(child.id)?.fileId) === Number(meta.fileId))) {
-        throw new Error("目标记录已经关联同一原件，请选择其它记录");
-      }
-      await VaultStore.api("/api/v2/files/" + workspace + "/" + meta.fileId + "/associate", {
-        method: "POST",
-        json: { linkId: meta.linkId, targetFolderId, move: !!move },
-      });
-      try {
-        await refreshCurrent();
-      } catch (e) {
-        toast("关联已提交，但列表刷新失败，请手动刷新", { tone: "error", ms: 6000 });
-        return;
-      }
-      Drive.clearSelection();
-      toast(move ? "附件已移至目标记录" : "原件已共享到目标记录");
-    },
+    onSubmit: submitAssociation,
   });
 }
 

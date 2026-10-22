@@ -7,7 +7,7 @@ const vm = require("node:vm");
 const explorer=path.resolve(__dirname,"../../../frontend/explorer");
 const bridge=fs.readFileSync(path.join(explorer,"js/bridge.js"),"utf8");
 const interactions=fs.readFileSync(path.join(explorer,"js/interactions.js"),"utf8");
-const from=bridge.indexOf("async function associateOriginal(node, move = false) {");
+const from=bridge.indexOf("async function associateOriginal(node, move = false, directTarget = null) {");
 const to=bridge.indexOf("/* ---------------- 导出 ---------------- */",from);
 assert.ok(from>=0&&to>from,"Unified attachment association routine must exist");
 const assoc=bridge.slice(from,to);

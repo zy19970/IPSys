@@ -1104,8 +1104,25 @@ function openNewMenu(anchor) {
 
 /* ---------------- 内容区 ---------------- */
 
+/* Drag and context-menu moves must share the same backend association path.
+   Never infer a move from arbitrary text/plain or another tab's drag data. */
+function validAttachmentDrop(source, target, workspace) {
+  if (workspace !== VaultStore.ws || fileTaskBusy()) return false;
+  if (source?.type !== "file" || !canUploadFiles(target)) return false;
+  const owner = findParent(source.id);
+  const meta = VaultStore.metaOf(source.id);
+  return !!owner && owner.id !== target.id &&
+    canUploadFiles(owner) && Number(meta?.fileId) > 0 && Number(meta?.linkId) > 0;
+}
+
 function bindContent() {
   const content = $("#content");
+  let dragLink = null;
+  const internalType = "application/x-ipsys-link";
+  const clearDragHighlights = () => {
+    content.querySelectorAll(".is-drop, .is-dragging").forEach(
+      el => el.classList.remove("is-drop","is-dragging"));
+  };
 
   content.addEventListener("click", (e) => {
     const actBtn = e.target.closest("[data-row-act]");
@@ -1160,29 +1177,35 @@ function bindContent() {
     startMarquee(e);
   });
 
-  /* 拖拽:把文件拖到记录上 = 把该附件挂到这条记录 */
+  /* 内部附件拖动沿用 F2-03 的 associate 事务；外部 Files 仍上传。 */
   content.addEventListener("dragstart", (e) => {
     const row = e.target.closest(".row, .tile");
-    if (!row) return;
-    const item = findById(row.dataset.id);
-    if (!item || item.type !== "file") {
+    const source = row && findById(row.dataset.id);
+    if (!source || source.type !== "file" || !VaultStore.metaOf(source.id)?.linkId) {
       e.preventDefault();
       return;
     }
+    dragLink = {id:source.id,workspace:VaultStore.ws};
     e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", row.dataset.id);
+    e.dataTransfer.setData(internalType, source.id);
     row.classList.add("is-dragging");
   });
 
-  content.addEventListener("dragend", (e) => {
-    e.target.closest(".row, .tile")?.classList.remove("is-dragging");
+  content.addEventListener("dragend", () => {
+    dragLink = null;
+    clearDragHighlights();
   });
 
   content.addEventListener("dragover", (e) => {
     const row = e.target.closest(".row, .tile");
-    if (!row) return;
-    const item = findById(row.dataset.id);
-    if (!item || item.type !== "folder") return;
+    const target = row && findById(row.dataset.id);
+    if (!target || target.type !== "folder") return;
+    const external = e.dataTransfer?.types?.includes("Files");
+    const valid = external
+      ? canUploadFiles(target)
+      : dragLink && validAttachmentDrop(
+          findById(dragLink.id),target,dragLink.workspace);
+    if (!valid) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
     row.classList.add("is-drop");
@@ -1194,22 +1217,48 @@ function bindContent() {
 
   content.addEventListener("drop", async (e) => {
     const row = e.target.closest(".row, .tile");
-    if (!row) return;
-    row.classList.remove("is-drop");
-    const target = findById(row.dataset.id);
-    if (!target || target.type !== "folder") return;
-    e.preventDefault();
-
-    /* 外部文件拖入 → 上传到该记录 */
-    if (e.dataTransfer.files?.length) {
-      uploadFiles(e.dataTransfer.files, target);
+    const target = row && findById(row.dataset.id);
+    clearDragHighlights();
+    if (!target || target.type !== "folder") {
+      dragLink = null;
       return;
     }
+    e.preventDefault();
+    e.stopPropagation(); // Avoid duplicate upload by document-level handler.
 
-    const srcId = e.dataTransfer.getData("text/plain");
-    const src = findById(srcId);
-    if (!src || src === target) return;
-    toast("附件移动需要后端支持 link 迁移；当前请用「上传」挂到目标记录");
+    if (e.dataTransfer?.files?.length) {
+      dragLink = null;
+      if (!canUploadFiles(target))
+        return toast("请将文件拖入具体业务记录");
+      return uploadFiles(e.dataTransfer.files, target);
+    }
+
+    const sourceDrag = dragLink;
+    dragLink = null;
+    const sourceId = e.dataTransfer?.getData(internalType);
+    if (!sourceDrag || !sourceId || sourceDrag.id !== sourceId)
+      return toast("无法识别内部附件拖动，请重新操作");
+    const source = findById(sourceId);
+    if (!validAttachmentDrop(source,target,sourceDrag.workspace))
+      return toast("附件只能在同一工作区的不同业务记录间移动", {tone:"error"});
+
+    const confirmed = await askConfirm({
+      title:"移动附件",
+      text:"将「" + source.name + "」从当前记录移动到「" + target.name +
+        "」？移动会解除来源关联，但其它共享位置及文件历史版本不受影响。",
+      okText:"确认移动",
+    });
+    if (!confirmed) return;
+    // The workspace, source, target and task lock may change while a modal
+    // is open. Revalidate before asking F2-03's shared action to commit.
+    if (!validAttachmentDrop(findById(sourceId),findById(target.id),sourceDrag.workspace))
+      return toast("工作区或记录状态已变化，移动已取消", {tone:"error"});
+    try {
+      await associateOriginal(findById(sourceId),true,findById(target.id));
+    } catch (err) {
+      toast("移动附件失败：" + err.message,{tone:"error",ms:6000});
+      await refreshCurrent().catch(()=>{});
+    }
   });
 
   /* 整页拖入 */
@@ -1220,7 +1269,8 @@ function bindContent() {
     })
   );
   document.addEventListener("drop", (e) => {
-    if (!e.dataTransfer?.files?.length) return;
+    if (!e.dataTransfer?.files?.length || e.defaultPrevented) return;
+    e.preventDefault();
     const node = findById(Drive.state.folderId);
     if (canUploadFiles(node)) uploadFiles(e.dataTransfer.files, node);
     else toast("请先进入具体业务记录，再上传附件");
