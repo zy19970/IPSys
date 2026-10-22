@@ -1,0 +1,16 @@
+回到主库 via resume-lock-open
+项目 1 条
+导出全部 -> 400 54B sha=ec2727109171；导出单条 -> 400 54B sha=ec2727109171
+[CONFIRMED_BUG] R-02 Excel 导出范围（全部 vs 选择集） -> BUG-024
+R-05 fileId=3: 接口行=4 逻辑附件=2 最新版合计=74B 全部版本行合计=118B DB=68702208B
+[PASS] R-05 最新版字节 / 累计历史字节 / 逻辑附件数 / 数据库文件字节 四种口径
+REQUIREMENTS.md 命中「一键清空」2 处
+[DOC_GAP] R-07 Q122 旧口径「一键清空回收站不可用」是否仍留在需求文档 -> DOC_GAP-001
+造 3 条不同 linkId: 33,34,35
+第 2 条预解绑 -> 200
+逐条删除结果: [{"linkId":33,"status":200,"body":{"ok":true}},{"linkId":34,"status":409,"body":{"error":"关联已解除。"}},{"linkId":35,"status":200,"body":{"ok":true}}]
+[PASS] T-P2-05 三个不同 LinkId 批量删除、中间一项失败
+big31 fileId=18 声明 32505856B 实收 0B status=404 shaMatch=false
+big33 fileId=19 声明 34603008B 实收 0B status=404 shaMatch=false
+0B 文件 -> 404 0B
+[CONFIRMED_BUG] T-P2-10 31/33 MiB 与 0B 的下载字节边界 -> BUG-025

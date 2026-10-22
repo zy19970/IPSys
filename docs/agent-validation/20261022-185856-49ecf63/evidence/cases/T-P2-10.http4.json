@@ -1,0 +1,54 @@
+{
+  "runId": "v3a",
+  "testedCommit": "49ecf63",
+  "at": "2026-10-22T11:14:14.766Z",
+  "method": "HTTP",
+  "id": "T-P2-10",
+  "feature": "0B / 小文件 / 31MiB / 33MiB 的下载字节边界",
+  "expected": "四种大小都能下载，字节数与 SHA 与上传时一致；≥32MiB 走分块写盘",
+  "result": "PASS",
+  "defect": null,
+  "observed": {
+    "downloads": [
+      {
+        "key": "zero",
+        "fileId": 16,
+        "declared": 0,
+        "status": 200,
+        "got": 0,
+        "lenMatch": true,
+        "shaMatch": true
+      },
+      {
+        "key": "small",
+        "fileId": 17,
+        "declared": 15,
+        "status": 200,
+        "got": 15,
+        "lenMatch": true,
+        "shaMatch": true
+      },
+      {
+        "key": "big31",
+        "fileId": 18,
+        "declared": 32505856,
+        "status": 200,
+        "got": 32505856,
+        "lenMatch": true,
+        "shaMatch": true
+      },
+      {
+        "key": "big33",
+        "fileId": 19,
+        "declared": 34603008,
+        "status": 200,
+        "got": 34603008,
+        "lenMatch": true,
+        "shaMatch": true
+      }
+    ],
+    "streamThresholdMiB": 32,
+    "hasStreamPath": true
+  },
+  "notes": "「用户取消原生拾取器」「传输中断」两个子项需要人工交互，未自动化 —— 见 BLOCKED.md"
+}

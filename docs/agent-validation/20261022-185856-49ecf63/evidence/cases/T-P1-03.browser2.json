@@ -1,0 +1,42 @@
+{
+  "runId": "v3a",
+  "testedCommit": "49ecf63",
+  "at": "2026-10-22T11:14:55.924Z",
+  "method": "DYNAMIC-BROWSER",
+  "id": "T-P1-03",
+  "feature": "复制 / 转移 / 跨工作区转移的 UI 入口",
+  "expected": "前端要提供允许的复制/移动入口；只靠 HTTP 不算通过",
+  "result": "IMPLEMENTATION_GAP",
+  "defect": "GAP-006",
+  "observed": {
+    "ctxItems": [
+      {
+        "t": "打开",
+        "act": "open"
+      },
+      {
+        "t": "新建合同",
+        "act": "newcontract"
+      },
+      {
+        "t": "属性",
+        "act": "props"
+      },
+      {
+        "t": "打包下载",
+        "act": "download"
+      },
+      {
+        "t": "重命名\n    F2",
+        "act": "rename"
+      },
+      {
+        "t": "删除\n    Del",
+        "act": "delete"
+      }
+    ],
+    "toolbarMatches": [],
+    "hasCopyOrMoveEntry": false
+  },
+  "notes": "右键菜单与工具栏都没有复制/移动/转移入口；后端 /api/v2/files/{ws}/{fileId}/associate（move 语义）与 /folders/{ws}/{kind}/{id}/move 都可用"
+}

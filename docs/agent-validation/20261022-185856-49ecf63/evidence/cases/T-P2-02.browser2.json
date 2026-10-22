@@ -1,0 +1,67 @@
+{
+  "runId": "v3a",
+  "testedCommit": "49ecf63",
+  "at": "2026-10-22T11:14:54.906Z",
+  "method": "DYNAMIC-BROWSER",
+  "id": "T-P2-02",
+  "feature": "把附件从一个记录拖到另一个记录",
+  "expected": "拖放要调用真实的关联/移动接口；不能把后端已有能力说成不支持",
+  "result": "IMPLEMENTATION_GAP",
+  "defect": "GAP-014",
+  "observed": {
+    "fileRows": [
+      {
+        "id": "c:18",
+        "t": "合同C2",
+        "draggable": "true"
+      },
+      {
+        "id": "f:14:1",
+        "t": "两页示例.pdf",
+        "draggable": "true"
+      },
+      {
+        "id": "f:12:1",
+        "t": "同名附件.txt",
+        "draggable": "true"
+      },
+      {
+        "id": "f:10:1",
+        "t": "同内容-A.txt",
+        "draggable": "true"
+      },
+      {
+        "id": "f:11:1",
+        "t": "同内容-B.txt",
+        "draggable": "true"
+      },
+      {
+        "id": "f:15:1",
+        "t": "示例图.png",
+        "draggable": "true"
+      },
+      {
+        "id": "f:16:1",
+        "t": "示例文档.docx",
+        "draggable": "true"
+      }
+    ],
+    "dragResult": {
+      "ok": true,
+      "dragPayload": {
+        "types": [
+          "text/plain"
+        ],
+        "data": "f:12:1"
+      },
+      "src": "f:12:1",
+      "targetRow": "c:18"
+    },
+    "assocRequests": [],
+    "toasts": [
+      "关联已解除。",
+      "附件移动需要后端支持 link 迁移；当前请用「上传」挂到目标记录"
+    ]
+  },
+  "notes": "dragstart 派发成功但没有任何 associate/move 请求；后端 POST /api/v2/files/{ws}/{fileId}/associate {move:true} 上一轮已实测 200，缺的是前端 drop 目标的接线"
+}

@@ -1,0 +1,70 @@
+{
+  "publishDir": [
+    "IPSys.Web.exe"
+  ],
+  "exeBytes": 5183718,
+  "port": "59392",
+  "assets": {
+    "/": {
+      "status": 200,
+      "bytes": 12338,
+      "ctype": "text/html; charset=utf-8"
+    },
+    "/style.css": {
+      "status": 200,
+      "bytes": 59992,
+      "ctype": "text/css; charset=utf-8"
+    },
+    "/app.js": {
+      "status": 200,
+      "bytes": 195284,
+      "ctype": "text/javascript; charset=utf-8"
+    },
+    "/pdf-preview.js": {
+      "status": 200,
+      "bytes": 4550,
+      "ctype": "text/javascript; charset=utf-8"
+    },
+    "/pdfjs/pdf.min.js": {
+      "status": 200,
+      "bytes": 282943,
+      "ctype": "text/javascript; charset=utf-8"
+    },
+    "/pdfjs/pdf.worker.min.js": {
+      "status": 200,
+      "bytes": 1074918,
+      "ctype": "text/javascript; charset=utf-8"
+    },
+    "/ip-v2.js": {
+      "status": 200,
+      "bytes": 8464,
+      "ctype": "text/javascript; charset=utf-8"
+    },
+    "/upload-progress.js": {
+      "status": 200,
+      "bytes": 8448,
+      "ctype": "text/javascript; charset=utf-8"
+    },
+    "/export.js": {
+      "status": 200,
+      "bytes": 17757,
+      "ctype": "text/javascript; charset=utf-8"
+    },
+    "/pdfjs/LICENSE.txt": {
+      "status": 200,
+      "bytes": 10351,
+      "ctype": "text/plain; charset=utf-8"
+    }
+  },
+  "distAppBytes": 195284,
+  "appMatchesDist": true,
+  "externalRefsInHtml": [],
+  "externalRefsInAppJs": [],
+  "hostPinning": {
+    "evilHost": 403,
+    "localhost": 403,
+    "evilOrigin": 403,
+    "goodOrigin": 200
+  },
+  "note": "SelfContained=false → 框架依赖单文件，目标机需 .NET 8 运行时；「离线」在本轮定义为不依赖 CDN / 外部 wwwroot / 网络，不是裸机可跑"
+}

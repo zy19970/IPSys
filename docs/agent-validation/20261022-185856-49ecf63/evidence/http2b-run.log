@@ -1,0 +1,18 @@
+主库 connect via resume
+清空前回收站 8 项: project:项目B, v2_archive:档案-05, contract:合同C1, v2_ip_file:T-P0-03.txt, v2_ip_file:T-P0-03.txt, v2_ip_file:T-P0-03.txt, v2_ip_file:T-P0-03.txt, v2_file:项目A说明.txt
+提交整库清空 -> 202 {"taskId":"7dd8af95464b41fc95f7271c67cf2d80"}
+终态=failed 阶段=永久删除失败，数据库已回滚 error=记录仍有关联目录或文件历史，禁止永久删除。；清空后剩余 8
+[CONFIRMED_BUG] R-01 一键清空回收站（整库一次提交） -> BUG-020
+X-03 造了 201 条综合资料
+删除成功 201 条；回收站现有 209 条
+一次性提交 209 条 -> 400 {"error":"请选择 1 至 200 条不重复的回收站记录。"}
+[CONFIRMED_BUG] X-03 一键清空的 200 条单次上限 -> BUG-023
+压缩前 reusable=8192 freePages=2
+造完可回收页后 reusable=8192 freePages=2
+压缩 提交=202 轨迹=running->succeeded 终态=succeeded；之后 reusable=0
+任务窗口内 lock -> 409 {"error":"文件任务执行中或程序正在退出，不能关闭数据库。"}
+[PASS] T-P1-07 先用真实可回收页再压缩，并验证任务窗口内的互斥
+预先关库 -> 200 {"ok":true}
+新建空库 -> 200 token=true {"token":"137B9E20E3D28F0BA037717D87B3900ACAA40D3319E78CFCF77061BD9FA9C009","name":"vault-v3a-empty.db"}
+空库回读: {"projects":{"status":200,"len":0},"contracts":{"status":200,"len":0},"ip":{"status":200,"len":null},"archive":{"status":200,"folders":7,"archives":0},"trash":{"status":200,"len":0}}
+[PASS] T-P2-15 全新空库的接口表现（空数据与加载失败是否可区分）

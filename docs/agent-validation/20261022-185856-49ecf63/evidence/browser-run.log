@@ -1,0 +1,11 @@
+[CONFIRMED_BUG] T-P0-01-ui 界面逐层进入业务档案三级目录 -> BUG-001
+[CONFIRMED_BUG] T-P0-02-ui 同一 LinkId 多版本在列表中占几行 -> BUG-002
+[CONFIRMED_BUG] T-P2-09 Explorer 真页面打开两步 PDF，两页都完成 Canvas 渲染 -> BUG-018
+[CONFIRMED_BUG] T-P2-01 F2 / 右键重命名 / 详情「修改」三条改名入口 -> BUG-013
+[PASS] T-P2-06 Ctrl+A / Esc / Alt+Left 键鼠语义
+[PASS] T-P2-07 全局搜索并精确跳转
+[PASS] T-P2-11 多分辨率布局不出现横向溢出
+[CONFIRMED_BUG] T-P2-03 添加快捷访问后重载是否真的能访问 -> BUG-015
+[CONFIRMED_BUG] T-P2-04 首页点「导入资料」的落点 -> BUG-016
+[CONFIRMED_BUG] X-01 单个业务接口 500 是否被静默渲染为空 -> BUG-019
+共 10 项，写入 evidence/browser-results.json

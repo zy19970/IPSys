@@ -1,0 +1,56 @@
+{
+  "runId": "v3a",
+  "testedCommit": "49ecf63",
+  "at": "2026-10-22T11:11:42.161Z",
+  "method": "HTTP",
+  "id": "T-P1-07",
+  "feature": "先造可回收页再压缩，并验证 busy 互斥",
+  "expected": "reusableBytes>0 时可压缩；任务期间 /api/lock 被拒；完成后可回收页归零",
+  "result": "CONFIRMED_BUG",
+  "defect": "BUG-021",
+  "observed": {
+    "before": {
+      "fileBytes": 68681728,
+      "pageCount": 16768,
+      "freePages": 0,
+      "pageSize": 4096,
+      "reusableBytes": 0,
+      "requiredFreeBytes": 271581184,
+      "availableBytes": 73128624128,
+      "tempAvailableBytes": 29054017536,
+      "canCompact": true
+    },
+    "submit": {
+      "status": 202,
+      "body": {
+        "taskId": "424cdddf8f5a46068435bae3f08fd9f5"
+      }
+    },
+    "stateTrace": [
+      "running",
+      "succeeded"
+    ],
+    "final": {
+      "taskId": "424cdddf8f5a46068435bae3f08fd9f5",
+      "state": "succeeded",
+      "stage": "压缩完成，SQLCipher 完整性校验通过",
+      "bytesBefore": 68681728,
+      "bytesAfter": 68681728,
+      "reusableBefore": 0,
+      "error": null
+    },
+    "after": {
+      "fileBytes": 68681728,
+      "pageCount": 16768,
+      "freePages": 0,
+      "pageSize": 4096,
+      "reusableBytes": 0,
+      "requiredFreeBytes": 271581184,
+      "availableBytes": 73059782656,
+      "tempAvailableBytes": 29053493248,
+      "canCompact": true
+    },
+    "busyRejection": null
+  },
+  "notes": "busy 互斥的动态证据来自 T-P0-04：任务窗口内 POST /api/lock 返回 409「文件任务执行中…」"
+}

@@ -1,0 +1,44 @@
+{
+  "runId": "v3a",
+  "testedCommit": "49ecf63",
+  "at": "2026-10-22T11:13:39.234Z",
+  "method": "HTTP",
+  "id": "T-P2-10",
+  "feature": "31/33 MiB 与 0B 的下载字节边界",
+  "expected": "字节长度与声明一致、SHA 一致；≥32MiB 走分块写盘而不是整块 blob",
+  "result": "CONFIRMED_BUG",
+  "defect": "BUG-025",
+  "observed": {
+    "downloads": [
+      {
+        "key": "big31",
+        "fileId": 18,
+        "declared": 32505856,
+        "status": 404,
+        "got": 0,
+        "shaMatch": false,
+        "lenMatch": false
+      },
+      {
+        "key": "big33",
+        "fileId": 19,
+        "declared": 34603008,
+        "status": 404,
+        "got": 0,
+        "shaMatch": false,
+        "lenMatch": false
+      },
+      {
+        "key": "zero",
+        "fileId": 16,
+        "declared": 0,
+        "status": 404,
+        "got": 0,
+        "lenMatch": true
+      }
+    ],
+    "streamThresholdMiB": 32,
+    "pickerBeforeNetworkAwait": false
+  },
+  "notes": "用户取消原生拾取器、传输中断属不可自动化的交互，保留为 BLOCKED 子项"
+}

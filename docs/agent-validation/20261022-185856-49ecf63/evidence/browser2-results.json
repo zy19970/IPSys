@@ -1,0 +1,181 @@
+[
+  {
+    "runId": "v3a",
+    "testedCommit": "49ecf63",
+    "at": "2026-10-22T11:14:52.998Z",
+    "method": "DYNAMIC-BROWSER",
+    "id": "T-P0-03",
+    "feature": "同一 LinkId 两行一起删：请求数、半成功、刷新一致性",
+    "expected": "同一 LinkId 只发一次解除关联；界面与服务端最终状态一致；失败要有明细",
+    "result": "CONFIRMED_BUG",
+    "defect": "BUG-003",
+    "observed": {
+      "rows": [
+        {
+          "id": "f:3:2",
+          "t": "专利说明书.txt"
+        },
+        {
+          "id": "f:3:1",
+          "t": "专利说明书.txt"
+        }
+      ],
+      "selected": 2,
+      "deleteRequests": [
+        "http://127.0.0.1:17213/api/v2/files/company/3/links/3",
+        "http://127.0.0.1:17213/api/v2/files/company/3/links/3"
+      ],
+      "duplicateRequests": true,
+      "confirmDialog": {
+        "shown": true,
+        "buttons": [
+          "取消",
+          "删除"
+        ],
+        "clicked": "删除"
+      },
+      "toasts": [
+        "关联已解除。"
+      ],
+      "rowsAfter": [
+        "f:3:2",
+        "f:3:1"
+      ],
+      "serverLiveLinksForFile": 0
+    },
+    "rootCause": "interactions.js deleteNodes 把整批 DELETE 放在同一个 try 内，第一条 200、第二条 409「关联已解除。」即抛错中断，后续条目不再发请求，且 catch 里不调用 refreshCurrent() → 界面停在删除前",
+    "notes": "这是 BUG-002（同 linkId 多行）的下游后果：一 linkId 一行时不会触发"
+  },
+  {
+    "runId": "v3a",
+    "testedCommit": "49ecf63",
+    "at": "2026-10-22T11:14:54.906Z",
+    "method": "DYNAMIC-BROWSER",
+    "id": "T-P2-02",
+    "feature": "把附件从一个记录拖到另一个记录",
+    "expected": "拖放要调用真实的关联/移动接口；不能把后端已有能力说成不支持",
+    "result": "IMPLEMENTATION_GAP",
+    "defect": "GAP-014",
+    "observed": {
+      "fileRows": [
+        {
+          "id": "c:18",
+          "t": "合同C2",
+          "draggable": "true"
+        },
+        {
+          "id": "f:14:1",
+          "t": "两页示例.pdf",
+          "draggable": "true"
+        },
+        {
+          "id": "f:12:1",
+          "t": "同名附件.txt",
+          "draggable": "true"
+        },
+        {
+          "id": "f:10:1",
+          "t": "同内容-A.txt",
+          "draggable": "true"
+        },
+        {
+          "id": "f:11:1",
+          "t": "同内容-B.txt",
+          "draggable": "true"
+        },
+        {
+          "id": "f:15:1",
+          "t": "示例图.png",
+          "draggable": "true"
+        },
+        {
+          "id": "f:16:1",
+          "t": "示例文档.docx",
+          "draggable": "true"
+        }
+      ],
+      "dragResult": {
+        "ok": true,
+        "dragPayload": {
+          "types": [
+            "text/plain"
+          ],
+          "data": "f:12:1"
+        },
+        "src": "f:12:1",
+        "targetRow": "c:18"
+      },
+      "assocRequests": [],
+      "toasts": [
+        "关联已解除。",
+        "附件移动需要后端支持 link 迁移；当前请用「上传」挂到目标记录"
+      ]
+    },
+    "notes": "dragstart 派发成功但没有任何 associate/move 请求；后端 POST /api/v2/files/{ws}/{fileId}/associate {move:true} 上一轮已实测 200，缺的是前端 drop 目标的接线"
+  },
+  {
+    "runId": "v3a",
+    "testedCommit": "49ecf63",
+    "at": "2026-10-22T11:14:55.924Z",
+    "method": "DYNAMIC-BROWSER",
+    "id": "T-P1-03",
+    "feature": "复制 / 转移 / 跨工作区转移的 UI 入口",
+    "expected": "前端要提供允许的复制/移动入口；只靠 HTTP 不算通过",
+    "result": "IMPLEMENTATION_GAP",
+    "defect": "GAP-006",
+    "observed": {
+      "ctxItems": [
+        {
+          "t": "打开",
+          "act": "open"
+        },
+        {
+          "t": "新建合同",
+          "act": "newcontract"
+        },
+        {
+          "t": "属性",
+          "act": "props"
+        },
+        {
+          "t": "打包下载",
+          "act": "download"
+        },
+        {
+          "t": "重命名\n    F2",
+          "act": "rename"
+        },
+        {
+          "t": "删除\n    Del",
+          "act": "delete"
+        }
+      ],
+      "toolbarMatches": [],
+      "hasCopyOrMoveEntry": false
+    },
+    "notes": "右键菜单与工具栏都没有复制/移动/转移入口；后端 /api/v2/files/{ws}/{fileId}/associate（move 语义）与 /folders/{ws}/{kind}/{id}/move 都可用"
+  },
+  {
+    "runId": "v3a",
+    "testedCommit": "49ecf63",
+    "at": "2026-10-22T11:14:59.318Z",
+    "method": "DYNAMIC-BROWSER",
+    "id": "T-P1-08",
+    "feature": "ZIP 导出进行中切工作区",
+    "expected": "要阻止或明确安全处理，不允许输出错工作区/半包假成功",
+    "result": "IMPLEMENTATION_GAP",
+    "defect": "GAP-008",
+    "observed": {
+      "ctxMenuHadPack": true,
+      "exportRequests": [],
+      "stateAfterSwitch": {
+        "ws": "personal",
+        "modal": [],
+        "toast": [
+          "已切换到个人工作区"
+        ]
+      }
+    },
+    "notes": "探针只证明「菜单项可点、导出请求已发、随后切换成功且没有阻断提示」；本次没能在导出真正进行中抓住窗口（打包体积太小，秒级完成），严格结论保留为待复跑：需要用 33MiB 级素材"
+  }
+]

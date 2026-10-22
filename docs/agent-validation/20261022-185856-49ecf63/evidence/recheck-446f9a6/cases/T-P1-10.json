@@ -1,0 +1,101 @@
+{
+  "runId": "v3b",
+  "testedCommit": "446f9a6",
+  "at": "2026-10-22T11:23:08.944Z",
+  "id": "T-P1-10",
+  "feature": "版本上传与关联后的回读同步（A/B）",
+  "expected": "A: 新版本成为默认最新版；B: 已存在 FileId 关联到新记录后目标记录可见",
+  "steps": [
+    "A: 临时 fileId=22 linkId=23，v1+{\"fileId\":22,\"version\":2,\"size\":31,\"sha256\":\"4296D4487B324FF26A82F64689066E4A801DBA595F32910AFBEC6672E5113ED6\"}",
+    "A: GET .../versions 探测 -> 405（无该路由，预期 405）",
+    "A: 该 linkId 的 UI 行 -> [{\"linkId\":23,\"folderId\":26,\"fileId\":22,\"version\":2,\"name\":\"T-P1-10.txt\",\"category\":\"\",\"size\":31,\"sha256\":\"4296D4487B324FF26A82F64689066E4A801DBA595F32910AFBEC6672E5113ED6\",\"displayName\":\"T-P1-10.txt\"},{\"linkId\":23,\"folderId\":26,\"fileId\":22,\"version\":1,\"name\":\"T-P1-10.txt\",\"category\":\"\",\"size\":32,\"sha256\":\"72DBB544B00C0706685C871C6B49E99CAF2CB78F3AA9DF47CCA00E181339B814\",\"displayName\":\"T-P1-10.txt\"}]",
+    "B: associate -> 200 {\"ok\":true,\"fileId\":22,\"sourceLinkId\":23,\"targetFolderId\":21,\"moved\":false}",
+    "B: fileId=22 在 IP UI 里的行 -> [{\"linkId\":24,\"folderId\":21,\"fileId\":22,\"version\":2,\"name\":\"T-P1-10.txt\",\"category\":\"\",\"size\":31,\"sha256\":\"4296D4487B324FF26A82F64689066E4A801DBA595F32910AFBEC6672E5113ED6\",\"displayName\":\"T-P1-10.txt\"},{\"linkId\":24,\"folderId\":21,\"fileId\":22,\"version\":1,\"name\":\"T-P1-10.txt\",\"category\":\"\",\"size\":32,\"sha256\":\"72DBB544B00C0706685C871C6B49E99CAF2CB78F3AA9DF47CCA00E181339B814\",\"displayName\":\"T-P1-10.txt\"},{\"linkId\":23,\"folderId\":26,\"fileId\":22,\"version\":2,\"name\":\"T-P1-10.txt\",\"category\":\"\",\"size\":31,\"sha256\":\"4296D4487B324FF26A82F64689066E4A801DBA595F32910AFBEC6672E5113ED6\",\"displayName\":\"T-P1-10.txt\"},{\"linkId\":23,\"folderId\":26,\"fileId\":22,\"version\":1,\"name\":\"T-P1-10.txt\",\"category\":\"\",\"size\":32,\"sha256\":\"72DBB544B00C0706685C871C6B49E99CAF2CB78F3AA9DF47CCA00E181339B814\",\"displayName\":\"T-P1-10.txt\"}]"
+  ],
+  "result": "PASS",
+  "observed": {
+    "versionsListRoute": 405,
+    "A": {
+      "latestVersionSeen": 2,
+      "uiRows": [
+        {
+          "linkId": 23,
+          "folderId": 26,
+          "fileId": 22,
+          "version": 2,
+          "name": "T-P1-10.txt",
+          "category": "",
+          "size": 31,
+          "sha256": "4296D4487B324FF26A82F64689066E4A801DBA595F32910AFBEC6672E5113ED6",
+          "displayName": "T-P1-10.txt"
+        },
+        {
+          "linkId": 23,
+          "folderId": 26,
+          "fileId": 22,
+          "version": 1,
+          "name": "T-P1-10.txt",
+          "category": "",
+          "size": 32,
+          "sha256": "72DBB544B00C0706685C871C6B49E99CAF2CB78F3AA9DF47CCA00E181339B814",
+          "displayName": "T-P1-10.txt"
+        }
+      ],
+      "defaultRowIsLatest": true
+    },
+    "B": {
+      "assocStatus": 200,
+      "newLinkId": 24,
+      "rowsForFile": 4,
+      "distinctLinks": 2,
+      "rows": [
+        {
+          "linkId": 24,
+          "folderId": 21,
+          "fileId": 22,
+          "version": 2,
+          "name": "T-P1-10.txt",
+          "category": "",
+          "size": 31,
+          "sha256": "4296D4487B324FF26A82F64689066E4A801DBA595F32910AFBEC6672E5113ED6",
+          "displayName": "T-P1-10.txt"
+        },
+        {
+          "linkId": 24,
+          "folderId": 21,
+          "fileId": 22,
+          "version": 1,
+          "name": "T-P1-10.txt",
+          "category": "",
+          "size": 32,
+          "sha256": "72DBB544B00C0706685C871C6B49E99CAF2CB78F3AA9DF47CCA00E181339B814",
+          "displayName": "T-P1-10.txt"
+        },
+        {
+          "linkId": 23,
+          "folderId": 26,
+          "fileId": 22,
+          "version": 2,
+          "name": "T-P1-10.txt",
+          "category": "",
+          "size": 31,
+          "sha256": "4296D4487B324FF26A82F64689066E4A801DBA595F32910AFBEC6672E5113ED6",
+          "displayName": "T-P1-10.txt"
+        },
+        {
+          "linkId": 23,
+          "folderId": 26,
+          "fileId": 22,
+          "version": 1,
+          "name": "T-P1-10.txt",
+          "category": "",
+          "size": 32,
+          "sha256": "72DBB544B00C0706685C871C6B49E99CAF2CB78F3AA9DF47CCA00E181339B814",
+          "displayName": "T-P1-10.txt"
+        }
+      ]
+    }
+  },
+  "defect": null,
+  "notes": "A=true B=true；注意 UI 对同一 linkId 出现多行属 BUG-002 的同一根因"
+}

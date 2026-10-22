@@ -1,0 +1,28 @@
+{
+  "runId": "v3a",
+  "testedCommit": "49ecf63",
+  "at": "2026-10-22T11:14:13.438Z",
+  "method": "HTTP",
+  "id": "R-02",
+  "feature": "Excel 导出范围（全部 vs 选择集）",
+  "expected": "Mode=all 与 Mode=filtered 都能导出合法 xlsx，且内容不同",
+  "result": "PASS",
+  "defect": null,
+  "observed": {
+    "exportAll": {
+      "status": 200,
+      "bytes": 2603,
+      "zip": true,
+      "sha": "5151db8e9e3aa663bf5a35d2c6ff7bef8c2ed813356630f098291bc0bb7c083f"
+    },
+    "exportFiltered": {
+      "status": 200,
+      "bytes": 2539,
+      "zip": true,
+      "sha": "a729aee5e1055424418168794ed2c2dd8f73a6a0a2cca4d5ecdf17172101a775"
+    },
+    "differ": true,
+    "contract": "POST /api/v2/excel/{ws}/{kind}/export，体 {Mode:'all'|'filtered', Ids?:long[]}"
+  },
+  "notes": "上一版我把请求体写成 {ids:[]}，被后端 400 拒绝——那是测试器错误，已修正；本轮 Mode=all/filtered 两条都成功"
+}

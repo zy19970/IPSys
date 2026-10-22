@@ -1,0 +1,7 @@
+connect via resume
+trash 命中 {"kind":"v2_ip_file","id":21,"name":"待回收6M.bin","section":"","parent":"IP-C"}
+purge 前 compact/info -> {"fileBytes":75104256,"pageCount":18336,"freePages":0,"pageSize":4096,"reusableBytes":0,"requiredFreeBytes":284426240,"availableBytes":73733939200,"tempAvailableBytes":28919259136,"canCompact":true}
+purge-task -> 202 {"taskId":"e8069ac3e37747ed9f8021f977af4cc0"}
+purge 终态 -> {"taskId":"e8069ac3e37747ed9f8021f977af4cc0","workspace":"company","state":"succeeded","stage":"已提交数据库事务，永久删除成功","bytesDone":6291456,"bytesTotal":6291456,"count":1,"error":null}
+purge 后 compact/info -> {"fileBytes":75104256,"pageCount":18336,"freePages":1569,"pageSize":4096,"reusableBytes":6426624,"requiredFreeBytes":284426240,"availableBytes":73727434752,"tempAvailableBytes":28919193600,"canCompact":true}
+fixture.json 已更新

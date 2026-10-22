@@ -1,0 +1,6 @@
+connect via resume
+登录层按钮: ["打开"]；含「新建/创建」=false；登录提交: VaultStore.open($("#dbPath").value.trim(), $("#password").value, false)
+[IMPLEMENTATION_GAP] T-P1-01 登录页能否选择已有库并另设入口创建新库 -> GAP-001
+同名附件 公司 200 38B sha=2bf6ecc79a2f；个人 200 52B sha=3307914d2220
+跨空间取公司 fileId 于 personal -> 404 
+[PASS] R-03 同名文件在两种工作区互不串物理原件

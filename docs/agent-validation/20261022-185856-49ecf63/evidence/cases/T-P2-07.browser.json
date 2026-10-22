@@ -1,0 +1,48 @@
+{
+  "runId": "v3a",
+  "testedCommit": "49ecf63",
+  "at": "2026-10-22T11:11:00.930Z",
+  "method": "DYNAMIC-BROWSER",
+  "id": "T-P2-07",
+  "feature": "全局搜索并精确跳转",
+  "expected": "能搜到 档案-01 且结果带 ownerKind/ownerId，点击能定位",
+  "result": "PASS",
+  "defect": null,
+  "observed": {
+    "apiResult": {
+      "count": 2,
+      "truncated": false,
+      "sample": [
+        {
+          "kind": "archive",
+          "id": 10,
+          "section": "achievement",
+          "title": "档案-01",
+          "description": "申报与认定 / 二级-A / 三级-A1 · 其他 · 业务档案",
+          "ownerKind": "",
+          "ownerId": 0
+        },
+        {
+          "kind": "file",
+          "id": 4,
+          "section": "achievement",
+          "title": "档案-01附件.txt",
+          "description": "申报与认定 / 二级-A / 三级-A1 · 档案-01 · 档案-01附件.txt",
+          "ownerKind": "archive",
+          "ownerId": 10
+        }
+      ]
+    },
+    "hasSearchInput": true,
+    "renderedRows": [
+      {
+        "id": "a:achievement:10",
+        "title": "档案-01"
+      },
+      {
+        "id": "f:5:1",
+        "title": "档案-01附件.txt"
+      }
+    ]
+  }
+}

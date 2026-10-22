@@ -1,0 +1,17 @@
+# T-P0-05 跨记录共享引用互不影响
+结果: PASS
+预期: 同一 fileId 两个 linkId 各自独立可读；删一处另一处仍能取到最新版
+实际: {
+  "distinctLinks": true,
+  "dlA": {
+    "status": 200,
+    "bytes": 37,
+    "sha256": "70412ae068f04626eaf443ee7e2e5017f1dd064db8b3746e20d5973fd02805d7"
+  },
+  "dlB": {
+    "status": 200,
+    "bytes": 37,
+    "sha256": "70412ae068f04626eaf443ee7e2e5017f1dd064db8b3746e20d5973fd02805d7"
+  },
+  "sameBytes": true
+}

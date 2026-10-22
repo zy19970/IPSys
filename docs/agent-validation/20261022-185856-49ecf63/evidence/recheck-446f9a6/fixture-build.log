@@ -1,0 +1,35 @@
+BASE=http://127.0.0.1:43165
+DB=E:\Github\管理系统\build-retest\agent-validation-v3\vault-v3b.db
+open create -> token len=64
+S02 系统目录 7 个 -> 1:申报与认定, 2:规划与管理, 3:汇报与宣传, 4:会议与活动, 5:专项工作与合作, 6:政策与行业资料, 7:其他业务资料
+S02 二级-A=8（父=1） 三级-A1=9（父=8）
+S02 档案-01 id=10 folderId=9
+S02 档案-02 id=11 folderId=1
+S02 档案-03 id=12 folderId=1
+S02 档案-04 id=13 folderId=1
+S02 档案-05 id=14 folderId=1
+S03 项目A=15 项目B=16
+S03 合同C1=17 合同C2=18（都挂项目A）
+E-11 无 projectId 建合同 -> 400 {"error":"创建合同必须指定所属项目：请提供顶层 parentId 或 projectId，把合同对象原样回传时 contract.projectId 也接受。"}
+S04 IP-A=19 IP-B=20 IP-C=21
+S06 综合资料G1=22
+S04 IP-A 附件 fileId=3 linkId=3 v1=22B -> v2 {"fileId":3,"version":2,"size":37,"sha256":"70412AE068F04626EAF443EE7E2E5017F1DD064DB8B3746E20D5973FD02805D7"}
+S04 associate fileId=3 IP-A.link=3 -> IP-B=20 : 200 新 linkId=4
+S09 三条不同 linkId -> file=6/link=7, file=7/link=8, file=8/link=9
+S05 同 SHA 两次上传 fileId 9 vs 10（是否同一 FileId=false）sha=61c18ce663688a04
+S01 同名附件 公司 fileId=11 / 个人 fileId=12
+S07 两页 PDF 793B xref@574 -> fileId=13；png/docx 已传
+S08 0B=16 小=17 31MiB=18 33MiB=19
+S10 解除 20 的 link -> 200
+S12 删合同C1=200 删项目A附件link=200 删项目B=200 删档案-05=200
+S10 purge-task -> 202 {"taskId":"87780630d3244ec3ad6854a18c6addbc"}
+S10 purge 结束 state=failed
+S10 compact/info -> 200 {"fileBytes":75104256,"pageCount":18336,"freePages":0,"pageSize":4096,"reusableBytes":0,"requiredFreeBytes":284426240,"availableBytes":72829947904,"tempAvailableBytes":29054631936,"canCompact":true}
+S12 回收站(company) -> [{"kind":"project","id":16,"name":"项目B","section":"","parent":null},{"kind":"v2_archive","id":14,"name":"档案-05","section":"achievement","parent":null},{"kind":"contract","id":17,"name":"合同C1","section":"","parent":"项目A"},{"kind":"v2_ip_file","id":21,"name":"待回收6M.bin","section":"","parent":"IP-C"},{"kind":"v2_file","id":1,"name":"项目A说明.txt","section":"","parent":"项目A"}]
+GET /api/v2/ui/archive/company -> 200 (["archives","general","folders","orders","files"])
+GET /api/v2/ui/projects/company -> 200 (1 rows)
+GET /api/v2/ui/ip/company -> 200 (["rows","files"])
+GET /api/v2/ui/general/company -> 404 ([])
+GET /api/v2/ui/contracts/company -> 200 (1 rows)
+GET /api/v2/ui/project-files/company -> 200 (6 rows)
+fixture.json 已写入：E:\Github\管理系统\build-retest\recheck\evidence\fixture.json

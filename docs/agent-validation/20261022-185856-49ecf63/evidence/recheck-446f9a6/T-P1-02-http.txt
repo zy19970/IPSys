@@ -1,0 +1,15 @@
+# T-P1-02 合同单删的回收站与恢复（子场景②）
+结果: PASS
+预期: 单删合同后合同独立出现在回收站；恢复后回到原项目；与项目级联是两件事
+实际: {
+  "c1IndependentlyInTrash": true,
+  "c1ParentField": "项目A",
+  "deleteStatus": 200,
+  "c2InTrash": true,
+  "c2ParentField": "项目A",
+  "projectAStillAlive": true,
+  "restoreStatus": 200,
+  "c2BackProjectId": 15,
+  "expectProject": 15
+}
+备注: 子场景①（项目级联）上轮已 PASS，本轮不重复计入本行

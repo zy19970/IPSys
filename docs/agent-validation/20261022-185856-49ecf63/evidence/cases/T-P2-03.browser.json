@@ -1,0 +1,42 @@
+{
+  "runId": "v3a",
+  "testedCommit": "49ecf63",
+  "at": "2026-10-22T11:11:06.789Z",
+  "method": "DYNAMIC-BROWSER",
+  "id": "T-P2-03",
+  "feature": "添加快捷访问后重载是否真的能访问",
+  "expected": "要么真实生效并持久化，要么根本不出现该入口；不能显示假成功",
+  "result": "CONFIRMED_BUG",
+  "defect": "BUG-015",
+  "observed": {
+    "button": {
+      "exists": true,
+      "text": "",
+      "visible": true,
+      "title": "添加快捷访问"
+    },
+    "measurement": {
+      "before": {
+        "quickItems": 5,
+        "storageKeys": []
+      },
+      "mid": {
+        "quickItems": 5,
+        "storageKeys": []
+      },
+      "toast": [
+        "「快捷访问」已按资料分类自动生成"
+      ],
+      "afterReload": {
+        "quickItems": 12,
+        "storageKeys": [],
+        "cards": 6
+      }
+    },
+    "onlyToast": true,
+    "noPersist": true,
+    "fakeSuccess": true
+  },
+  "rootCause": "frontend/explorer/js/interactions.js:700 $(\"#btnPinFolder\").addEventListener(\"click\", () => toast(\"「快捷访问」已按资料分类自动生成\")) —— 只有一句 toast，没有状态、没有持久化",
+  "notes": "按钮可见（title=添加快捷访问），点击只弹「「快捷访问」已按资料分类自动生成」，localStorage 始终为空；产品实际口径是「快捷访问由 6 个固定分类自动生成、不支持用户添加」，所以这是文案造成的假可点击能力"
+}

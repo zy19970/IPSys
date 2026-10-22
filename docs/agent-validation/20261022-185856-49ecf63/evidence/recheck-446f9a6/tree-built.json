@@ -1,0 +1,909 @@
+{
+  "id": "root",
+  "name": "我的文件",
+  "type": "folder",
+  "mtime": 1792668198647,
+  "children": [
+    {
+      "id": "k:certificate",
+      "name": "企业资质",
+      "type": "folder",
+      "mtime": null,
+      "children": [],
+      "biz": null,
+      "synthetic": true,
+      "order": 0
+    },
+    {
+      "id": "k:achievement",
+      "name": "业务档案",
+      "type": "folder",
+      "mtime": 1767225600000,
+      "children": [
+        {
+          "id": "af:1",
+          "name": "申报与认定",
+          "type": "folder",
+          "mtime": 1767225600000,
+          "children": [
+            {
+              "id": "a:achievement:11",
+              "name": "档案-02",
+              "type": "folder",
+              "mtime": 1767225600000,
+              "children": [],
+              "biz": {
+                "kind": "archive",
+                "section": "achievement",
+                "typeName": "业务档案",
+                "status": "",
+                "code": "",
+                "owner": "",
+                "year": "2026",
+                "category": "其他",
+                "remarks": "",
+                "tags": "",
+                "folderId": 1,
+                "raw": {
+                  "id": 11,
+                  "workspace": "company",
+                  "section": "achievement",
+                  "name": "档案-02",
+                  "category": "其他",
+                  "remarks": "",
+                  "tags": "",
+                  "year": "2026",
+                  "folderId": 1,
+                  "position": 1
+                },
+                "id": 11
+              },
+              "synthetic": false,
+              "dateLabel": "2026 年",
+              "size": 0
+            },
+            {
+              "id": "a:achievement:12",
+              "name": "档案-03",
+              "type": "folder",
+              "mtime": 1767225600000,
+              "children": [],
+              "biz": {
+                "kind": "archive",
+                "section": "achievement",
+                "typeName": "业务档案",
+                "status": "",
+                "code": "",
+                "owner": "",
+                "year": "2026",
+                "category": "其他",
+                "remarks": "",
+                "tags": "",
+                "folderId": 1,
+                "raw": {
+                  "id": 12,
+                  "workspace": "company",
+                  "section": "achievement",
+                  "name": "档案-03",
+                  "category": "其他",
+                  "remarks": "",
+                  "tags": "",
+                  "year": "2026",
+                  "folderId": 1,
+                  "position": 2
+                },
+                "id": 12
+              },
+              "synthetic": false,
+              "dateLabel": "2026 年",
+              "size": 0
+            },
+            {
+              "id": "a:achievement:13",
+              "name": "档案-04",
+              "type": "folder",
+              "mtime": 1767225600000,
+              "children": [],
+              "biz": {
+                "kind": "archive",
+                "section": "achievement",
+                "typeName": "业务档案",
+                "status": "",
+                "code": "",
+                "owner": "",
+                "year": "2026",
+                "category": "其他",
+                "remarks": "",
+                "tags": "",
+                "folderId": 1,
+                "raw": {
+                  "id": 13,
+                  "workspace": "company",
+                  "section": "achievement",
+                  "name": "档案-04",
+                  "category": "其他",
+                  "remarks": "",
+                  "tags": "",
+                  "year": "2026",
+                  "folderId": 1,
+                  "position": 3
+                },
+                "id": 13
+              },
+              "synthetic": false,
+              "dateLabel": "2026 年",
+              "size": 0
+            }
+          ],
+          "biz": {
+            "kind": "archive_folder",
+            "typeName": "目录",
+            "id": 1,
+            "isSystem": true
+          },
+          "synthetic": false,
+          "order": 0,
+          "size": 0
+        },
+        {
+          "id": "af:2",
+          "name": "规划与管理",
+          "type": "folder",
+          "mtime": null,
+          "children": [],
+          "biz": {
+            "kind": "archive_folder",
+            "typeName": "目录",
+            "id": 2,
+            "isSystem": true
+          },
+          "synthetic": false,
+          "order": 1,
+          "size": 0
+        },
+        {
+          "id": "af:3",
+          "name": "汇报与宣传",
+          "type": "folder",
+          "mtime": null,
+          "children": [],
+          "biz": {
+            "kind": "archive_folder",
+            "typeName": "目录",
+            "id": 3,
+            "isSystem": true
+          },
+          "synthetic": false,
+          "order": 2,
+          "size": 0
+        },
+        {
+          "id": "af:4",
+          "name": "会议与活动",
+          "type": "folder",
+          "mtime": null,
+          "children": [],
+          "biz": {
+            "kind": "archive_folder",
+            "typeName": "目录",
+            "id": 4,
+            "isSystem": true
+          },
+          "synthetic": false,
+          "order": 3,
+          "size": 0
+        },
+        {
+          "id": "af:5",
+          "name": "专项工作与合作",
+          "type": "folder",
+          "mtime": null,
+          "children": [],
+          "biz": {
+            "kind": "archive_folder",
+            "typeName": "目录",
+            "id": 5,
+            "isSystem": true
+          },
+          "synthetic": false,
+          "order": 4,
+          "size": 0
+        },
+        {
+          "id": "af:6",
+          "name": "政策与行业资料",
+          "type": "folder",
+          "mtime": null,
+          "children": [],
+          "biz": {
+            "kind": "archive_folder",
+            "typeName": "目录",
+            "id": 6,
+            "isSystem": true
+          },
+          "synthetic": false,
+          "order": 5,
+          "size": 0
+        },
+        {
+          "id": "af:7",
+          "name": "其他业务资料",
+          "type": "folder",
+          "mtime": null,
+          "children": [],
+          "biz": {
+            "kind": "archive_folder",
+            "typeName": "目录",
+            "id": 7,
+            "isSystem": true
+          },
+          "synthetic": false,
+          "order": 6,
+          "size": 0
+        },
+        {
+          "id": "a:achievement:10",
+          "name": "档案-01",
+          "type": "folder",
+          "mtime": 1767225600000,
+          "children": [
+            {
+              "id": "f:5:1",
+              "name": "档案-01附件.txt",
+              "type": "file",
+              "size": 27,
+              "mtime": null,
+              "starred": false,
+              "biz": {
+                "kind": "file",
+                "ownerKind": "archive",
+                "section": "achievement",
+                "category": ""
+              }
+            }
+          ],
+          "biz": {
+            "kind": "archive",
+            "section": "achievement",
+            "typeName": "业务档案",
+            "status": "",
+            "code": "",
+            "owner": "",
+            "year": "2026",
+            "category": "其他",
+            "remarks": "",
+            "tags": "",
+            "folderId": 9,
+            "raw": {
+              "id": 10,
+              "workspace": "company",
+              "section": "achievement",
+              "name": "档案-01",
+              "category": "其他",
+              "remarks": "",
+              "tags": "",
+              "year": "2026",
+              "folderId": 9,
+              "position": 0
+            },
+            "id": 10
+          },
+          "synthetic": false,
+          "dateLabel": "2026 年",
+          "size": 27
+        }
+      ],
+      "biz": null,
+      "synthetic": true,
+      "order": 1
+    },
+    {
+      "id": "k:project",
+      "name": "公司项目",
+      "type": "folder",
+      "mtime": 1767225600000,
+      "children": [
+        {
+          "id": "p:15",
+          "name": "项目A",
+          "type": "folder",
+          "mtime": 1767225600000,
+          "children": [
+            {
+              "id": "c:18",
+              "name": "合同C2",
+              "type": "folder",
+              "mtime": 1769990400000,
+              "children": [],
+              "biz": {
+                "kind": "contract",
+                "typeName": "合同",
+                "status": "",
+                "code": "HT-02",
+                "owner": "",
+                "amount": "",
+                "start": "2026-02-02",
+                "category": "",
+                "remarks": "",
+                "tags": "",
+                "projectId": 15,
+                "projectName": "项目A",
+                "raw": {
+                  "id": 18,
+                  "projectId": 15,
+                  "workspace": "company",
+                  "projectName": "项目A",
+                  "name": "合同C2",
+                  "contractNo": "HT-02",
+                  "signDate": "2026-02-02",
+                  "amount": null,
+                  "signingParties": null,
+                  "category": null,
+                  "remarks": null,
+                  "tags": null
+                },
+                "id": 18
+              },
+              "synthetic": false,
+              "dateLabel": "2026-02-02",
+              "size": 0
+            },
+            {
+              "id": "f:14:1",
+              "name": "两页示例.pdf",
+              "type": "file",
+              "size": 793,
+              "mtime": null,
+              "starred": false,
+              "biz": {
+                "kind": "file",
+                "ownerKind": "project"
+              }
+            },
+            {
+              "id": "f:12:1",
+              "name": "同名附件.txt",
+              "type": "file",
+              "size": 38,
+              "mtime": null,
+              "starred": false,
+              "biz": {
+                "kind": "file",
+                "ownerKind": "project"
+              }
+            },
+            {
+              "id": "f:10:1",
+              "name": "同内容-A.txt",
+              "type": "file",
+              "size": 47,
+              "mtime": null,
+              "starred": false,
+              "biz": {
+                "kind": "file",
+                "ownerKind": "project"
+              }
+            },
+            {
+              "id": "f:11:1",
+              "name": "同内容-B.txt",
+              "type": "file",
+              "size": 47,
+              "mtime": null,
+              "starred": false,
+              "biz": {
+                "kind": "file",
+                "ownerKind": "project"
+              }
+            },
+            {
+              "id": "f:15:1",
+              "name": "示例图.png",
+              "type": "file",
+              "size": 70,
+              "mtime": null,
+              "starred": false,
+              "biz": {
+                "kind": "file",
+                "ownerKind": "project"
+              }
+            },
+            {
+              "id": "f:16:1",
+              "name": "示例文档.docx",
+              "type": "file",
+              "size": 21,
+              "mtime": null,
+              "starred": false,
+              "biz": {
+                "kind": "file",
+                "ownerKind": "project"
+              }
+            }
+          ],
+          "biz": {
+            "kind": "project",
+            "typeName": "科研项目",
+            "status": "筹备中",
+            "code": "P-A",
+            "owner": "",
+            "org": "",
+            "start": "2026-01-01",
+            "end": "",
+            "category": "",
+            "remarks": "",
+            "tags": "",
+            "raw": {
+              "id": 15,
+              "workspace": "company",
+              "name": "项目A",
+              "projectType": "科研项目",
+              "projectNo": "P-A",
+              "leader": null,
+              "undertakingOrg": null,
+              "startDate": "2026-01-01",
+              "endDate": null,
+              "projectStatus": "筹备中",
+              "category": null,
+              "remarks": null,
+              "tags": null
+            },
+            "id": 15
+          },
+          "synthetic": false,
+          "dateLabel": "2026-01-01",
+          "size": 1016
+        }
+      ],
+      "biz": null,
+      "synthetic": true,
+      "order": 2
+    },
+    {
+      "id": "k:ip",
+      "name": "知识产权",
+      "type": "folder",
+      "mtime": null,
+      "children": [
+        {
+          "id": "i:19",
+          "name": "IP-A",
+          "type": "folder",
+          "mtime": null,
+          "children": [
+            {
+              "id": "f:3:2",
+              "name": "专利说明书.txt",
+              "type": "file",
+              "size": 37,
+              "mtime": null,
+              "starred": false,
+              "biz": {
+                "kind": "file",
+                "ownerKind": "ip"
+              }
+            },
+            {
+              "id": "f:3:1",
+              "name": "专利说明书.txt",
+              "type": "file",
+              "size": 22,
+              "mtime": null,
+              "starred": false,
+              "biz": {
+                "kind": "file",
+                "ownerKind": "ip"
+              }
+            }
+          ],
+          "biz": {
+            "kind": "ip",
+            "typeName": "发明专利",
+            "status": "已授权",
+            "code": "CN-A",
+            "owner": "",
+            "start": "",
+            "end": "",
+            "category": "",
+            "remarks": "",
+            "tags": "",
+            "applicants": "",
+            "creators": "",
+            "raw": {
+              "name": "IP-A",
+              "ipType": "发明专利",
+              "status": "已授权",
+              "applicants": null,
+              "rightHolders": null,
+              "creators": null,
+              "applicationNo": "CN-A",
+              "applicationDate": null,
+              "publicationNo": null,
+              "publicationDate": null,
+              "grantNoticeNo": null,
+              "grantNoticeDate": null,
+              "publicationInfo": null,
+              "grantDate": null,
+              "registrationNo": null,
+              "firstPublishedDate": null,
+              "registrationDate": null,
+              "category": null,
+              "remarks": null,
+              "tags": null
+            },
+            "id": 19
+          },
+          "synthetic": false,
+          "dateLabel": "",
+          "size": 59
+        },
+        {
+          "id": "i:20",
+          "name": "IP-B",
+          "type": "folder",
+          "mtime": null,
+          "children": [
+            {
+              "id": "f:4:2",
+              "name": "专利说明书.txt",
+              "type": "file",
+              "size": 37,
+              "mtime": null,
+              "starred": false,
+              "biz": {
+                "kind": "file",
+                "ownerKind": "ip"
+              }
+            },
+            {
+              "id": "f:4:1",
+              "name": "专利说明书.txt",
+              "type": "file",
+              "size": 22,
+              "mtime": null,
+              "starred": false,
+              "biz": {
+                "kind": "file",
+                "ownerKind": "ip"
+              }
+            }
+          ],
+          "biz": {
+            "kind": "ip",
+            "typeName": "软件著作权",
+            "status": "已登记",
+            "code": "CN-B",
+            "owner": "",
+            "start": "",
+            "end": "",
+            "category": "",
+            "remarks": "",
+            "tags": "",
+            "applicants": "",
+            "creators": "",
+            "raw": {
+              "name": "IP-B",
+              "ipType": "软件著作权",
+              "status": "已登记",
+              "applicants": null,
+              "rightHolders": null,
+              "creators": null,
+              "applicationNo": "CN-B",
+              "applicationDate": null,
+              "publicationNo": null,
+              "publicationDate": null,
+              "grantNoticeNo": null,
+              "grantNoticeDate": null,
+              "publicationInfo": null,
+              "grantDate": null,
+              "registrationNo": null,
+              "firstPublishedDate": null,
+              "registrationDate": null,
+              "category": null,
+              "remarks": null,
+              "tags": null
+            },
+            "id": 20
+          },
+          "synthetic": false,
+          "dateLabel": "",
+          "size": 59
+        },
+        {
+          "id": "i:21",
+          "name": "IP-C",
+          "type": "folder",
+          "mtime": null,
+          "children": [
+            {
+              "id": "f:7:1",
+              "name": "S09-1.txt",
+              "type": "file",
+              "size": 19,
+              "mtime": null,
+              "starred": false,
+              "biz": {
+                "kind": "file",
+                "ownerKind": "ip"
+              }
+            },
+            {
+              "id": "f:8:1",
+              "name": "S09-2.txt",
+              "type": "file",
+              "size": 19,
+              "mtime": null,
+              "starred": false,
+              "biz": {
+                "kind": "file",
+                "ownerKind": "ip"
+              }
+            },
+            {
+              "id": "f:9:1",
+              "name": "S09-3.txt",
+              "type": "file",
+              "size": 19,
+              "mtime": null,
+              "starred": false,
+              "biz": {
+                "kind": "file",
+                "ownerKind": "ip"
+              }
+            },
+            {
+              "id": "f:24:2",
+              "name": "T-P1-10.txt",
+              "type": "file",
+              "size": 31,
+              "mtime": null,
+              "starred": false,
+              "biz": {
+                "kind": "file",
+                "ownerKind": "ip"
+              }
+            },
+            {
+              "id": "f:24:1",
+              "name": "T-P1-10.txt",
+              "type": "file",
+              "size": 32,
+              "mtime": null,
+              "starred": false,
+              "biz": {
+                "kind": "file",
+                "ownerKind": "ip"
+              }
+            }
+          ],
+          "biz": {
+            "kind": "ip",
+            "typeName": "商标",
+            "status": "已注册",
+            "code": "CN-C",
+            "owner": "",
+            "start": "",
+            "end": "",
+            "category": "",
+            "remarks": "",
+            "tags": "",
+            "applicants": "",
+            "creators": "",
+            "raw": {
+              "name": "IP-C",
+              "ipType": "商标",
+              "status": "已注册",
+              "applicants": null,
+              "rightHolders": null,
+              "creators": null,
+              "applicationNo": "CN-C",
+              "applicationDate": null,
+              "publicationNo": null,
+              "publicationDate": null,
+              "grantNoticeNo": null,
+              "grantNoticeDate": null,
+              "publicationInfo": null,
+              "grantDate": null,
+              "registrationNo": null,
+              "firstPublishedDate": null,
+              "registrationDate": null,
+              "category": null,
+              "remarks": null,
+              "tags": null
+            },
+            "id": 21
+          },
+          "synthetic": false,
+          "dateLabel": "",
+          "size": 120
+        },
+        {
+          "id": "i:25",
+          "name": "T-P0-03-1",
+          "type": "folder",
+          "mtime": null,
+          "children": [],
+          "biz": {
+            "kind": "ip",
+            "typeName": "实用新型专利",
+            "status": "已申请",
+            "code": "SZ-1",
+            "owner": "",
+            "start": "",
+            "end": "",
+            "category": "",
+            "remarks": "",
+            "tags": "",
+            "applicants": "",
+            "creators": "",
+            "raw": {
+              "name": "T-P0-03-1",
+              "ipType": "实用新型专利",
+              "status": "已申请",
+              "applicants": null,
+              "rightHolders": null,
+              "creators": null,
+              "applicationNo": "SZ-1",
+              "applicationDate": null,
+              "publicationNo": null,
+              "publicationDate": null,
+              "grantNoticeNo": null,
+              "grantNoticeDate": null,
+              "publicationInfo": null,
+              "grantDate": null,
+              "registrationNo": null,
+              "firstPublishedDate": null,
+              "registrationDate": null,
+              "category": null,
+              "remarks": null,
+              "tags": null
+            },
+            "id": 25
+          },
+          "synthetic": false,
+          "dateLabel": "",
+          "size": 0
+        },
+        {
+          "id": "i:26",
+          "name": "T-P1-10-2",
+          "type": "folder",
+          "mtime": null,
+          "children": [
+            {
+              "id": "f:23:2",
+              "name": "T-P1-10.txt",
+              "type": "file",
+              "size": 31,
+              "mtime": null,
+              "starred": false,
+              "biz": {
+                "kind": "file",
+                "ownerKind": "ip"
+              }
+            },
+            {
+              "id": "f:23:1",
+              "name": "T-P1-10.txt",
+              "type": "file",
+              "size": 32,
+              "mtime": null,
+              "starred": false,
+              "biz": {
+                "kind": "file",
+                "ownerKind": "ip"
+              }
+            }
+          ],
+          "biz": {
+            "kind": "ip",
+            "typeName": "实用新型专利",
+            "status": "已申请",
+            "code": "SZ-2",
+            "owner": "",
+            "start": "",
+            "end": "",
+            "category": "",
+            "remarks": "",
+            "tags": "",
+            "applicants": "",
+            "creators": "",
+            "raw": {
+              "name": "T-P1-10-2",
+              "ipType": "实用新型专利",
+              "status": "已申请",
+              "applicants": null,
+              "rightHolders": null,
+              "creators": null,
+              "applicationNo": "SZ-2",
+              "applicationDate": null,
+              "publicationNo": null,
+              "publicationDate": null,
+              "grantNoticeNo": null,
+              "grantNoticeDate": null,
+              "publicationInfo": null,
+              "grantDate": null,
+              "registrationNo": null,
+              "firstPublishedDate": null,
+              "registrationDate": null,
+              "category": null,
+              "remarks": null,
+              "tags": null
+            },
+            "id": 26
+          },
+          "synthetic": false,
+          "dateLabel": "",
+          "size": 63
+        }
+      ],
+      "biz": null,
+      "synthetic": true,
+      "order": 3
+    },
+    {
+      "id": "k:general",
+      "name": "综合资料",
+      "type": "folder",
+      "mtime": null,
+      "children": [
+        {
+          "id": "g:22",
+          "name": "综合资料-G1",
+          "type": "folder",
+          "mtime": null,
+          "children": [
+            {
+              "id": "f:6:1",
+              "name": "综合资料附件.txt",
+              "type": "file",
+              "size": 24,
+              "mtime": null,
+              "starred": false,
+              "biz": {
+                "kind": "file",
+                "ownerKind": "general"
+              }
+            }
+          ],
+          "biz": {
+            "kind": "general",
+            "typeName": "综合资料",
+            "status": "",
+            "code": "",
+            "owner": "",
+            "remarks": "",
+            "tags": "",
+            "raw": {
+              "id": 22,
+              "title": "综合资料-G1",
+              "files": [
+                {
+                  "id": -600001,
+                  "linkId": 6,
+                  "fileId": 5,
+                  "kind": "general",
+                  "ownerId": 22,
+                  "name": "综合资料附件.txt",
+                  "size": 24,
+                  "sha256": "2AC79DC36FFDD47CEC1077DC44ABCB1A534AF436508257D6B6696EE52D4811B1",
+                  "version": 1,
+                  "groupId": "v2-file-6",
+                  "v2": true
+                }
+              ]
+            },
+            "id": 22
+          },
+          "synthetic": false,
+          "size": 24
+        }
+      ],
+      "biz": null,
+      "synthetic": true,
+      "order": 4
+    }
+  ],
+  "biz": null,
+  "synthetic": false
+}

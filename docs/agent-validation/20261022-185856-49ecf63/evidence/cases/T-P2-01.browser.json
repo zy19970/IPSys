@@ -1,0 +1,68 @@
+{
+  "runId": "v3a",
+  "testedCommit": "49ecf63",
+  "at": "2026-10-22T11:10:57.539Z",
+  "method": "DYNAMIC-BROWSER",
+  "id": "T-P2-01",
+  "feature": "F2 / 右键重命名 / 详情「修改」三条改名入口",
+  "expected": "三种入口都能进入可编辑表单；不能写着「重命名 / F2」却只弹一句提示",
+  "result": "CONFIRMED_BUG",
+  "defect": "BUG-013",
+  "observed": {
+    "targetId": "p:15",
+    "f2": {
+      "toast": [
+        "重命名请点「修改」或右键「属性」"
+      ],
+      "hasForm": false,
+      "maskTitles": [
+        "(无标题)"
+      ]
+    },
+    "ctxItems": [
+      {
+        "t": "打开",
+        "act": "open"
+      },
+      {
+        "t": "新建合同",
+        "act": "newcontract"
+      },
+      {
+        "t": "属性",
+        "act": "props"
+      },
+      {
+        "t": "打包下载",
+        "act": "download"
+      },
+      {
+        "t": "重命名\n    F2",
+        "act": "rename"
+      },
+      {
+        "t": "删除\n    Del",
+        "act": "delete"
+      }
+    ],
+    "ctxRename": {
+      "toast": [
+        "重命名请点「修改」或右键「属性」"
+      ],
+      "hasForm": false
+    },
+    "detailPanel": {
+      "detailOpen": true,
+      "hasEditBtn": true
+    },
+    "detailEditResult": {
+      "hasForm": true,
+      "maskCount": 2
+    },
+    "f2Works": false,
+    "ctxRenameWorks": false,
+    "detailWorks": true
+  },
+  "rootCause": "frontend/explorer/js/interactions.js:1060 rename:()=>toast(\"重命名请点「修改」或右键「属性」\")；interactions.js:1280 F2 分支同样只 toast。菜单项由 1047 行 MI(\"rename\",\"rename\",\"重命名\",\"F2\") 生成，带 F2 快捷键提示但没有改名行为。",
+  "notes": "项目 2026-10-21 曾把「文案联动指向修改」定为口径，但任务书要求入口名与实际行为一致；修法二选一：菜单项改名「修改属性」/ 真正打开表单"
+}

@@ -1,0 +1,33 @@
+{
+  "runId": "v3a",
+  "testedCommit": "49ecf63",
+  "at": "2026-10-22T11:10:43.295Z",
+  "method": "DYNAMIC-BROWSER",
+  "id": "T-P0-01-ui",
+  "feature": "界面逐层进入业务档案三级目录",
+  "expected": "一级能看到 7 个系统目录；进入系统目录能看到 二级-A；再进能看到 三级-A1 与档案-01",
+  "result": "CONFIRMED_BUG",
+  "defect": "BUG-001",
+  "observed": {
+    "lvl1Rows": [
+      "档案-01",
+      "申报与认定",
+      "规划与管理",
+      "汇报与宣传",
+      "会议与活动",
+      "专项工作与合作",
+      "政策与行业资料",
+      "其他业务资料"
+    ],
+    "hasLvl2AtCatLevel": false,
+    "hasLvl3AtCatLevel": false,
+    "record01AtCatLevel": true,
+    "innerRows": [
+      "档案-02",
+      "档案-03",
+      "档案-04"
+    ],
+    "hasLvl2Inner": false
+  },
+  "notes": "与 t-tree.cjs 的纯函数结论互证：树里根本没有 af:8/af:9"
+}

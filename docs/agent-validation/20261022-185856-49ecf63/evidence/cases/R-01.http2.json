@@ -1,0 +1,47 @@
+{
+  "runId": "v3a",
+  "testedCommit": "49ecf63",
+  "at": "2026-10-22T11:11:35.607Z",
+  "method": "HTTP",
+  "id": "R-01",
+  "feature": "一键清空回收站（取消无变更 / 确认后真实删除并给阶段与结果）",
+  "expected": "取消不动数据；确认后走服务端任务、有阶段与结果、实际清空",
+  "result": "CONFIRMED_BUG",
+  "defect": "BUG-020",
+  "observed": {
+    "beforeCount": 8,
+    "before": [
+      "project:项目B",
+      "v2_archive:档案-05",
+      "contract:合同C1",
+      "v2_ip_file:T-P0-03.txt",
+      "v2_ip_file:T-P0-03.txt",
+      "v2_ip_file:T-P0-03.txt",
+      "v2_ip_file:T-P0-03.txt",
+      "v2_file:项目A说明.txt"
+    ],
+    "cancelNoChange": true,
+    "submit": {
+      "status": 202,
+      "body": {
+        "taskId": "f0e1362d98a14b35a131707c67aa00f0"
+      }
+    },
+    "stateTrace": [
+      "failed"
+    ],
+    "final": {
+      "taskId": "f0e1362d98a14b35a131707c67aa00f0",
+      "workspace": "company",
+      "state": "failed",
+      "stage": "永久删除失败，数据库已回滚",
+      "bytesDone": 0,
+      "bytesTotal": 0,
+      "count": 8,
+      "error": "记录仍有关联目录或文件历史，禁止永久删除。"
+    },
+    "afterCount": 8,
+    "cleared": 0
+  },
+  "notes": "任务书 §1 已授权「一键清空」存在本身不是缺陷；这里验证的是执行正确性"
+}

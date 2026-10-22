@@ -1,0 +1,52 @@
+{
+  "/": {
+    "status": 200,
+    "bytes": 12338,
+    "ctype": "text/html; charset=utf-8"
+  },
+  "/style.css": {
+    "status": 200,
+    "bytes": 59992,
+    "ctype": "text/css; charset=utf-8"
+  },
+  "/app.js": {
+    "status": 200,
+    "bytes": 195284,
+    "ctype": "text/javascript; charset=utf-8"
+  },
+  "/pdf-preview.js": {
+    "status": 200,
+    "bytes": 4550,
+    "ctype": "text/javascript; charset=utf-8"
+  },
+  "/pdfjs/pdf.min.js": {
+    "status": 200,
+    "bytes": 282943,
+    "ctype": "text/javascript; charset=utf-8"
+  },
+  "/pdfjs/pdf.worker.min.js": {
+    "status": 200,
+    "bytes": 1074918,
+    "ctype": "text/javascript; charset=utf-8"
+  },
+  "/ip-v2.js": {
+    "status": 200,
+    "bytes": 8464,
+    "ctype": "text/javascript; charset=utf-8"
+  },
+  "/upload-progress.js": {
+    "status": 200,
+    "bytes": 8448,
+    "ctype": "text/javascript; charset=utf-8"
+  },
+  "/export.js": {
+    "status": 200,
+    "bytes": 17757,
+    "ctype": "text/javascript; charset=utf-8"
+  },
+  "/pdfjs/LICENSE.txt": {
+    "status": 200,
+    "bytes": 10351,
+    "ctype": "text/plain; charset=utf-8"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "runId": "v3a",
+  "testedCommit": "49ecf63",
+  "at": "2026-10-22T11:12:20.194Z",
+  "method": "HTTP",
+  "id": "X-03",
+  "feature": "一键清空的 200 条单次上限",
+  "expected": "201 条时应明确提示分批（而不是静默只删前 200），并且不遗漏",
+  "result": "CONFIRMED_BUG",
+  "defect": "BUG-023",
+  "observed": {
+    "created": 201,
+    "deleted": 201,
+    "trashCount": 209,
+    "overLimitSubmit": {
+      "status": 400,
+      "body": {
+        "error": "请选择 1 至 200 条不重复的回收站记录。"
+      }
+    }
+  },
+  "rootCause": "frontend/explorer/js/bridge.js:436-441 purgeTrash 在 items.length>200 时直接 return toast 并**拒绝执行**；interactions.js:1409 emptyRecycle() 把整个 RECYCLE 传给同一条路径 → 回收站超过 200 条时「一键清空」完全不可用",
+  "notes": "任务书 X-03 要求「Agent 只报告差异，不擅自重设计」：这里只记录「一键清空在 >200 时整批拒绝」，应由用户决定是自动分批还是显式提示"
+}

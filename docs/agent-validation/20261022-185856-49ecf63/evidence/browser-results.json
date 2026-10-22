@@ -1,0 +1,399 @@
+[
+  {
+    "runId": "v3a",
+    "testedCommit": "49ecf63",
+    "at": "2026-10-22T11:10:43.295Z",
+    "method": "DYNAMIC-BROWSER",
+    "id": "T-P0-01-ui",
+    "feature": "界面逐层进入业务档案三级目录",
+    "expected": "一级能看到 7 个系统目录；进入系统目录能看到 二级-A；再进能看到 三级-A1 与档案-01",
+    "result": "CONFIRMED_BUG",
+    "defect": "BUG-001",
+    "observed": {
+      "lvl1Rows": [
+        "档案-01",
+        "申报与认定",
+        "规划与管理",
+        "汇报与宣传",
+        "会议与活动",
+        "专项工作与合作",
+        "政策与行业资料",
+        "其他业务资料"
+      ],
+      "hasLvl2AtCatLevel": false,
+      "hasLvl3AtCatLevel": false,
+      "record01AtCatLevel": true,
+      "innerRows": [
+        "档案-02",
+        "档案-03",
+        "档案-04"
+      ],
+      "hasLvl2Inner": false
+    },
+    "notes": "与 t-tree.cjs 的纯函数结论互证：树里根本没有 af:8/af:9"
+  },
+  {
+    "runId": "v3a",
+    "testedCommit": "49ecf63",
+    "at": "2026-10-22T11:10:44.841Z",
+    "method": "DYNAMIC-BROWSER",
+    "id": "T-P0-02-ui",
+    "feature": "同一 LinkId 多版本在列表中占几行",
+    "expected": "linkId=3 只有 1 行（默认最新版）",
+    "result": "CONFIRMED_BUG",
+    "defect": "BUG-002",
+    "observed": {
+      "catRows": [
+        "IP-A",
+        "IP-B",
+        "IP-C",
+        "T-P0-03-1",
+        "T-P0-03-1",
+        "T-P0-03-1",
+        "T-P0-03-1",
+        "T-P1-10-2",
+        "T-P1-10-2",
+        "T-P1-10-2",
+        "T-P1-10-2"
+      ],
+      "fileRows": [
+        {
+          "id": "f:3:2",
+          "title": "专利说明书.txt",
+          "sub": ""
+        },
+        {
+          "id": "f:3:1",
+          "title": "专利说明书.txt",
+          "sub": ""
+        }
+      ],
+      "rowsForLink": 2,
+      "rowIds": [
+        "f:3:2",
+        "f:3:1"
+      ]
+    }
+  },
+  {
+    "runId": "v3a",
+    "testedCommit": "49ecf63",
+    "at": "2026-10-22T11:10:53.966Z",
+    "method": "DYNAMIC-BROWSER",
+    "id": "T-P2-09",
+    "feature": "Explorer 真页面打开两步 PDF，两页都完成 Canvas 渲染",
+    "expected": "页码 1/2 → 2/2；状态空；canvas 有尺寸；两页像素指纹不同",
+    "result": "CONFIRMED_BUG",
+    "defect": "BUG-018",
+    "observed": {
+      "appeared": true,
+      "page1": {
+        "hasCanvas": true,
+        "w": 300,
+        "h": 150,
+        "status": "正在解析 PDF…",
+        "count": "加载中",
+        "pxSample": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASwAAACWCAYAAABkW7XSAAAF2UlEQVR4AezU227bOhAFUOP8/0efvDhokNiWRJGcyyoKtLElcmbtYP/38IcAAQJJBBRWkqCMSYDA46Gw/BYQIJBGQGGliWp8UCcQyC6gsLInaH4CjQQUVqOwrUogu4DCyp"
+      },
+      "page2": null,
+      "p1hash": "222b690cf21b5729",
+      "p2hash": null,
+      "rendered1": false,
+      "rendered2": false
+    },
+    "rootCause": "frontend/explorer/js/interactions.js:1633 只做 pdfViewer = viewer.create(body, buffer)，而 src/IPSys.Web/wwwroot/pdf-preview.js:95 返回 {open,destroy}，create 不启动解析；未调 open() 就永远停在「正在解析 PDF…」",
+    "notes": "上轮 T-P2-09 判 PASS 属误报（证据里 pages:0），本轮撤销该 PASS"
+  },
+  {
+    "runId": "v3a",
+    "testedCommit": "49ecf63",
+    "at": "2026-10-22T11:10:57.539Z",
+    "method": "DYNAMIC-BROWSER",
+    "id": "T-P2-01",
+    "feature": "F2 / 右键重命名 / 详情「修改」三条改名入口",
+    "expected": "三种入口都能进入可编辑表单；不能写着「重命名 / F2」却只弹一句提示",
+    "result": "CONFIRMED_BUG",
+    "defect": "BUG-013",
+    "observed": {
+      "targetId": "p:15",
+      "f2": {
+        "toast": [
+          "重命名请点「修改」或右键「属性」"
+        ],
+        "hasForm": false,
+        "maskTitles": [
+          "(无标题)"
+        ]
+      },
+      "ctxItems": [
+        {
+          "t": "打开",
+          "act": "open"
+        },
+        {
+          "t": "新建合同",
+          "act": "newcontract"
+        },
+        {
+          "t": "属性",
+          "act": "props"
+        },
+        {
+          "t": "打包下载",
+          "act": "download"
+        },
+        {
+          "t": "重命名\n    F2",
+          "act": "rename"
+        },
+        {
+          "t": "删除\n    Del",
+          "act": "delete"
+        }
+      ],
+      "ctxRename": {
+        "toast": [
+          "重命名请点「修改」或右键「属性」"
+        ],
+        "hasForm": false
+      },
+      "detailPanel": {
+        "detailOpen": true,
+        "hasEditBtn": true
+      },
+      "detailEditResult": {
+        "hasForm": true,
+        "maskCount": 2
+      },
+      "f2Works": false,
+      "ctxRenameWorks": false,
+      "detailWorks": true
+    },
+    "rootCause": "frontend/explorer/js/interactions.js:1060 rename:()=>toast(\"重命名请点「修改」或右键「属性」\")；interactions.js:1280 F2 分支同样只 toast。菜单项由 1047 行 MI(\"rename\",\"rename\",\"重命名\",\"F2\") 生成，带 F2 快捷键提示但没有改名行为。",
+    "notes": "项目 2026-10-21 曾把「文案联动指向修改」定为口径，但任务书要求入口名与实际行为一致；修法二选一：菜单项改名「修改属性」/ 真正打开表单"
+  },
+  {
+    "runId": "v3a",
+    "testedCommit": "49ecf63",
+    "at": "2026-10-22T11:10:59.694Z",
+    "method": "DYNAMIC-BROWSER",
+    "id": "T-P2-06",
+    "feature": "Ctrl+A / Esc / Alt+Left 键鼠语义",
+    "expected": "Ctrl+A 全选当前列表；Esc 清空选择；Alt+Left 返回上一层",
+    "result": "PASS",
+    "defect": null,
+    "observed": {
+      "rowCount": 1,
+      "selectedAfterCtrlA": 1,
+      "selectedAfterEsc": 0,
+      "folderBeforeAltLeft": "af:1",
+      "folderAfterAltLeft": "k:project"
+    }
+  },
+  {
+    "runId": "v3a",
+    "testedCommit": "49ecf63",
+    "at": "2026-10-22T11:11:00.930Z",
+    "method": "DYNAMIC-BROWSER",
+    "id": "T-P2-07",
+    "feature": "全局搜索并精确跳转",
+    "expected": "能搜到 档案-01 且结果带 ownerKind/ownerId，点击能定位",
+    "result": "PASS",
+    "defect": null,
+    "observed": {
+      "apiResult": {
+        "count": 2,
+        "truncated": false,
+        "sample": [
+          {
+            "kind": "archive",
+            "id": 10,
+            "section": "achievement",
+            "title": "档案-01",
+            "description": "申报与认定 / 二级-A / 三级-A1 · 其他 · 业务档案",
+            "ownerKind": "",
+            "ownerId": 0
+          },
+          {
+            "kind": "file",
+            "id": 4,
+            "section": "achievement",
+            "title": "档案-01附件.txt",
+            "description": "申报与认定 / 二级-A / 三级-A1 · 档案-01 · 档案-01附件.txt",
+            "ownerKind": "archive",
+            "ownerId": 10
+          }
+        ]
+      },
+      "hasSearchInput": true,
+      "renderedRows": [
+        {
+          "id": "a:achievement:10",
+          "title": "档案-01"
+        },
+        {
+          "id": "f:5:1",
+          "title": "档案-01附件.txt"
+        }
+      ]
+    }
+  },
+  {
+    "runId": "v3a",
+    "testedCommit": "49ecf63",
+    "at": "2026-10-22T11:11:03.383Z",
+    "method": "DYNAMIC-BROWSER",
+    "id": "T-P2-11",
+    "feature": "多分辨率布局不出现横向溢出",
+    "expected": "三种分辨率下均无横向滚动，命令栏可见",
+    "result": "PASS",
+    "defect": null,
+    "observed": {
+      "viewports": [
+        {
+          "label": "1366x768@100%",
+          "iw": 1366,
+          "ih": 768,
+          "scrollW": 1366,
+          "clientW": 1366,
+          "hOverflow": false,
+          "barVisible": null
+        },
+        {
+          "label": "1920x1080@100%",
+          "iw": 1920,
+          "ih": 1080,
+          "scrollW": 1920,
+          "clientW": 1920,
+          "hOverflow": false,
+          "barVisible": null
+        },
+        {
+          "label": "1366x768@150%",
+          "iw": 1366,
+          "ih": 768,
+          "scrollW": 1366,
+          "clientW": 1366,
+          "hOverflow": false,
+          "barVisible": null
+        }
+      ],
+      "overflowing": []
+    }
+  },
+  {
+    "runId": "v3a",
+    "testedCommit": "49ecf63",
+    "at": "2026-10-22T11:11:06.789Z",
+    "method": "DYNAMIC-BROWSER",
+    "id": "T-P2-03",
+    "feature": "添加快捷访问后重载是否真的能访问",
+    "expected": "要么真实生效并持久化，要么根本不出现该入口；不能显示假成功",
+    "result": "CONFIRMED_BUG",
+    "defect": "BUG-015",
+    "observed": {
+      "button": {
+        "exists": true,
+        "text": "",
+        "visible": true,
+        "title": "添加快捷访问"
+      },
+      "measurement": {
+        "before": {
+          "quickItems": 5,
+          "storageKeys": []
+        },
+        "mid": {
+          "quickItems": 5,
+          "storageKeys": []
+        },
+        "toast": [
+          "「快捷访问」已按资料分类自动生成"
+        ],
+        "afterReload": {
+          "quickItems": 12,
+          "storageKeys": [],
+          "cards": 6
+        }
+      },
+      "onlyToast": true,
+      "noPersist": true,
+      "fakeSuccess": true
+    },
+    "rootCause": "frontend/explorer/js/interactions.js:700 $(\"#btnPinFolder\").addEventListener(\"click\", () => toast(\"「快捷访问」已按资料分类自动生成\")) —— 只有一句 toast，没有状态、没有持久化",
+    "notes": "按钮可见（title=添加快捷访问），点击只弹「「快捷访问」已按资料分类自动生成」，localStorage 始终为空；产品实际口径是「快捷访问由 6 个固定分类自动生成、不支持用户添加」，所以这是文案造成的假可点击能力"
+  },
+  {
+    "runId": "v3a",
+    "testedCommit": "49ecf63",
+    "at": "2026-10-22T11:11:07.919Z",
+    "method": "DYNAMIC-BROWSER",
+    "id": "T-P2-04",
+    "feature": "首页点「导入资料」的落点",
+    "expected": "必须先让用户选择有合法归属的记录/目录，不得直接把文件传到虚拟根",
+    "result": "CONFIRMED_BUG",
+    "defect": "BUG-016",
+    "observed": {
+      "button": {
+        "found": true,
+        "text": "导入资料",
+        "act": "upload"
+      },
+      "filePickerOpenedAt": {
+        "folderId": "root",
+        "view": "home",
+        "type": "file"
+      },
+      "toasts": []
+    },
+    "rootCause": "interactions.js pickFiles() 只挡 k:* 与 archive_folder，root 节点 type='folder' 且 tag='root'，两道检查都通过 → 直接对虚拟根开文件选择器",
+    "notes": "选择器在 view=home / folderId=root 打开"
+  },
+  {
+    "runId": "v3a",
+    "testedCommit": "49ecf63",
+    "at": "2026-10-22T11:11:10.115Z",
+    "method": "DYNAMIC-BROWSER",
+    "id": "X-01",
+    "feature": "单个业务接口 500 是否被静默渲染为空",
+    "expected": "失败模块要明确提示并可重试，不能显示成「没有资料」",
+    "result": "CONFIRMED_BUG",
+    "defect": "BUG-019",
+    "observed": {
+      "interceptedCount": 0,
+      "sampleUrl": null,
+      "ui": {
+        "cards": [
+          {
+            "t": "身份与资质\n                  ",
+            "s": ""
+          },
+          {
+            "t": "知识产权与著作\n                ",
+            "s": ""
+          },
+          {
+            "t": "更新 03-01\n               ",
+            "s": ""
+          },
+          {
+            "t": "成果与奖励\n                  ",
+            "s": ""
+          },
+          {
+            "t": "学术与社会活动\n                ",
+            "s": ""
+          },
+          {
+            "t": "其他资料\n                  暂",
+            "s": ""
+          }
+        ],
+        "notices": [],
+        "bodyHasError": false,
+        "storeError": null
+      }
+    },
+    "rootCause": "frontend/explorer/js/store.js:140-144 每个 getJson 后面都挂 .catch(() => []/{}), loadAll 永远不抛错；VaultStore.error 始终为 null"
+  }
+]

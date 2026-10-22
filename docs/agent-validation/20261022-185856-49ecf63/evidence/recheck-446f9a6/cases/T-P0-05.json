@@ -1,0 +1,31 @@
+{
+  "runId": "v3b",
+  "testedCommit": "446f9a6",
+  "at": "2026-10-22T11:23:08.651Z",
+  "id": "T-P0-05",
+  "feature": "跨记录共享引用互不影响",
+  "expected": "同一 fileId 两个 linkId 各自独立可读；删一处另一处仍能取到最新版",
+  "steps": [
+    "IP-A linkId=3 / IP-B linkId=4，都指向 fileId=3",
+    "两个 linkId 不同: true",
+    "IP-A v2 下载 200 37B；IP-B v2 下载 200 37B",
+    "两侧 sha256 70412ae068f04626 / 70412ae068f04626",
+    "IP UI payload 含 linkId 字段: true"
+  ],
+  "result": "PASS",
+  "observed": {
+    "distinctLinks": true,
+    "dlA": {
+      "status": 200,
+      "bytes": 37,
+      "sha256": "70412ae068f04626eaf443ee7e2e5017f1dd064db8b3746e20d5973fd02805d7"
+    },
+    "dlB": {
+      "status": 200,
+      "bytes": 37,
+      "sha256": "70412ae068f04626eaf443ee7e2e5017f1dd064db8b3746e20d5973fd02805d7"
+    },
+    "sameBytes": true
+  },
+  "defect": null
+}

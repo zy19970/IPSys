@@ -1,0 +1,458 @@
+[
+  {
+    "runId": "v3b",
+    "testedCommit": "446f9a6",
+    "at": "2026-10-22T11:22:58.867Z",
+    "id": "T-P0-01",
+    "feature": "三级业务档案目录可达性",
+    "expected": "每个合法层级可读；记录只出现在其真实父级；parentId 链完整",
+    "steps": [
+      "GET /api/v2/ui/archive/company -> 系统目录 9 个",
+      "entries(sys=1) -> 4 条: 8,11,12,13",
+      "entries(二级=8) -> 1 条: 9",
+      "entries(三级=9) -> 1 条: 10",
+      "档案-01 的 folderId = 9（期望 9）"
+    ],
+    "result": "PASS",
+    "observed": {
+      "allArchiveFolders": 9,
+      "systemNamesPresent": 7,
+      "lvl2InSys1": true,
+      "lvl3InLvl2": true,
+      "recInLvl3": true,
+      "recLeakedToSys1": false,
+      "record01FolderId": 9,
+      "entriesSizes": [
+        4,
+        1,
+        1
+      ]
+    },
+    "defect": null,
+    "notes": "HTTP 层三级链路完整；UI 树是否丢节点另由 t-tree.cjs 裁决（buildTree 是纯函数，可确定性复现）"
+  },
+  {
+    "runId": "v3b",
+    "testedCommit": "446f9a6",
+    "at": "2026-10-22T11:22:58.886Z",
+    "id": "T-P0-02",
+    "feature": "同一 LinkId 多版本只显示一条逻辑附件",
+    "expected": "同一 linkId 只占一行，默认最新版；不同 linkId 分别展示",
+    "steps": [
+      "GET /api/v2/ui/ip/company -> files 7 条",
+      "fileId=3 的记录: [{\"linkId\":3,\"folderId\":19,\"fileId\":3,\"version\":2,\"name\":\"专利说明书.txt\",\"category\":\"\",\"size\":37,\"sha256\":\"70412AE068F04626EAF443EE7E2E5017F1DD064DB8B3746E20D5973FD02805D7\",\"displayName\":\"专利说明书.txt\"},{\"linkId\":3,\"folderId\":19,\"fileId\":3,\"version\":1,\"name\":\"专利说明书.txt\",\"category\":\"\",\"size\":22,\"sha256\":\"3B5E7EB7A7E458E7086799C798CC9910DFCF8FBBFF16F17C63DB6C155942871D\",\"displayName\":\"专利说明书.txt\"},{\"linkId\":4,\"folderId\":20,\"fileId\":3,\"version\":2,\"name\":\"专利说明书.txt\",\"category\":\"\",\"size\":37,\"sha256\":\"70412AE068F04626EAF443EE7E2E5017F1DD064DB8B3746E20D5973FD02805D7\",\"displayName\":\"专利说明书.txt\"},{\"linkId\":4,\"folderId\":20,\"fileId\":3,\"version\":1,\"name\":\"专利说明书.txt\",\"category\":\"\",\"size\":22,\"sha256\":\"3B5E7EB7A7E458E7086799C798CC9910DFCF8FBBFF16F17C63DB6C155942871D\",\"displayName\":\"专利说明书.txt\"}]",
+      "涉及 linkId: 3,4（IP-A 侧 3，IP-B 侧 4）",
+      "GET versions -> 405 null"
+    ],
+    "result": "CONFIRMED_BUG",
+    "observed": {
+      "rowsForFile": 4,
+      "distinctLinks": 2,
+      "rowsPerLink": {
+        "3": 2,
+        "4": 2
+      },
+      "duplicatedLinkRows": [
+        [
+          "3",
+          2
+        ],
+        [
+          "4",
+          2
+        ]
+      ],
+      "versionsStatus": 405,
+      "versionsCount": 0
+    },
+    "defect": "BUG-002",
+    "notes": "本轮 fixture 的 IP-A 附件 v1/v2 共用 fileId=3/linkId=3，associate 到 IP-B 生成 linkId=4"
+  },
+  {
+    "runId": "v3b",
+    "testedCommit": "446f9a6",
+    "at": "2026-10-22T11:22:59.043Z",
+    "id": "T-P0-03",
+    "feature": "同一 LinkId 不重复解除；局部失败有明细",
+    "expected": "同 linkId 只操作一次；失败项不影响已成功项；界面/服务端一致",
+    "steps": [
+      "临时 IP=25 fileId=21 linkId=22（v1+v2）",
+      "第 1 次 DELETE -> 200 {\"ok\":true}",
+      "第 2 次 DELETE（同 linkId）-> 409 {\"error\":\"关联已解除。\"}",
+      "删除后该目录存活 link 数 = 0"
+    ],
+    "result": "PASS",
+    "observed": {
+      "firstStatus": 200,
+      "secondStatus": 409,
+      "secondBody": {
+        "error": "关联已解除。"
+      },
+      "liveLinksAfter": 0,
+      "secondIsIdempotent": false,
+      "secondRejected": true
+    },
+    "defect": null,
+    "notes": "HTTP 语义层通过；「是否重复发请求」由浏览器用例 T-P2-05 裁决"
+  },
+  {
+    "runId": "v3b",
+    "testedCommit": "446f9a6",
+    "at": "2026-10-22T11:23:06.799Z",
+    "id": "T-P0-04",
+    "feature": "有活动任务时关库",
+    "expected": "服务端拒绝时给出准确原因且不清会话；成功后确实已锁",
+    "steps": [
+      "compact/info -> reusableBytes=0 canCompact=true",
+      "POST /api/vault/compact -> 202 {\"taskId\":\"9197eb83932d4464a54e43017d12ef84\"}",
+      "任务窗口内 POST /api/lock -> 409 {\"error\":\"文件任务执行中或程序正在退出，不能关闭数据库。\"}",
+      "压缩任务状态轨迹: running",
+      "关库尝试后 GET /api/status -> 200 {\"unlocked\":true,\"suggestion\":\"C:\\\\Users\\\\Joey\\\\Documents\\\\IPSys-web-test.db\",\"prototype\":true}"
+    ],
+    "result": "PASS",
+    "observed": {
+      "compactInfo": {
+        "fileBytes": 75104256,
+        "pageCount": 18336,
+        "freePages": 0,
+        "pageSize": 4096,
+        "reusableBytes": 0,
+        "requiredFreeBytes": 284426240,
+        "availableBytes": 72829693952,
+        "tempAvailableBytes": 29049929728,
+        "canCompact": true
+      },
+      "compactSubmit": {
+        "status": 202,
+        "body": {
+          "taskId": "9197eb83932d4464a54e43017d12ef84"
+        }
+      },
+      "lockDuringTask": {
+        "status": 409,
+        "body": {
+          "error": "文件任务执行中或程序正在退出，不能关闭数据库。"
+        }
+      },
+      "taskStates": [
+        "running"
+      ],
+      "statusAfter": {
+        "unlocked": true,
+        "suggestion": "C:\\Users\\Joey\\Documents\\IPSys-web-test.db",
+        "prototype": true
+      },
+      "stillUnlocked": true
+    },
+    "defect": null,
+    "notes": "服务端拒绝关库且会话保留"
+  },
+  {
+    "runId": "v3b",
+    "testedCommit": "446f9a6",
+    "at": "2026-10-22T11:23:08.651Z",
+    "id": "T-P0-05",
+    "feature": "跨记录共享引用互不影响",
+    "expected": "同一 fileId 两个 linkId 各自独立可读；删一处另一处仍能取到最新版",
+    "steps": [
+      "IP-A linkId=3 / IP-B linkId=4，都指向 fileId=3",
+      "两个 linkId 不同: true",
+      "IP-A v2 下载 200 37B；IP-B v2 下载 200 37B",
+      "两侧 sha256 70412ae068f04626 / 70412ae068f04626",
+      "IP UI payload 含 linkId 字段: true"
+    ],
+    "result": "PASS",
+    "observed": {
+      "distinctLinks": true,
+      "dlA": {
+        "status": 200,
+        "bytes": 37,
+        "sha256": "70412ae068f04626eaf443ee7e2e5017f1dd064db8b3746e20d5973fd02805d7"
+      },
+      "dlB": {
+        "status": 200,
+        "bytes": 37,
+        "sha256": "70412ae068f04626eaf443ee7e2e5017f1dd064db8b3746e20d5973fd02805d7"
+      },
+      "sameBytes": true
+    },
+    "defect": null
+  },
+  {
+    "runId": "v3b",
+    "testedCommit": "446f9a6",
+    "at": "2026-10-22T11:23:08.692Z",
+    "id": "T-P1-02",
+    "feature": "合同单删的回收站与恢复（子场景②）",
+    "expected": "单删合同后合同独立出现在回收站；恢复后回到原项目；与项目级联是两件事",
+    "steps": [
+      "回收站里 合同C1(17) -> {\"kind\":\"contract\",\"id\":17,\"name\":\"合同C1\",\"section\":\"\",\"parent\":\"项目A\"}",
+      "DELETE 合同C2(18) -> 200 {\"ok\":true}",
+      "删除后回收站里的 合同C2 -> {\"kind\":\"contract\",\"id\":18,\"name\":\"合同C2\",\"section\":\"\",\"parent\":\"项目A\"}",
+      "项目A 仍在 projects 列表: true",
+      "restore -> 200 {\"ok\":true,\"count\":1}",
+      "恢复后合同C2 回读 -> {\"id\":18,\"projectId\":15,\"workspace\":\"company\",\"projectName\":\"项目A\",\"name\":\"合同C2\",\"contractNo\":\"HT-02\",\"signDate\":\"2026-02-02\",\"amount\":null,\"signingParties\":null,\"category\":null,\"remarks\":null,\"tags\":null}"
+    ],
+    "result": "PASS",
+    "observed": {
+      "c1IndependentlyInTrash": true,
+      "c1ParentField": "项目A",
+      "deleteStatus": 200,
+      "c2InTrash": true,
+      "c2ParentField": "项目A",
+      "projectAStillAlive": true,
+      "restoreStatus": 200,
+      "c2BackProjectId": 15,
+      "expectProject": 15
+    },
+    "defect": null,
+    "notes": "子场景①（项目级联）上轮已 PASS，本轮不重复计入本行"
+  },
+  {
+    "runId": "v3b",
+    "testedCommit": "446f9a6",
+    "at": "2026-10-22T11:23:08.781Z",
+    "id": "T-P1-04",
+    "feature": "档案目录新建/改名/移动/删除与保护规则",
+    "expected": "系统目录与非空目录必须被后端拒绝；新建/改名/移动合法时成功",
+    "steps": [
+      "删系统目录 1 -> 409 {\"error\":\"系统目录或含下级资料、附件的目录不能删除。\"}",
+      "删非空目录 二级-A(8) -> 409 {\"error\":\"系统目录或含下级资料、附件的目录不能删除。\"}",
+      "新建目录 T104-mvjgcr2y -> 200 id=26",
+      "改名 -> 200 {\"ok\":true}",
+      "移动 -> 200 {\"ok\":true}",
+      "成环移动 -> 409 {\"error\":\"目录层级不合法、目标不可用或发生名称冲突，请重新检查目标目录。\"}",
+      "删空目录 -> 200",
+      "删后回读 -> 404"
+    ],
+    "result": "PASS",
+    "observed": {
+      "deleteSystemRoot": {
+        "status": 409,
+        "body": {
+          "error": "系统目录或含下级资料、附件的目录不能删除。"
+        }
+      },
+      "deleteNonEmpty": {
+        "status": 409,
+        "body": {
+          "error": "系统目录或含下级资料、附件的目录不能删除。"
+        }
+      },
+      "create": 200,
+      "rename": 200,
+      "move": 200,
+      "cycle": 409,
+      "remove": 200,
+      "readAfterDelete": 404
+    },
+    "defect": null
+  },
+  {
+    "runId": "v3b",
+    "testedCommit": "446f9a6",
+    "at": "2026-10-22T11:23:08.843Z",
+    "id": "T-P1-05",
+    "feature": "目录与本级记录混排且持久（服务端 position）",
+    "expected": "reorder 后 entries 顺序按提交顺序返回，重开仍保持",
+    "steps": [
+      "排序前 entries: [{\"kind\":\"archive_folder\",\"id\":8,\"name\":\"二级-A\",\"pos\":0},{\"kind\":\"archive\",\"id\":11,\"name\":\"档案-02\",\"pos\":1},{\"kind\":\"archive\",\"id\":12,\"name\":\"档案-03\",\"pos\":2},{\"kind\":\"archive\",\"id\":13,\"name\":\"档案-04\",\"pos\":3}]",
+      "提交逆序 order: [{\"Kind\":\"record\",\"Id\":13},{\"Kind\":\"record\",\"Id\":12},{\"Kind\":\"record\",\"Id\":11},{\"Kind\":\"folder\",\"Id\":8}]",
+      "POST entries/reorder -> 200 {\"ok\":true}",
+      "排序后 entries: [{\"kind\":\"archive\",\"id\":13,\"name\":\"档案-04\",\"pos\":0},{\"kind\":\"archive\",\"id\":12,\"name\":\"档案-03\",\"pos\":1},{\"kind\":\"archive\",\"id\":11,\"name\":\"档案-02\",\"pos\":2},{\"kind\":\"archive_folder\",\"id\":8,\"name\":\"二级-A\",\"pos\":3}]",
+      "非全量排列 -> 409 {\"error\":\"排序内容已变化，请刷新后重试。\"}",
+      "还原顺序 -> 200"
+    ],
+    "result": "PASS",
+    "observed": {
+      "before": [
+        {
+          "kind": "archive_folder",
+          "id": 8,
+          "name": "二级-A",
+          "pos": 0
+        },
+        {
+          "kind": "archive",
+          "id": 11,
+          "name": "档案-02",
+          "pos": 1
+        },
+        {
+          "kind": "archive",
+          "id": 12,
+          "name": "档案-03",
+          "pos": 2
+        },
+        {
+          "kind": "archive",
+          "id": 13,
+          "name": "档案-04",
+          "pos": 3
+        }
+      ],
+      "after": [
+        {
+          "kind": "archive",
+          "id": 13,
+          "name": "档案-04",
+          "pos": 0
+        },
+        {
+          "kind": "archive",
+          "id": 12,
+          "name": "档案-03",
+          "pos": 1
+        },
+        {
+          "kind": "archive",
+          "id": 11,
+          "name": "档案-02",
+          "pos": 2
+        },
+        {
+          "kind": "archive_folder",
+          "id": 8,
+          "name": "二级-A",
+          "pos": 3
+        }
+      ],
+      "expectedIds": [
+        13,
+        12,
+        11,
+        8
+      ],
+      "partialReorderStatus": 409
+    },
+    "defect": null,
+    "notes": "只验证服务端持久 position；前端是否有拖动入口由 X-02 浏览器用例裁决"
+  },
+  {
+    "runId": "v3b",
+    "testedCommit": "446f9a6",
+    "at": "2026-10-22T11:23:08.944Z",
+    "id": "T-P1-10",
+    "feature": "版本上传与关联后的回读同步（A/B）",
+    "expected": "A: 新版本成为默认最新版；B: 已存在 FileId 关联到新记录后目标记录可见",
+    "steps": [
+      "A: 临时 fileId=22 linkId=23，v1+{\"fileId\":22,\"version\":2,\"size\":31,\"sha256\":\"4296D4487B324FF26A82F64689066E4A801DBA595F32910AFBEC6672E5113ED6\"}",
+      "A: GET .../versions 探测 -> 405（无该路由，预期 405）",
+      "A: 该 linkId 的 UI 行 -> [{\"linkId\":23,\"folderId\":26,\"fileId\":22,\"version\":2,\"name\":\"T-P1-10.txt\",\"category\":\"\",\"size\":31,\"sha256\":\"4296D4487B324FF26A82F64689066E4A801DBA595F32910AFBEC6672E5113ED6\",\"displayName\":\"T-P1-10.txt\"},{\"linkId\":23,\"folderId\":26,\"fileId\":22,\"version\":1,\"name\":\"T-P1-10.txt\",\"category\":\"\",\"size\":32,\"sha256\":\"72DBB544B00C0706685C871C6B49E99CAF2CB78F3AA9DF47CCA00E181339B814\",\"displayName\":\"T-P1-10.txt\"}]",
+      "B: associate -> 200 {\"ok\":true,\"fileId\":22,\"sourceLinkId\":23,\"targetFolderId\":21,\"moved\":false}",
+      "B: fileId=22 在 IP UI 里的行 -> [{\"linkId\":24,\"folderId\":21,\"fileId\":22,\"version\":2,\"name\":\"T-P1-10.txt\",\"category\":\"\",\"size\":31,\"sha256\":\"4296D4487B324FF26A82F64689066E4A801DBA595F32910AFBEC6672E5113ED6\",\"displayName\":\"T-P1-10.txt\"},{\"linkId\":24,\"folderId\":21,\"fileId\":22,\"version\":1,\"name\":\"T-P1-10.txt\",\"category\":\"\",\"size\":32,\"sha256\":\"72DBB544B00C0706685C871C6B49E99CAF2CB78F3AA9DF47CCA00E181339B814\",\"displayName\":\"T-P1-10.txt\"},{\"linkId\":23,\"folderId\":26,\"fileId\":22,\"version\":2,\"name\":\"T-P1-10.txt\",\"category\":\"\",\"size\":31,\"sha256\":\"4296D4487B324FF26A82F64689066E4A801DBA595F32910AFBEC6672E5113ED6\",\"displayName\":\"T-P1-10.txt\"},{\"linkId\":23,\"folderId\":26,\"fileId\":22,\"version\":1,\"name\":\"T-P1-10.txt\",\"category\":\"\",\"size\":32,\"sha256\":\"72DBB544B00C0706685C871C6B49E99CAF2CB78F3AA9DF47CCA00E181339B814\",\"displayName\":\"T-P1-10.txt\"}]"
+    ],
+    "result": "PASS",
+    "observed": {
+      "versionsListRoute": 405,
+      "A": {
+        "latestVersionSeen": 2,
+        "uiRows": [
+          {
+            "linkId": 23,
+            "folderId": 26,
+            "fileId": 22,
+            "version": 2,
+            "name": "T-P1-10.txt",
+            "category": "",
+            "size": 31,
+            "sha256": "4296D4487B324FF26A82F64689066E4A801DBA595F32910AFBEC6672E5113ED6",
+            "displayName": "T-P1-10.txt"
+          },
+          {
+            "linkId": 23,
+            "folderId": 26,
+            "fileId": 22,
+            "version": 1,
+            "name": "T-P1-10.txt",
+            "category": "",
+            "size": 32,
+            "sha256": "72DBB544B00C0706685C871C6B49E99CAF2CB78F3AA9DF47CCA00E181339B814",
+            "displayName": "T-P1-10.txt"
+          }
+        ],
+        "defaultRowIsLatest": true
+      },
+      "B": {
+        "assocStatus": 200,
+        "newLinkId": 24,
+        "rowsForFile": 4,
+        "distinctLinks": 2,
+        "rows": [
+          {
+            "linkId": 24,
+            "folderId": 21,
+            "fileId": 22,
+            "version": 2,
+            "name": "T-P1-10.txt",
+            "category": "",
+            "size": 31,
+            "sha256": "4296D4487B324FF26A82F64689066E4A801DBA595F32910AFBEC6672E5113ED6",
+            "displayName": "T-P1-10.txt"
+          },
+          {
+            "linkId": 24,
+            "folderId": 21,
+            "fileId": 22,
+            "version": 1,
+            "name": "T-P1-10.txt",
+            "category": "",
+            "size": 32,
+            "sha256": "72DBB544B00C0706685C871C6B49E99CAF2CB78F3AA9DF47CCA00E181339B814",
+            "displayName": "T-P1-10.txt"
+          },
+          {
+            "linkId": 23,
+            "folderId": 26,
+            "fileId": 22,
+            "version": 2,
+            "name": "T-P1-10.txt",
+            "category": "",
+            "size": 31,
+            "sha256": "4296D4487B324FF26A82F64689066E4A801DBA595F32910AFBEC6672E5113ED6",
+            "displayName": "T-P1-10.txt"
+          },
+          {
+            "linkId": 23,
+            "folderId": 26,
+            "fileId": 22,
+            "version": 1,
+            "name": "T-P1-10.txt",
+            "category": "",
+            "size": 32,
+            "sha256": "72DBB544B00C0706685C871C6B49E99CAF2CB78F3AA9DF47CCA00E181339B814",
+            "displayName": "T-P1-10.txt"
+          }
+        ]
+      }
+    },
+    "defect": null,
+    "notes": "A=true B=true；注意 UI 对同一 linkId 出现多行属 BUG-002 的同一根因"
+  },
+  {
+    "runId": "v3b",
+    "testedCommit": "446f9a6",
+    "at": "2026-10-22T11:23:08.969Z",
+    "id": "T-P2-12",
+    "feature": "Host 与 Origin 钉死、无 token 拒绝",
+    "expected": "非法 Host 403；非法 Origin 403；无 token 拒绝业务接口；127.0.0.1 正常",
+    "steps": [
+      "127.0.0.1 -> 200；evil Host -> 403；localhost -> 403；evil Origin -> 403；正确 Origin -> 200",
+      "无 token GET /api/v2/ui/projects/company -> 401 "
+    ],
+    "result": "PASS",
+    "observed": {
+      "loopbackHost": 200,
+      "evilHost": 403,
+      "localhostHost": 403,
+      "evilOrigin": 403,
+      "goodOrigin": 200,
+      "noToken": {
+        "status": 401,
+        "body": ""
+      }
+    },
+    "defect": null,
+    "notes": "localhost 返回 403 是 Host 钉死的预期行为，不记缺陷"
+  }
+]

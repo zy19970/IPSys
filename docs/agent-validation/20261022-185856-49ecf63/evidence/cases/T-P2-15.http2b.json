@@ -1,0 +1,38 @@
+{
+  "runId": "v3a",
+  "testedCommit": "49ecf63",
+  "at": "2026-10-22T11:12:28.133Z",
+  "method": "HTTP",
+  "id": "T-P2-15",
+  "feature": "全新空库的接口表现（空数据与加载失败是否可区分）",
+  "expected": "空库返回空集合且 7 个系统目录仍在；空数据与「接口失败」在响应上必须可区分",
+  "result": "PASS",
+  "defect": null,
+  "observed": {
+    "views": {
+      "projects": {
+        "status": 200,
+        "len": 0
+      },
+      "contracts": {
+        "status": 200,
+        "len": 0
+      },
+      "ip": {
+        "status": 200,
+        "len": null
+      },
+      "archive": {
+        "status": 200,
+        "folders": 7,
+        "archives": 0
+      },
+      "trash": {
+        "status": 200,
+        "len": 0
+      }
+    },
+    "emptyDb": "vault-v3a-empty.db"
+  },
+  "notes": "「失败被吞成空」由 X-01 的 500 注入裁决：前端把两者渲染成同一形态，故仍记 BUG-019"
+}

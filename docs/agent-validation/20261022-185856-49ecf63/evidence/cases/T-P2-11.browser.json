@@ -1,0 +1,43 @@
+{
+  "runId": "v3a",
+  "testedCommit": "49ecf63",
+  "at": "2026-10-22T11:11:03.383Z",
+  "method": "DYNAMIC-BROWSER",
+  "id": "T-P2-11",
+  "feature": "多分辨率布局不出现横向溢出",
+  "expected": "三种分辨率下均无横向滚动，命令栏可见",
+  "result": "PASS",
+  "defect": null,
+  "observed": {
+    "viewports": [
+      {
+        "label": "1366x768@100%",
+        "iw": 1366,
+        "ih": 768,
+        "scrollW": 1366,
+        "clientW": 1366,
+        "hOverflow": false,
+        "barVisible": null
+      },
+      {
+        "label": "1920x1080@100%",
+        "iw": 1920,
+        "ih": 1080,
+        "scrollW": 1920,
+        "clientW": 1920,
+        "hOverflow": false,
+        "barVisible": null
+      },
+      {
+        "label": "1366x768@150%",
+        "iw": 1366,
+        "ih": 768,
+        "scrollW": 1366,
+        "clientW": 1366,
+        "hOverflow": false,
+        "barVisible": null
+      }
+    ],
+    "overflowing": []
+  }
+}

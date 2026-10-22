@@ -1,0 +1,28 @@
+### dotnet build src/IPSys.Web/IPSys.Web.csproj -c Debug
+  正在确定要还原的项目…
+  所有项目均是最新的，无法还原。
+  bundle 鈫?E:\Github\绠＄悊绯荤粺\frontend\explorer\dist
+    index.html   12.0 KB
+    style.css    58.6 KB
+    app.js       190.7 KB
+E:\Github\管理系统\src\IPSys.Web\McpPipeSecurity.cs(60,19): warning CS8600: 将 null 文本或可能的 null 值转换为不可为 null 类型。 [E:\Github\管理系统\src\IPSys.Web\IPSys.Web.csproj]
+E:\Github\管理系统\src\IPSys.Web\McpPipeSecurity.cs(62,13): warning CS8602: 解引用可能出现空引用。 [E:\Github\管理系统\src\IPSys.Web\IPSys.Web.csproj]
+E:\Github\管理系统\src\IPSys.Web\McpLocal.cs(350,42): warning CS8600: 将 null 文本或可能的 null 值转换为不可为 null 类型。 [E:\Github\管理系统\src\IPSys.Web\IPSys.Web.csproj]
+E:\Github\管理系统\src\IPSys.Web\NativeFolderEndpoints.cs(238,61): warning CS0168: 声明了变量“ex”，但从未使用过 [E:\Github\管理系统\src\IPSys.Web\IPSys.Web.csproj]
+E:\Github\管理系统\src\IPSys.Web\NativeMcpSmoke.cs(777,26): warning CS8602: 解引用可能出现空引用。 [E:\Github\管理系统\src\IPSys.Web\IPSys.Web.csproj]
+E:\Github\管理系统\src\IPSys.Web\NativeMcpSmoke.cs(791,17): warning CS8602: 解引用可能出现空引用。 [E:\Github\管理系统\src\IPSys.Web\IPSys.Web.csproj]
+  IPSys.Web -> E:\Github\管理系统\src\IPSys.Web\bin\Debug\net8.0-windows\IPSys.Web.dll
+
+已成功生成。
+
+E:\Github\管理系统\src\IPSys.Web\McpPipeSecurity.cs(60,19): warning CS8600: 将 null 文本或可能的 null 值转换为不可为 null 类型。 [E:\Github\管理系统\src\IPSys.Web\IPSys.Web.csproj]
+E:\Github\管理系统\src\IPSys.Web\McpPipeSecurity.cs(62,13): warning CS8602: 解引用可能出现空引用。 [E:\Github\管理系统\src\IPSys.Web\IPSys.Web.csproj]
+E:\Github\管理系统\src\IPSys.Web\McpLocal.cs(350,42): warning CS8600: 将 null 文本或可能的 null 值转换为不可为 null 类型。 [E:\Github\管理系统\src\IPSys.Web\IPSys.Web.csproj]
+E:\Github\管理系统\src\IPSys.Web\NativeFolderEndpoints.cs(238,61): warning CS0168: 声明了变量“ex”，但从未使用过 [E:\Github\管理系统\src\IPSys.Web\IPSys.Web.csproj]
+E:\Github\管理系统\src\IPSys.Web\NativeMcpSmoke.cs(777,26): warning CS8602: 解引用可能出现空引用。 [E:\Github\管理系统\src\IPSys.Web\IPSys.Web.csproj]
+E:\Github\管理系统\src\IPSys.Web\NativeMcpSmoke.cs(791,17): warning CS8602: 解引用可能出现空引用。 [E:\Github\管理系统\src\IPSys.Web\IPSys.Web.csproj]
+    6 个警告
+    0 个错误
+
+已用时间 00:00:13.51
+EXIT=0

@@ -1,0 +1,78 @@
+{
+  "runId": "v3a",
+  "testedCommit": "49ecf63",
+  "at": "2026-10-22T11:12:12.229Z",
+  "method": "HTTP",
+  "id": "R-01",
+  "feature": "一键清空回收站（整库一次提交）",
+  "expected": "确认后走服务端任务、有阶段与结果、实际清空；失败要能定位到具体是哪一类资源",
+  "result": "CONFIRMED_BUG",
+  "defect": "BUG-020",
+  "observed": {
+    "beforeCount": 8,
+    "items": [
+      {
+        "kind": "project",
+        "id": 16,
+        "section": ""
+      },
+      {
+        "kind": "v2_archive",
+        "id": 14,
+        "section": "achievement"
+      },
+      {
+        "kind": "contract",
+        "id": 17,
+        "section": ""
+      },
+      {
+        "kind": "v2_ip_file",
+        "id": 30,
+        "section": ""
+      },
+      {
+        "kind": "v2_ip_file",
+        "id": 27,
+        "section": ""
+      },
+      {
+        "kind": "v2_ip_file",
+        "id": 24,
+        "section": ""
+      },
+      {
+        "kind": "v2_ip_file",
+        "id": 21,
+        "section": ""
+      },
+      {
+        "kind": "v2_file",
+        "id": 1,
+        "section": ""
+      }
+    ],
+    "submit": {
+      "status": 202,
+      "body": {
+        "taskId": "7dd8af95464b41fc95f7271c67cf2d80"
+      }
+    },
+    "stateTrace": [
+      "failed"
+    ],
+    "final": {
+      "taskId": "7dd8af95464b41fc95f7271c67cf2d80",
+      "workspace": "company",
+      "state": "failed",
+      "stage": "永久删除失败，数据库已回滚",
+      "bytesDone": 0,
+      "bytesTotal": 0,
+      "count": 8,
+      "error": "记录仍有关联目录或文件历史，禁止永久删除。"
+    },
+    "afterCount": 8
+  },
+  "rootCause": "purge-task 对混合 kind 的整批提交整体回滚，只给一句「永久删除失败，数据库已回滚」，不指明是哪一条、哪一种 kind 导致失败；前端 toast 也只显示这一句",
+  "notes": "单独清空同一种 kind 可以成功（见 S10 的 v2_ip_file 与本次单项试验），说明是混合批次的问题"
+}

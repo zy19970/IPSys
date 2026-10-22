@@ -1,0 +1,82 @@
+{
+  "id": "T-P2-13",
+  "runId": "v3a",
+  "testedCommit": "49ecf63",
+  "at": "2026-10-22T11:16:52.773Z",
+  "method": "RELEASE-SINGLEFILE",
+  "feature": "win-x64 Release 单文件发布、断网启动并加载内嵌资源",
+  "expected": "publish 目录只有 1 个 exe；10 个内嵌资源全部由该进程返回；/app.js 与 dist 打包结果同字节；无外部 CDN；Host 钉死仍生效",
+  "result": "PASS",
+  "defect": null,
+  "observed": {
+    "publishDir": [
+      "IPSys.Web.exe"
+    ],
+    "exeBytes": 5183718,
+    "port": "59392",
+    "assets": {
+      "/": {
+        "status": 200,
+        "bytes": 12338,
+        "ctype": "text/html; charset=utf-8"
+      },
+      "/style.css": {
+        "status": 200,
+        "bytes": 59992,
+        "ctype": "text/css; charset=utf-8"
+      },
+      "/app.js": {
+        "status": 200,
+        "bytes": 195284,
+        "ctype": "text/javascript; charset=utf-8"
+      },
+      "/pdf-preview.js": {
+        "status": 200,
+        "bytes": 4550,
+        "ctype": "text/javascript; charset=utf-8"
+      },
+      "/pdfjs/pdf.min.js": {
+        "status": 200,
+        "bytes": 282943,
+        "ctype": "text/javascript; charset=utf-8"
+      },
+      "/pdfjs/pdf.worker.min.js": {
+        "status": 200,
+        "bytes": 1074918,
+        "ctype": "text/javascript; charset=utf-8"
+      },
+      "/ip-v2.js": {
+        "status": 200,
+        "bytes": 8464,
+        "ctype": "text/javascript; charset=utf-8"
+      },
+      "/upload-progress.js": {
+        "status": 200,
+        "bytes": 8448,
+        "ctype": "text/javascript; charset=utf-8"
+      },
+      "/export.js": {
+        "status": 200,
+        "bytes": 17757,
+        "ctype": "text/javascript; charset=utf-8"
+      },
+      "/pdfjs/LICENSE.txt": {
+        "status": 200,
+        "bytes": 10351,
+        "ctype": "text/plain; charset=utf-8"
+      }
+    },
+    "distAppBytes": 195284,
+    "appMatchesDist": true,
+    "externalRefsInHtml": [],
+    "externalRefsInAppJs": [],
+    "hostPinning": {
+      "evilHost": 403,
+      "localhost": 403,
+      "evilOrigin": 403,
+      "goodOrigin": 200
+    },
+    "note": "SelfContained=false → 框架依赖单文件，目标机需 .NET 8 运行时；「离线」在本轮定义为不依赖 CDN / 外部 wwwroot / 网络，不是裸机可跑"
+  },
+  "notes": "宿主动态端口由 netstat 按 PID 反查，不假设固定端口"
+}

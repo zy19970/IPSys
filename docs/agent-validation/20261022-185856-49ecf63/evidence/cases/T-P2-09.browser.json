@@ -1,0 +1,29 @@
+{
+  "runId": "v3a",
+  "testedCommit": "49ecf63",
+  "at": "2026-10-22T11:10:53.966Z",
+  "method": "DYNAMIC-BROWSER",
+  "id": "T-P2-09",
+  "feature": "Explorer 真页面打开两步 PDF，两页都完成 Canvas 渲染",
+  "expected": "页码 1/2 → 2/2；状态空；canvas 有尺寸；两页像素指纹不同",
+  "result": "CONFIRMED_BUG",
+  "defect": "BUG-018",
+  "observed": {
+    "appeared": true,
+    "page1": {
+      "hasCanvas": true,
+      "w": 300,
+      "h": 150,
+      "status": "正在解析 PDF…",
+      "count": "加载中",
+      "pxSample": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASwAAACWCAYAAABkW7XSAAAF2UlEQVR4AezU227bOhAFUOP8/0efvDhokNiWRJGcyyoKtLElcmbtYP/38IcAAQJJBBRWkqCMSYDA46Gw/BYQIJBGQGGliWp8UCcQyC6gsLInaH4CjQQUVqOwrUogu4DCyp"
+    },
+    "page2": null,
+    "p1hash": "222b690cf21b5729",
+    "p2hash": null,
+    "rendered1": false,
+    "rendered2": false
+  },
+  "rootCause": "frontend/explorer/js/interactions.js:1633 只做 pdfViewer = viewer.create(body, buffer)，而 src/IPSys.Web/wwwroot/pdf-preview.js:95 返回 {open,destroy}，create 不启动解析；未调 open() 就永远停在「正在解析 PDF…」",
+  "notes": "上轮 T-P2-09 判 PASS 属误报（证据里 pages:0），本轮撤销该 PASS"
+}

@@ -1,0 +1,52 @@
+{
+  "runId": "v3b",
+  "testedCommit": "446f9a6",
+  "at": "2026-10-22T11:23:06.799Z",
+  "id": "T-P0-04",
+  "feature": "有活动任务时关库",
+  "expected": "服务端拒绝时给出准确原因且不清会话；成功后确实已锁",
+  "steps": [
+    "compact/info -> reusableBytes=0 canCompact=true",
+    "POST /api/vault/compact -> 202 {\"taskId\":\"9197eb83932d4464a54e43017d12ef84\"}",
+    "任务窗口内 POST /api/lock -> 409 {\"error\":\"文件任务执行中或程序正在退出，不能关闭数据库。\"}",
+    "压缩任务状态轨迹: running",
+    "关库尝试后 GET /api/status -> 200 {\"unlocked\":true,\"suggestion\":\"C:\\\\Users\\\\Joey\\\\Documents\\\\IPSys-web-test.db\",\"prototype\":true}"
+  ],
+  "result": "PASS",
+  "observed": {
+    "compactInfo": {
+      "fileBytes": 75104256,
+      "pageCount": 18336,
+      "freePages": 0,
+      "pageSize": 4096,
+      "reusableBytes": 0,
+      "requiredFreeBytes": 284426240,
+      "availableBytes": 72829693952,
+      "tempAvailableBytes": 29049929728,
+      "canCompact": true
+    },
+    "compactSubmit": {
+      "status": 202,
+      "body": {
+        "taskId": "9197eb83932d4464a54e43017d12ef84"
+      }
+    },
+    "lockDuringTask": {
+      "status": 409,
+      "body": {
+        "error": "文件任务执行中或程序正在退出，不能关闭数据库。"
+      }
+    },
+    "taskStates": [
+      "running"
+    ],
+    "statusAfter": {
+      "unlocked": true,
+      "suggestion": "C:\\Users\\Joey\\Documents\\IPSys-web-test.db",
+      "prototype": true
+    },
+    "stillUnlocked": true
+  },
+  "defect": null,
+  "notes": "服务端拒绝关库且会话保留"
+}

@@ -1,0 +1,37 @@
+{
+  "runId": "v3a",
+  "testedCommit": "49ecf63",
+  "at": "2026-10-22T11:05:25.191Z",
+  "id": "T-P0-02",
+  "feature": "同一 LinkId 多版本只显示一条逻辑附件",
+  "expected": "同一 linkId 只占一行，默认最新版；不同 linkId 分别展示",
+  "steps": [
+    "GET /api/v2/ui/ip/company -> files 19 条",
+    "fileId=3 的记录: [{\"linkId\":3,\"folderId\":19,\"fileId\":3,\"version\":2,\"name\":\"专利说明书.txt\",\"category\":\"\",\"size\":37,\"sha256\":\"70412AE068F04626EAF443EE7E2E5017F1DD064DB8B3746E20D5973FD02805D7\",\"displayName\":\"专利说明书.txt\"},{\"linkId\":3,\"folderId\":19,\"fileId\":3,\"version\":1,\"name\":\"专利说明书.txt\",\"category\":\"\",\"size\":22,\"sha256\":\"3B5E7EB7A7E458E7086799C798CC9910DFCF8FBBFF16F17C63DB6C155942871D\",\"displayName\":\"专利说明书.txt\"},{\"linkId\":4,\"folderId\":20,\"fileId\":3,\"version\":2,\"name\":\"专利说明书.txt\",\"category\":\"\",\"size\":37,\"sha256\":\"70412AE068F04626EAF443EE7E2E5017F1DD064DB8B3746E20D5973FD02805D7\",\"displayName\":\"专利说明书.txt\"},{\"linkId\":4,\"folderId\":20,\"fileId\":3,\"version\":1,\"name\":\"专利说明书.txt\",\"category\":\"\",\"size\":22,\"sha256\":\"3B5E7EB7A7E458E7086799C798CC9910DFCF8FBBFF16F17C63DB6C155942871D\",\"displayName\":\"专利说明书.txt\"}]",
+    "涉及 linkId: 3,4（IP-A 侧 3，IP-B 侧 4）",
+    "GET versions -> 405 null"
+  ],
+  "result": "CONFIRMED_BUG",
+  "observed": {
+    "rowsForFile": 4,
+    "distinctLinks": 2,
+    "rowsPerLink": {
+      "3": 2,
+      "4": 2
+    },
+    "duplicatedLinkRows": [
+      [
+        "3",
+        2
+      ],
+      [
+        "4",
+        2
+      ]
+    ],
+    "versionsStatus": 405,
+    "versionsCount": 0
+  },
+  "defect": "BUG-002",
+  "notes": "本轮 fixture 的 IP-A 附件 v1/v2 共用 fileId=3/linkId=3，associate 到 IP-B 生成 linkId=4"
+}

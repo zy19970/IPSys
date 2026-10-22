@@ -1,0 +1,27 @@
+{
+  "runId": "v3a",
+  "testedCommit": "49ecf63",
+  "at": "2026-10-22T11:05:25.314Z",
+  "id": "T-P0-03",
+  "feature": "同一 LinkId 不重复解除；局部失败有明细",
+  "expected": "同 linkId 只操作一次；失败项不影响已成功项；界面/服务端一致",
+  "steps": [
+    "临时 IP=32 fileId=26 linkId=30（v1+v2）",
+    "第 1 次 DELETE -> 200 {\"ok\":true}",
+    "第 2 次 DELETE（同 linkId）-> 409 {\"error\":\"关联已解除。\"}",
+    "删除后该目录存活 link 数 = 0"
+  ],
+  "result": "PASS",
+  "observed": {
+    "firstStatus": 200,
+    "secondStatus": 409,
+    "secondBody": {
+      "error": "关联已解除。"
+    },
+    "liveLinksAfter": 0,
+    "secondIsIdempotent": false,
+    "secondRejected": true
+  },
+  "defect": null,
+  "notes": "HTTP 语义层通过；「是否重复发请求」由浏览器用例 T-P2-05 裁决"
+}

@@ -1,0 +1,13 @@
+{
+  "runId": "v3a",
+  "testedCommit": "49ecf63",
+  "at": "2026-10-22T11:11:42.164Z",
+  "method": "HTTP",
+  "id": "T-P2-15",
+  "feature": "空库表现",
+  "result": "TEST_ERROR",
+  "observed": {
+    "error": "建空库失败 409{\"error\":\"请先关闭当前数据库。\"}"
+  },
+  "expected": "空库表现正常"
+}

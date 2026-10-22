@@ -1,0 +1,17 @@
+主库 connect via resume
+清空前回收站 8 项: project:项目B, v2_archive:档案-05, contract:合同C1, v2_ip_file:T-P0-03.txt, v2_ip_file:T-P0-03.txt, v2_ip_file:T-P0-03.txt, v2_ip_file:T-P0-03.txt, v2_file:项目A说明.txt
+未确认时回收站仍 8 项（取消语义基线）
+确认清空 -> 202 {"taskId":"f0e1362d98a14b35a131707c67aa00f0"}
+清空结果: 终态=failed 阶段=永久删除失败，数据库已回滚 删除8项 0B；回收站剩余 8
+[CONFIRMED_BUG] R-01 一键清空回收站（取消无变更 / 确认后真实删除并给阶段与结果） -> BUG-020
+压缩前 info: reusable=0 freePages=0 canCompact=true
+压缩后 info: reusable=0 freePages=0；轨迹 running->succeeded
+[CONFIRMED_BUG] T-P1-07 先造可回收页再压缩，并验证 busy 互斥 -> BUG-021
+新建空库 -> 409 token=false
+[TEST_ERROR] T-P2-15 空库表现
+bundle 在受限 PATH 下: exit=0 stdout=bundle → E:\Github\管理系统\frontend\explorer\dist
+  index.html   12.0 KB
+  style.css    58.6 KB
+  app.js       190.7 KB
+ stderr=
+[PASS] T-P1-09 无外部 Node 工具链时 dist 的生成与复用

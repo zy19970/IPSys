@@ -1,0 +1,25 @@
+# T-P0-02 同一 LinkId 多版本只显示一条逻辑附件
+结果: CONFIRMED_BUG
+预期: 同一 linkId 只占一行，默认最新版；不同 linkId 分别展示
+实际: {
+  "rowsForFile": 4,
+  "distinctLinks": 2,
+  "rowsPerLink": {
+    "3": 2,
+    "4": 2
+  },
+  "duplicatedLinkRows": [
+    [
+      "3",
+      2
+    ],
+    [
+      "4",
+      2
+    ]
+  ],
+  "versionsStatus": 405,
+  "versionsCount": 0
+}
+缺陷: BUG-002
+备注: 本轮 fixture 的 IP-A 附件 v1/v2 共用 fileId=3/linkId=3，associate 到 IP-B 生成 linkId=4

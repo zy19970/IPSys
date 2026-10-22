@@ -1,0 +1,20 @@
+{
+  "runId": "v3a",
+  "testedCommit": "49ecf63",
+  "at": "2026-10-22T11:11:42.468Z",
+  "method": "HTTP",
+  "id": "T-P1-09",
+  "feature": "无外部 Node 工具链时 dist 的生成与复用",
+  "expected": "无 dist 时明确失败；已有 dist 时给出可识别的旧产物风险，不能静默当新界面",
+  "result": "PASS",
+  "defect": null,
+  "observed": {
+    "hasDistBefore": true,
+    "exit": 0,
+    "stdout": "bundle → E:\\Github\\管理系统\\frontend\\explorer\\dist\n  index.html   12.0 KB\n  style.css    58.6 KB\n  app.js       190.7 KB\n",
+    "stderr": "",
+    "distAfter": true,
+    "sizeAfter": 195284
+  },
+  "notes": "bundle.cjs 只读本地文件、不依赖外部 CLI，因此受限 PATH 下仍能生成；「无 Node 时用旧 dist」的风险属于构建流程约定（csproj 不嵌 dist 时才会发生），需在 REPORT 里说明"
+}

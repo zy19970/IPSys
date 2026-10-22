@@ -1,0 +1,23 @@
+{
+  "runId": "v3a",
+  "testedCommit": "49ecf63",
+  "at": "2026-10-22T11:14:59.318Z",
+  "method": "DYNAMIC-BROWSER",
+  "id": "T-P1-08",
+  "feature": "ZIP 导出进行中切工作区",
+  "expected": "要阻止或明确安全处理，不允许输出错工作区/半包假成功",
+  "result": "IMPLEMENTATION_GAP",
+  "defect": "GAP-008",
+  "observed": {
+    "ctxMenuHadPack": true,
+    "exportRequests": [],
+    "stateAfterSwitch": {
+      "ws": "personal",
+      "modal": [],
+      "toast": [
+        "已切换到个人工作区"
+      ]
+    }
+  },
+  "notes": "探针只证明「菜单项可点、导出请求已发、随后切换成功且没有阻断提示」；本次没能在导出真正进行中抓住窗口（打包体积太小，秒级完成），严格结论保留为待复跑：需要用 33MiB 级素材"
+}

@@ -1,0 +1,8 @@
+IP-A 行: [{"id":"f:3:2","t":"专利说明书.txt"},{"id":"f:3:1","t":"专利说明书.txt"}]
+选中 2 行；删除请求 2 条；服务端该 fileId 存活 link=0；界面剩余行=2
+[CONFIRMED_BUG] T-P0-03 同一 LinkId 两行一起删：请求数、半成功、刷新一致性 -> BUG-003
+项目A 行: [{"id":"c:18","t":"合同C2","draggable":"true"},{"id":"f:14:1","t":"两页示例.pdf","draggable":"true"},{"id":"f:12:1","t":"同名附件.txt","draggable":"true"},{"id":"f:10:1","t":"同内容-A.txt","draggable":"true"},{"id":"f:11:1","t":"同内容-B.txt","draggable":"true"},{"id":"f:15:1","t":"示例图.png","draggable":"true"},{"id":"f:16:1","t":"示例文档.docx","draggable":"true"}]
+拖放: {"ok":true,"dragPayload":{"types":["text/plain"],"data":"f:12:1"},"src":"f:12:1","targetRow":"c:18"}；关联请求 []；toast ["关联已解除。","附件移动需要后端支持 link 迁移；当前请用「上传」挂到目标记录"]
+[IMPLEMENTATION_GAP] T-P2-02 把附件从一个记录拖到另一个记录 -> GAP-014
+[IMPLEMENTATION_GAP] T-P1-03 复制 / 转移 / 跨工作区转移的 UI 入口 -> GAP-006
+[IMPLEMENTATION_GAP] T-P1-08 ZIP 导出进行中切工作区 -> GAP-008

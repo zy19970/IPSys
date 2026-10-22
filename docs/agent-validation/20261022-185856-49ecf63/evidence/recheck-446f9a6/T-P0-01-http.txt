@@ -1,0 +1,18 @@
+# T-P0-01 三级业务档案目录可达性
+结果: PASS
+预期: 每个合法层级可读；记录只出现在其真实父级；parentId 链完整
+实际: {
+  "allArchiveFolders": 9,
+  "systemNamesPresent": 7,
+  "lvl2InSys1": true,
+  "lvl3InLvl2": true,
+  "recInLvl3": true,
+  "recLeakedToSys1": false,
+  "record01FolderId": 9,
+  "entriesSizes": [
+    4,
+    1,
+    1
+  ]
+}
+备注: HTTP 层三级链路完整；UI 树是否丢节点另由 t-tree.cjs 裁决（buildTree 是纯函数，可确定性复现）

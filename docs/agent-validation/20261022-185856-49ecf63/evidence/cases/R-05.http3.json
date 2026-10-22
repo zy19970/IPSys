@@ -1,0 +1,43 @@
+{
+  "runId": "v3a",
+  "testedCommit": "49ecf63",
+  "at": "2026-10-22T11:13:39.090Z",
+  "method": "HTTP",
+  "id": "R-05",
+  "feature": "最新版字节 / 累计历史字节 / 逻辑附件数 / 数据库文件字节 四种口径",
+  "expected": "四种口径各自语义清晰、互不混用；界面展示的逻辑附件数应为 2（两个 linkId）",
+  "result": "PASS",
+  "defect": null,
+  "observed": {
+    "fileId": 3,
+    "apiRows": 4,
+    "logicalLinks": 2,
+    "latestPerLinkBytes": 74,
+    "allVersionRowsBytes": 118,
+    "dbBytes": 68702208,
+    "rows": [
+      {
+        "link": 3,
+        "v": 2,
+        "size": 37
+      },
+      {
+        "link": 3,
+        "v": 1,
+        "size": 22
+      },
+      {
+        "link": 4,
+        "v": 2,
+        "size": 37
+      },
+      {
+        "link": 4,
+        "v": 1,
+        "size": 22
+      }
+    ],
+    "note": "接口对同一 fileId 返回 4 行（2 link × 2 version），但逻辑附件只有 2 个"
+  },
+  "notes": "口径本身可分；但界面若直接用接口行数当附件数就会翻倍 —— 属 BUG-002 的下游影响"
+}

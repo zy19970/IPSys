@@ -1,0 +1,26 @@
+{
+  "runId": "v3a",
+  "testedCommit": "49ecf63",
+  "at": "2026-10-22T11:11:07.919Z",
+  "method": "DYNAMIC-BROWSER",
+  "id": "T-P2-04",
+  "feature": "首页点「导入资料」的落点",
+  "expected": "必须先让用户选择有合法归属的记录/目录，不得直接把文件传到虚拟根",
+  "result": "CONFIRMED_BUG",
+  "defect": "BUG-016",
+  "observed": {
+    "button": {
+      "found": true,
+      "text": "导入资料",
+      "act": "upload"
+    },
+    "filePickerOpenedAt": {
+      "folderId": "root",
+      "view": "home",
+      "type": "file"
+    },
+    "toasts": []
+  },
+  "rootCause": "interactions.js pickFiles() 只挡 k:* 与 archive_folder，root 节点 type='folder' 且 tag='root'，两道检查都通过 → 直接对虚拟根开文件选择器",
+  "notes": "选择器在 view=home / folderId=root 打开"
+}

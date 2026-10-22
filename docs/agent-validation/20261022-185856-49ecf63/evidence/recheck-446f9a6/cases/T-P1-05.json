@@ -1,0 +1,80 @@
+{
+  "runId": "v3b",
+  "testedCommit": "446f9a6",
+  "at": "2026-10-22T11:23:08.843Z",
+  "id": "T-P1-05",
+  "feature": "目录与本级记录混排且持久（服务端 position）",
+  "expected": "reorder 后 entries 顺序按提交顺序返回，重开仍保持",
+  "steps": [
+    "排序前 entries: [{\"kind\":\"archive_folder\",\"id\":8,\"name\":\"二级-A\",\"pos\":0},{\"kind\":\"archive\",\"id\":11,\"name\":\"档案-02\",\"pos\":1},{\"kind\":\"archive\",\"id\":12,\"name\":\"档案-03\",\"pos\":2},{\"kind\":\"archive\",\"id\":13,\"name\":\"档案-04\",\"pos\":3}]",
+    "提交逆序 order: [{\"Kind\":\"record\",\"Id\":13},{\"Kind\":\"record\",\"Id\":12},{\"Kind\":\"record\",\"Id\":11},{\"Kind\":\"folder\",\"Id\":8}]",
+    "POST entries/reorder -> 200 {\"ok\":true}",
+    "排序后 entries: [{\"kind\":\"archive\",\"id\":13,\"name\":\"档案-04\",\"pos\":0},{\"kind\":\"archive\",\"id\":12,\"name\":\"档案-03\",\"pos\":1},{\"kind\":\"archive\",\"id\":11,\"name\":\"档案-02\",\"pos\":2},{\"kind\":\"archive_folder\",\"id\":8,\"name\":\"二级-A\",\"pos\":3}]",
+    "非全量排列 -> 409 {\"error\":\"排序内容已变化，请刷新后重试。\"}",
+    "还原顺序 -> 200"
+  ],
+  "result": "PASS",
+  "observed": {
+    "before": [
+      {
+        "kind": "archive_folder",
+        "id": 8,
+        "name": "二级-A",
+        "pos": 0
+      },
+      {
+        "kind": "archive",
+        "id": 11,
+        "name": "档案-02",
+        "pos": 1
+      },
+      {
+        "kind": "archive",
+        "id": 12,
+        "name": "档案-03",
+        "pos": 2
+      },
+      {
+        "kind": "archive",
+        "id": 13,
+        "name": "档案-04",
+        "pos": 3
+      }
+    ],
+    "after": [
+      {
+        "kind": "archive",
+        "id": 13,
+        "name": "档案-04",
+        "pos": 0
+      },
+      {
+        "kind": "archive",
+        "id": 12,
+        "name": "档案-03",
+        "pos": 1
+      },
+      {
+        "kind": "archive",
+        "id": 11,
+        "name": "档案-02",
+        "pos": 2
+      },
+      {
+        "kind": "archive_folder",
+        "id": 8,
+        "name": "二级-A",
+        "pos": 3
+      }
+    ],
+    "expectedIds": [
+      13,
+      12,
+      11,
+      8
+    ],
+    "partialReorderStatus": 409
+  },
+  "defect": null,
+  "notes": "只验证服务端持久 position；前端是否有拖动入口由 X-02 浏览器用例裁决"
+}

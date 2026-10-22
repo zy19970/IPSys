@@ -1,0 +1,30 @@
+{
+  "runId": "v3b",
+  "testedCommit": "446f9a6",
+  "at": "2026-10-22T11:23:08.692Z",
+  "id": "T-P1-02",
+  "feature": "合同单删的回收站与恢复（子场景②）",
+  "expected": "单删合同后合同独立出现在回收站；恢复后回到原项目；与项目级联是两件事",
+  "steps": [
+    "回收站里 合同C1(17) -> {\"kind\":\"contract\",\"id\":17,\"name\":\"合同C1\",\"section\":\"\",\"parent\":\"项目A\"}",
+    "DELETE 合同C2(18) -> 200 {\"ok\":true}",
+    "删除后回收站里的 合同C2 -> {\"kind\":\"contract\",\"id\":18,\"name\":\"合同C2\",\"section\":\"\",\"parent\":\"项目A\"}",
+    "项目A 仍在 projects 列表: true",
+    "restore -> 200 {\"ok\":true,\"count\":1}",
+    "恢复后合同C2 回读 -> {\"id\":18,\"projectId\":15,\"workspace\":\"company\",\"projectName\":\"项目A\",\"name\":\"合同C2\",\"contractNo\":\"HT-02\",\"signDate\":\"2026-02-02\",\"amount\":null,\"signingParties\":null,\"category\":null,\"remarks\":null,\"tags\":null}"
+  ],
+  "result": "PASS",
+  "observed": {
+    "c1IndependentlyInTrash": true,
+    "c1ParentField": "项目A",
+    "deleteStatus": 200,
+    "c2InTrash": true,
+    "c2ParentField": "项目A",
+    "projectAStillAlive": true,
+    "restoreStatus": 200,
+    "c2BackProjectId": 15,
+    "expectProject": 15
+  },
+  "defect": null,
+  "notes": "子场景①（项目级联）上轮已 PASS，本轮不重复计入本行"
+}

@@ -1,0 +1,18 @@
+{
+  "runId": "v3a",
+  "testedCommit": "49ecf63",
+  "at": "2026-10-22T11:10:59.694Z",
+  "method": "DYNAMIC-BROWSER",
+  "id": "T-P2-06",
+  "feature": "Ctrl+A / Esc / Alt+Left 键鼠语义",
+  "expected": "Ctrl+A 全选当前列表；Esc 清空选择；Alt+Left 返回上一层",
+  "result": "PASS",
+  "defect": null,
+  "observed": {
+    "rowCount": 1,
+    "selectedAfterCtrlA": 1,
+    "selectedAfterEsc": 0,
+    "folderBeforeAltLeft": "af:1",
+    "folderAfterAltLeft": "k:project"
+  }
+}

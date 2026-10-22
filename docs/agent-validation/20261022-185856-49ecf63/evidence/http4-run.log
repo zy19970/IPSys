@@ -1,0 +1,11 @@
+connect via resume
+回收站里项目B: {"kind":"project","id":16,"name":"项目B","section":"","parent":null}
+还原项目B -> 200 {"ok":true,"count":1}
+projects 现有: 15:项目A, 16:项目B
+all -> 200 2603B zip=true；filtered -> 200 2539B zip=true
+[PASS] R-02 Excel 导出范围（全部 vs 选择集）
+zero fileId=16 声明 0B 实收 0B status=200 lenMatch=true
+small fileId=17 声明 15B 实收 15B status=200 lenMatch=true
+big31 fileId=18 声明 32505856B 实收 32505856B status=200 lenMatch=true
+big33 fileId=19 声明 34603008B 实收 34603008B status=200 lenMatch=true
+[PASS] T-P2-10 0B / 小文件 / 31MiB / 33MiB 的下载字节边界

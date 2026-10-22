@@ -1,0 +1,38 @@
+# T-P0-04 有活动任务时关库
+结果: PASS
+预期: 服务端拒绝时给出准确原因且不清会话；成功后确实已锁
+实际: {
+  "compactInfo": {
+    "fileBytes": 68681728,
+    "pageCount": 16768,
+    "freePages": 0,
+    "pageSize": 4096,
+    "reusableBytes": 0,
+    "requiredFreeBytes": 271581184,
+    "availableBytes": 73525485568,
+    "tempAvailableBytes": 28892286976,
+    "canCompact": true
+  },
+  "compactSubmit": {
+    "status": 202,
+    "body": {
+      "taskId": "62aeceb1852943beab311858662b0eaf"
+    }
+  },
+  "lockDuringTask": {
+    "status": 409,
+    "body": {
+      "error": "文件任务执行中或程序正在退出，不能关闭数据库。"
+    }
+  },
+  "taskStates": [
+    "running"
+  ],
+  "statusAfter": {
+    "unlocked": true,
+    "suggestion": "C:\\Users\\Joey\\Documents\\IPSys-web-test.db",
+    "prototype": true
+  },
+  "stillUnlocked": true
+}
+备注: 服务端拒绝关库且会话保留

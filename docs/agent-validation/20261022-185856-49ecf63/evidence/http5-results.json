@@ -1,0 +1,56 @@
+[
+  {
+    "runId": "v3a",
+    "testedCommit": "49ecf63",
+    "at": "2026-10-22T11:16:00.080Z",
+    "method": "HTTP+STATIC",
+    "id": "T-P1-01",
+    "feature": "登录页能否选择已有库并另设入口创建新库",
+    "expected": "默认「打开已有资料库」，另设创建入口（基线 §2.1）；后端 create:true 已可用",
+    "result": "IMPLEMENTATION_GAP",
+    "defect": "GAP-001",
+    "observed": {
+      "lockButtons": [
+        "打开"
+      ],
+      "lockHasCreateWord": false,
+      "submitCall": "VaultStore.open($(\"#dbPath\").value.trim(), $(\"#password\").value, false)",
+      "createHardcodedFalse": true,
+      "backendCreateTrue": null,
+      "lockHtmlSnippet": "<div class=\"lock\" id=\"lockScreen\">\r\n  <div class=\"lock-card\">\r\n    <div class=\"lock-brand\">\r\n      <span id=\"lockLogo\"></span>\r\n      <span class=\"lock-name\">资料库</span>\r\n    </div>\r\n    <h1>打开资料库</h1>\r\n    <p class=\"lock-sub\">输入数据库文件路径与密码。数据全部保存在本地，不上传。</p>\r\n    <form id=\"lockForm\" autocomplete=\"off\">\r\n      <label class=\"lock-label\" for=\"dbPath\">资料库文件</label>\r\n      <input id=\"dbPath\" type=\"text\" spellcheck=\"false\" placeholder=\"D:\\资料库\\ipsys.db\">\r\n      <label class=\"lock-label\" for=\"password\">密码</label>\r\n      <input id=\"password\" type=\"password\" placeholder=\"数据库密码\">\r\n      <p class=\"lock-hint\" id=\"lockHint\"></p>\r\n      <button class=\"btn solid lock-submit\" id=\"submitOpen\" type=\"submit\">打开<"
+    },
+    "notes": "登录层只有一个「打开」提交按钮，interactions.js:276 把 create 实参写死为 false；后端 /api/open{create:true} 实测可用 → 典型的前端缺入口"
+  },
+  {
+    "runId": "v3a",
+    "testedCommit": "49ecf63",
+    "at": "2026-10-22T11:16:00.094Z",
+    "method": "HTTP+STATIC",
+    "id": "R-03",
+    "feature": "同名文件在两种工作区互不串物理原件",
+    "expected": "同名但内容不同、FileId 独立；用 A 空间 fileId 取 B 空间必须失败",
+    "result": "PASS",
+    "defect": null,
+    "observed": {
+      "sameName": true,
+      "company": {
+        "fileId": 11,
+        "status": 200,
+        "bytes": 38,
+        "sha": "2bf6ecc79a2fd68281cc94795d2d6b27eb88e7f5671c97ca392165dc8a76c97a"
+      },
+      "personal": {
+        "fileId": 12,
+        "status": 200,
+        "bytes": 52,
+        "sha": "3307914d222044f3aac347057d6758404705a0c45c8486d405acbdc92fd1231c"
+      },
+      "bytesDiffer": true,
+      "crossWorkspaceProbe": {
+        "status": 404,
+        "body": ""
+      }
+    },
+    "notes": "另一处证据：本 fixture 里个人 IP 用的是独立 fileId（12 vs 11），不存在共享物理原件"
+  }
+]

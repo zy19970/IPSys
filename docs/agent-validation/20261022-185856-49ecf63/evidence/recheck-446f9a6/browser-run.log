@@ -1,0 +1,3 @@
+[CONFIRMED_BUG] T-P0-01-ui 界面逐层进入业务档案三级目录 -> BUG-001
+[CONFIRMED_BUG] T-P0-02-ui 同一 LinkId 多版本在列表中占几行 -> BUG-002
+[CONFIRMED_BUG] T-P2-09 Explorer 真页面打开两步 PDF，两页都完成 Canvas 渲染 -> BUG-018

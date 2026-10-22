@@ -1,0 +1,47 @@
+{
+  "runId": "v3a",
+  "testedCommit": "49ecf63",
+  "at": "2026-10-22T11:14:52.998Z",
+  "method": "DYNAMIC-BROWSER",
+  "id": "T-P0-03",
+  "feature": "同一 LinkId 两行一起删：请求数、半成功、刷新一致性",
+  "expected": "同一 LinkId 只发一次解除关联；界面与服务端最终状态一致；失败要有明细",
+  "result": "CONFIRMED_BUG",
+  "defect": "BUG-003",
+  "observed": {
+    "rows": [
+      {
+        "id": "f:3:2",
+        "t": "专利说明书.txt"
+      },
+      {
+        "id": "f:3:1",
+        "t": "专利说明书.txt"
+      }
+    ],
+    "selected": 2,
+    "deleteRequests": [
+      "http://127.0.0.1:17213/api/v2/files/company/3/links/3",
+      "http://127.0.0.1:17213/api/v2/files/company/3/links/3"
+    ],
+    "duplicateRequests": true,
+    "confirmDialog": {
+      "shown": true,
+      "buttons": [
+        "取消",
+        "删除"
+      ],
+      "clicked": "删除"
+    },
+    "toasts": [
+      "关联已解除。"
+    ],
+    "rowsAfter": [
+      "f:3:2",
+      "f:3:1"
+    ],
+    "serverLiveLinksForFile": 0
+  },
+  "rootCause": "interactions.js deleteNodes 把整批 DELETE 放在同一个 try 内，第一条 200、第二条 409「关联已解除。」即抛错中断，后续条目不再发请求，且 catch 里不调用 refreshCurrent() → 界面停在删除前",
+  "notes": "这是 BUG-002（同 linkId 多行）的下游后果：一 linkId 一行时不会触发"
+}

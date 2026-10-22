@@ -1,0 +1,55 @@
+{
+  "runId": "v3a",
+  "testedCommit": "49ecf63",
+  "at": "2026-10-22T11:13:39.226Z",
+  "method": "HTTP",
+  "id": "T-P2-05",
+  "feature": "三个不同 LinkId 批量删除、中间一项失败",
+  "expected": "失败要给出明细（哪条、为什么），其余条目继续或明确中止，最后刷新到真实状态",
+  "result": "PASS",
+  "defect": null,
+  "observed": {
+    "links": [
+      {
+        "fileId": 28,
+        "linkId": 33
+      },
+      {
+        "fileId": 29,
+        "linkId": 34
+      },
+      {
+        "fileId": 30,
+        "linkId": 35
+      }
+    ],
+    "preUnbind": 200,
+    "outcomes": [
+      {
+        "linkId": 33,
+        "status": 200,
+        "body": {
+          "ok": true
+        }
+      },
+      {
+        "linkId": 34,
+        "status": 409,
+        "body": {
+          "error": "关联已解除。"
+        }
+      },
+      {
+        "linkId": 35,
+        "status": 200,
+        "body": {
+          "ok": true
+        }
+      }
+    ],
+    "liveAfter": 0,
+    "thirdAttempted": true
+  },
+  "rootCause": "interactions.js deleteNodes 把整批 DELETE 放在同一个 try 里，任一条抛错即中断循环且不 refreshCurrent()，界面停在旧状态；后端 409 语义正确，问题在前端的失败处理",
+  "notes": "本条与 T-P0-03 同源（BUG-003）；HTTP 层证明后端 409 有明确文案，缺的是前端逐条容错与失败汇总"
+}

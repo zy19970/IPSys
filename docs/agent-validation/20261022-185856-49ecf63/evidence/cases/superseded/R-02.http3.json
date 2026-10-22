@@ -1,0 +1,29 @@
+{
+  "runId": "v3a",
+  "testedCommit": "49ecf63",
+  "at": "2026-10-22T11:13:39.076Z",
+  "method": "HTTP",
+  "id": "R-02",
+  "feature": "Excel 导出范围（全部 vs 选择集）",
+  "expected": "两种范围都能导出，且内容不同；参数契约与后端一致",
+  "result": "CONFIRMED_BUG",
+  "defect": "BUG-024",
+  "observed": {
+    "projects": 1,
+    "exportAll": {
+      "status": 400,
+      "bytes": 54,
+      "sheets": 0,
+      "sha": "ec2727109171292471ee31f2fab2bae17a48cb2fd82731084b09b2b1fad0e3a0"
+    },
+    "exportOne": {
+      "status": 400,
+      "bytes": 54,
+      "sheets": 0,
+      "sha": "ec2727109171292471ee31f2fab2bae17a48cb2fd82731084b09b2b1fad0e3a0"
+    },
+    "differ": false,
+    "bodyShape": "{ ids: [] } = 全部；{ ids: [id] } = 选择集"
+  },
+  "notes": "前端是否真的提供「导出选择集」入口由 bridge.js exportEntryOf 决定，属 UI 层，见 REPORT 的取舍说明"
+}

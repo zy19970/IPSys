@@ -1,0 +1,32 @@
+{
+  "runId": "v3a",
+  "testedCommit": "49ecf63",
+  "at": "2026-10-22T11:16:00.094Z",
+  "method": "HTTP+STATIC",
+  "id": "R-03",
+  "feature": "同名文件在两种工作区互不串物理原件",
+  "expected": "同名但内容不同、FileId 独立；用 A 空间 fileId 取 B 空间必须失败",
+  "result": "PASS",
+  "defect": null,
+  "observed": {
+    "sameName": true,
+    "company": {
+      "fileId": 11,
+      "status": 200,
+      "bytes": 38,
+      "sha": "2bf6ecc79a2fd68281cc94795d2d6b27eb88e7f5671c97ca392165dc8a76c97a"
+    },
+    "personal": {
+      "fileId": 12,
+      "status": 200,
+      "bytes": 52,
+      "sha": "3307914d222044f3aac347057d6758404705a0c45c8486d405acbdc92fd1231c"
+    },
+    "bytesDiffer": true,
+    "crossWorkspaceProbe": {
+      "status": 404,
+      "body": ""
+    }
+  },
+  "notes": "另一处证据：本 fixture 里个人 IP 用的是独立 fileId（12 vs 11），不存在共享物理原件"
+}

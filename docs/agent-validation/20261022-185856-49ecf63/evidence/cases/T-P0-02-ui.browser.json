@@ -1,0 +1,43 @@
+{
+  "runId": "v3a",
+  "testedCommit": "49ecf63",
+  "at": "2026-10-22T11:10:44.841Z",
+  "method": "DYNAMIC-BROWSER",
+  "id": "T-P0-02-ui",
+  "feature": "同一 LinkId 多版本在列表中占几行",
+  "expected": "linkId=3 只有 1 行（默认最新版）",
+  "result": "CONFIRMED_BUG",
+  "defect": "BUG-002",
+  "observed": {
+    "catRows": [
+      "IP-A",
+      "IP-B",
+      "IP-C",
+      "T-P0-03-1",
+      "T-P0-03-1",
+      "T-P0-03-1",
+      "T-P0-03-1",
+      "T-P1-10-2",
+      "T-P1-10-2",
+      "T-P1-10-2",
+      "T-P1-10-2"
+    ],
+    "fileRows": [
+      {
+        "id": "f:3:2",
+        "title": "专利说明书.txt",
+        "sub": ""
+      },
+      {
+        "id": "f:3:1",
+        "title": "专利说明书.txt",
+        "sub": ""
+      }
+    ],
+    "rowsForLink": 2,
+    "rowIds": [
+      "f:3:2",
+      "f:3:1"
+    ]
+  }
+}

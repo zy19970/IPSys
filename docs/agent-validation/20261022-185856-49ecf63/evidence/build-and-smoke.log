@@ -1,0 +1,40 @@
+### node frontend/explorer/tools/bundle.cjs
+bundle → E:\Github\管理系统\frontend\explorer\dist
+  index.html   12.0 KB
+  style.css    58.6 KB
+  app.js       190.7 KB
+EXIT=0
+
+### node src/IPSys.Web/tests/ui-assets-smoke.cjs
+UI ASSETS SMOKE PASS: load order, bridge globals, fresh bundle, product invariants, MCP independence
+EXIT=0
+
+### node src/IPSys.Web/tests/ui-tree-smoke.cjs
+DRIVE TREE SMOKE PASS: project / contract / original nesting, rollups, identity, orphan guard
+EXIT=0
+
+### node src/IPSys.Web/tests/explorer-capabilities-smoke.cjs
+EXPLORER CAPABILITIES PASS: streaming download, server search and purge progress
+EXIT=0
+
+### node src/IPSys.Web/tests/upload-progress-smoke.cjs
+UPLOAD PROGRESS SMOKE PASS: progress, server confirmation, failure/cancel and success auto-hide
+EXIT=0
+
+### node src/IPSys.Web/tests/upload-unique-autosave-smoke.cjs
+UPLOAD UNIQUE AUTO-SAVE AND DUPLICATE CONFIRMATION SMOKE PASS
+EXIT=0
+
+### node src/IPSys.Web/tests/export-smoke.cjs
+ARCHIVE DIRECTORY EXPORT PASS: recursive path hierarchy in ZIP
+EXPORT SMOKE PASS: naming, nested projects, archive directories, repeated folders, ZIP bytes, partial failures
+EXIT=0
+
+### node src/IPSys.Web/tests/zip64-smoke.cjs
+ZIP64 BIGINT RECORD SMOKE PASS
+EXIT=0
+
+### node src/IPSys.Web/tests/pdf-canvas-smoke.cjs
+PDF CANVAS SMOKE PASS: offline assets, full-page Canvas, pagination, zoom, cleanup, security
+EXIT=0
+

@@ -1,0 +1,221 @@
+[
+  {
+    "runId": "v3a",
+    "testedCommit": "49ecf63",
+    "at": "2026-10-22T11:12:12.229Z",
+    "method": "HTTP",
+    "id": "R-01",
+    "feature": "一键清空回收站（整库一次提交）",
+    "expected": "确认后走服务端任务、有阶段与结果、实际清空；失败要能定位到具体是哪一类资源",
+    "result": "CONFIRMED_BUG",
+    "defect": "BUG-020",
+    "observed": {
+      "beforeCount": 8,
+      "items": [
+        {
+          "kind": "project",
+          "id": 16,
+          "section": ""
+        },
+        {
+          "kind": "v2_archive",
+          "id": 14,
+          "section": "achievement"
+        },
+        {
+          "kind": "contract",
+          "id": 17,
+          "section": ""
+        },
+        {
+          "kind": "v2_ip_file",
+          "id": 30,
+          "section": ""
+        },
+        {
+          "kind": "v2_ip_file",
+          "id": 27,
+          "section": ""
+        },
+        {
+          "kind": "v2_ip_file",
+          "id": 24,
+          "section": ""
+        },
+        {
+          "kind": "v2_ip_file",
+          "id": 21,
+          "section": ""
+        },
+        {
+          "kind": "v2_file",
+          "id": 1,
+          "section": ""
+        }
+      ],
+      "submit": {
+        "status": 202,
+        "body": {
+          "taskId": "7dd8af95464b41fc95f7271c67cf2d80"
+        }
+      },
+      "stateTrace": [
+        "failed"
+      ],
+      "final": {
+        "taskId": "7dd8af95464b41fc95f7271c67cf2d80",
+        "workspace": "company",
+        "state": "failed",
+        "stage": "永久删除失败，数据库已回滚",
+        "bytesDone": 0,
+        "bytesTotal": 0,
+        "count": 8,
+        "error": "记录仍有关联目录或文件历史，禁止永久删除。"
+      },
+      "afterCount": 8
+    },
+    "rootCause": "purge-task 对混合 kind 的整批提交整体回滚，只给一句「永久删除失败，数据库已回滚」，不指明是哪一条、哪一种 kind 导致失败；前端 toast 也只显示这一句",
+    "notes": "单独清空同一种 kind 可以成功（见 S10 的 v2_ip_file 与本次单项试验），说明是混合批次的问题"
+  },
+  {
+    "runId": "v3a",
+    "testedCommit": "49ecf63",
+    "at": "2026-10-22T11:12:20.194Z",
+    "method": "HTTP",
+    "id": "X-03",
+    "feature": "一键清空的 200 条单次上限",
+    "expected": "201 条时应明确提示分批（而不是静默只删前 200），并且不遗漏",
+    "result": "CONFIRMED_BUG",
+    "defect": "BUG-023",
+    "observed": {
+      "created": 201,
+      "deleted": 201,
+      "trashCount": 209,
+      "overLimitSubmit": {
+        "status": 400,
+        "body": {
+          "error": "请选择 1 至 200 条不重复的回收站记录。"
+        }
+      }
+    },
+    "rootCause": "frontend/explorer/js/bridge.js:436-441 purgeTrash 在 items.length>200 时直接 return toast 并**拒绝执行**；interactions.js:1409 emptyRecycle() 把整个 RECYCLE 传给同一条路径 → 回收站超过 200 条时「一键清空」完全不可用",
+    "notes": "任务书 X-03 要求「Agent 只报告差异，不擅自重设计」：这里只记录「一键清空在 >200 时整批拒绝」，应由用户决定是自动分批还是显式提示"
+  },
+  {
+    "runId": "v3a",
+    "testedCommit": "49ecf63",
+    "at": "2026-10-22T11:12:26.304Z",
+    "method": "HTTP",
+    "id": "T-P1-07",
+    "feature": "先用真实可回收页再压缩，并验证任务窗口内的互斥",
+    "expected": "reusableBytes>0 时可压缩；任务期间 /api/lock 必须被拒；完成后可回收页显著下降",
+    "result": "PASS",
+    "defect": null,
+    "observed": {
+      "before": {
+        "fileBytes": 68710400,
+        "pageCount": 16775,
+        "freePages": 2,
+        "pageSize": 4096,
+        "reusableBytes": 8192,
+        "requiredFreeBytes": 271638528,
+        "availableBytes": 73049501696,
+        "tempAvailableBytes": 29084856320,
+        "canCompact": true
+      },
+      "created": {
+        "size": 0,
+        "purge": null
+      },
+      "afterReclaim": {
+        "fileBytes": 68710400,
+        "pageCount": 16775,
+        "freePages": 2,
+        "pageSize": 4096,
+        "reusableBytes": 8192,
+        "requiredFreeBytes": 271638528,
+        "availableBytes": 73049501696,
+        "tempAvailableBytes": 29084856320,
+        "canCompact": true
+      },
+      "submit": {
+        "status": 202,
+        "body": {
+          "taskId": "2faa5f8deb8041c79e3b797c77e27b0c"
+        }
+      },
+      "stateTrace": [
+        "running",
+        "succeeded"
+      ],
+      "final": {
+        "taskId": "2faa5f8deb8041c79e3b797c77e27b0c",
+        "state": "succeeded",
+        "stage": "压缩完成，SQLCipher 完整性校验通过",
+        "bytesBefore": 68710400,
+        "bytesAfter": 68702208,
+        "reusableBefore": 8192,
+        "error": null
+      },
+      "after": {
+        "fileBytes": 68702208,
+        "pageCount": 16773,
+        "freePages": 0,
+        "pageSize": 4096,
+        "reusableBytes": 0,
+        "requiredFreeBytes": 271622144,
+        "availableBytes": 72980684800,
+        "tempAvailableBytes": 29084573696,
+        "canCompact": true
+      },
+      "lockDuringTask": {
+        "status": 409,
+        "body": {
+          "error": "文件任务执行中或程序正在退出，不能关闭数据库。"
+        }
+      },
+      "hadReclaim": true,
+      "shrank": true,
+      "busyRejected": true
+    },
+    "notes": "若一次 VACUUM 后仍有余量，说明快照/索引占页，不是缺陷；关键是「可压缩 + 任务期锁被拒」两条同时成立"
+  },
+  {
+    "runId": "v3a",
+    "testedCommit": "49ecf63",
+    "at": "2026-10-22T11:12:28.133Z",
+    "method": "HTTP",
+    "id": "T-P2-15",
+    "feature": "全新空库的接口表现（空数据与加载失败是否可区分）",
+    "expected": "空库返回空集合且 7 个系统目录仍在；空数据与「接口失败」在响应上必须可区分",
+    "result": "PASS",
+    "defect": null,
+    "observed": {
+      "views": {
+        "projects": {
+          "status": 200,
+          "len": 0
+        },
+        "contracts": {
+          "status": 200,
+          "len": 0
+        },
+        "ip": {
+          "status": 200,
+          "len": null
+        },
+        "archive": {
+          "status": 200,
+          "folders": 7,
+          "archives": 0
+        },
+        "trash": {
+          "status": 200,
+          "len": 0
+        }
+      },
+      "emptyDb": "vault-v3a-empty.db"
+    },
+    "notes": "「失败被吞成空」由 X-01 的 500 注入裁决：前端把两者渲染成同一形态，故仍记 BUG-019"
+  }
+]

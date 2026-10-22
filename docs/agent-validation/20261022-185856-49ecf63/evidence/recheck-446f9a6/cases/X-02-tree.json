@@ -1,0 +1,25 @@
+{
+  "runId": "v3b",
+  "testedCommit": "446f9a6",
+  "at": "2026-10-22T11:23:18.678Z",
+  "id": "X-02-tree",
+  "feature": "建树时是否保留后端 position 顺序",
+  "method": "PURE-FUNCTION + REAL-PAYLOAD",
+  "expected": "树内子节点顺序应与后端 entries 的 position 顺序一致（含目录与记录混排）",
+  "result": "CONFIRMED_BUG",
+  "defect": "BUG-010",
+  "observed": {
+    "backendOrder": [
+      "folder:二级-A",
+      "record:档案-02",
+      "record:档案-03",
+      "record:档案-04"
+    ],
+    "treeOrder": [
+      "folder:档案-02",
+      "folder:档案-03",
+      "folder:档案-04"
+    ]
+  },
+  "rootCause": "store.js:514 d.children.sort((a,b)=>cmpName(a,b)) 只按拼音；app.js:415 sortedItems 再强制 folder 排在 file 之前，position 永远无法生效"
+}

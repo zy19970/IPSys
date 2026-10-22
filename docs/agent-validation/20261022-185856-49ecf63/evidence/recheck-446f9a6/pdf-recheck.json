@@ -1,0 +1,101 @@
+[
+  {
+    "runId": "v3b",
+    "testedCommit": "446f9a6",
+    "at": "2026-10-22T11:23:58.084Z",
+    "method": "DYNAMIC-BROWSER",
+    "id": "T-P0-01-ui",
+    "feature": "界面逐层进入业务档案三级目录",
+    "expected": "一级能看到 7 个系统目录；进入系统目录能看到 二级-A；再进能看到 三级-A1 与档案-01",
+    "result": "CONFIRMED_BUG",
+    "defect": "BUG-001",
+    "observed": {
+      "lvl1Rows": [
+        "档案-01",
+        "申报与认定",
+        "规划与管理",
+        "汇报与宣传",
+        "会议与活动",
+        "专项工作与合作",
+        "政策与行业资料",
+        "其他业务资料"
+      ],
+      "hasLvl2AtCatLevel": false,
+      "hasLvl3AtCatLevel": false,
+      "record01AtCatLevel": true,
+      "innerRows": [
+        "档案-02",
+        "档案-03",
+        "档案-04"
+      ],
+      "hasLvl2Inner": false
+    },
+    "notes": "与 t-tree.cjs 的纯函数结论互证：树里根本没有 af:8/af:9"
+  },
+  {
+    "runId": "v3b",
+    "testedCommit": "446f9a6",
+    "at": "2026-10-22T11:23:59.721Z",
+    "method": "DYNAMIC-BROWSER",
+    "id": "T-P0-02-ui",
+    "feature": "同一 LinkId 多版本在列表中占几行",
+    "expected": "linkId=3 只有 1 行（默认最新版）",
+    "result": "CONFIRMED_BUG",
+    "defect": "BUG-002",
+    "observed": {
+      "catRows": [
+        "IP-A",
+        "IP-B",
+        "IP-C",
+        "T-P0-03-1",
+        "T-P1-10-2"
+      ],
+      "fileRows": [
+        {
+          "id": "f:3:2",
+          "title": "专利说明书.txt",
+          "sub": ""
+        },
+        {
+          "id": "f:3:1",
+          "title": "专利说明书.txt",
+          "sub": ""
+        }
+      ],
+      "rowsForLink": 2,
+      "rowIds": [
+        "f:3:2",
+        "f:3:1"
+      ]
+    }
+  },
+  {
+    "runId": "v3b",
+    "testedCommit": "446f9a6",
+    "at": "2026-10-22T11:24:08.931Z",
+    "method": "DYNAMIC-BROWSER",
+    "id": "T-P2-09",
+    "feature": "Explorer 真页面打开两步 PDF，两页都完成 Canvas 渲染",
+    "expected": "页码 1/2 → 2/2；状态空；canvas 有尺寸；两页像素指纹不同",
+    "result": "CONFIRMED_BUG",
+    "defect": "BUG-018",
+    "observed": {
+      "appeared": true,
+      "page1": {
+        "hasCanvas": true,
+        "w": 300,
+        "h": 150,
+        "status": "正在解析 PDF…",
+        "count": "加载中",
+        "pxSample": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASwAAACWCAYAAABkW7XSAAAF2UlEQVR4AezU227bOhAFUOP8/0efvDhokNiWRJGcyyoKtLElcmbtYP/38IcAAQJJBBRWkqCMSYDA46Gw/BYQIJBGQGGliWp8UCcQyC6gsLInaH4CjQQUVqOwrUogu4DCyp"
+      },
+      "page2": null,
+      "p1hash": "222b690cf21b5729",
+      "p2hash": null,
+      "rendered1": false,
+      "rendered2": false
+    },
+    "rootCause": "frontend/explorer/js/interactions.js:1633 只做 pdfViewer = viewer.create(body, buffer)，而 src/IPSys.Web/wwwroot/pdf-preview.js:95 返回 {open,destroy}，create 不启动解析；未调 open() 就永远停在「正在解析 PDF…」",
+    "notes": "上轮 T-P2-09 判 PASS 属误报（证据里 pages:0），本轮撤销该 PASS"
+  }
+]

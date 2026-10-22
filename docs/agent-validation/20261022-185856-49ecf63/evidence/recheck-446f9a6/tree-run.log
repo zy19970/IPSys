@@ -1,0 +1,9 @@
+connect via resume
+payload: projects=1 contracts=1 folders=9 archives=4 ipFiles=11 projectFiles=6
+后端 folders: 二级-A={"id":8,"parentId":1,"name":"二级-A","position":0,"isSystem":false} 三级-A1={"id":9,"parentId":8,"name":"三级-A1","position":0,"isSystem":false}
+树内 id 总数=44；af:8 在树=false；af:9 在树=false
+档案-01 节点 id=a:achievement:10；所在路径=["我的文件","业务档案","档案-01"]
+[CONFIRMED_BUG] T-P0-01-tree buildTree 是否保留多级档案目录（真实 payload） -> BUG-001
+分类 af:1 的树内子节点: ["folder:档案-02","folder:档案-03","folder:档案-04"]
+后端 entries 顺序（position）: ["folder:二级-A","record:档案-02","record:档案-03","record:档案-04"]
+[CONFIRMED_BUG] X-02-tree 建树时是否保留后端 position 顺序 -> BUG-010

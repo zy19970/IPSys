@@ -1,0 +1,358 @@
+{
+  "runid": "v3a",
+  "db": "E:\\Github\\管理系统\\build-retest\\agent-validation-v3\\vault-v3a.db",
+  "createdAt": "2026-10-22T11:01:10.007Z",
+  "company": {
+    "projectA": 15,
+    "projectB": 16,
+    "contractC1": 17,
+    "contractC2": 18,
+    "orphanContract": {
+      "status": 400,
+      "body": {
+        "error": "创建合同必须指定所属项目：请提供顶层 parentId 或 projectId，把合同对象原样回传时 contract.projectId 也接受。"
+      }
+    },
+    "ipA": 19,
+    "ipB": 20,
+    "ipC": 21,
+    "general": 22
+  },
+  "personal": {
+    "projectP": 23,
+    "ipP": 24
+  },
+  "archive": {
+    "system": [
+      {
+        "id": 1,
+        "name": "申报与认定"
+      },
+      {
+        "id": 2,
+        "name": "规划与管理"
+      },
+      {
+        "id": 3,
+        "name": "汇报与宣传"
+      },
+      {
+        "id": 4,
+        "name": "会议与活动"
+      },
+      {
+        "id": 5,
+        "name": "专项工作与合作"
+      },
+      {
+        "id": 6,
+        "name": "政策与行业资料"
+      },
+      {
+        "id": 7,
+        "name": "其他业务资料"
+      }
+    ],
+    "lvl2": 8,
+    "lvl3": 9,
+    "records": [
+      10,
+      11,
+      12,
+      13,
+      14
+    ]
+  },
+  "trash": {
+    "company": [
+      {
+        "kind": "project",
+        "id": 16,
+        "name": "项目B",
+        "section": "",
+        "parent": null
+      },
+      {
+        "kind": "v2_archive",
+        "id": 14,
+        "name": "档案-05",
+        "section": "achievement",
+        "parent": null
+      },
+      {
+        "kind": "contract",
+        "id": 17,
+        "name": "合同C1",
+        "section": "",
+        "parent": "项目A"
+      },
+      {
+        "kind": "v2_ip_file",
+        "id": 21,
+        "name": "待回收6M.bin",
+        "section": "",
+        "parent": "IP-C"
+      },
+      {
+        "kind": "v2_file",
+        "id": 1,
+        "name": "项目A说明.txt",
+        "section": "",
+        "parent": "项目A"
+      }
+    ],
+    "personal": []
+  },
+  "files": {
+    "projectA": {
+      "fileId": 1,
+      "version": 1,
+      "size": 25,
+      "sha256": "50d3600d818fcb5da3e269840bd2c5807774243f3603803714a2ae5126f8a8da",
+      "linkId": 1,
+      "name": "项目A说明.txt"
+    },
+    "contractC1": {
+      "fileId": 2,
+      "version": 1,
+      "size": 23,
+      "sha256": "5f07d78147687bf9fe753cb9e4253fa045bf93b5663400c5f885ce420c239005",
+      "linkId": 2,
+      "name": "合同C1扫描.txt"
+    },
+    "ipA": {
+      "fileId": 3,
+      "version": 1,
+      "size": 22,
+      "sha256": "3b5e7eb7a7e458e7086799c798cc9910dfcf8fbbff16f17c63db6c155942871d",
+      "linkId": 3,
+      "name": "专利说明书.txt"
+    },
+    "ipAV2": {
+      "fileId": 3,
+      "version": 2,
+      "size": 37,
+      "sha256": "70412AE068F04626EAF443EE7E2E5017F1DD064DB8B3746E20D5973FD02805D7"
+    },
+    "ipAssoc": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "fileId": 3,
+        "sourceLinkId": 3,
+        "targetFolderId": 20,
+        "moved": false
+      },
+      "linkIdOnIpB": 4
+    },
+    "archive1": {
+      "fileId": 4,
+      "version": 1,
+      "size": 27,
+      "sha256": "91a157586c81268725670d76809b3e98c7e48e0f846e84049e136b92e5695126",
+      "linkId": 5,
+      "name": "档案-01附件.txt"
+    },
+    "general": {
+      "fileId": 5,
+      "version": 1,
+      "size": 24,
+      "sha256": "2ac79dc36ffdd47cec1077dc44abcb1a534af436508257d6b6696ee52d4811b1",
+      "linkId": 6,
+      "name": "综合资料附件.txt"
+    },
+    "sameNameCompany": {
+      "fileId": 11,
+      "version": 1,
+      "size": 38,
+      "sha256": "2bf6ecc79a2fd68281cc94795d2d6b27eb88e7f5671c97ca392165dc8a76c97a",
+      "linkId": 12,
+      "name": "同名附件.txt"
+    },
+    "sameNamePersonal": {
+      "fileId": 12,
+      "version": 1,
+      "size": 52,
+      "sha256": "3307914d222044f3aac347057d6758404705a0c45c8486d405acbdc92fd1231c",
+      "linkId": 13,
+      "name": "同名附件.txt"
+    },
+    "pdf": {
+      "fileId": 13,
+      "version": 1,
+      "size": 793,
+      "sha256": "155fd849a8203c0b93ae7244c6259ce11c9cdf175d4e3487a14d4d0c905dc6ad",
+      "linkId": 14,
+      "name": "两页示例.pdf"
+    },
+    "png": {
+      "fileId": 14,
+      "version": 1,
+      "size": 70,
+      "sha256": "c414cd0e204de974f73753c7e28d7638e7b3691bb8b1a2bab6b25bb7fed7ce77",
+      "linkId": 15,
+      "name": "示例图.png"
+    },
+    "docx": {
+      "fileId": 15,
+      "version": 1,
+      "size": 21,
+      "sha256": "7569ebcd5f0de3cc6c85f11a93c826c6cd3374ac7a3a2d5faba5e0aa8bf9d18f",
+      "linkId": 16,
+      "name": "示例文档.docx"
+    },
+    "zero": {
+      "fileId": 16,
+      "version": 1,
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "linkId": 17,
+      "name": "零字节.bin"
+    },
+    "small": {
+      "fileId": 17,
+      "version": 1,
+      "size": 15,
+      "sha256": "ec29f1f1e86a5f76937b54f66a12510791318ba8649951aed23d6ba138f95cfb",
+      "linkId": 18,
+      "name": "小文本.txt"
+    },
+    "big31": {
+      "fileId": 18,
+      "version": 1,
+      "size": 32505856,
+      "sha256": "44879a71778c3a21c739cc1940a85d97bf213c483f6315c707065bdccc6d25b3",
+      "linkId": 19,
+      "name": "边界31M.bin"
+    },
+    "big33": {
+      "fileId": 19,
+      "version": 1,
+      "size": 34603008,
+      "sha256": "5e297952c39cdb37c9fde460787399acb0c23c7531546974096a6ea1ce8db159",
+      "linkId": 20,
+      "name": "边界33M.bin"
+    },
+    "reclaimSrc": {
+      "fileId": 20,
+      "version": 1,
+      "size": 6291456,
+      "sha256": "6fd632b1a1d13d92bc534caedaadc02bb964c8d5f190bad4b43d567c0b071bd2",
+      "linkId": 21,
+      "name": "待回收6M.bin"
+    }
+  },
+  "groups": {
+    "s09": [
+      {
+        "fileId": 6,
+        "version": 1,
+        "size": 19,
+        "sha256": "854a0b933885ad21e8ae939121440950c0a87c052fca86ef26559fc62bc3dac7",
+        "linkId": 7,
+        "name": "S09-1.txt"
+      },
+      {
+        "fileId": 7,
+        "version": 1,
+        "size": 19,
+        "sha256": "37b244772bc9861a647455d20bff537abce1f98532dbee6516c3817af24392b8",
+        "linkId": 8,
+        "name": "S09-2.txt"
+      },
+      {
+        "fileId": 8,
+        "version": 1,
+        "size": 19,
+        "sha256": "fc483eaf49911c84a95b92030b840f557082f71715f3488eaa5e0ae9a91e5d71",
+        "linkId": 9,
+        "name": "S09-3.txt"
+      }
+    ],
+    "sameSha": {
+      "a": {
+        "fileId": 9,
+        "version": 1,
+        "size": 47,
+        "sha256": "61c18ce663688a0443d63e7b10aa0606b18d84f06a76576c775e798edad6e9ed",
+        "linkId": 10,
+        "name": "同内容-A.txt"
+      },
+      "b": {
+        "fileId": 10,
+        "version": 1,
+        "size": 47,
+        "sha256": "61c18ce663688a0443d63e7b10aa0606b18d84f06a76576c775e798edad6e9ed",
+        "linkId": 11,
+        "name": "同内容-B.txt"
+      },
+      "sameFileId": false
+    }
+  },
+  "purgeTask": {
+    "status": 202,
+    "body": {
+      "taskId": "e8069ac3e37747ed9f8021f977af4cc0"
+    },
+    "final": {
+      "taskId": "e8069ac3e37747ed9f8021f977af4cc0",
+      "workspace": "company",
+      "state": "succeeded",
+      "stage": "已提交数据库事务，永久删除成功",
+      "bytesDone": 6291456,
+      "bytesTotal": 6291456,
+      "count": 1,
+      "error": null
+    },
+    "infoBefore": {
+      "fileBytes": 75104256,
+      "pageCount": 18336,
+      "freePages": 0,
+      "pageSize": 4096,
+      "reusableBytes": 0,
+      "requiredFreeBytes": 284426240,
+      "availableBytes": 73733939200,
+      "tempAvailableBytes": 28919259136,
+      "canCompact": true
+    },
+    "infoAfter": {
+      "fileBytes": 75104256,
+      "pageCount": 18336,
+      "freePages": 1569,
+      "pageSize": 4096,
+      "reusableBytes": 6426624,
+      "requiredFreeBytes": 284426240,
+      "availableBytes": 73727434752,
+      "tempAvailableBytes": 28919193600,
+      "canCompact": true
+    }
+  },
+  "compactInfo": {
+    "fileBytes": 75104256,
+    "pageCount": 18336,
+    "freePages": 0,
+    "pageSize": 4096,
+    "reusableBytes": 0,
+    "requiredFreeBytes": 284426240,
+    "availableBytes": 73733959680,
+    "tempAvailableBytes": 28915613696,
+    "canCompact": true
+  },
+  "viewCounts": {
+    "archive": [
+      "archives",
+      "general",
+      "folders",
+      "orders",
+      "files"
+    ],
+    "projects": 1,
+    "ip": [
+      "rows",
+      "files"
+    ],
+    "general": [],
+    "contracts": 1,
+    "project-files": 6
+  }
+}

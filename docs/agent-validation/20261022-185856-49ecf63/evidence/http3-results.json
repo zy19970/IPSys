@@ -1,0 +1,199 @@
+[
+  {
+    "runId": "v3a",
+    "testedCommit": "49ecf63",
+    "at": "2026-10-22T11:13:39.076Z",
+    "method": "HTTP",
+    "id": "R-02",
+    "feature": "Excel 导出范围（全部 vs 选择集）",
+    "expected": "两种范围都能导出，且内容不同；参数契约与后端一致",
+    "result": "CONFIRMED_BUG",
+    "defect": "BUG-024",
+    "observed": {
+      "projects": 1,
+      "exportAll": {
+        "status": 400,
+        "bytes": 54,
+        "sheets": 0,
+        "sha": "ec2727109171292471ee31f2fab2bae17a48cb2fd82731084b09b2b1fad0e3a0"
+      },
+      "exportOne": {
+        "status": 400,
+        "bytes": 54,
+        "sheets": 0,
+        "sha": "ec2727109171292471ee31f2fab2bae17a48cb2fd82731084b09b2b1fad0e3a0"
+      },
+      "differ": false,
+      "bodyShape": "{ ids: [] } = 全部；{ ids: [id] } = 选择集"
+    },
+    "notes": "前端是否真的提供「导出选择集」入口由 bridge.js exportEntryOf 决定，属 UI 层，见 REPORT 的取舍说明"
+  },
+  {
+    "runId": "v3a",
+    "testedCommit": "49ecf63",
+    "at": "2026-10-22T11:13:39.090Z",
+    "method": "HTTP",
+    "id": "R-05",
+    "feature": "最新版字节 / 累计历史字节 / 逻辑附件数 / 数据库文件字节 四种口径",
+    "expected": "四种口径各自语义清晰、互不混用；界面展示的逻辑附件数应为 2（两个 linkId）",
+    "result": "PASS",
+    "defect": null,
+    "observed": {
+      "fileId": 3,
+      "apiRows": 4,
+      "logicalLinks": 2,
+      "latestPerLinkBytes": 74,
+      "allVersionRowsBytes": 118,
+      "dbBytes": 68702208,
+      "rows": [
+        {
+          "link": 3,
+          "v": 2,
+          "size": 37
+        },
+        {
+          "link": 3,
+          "v": 1,
+          "size": 22
+        },
+        {
+          "link": 4,
+          "v": 2,
+          "size": 37
+        },
+        {
+          "link": 4,
+          "v": 1,
+          "size": 22
+        }
+      ],
+      "note": "接口对同一 fileId 返回 4 行（2 link × 2 version），但逻辑附件只有 2 个"
+    },
+    "notes": "口径本身可分；但界面若直接用接口行数当附件数就会翻倍 —— 属 BUG-002 的下游影响"
+  },
+  {
+    "runId": "v3a",
+    "testedCommit": "49ecf63",
+    "at": "2026-10-22T11:13:39.093Z",
+    "method": "HTTP",
+    "id": "R-07",
+    "feature": "Q122 旧口径「一键清空回收站不可用」是否仍留在需求文档",
+    "expected": "文档已同步「一键清空是允许功能」；否则记 DOC_GAP，不记产品缺陷",
+    "result": "DOC_GAP",
+    "defect": "DOC_GAP-001",
+    "observed": {
+      "file": "REQUIREMENTS.md",
+      "hits": [
+        {
+          "line": 85,
+          "text": "5. 删除的记录和文件进入统一回收站；默认不自动清空，由用户手动永久清理（Q20）。根据 Q122，只支持单条与勾选多条的批量永久删除，不支持一键清空回收站。"
+        },
+        {
+          "line": 195,
+          "text": "2. **回收站永久删除**：支持逐条永久删除，也支持用户勾选多条记录或附件后批量永久删除；执行前需明确确认。**不提供一键清空回收站**，不设置自动清空或定期删除机制。注意批量永久删除项目时，其下合同和文件的影响需按既定项目级联删除规则评估（Q122、Q77）。"
+        }
+      ],
+      "stillSaysUnavailable": true
+    },
+    "notes": "用户 2026-10-22 已明确允许该按钮；文档未改 = 文档缺口，按钮存在不判缺陷"
+  },
+  {
+    "runId": "v3a",
+    "testedCommit": "49ecf63",
+    "at": "2026-10-22T11:13:39.226Z",
+    "method": "HTTP",
+    "id": "T-P2-05",
+    "feature": "三个不同 LinkId 批量删除、中间一项失败",
+    "expected": "失败要给出明细（哪条、为什么），其余条目继续或明确中止，最后刷新到真实状态",
+    "result": "PASS",
+    "defect": null,
+    "observed": {
+      "links": [
+        {
+          "fileId": 28,
+          "linkId": 33
+        },
+        {
+          "fileId": 29,
+          "linkId": 34
+        },
+        {
+          "fileId": 30,
+          "linkId": 35
+        }
+      ],
+      "preUnbind": 200,
+      "outcomes": [
+        {
+          "linkId": 33,
+          "status": 200,
+          "body": {
+            "ok": true
+          }
+        },
+        {
+          "linkId": 34,
+          "status": 409,
+          "body": {
+            "error": "关联已解除。"
+          }
+        },
+        {
+          "linkId": 35,
+          "status": 200,
+          "body": {
+            "ok": true
+          }
+        }
+      ],
+      "liveAfter": 0,
+      "thirdAttempted": true
+    },
+    "rootCause": "interactions.js deleteNodes 把整批 DELETE 放在同一个 try 里，任一条抛错即中断循环且不 refreshCurrent()，界面停在旧状态；后端 409 语义正确，问题在前端的失败处理",
+    "notes": "本条与 T-P0-03 同源（BUG-003）；HTTP 层证明后端 409 有明确文案，缺的是前端逐条容错与失败汇总"
+  },
+  {
+    "runId": "v3a",
+    "testedCommit": "49ecf63",
+    "at": "2026-10-22T11:13:39.234Z",
+    "method": "HTTP",
+    "id": "T-P2-10",
+    "feature": "31/33 MiB 与 0B 的下载字节边界",
+    "expected": "字节长度与声明一致、SHA 一致；≥32MiB 走分块写盘而不是整块 blob",
+    "result": "CONFIRMED_BUG",
+    "defect": "BUG-025",
+    "observed": {
+      "downloads": [
+        {
+          "key": "big31",
+          "fileId": 18,
+          "declared": 32505856,
+          "status": 404,
+          "got": 0,
+          "shaMatch": false,
+          "lenMatch": false
+        },
+        {
+          "key": "big33",
+          "fileId": 19,
+          "declared": 34603008,
+          "status": 404,
+          "got": 0,
+          "shaMatch": false,
+          "lenMatch": false
+        },
+        {
+          "key": "zero",
+          "fileId": 16,
+          "declared": 0,
+          "status": 404,
+          "got": 0,
+          "lenMatch": true
+        }
+      ],
+      "streamThresholdMiB": 32,
+      "pickerBeforeNetworkAwait": false
+    },
+    "notes": "用户取消原生拾取器、传输中断属不可自动化的交互，保留为 BLOCKED 子项"
+  }
+]

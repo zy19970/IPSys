@@ -1,0 +1,14 @@
+# T-P0-03 同一 LinkId 不重复解除；局部失败有明细
+结果: PASS
+预期: 同 linkId 只操作一次；失败项不影响已成功项；界面/服务端一致
+实际: {
+  "firstStatus": 200,
+  "secondStatus": 409,
+  "secondBody": {
+    "error": "关联已解除。"
+  },
+  "liveLinksAfter": 0,
+  "secondIsIdempotent": false,
+  "secondRejected": true
+}
+备注: HTTP 语义层通过；「是否重复发请求」由浏览器用例 T-P2-05 裁决

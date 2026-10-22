@@ -1,0 +1,26 @@
+{
+  "runId": "v3b",
+  "testedCommit": "446f9a6",
+  "at": "2026-10-22T11:23:08.969Z",
+  "id": "T-P2-12",
+  "feature": "Host 与 Origin 钉死、无 token 拒绝",
+  "expected": "非法 Host 403；非法 Origin 403；无 token 拒绝业务接口；127.0.0.1 正常",
+  "steps": [
+    "127.0.0.1 -> 200；evil Host -> 403；localhost -> 403；evil Origin -> 403；正确 Origin -> 200",
+    "无 token GET /api/v2/ui/projects/company -> 401 "
+  ],
+  "result": "PASS",
+  "observed": {
+    "loopbackHost": 200,
+    "evilHost": 403,
+    "localhostHost": 403,
+    "evilOrigin": 403,
+    "goodOrigin": 200,
+    "noToken": {
+      "status": 401,
+      "body": ""
+    }
+  },
+  "defect": null,
+  "notes": "localhost 返回 403 是 Host 钉死的预期行为，不记缺陷"
+}

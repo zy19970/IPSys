@@ -1,0 +1,32 @@
+{
+  "runId": "v3a",
+  "testedCommit": "49ecf63",
+  "at": "2026-10-22T11:05:25.169Z",
+  "id": "T-P0-01",
+  "feature": "三级业务档案目录可达性",
+  "expected": "每个合法层级可读；记录只出现在其真实父级；parentId 链完整",
+  "steps": [
+    "GET /api/v2/ui/archive/company -> 系统目录 10 个",
+    "entries(sys=1) -> 5 条: 11,12,13,26,8",
+    "entries(二级=8) -> 1 条: 9",
+    "entries(三级=9) -> 1 条: 10",
+    "档案-01 的 folderId = 9（期望 9）"
+  ],
+  "result": "PASS",
+  "observed": {
+    "allArchiveFolders": 10,
+    "systemNamesPresent": 7,
+    "lvl2InSys1": true,
+    "lvl3InLvl2": true,
+    "recInLvl3": true,
+    "recLeakedToSys1": false,
+    "record01FolderId": 9,
+    "entriesSizes": [
+      5,
+      1,
+      1
+    ]
+  },
+  "defect": null,
+  "notes": "HTTP 层三级链路完整；UI 树是否丢节点另由 t-tree.cjs 裁决（buildTree 是纯函数，可确定性复现）"
+}

@@ -1,0 +1,15 @@
+# T-P2-12 Host 与 Origin 钉死、无 token 拒绝
+结果: PASS
+预期: 非法 Host 403；非法 Origin 403；无 token 拒绝业务接口；127.0.0.1 正常
+实际: {
+  "loopbackHost": 200,
+  "evilHost": 403,
+  "localhostHost": 403,
+  "evilOrigin": 403,
+  "goodOrigin": 200,
+  "noToken": {
+    "status": 401,
+    "body": ""
+  }
+}
+备注: localhost 返回 403 是 Host 钉死的预期行为，不记缺陷

@@ -1,0 +1,23 @@
+# T-P1-04 档案目录新建/改名/移动/删除与保护规则
+结果: PASS
+预期: 系统目录与非空目录必须被后端拒绝；新建/改名/移动合法时成功
+实际: {
+  "deleteSystemRoot": {
+    "status": 409,
+    "body": {
+      "error": "系统目录或含下级资料、附件的目录不能删除。"
+    }
+  },
+  "deleteNonEmpty": {
+    "status": 409,
+    "body": {
+      "error": "系统目录或含下级资料、附件的目录不能删除。"
+    }
+  },
+  "create": 200,
+  "rename": 200,
+  "move": 200,
+  "cycle": 409,
+  "remove": 200,
+  "readAfterDelete": 404
+}
