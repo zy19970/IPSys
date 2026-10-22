@@ -217,7 +217,7 @@ async function main() {
     await sleep(400);
     await sleep(300);
     const rows = await evalJs(`[...document.querySelectorAll('#viewRoot .row')].map(r=>({id:r.dataset.id, text:r.innerText.replace(/\\s+/g,' ').trim()}))`);
-    const sizeText = rows.map((r) => (r.text.match(/(\\d+(?:\\.\\d+)?\\s*(?:B|KB|MB|GB))/i) || [])[1] || "");
+    const sizeText = rows.map((r) => (r.text.match(/(\d+(?:\.\d+)?\s*(?:B|KB|MB|GB))/i) || [])[1] || "");
     const detail = await evalJs(`(document.querySelector('#detailBody')||{}).innerText || ''`);
     await shot("T-P0-02-ip-attachments");
     ev("T-P0-02", [
@@ -324,7 +324,7 @@ async function main() {
       return { toast: [...document.querySelectorAll('.toast')].map(t=>t.innerText.trim()).join(' | ') };
     })()`);
     ev("T-P2-02", [
-      "拖动源：IP-A 里的附件行 " + fileId,
+      "拖动源：项目A中的附件行 " + fileId,
       "放置目标：IP-B 记录行",
       `结果：${JSON.stringify(moved)}`,
       "",

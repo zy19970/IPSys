@@ -14,7 +14,7 @@
 
 1. **任务书 §1.2「不提交、不推送」与用户本轮指令冲突，且 §8 的交付目录被 `.gitignore` 忽略** —— 按原文执行，「把结果推到仓库」永远做不到。改为：产品源码零改动，交付物写 `docs/retest-v2-2026-10-22/` 并单独提交。
 2. **地址必须是 `127.0.0.1`，不是 `localhost`** —— `Program.cs:52-65` 对 Host 做严格字符串比较，`localhost` 直接 403。实测已证实。
-3. **T-P2-07 的 `ownerKind` 字段不存在** —— 全仓 grep 零命中；搜索命中只有 `kind/section/id`。
+3. **T-P2-07 的 `ownerKind` 勘误存在错误** —— 后端 `SearchHit` 包含 `OwnerKind/OwnerId`，前端使用 `ownerKind/ownerId` 定位所属记录；应核对文件命中到 link 的真实映射。
 4. **§7.1.3 的 CDP 网络节流对压缩无效** —— VACUUM 是本机 SQLite 操作，不产生 HTTP 往返。
 
 另有 6 处：T-P1-05 的排序范围（后端硬限 `company/achievement`）、T-P2-10 的原生拾取器无法用 CDP 点、T-P1-01 的判据应升级为违反 `UI_BASELINE.md` §2.1、15 个 FAIL ≠ 15 个缺陷、单实例守卫的真实理由、T-P2-02 的提示语本身在说谎。
@@ -80,7 +80,7 @@
 
 ### BUG-014（P2，T-P2-02）内部拖拽只弹提示，且提示语是假的
 
-拖 IP 附件到 IP-B 记录，toast：「附件移动需要后端支持 link 迁移；当前请用「上传」挂到目标记录」。
+拖项目 A 附件到 IP-B 记录，toast：「附件移动需要后端支持 link 迁移；当前请用「上传」挂到目标记录」。
 但后端 `POST /api/v2/files/{ws}/{fileId}/associate {linkId,targetFolderId,move}` 已可用（T-P1-03 实测 move 200）。**不是后端缺能力，是前端没调用**。
 
 ### BUG-015（P2，T-P2-03）「添加快捷访问」是假按钮

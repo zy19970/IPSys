@@ -23,6 +23,9 @@ def add(i, p, f, m, res, did, att, obs, exp, ev, src, notes=''):
                '无法证明成功渲染；原 PDF fixture 结构不完整。')
         exp = '有效两页 PDF 的第 1、2 页均渲染成功，页码正确且状态清空'
         notes = (notes + '；已修正 fixture 与判据，需重新运行；不据旧证据判定产品缺陷').strip('；')
+    elif i == 'T-P0-02' and '行内大小' in obs:
+        obs = '同一 linkId 显示 2 行（期望 1）；原始行文字可见 37 B 与 22 B；旧大小提取正则转义错误导致记录为空字符串'
+        notes = (notes + '；原始大小提取字段无效，不代表界面未显示大小；修订脚本待复测').strip('；')
     rows.append([i, p, f, m, res, did, att, obs, exp, ev, src, notes])
 
 add('T-P0-01','P0','三级业务档案','MIXED','CONFIRMED_BUG','BUG-001','2',br['T-P0-01']['observed'],'每层都在树中，记录归属最深处','evidence/T-P0-01.txt','frontend/explorer/js/store.js buildTree')

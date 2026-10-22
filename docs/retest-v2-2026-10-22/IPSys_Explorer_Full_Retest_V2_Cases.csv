@@ -1,6 +1,6 @@
 ID,Priority,Feature,Method,Result,DefectID,AttemptCount,Observed,Expected,Evidence,SourcePath,Notes
 T-P0-01,P0,三级业务档案,MIXED,CONFIRMED_BUG,BUG-001,2,"树中 af:8=false, af:9=false, 最深记录=true；分类根直接列出 9 行",每层都在树中，记录归属最深处,evidence/T-P0-01.txt,frontend/explorer/js/store.js buildTree,
-T-P0-02,P0,附件多版本折叠,MIXED,CONFIRMED_BUG,BUG-002,2,"同一 linkId 显示 2 行（期望 1），行内大小 ["""",""""]",同一 linkId 一条可见附件，默认最新版,evidence/T-P0-02.txt,"frontend/explorer/js/store.js:281,296",
+T-P0-02,P0,附件多版本折叠,MIXED,CONFIRMED_BUG,BUG-002,2,同一 linkId 显示 2 行（期望 1）；原始行文字可见 37 B 与 22 B；旧大小提取正则错误,同一 linkId 一条可见附件，默认最新版,evidence/T-P0-02.txt,"frontend/explorer/js/store.js:281,296",
 T-P0-03,P0,同一 LinkId 重复删除,MIXED,CONFIRMED_BUG,BUG-003,2,选中 2 行删除后：服务端剩余 0 行、界面仍显示 2 行；反馈「关联已解除。」,不得多次 DELETE 同一 linkId；失败要给成功/失败数,evidence/T-P0-03.txt,frontend/explorer/js/interactions.js deleteNodes,
 T-P0-04,P0,任务占用时关库,DYNAMIC-BROWSER,BLOCKED,BUG-004,0,本轮未复跑；上轮限速上传制造真实 409 已证实,拒绝后不得清 token/reload，需显示原因,evidence/BLOCKED-LIST.md,frontend/explorer/js/interactions.js lockVault,上轮证据 build-retest/agent-explorer-check/evidence/T-P0-04-lockvault-real.txt
 T-P0-05,P0,跨记录引用,MIXED,IMPLEMENTATION_GAP,BUG-005,1,同一 fileId 在 IP-A/IP-B 各有独立 link（3 / 4）；UI 仅 IP 特例有入口,FileId 可复用且 LinkId 独立；UI 有通用入口,evidence/T-P0-05.txt,frontend/explorer/js/bridge.js associateOriginal,

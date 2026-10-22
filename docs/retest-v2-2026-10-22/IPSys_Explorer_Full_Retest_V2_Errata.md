@@ -15,7 +15,7 @@
 |---|---|---|---|
 | E-01 | §1.2 vs 用户本轮指令 | 任务书自相矛盾 | 不许推送 vs 要求推送；且 §8 建议的目录全在 `.gitignore` 里，按原文执行永远推不上去 |
 | E-02 | §3.3 / §1.4 / §5.2 T-P1-01 | 事实错误 | 端口在 `127.0.0.1`，不是 `localhost`；用 `localhost` 会 403，不是环境坏 |
-| E-03 | §5.3 T-P2-07 | 引用不存在的字段 | 全仓无 `ownerKind` |
+| E-03 | §5.3 T-P2-07 | 原勘误误报（已复核） | `SearchHit` 实际包含 `OwnerKind/OwnerId`，前端使用 `ownerKind/ownerId` |
 | E-04 | §5.2 T-P1-05 | 范围超出实现 | 后端只有档案一个 reorder 端点；IP/项目台账没有 |
 | E-05 | §7.1.3 | 方法无效 | 压缩是本机 SQLCipher VACUUM，CDP 网络节流对它没有任何作用 |
 | E-06 | §5.3 T-P2-10 | 方法不可执行 | `showSaveFilePicker` 是原生对话框，CDP 点不到 |
@@ -82,24 +82,15 @@ Host 校验是**严格等于** `127.0.0.1` 的字符串比较。`http://localhos
 
 ---
 
-## E-03 T-P2-07 引用了不存在的字段 `ownerKind`
+## E-03 T-P2-07 的字段核对（复核更正）
 
-**原文**
+**原勘误误判**
 
-> 确认含 `ownerKind` 的文件关联不会错跳/丢失
+原勘误声称 `ownerKind` 在全仓不存在，但实际上 `src/IPSys.Web/SearchStore.cs` 的 `SearchHit` 包含 `OwnerKind` 与 `OwnerId`；前端 `frontend/explorer/js/store.js` 的 `ownerIdOfHit()` 使用响应中的 `ownerKind/ownerId` 定位记录，再通过 `fileMeta` 将搜索的 fileId 映射到真实附件节点。原来的“grep 零命中”结论不成立。
 
-**核查**
+**修正判据**
 
-```
-$ grep -rn "ownerKind" src/IPSys.Web/*.cs frontend/explorer/js/*.js
-（零命中）
-```
-
-前端 `store.js` 的 `search()` 把命中映射成节点时，用的是 `kind` / `id` / `section`；`file` 命中还要用 `fileMeta.get(id).fileId` 反查（因为命中的 `id` 是 fileId，不是 linkId）。
-
-**修正**
-
-判据改为：**搜索命中能映射回树节点；映射不上的必须丢弃而不是造出假节点**；`file` 类命中需验证用的是 `fileId → linkId` 反查，不是把 fileId 当节点 id。
+首先验证响应中的文件归属元数据，再验证搜索结果映射到正确的所有者及 link 节点；不能仅要求搜索列表非空或任意跳转成功。注意 C# 属性名与 JSON camelCase 名称的区别。本项新浏览器脚本尚未复测。
 
 ---
 
