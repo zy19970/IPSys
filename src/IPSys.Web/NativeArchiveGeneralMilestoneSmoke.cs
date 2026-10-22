@@ -145,11 +145,11 @@ static class NativeArchiveGeneralMilestoneSmoke
         var trash=await client.GetFromJsonAsync<List<RecycleItem>>("/api/trash/company");
         Check(trash is not null && trash.Any(x=>x.Kind=="v2_archive"&&
             x.Id==certificate&&x.Section=="certificate"),"V2 archive recycle identity");
-        using(var unsafeDelete=await client.PostAsJsonAsync(
-            "/api/trash/company/purge",
-            new RecycleRequest([new RecycleKey("v2_archive",certificate,"certificate")])))
-            Check(unsafeDelete.StatusCode==HttpStatusCode.Conflict,
-                "file history blocks permanent deletion");
+        // This first deletion exercises recovery: original history must still
+        // be readable after restoring the parent record.
+        Check((await client.GetByteArrayAsync(
+            $"/api/v2/files/company/{file}/versions/2/download")).SequenceEqual(revised),
+            "soft-deleted parent retains file history for recovery");
         using(var restored=await client.PostAsJsonAsync(
             "/api/trash/company/restore",
             new RecycleRequest([new RecycleKey("v2_archive",certificate,"certificate")])))
@@ -176,6 +176,20 @@ static class NativeArchiveGeneralMilestoneSmoke
             "/api/trash/company/restore",
             new RecycleRequest([new RecycleKey("v2_general",general,"")])))
             restored.EnsureSuccessStatusCode();
+        // A second deletion is deliberately permanent. The archive's own
+        // active LinkId and all of its history must be cleaned first, in one
+        // transaction; the parent FolderId is deleted only after those links.
+        using(var removedAgain=await client.DeleteAsync(
+            $"{ca}/{certificate}?section=certificate"))
+            removedAgain.EnsureSuccessStatusCode();
+        using(var purged=await client.PostAsJsonAsync(
+            "/api/trash/company/purge",
+            new RecycleRequest([new RecycleKey("v2_archive",certificate,"certificate")])))
+            purged.EnsureSuccessStatusCode();
+        using(var missing=await client.GetAsync(
+            $"/api/v2/files/company/{file}/versions/2/download"))
+            Check(missing.StatusCode==HttpStatusCode.NotFound,
+                "permanent archive purge removes its orphan file history");
         Console.WriteLine("N2-04 NATIVE ARCHIVE/GENERAL EXCEL SEARCH RECYCLE SMOKE PASS");
     }
 }
