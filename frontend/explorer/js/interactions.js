@@ -1666,6 +1666,8 @@ async function previewFile(id) {
       const viewer = await ensurePdfViewer();
       if (!mask.isConnected) return;
       pdfViewer = viewer.create(body, buffer);
+      /* create 仅初始化工具栏；open 才加载 PDF.js 文档并渲染第一页。 */
+      await pdfViewer.open();
     } else {
       const blob = await res.blob();
       if (!mask.isConnected) return;

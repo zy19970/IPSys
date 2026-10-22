@@ -136,21 +136,34 @@ const VaultStore = {
     this.error = null;
     const w = encodeURIComponent(ws);
 
-    const [projects, contracts, archive, ip, projectFiles] = await Promise.all([
-      this.getJson(`/api/v2/ui/projects/${w}`).catch(() => []),
-      this.getJson(`/api/v2/ui/contracts/${w}`).catch(() => []),
-      this.getJson(`/api/v2/ui/archive/${w}`).catch(() => ({})),
-      this.getJson(`/api/v2/ui/ip/${w}`).catch(() => ({})),
-      this.getJson(`/api/v2/ui/project-files/${w}`).catch(() => []),
-    ]);
-
-    this.biz.clear();
-    this.fileMeta.clear();
-
-    ROOT = this.buildTree({ ws, projects, contracts, archive, ip, projectFiles });
-    RECYCLE = await this.loadRecycle(ws);
-    this.loading = false;
-    return ROOT;
+    const required = async (label, path) => {
+      try {
+        return await this.getJson(path);
+      } catch (e) {
+        throw new Error(label + "加载失败：" + (e.message || String(e)));
+      }
+    };
+    try {
+      const [projects, contracts, archive, ip, projectFiles] = await Promise.all([
+        required("项目", `/api/v2/ui/projects/${w}`),
+        required("合同", `/api/v2/ui/contracts/${w}`),
+        required("业务档案", `/api/v2/ui/archive/${w}`),
+        required("知识产权", `/api/v2/ui/ip/${w}`),
+        required("附件", `/api/v2/ui/project-files/${w}`),
+      ]);
+      /* 全部必需接口成功以后，才可以替换旧树；失败不是「空库」。 */
+      const recycle = await this.loadRecycle(ws);
+      this.biz.clear();
+      this.fileMeta.clear();
+      ROOT = this.buildTree({ ws, projects, contracts, archive, ip, projectFiles });
+      RECYCLE = recycle;
+      return ROOT;
+    } catch (e) {
+      this.error = e.message || String(e);
+      throw e;
+    } finally {
+      this.loading = false;
+    }
   },
 
   /* 后端回收站是扁平的 {kind,id,name,section,parent} 列表,
@@ -258,8 +271,8 @@ const VaultStore = {
           };
           return node;
         });
-    } catch {
-      return [];
+    } catch (e) {
+      throw new Error("回收站加载失败：" + (e.message || String(e)));
     }
   },
 
@@ -369,6 +382,7 @@ const VaultStore = {
           const node = F(a.name || `记录 ${a.id}`, { id: `a:${section}:${a.id}` });
           node.mtime = toTs(a.year);
           node.dateLabel = a.year ? `${a.year} 年` : "";
+          node.order = a.position == null ? null : Number(a.position);
           node.biz = {
             kind: "archive",
             section,
@@ -478,7 +492,6 @@ const VaultStore = {
        记录按 folderId 挂进目录;目录本身不是业务记录。 */
 
     const buildArchiveDirs = (records) => {
-      /* 后端以扁平 parentId 表返回目录，必须挂接全层级，而不只是顶层。 */
       const folders = archive?.folders || [];
       const dirs = folders.map((f) => {
         const d = F(f.name || "未命名目录", { id: "af:" + f.id });
@@ -486,7 +499,7 @@ const VaultStore = {
           kind: "archive_folder", typeName: "目录", id: f.id, isSystem: !!f.isSystem,
           parentId: f.parentId ?? null,
         };
-        d.order = Number(f.position) || 0;
+        d.order = f.position == null ? null : Number(f.position);
         d.children = [];
         return d;
       });
@@ -506,19 +519,36 @@ const VaultStore = {
         else loose.push(r);
       }
 
-      /* 父目录统计递归包含所有后代附件，不能漏计二三级。 */
+      /* 服务端 orders 已混排目录与记录：统一按这一顺序处理每层兄弟节点。 */
+      const sortPeers = (nodes, parentId) => {
+        const entries = archive?.orders?.[String(parentId ?? 0)] || [];
+        const positions = new Map(entries.map((item, i) => [
+          item.kind === "folder" ? "af:" + item.id : "a:achievement:" + item.id, i,
+        ]));
+        for (const item of nodes) {
+          const index = positions.get(item.id);
+          if (index !== undefined) item.order = index;
+        }
+        nodes.sort((a, b) => {
+          const ao = Number.isFinite(a.order) ? a.order : Infinity;
+          const bo = Number.isFinite(b.order) ? b.order : Infinity;
+          return ao - bo || cmpName(a, b);
+        });
+      };
+
       const finalize = (dir) => {
         for (const child of dir.children) {
           if (child.biz?.kind === "archive_folder") finalize(child);
         }
-        dir.children.sort((a, b) => cmpName(a, b));
+        sortPeers(dir.children, dir.biz.id);
         const times = dir.children.map((x) => x.mtime).filter(Boolean);
         dir.mtime = times.length ? Math.max(...times) : null;
         dir.size = dir.children.reduce((n, x) => n + (x.size || 0), 0);
       };
       for (const dir of roots) finalize(dir);
-      roots.sort((a, b) => a.order - b.order);
-      return [...roots, ...loose.sort((a, b) => cmpName(a, b))];
+      const rootItems = [...roots, ...loose];
+      sortPeers(rootItems, null);
+      return rootItems;
     };
 
     root.children = catsOf(ws).map(({ id, label }, i) => {

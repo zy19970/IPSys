@@ -326,12 +326,24 @@ const Drive = {
 
   resetSort() {
     const s = this.state;
+    if (this.isArchiveOrderScope()) {
+      s.sortBy = "position";
+      s.sortDir = "asc";
+      return;
+    }
     const cols = this.columns();
     const keys = cols ? ["name", ...cols.map((c) => c.k)] : ["name", "mtime", "size"];
     if (!keys.includes(s.sortBy)) {
       s.sortBy = "name";
       s.sortDir = "asc";
     }
+  },
+
+  /* 公司业务档案内层允许目录与资料混排，按服务端持久顺序默认展示。 */
+  isArchiveOrderScope() {
+    const s = this.state;
+    return s.view === "files" && !s.query.trim() && VaultStore.ws === "company" &&
+      (s.folderId === "k:achievement" || String(s.folderId).startsWith("af:"));
   },
 
   /* ---------- 搜索 ---------- */
@@ -410,9 +422,15 @@ const Drive = {
     const dir = sortDir === "asc" ? 1 : -1;
     const items = [...this.sourceItems];
     const col = this.columns()?.find((c) => c.k === sortBy);
+    const archiveOrderScope = this.isArchiveOrderScope();
 
     items.sort((a, b) => {
-      if (a.type !== b.type) return a.type === "folder" ? -1 : 1;
+      if (archiveOrderScope && sortBy === "position") {
+        const ao = Number.isFinite(a.order) ? a.order : Infinity;
+        const bo = Number.isFinite(b.order) ? b.order : Infinity;
+        return ao - bo || cmpName(a, b);
+      }
+      if (!archiveOrderScope && a.type !== b.type) return a.type === "folder" ? -1 : 1;
       if (col) {
         /* 名称列走拼音序,和通用列表的「名称」保持一致 */
         if (col.k === "_name") return cmpName(a, b) * dir;
@@ -736,17 +754,17 @@ const Drive = {
     $("#main")?.classList.toggle("home-mode", isHome);
     content.classList.toggle("is-home", isHome);
 
-    if (isHome) {
-      $("#listHead").classList.add("hidden");
-      content.classList.remove("view-grid");
-      root.innerHTML = this.dashboard();
-      return;
-    }
-
     if (!s.ready) {
       $("#listHead").classList.add("hidden");
       content.classList.remove("view-grid");
       root.innerHTML = s.loadError ? this.errorHtml(s.loadError) : this.loadingHtml();
+      return;
+    }
+
+    if (isHome) {
+      $("#listHead").classList.add("hidden");
+      content.classList.remove("view-grid");
+      root.innerHTML = this.dashboard();
       return;
     }
 

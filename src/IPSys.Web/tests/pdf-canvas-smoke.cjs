@@ -104,5 +104,55 @@ vm.runInContext(fs.readFileSync(path.join(root,'pdf-preview.js'),'utf8'),vmCtx);
  viewer.destroy();
  assert.equal(canvas.width,0,'Destroy must release canvas dimensions');
  assert.equal(wasDestroyed,true,'Destroy must release PDF document/worker');
+
+ /* BUG-018: test the Explorer preview entry itself, not just the standalone
+    viewer's open method. create() without open() leaves the canvas empty. */
+ let opened=0, destroyed=0, created=0;
+ const previewBody={innerHTML:''};
+ const mask={
+  isConnected:true,
+  querySelector(sel){
+   if(sel==='.preview-body')return previewBody;
+   return {addEventListener(){}};
+  },
+  addEventListener(){},
+  remove(){this.isConnected=false;}
+ };
+ const previewCtx=vm.createContext({
+  console,Error,Promise,
+  findById:()=>({id:'f:123:2',name:'two-pages.pdf',type:'file'}),
+  fileUrlOf:()=>'/download/123',
+  extOf:()=> 'pdf',
+  openPreviewShell:()=>mask,
+  document:{
+   body:{append(node){node.isConnected=true;}},
+   addEventListener(){},removeEventListener(){},
+   querySelector:()=>mask,
+  },
+  VaultStore:{api:async()=>({arrayBuffer:async()=>new ArrayBuffer(844)})},
+  ensurePdfViewer:async()=>({
+   create(target,data){
+    created++;
+    assert.equal(target,previewBody);
+    assert.equal(data.byteLength,844);
+    return {async open(){opened++;},destroy(){destroyed++;}};
+   }
+  }),
+  askConfirm:async()=>false,
+  toast:()=>{throw Error('PDF preview must not show a failure toast');},
+  esc:s=>String(s),
+  icon:()=> '',
+  URL:{revokeObjectURL(){}},
+  setTimeout:()=>{},
+ });
+ const start=app.indexOf('async function previewFile(id) {');
+ const end=app.indexOf('/* ---------------- 上传 ---------------- */',start);
+ assert.ok(start>=0&&end>start,'Explorer previewFile function must be present');
+ vm.runInContext(app.slice(start,end),previewCtx,{filename:'interactions.previewFile.js'});
+ await vm.runInContext("previewFile('f:123:2')",previewCtx);
+ assert.equal(created,1,'Explorer must create exactly one PDF viewer');
+ assert.equal(opened,1,'Explorer must call viewer.open() so PDF parsing starts');
+ assert.equal(destroyed,0,'Viewer must stay open during preview');
+
  console.log('PDF CANVAS SMOKE PASS: offline assets, full-page Canvas, pagination, zoom, cleanup, security');
 })().catch(e=>{console.error(e);process.exitCode=1;});
