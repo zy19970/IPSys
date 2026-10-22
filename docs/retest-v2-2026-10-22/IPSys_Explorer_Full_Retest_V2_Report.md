@@ -4,7 +4,7 @@
 - 测试时被测产品源码基线：`02289ea7020861360baa0a4c49ca045f3c783aea`｜交付分支 `work/onedrive-file-manager`
 - 测试库：`build-retest/agent-explorer-full-v2/vault-v2c.db`（本轮新建，随机密码仅存于同目录 `.cred.json`，不入库）
 - 浏览器：本机 Microsoft Edge（headless=new，CDP 驱动；未接管用户已开窗口）
-- 结论先行：**产品源码零改动**。38 项中 20 项形成有效结论，18 项 BLOCKED/待复测；旧版搜索与 PDF 测试存在判据不足，复核已撤销一项误报并修正统计。**不建议现在合并回 main。**
+- 结论先行：Windows CI 实际复测完成，38 项中 22 项形成有效结论、16 项仍 BLOCKED。搜索映射通过；PDF 预览确认 BUG-018。产品业务代码尚未修复，**不建议现在合并回 main**。
 
 ---
 
@@ -40,17 +40,19 @@
 
 | 状态 | 数量 | 说明 |
 |---|---:|---|
-| PASS | 6 | T-P2-06 / 11 / 12、R-03、R-05、R-08 |
-| CONFIRMED_BUG | 7 | BUG-001/002/003/013/014/015/016 |
+| PASS | 7 | T-P2-06 / 07 / 11 / 12、R-03 / R-05 / R-08 |
+| CONFIRMED_BUG | 8 | BUG-001/002/003/013/014/015/016/018 |
 | IMPLEMENTATION_GAP | 6 | BUG-005/006/008/009/010、R-02 |
 | DOC_GAP | 1 | R-07（Q122 旧口径） |
-| BLOCKED | 18 | 16 项原未完成，另 T-P2-07 / T-P2-09 需按修订判据复测 |
-| **合计** | **38** | **30 旧 + 8 新，ID 全保留** |
+| BLOCKED | 16 | 16 项仍未完成或仅完成复合用例的一部分 |
+| **合计** | **38** | **原有 30 项 + 新增 8 项，ID 保留** |
 
-- 测试项：38｜形成有效结论：20｜BLOCKED/待复测：18
-- 问题目录：13 个已识别产品 BUG 编号（BUG-004 本轮未复跑）、1 项实现缺口（R-02）、1 项文档缺口（R-07）；T-P1-02 的单独删合同子项尚未确认为缺陷，BUG-017 已撤销
-- 方法分布（按 CSV Method 列）：`DYNAMIC-BROWSER` 10、`DYNAMIC-HTTP` 4、`STATIC` 3、`MIXED` 8、未指定具体方法 13
-- 逐项状态见 `IPSys_Explorer_Full_Retest_V2_Cases.csv`（12 列，含 Observed/Expected/Evidence/SourcePath）；原始结果与复核判定的差异见 `evidence/RESULT-ADJUDICATION.md`
+- 测试项：38｜形成有效结论：22｜BLOCKED：16
+- 当前缺陷目录：14 个编号（BUG-004 为上轮已证实、本轮未复跑；BUG-007 与 BUG-017 已撤销；本轮新增 BUG-018），另有 R-02 实现缺口与 R-07 文档缺口。
+- 方法分布：`DYNAMIC-BROWSER` 9、`DYNAMIC-HTTP` 4、`STATIC` 3、`MIXED` 9、未指定方法 13。
+- Windows CI：构建、单文件发布、MCP 握手、8 项 Node 冒烟、SQLCipher/HTTP smoke 和本轮 HTTP/Edge 测试执行流程均成功；该工作流成功表示测试完整执行，不代表所有产品用例通过。
+- 本轮运行记录：`evidence/runs/v2ci-39726553781-1/`；完整截图及宿主日志见 [Actions artifact（30 天保留）](https://github.com/zy19970/IPSys/actions/runs/39726553781/artifacts/12403621382)。
+- 逐项状态见 `IPSys_Explorer_Full_Retest_V2_Cases.csv`；本轮原始分层结果为 `evidence/runs/v2ci-39726553781-1/http-results.json` 与 `browser-results.json`。
 
 ## 4. 本轮确认的缺陷（按严重度）
 
@@ -91,6 +93,14 @@
 
 `pickFiles()` 只判断当前 folderId 是不是 folder；首页 `folderId=root` 恰好通过，于是**打开了 1 次文件选择器，没有任何“先选记录”的引导**。`REQUIREMENTS.md:30/153` 要求先有业务记录再上传。
 
+### BUG-018（P2，T-P2-09）PDF 预览创建后没有启动解析
+
+- **实测**：点击 `PDF 两页示例.pdf` 后，页码始终为“加载中”，状态始终为“正在解析 PDF…”，Canvas 维持初始 `300×150`；第 1 页未渲染，第 2 页无法进入。
+- **排除测试素材问题**：下载接口返回 HTTP 200、844 字节；fixture 含有效 xref、字体资源与准确 stream Length。宿主日志记录 `/pdfjs/pdf.min.js` 返回 200，但未见 `/pdfjs/pdf.worker.min.js` 请求。
+- **归因**：`frontend/explorer/js/interactions.js` 的 `previewFile()` 调用 `viewer.create(body, buffer)` 后只保存返回对象，没有调用 `pdfViewer.open()`。`src/IPSys.Web/wwwroot/pdf-preview.js` 的 `create()` 仅创建界面并返回 `{open,destroy}`；真正的 `getDocument()` 与 `renderPage()` 在 `open()` 内，因此解析流程从未启动。
+- **证据**：`evidence/runs/v2ci-39726553781-1/T-P2-09.txt`、本轮 `browser-results.json`；[完整截图与日志 artifact](https://github.com/zy19970/IPSys/actions/runs/39726553781/artifacts/12403621382)。
+- **复现率**：1/1（本轮有效两页 PDF fixture）。产品代码尚未在本轮修改，修复后仍须重跑两页渲染回归。
+
 ### IMPLEMENTATION_GAP（6 项）
 
 | ID | 能力 | 后端 | 前端 |
@@ -120,8 +130,8 @@
 | T-P1-02 | FAIL | **①PASS / ②BLOCKED（不确认 BUG-007）** | ①整体删项目：回收站只有 project，恢复后合同回来 |
 | T-P1-05 | FAIL | **IMPLEMENTATION_GAP** | 后端 `entries/reorder` 实测可用；前端无入口 |
 | T-P1-10 | PASS（静态） | **BLOCKED** | A/B 未动态复跑，不能沿用 PASS |
-| T-P2-07 | PASS | **BLOCKED** | 旧脚本只证明档案跳转；未测试附件命中映射，且证据文字与实际查询词不一致 |
-| T-P2-09 | PASS | **BLOCKED** | 旧判据仅检查 Canvas 存在；状态仍在解析且页码为 0，未证明渲染成功 |
+| T-P2-07 | BLOCKED | **PASS** | HTTP 返回 ownerKind=ip、ownerId=19；Edge 精确跳转档案并映射综合资料附件到 linkId=6 |
+| T-P2-09 | BLOCKED | **CONFIRMED_BUG（BUG-018）** | 有效 844B PDF 已下载，UI 仍停留在“正在解析”；源码缺少 `pdfViewer.open()` 调用 |
 | T-P2-12 | PASS | **PASS** | Host 403 / Origin 403 / 无 token 401 / localhost 403 |
 | R-08 | BUG-017 | **PASS（误报撤销）** | `f:2:1` 与 `f:3:2` 是不同 linkId；原断言没有把同一附件版本拆成两行 |
 | R-03/R-05 | 新 | **PASS** | 删一处不影响另一处；四项计量分开 |
@@ -134,7 +144,7 @@
 2. **测试库隔离**：每轮新 `runid`，密码随机写入 `build-retest/.../*.cred.json`，不进 docs、不进日志。
 3. **浏览器**：CDP 驱动自带 Edge 进程（独立 `--user-data-dir`），结束时只关自己那一个进程，**不按映像名杀 msedge**。
 4. **宿主单实例**：中途重复启动触发过系统提示框，已清理；之后全轮只保留一个宿主。
-5. **未形成结论的事项**：18 项 BLOCKED 中，16 项本轮未完成；T-P2-07 与 T-P2-09 已尝试，但原判据/证据不足，需按修订脚本重测。原始 JSON 保留旧结果，不回写成“新实测”。`T-P2-10` 的原生拾取器、`T-P1-09` 的 PATH 隔离仍未执行。
+5. **未形成结论的事项**：当前剩余 16 项 BLOCKED；T-P2-07 已通过有效 HTTP/Edge 判据，T-P2-09 已确认 BUG-018，不再列为 BLOCKED。`T-P2-10` 的原生拾取器、`T-P1-09` 的 PATH 隔离仍未执行。旧版 JSON 与旧证据保留不动。
 
 ---
 
@@ -148,9 +158,9 @@
 2. BUG-003（批量删除的结果与刷新）—— 与 BUG-002 同源，版本归并后不会再对同一 linkId 发两次；
 3. BUG-006 / 009 / 010（登录建库 + 目录 CRUD + 排序）—— 入口契约；
 4. BUG-013 / 014 / 015 / 016（误导性入口）—— 文案与可见性；
-5. 在修复 BUG-002 前，新增“同一 linkId 多版本只显示最新版”的回归用例；现有 `ui-tree-smoke` 断言本身无需修改。
+5. 修复 BUG-018：在 `previewFile()` 创建阅读器后启动 `pdfViewer.open()`，并保留有效两页 PDF 的端到端回归；现有 `ui-tree-smoke` 断言本身无需修改。
 
-**合并门槛**：两个 P0 有动态回归用例（目录递归、版本归并）；增加同一 linkId 多版本折叠的自动化覆盖（现有 `ui-tree-smoke` 断言本身不需修改）；关库与压缩任务互斥测试完成；T-P2-07 附件搜索映射和 T-P2-09 两页 PDF 渲染通过有效判据；18 项 BLOCKED 均需逐项关闭或保留明确理由。
+**合并门槛**：两个 P0 有动态回归用例（目录递归、版本归并）；增加同一 linkId 多版本折叠的自动化覆盖（现有 `ui-tree-smoke` 断言本身不需修改）；关库与压缩任务互斥测试完成；T-P2-07 附件搜索映射已通过；T-P2-09 的 BUG-018 修复后必须通过两页渲染回归；剩余 16 项 BLOCKED 均需逐项关闭或保留明确理由。
 
 ---
 
@@ -163,7 +173,9 @@
 | `evidence/fixture-build.log` | 建库与每个 fixture 的 HTTP 往返 |
 | `evidence/T-P0-0x.txt` / `T-P1-0x.txt` / `T-P2-0x.txt` / `R-0x.txt` | 每项的请求、返回、判定 |
 | `evidence/shots/` | 登录页、档案根、IP 附件两行、删除后、重命名、快捷访问、首页导入、键盘、搜索、PDF、三档视口 |
-| `evidence/http-results.json` / `browser-results.json` | 旧版脚本原始结果，保留原样 |
+| `evidence/http-results.json` / `browser-results.json` | 第一轮原始脚本结果，保留原样 |
+| `evidence/runs/v2ci-39726553781-1/` | 本轮 Windows 实测 JSON、搜索/PDF 关键证据与 38 项结果快照 |
+| [Actions artifact](https://github.com/zy19970/IPSys/actions/runs/39726553781/artifacts/12403621382) | 本轮截图、完整逐项文本证据、fixture 日志和宿主日志（30 天保留） |
 | `evidence/RESULT-ADJUDICATION.md` | 原始结果的判定复核、误报撤销与待复测原因 |
 | `evidence/BLOCKED-LIST.md` | 18 项未形成有效结论的原因与复跑方式 |
 | `scripts/` | `lib.cjs` / `fixture.cjs` / `t-http.cjs` / `t-browser.cjs` / `gen-cases.py` |
