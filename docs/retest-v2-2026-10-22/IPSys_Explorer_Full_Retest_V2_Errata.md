@@ -295,3 +295,15 @@ toast("附件移动需要后端支持 link 迁移；当前请用「上传」挂�
 ### E-15 统计必须分开计算
 
 38 项总数不变。复核后状态分布为 PASS 6、CONFIRMED_BUG 7、IMPLEMENTATION_GAP 6、DOC_GAP 1、BLOCKED 18。按 CSV 的 Method 列计数为 DYNAMIC-BROWSER 10、DYNAMIC-HTTP 4、STATIC 3、MIXED 8、方法未指定 13；方法分布不等于状态分布。当前识别 13 个产品 BUG 编号（其中 BUG-004 本轮未复跑），另有 R-02 实现缺口与 R-07 文档缺口。
+
+
+---
+
+## E-16 Windows V2 实测更新（Actions run 39726553781）
+
+本轮执行了 Debug 构建、Release 单文件发布、MCP 握手、8 项 Node 冒烟、SQLCipher/HTTP smoke，以及隔离测试库上的 HTTP 与 Edge 浏览器复测。工作流结论为 success，测试本身发现的产品缺陷仍按用例状态单独统计。
+
+- **T-P2-07：PASS。** HTTP 搜索返回正确的 `ownerKind=ip`、`ownerId=19`；Edge 档案跳转和附件 `fileId→linkId` 映射均正确。
+- **T-P2-09：CONFIRMED_BUG，新增 BUG-018。** 有效 PDF 下载 200、844 字节，但预览仍显示“正在解析 PDF…”，页码为“加载中”。`interactions.js` 创建 viewer 后未调用 `pdfViewer.open()`，导致 PDF.js 文档加载和页面渲染未启动。
+- **当前统计**：PASS 7、CONFIRMED_BUG 8、IMPLEMENTATION_GAP 6、DOC_GAP 1、BLOCKED 16（共 38 项）。
+- 新结果保存于 `evidence/runs/v2ci-39726553781-1/`；截图和完整宿主日志见 [Actions artifact](https://github.com/zy19970/IPSys/actions/runs/39726553781/artifacts/12403621382)。

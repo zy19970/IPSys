@@ -1,40 +1,35 @@
 # V2 原始结果复核与判定更正
 
-日期：2026-10-22  
-适用分支：`work/onedrive-file-manager`  
-原则：`http-results.json`、`browser-results.json` 和原始 T-P2 证据文件保留原样；本文件记录复核后的判定，不把旧记录改写成新实测。
+日期：2026-10-22；适用分支：`work/onedrive-file-manager`
+本轮实测：Windows GitHub Actions run [39726553781](https://github.com/zy19970/IPSys/actions/runs/39726553781)，源码基线 `02289ea7020861360baa0a4c49ca045f3c783aea`。原始旧结果与证据文件保留不动；新结果单独存放于 `evidence/runs/v2ci-39726553781-1/`。
 
 ## R-08：原 BUG-017 判定为误报
 
-`ui-tree-smoke.cjs` 中的 `f:2:1` 与 `f:3:2` 分别对应 `linkId=2` 与 `linkId=3`，属于两个不同附件。断言没有要求同一 linkId 的每个版本分别显示。因此撤销 BUG-017，R-08 改为 PASS。该 smoke 尚未覆盖同一 linkId 的多版本折叠；BUG-002 仍由 T-P0-02 的独立动态证据支持。
+`ui-tree-smoke.cjs` 中的 `f:2:1` 与 `f:3:2` 分别对应 `linkId=2` 与 `linkId=3`，属于两个独立附件。原断言没有把同一 linkId 的每个版本要求为多行。因此撤销 BUG-017，R-08 保持 PASS。现有 smoke 未覆盖同一 linkId 多版本折叠；BUG-002 由 T-P0-02 的独立动态证据确认。
 
-## T-P2-07：原始 PASS 证据不足，待复测
+## T-P2-07：旧 PASS 证据不足；本轮有效复测 PASS
 
-旧版脚本实际将查询框设为“档案-01”，随后检查任意结果行是否存在，并把任意非空 folderId 当作通过；写入证据的文字却误写成“搜索『专利说明书』”。该运行只能证明档案记录跳转，不能证明任务书所述的附件搜索 `fileId → linkId` 映射。
+旧版脚本只查询“档案-01”，不足以证明附件映射。本轮 HTTP 实测返回 2 条文件命中，分别属于 IP-A 与 IP-B；IP-A 命中包含 `ownerKind=ip`、`ownerId=19`，不存在词返回空数组。Edge 层精确命中 `a:achievement:10` 并跳转；“综合资料附件.txt”映射到真实节点 `f:6:1`、`fileId=5`、`linkId=6`、所属记录 `g:21`。HTTP 与浏览器两层均 PASS，CSV 当前状态为 PASS，不再 BLOCKED。
 
-已修订脚本：先要求档案记录精确命中预期 ID 并跳转到同一 ID，再搜索单版本附件“综合资料附件.txt”，核对可见节点 ID、fileId、linkId 及所属综合资料记录。修订后的脚本尚未在真实宿主中重跑，因此当前总表判为 BLOCKED，而不是把旧 PASS 直接沿用。
+## T-P2-09：旧 PASS 无效；本轮确认 BUG-018
 
-## T-P2-09：旧 PASS 无效，待复测
+本轮使用有效两页 PDF fixture，下载接口返回 HTTP 200、844 字节。Edge 预览仍停留在“正在解析 PDF…”，页码为“加载中”，Canvas 为初始 `300×150`，两页均未完成渲染。宿主日志记录 `/pdfjs/pdf.min.js` 成功加载，但没有后续 `/pdfjs/pdf.worker.min.js` 请求。
 
-旧脚本仅以页面上存在任意 Canvas 判 PASS。原始记录实际上是 `canvas=1`、状态“正在解析 PDF…”，页码计数为 0；这些数据不证明任何一页已渲染完成。
-
-同时，旧 PDF fixture 缺少有效 xref 和页面字体资源，且流长度声明不可靠，不能排除测试素材本身导致失败。已修订 fixture，使用带 xref、字体资源和准确 stream Length 的有效两页 PDF；浏览器脚本现在必须依次验证 `1 / 2` 与 `2 / 2`、Canvas 尺寸非零且渲染状态为空。修订后的动态测试尚未运行，当前判为 BLOCKED，不据旧证据认定产品缺陷。
+源码复核发现 `frontend/explorer/js/interactions.js` 的 `previewFile()` 只执行 `pdfViewer = viewer.create(body, buffer)`，没有调用 `pdfViewer.open()`。`src/IPSys.Web/wwwroot/pdf-preview.js` 中 `create()` 只创建界面并返回 `{open,destroy}`，`getDocument()` 和 `renderPage()` 均在 `open()` 内。因此这次失败归因于产品集成缺陷，而非 PDF fixture；登记为 BUG-018。修复后仍须重跑两页渲染测试。
 
 ## T-P1-02：复合用例不等于已确认 BUG-007
 
-整体删除项目后合同不单列、恢复项目后合同回来，已有证据为 PASS。单独删除合同后的回收站 UI 行为没有完成独立复测，因此该子项继续 BLOCKED；撤销现阶段对 BUG-007 的确认，待验证需求与实际恢复语义后再决定是否登记缺陷。
+整体删项目后合同不单列、恢复项目后合同回来，HTTP 证据为 PASS。单独删除合同后的回收站 UI 行为仍未独立复测，因此该子项继续 BLOCKED，不确认 BUG-007。
 
-## 统计口径更正
+## 当前统计口径
 
-38 项总数不变。复核后状态分布为：PASS 6、CONFIRMED_BUG 7、IMPLEMENTATION_GAP 6、DOC_GAP 1、BLOCKED 18。当前形成有效结论的项目为 20 项；另 18 项尚未形成完整结论，其中原有 16 项未完成，T-P2-07 与 T-P2-09 因判据/证据不足需复测。
+38 项总数不变。当前状态为 PASS 7、CONFIRMED_BUG 8、IMPLEMENTATION_GAP 6、DOC_GAP 1、BLOCKED 16；有效结论 22 项，BLOCKED 16 项。方法分布为 `DYNAMIC-BROWSER` 9、`DYNAMIC-HTTP` 4、`STATIC` 3、`MIXED` 9、未指定 13。
 
-产品缺陷目录保留 13 个已识别 BUG 编号（包括本轮未复跑的 BUG-004），另列 R-02 一项实现缺口和 R-07 一项文档缺口。T-P1-02 的单独删合同子项暂不计入已确认缺陷；BUG-017 已撤销。原始 JSON 仍记录旧脚本当时输出的结果，CSV 生成器只在识别到旧版观察值时应用本文件所述的判定更正；新脚本复跑后会采用新结果。
+当前缺陷目录包含 14 个编号：BUG-004 为上轮已证实、本轮未复跑；BUG-007 与 BUG-017 已撤销；BUG-018 为本轮新增。R-02 保留为实现缺口，R-07 保留为文档缺口。
 
+## 本轮证据
 
-## 补充核查：大小提取、归属字段、拖放源对象
-
-T-P0-02 的原始文本已清楚显示两行附件分别为 37 B 和 22 B。旧 `t-browser.cjs` 在正则字面量中错误地把 `\d`、`\s` 写为双重反斜杠，导致提取结果为两个空字符串。已修复正则，总表只保留可以从原始文本确认的版本拆行问题；新的提取结果须实机复测。
-
-原 E-03“全仓无 ownerKind”结论撤销。`SearchStore.cs` 的响应模型包含 `OwnerKind/OwnerId`，前端 `store.js` 使用 camelCase 的 `ownerKind/ownerId` 和附件元数据。T-P2-07 的修订脚本需要对其做真实映射检查。
-
-T-P2-02 的原始证据写“IP-A 里的附件”，但脚本实际先打开 `p:projectA`，选取项目 A 内的首条附件，再将其拖往 IP-B。已更正复测脚本与报告文字，原始证据文件仍保留，不把旧错误描述覆盖为新的实测。
+- 分层结果：`http-results.json`、`browser-results.json`。
+- 关键文本证据：`T-P2-07-http.txt`、`T-P2-07.txt`、`T-P2-09.txt`。
+- 截图与完整宿主日志：[Actions artifact（30 天保留）](https://github.com/zy19970/IPSys/actions/runs/39726553781/artifacts/12403621382)。
+- Windows CI 总结成功仅代表构建与测试执行流程完成；产品层仍有 8 项确认缺陷及 6 项实现缺口。
