@@ -12,6 +12,7 @@ function extract(start,end){
  assert.ok(a>=0&&b>a,"source anchor "+start);
  return code.slice(a,b);
 }
+const guard=extract("function canCreateHere() {","function safeRefresh() {");
 const part=extract("function archiveScope() {","/* ---------------- 内容区 ---------------- */");
 function folder(id,name,children,parentId,isSystem){
  return {id:"af:"+id,name,type:"folder",
@@ -37,7 +38,7 @@ const pathTo=id=>{
 const calls=[],modals=[],menus=[],toasts=[];
 let refreshCount=0,clearCount=0,allowDelete=true;
 const Drive={
- state:{view:"files",folderId:"af:70",query:"",sortBy:"position",sortDir:"asc",
+ state:{view:"files",folderId:"af:70",query:"",ready:true,sortBy:"position",sortDir:"asc",
   statusFilter:null,extFilter:null},
  get currentFolder(){return nodes.get(this.state.folderId);},
  clearSelection(){clearCount++;}
@@ -59,6 +60,7 @@ const context=vm.createContext({
  catsOf:()=>[{id:"achievement",label:"业务档案"}],
  catLabel:id=>id,
 });
+vm.runInContext(guard,context,{filename:"interactions-create-guard.js"});
 vm.runInContext(part,context,{filename:"interactions-archive.js"});
 const fn=name=>vm.runInContext(name,context);
 (async()=>{
