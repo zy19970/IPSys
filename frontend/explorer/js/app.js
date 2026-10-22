@@ -640,10 +640,25 @@ const Drive = {
     const s = this.state;
     const locked = s.view === "recycle" || !s.ready;
 
-    for (const id of ["btnNew", "btnUpload", "btnFilter"]) {
-      const b = $(`#${id}`);
-      if (b) b.disabled = locked;
+    const canNew = !locked && canCreateHere();
+    const canUpload = !locked && canUploadFiles(this.currentFolder);
+    const newButton = $("#btnNew");
+    if (newButton) {
+      newButton.disabled = !canNew;
+      newButton.title = canNew ? "新建记录或下级目录" : "请先进入可新建资料的分类或项目";
     }
+    const sideNew = $("#btnNewSide");
+    if (sideNew) sideNew.disabled = !canNew;
+    const uploadButton = $("#btnUpload");
+    if (uploadButton) {
+      uploadButton.disabled = !canUpload;
+      uploadButton.title = canUpload ? "上传到当前业务记录" : "请先进入具体业务记录上传";
+    }
+    const filterButton = $("#btnFilter");
+    if (filterButton) filterButton.disabled = locked;
+    const refreshButton = $("#btnRefresh");
+    if (refreshButton) refreshButton.disabled = !s.ready;
+
     $("#btnFilter")?.classList.toggle("is-active", !!(s.extFilter || s.statusFilter));
     const et = $("#btnEmptyTrash");
     if (et) {
@@ -1191,13 +1206,14 @@ const Drive = {
     const actions = `
       <div class="detail-actions">
         ${
-          isFolder
+          locked ? "" : isFolder
             ? `<button class="btn solid" data-detail-act="open">${icon("folder", 16)}打开</button>`
             : `<button class="btn solid" data-detail-act="preview">${icon("eye", 16)}预览</button>`
         }
         ${
           locked
-            ? `<button class="btn" data-detail-act="restore">${icon("restore", 16)}还原</button>`
+            ? `<button class="btn" data-detail-act="restore">${icon("restore", 16)}还原</button>
+               <button class="btn" data-detail-act="delete">${icon("trashForever", 16)}彻底删除</button>`
             : `<button class="btn" data-detail-act="download">${icon("download", 16)}下载</button>
                <button class="btn" data-detail-act="delete">${icon("trash", 16)}删除</button>`
         }

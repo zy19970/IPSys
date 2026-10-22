@@ -738,8 +738,7 @@ function bindNav() {
     const pageAct = e.target.closest("[data-page-act]");
     if (pageAct) {
       const a = pageAct.dataset.pageAct;
-      if (a === "upload") pickFiles();
-      else if (a === "new") openNewMenu(pageAct);
+      if (a === "new") openNewMenu(pageAct);
       return;
     }
     if (e.target.closest("[data-retry]")) {
@@ -750,21 +749,33 @@ function bindNav() {
   $("#btnNewSide").addEventListener("click", (e) => openNewMenu(e.currentTarget));
 }
 
+/* 下载入口共用：单文件直下，目录与多选打包导出。 */
+function downloadNodes(nodes) {
+  if (!nodes?.length) return toast("请选择要下载的内容");
+  if (nodes.length === 1 && nodes[0].type === "file")
+    return downloadFile(nodes[0].id);
+  return exportNodes(nodes);
+}
+
+function canCreateHere() {
+  const s=Drive.state;
+  if (!s.ready || s.view === "recycle" || s.wsPending || s.query.trim()) return false;
+  if (s.view === "home") return true;
+  if (s.view !== "files") return false;
+  const id=String(s.folderId||"");
+  return id.startsWith("k:") || id.startsWith("af:") || id.startsWith("p:");
+}
+
+function safeRefresh() {
+  void refreshCurrent().then(() => toast("已刷新"))
+    .catch(e => toast("刷新失败：" + e.message,{tone:"error",ms:6000}));
+}
+
 function bindCmdbar() {
   $("#btnNew").addEventListener("click", (e) => openNewMenu(e.currentTarget));
   $("#btnUpload").addEventListener("click", () => pickFiles());
 
-  $("#btnRefresh").addEventListener("click", async () => {
-    const keep = Drive.state.folderId;
-    await enterWorkspace(VaultStore.ws);
-    const node = findById(keep);
-    if (node) {
-      Drive.state.folderId = keep;
-      Drive.state.view = "files";
-      Drive.render();
-    }
-    toast("已刷新");
-  });
+  $("#btnRefresh").addEventListener("click", safeRefresh);
 
   $("#btnEmptyTrash").addEventListener("click", () => emptyRecycle());
 
@@ -1020,6 +1031,7 @@ function moveArchiveEntry(node) {
 /* ---------------- 新建菜单 ---------------- */
 
 function openNewMenu(anchor) {
+  if (!canCreateHere()) return toast("请先进入可新建资料的分类或项目");
   const r = anchor.getBoundingClientRect();
   const s = Drive.state;
 
@@ -1302,7 +1314,9 @@ function renameNode(node) {
 function showItemMenu(id, x, y) {
   const item = findById(id) || RECYCLE.find((i) => i.id === id);
   if (!item) return;
+  if (!Drive.state.selection.has(id)) Drive.select(id, "single");
   const trash = isTrashNode(id);
+  const actionItems = Drive.selectedItems.filter(n => isTrashNode(n.id) === trash);
   const isFolder = item.type === "folder";
   const b = item.biz || {};
 
@@ -1311,8 +1325,8 @@ function showItemMenu(id, x, y) {
       MI("restore", "restore", "还原"),
       MI("purge", "trashForever", "彻底删除", "", true),
     ].join(""), {
-      restore: () => recycleAction([item], "restore"),
-      purge: () => recycleAction([item], "purge"),
+      restore: () => recycleAction(actionItems, "restore"),
+      purge: () => recycleAction(actionItems, "purge"),
     });
     return;
   }
@@ -1350,7 +1364,7 @@ function showItemMenu(id, x, y) {
     open: () => (isFolder ? Drive.openFolder(id) : previewFile(id)),
     newcontract: () => RecordForms.contract(null, b.id),
     props: () => RecordForms.edit(item),
-    download: () => (isFolder ? exportNodes([item]) : downloadFile(id)),
+    download: () => downloadNodes([item]),
     newver: () => uploadNewVersion(item),
     assoc: () => associateOriginal(item, false),
     "assoc-move": () => associateOriginal(item, true),
@@ -1361,27 +1375,27 @@ function showItemMenu(id, x, y) {
     "sort-down": () => reorderArchiveEntry(item,1),
     "move-archive": () => moveArchiveEntry(item),
     "delete-folder": () => deleteArchiveFolder(item),
-    delete: () => deleteNodes([...Drive.state.selection].map((i) => findById(i) || RECYCLE.find((n) => n.id === i)).filter(Boolean)),
+    delete: () => deleteNodes(actionItems),
   });
 }
 
 function showBlankMenu(x, y) {
   const s = Drive.state;
   if (s.view !== "files") {
-    showCtx(x, y, MI("refresh", "refresh", "刷新"), { refresh: () => enterWorkspace(VaultStore.ws) });
+    showCtx(x, y, MI("refresh", "refresh", "刷新"), { refresh: safeRefresh });
     return;
   }
   const cur = nodeTag(s.folderId) === "k" ? s.folderId.slice(2) : "";
   showCtx(
     x,
     y,
-    [MI("new", "plus", "新建"),
+    [canCreateHere() ? MI("new", "plus", "新建") : "",
       canUploadFiles(findById(s.folderId)) ? MI("upload", "upload", "上传") : "",
-      '<div class="ctx-sep"></div>', MI("refresh", "refresh", "刷新")].join(""),
+      MI("refresh", "refresh", "刷新")].filter(Boolean).join(""),
     {
       new: () => ($(`#btnNew`) ? openNewMenu($("#btnNew")) : null),
       upload: () => pickFiles(),
-      refresh: () => enterWorkspace(VaultStore.ws),
+      refresh: safeRefresh,
     }
   );
 }
@@ -1436,11 +1450,7 @@ function startMarquee(startEvt) {
 function bindSelectionBar() {
   $("#selClear").addEventListener("click", () => Drive.clearSelection());
 
-  $("#selDownload").addEventListener("click", () => {
-    const items = Drive.selectedItems;
-    if (!items.length) return toast("请选择要下载的内容");
-    void exportNodes(items);
-  });
+  $("#selDownload").addEventListener("click", () => downloadNodes(Drive.selectedItems));
 
   $("#selDelete").addEventListener("click", () => {
     const items = Drive.selectedItems;
@@ -1471,8 +1481,7 @@ function bindDetail() {
         if (one) previewFile(one.id);
         break;
       case "download":
-        items.filter((i) => i.type === "file").forEach((i) => downloadFile(i.id));
-        if (!items.some((i) => i.type === "file")) toast("文件夹不包含可直接下载的附件");
+        downloadNodes(items);
         break;
       case "delete":
         if (Drive.state.view === "recycle") recycleAction(items, "purge");
@@ -1553,6 +1562,9 @@ function bindKeyboard() {
       return;
     }
 
+    if ($("#formMask")?.classList.contains("show") ||
+        $("#confirmMask")?.classList.contains("show") ||
+        document.querySelector(".preview-mask.show")) return;
     if (e.target.matches("input, textarea, select")) return;
     if ($("#lockScreen")?.classList.contains("show")) return;
 
@@ -1760,9 +1772,16 @@ async function refreshCurrent() {
   Drive.resetSearch();
   const node = findById(keep);
   Drive.state.ready = true;
-  if (node) {
-    Drive.state.folderId = node.type === "folder" ? keep : findParent(keep)?.id || "root";
-    Drive.state.view = view === "recycle" ? "recycle" : "files";
+  Drive.state.selection = new Set([...Drive.state.selection].filter(
+    id => findById(id) || RECYCLE.some(item => item.id === id)));
+  if (view === "recycle") {
+    Drive.state.view = "recycle";
+  } else if (view === "home") {
+    Drive.state.folderId = "root";
+    Drive.state.view = "home";
+  } else if (node && node.type === "folder") {
+    Drive.state.folderId = keep;
+    Drive.state.view = "files";
   } else {
     Drive.state.folderId = "root";
     Drive.state.view = "home";

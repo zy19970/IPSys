@@ -60,7 +60,7 @@
 - F2-02：代码完成，Windows CI #39803595080 completed/success；后端及 Explorer 可操作多级目录、严格混排重排与父子移动。
 - F2-03：功能完成，Windows CI #39805870827 completed/success；通用附件共享/移动采用 FileId/LinkId 原生事务，工作区隔离已覆盖。
 - F2-04：完整整记录复制/转移与合同原生事务实现，Windows CI #39809213273 completed/success（Debug、Release、Node、HTTP/Edge、SQLCipher）。
-- F2-05：内部附件拖放已对接 F2-03 同一事务入口，确认/取消/目标合法性/任务锁及外部文件重复上传保护新增 Node 实际事件回归；正式 Windows CI 待确认。
-- F2-06：待实施。
+- F2-05：内部附件拖放完成，Windows CI #39811469094 completed/success；同 F2-03 事务、确认/取消、409、任务锁与外部重复上传保护均已覆盖。
+- F2-06：前端公共入口与状态一致性修复已推送候选，新增 Node 动态回归；正式 CI 通过后再标记完成并生成本地 Agent 总体验收任务书。
 - 最终 Agent 实机全量验收：**按用户安排，全部功能完成后启动**。
 - 工作分支：`work/onedrive-file-manager`；`main` 暂不合并。
