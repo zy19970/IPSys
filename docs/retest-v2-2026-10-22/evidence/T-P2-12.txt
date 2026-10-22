@@ -1,0 +1,4 @@
+伪造 Host: evil.example -> 403（期望 403）
+伪造 Origin: http://evil.example -> 403（期望 403）
+无 token 访问 /api/v2/ui/projects/company -> 401（期望 401）
+localhost 访问 -> 403（期望 403：Host 严格等于 127.0.0.1）

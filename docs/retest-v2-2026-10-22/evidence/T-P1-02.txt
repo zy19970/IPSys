@@ -1,0 +1,8 @@
+项目C=25 合同C3=26
+DELETE 项目C -> 200
+回收站含 project=true, 含 contract=false（期望 false）
+POST restore 项目C -> 200
+恢复后 /api/v2/ui/contracts 含 C3=true
+
+①②必须分开判：①整体删项目时合同不单列是 RecycleStore 的 p.deleted=0 语义，正确；
+②单独删合同（父项目仍在）时后端确实返回 kind=contract，前端是否展示见 T-P1-02#ui。

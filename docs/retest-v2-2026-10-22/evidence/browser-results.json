@@ -1,0 +1,86 @@
+[
+  {
+    "id": "T-P1-01",
+    "method": "DYNAMIC-BROWSER",
+    "result": "IMPLEMENTATION_GAP",
+    "observed": "noCreate=true；按钮=[\"资料库文件\",\"密码\",\"打开\"]；含『新建/创建』=false；checkboxes=[]",
+    "expected": "登录页提供创建资料库入口（冻结基线 §2.1）"
+  },
+  {
+    "id": "T-P0-01",
+    "method": "DYNAMIC-BROWSER",
+    "result": "CONFIRMED_BUG",
+    "observed": "树中 af:8=false, af:9=false, 最深记录=true；分类根直接列出 9 行",
+    "expected": "每一级目录都在树中，记录归属最深处目录"
+  },
+  {
+    "id": "T-P0-02",
+    "method": "DYNAMIC-BROWSER",
+    "result": "CONFIRMED_BUG",
+    "observed": "同一 linkId 显示 2 行（期望 1），行内大小 [\"\",\"\"]",
+    "expected": "同一 linkId 只有一条可见附件，默认最新版 37B"
+  },
+  {
+    "id": "T-P0-03",
+    "method": "DYNAMIC-BROWSER",
+    "result": "CONFIRMED_BUG",
+    "observed": "选中 2 行删除后：服务端剩余 0 行、界面仍显示 2 行；反馈「关联已解除。」",
+    "expected": "不得对同一 linkId 多次 DELETE；失败要给成功/失败数并刷新真实结果"
+  },
+  {
+    "id": "T-P2-01",
+    "method": "DYNAMIC-BROWSER",
+    "result": "CONFIRMED_BUG",
+    "observed": "右键「重命名」与 F2 都只弹「重命名请点「修改」或右键「属性」」，名称未变（项目A）",
+    "expected": "重命名真的改名，或对未实现的命令不误导"
+  },
+  {
+    "id": "T-P2-02",
+    "method": "DYNAMIC-BROWSER",
+    "result": "CONFIRMED_BUG",
+    "observed": "内部拖拽后提示「附件移动需要后端支持 link 迁移；当前请用「上传」挂到目标记录」，文件未移动",
+    "expected": "内部移动真正执行，或明确说明不支持而不谎称后端缺失"
+  },
+  {
+    "id": "T-P2-03",
+    "method": "DYNAMIC-BROWSER",
+    "result": "CONFIRMED_BUG",
+    "observed": "「添加快捷访问」按钮点击后只弹「「快捷访问」已按资料分类自动生成」",
+    "expected": "按钮真能添加快捷访问；否则应不可用而不是假成功"
+  },
+  {
+    "id": "T-P2-04",
+    "method": "DYNAMIC-BROWSER",
+    "result": "CONFIRMED_BUG",
+    "observed": "首页点导入资料后打开文件选择器 1 次（folderId=root）",
+    "expected": "首页不得允许无归属上传，应引导先选记录"
+  },
+  {
+    "id": "T-P2-06",
+    "method": "DYNAMIC-BROWSER",
+    "result": "PASS",
+    "observed": "Ctrl+A 选中 2/2，Esc 清空=true，Delete 确认=true，Alt+Left → k:project",
+    "expected": "Ctrl+A 全选、Esc 取消、Delete 有确认、Alt+Left 返回上级"
+  },
+  {
+    "id": "T-P2-07",
+    "method": "DYNAMIC-BROWSER",
+    "result": "PASS",
+    "observed": "搜索得 2 条，双击后进入 a:achievement:10",
+    "expected": "搜索命中能映射到真实节点并跳转"
+  },
+  {
+    "id": "T-P2-09",
+    "method": "DYNAMIC-BROWSER",
+    "result": "PASS",
+    "observed": "预览画布数=1，容器=true",
+    "expected": "多页 PDF 由 canvas 正确渲染"
+  },
+  {
+    "id": "T-P2-11",
+    "method": "DYNAMIC-BROWSER",
+    "result": "PASS",
+    "observed": "1366x768@1x scroll=1366/1366；1920x1080@1x scroll=1920/1920；1366x768@1.5x scroll=1366/1366",
+    "expected": "三种视口不横向溢出、不重叠"
+  }
+]

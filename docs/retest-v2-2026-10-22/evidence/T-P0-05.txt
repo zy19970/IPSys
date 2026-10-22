@@ -1,0 +1,6 @@
+IP-A 目录的 links：[{"id":3,"fileId":3,"folderId":19,"fileName":"专利说明书.txt","displayName":null,"materialCategory":null,"position":0,"deleted":false,"latestVersion":2,"size":37,"sha256":"70412AE068F04626EAF443EE7E2E5017F1DD064DB8B3746E20D5973FD02805D7"}]
+IP-B 目录下的 links：[{"id":4,"fileId":3,"folderId":20,"fileName":"专利说明书.txt","displayName":null,"materialCategory":null,"position":0,"deleted":false,"latestVersion":2,"size":37,"sha256":"70412AE068F04626EAF443EE7E2E5017F1DD064DB8B3746E20D5973FD02805D7"}]
+
+IP-A linkIds=[3]  IP-B linkIds=[4]  互不重叠=true
+后端 POST /api/v2/files/{ws}/{fileId}/associate 已返回 {ok:true,moved:false}，说明同一 FileId 可复用到另一条记录。
+UI 只有一个『共享到目标知识产权』特例（bridge.js associateOriginal），项目/合同/档案/综合资料无入口。

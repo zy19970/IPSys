@@ -1,0 +1,41 @@
+BASE=http://127.0.0.1:62293
+DB=E:\Github\管理系统\build-retest\agent-explorer-full-v2\vault-v2c.db
+open create -> token len=64
+system folders: 7 -> 1:申报与认定, 2:规划与管理, 3:汇报与宣传, 4:会议与活动, 5:专项工作与合作, 6:政策与行业资料, 7:其他业务资料
+二级-A -> {"id":8,"reference":{"workspace":"company","kind":"archive_folder","id":8,"section":"achievement","isValid":true}}
+三级-A1 -> {"id":9,"reference":{"workspace":"company","kind":"archive_folder","id":9,"section":"achievement","isValid":true}}
+档案-01 -> id=10 folderId=9
+档案-02 -> id=11 folderId=1
+档案-03 -> id=12 folderId=1
+档案-04 -> id=13 folderId=1
+档案-05 -> id=14 folderId=1
+项目A=15 项目B=16
+合同C1=17 合同C2=18（均挂项目A）
+IP-A=19 IP-B=20
+综合资料G1=21
+项目A附件 -> {"fileId":1,"version":1,"size":25,"sha256":"50D3600D818FCB5DA3E269840BD2C5807774243F3603803714A2AE5126F8A8DA","linkId":1}
+合同C1附件 -> {"fileId":2,"version":1,"size":23,"sha256":"5F07D78147687BF9FE753CB9E4253FA045BF93B5663400C5F885CE420C239005","linkId":2}
+IP-A附件 -> {"fileId":3,"version":1,"size":22,"sha256":"3B5E7EB7A7E458E7086799C798CC9910DFCF8FBBFF16F17C63DB6C155942871D","linkId":3}
+IP-A 附件 v2 -> {"fileId":3,"version":2,"size":37,"sha256":"70412AE068F04626EAF443EE7E2E5017F1DD064DB8B3746E20D5973FD02805D7"}
+associate IP-A.fileId=3 link=3 -> IP-B(20) : 200 {"ok":true,"fileId":3,"sourceLinkId":3,"targetFolderId":20,"moved":false}
+档案-01附件 -> {"fileId":4,"version":1,"size":27,"sha256":"91A157586C81268725670D76809B3E98C7E48E0F846E84049E136B92E5695126","linkId":5}
+综合资料附件 -> {"fileId":5,"version":1,"size":24,"sha256":"2AC79DC36FFDD47CEC1077DC44ABCB1A534AF436508257D6B6696EE52D4811B1","linkId":6}
+同名附件(公司) -> {"fileId":6,"version":1,"size":38,"sha256":"2BF6ECC79A2FD68281CC94795D2D6B27EB88E7F5671C97CA392165DC8A76C97A","linkId":7}
+个人项目P=22
+个人IP-P=23
+同名附件(个人) -> {"fileId":7,"version":1,"size":52,"sha256":"3307914D222044F3AAC347057D6758404705A0C45C8486D405ACBDC92FD1231C","linkId":8}
+预览素材 -> pdf/png/docx [8,9,10]
+33MiB -> fileId=11 size=34603008
+delete 合同C1 -> 200 {"ok":true}
+delete 项目A附件 link -> 200 {"ok":true}
+delete 项目B -> 200 {"ok":true}
+delete 档案-05 -> 200 {"ok":true}
+回收站(company): [{"kind":"project","id":16,"name":"项目B","section":"","parent":null},{"kind":"v2_archive","id":14,"name":"档案-05","section":"achievement","parent":null},{"kind":"contract","id":17,"name":"合同C1","section":"","parent":"项目A"},{"kind":"v2_file","id":1,"name":"项目A说明.txt","section":"","parent":"项目A"}]
+回收站(personal): []
+GET /api/v2/ui/archive/company -> 200 (["archives","general","folders","orders","files"])
+GET /api/v2/ui/projects/company -> 200 (1 rows)
+GET /api/v2/ui/ip/company -> 200 (["rows","files"])
+GET /api/v2/ui/general/company -> 404 ([])
+GET /api/v2/ui/contracts/company -> 200 (1 rows)
+GET /api/v2/ui/project-files/company -> 200 (5 rows)
+fixture.json 已写入

@@ -1,0 +1,6 @@
+删除前 IP-B links：[{"id":4,"fileId":3,"folderId":20,"fileName":"专利说明书.txt","displayName":null,"materialCategory":null,"position":0,"deleted":false,"latestVersion":2,"size":37,"sha256":"70412AE068F04626EAF443EE7E2E5017F1DD064DB8B3746E20D5973FD02805D7"}]
+DELETE IP-B 的 link -> 200 {"ok":true}
+删除后 IP-A links=1  IP-B links=0
+仍能取 IP-A 最新版内容：status=200 bytes=37（期望 37）
+
+同名附件隔离：公司 fileId=6 个人 fileId=7（不同 id 即未共用物理文件）

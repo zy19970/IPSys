@@ -1,0 +1,10 @@
+首页点「导入资料」：
+{
+ "opened": 1,
+ "folderId": "root",
+ "isFolder": "folder",
+ "toast": "「快捷访问」已按资料分类自动生成"
+}
+
+pickFiles() 只判断当前 folderId 是不是 folder，首页 folderId=root 恰好是 folder 且没有 k: 前缀，
+于是直接弹文件选择器，没有任何『先选记录』的引导。 REQUIREMENTS.md:30/153 要求先有业务记录再上传。

@@ -1,0 +1,18 @@
+登录层 DOM 盘点：
+{
+ "title": "",
+ "subs": "资料库仍处于打开状态。输入密码即可重新连接，数据全部保存在本地。",
+ "buttons": [
+  "资料库文件",
+  "密码",
+  "打开"
+ ],
+ "hasPath": true,
+ "pathValue": "C:\\Users\\Joey\\Documents\\IPSys-web-test.db",
+ "checkboxes": [],
+ "hasCreateWord": false
+}
+
+后端能力（同一时刻的 HTTP 证据，见 fixture-build.log）：POST /api/open {create:true} 可建新库，
+但 index.html 登录层只有 #dbPath + 密码 + 一个提交按钮，interactions.js:270-280 把 create 硬编码为 false。
+UI_BASELINE.md §2.1 要求『默认显示「打开已有资料库」，创建新库另设入口』。

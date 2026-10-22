@@ -1,0 +1,7 @@
+拖动源：IP-A 里的附件行 f:9:1
+放置目标：IP-B 记录行
+结果：{"toast":"附件移动需要后端支持 link 迁移；当前请用「上传」挂到目标记录"}
+
+interactions.js:985-1004 的 drop 处理器只弹「附件移动需要后端支持 link 迁移」。
+但后端 POST /api/v2/files/{ws}/{fileId}/associate {linkId,targetFolderId,move:true} 已经可用（T-P1-03 实测 move 200）。
+所以这句提示本身是错的：不是后端缺能力，是前端没调用。

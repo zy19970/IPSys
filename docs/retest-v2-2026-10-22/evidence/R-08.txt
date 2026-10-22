@@ -1,0 +1,13 @@
+=== R-08 测试自身的错误断言 ===
+src/IPSys.Web/tests/ui-tree-smoke.cjs:60-64
+
+  assert.deepEqual(ids, ['f:2:1', 'f:3:2'],
+    'Every version of every contract original must appear as its own node');
+
+这条断言把「一个版本一行」固化成了预期行为，正是 BUG-002 的成因之一：
+8 个 Node smoke 全绿，却存在 P0 版本不折叠缺陷。
+
+本轮实测（T-P0-02，浏览器）：同一 linkId=3 的 v1(22B)/v2(37B) 在 IP-A 记录里显示为两行。
+
+修 BUG-002 时必须同步把这条断言改成「同一 linkId 只有一条可见附件，默认最新版」，
+否则新代码会被这条旧断言挡住。

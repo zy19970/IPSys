@@ -1,0 +1,8 @@
+父目录 8 当前混排条目：[{"kind":"archive_folder","id":9,"name":"三级-A1","position":0},{"kind":"archive","id":24,"name":"档案-06","position":1}]
+倒序 reorder -> 200 {"ok":true}
+回读顺序：[24,9]（期望 [24,9]）
+少一条的 reorder -> 409 {"error":"排序内容已变化，请刷新后重试。"}（期望 409）
+archive ids 排序塞入不存在 id -> 409 {"error":"排序应包含本模块当前全部有效资料。"}（期望 409）
+
+结论：后端只支持 company/achievement 的混排与持久化；IP/项目台账没有端点。
+前端无手工排序入口（无拖拽、无上移下移），临时点列头排序不写回。

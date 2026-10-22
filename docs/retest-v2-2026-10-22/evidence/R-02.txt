@@ -1,0 +1,15 @@
+=== R-02 Excel 导出范围 ===
+frontend/explorer/js/excel.js:43-58
+
+async function exportLedger(categoryId) {
+  ...
+  const res = await api(`/api/v2/excel/${ws}/${target.kind}/export${excelQueryOf(target)}`, {
+    method: "POST",
+    json: { mode: "all", ids: null },
+  });
+
+- 请求体把 mode 写死为 "all"，ids 恒为 null；
+- 点击路径 bindExcelActions -> exportLedger(category) 直接导出，没有任何“当前筛选/全部记录”的选择控件；
+- 后端支持 mode=filtered（见 src/IPSys.Web 的 excel 端点），但前端从未传过。
+
+结论：导出范围不可选，IMPLEMENTATION_GAP。不是“Excel 不能导出”，而是“只能全量导出”。

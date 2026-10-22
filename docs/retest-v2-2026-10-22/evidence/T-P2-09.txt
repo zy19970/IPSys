@@ -1,0 +1,4 @@
+PDF 行：{"id":"f:9:1","name":"PDF 两页示例.pdf — 462 B"}
+预览状态：{"overlay":true,"canvases":1,"text":"上一页\n加载中\n下一页\n−\n＋\n适应宽度\n正在解析 PDF…","pages":0}
+
+PDF 走 pdf.js + canvas（pdf-preview.js），不依赖 Chromium 内嵌插件。

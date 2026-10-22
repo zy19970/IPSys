@@ -1,0 +1,6 @@
+POST /folders/company/archive/11/move {ParentId:8} -> 200 {"ok":true}
+回读 folderId=8（期望 8）
+再移回 -> 200
+POST /ui/archive/company/achievement/12/transfer {TargetWorkspace:personal,Move:false} -> 200 {"id":27,"files":0,"versions":0}
+
+结论：后端具备记录移动与跨工作区转移能力；前端无任何复制/转移入口（grep transfer 零命中）。

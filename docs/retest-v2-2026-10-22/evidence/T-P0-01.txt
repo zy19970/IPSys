@@ -1,0 +1,6 @@
+进入 业务档案(k:achievement) 后遍历整棵树：
+af:8 存在 = false；af:9 存在 = false；最深记录 a:achievement:10 存在 = true
+当前列表可见行：["a:achievement:10","a:achievement:24","af:1","af:2","af:3","af:4","af:5","af:6","af:7"]
+
+后端 /api/v2/ui/archive/company 已返回 folders 的 parentId 链 1→8→9（见 T-P0-01.txt 的 HTTP 段），
+前端树里却找不到 af:8 / af:9 —— buildTree 只做了平面映射，把二级目录丢掉了。

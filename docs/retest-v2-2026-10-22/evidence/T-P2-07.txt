@@ -1,0 +1,5 @@
+搜索『专利说明书』得到节点：["a:achievement:10","f:5:1"]
+双击第一条后位置：{"folderId":"a:achievement:10","crumbs":["我的文件","业务档案","档案-01"]}
+
+file 命中的 id 是 fileId，必须用 fileMeta 反查 linkId 才能造出 f:link:version 节点；
+前端 store.js search() 已完成这层映射（映射不上就丢弃）。

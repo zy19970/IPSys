@@ -1,0 +1,5 @@
+分类内行数=2
+Ctrl+A 后选中=2（期望 2）
+Esc 后选中=0（期望 0）
+Delete 弹出确认=true；toast=「快捷访问」已按资料分类自动生成
+Alt+Left 从 i:19 回到 k:project
