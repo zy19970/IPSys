@@ -1,5 +1,7 @@
 # IPSys 跨会话交接（2026-10-17，N4 实机验收与后续功能完善）
 
+> **当前优先级（2026-10-22，用户最新确认）**：先在 `work/onedrive-file-manager` 开发分支完成 **Explorer 第二阶段功能完整性收敛**（资料库创建、业务档案目录与混排排序、附件关联复制移动、业务记录转移、拖放与公共入口统一），各功能包执行匹配回归和 Windows CI；**全部功能完成后再统一由用户本地 Agent 对最新构建做全面稳定性/安全性验收**。以 [Explorer 第二阶段实施计划](./docs/EXPLORER_PHASE2_FUNCTIONAL_COMPLETENESS_2026-10-22.md) 为当前施工顺序，早期“先做完整实机验收再开发功能”只作为历史记录，不再是现阶段优先级。开发分支不自动合并 main。
+
 > **跨空间上传修复（2026-10-18）**：对大文件上传确认同类问题：当前浏览器进度面板不会消失，但跨空间 selectSpace/refresh 曾在上传进行时发起数据库查询，会等待 SQLCipher Gate；批量业务附件和综合资料附件上传还会在 `space!==workspace` 时放弃余下队列，综合资料凭已经切换/清空的 `liveRows` 错误确认原资料不存在。修复：上传期间 render/selectSpace/refresh 暂缓读取、保留独立进度面板，批次始终绑定原始 workspace/ownerId，去掉切空间自动终止队列，上传完或取消后通过不占数据库 Gate 的 `/api/task` 等待服务器完全退出文件任务再刷新当前工作区。加入 Node 真实循环模拟两类批量上传及换工作区的锁保护回归。上传程序当前在 EXE 内嵌前端，升级后需要重新编译/运行。
 
 
@@ -59,7 +61,7 @@
 
 `Program.cs` 挂载原生路由；`ResourceSchemaV2.cs/Vault.cs` 为新库 Schema、加密和会话；`NativeFolder* / NativeFile* / NativeArchive* / RecycleStore / SearchStore` 为正式业务后端。前端 `wwwroot/app.js`、`ip-v2.js`、`export.js`、`pdf-preview.js` 保持有效：`app.js` 不可达的旧 `groupId` 上传回退已经清除，正式上传经 V2 SHA-256 prepare/resolve。尚存在供界面预览/Node UI 测试调用的 `mock` 页面，它们是**仍在使用的设计样例**，不是 V1 数据库读写入口，不应未经单独审查就删除。
 
-## 5. 建议下个会话的具体顺序
+## 5. 历史接续建议（当前已改用 Explorer 第二阶段计划）
 
 **建议先验收、后继续增加业务功能**；目前没有必要再次执行全库重构或回退到旧 V1 迁移问题。
 

@@ -1,5 +1,7 @@
 # IPSys 开发计划与验收进度（2026-10-17，N4 实机验收接续版）
 
+> **当前优先级（2026-10-22，用户最新确认）**：先在 `work/onedrive-file-manager` 开发分支完成 **Explorer 第二阶段功能完整性收敛**（资料库创建、业务档案目录与混排排序、附件关联复制移动、业务记录转移、拖放与公共入口统一），各功能包执行匹配回归和 Windows CI；**全部功能完成后再统一由用户本地 Agent 对最新构建做全面稳定性/安全性验收**。以 [Explorer 第二阶段实施计划](./docs/EXPLORER_PHASE2_FUNCTIONAL_COMPLETENESS_2026-10-22.md) 为当前施工顺序，早期“先做完整实机验收再开发功能”只作为历史记录，不再是现阶段优先级。开发分支不自动合并 main。
+
 > **T02 超 2 GiB 功能进展（2026-10-17）**：V2 单文件上限已调整为 **8 GiB**，正式直接上传和 prepare/resolve 查重确认均已通过 **2,147,495,993 字节**的 Windows SQLCipher/HTTP 流式 SHA-256 上传下载往返；[Windows CI #39023923481](https://github.com/zy19970/IPSys/actions/runs/39023923481) 与 [#39024449728](https://github.com/zy19970/IPSys/actions/runs/39024449728) success。ZIP64 Node 结构回归成功。下一步是用户 Edge/Chrome 实机、ZIP64 解压互操作与 T03/T04 中断/备份安全验证，见 [LARGE_FILE_TESTING.md](./LARGE_FILE_TESTING.md)。
 
 
@@ -42,7 +44,7 @@ IPSys 用户可见名称为「资料管理系统」，采用 Windows WinForms �
 正式网页、MCP、Excel、搜索/回收站和原件导出只读写 V2。N4 两批旧物理层及 31 份停用源码裁剪已在 [CI #38911635273](https://github.com/zy19970/IPSys/actions/runs/38911635273) 验证。之后的 MCP 并发、请求幂等、异步长文件、安全隔离、业务工具补齐及 ISS-001～018 修复均已进入 `main`。在历史 70 工具版本上，用户独立实机黑盒报告 `MCP_TEST_RESULTS/2026-10-17/` 为 **37 项 PASS28 / FAIL0 / BLOCKED9**、ISS-001～015 **15/15 PASS**；ISS-016～018 的后续修复通过 [CI #39014009578](https://github.com/zy19970/IPSys/actions/runs/39014009578)，而最新 MCP 59 工具与前端旧上传死分支清理通过 [CI #39019604428](https://github.com/zy19970/IPSys/actions/runs/39019604428)。这些新提交尚无同一条件下的新一轮独立用户实机黑盒报告，不应混作已经全部实测。
 
 
-## 3. 下一步实际施工顺序（先验收，再继续功能开发）
+## 3. 历史施工建议（已被当前第二阶段顺序覆盖）
 
 1. **当前版本 MCP 一次性定点验收**：客户端刷新工具清单，按 [MCP_INTERFACE_CLEANUP_TEST.md](./MCP_INTERFACE_CLEANUP_TEST.md) 核验 **59** 个唯一工具、无 `v2_*`、**13** 个数组型列表、项目/合同/IP 原名工具与 V2 HTTP FolderId 对应；并复测 ISS-016～018 及文件共享/查重/版本和异步任务。
 2. **补齐 9 项历史 BLOCKED 真实权限/GUI 场景**：管理员/普通完整性级别、另一个 Windows 用户/会话、Codex/WorkBuddy 组合、授权及撤销流程；拒绝以模拟 ACL 或降低 MIC 冒充安全通过。
@@ -58,4 +60,4 @@ IPSys 用户可见名称为「资料管理系统」，采用 Windows WinForms �
 
 ## 5. 协作方式
 
-每次依 AIGT-templates 的 `AGENTS.md`、`AI_RULES/GIT_OPERATIONS.md` 及 IPSys 完整提交历史核对当前状态；按依赖完成一个明确子任务、进行匹配测试、默认直接提交 `main`，然后核对 CI 与真实 ref。每个新功能/测试结果持续更新 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md) 和 [RESOURCE_REFACTOR_TEST_MATRIX.md](./RESOURCE_REFACTOR_TEST_MATRIX.md)。历史业务需求仍保留，最新明确覆盖决定优先。
+每次依 AIGT-templates 的 `AGENTS.md`、`AI_RULES/GIT_OPERATIONS.md` 及 IPSys 完整提交历史核对当前状态；按依赖完成一个明确子任务、进行匹配测试。当前 Explorer 功能阶段直接提交 `work/onedrive-file-manager`，全部完成及本地 Agent 总体验收后再决定是否合并 `main`，并核对 CI 与真实 ref。每个新功能/测试结果持续更新 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md) 和 [RESOURCE_REFACTOR_TEST_MATRIX.md](./RESOURCE_REFACTOR_TEST_MATRIX.md)。历史业务需求仍保留，最新明确覆盖决定优先。
