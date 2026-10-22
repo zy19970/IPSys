@@ -163,9 +163,14 @@ for(const [label,body,pattern] of [
 /* ============================================================
    D. Purge task and its progress panel
    ============================================================ */
-assert.match(
- bridge,/\/api\/trash\/\$\{workspace\}\/purge-task/,
- 'Permanent deletion must start the asynchronous purge task, not the synchronous route');
+/* The newer Explorer uses serial bounded tasks; P2 VM tests execute real
+   purgeTrash with 403 records and verify the exact endpoint for each batch. */
+const purgeRunner=between(bridge,'async function purgeTrash(nodes) {',
+ '/* 刷新页面或重进回收站时');
+assert.match(purgeRunner,/VaultStore\.api\(/,
+ 'Permanent deletion must send an authenticated task request');
+assert.match(purgeRunner,/\/purge-task/,
+ 'Permanent deletion must start the asynchronous task endpoint');
 assert.match(
  bridge,/fetch\("\/api\/trash\/purge-task"/,
  'Progress must poll the Vault-wide endpoint: the task outlives a workspace switch');
@@ -182,13 +187,19 @@ assert.ok(
  'The deletion toast must sit inside the committed branch');
 assert.match(track,/toast\(state\.error \|\| "删除未完成,数据库已回滚"/,'A failed or rolled-back task must say so');
 
-assert.match(bridge,/items\.length > 200/,'The backend caps a purge at 200 records; say so instead of failing silently');
+assert.match(purgeRunner,/i \+= 200/,
+ 'Selections over the server limit must be split into batches');
+assert.match(purgeRunner,/items\.slice\(i, i \+ 200\)/,
+ 'Each purge task may include at most 200 records');
+assert.match(purgeRunner,/await waitPurgeIdle\(\)/,
+ 'The next batch must wait until the previous file task releases its lock');
+assert.match(purgeRunner,/state\.state !== "succeeded"/,
+ 'Failure or uncertain result must stop all subsequent batches');
 assert.match(
  bridge,/fileTaskActive \|\| purgeTaskActive/,
  'A running purge occupies the server file-task slot, so workspace switching must be blocked too');
-assert.match(
- bridge,/purgeTaskActive = false;\s*\n\s*\}/,
- 'The busy flag must clear when tracking ends, including on error');
+assert.match(purgeRunner,/finally\s*\{\s*purgeBatchActive = false;\s*purgeTaskActive = false;/,
+ 'A completed or failed batch must clear the busy flags in finally');
 assert.match(bridge,/async function resumePurge/,'A page reload must pick the running task back up');
 assert.match(app,/if \(view === "recycle"\) void resumePurge\(\)/,'Entering the recycle bin must resume an unfinished purge');
 
