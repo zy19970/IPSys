@@ -34,6 +34,7 @@ const menus=[],deleted=[],recycled=[],dialogs=[];
 const sandbox=vm.createContext({
  Drive:drive,VaultStore:{ws:"company"},
  findById:id=>found.get(id)||null,RECYCLE:trash,
+ nodeTag:id=>String(id).split(":")[0],
  isTrashNode:id=>id.startsWith("t:"),fileTaskBusy:()=>false,
  canUploadFiles:n=>!!n&&n.type==="folder"&&
   ["project","contract","ip","archive","general"].includes(n.biz?.kind),
