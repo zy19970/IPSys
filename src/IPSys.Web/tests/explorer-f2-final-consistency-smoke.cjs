@@ -42,10 +42,10 @@ const sandbox=vm.createContext({
  showCtx:(x,y,markup,handlers)=>menus.push({markup,handlers}),
  archiveSortAllowed:()=>false,RecordForms:{open:opts=>dialogs.push(opts)},
  icon:()=>"",downloadFile:id=>downloads.push(id),
- exportNodes:items=>exportedCalls.push(items.map(i=>i.id)),
+ exportNodes:items=>exportedCalls.push(Array.from(items,i=>i.id)),
  toast:msg=>notes.push(msg),
- deleteNodes:items=>deleted.push(items.map(i=>i.id)),
- recycleAction:(items,op)=>recycled.push({ids:items.map(i=>i.id),op}),
+ deleteNodes:items=>deleted.push(Array.from(items,i=>i.id)),
+ recycleAction:(items,op)=>recycled.push({ids:Array.from(items,i=>i.id),op}),
  askConfirm:async()=>true,
 });
 vm.runInContext(part(inter,"/* 下载入口共用","function bindCmdbar() {"),sandbox);
