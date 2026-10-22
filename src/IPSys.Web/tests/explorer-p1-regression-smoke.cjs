@@ -78,8 +78,10 @@ run("Drive.state.sortBy='_name';");
 assert.equal(run("Drive.sortedItems.length"), 3,
   "Explicit column sorting must keep all three mixed entries");
 run("Drive.state.folderId='k:project';Drive.enterContext();");
-assert.equal(run("Drive.state.sortBy"), "name",
+assert.notEqual(run("Drive.state.sortBy"), "position",
   "Manual archive sort must not leak into other modules");
+assert.equal(run("Drive.state.sortBy"), "_name",
+  "Valid project-name column sort can remain active across navigation");
 run("Drive.state.folderId='af:70';Drive.enterContext();");
 assert.equal(run("Drive.state.sortBy"), "position",
   "Reopening archive must restore persistent order");
