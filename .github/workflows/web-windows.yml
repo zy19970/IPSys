@@ -6,6 +6,8 @@ on:
     paths:
       - "src/IPSys.Web/**"
       - "frontend/explorer/**"
+      - "docs/retest-v2-2026-10-22/scripts/**"
+      - "docs/retest-v2-2026-10-22/evidence/fixture.json"
       - ".github/workflows/web-windows.yml"
   workflow_dispatch:
     inputs:
@@ -29,6 +31,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
       - name: Verify Visual Studio Debug embedded web assets
         shell: pwsh
         run: |
@@ -176,6 +181,83 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw $tests[$name] }
           }
           Write-Host 'All web smoke tests: PASS'
+      - name: Run corrected Explorer V2 HTTP and Edge retest
+        shell: pwsh
+        env:
+          IPSYS_RETEST_RUN_ID: v2ci-${{ github.run_id }}-${{ github.run_attempt }}
+          IPSYS_EVIDENCE_DIR: docs/retest-v2-2026-10-22/evidence/runs/v2ci-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $exe = Join-Path $PWD 'src/IPSys.Web/bin/Debug/net8.0-windows/IPSys.Web.exe'
+          $evidence = Join-Path $PWD $env:IPSYS_EVIDENCE_DIR
+          New-Item -ItemType Directory -Path $evidence -Force | Out-Null
+          $hostOut = Join-Path $env:RUNNER_TEMP "ipsys-host-$env:IPSYS_RETEST_RUN_ID.out.log"
+          $hostErr = Join-Path $env:RUNNER_TEMP "ipsys-host-$env:IPSYS_RETEST_RUN_ID.err.log"
+          $hostProc = $null
+          try {
+            if (-not (Test-Path -LiteralPath $exe)) { throw "Debug host EXE missing: $exe" }
+            $hostProc = Start-Process -FilePath $exe -PassThru -WorkingDirectory $PWD -WindowStyle Hidden -RedirectStandardOutput $hostOut -RedirectStandardError $hostErr
+            $base = $null
+            $deadline = [DateTime]::UtcNow.AddSeconds(45)
+            while ([DateTime]::UtcNow -lt $deadline -and -not $base) {
+              if ($hostProc.HasExited) {
+                $out = if (Test-Path $hostOut) { Get-Content $hostOut -Raw } else { '' }
+                $err = if (Test-Path $hostErr) { Get-Content $hostErr -Raw } else { '' }
+                throw "IPSys host exited early ($($hostProc.ExitCode)). STDOUT=$out STDERR=$err"
+              }
+              $listeners = @(Get-NetTCPConnection -State Listen -OwningProcess $hostProc.Id -ErrorAction SilentlyContinue |
+                Where-Object { $_.LocalAddress -eq '127.0.0.1' -and $_.LocalPort -gt 0 })
+              foreach ($listener in $listeners) {
+                $candidate = "http://127.0.0.1:$($listener.LocalPort)"
+                try {
+                  $response = Invoke-WebRequest -Uri "$candidate/" -UseBasicParsing -TimeoutSec 2
+                  if ($response.StatusCode -eq 200) { $base = $candidate; break }
+                } catch {}
+              }
+              if (-not $base -and (Test-Path $hostOut)) {
+                $hostLog = Get-Content $hostOut -Raw
+                if ($hostLog -match 'http://127\.0\.0\.1:(\d+)') {
+                  $candidate = "http://127.0.0.1:$($Matches[1])"
+                  try {
+                    $response = Invoke-WebRequest -Uri "$candidate/" -UseBasicParsing -TimeoutSec 2
+                    if ($response.StatusCode -eq 200) { $base = $candidate }
+                  } catch {}
+                }
+              }
+              if (-not $base) { Start-Sleep -Milliseconds 250 }
+            }
+            if (-not $base) {
+              $out = if (Test-Path $hostOut) { Get-Content $hostOut -Raw } else { '' }
+              $err = if (Test-Path $hostErr) { Get-Content $hostErr -Raw } else { '' }
+              throw "Timed out waiting for loopback host. STDOUT=$out STDERR=$err"
+            }
+            Write-Host "Isolated test host ready: $base"
+            $env:IPSYS_BASE = $base
+            node docs/retest-v2-2026-10-22/scripts/fixture.cjs $env:IPSYS_RETEST_RUN_ID
+            if ($LASTEXITCODE -ne 0) { throw 'Disposable V2 fixture setup failed' }
+            node docs/retest-v2-2026-10-22/scripts/t-http.cjs $env:IPSYS_RETEST_RUN_ID
+            if ($LASTEXITCODE -ne 0) { throw 'V2 HTTP retest failed before writing its result JSON' }
+            node docs/retest-v2-2026-10-22/scripts/t-browser.cjs $env:IPSYS_RETEST_RUN_ID
+            if ($LASTEXITCODE -ne 0) { throw 'V2 Edge retest failed before writing its result JSON' }
+            $env:IPSYS_CASES_OUTPUT = Join-Path $evidence 'IPSys_Explorer_Full_Retest_V2_Cases.csv'
+            python docs/retest-v2-2026-10-22/scripts/gen-cases.py
+            if ($LASTEXITCODE -ne 0) { throw 'V2 run-specific case CSV generation failed' }
+            foreach ($name in @('http-results.json', 'browser-results.json')) {
+              $resultPath = Join-Path $evidence $name
+              if (-not (Test-Path -LiteralPath $resultPath)) { throw "Missing test results: $resultPath" }
+              $items = @(Get-Content -LiteralPath $resultPath -Raw | ConvertFrom-Json)
+              Write-Host "=== $name ($($items.Count) results) ==="
+              $items | Group-Object result | Sort-Object Name | ForEach-Object { Write-Host "$($_.Name)=$($_.Count)" }
+            }
+          }
+          finally {
+            if ($hostProc -and -not $hostProc.HasExited) {
+              Stop-Process -Id $hostProc.Id -Force -ErrorAction SilentlyContinue
+            }
+            Start-Sleep -Milliseconds 300
+            if (Test-Path $hostOut) { Copy-Item -LiteralPath $hostOut -Destination (Join-Path $evidence 'host-stdout.log') -Force }
+            if (Test-Path $hostErr) { Copy-Item -LiteralPath $hostErr -Destination (Join-Path $evidence 'host-stderr.log') -Force }
+          }
       - name: Verify SQLCipher and local HTTP roundtrip
         shell: pwsh
         env:
@@ -198,3 +280,11 @@ jobs:
           name: IPSys-Web-win-x64
           path: artifacts/IPSys-Web-win-x64/IPSys.Web.exe
           if-no-files-found: error
+      - name: Upload isolated Explorer V2 retest evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: IPSys-Explorer-V2-Retest-${{ github.run_id }}-${{ github.run_attempt }}
+          path: docs/retest-v2-2026-10-22/evidence/runs/v2ci-${{ github.run_id }}-${{ github.run_attempt }}/**
+          if-no-files-found: warn
+          retention-days: 30
