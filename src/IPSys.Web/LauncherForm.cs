@@ -18,7 +18,6 @@ internal sealed class LauncherForm : Form
     private readonly Vault _vault;
     private readonly IHostApplicationLifetime _lifetime;
     private readonly CancellationToken _stopping;
-    private readonly Label _browserStatus;
     private readonly Label _memoryValue;
     private readonly Label _cpuValue;
     private readonly Label _uptimeValue;
@@ -53,7 +52,7 @@ internal sealed class LauncherForm : Form
         MinimizeBox = true;
         ShowInTaskbar = true;
         AutoScaleMode = AutoScaleMode.Dpi;
-        ClientSize = new Size(580, 460);
+        ClientSize = new Size(500, 246);
         MinimumSize = Size;
         MaximumSize = Size;
         BackColor = Canvas;
@@ -62,54 +61,43 @@ internal sealed class LauncherForm : Form
         // Brand block, aligned to the top-left rather than a giant heading.
         var logo = new PictureBox
         {
-            Location = new Point(28, 27),
-            Size = new Size(36, 36),
+            Location = new Point(20, 17),
+            Size = new Size(30, 30),
             SizeMode = PictureBoxSizeMode.Zoom,
             Image = Icon?.ToBitmap()
         };
-        var heading = MakeLabel("资料管理系统", new Rectangle(77, 22, 450, 39),
-            20F, FontStyle.Bold, TextPrimary);
-        var summary = MakeLabel("本地加密资料管理", new Rectangle(79, 65, 430, 24),
-            10F, FontStyle.Regular, TextSecondary);
+        var heading = MakeLabel("资料管理系统", new Rectangle(60, 13, 275, 38),
+            16F, FontStyle.Bold, TextPrimary);
 
-        var statusCard = new LauncherCard { Location = new Point(24, 108), Size = new Size(532, 92) };
-        statusCard.Controls.Add(MakeLabel("运行状态", new Rectangle(22, 12, 180, 25),
-            10.5F, FontStyle.Bold, TextPrimary));
-        statusCard.Controls.Add(MakeLabel("●", new Rectangle(22, 48, 16, 25),
-            10F, FontStyle.Bold, Color.FromArgb(16, 124, 16)));
-        _status = MakeLabel("本地服务运行中", new Rectangle(42, 47, 220, 28),
-            10F, FontStyle.Regular, TextPrimary);
-        _browserStatus = MakeLabel("管理界面尚未打开", new Rectangle(277, 48, 232, 26),
+        var statusCard = new LauncherCard { Location = new Point(352, 17), Size = new Size(132, 33) };
+        statusCard.Controls.Add(MakeLabel("●", new Rectangle(4, 4, 16, 24),
+            9F, FontStyle.Bold, Color.FromArgb(16, 124, 16)));
+        _status = MakeLabel("服务运行中", new Rectangle(22, 3, 107, 26),
             9F, FontStyle.Regular, TextSecondary);
-        _browserStatus.TextAlign = ContentAlignment.MiddleRight;
-        statusCard.Controls.AddRange(new Control[] { _status, _browserStatus });
+        statusCard.Controls.Add(_status);
 
-        var monitorCard = new LauncherCard { Location = new Point(24, 213), Size = new Size(532, 132) };
-        monitorCard.Controls.Add(MakeLabel("资源监控", new Rectangle(22, 12, 180, 25),
-            10.5F, FontStyle.Bold, TextPrimary));
-        monitorCard.Controls.Add(MakeLabel("内存占用", new Rectangle(22, 49, 135, 23),
+        var monitorCard = new LauncherCard { Location = new Point(18, 65), Size = new Size(464, 106) };
+        monitorCard.Controls.Add(MakeLabel("内存占用", new Rectangle(19, 14, 131, 23),
             9F, FontStyle.Regular, TextSecondary));
-        monitorCard.Controls.Add(MakeLabel("CPU 占用", new Rectangle(194, 49, 135, 23),
+        monitorCard.Controls.Add(MakeLabel("CPU 占用", new Rectangle(173, 14, 129, 23),
             9F, FontStyle.Regular, TextSecondary));
-        monitorCard.Controls.Add(MakeLabel("运行时长", new Rectangle(367, 49, 130, 23),
+        monitorCard.Controls.Add(MakeLabel("运行时长", new Rectangle(329, 14, 125, 23),
             9F, FontStyle.Regular, TextSecondary));
-        _memoryValue = MakeLabel("—", new Rectangle(22, 74, 143, 34),
+        _memoryValue = MakeLabel("—", new Rectangle(19, 46, 137, 34),
             15F, FontStyle.Bold, TextPrimary);
-        _cpuValue = MakeLabel("—", new Rectangle(194, 74, 140, 34),
+        _cpuValue = MakeLabel("—", new Rectangle(173, 46, 139, 34),
             15F, FontStyle.Bold, TextPrimary);
-        _uptimeValue = MakeLabel("00:00:00", new Rectangle(367, 74, 150, 34),
-            15F, FontStyle.Bold, TextPrimary);
+        _uptimeValue = MakeLabel("00:00:00", new Rectangle(329, 46, 130, 34),
+            14F, FontStyle.Bold, TextPrimary);
         monitorCard.Controls.AddRange(new Control[] { _memoryValue, _cpuValue, _uptimeValue });
-        monitorCard.Controls.Add(new Panel { Location = new Point(180, 52), Size = new Size(1, 55), BackColor = Stroke });
-        monitorCard.Controls.Add(new Panel { Location = new Point(354, 52), Size = new Size(1, 55), BackColor = Stroke });
+        monitorCard.Controls.Add(new Panel { Location = new Point(155, 16), Size = new Size(1, 72), BackColor = Stroke });
+        monitorCard.Controls.Add(new Panel { Location = new Point(311, 16), Size = new Size(1, 72), BackColor = Stroke });
 
-        var launch = MakeButton("打开管理界面", new Rectangle(24, 363, 341, 46), primary: true);
+        var launch = MakeButton("打开管理界面", new Rectangle(18, 186, 296, 43), primary: true);
         launch.Click += (_, _) => OpenBrowser();
-        var exit = MakeButton("退出程序", new Rectangle(378, 363, 178, 46), primary: false);
+        var exit = MakeButton("退出程序", new Rectangle(328, 186, 154, 43), primary: false);
         exit.Click += (_, _) => Close();
-        var hint = MakeLabel("关闭此窗口将停止本地服务。", new Rectangle(26, 425, 510, 22),
-            8.5F, FontStyle.Regular, TextSecondary);
-        Controls.AddRange(new Control[] { logo, heading, summary, statusCard, monitorCard, launch, exit, hint });
+        Controls.AddRange(new Control[] { logo, heading, statusCard, monitorCard, launch, exit });
         AcceptButton = launch;
 
         // Both ASP.NET and this launcher live inside IPSys.Web.exe. Sampling
@@ -271,7 +259,7 @@ internal sealed class LauncherForm : Form
             if (choice != null)
             {
                 if (_vault.TryScheduleExit(choice, _lifetime, out string error))
-                    _status.Text = "正在安全退出…";
+                    _status.Text = "正在退出…";
                 else
                     MessageBox.Show(this, error, "无法退出", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
@@ -338,11 +326,9 @@ internal sealed class LauncherForm : Form
             Process.Start(browser is null
                 ? new ProcessStartInfo(target) { UseShellExecute = true }
                 : new ProcessStartInfo(browser, target) { UseShellExecute = true });
-            _browserStatus.Text = "已启动浏览器管理界面";
         }
         catch (Exception ex)
         {
-            _browserStatus.Text = "管理界面尚未打开";
             MessageBox.Show(this,
                 "无法自动打开浏览器，请在 Edge 或 Chrome 手动访问：\n\n" +
                 _address.TrimEnd('/') + "\n\n错误：" + ex.Message,
