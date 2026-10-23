@@ -28,6 +28,25 @@ static class WebSmoke
         try
         {
             string landing=await client.GetStringAsync("/");
+            // The actual loopback favicon must have the same bytes as the EXE/WinForms icon.
+            using(var faviconResponse=await client.GetAsync("/favicon.ico"))
+            {
+                faviconResponse.EnsureSuccessStatusCode();
+                if(faviconResponse.Content.Headers.ContentType?.MediaType!="image/x-icon")
+                    throw new IOException("网页 favicon HTTP 类型不正确。");
+                byte[] faviconBytes=await faviconResponse.Content.ReadAsByteArrayAsync();
+                if(faviconBytes.Length<6||faviconBytes[0]!=0||faviconBytes[1]!=0||
+                   faviconBytes[2]!=1||faviconBytes[3]!=0)
+                    throw new IOException("网页 favicon 不是有效的 ICO 格式。");
+                using var iconResource=typeof(WebSmoke).Assembly.GetManifestResourceStream("IPSys.Web.AppIcon.ico")
+                    ?? throw new IOException("EXE 应用图标内嵌资源缺失。");
+                using var expectedIcon=new MemoryStream();
+                iconResource.CopyTo(expectedIcon);
+                if(!faviconBytes.AsSpan().SequenceEqual(expectedIcon.ToArray()))
+                    throw new IOException("网页 favicon 与 EXE 应用图标的内容不一致。");
+            }
+            if(!landing.Contains("href=\"/favicon.ico\"")||!landing.Contains("type=\"image/x-icon\""))
+                throw new IOException("网页首页未引用正式 favicon。");
             string css=await client.GetStringAsync("/style.css");
             string app=await client.GetStringAsync("/app.js");
             string ip=await client.GetStringAsync("/ip-v2.js");

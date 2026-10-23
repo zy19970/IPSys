@@ -6,7 +6,8 @@ IPSys 的唯一正式浏览器界面源代码位于 `src/IPSys.Web/wwwroot/`，�
 
 ```text
 src/IPSys.Web/wwwroot/
-├── index.html            页面源文件
+├── index.html            页面源文件（引用 /favicon.ico）
+├── favicon.ico           浏览器标签图标，与 assets/IPSys.ico 字节一致
 ├── css/app.css           正式界面样式
 ├── js/
 │   ├── icons.js          图标与类别外观
@@ -34,7 +35,7 @@ src/IPSys.Web/wwwroot/
 node src/IPSys.Web/wwwroot/tools/bundle.cjs
 ```
 
-正常在 Visual Studio 中构建 `src/IPSys.Web/IPSys.Web.csproj` 即可。MSBuild 的 `BundleExplorerShell` 目标调用 Node，将 `js/*.js` 依照既定顺序拼成 `dist/app.js`，并复制 `index.html`、`css/app.css` 到 `dist/` 中的对应产物。三个构建产物通过明确的 `EmbeddedResource` 逻辑名称嵌入 EXE；其他 `wwwroot` 能力模块也分别嵌入。运行期不读取磁盘上的 `wwwroot`，因此不会出现两套可切换 UI。
+正常在 Visual Studio 中构建 `src/IPSys.Web/IPSys.Web.csproj` 即可。MSBuild 的 `BundleExplorerShell` 目标调用 Node，将 `js/*.js` 依照既定顺序拼成 `dist/app.js`，并复制 `index.html`、`css/app.css` 到 `dist/` 中的对应产物。三个前端构建产物通过明确的 `EmbeddedResource` 逻辑名称嵌入 EXE；`favicon.ico` 与其他 `wwwroot` 能力模块也独立嵌入。`/favicon.ico` 由本机 HTTP 路由返回 `image/x-icon`，与 Windows EXE 和 WinForms 窗口使用同一图标，不依赖外部静态文件。运行期不读取磁盘上的 `wwwroot`，因此不会出现两套可切换 UI。
 
 `dist/` 不提交仓库，不直接编辑。修改源码后要重新构建 EXE；缺少 Node 且没有现成构建产物时 MSBuild 会给出错误。Release 仍为需要 .NET 8 Windows Desktop / ASP.NET Core Runtime 的单 EXE。
 

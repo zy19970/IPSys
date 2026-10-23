@@ -22,6 +22,8 @@
     <IsTransformWebConfigDisabled>true</IsTransformWebConfigDisabled>
   </PropertyGroup>
   <ItemGroup>
+    <!-- Web favicon shares the exact ICO bytes with the Windows application icon. -->
+    <EmbeddedResource Include="wwwroot\favicon.ico" LogicalName="IPSys.Web.Embedded.favicon.ico" />
     <!-- Keep the same icon available as an in-assembly WinForms resource. -->
     <EmbeddedResource Include="assets\IPSys.ico" LogicalName="IPSys.Web.AppIcon.ico" />
     <!-- Embed HTML/CSS/JS into the executable, no external wwwroot folder. -->

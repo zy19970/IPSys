@@ -31,6 +31,7 @@ if(!firstHost)
 SQLitePCL.Batteries_V2.Init();
 // HTML/CSS/JS are read from managed assembly resources (works in Debug or single-file Release).
 byte[] html = EmbeddedWebAssets.Read("index.html");
+byte[] favicon = EmbeddedWebAssets.Read("favicon.ico");
 byte[] css = EmbeddedWebAssets.Read("style.css");
 byte[] javascript = EmbeddedWebAssets.Read("app.js");
 byte[] nativeIpScript = EmbeddedWebAssets.Read("ip-v2.js");
@@ -78,6 +79,7 @@ app.Use(async (ctx, next) =>
 // Serve web files from within the executable, not from wwwroot on disk.
 app.MapGet("/", () => Results.Bytes(html, contentType: "text/html; charset=utf-8"));
 app.MapGet("/index.html", () => Results.Bytes(html, contentType: "text/html; charset=utf-8"));
+app.MapGet("/favicon.ico", () => Results.Bytes(favicon, contentType: "image/x-icon"));
 app.MapGet("/style.css", () => Results.Bytes(css, contentType: "text/css; charset=utf-8"));
 app.MapGet("/app.js", () => Results.Bytes(javascript, contentType: "text/javascript; charset=utf-8"));
 app.MapGet("/ip-v2.js", () => Results.Bytes(nativeIpScript, contentType: "text/javascript; charset=utf-8"));

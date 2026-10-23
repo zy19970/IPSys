@@ -27,6 +27,13 @@ const bundle=read('tools/bundle.cjs');
 /* ---------------- A. assets ---------------- */
 
 assert.ok(srcHtml.includes('href="/style.css"'),'index.html must load the embedded stylesheet');
+assert.ok(srcHtml.includes('<link rel="icon" type="image/x-icon" href="/favicon.ico">'),
+ 'Official shell must use /favicon.ico rather than the retired empty data icon');
+const favicon=fs.readFileSync(path.join(SHELL,'favicon.ico'));
+assert.deepEqual(favicon,fs.readFileSync(path.join(WEB,'assets','IPSys.ico')),
+ 'Web favicon must be identical to the EXE and WinForms icon');
+assert.ok(csproj.includes('Include="wwwroot\\favicon.ico" LogicalName="IPSys.Web.Embedded.favicon.ico"'),
+ 'The favicon must be embedded into the single EXE under a fixed logical resource name');
 assert.ok(srcHtml.includes('src="/app.js"'),'index.html must load the bundled shell');
 for(const file of ['/ip-v2.js','/upload-progress.js','/export.js','/pdf-preview.js'])
  assert.ok(srcHtml.includes('src="'+file+'"'),'index.html must load the capability script '+file);
@@ -155,6 +162,10 @@ assert.ok(!interactions.includes("createElement('iframe')")&&!interactions.inclu
       broken/missing dist cannot stop an Agent from connecting;
    2. the pipe host must still be started by the GUI host. */
 const program=fs.readFileSync(path.join(WEB,'Program.cs'),'utf8');
+assert.ok(program.includes('EmbeddedWebAssets.Read("favicon.ico")')&&
+ program.includes('app.MapGet("/favicon.ico"')&&
+ program.includes('contentType: "image/x-icon"'),
+ 'The browser favicon must be served by the existing loopback embedded-resource HTTP server');
 const mcpBranch=program.indexOf('args.Contains("--mcp")');
 const firstAsset=program.indexOf('EmbeddedWebAssets.Read(');
 assert.ok(mcpBranch>0,'Program.cs must keep the --mcp stdio branch');
