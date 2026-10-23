@@ -26,6 +26,7 @@ internal sealed class LauncherForm : Form
     private readonly Stopwatch _uptime = Stopwatch.StartNew();
     private TimeSpan _previousCpuTime;
     private long _previousSampleTick;
+    private bool _explicitExit;
 
     // Same restrained blue/neutral palette as the Explorer/OneDrive-style web shell.
     private static readonly Color Canvas = Color.FromArgb(247, 249, 252);
@@ -96,7 +97,11 @@ internal sealed class LauncherForm : Form
         var launch = MakeButton("打开管理界面", new Rectangle(18, 186, 296, 43), primary: true);
         launch.Click += (_, _) => OpenBrowser();
         var exit = MakeButton("退出程序", new Rectangle(328, 186, 154, 43), primary: false);
-        exit.Click += (_, _) => Close();
+        exit.Click += (_, _) =>
+        {
+            _explicitExit = true;
+            Close();
+        };
         Controls.AddRange(new Control[] { logo, heading, statusCard, monitorCard, launch, exit });
         AcceptButton = launch;
 
@@ -242,8 +247,20 @@ internal sealed class LauncherForm : Form
         base.OnFormClosed(e);
     }
 
+    // The title-bar X is a minimize action. Only the dedicated Exit button
+    // requests shutdown; application/Windows shutdown remains unaffected.
+    internal static bool ShouldMinimize(CloseReason reason,bool explicitExit,bool stopping)=>
+        reason==CloseReason.UserClosing && !explicitExit && !stopping;
+
     protected override void OnFormClosing(FormClosingEventArgs e)
     {
+        if(ShouldMinimize(e.CloseReason,_explicitExit,_stopping.IsCancellationRequested))
+        {
+            e.Cancel = true;
+            WindowState = FormWindowState.Minimized;
+            base.OnFormClosing(e);
+            return;
+        }
         // A second click on X must not bypass a previously scheduled safe exit.
         if (_vault.ExitRequested && !_stopping.IsCancellationRequested)
         {
@@ -255,6 +272,9 @@ internal sealed class LauncherForm : Form
             !_stopping.IsCancellationRequested)
         {
             e.Cancel = true;
+            // Clear the one-shot intent even when the user cancels the
+            // file-task dialog or an exit preflight rejects the request.
+            _explicitExit = false;
             string? choice = _vault.FileTaskActive ? ShowFileTaskExitChoices() : "normal";
             if (choice != null)
             {
@@ -340,6 +360,97 @@ internal sealed class LauncherForm : Form
 
 internal static class LauncherHost
 {
+    private static LauncherForm? _activeForm;
+
+    // Invoke the actual Windows file chooser on the launcher's STA thread.
+    // Browsers intentionally cannot supply an absolute path via file inputs.
+    internal static async Task<string?> ChooseDatabasePathAsync(
+        bool create,string? currentPath,CancellationToken cancellation)
+    {
+        var form=Volatile.Read(ref _activeForm);
+        if(form is null || form.IsDisposed || !form.IsHandleCreated)
+            throw new InvalidOperationException("启动器窗口尚未就绪，请在程序启动后重试。");
+
+        var answer=new TaskCompletionSource<string?>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        try
+        {
+            form.BeginInvoke((MethodInvoker)(() =>
+            {
+                try
+                {
+                    if(form.IsDisposed)
+                        throw new InvalidOperationException("启动器窗口已关闭。");
+
+                    string directory=AppContext.BaseDirectory;
+                    string name="IPSys.db";
+                    if(!string.IsNullOrWhiteSpace(currentPath))
+                    {
+                        try
+                        {
+                            var full=Path.GetFullPath(currentPath);
+                            var parent=Path.GetDirectoryName(full);
+                            if(parent is not null && Directory.Exists(parent))
+                            {
+                                directory=parent;
+                                name=Path.GetFileName(full);
+                            }
+                        }
+                        catch(ArgumentException) {}
+                        catch(NotSupportedException) {}
+                        catch(IOException) {}
+                    }
+
+                    bool wasMinimized=form.WindowState==FormWindowState.Minimized;
+                    if(wasMinimized)form.WindowState=FormWindowState.Normal;
+                    form.Activate();
+                    try
+                    {
+                        using FileDialog picker=create
+                            ? new SaveFileDialog
+                            {
+                                Title="选择新资料库的保存位置",
+                                AddExtension=true,
+                                DefaultExt="db",
+                                OverwritePrompt=false,
+                                CheckPathExists=true
+                            }
+                            : new OpenFileDialog
+                            {
+                                Title="选择已有资料库",
+                                CheckFileExists=true,
+                                CheckPathExists=true
+                            };
+                        picker.Filter="资料库 (*.db;*.sqlite;*.sqlite3)|*.db;*.sqlite;*.sqlite3|所有文件 (*.*)|*.*";
+                        picker.InitialDirectory=directory;
+                        picker.FileName=name;
+                        if(picker is SaveFileDialog save)
+                            save.FileOk += (_,eventArgs) =>
+                            {
+                                if(!File.Exists(save.FileName))return;
+                                eventArgs.Cancel=true;
+                                MessageBox.Show(form,"已有同名文件，请选择其他文件名。不会覆盖现有资料库。",
+                                    "文件已存在",MessageBoxButtons.OK,MessageBoxIcon.Warning);
+                            };
+                        answer.TrySetResult(picker.ShowDialog(form)==DialogResult.OK
+                            ?Path.GetFullPath(picker.FileName):null);
+                    }
+                    finally
+                    {
+                        if(wasMinimized && !form.IsDisposed)
+                            form.WindowState=FormWindowState.Minimized;
+                    }
+                }
+                catch(Exception ex){answer.TrySetException(ex);}
+            }));
+        }
+        catch(InvalidOperationException)
+        {
+            throw new InvalidOperationException("启动器窗口已退出，无法选择资料库。");
+        }
+        return await answer.Task.WaitAsync(cancellation);
+    }
+
     /// <summary>
     /// Run WinForms on its own STA thread. The ASP.NET host uses the async main thread.
     /// ApplicationStopping closes the form after WinForms schedules safe exit.
@@ -355,6 +466,7 @@ internal static class LauncherHost
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
                 using var form = new LauncherForm(address, vault, lifetime, stopping);
+                Volatile.Write(ref _activeForm,form);
                 using var callback = stopping.Register(() =>
                 {
                     try
@@ -370,7 +482,8 @@ internal static class LauncherHost
                 {
                     if (stopping.IsCancellationRequested) form.BeginInvoke((MethodInvoker)(() => form.Close()));
                 };
-                Application.Run(form);
+                try { Application.Run(form); }
+                finally { Volatile.Write(ref _activeForm,null); }
                 completion.TrySetResult();
             }
             catch (Exception ex) { completion.TrySetException(ex); }

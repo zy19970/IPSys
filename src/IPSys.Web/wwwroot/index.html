@@ -20,7 +20,16 @@
     <p class="lock-sub" id="lockSub">输入数据库文件路径与密码。数据全部保存在本地，不上传。</p>
     <form id="lockForm" autocomplete="off">
       <label class="lock-label" for="dbPath">资料库文件</label>
-      <input id="dbPath" type="text" spellcheck="false" placeholder="D:\资料库\ipsys.db">
+      <div class="db-path-row">
+        <input id="dbPath" type="text" spellcheck="false" autocomplete="off" placeholder="选择或输入本机资料库路径">
+        <button id="dbPathBrowse" class="db-path-picker" type="button"
+          title="浏览数据库文件" aria-label="浏览数据库文件">
+          <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor"
+            stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 7.5V6a2 2 0 0 1 2-2h4l2.5 2.5H19a2 2 0 0 1 2 2v9.5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          </svg>
+        </button>
+      </div>
       <label class="lock-label" for="password">密码</label>
       <input id="password" type="password" placeholder="数据库密码" autocomplete="current-password">
       <div class="lock-confirm" id="createConfirmField" hidden>

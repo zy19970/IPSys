@@ -22,11 +22,38 @@ static class SessionEndpoints
         app.MapGet("/api/status", (Vault v) => Results.Json(new
         {
             unlocked = v.Unlocked,
-            suggestion = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) is var d && d.Length > 0
-                    ? d : AppContext.BaseDirectory, "IPSys-web-test.db"),
-            prototype = true
+            suggestion = v.Unlocked ? v.Path : SuggestDatabasePath(AppContext.BaseDirectory)
         }));
+
+        // A web file input cannot expose a local absolute path. Instead, the
+        // WinForms host owns the native dialog and returns only the chosen path.
+        // This pre-login route requires the browser's exact same-origin header.
+        app.MapPost("/api/select-database-file", async (
+            HttpContext ctx,Vault v,SelectDatabaseFileInput input) =>
+        {
+            string expectedOrigin=$"http://127.0.0.1:{ctx.Request.Host.Port}";
+            if(!string.Equals(ctx.Request.Headers.Origin.ToString(),
+                expectedOrigin,StringComparison.Ordinal))
+                return Fail("只能从当前管理界面选择资料库。",403);
+            if(v.Unlocked || v.FileTaskActive || v.ExitRequested)
+                return Fail("资料库已打开或程序正在处理任务，不能更换文件。",409);
+            try
+            {
+                string? path=await LauncherHost.ChooseDatabasePathAsync(
+                    input.Create,input.CurrentPath,ctx.RequestAborted);
+                if(v.Unlocked || v.ExitRequested)
+                    return Fail("资料库状态已发生变化，请重新打开登录页面。",409);
+                return Results.Json(new {path});
+            }
+            catch(OperationCanceledException)
+            {
+                return Results.StatusCode(499);
+            }
+            catch(InvalidOperationException ex)
+            {
+                return Fail(ex.Message,409);
+            }
+        });
         
         app.MapPost("/api/open", async (OpenInput input, Vault v) =>
         {
@@ -108,6 +135,26 @@ static class SessionEndpoints
         });
     }
 
+
+    internal static string SuggestDatabasePath(string directory)
+    {
+        string preferred=Path.GetFullPath(Path.Combine(directory,"IPSys.db"));
+        if(File.Exists(preferred))return preferred;
+        try
+        {
+            // Reuse the only existing database next to the EXE. Do not guess
+            // when there are multiple candidates; let the user browse instead.
+            var candidates=Directory.EnumerateFiles(directory,"*",SearchOption.TopDirectoryOnly)
+                .Where(p=>new[]{".db",".sqlite",".sqlite3"}
+                    .Contains(Path.GetExtension(p),StringComparer.OrdinalIgnoreCase))
+                .Take(2).ToArray();
+            if(candidates.Length==1)return Path.GetFullPath(candidates[0]);
+        }
+        catch(IOException){}
+        catch(UnauthorizedAccessException){}
+        return preferred;
+    }
+
     public static void MapDiagnostics(WebApplication app)
     {
         app.MapGet("/api/check", async (HttpContext ctx, Vault v) =>
@@ -136,3 +183,5 @@ static class SessionEndpoints
         });
     }
 }
+
+record SelectDatabaseFileInput(bool Create,string? CurrentPath);

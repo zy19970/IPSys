@@ -47,8 +47,48 @@ static class WebSmoke
             }
             if(!landing.Contains("href=\"/favicon.ico\"")||!landing.Contains("type=\"image/x-icon\""))
                 throw new IOException("网页首页未引用正式 favicon。");
+            if(!landing.Contains("id=\"dbPathBrowse\""))
+                throw new IOException("登录页缺少资料库文件选择按钮。");
+            if(!IPSys.Web.LauncherForm.ShouldMinimize(
+                System.Windows.Forms.CloseReason.UserClosing,false,false) ||
+               IPSys.Web.LauncherForm.ShouldMinimize(
+                System.Windows.Forms.CloseReason.UserClosing,true,false) ||
+               IPSys.Web.LauncherForm.ShouldMinimize(
+                System.Windows.Forms.CloseReason.WindowsShutDown,false,false))
+                throw new IOException("窗口 X 最小化与退出按钮生命周期判定错误。");
+
+            // Default database suggestions remain alongside IPSys.Web.exe;
+            // never fall back to My Documents or silently move old databases.
+            string defaultPath=SessionEndpoints.SuggestDatabasePath(AppContext.BaseDirectory);
+            var status=await client.GetFromJsonAsync<JsonElement>("/api/status");
+            if(status.GetProperty("unlocked").GetBoolean() ||
+               status.GetProperty("suggestion").GetString()!=defaultPath ||
+               Path.GetDirectoryName(defaultPath)!=
+                   Path.GetFullPath(AppContext.BaseDirectory).TrimEnd(Path.DirectorySeparatorChar))
+                throw new IOException("默认资料库路径不在程序所在目录。");
+            using(var forbiddenDialog=await client.PostAsJsonAsync(
+                "/api/select-database-file",new SelectDatabaseFileInput(false,defaultPath)))
+                if(forbiddenDialog.StatusCode!=HttpStatusCode.Forbidden)
+                    throw new IOException("浏览器文件选择接口必须校验同源 Origin。");
+            // Test the path choice policy without accessing any user database.
+            string policyDir=Path.Combine(dir,"path-policy");
+            Directory.CreateDirectory(policyDir);
+            if(SessionEndpoints.SuggestDatabasePath(policyDir)!=
+                Path.Combine(policyDir,"IPSys.db"))
+                throw new IOException("资料库默认文件名不正确。");
+            string existing=Path.Combine(policyDir,"existing.sqlite");
+            File.WriteAllText(existing,"placeholder");
+            if(SessionEndpoints.SuggestDatabasePath(policyDir)!=existing)
+                throw new IOException("未优先选择程序同目录唯一现有资料库。");
+            File.WriteAllText(Path.Combine(policyDir,"another.db"),"placeholder");
+            if(SessionEndpoints.SuggestDatabasePath(policyDir)!=
+                Path.Combine(policyDir,"IPSys.db"))
+                throw new IOException("多个现有资料库不能任意选取其中一个。");
             string css=await client.GetStringAsync("/style.css");
             string app=await client.GetStringAsync("/app.js");
+            if(!css.Contains(".db-path-picker") ||
+               !app.Contains("/api/select-database-file"))
+                throw new IOException("文件夹按钮样式或交互未打包到 EXE。");
             string ip=await client.GetStringAsync("/ip-v2.js");
             string uploadProgressJs=await client.GetStringAsync("/upload-progress.js");
             string export=await client.GetStringAsync("/export.js");

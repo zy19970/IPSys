@@ -190,6 +190,11 @@ function showLogin(hint) {
       if (p && s.suggestion) p.value = s.suggestion;
       const createSwitch = $("#switchLockMode");
       if (createSwitch) createSwitch.hidden = !!s.unlocked;
+      const browser = $("#dbPathBrowse");
+      if (browser) {
+        browser.hidden = !!s.unlocked;
+        browser.disabled = !!s.unlocked;
+      }
       if (s.unlocked) {
         if (p) p.disabled = true;
         $("#createConfirmField")?.setAttribute("hidden", "");
@@ -302,6 +307,7 @@ function bindLockScreen() {
   if (!form) return;
 
   const switchMode = $("#switchLockMode");
+  const browse = $("#dbPathBrowse");
   let creating = false;
   const setMode = (value) => {
     // Session-resume mode belongs to an already open database.
@@ -325,6 +331,28 @@ function bindLockScreen() {
   VaultStore.resetLoginMode = () => setMode(false);
   switchMode?.addEventListener("click", () => {
     if (!VaultStore.needsResume) setMode(!creating);
+  });
+
+  // Native Windows file chooser, not <input type=file>: the latter hides the
+  // real absolute path and cannot be used by SQLCipher to open a database.
+  browse?.addEventListener("click", async () => {
+    if (VaultStore.needsResume || browse.disabled) return;
+    const field = $("#dbPath");
+    const hint = $("#lockHint");
+    browse.disabled = true;
+    if (hint) hint.textContent = "";
+    try {
+      const response = await VaultStore.api("/api/select-database-file", {
+        method: "POST",
+        json: { create: creating, currentPath: field?.value || "" }
+      });
+      const result = await response.json();
+      if (result.path && field) field.value = result.path;
+    } catch (error) {
+      if (hint) hint.textContent = error.message;
+    } finally {
+      browse.disabled = !!VaultStore.needsResume;
+    }
   });
 
   form.addEventListener("submit", async (e) => {
