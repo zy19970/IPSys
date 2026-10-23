@@ -6,8 +6,8 @@ on:
     paths:
       - "src/IPSys.Web/**"
       - "frontend/explorer/**"
-      - "docs/retest-v2-2026-10-22/scripts/**"
-      - "docs/retest-v2-2026-10-22/evidence/fixture.json"
+      - "tests/retest-v2-2026-10-22/scripts/**"
+      - "tests/retest-v2-2026-10-22/evidence/fixture.json"
       - ".github/workflows/web-windows.yml"
   workflow_dispatch:
     inputs:
@@ -241,7 +241,7 @@ jobs:
         shell: pwsh
         env:
           IPSYS_RETEST_RUN_ID: v2ci-${{ github.run_id }}-${{ github.run_attempt }}
-          IPSYS_EVIDENCE_DIR: docs/retest-v2-2026-10-22/evidence/runs/v2ci-${{ github.run_id }}-${{ github.run_attempt }}
+          IPSYS_EVIDENCE_DIR: tests/retest-v2-2026-10-22/evidence/runs/v2ci-${{ github.run_id }}-${{ github.run_attempt }}
         run: |
           $ErrorActionPreference = 'Stop'
           $exe = Join-Path $PWD 'src/IPSys.Web/bin/Debug/net8.0-windows/IPSys.Web.exe'
@@ -289,14 +289,14 @@ jobs:
             }
             Write-Host "Isolated test host ready: $base"
             $env:IPSYS_BASE = $base
-            node docs/retest-v2-2026-10-22/scripts/fixture.cjs $env:IPSYS_RETEST_RUN_ID
+            node tests/retest-v2-2026-10-22/scripts/fixture.cjs $env:IPSYS_RETEST_RUN_ID
             if ($LASTEXITCODE -ne 0) { throw 'Disposable V2 fixture setup failed' }
-            node docs/retest-v2-2026-10-22/scripts/t-http.cjs $env:IPSYS_RETEST_RUN_ID
+            node tests/retest-v2-2026-10-22/scripts/t-http.cjs $env:IPSYS_RETEST_RUN_ID
             if ($LASTEXITCODE -ne 0) { throw 'V2 HTTP retest failed before writing its result JSON' }
-            node docs/retest-v2-2026-10-22/scripts/t-browser.cjs $env:IPSYS_RETEST_RUN_ID
+            node tests/retest-v2-2026-10-22/scripts/t-browser.cjs $env:IPSYS_RETEST_RUN_ID
             if ($LASTEXITCODE -ne 0) { throw 'V2 Edge retest failed before writing its result JSON' }
             $env:IPSYS_CASES_OUTPUT = Join-Path $evidence 'IPSys_Explorer_Full_Retest_V2_Cases.csv'
-            python docs/retest-v2-2026-10-22/scripts/gen-cases.py
+            python tests/retest-v2-2026-10-22/scripts/gen-cases.py
             if ($LASTEXITCODE -ne 0) { throw 'V2 run-specific case CSV generation failed' }
             foreach ($name in @('http-results.json', 'browser-results.json')) {
               $resultPath = Join-Path $evidence $name
@@ -370,6 +370,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: IPSys-Explorer-V2-Retest-${{ github.run_id }}-${{ github.run_attempt }}
-          path: docs/retest-v2-2026-10-22/evidence/runs/v2ci-${{ github.run_id }}-${{ github.run_attempt }}/**
+          path: tests/retest-v2-2026-10-22/evidence/runs/v2ci-${{ github.run_id }}-${{ github.run_attempt }}/**
           if-no-files-found: warn
           retention-days: 30
