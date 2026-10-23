@@ -21,6 +21,12 @@ dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-conta
 
 Release 发布包为单独的 `IPSys.Web.exe`，但**不是完全免运行时**：目标机器需要 .NET 8 Windows Desktop Runtime 与 ASP.NET Core Runtime（x64）。前端打包需要 Node 22；`dist/` 是构建产物，不以手工编辑构建结果代替修改源码。CI 在 Windows 执行 Debug/Release、单 EXE、Explorer Node、Edge/HTTP、SQLCipher/HTTP 和 MCP 检查。
 
+## 手动发布 GitHub Release
+
+IPSys 的正式发布由 [Publish IPSys Release](https://github.com/zy19970/IPSys/actions/workflows/publish-release.yml) 手动触发，不随普通代码提交自动发布。进入 Actions → Publish IPSys Release → Run workflow，分支选择 `main`，输入新的版本号（如 `v0.1.0-rc.1` 或 `v0.1.0`）。开发阶段建议保留默认勾选的「预发布版本」，准备正式交付时取消勾选。版本标签一旦使用，不允许重复发布覆盖。
+
+发布工作流**直接复用**当前完整的 Windows 构建与验收（`.github/workflows/web-windows.yml`）：全部成功后，下载本次 CI 产生的单文件 `IPSys.Web.exe`，生成 `IPSys.Web.exe.sha256`，使用本次被测的精确提交 SHA 自动创建 GitHub Release。失败、标签重复或测试期间 `main` 更新都会阻止发布，不会以旧构建或未测构建充数。Release 的产物仍依赖目标计算机安装 .NET 8 Windows Desktop Runtime 和 ASP.NET Core Runtime（x64）。完整验收方法见 [TESTING.md](./TESTING.md)。
+
 ## 当前验收状态
 
 | 验证范围 | 当前结论与证据 |

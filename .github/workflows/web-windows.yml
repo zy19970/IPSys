@@ -1,6 +1,7 @@
 name: IPSys Windows build and smoke
 
 on:
+  workflow_call:
   push:
     branches: [main, "work/onedrive-file-manager"]
     paths:

@@ -1,0 +1,140 @@
+name: Publish IPSys Release
+
+# 手动发布；正常 push 只构建和验收。
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号，例如 v0.1.0 或 v0.1.0-rc.1（不可复用）'
+        required: true
+        type: string
+      prerelease:
+        description: '作为预发布版本（开发阶段建议勾选）'
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+# 同一时间只执行一次发布，不取消正在上传的版本。
+concurrency:
+  group: ipsys-manual-release
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Check branch and version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require main and an unused version
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" != 'refs/heads/main' ]]; then
+            echo '只能在 main 分支手动发布；请在 Run workflow 菜单中选择 main。' >&2
+            exit 1
+          fi
+          if [[ ! "$RELEASE_VERSION" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$ ]]; then
+            echo '版本号格式错误：请使用 v1.2.3 或 v1.2.3-rc.1。' >&2
+            exit 1
+          fi
+          status=0
+          git ls-remote --tags --exit-code origin "refs/tags/$RELEASE_VERSION" > /dev/null || status=$?
+          if [[ "$status" -eq 0 ]]; then
+            echo "版本标签 $RELEASE_VERSION 已存在，禁止覆盖；请填写新版本号。" >&2
+            exit 1
+          elif [[ "$status" -ne 2 ]]; then
+            echo "未能核实远程版本标签（git 退出码 $status），中止发布。" >&2
+            exit 1
+          fi
+          echo "发布前检查通过：$RELEASE_VERSION，源码 $GITHUB_SHA"
+
+  verify:
+    name: Complete Windows acceptance
+    needs: validate
+    # 复用现行 Windows CI：Debug、Release、MCP、Node、真实 Edge/HTTP、SQLCipher。
+    uses: ./.github/workflows/web-windows.yml
+    permissions:
+      contents: read
+
+  publish:
+    name: Publish tested EXE to GitHub Releases
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download EXE from this run's successful Windows CI
+        uses: actions/download-artifact@v4
+        with:
+          name: IPSys-Web-win-x64
+          path: release-input
+      - name: Check package and SHA-256
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f release-input/IPSys.Web.exe
+          count=$(find release-input -type f | wc -l)
+          if [[ "$count" -ne 1 ]]; then
+            echo "预期只有一个 EXE，但收到 $count 个文件。" >&2
+            exit 1
+          fi
+          test -s release-input/IPSys.Web.exe
+          mkdir -p release
+          cp release-input/IPSys.Web.exe release/IPSys.Web.exe
+          (cd release && sha256sum IPSys.Web.exe > IPSys.Web.exe.sha256)
+          (cd release && sha256sum --check IPSys.Web.exe.sha256)
+          echo "单 EXE 包和 SHA-256：验证通过"
+      - name: Create GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ inputs.version }}
+          IS_PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          set -euo pipefail
+          # 测试期间有新提交就拒绝发布旧构建。
+          current=$(gh api "repos/$GITHUB_REPOSITORY/branches/main" --jq '.commit.sha')
+          if [[ "$current" != "$GITHUB_SHA" ]]; then
+            echo '测试期间 main 有新提交；本次不发布旧构建。请重新从 main 触发。' >&2
+            exit 1
+          fi
+          # 复查标签，防止测试期间被其他发布过程占用。
+          status=0
+          git ls-remote --tags --exit-code origin "refs/tags/$RELEASE_VERSION" > /dev/null || status=$?
+          if [[ "$status" -eq 0 ]]; then
+            echo "版本标签 $RELEASE_VERSION 已存在；拒绝覆盖。" >&2
+            exit 1
+          elif [[ "$status" -ne 2 ]]; then
+            echo "无法确认 $RELEASE_VERSION 未被使用，中止发布。" >&2
+            exit 1
+          fi
+          cat > release-notes.md <<EOF
+          IPSys Windows x64 资料管理系统（正式前端 / SQLCipher V2）。
+
+          - 对应提交：$GITHUB_SHA
+          - 验收依据：本次发布工作流调用的完整 Windows CI 已通过（Debug、Release、MCP、Node、Edge/HTTP、SQLCipher）。
+          - 下载文件：IPSys.Web.exe，以及 SHA-256 校验文件。
+          - 运行条件：目标计算机需安装 .NET 8 Windows Desktop Runtime (x64) 和 ASP.NET Core Runtime 8 (x64)。
+          - 说明：2 GiB / 4 GiB 大文件专项压测不属于普通发布门禁，参阅仓库测试文档。
+
+          构建与验收：https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+          EOF
+          args=()
+          if [[ "$IS_PRERELEASE" == 'true' ]]; then args+=(--prerelease); fi
+          gh release create "$RELEASE_VERSION" \
+            release/IPSys.Web.exe release/IPSys.Web.exe.sha256 \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "IPSys $RELEASE_VERSION" \
+            --notes-file release-notes.md \
+            "${args[@]}"
+          url=$(gh release view "$RELEASE_VERSION" --repo "$GITHUB_REPOSITORY" --json url --jq '.url')
+          echo "发布成功：$url" >> "$GITHUB_STEP_SUMMARY"
+          echo "产物：IPSys.Web.exe 和 IPSys.Web.exe.sha256" >> "$GITHUB_STEP_SUMMARY"
+          echo "源码：$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
