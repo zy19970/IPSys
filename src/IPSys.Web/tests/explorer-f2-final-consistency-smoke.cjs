@@ -132,9 +132,10 @@ const act=cmd=>vm.runInContext(cmd,sandbox);
 
  // Reload never changes home into a files view and prunes deleted selections.
  const refreshRange=part(inter,"async function refreshCurrent() {","/* ---------------- 文件下载");
+ let storageRefreshes=0;
  const reloadSandbox=vm.createContext({
   Drive:drive,
-  VaultStore:{ws:"company",loadAll:async()=>{}},
+  VaultStore:{ws:"company",loadAll:async()=>{},refreshStorage:()=>{storageRefreshes++;}},
   findById:id=>found.get(id)||null,
   RECYCLE:trash,
  });
@@ -151,6 +152,7 @@ const act=cmd=>vm.runInContext(cmd,sandbox);
  await vm.runInContext("refreshCurrent()",reloadSandbox);
  assert.equal(drive.state.view,"recycle");
  assert.deepEqual([...drive.state.selection],["t:8"]);
+ assert.equal(storageRefreshes,3,"Refresh must request updated whole-vault pages");
 
  // A modal guard must precede Delete, F2 and Ctrl+A keyboard actions.
  const key=part(inter,"function bindKeyboard() {","/* ---------------- 遮罩层");
