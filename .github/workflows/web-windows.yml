@@ -16,6 +16,11 @@ on:
         type: boolean
         required: false
         default: false
+      zip64_file_smoke:
+        description: 'Generate a real >4 GiB ZIP64 archive using the production exporter (no extraction)'
+        type: boolean
+        required: false
+        default: false
 
 jobs:
   smoke:
@@ -325,6 +330,35 @@ jobs:
           if (-not (Test-Path $report)) { throw "Smoke completion report missing" }
           if ((Get-Content $report -Raw) -notmatch 'WEB SMOKE PASS') { throw "Smoke assertions incomplete" }
           Write-Host "WEB SMOKE PASS (WinExe process finished; report verified)"
+      - name: Generate physical ZIP64 archive above 4 GiB (generation only)
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.zip64_file_smoke) || contains(github.event.head_commit.message, '[zip64-real-test]') }}
+        shell: pwsh
+        env:
+          IPSYS_ZIP64_OUTPUT_DIR: ${{ runner.temp }}/ipsys-real-zip64
+        run: |
+          $ErrorActionPreference = 'Stop'
+          node src/IPSys.Web/tests/zip64-real-generate.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Production ZIP64 physical generation failed' }
+          $report = Join-Path $env:IPSYS_ZIP64_OUTPUT_DIR 'zip64-generation-evidence.json'
+          $evidence = Get-Content -LiteralPath $report -Raw | ConvertFrom-Json
+          if ($evidence.result -ne 'PASS_GENERATION_ONLY' -or
+              [long]$evidence.bytes -le 4294967295 -or
+              $evidence.fileCount -ne 2 -or
+              -not $evidence.zip64EocdFound -or
+              -not $evidence.zip64LocatorFound) {
+            throw 'Physical ZIP64 archive evidence incomplete'
+          }
+          Write-Host "ZIP64 generation-only result: $($evidence.bytes) bytes, SHA256 $($evidence.zipSha256)"
+          # Do not upload multi-GiB archives to GitHub or leave huge temporary
+          # files on the ephemeral CI runner. A local run keeps the archive.
+          Remove-Item -LiteralPath $evidence.actualFile -Force
+      - name: Upload ZIP64 generation metadata only
+        if: ${{ always() && ((github.event_name == 'workflow_dispatch' && inputs.zip64_file_smoke) || contains(github.event.head_commit.message, '[zip64-real-test]')) }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: IPSys-ZIP64-generation-${{ github.run_id }}
+          path: ${{ runner.temp }}/ipsys-real-zip64/zip64-generation-evidence.json
+          if-no-files-found: warn
       - name: Upload Windows executable with embedded web assets
         uses: actions/upload-artifact@v4
         with:
