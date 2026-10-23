@@ -138,17 +138,33 @@ function transfer(files=[],types=[]) {
  assert.equal(uploads.length,1);
  assert.equal(uploads[0].folder,target);
  assert.equal(external.stopped(),true);
- const pageDrop={dataTransfer:dt,defaultPrevented:true,preventDefault(){}};
- docHandlers.get("drop")(pageDrop);
- assert.equal(uploads.length,1,"Page handler must not upload the same file again");
+ assert.equal(external.stopped(),true,"Consumed target drop does not bubble to document");
 
  dt=transfer([realFile],["Files"]);
- await rowEvent("drop",invalid,dt).p;
+ const invalidDrop=rowEvent("drop",invalid,dt);
+ await invalidDrop.p;
  assert.equal(uploads.length,1,"External file cannot upload to virtual archive directory");
+ assert.equal(invalidDrop.stopped(),true,"Invalid row consumes the event instead of uploading elsewhere");
+ assert.match(tips.at(-1),/请将文件拖入具体业务记录/);
 
  dt=transfer([realFile],["Files"]);
- const pageOnly={dataTransfer:dt,defaultPrevented:false,preventDefault(){this.defaultPrevented=true;}};
+ const pageOnly={dataTransfer:dt,defaultPrevented:true,preventDefault(){this.defaultPrevented=true;}};
  docHandlers.get("drop")(pageOnly);
- assert.equal(uploads.length,2,"External drop on blank page retains valid current-folder upload");
+ assert.equal(uploads.length,2,"Already-prevented blank page still uploads into a valid current record");
+
+ sandbox.Drive.state.folderId="root";
+ dt=transfer([realFile],["Files"]);
+ const invalidPage={dataTransfer:dt,defaultPrevented:true,preventDefault(){}};
+ const tipsBefore=tips.length;
+ docHandlers.get("drop")(invalidPage);
+ assert.equal(uploads.length,2,"Home/category background must not upload");
+ assert.equal(tips.length,tipsBefore+1,"Invalid page emits one explanatory toast");
+ assert.match(tips.at(-1),/请先进入具体业务记录/);
+
+ sandbox.Drive.state.folderId=source.id;
+ busy=true;
+ docHandlers.get("drop")({dataTransfer:dt,preventDefault(){}});
+ assert.equal(uploads.length,2,"Busy file task must not start another upload");
+ busy=false;
  console.log("EXPLORER F2-05 PASS: real drop dispatch, cancel, workspace lock, forbidden targets, 409 and single external upload");
 })().catch(e=>{console.error(e);process.exitCode=1;});

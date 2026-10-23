@@ -38,6 +38,37 @@ static class NativeFileChoiceEndpoints
     }
     public static void Map(WebApplication app,Func<string,int,IResult> fail)
     {
+        // Read-only recovery metadata for a tab that lost its upload dialog.
+        // Always authenticate and serialize with the vault Gate: the ticket is
+        // not a general-purpose file deletion or a cross-session capability.
+        app.MapGet("/api/v2/files/pending",async(HttpContext ctx,Vault v)=>
+        {
+            if(!v.Allowed(ctx))return (IResult)Results.Unauthorized();
+            if(v.FileTaskActive||v.ExitRequested)
+                return fail("当前有文件任务，请完成后查看待确认上传。",409);
+            if(!await v.Gate.WaitAsync(0))
+                return fail("数据库忙，请稍后重试。",409);
+            try
+            {
+                if(!v.Allowed(ctx))return Results.Unauthorized();
+                if(v.FileTaskActive||v.ExitRequested)
+                    return fail("当前有文件任务，请完成后查看待确认上传。",409);
+                using var cmd=v.Db.CreateCommand();
+                cmd.CommandText="SELECT COUNT(*) FROM file_objects WHERE state='writing';";
+                long count=(long)cmd.ExecuteScalar()!;
+                var pending=v.PendingFile;
+                return Results.Json(new {
+                    writingCount=count,
+                    pending=pending is null?null:new {
+                        pending.Ticket,pending.Workspace,
+                        name=pending.Metadata.Name,
+                        pending.Size,pending.ExpiresAt
+                    }
+                });
+            }
+            finally{v.Gate.Release();}
+        });
+
         app.MapPost("/api/v2/files/{workspace}/prepare",async(
             HttpContext ctx,Vault v,string workspace,long folderId)=>
         {
@@ -105,7 +136,8 @@ static class NativeFileChoiceEndpoints
             HttpContext ctx,Vault v,string workspace,string ticket)=>
             Locked(ctx,v,cancellation=>
             {
-                var pending=NativeFileChoiceStore.Require(v,workspace,ticket);
+                // Expiry prevents resolving a file, not explicitly discarding it.
+                var pending=NativeFileChoiceStore.Require(v,workspace,ticket,allowExpired:true);
                 cancellation.ThrowIfCancellationRequested();
                 NativeFileChoiceStore.Discard(v.Db,pending);
                 v.PendingFile=null;

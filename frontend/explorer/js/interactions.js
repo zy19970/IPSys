@@ -236,6 +236,9 @@ async function enterWorkspace(ws) {
     Drive.navigate("home");
     const av = $("#btnAvatar");
     if (av) av.title = VaultStore.dbName || ME.name;
+    /* A closed tab can leave an unconfirmed encrypted original staged.
+       Reconnected users must know that it can be safely canceled in settings. */
+    void notifyPendingUpload();
     /* 上次关页面时可能还有一个彻底删除任务在跑,接回来继续看进度 */
     void resumePurge();
   } catch (e) {
@@ -467,9 +470,92 @@ function paintSettings() {
      写死在 HTML 里会立刻过期。 */
   void paintMcpRow();
   void paintCompactRow();
+  void paintPendingUploadRow();
 }
 
 /* ---------------- 设置 · 数据库块 ---------------- */
+
+/* Only one staged preparation exists per vault. A browser tab can disappear
+   before its duplicate-choice dialog resolves, so expose a safe cancel path. */
+let pendingUpload = null;
+let lastNotifiedPendingTicket = "";
+
+async function notifyPendingUpload() {
+  const token = VaultStore.token;
+  try {
+    const status = await VaultStore.getJson("/api/v2/files/pending");
+    if (VaultStore.token !== token || !token) return;
+    if (!status.pending) {
+      lastNotifiedPendingTicket = "";
+      if (Number(status.writingCount) > 0)
+        toast("存在无法从当前页面取消的未完成写入，请关闭并重新打开资料库清理。", {ms:9000,tone:"error"});
+      return;
+    }
+    if (lastNotifiedPendingTicket === status.pending.ticket) return;
+    lastNotifiedPendingTicket = status.pending.ticket;
+    toast("有一份待确认上传尚未保存，请在设置中取消暂存或检查上传结果。", {
+      ms:10000, action:"查看", onAction:openSettings,
+    });
+  } catch {
+    /* A busy vault may reject this informational check; do not mask login. */
+  }
+}
+
+async function paintPendingUploadRow() {
+  const msg = $("#setPendingUploadMsg");
+  const btn = $("#setPendingUploadCancel");
+  if (!msg || !btn) return;
+  pendingUpload = null;
+  btn.hidden = true;
+  btn.disabled = true;
+  msg.textContent = "正在检查待确认的原件…";
+  const token = VaultStore.token;
+  try {
+    const state = await VaultStore.getJson("/api/v2/files/pending");
+    if (!token || token !== VaultStore.token) return;
+    pendingUpload = state.pending || null;
+    if (pendingUpload) {
+      msg.textContent = `${pendingUpload.name || "未命名原件"} · ${fmtSize(pendingUpload.size)} · ${pendingUpload.workspace === "company" ? "企业" : "个人"}工作区 · ${new Date(pendingUpload.expiresAt).getTime() <= Date.now() ? "已过期，可清理" : "等待保存确认"}`;
+      btn.hidden = false;
+      btn.disabled = fileTaskBusy();
+    } else if (Number(state.writingCount) > 0) {
+      msg.textContent = "存在无可恢复票据的未完成写入，请关闭并重新打开资料库清理。";
+    } else {
+      msg.textContent = "没有待确认上传。";
+    }
+  } catch (e) {
+    if (token === VaultStore.token) msg.textContent = "暂时无法检查：" + e.message;
+  }
+}
+
+async function cancelPendingUpload() {
+  const pending = pendingUpload;
+  if (!pending) return;
+  if (fileTaskBusy()) return toast("已有文件任务，请完成后再取消暂存");
+  const ok = await askConfirm({
+    title:"取消待确认上传",
+    text:`取消「${pending.name || "未命名原件"}」的待确认上传？只清理这次未提交的加密暂存，不删除任何已保存的文件或版本。`,
+    okText:"确认取消",danger:true,
+  });
+  if (!ok) return;
+  const btn = $("#setPendingUploadCancel");
+  if (btn) btn.disabled = true;
+  try {
+    /* The ticket, workspace and task lock are validated again by the server.
+       A later upload or a different workspace cannot be accidentally removed. */
+    await VaultStore.api(`/api/v2/files/${encodeURIComponent(pending.workspace)}/prepared/${encodeURIComponent(pending.ticket)}`, {
+      method:"DELETE",
+    });
+    pendingUpload = null;
+    lastNotifiedPendingTicket = "";
+    toast("待确认上传已取消，已保存的文件及历史版本不受影响");
+  } catch (e) {
+    toast("取消待确认上传失败：" + e.message, {tone:"error",ms:6500});
+  } finally {
+    await paintPendingUploadRow();
+    void paintCompactRow();
+  }
+}
 
 /* 压缩任务进行中时这个对象非空。对话框关掉再打开也要能接着显示,
    所以状态放在模块级而不是 DOM 上。 */
@@ -564,6 +650,19 @@ async function startCompact() {
     toast("磁盘或临时目录剩余空间不足，暂不能压缩");
     return;
   }
+  try {
+    const staged = await VaultStore.getJson("/api/v2/files/pending");
+    if (staged.pending || Number(staged.writingCount) > 0) {
+      toast("存在未完成的原件暂存，请在设置中检查待确认上传，清理后再压缩", {
+        ms:8500,action:"查看",onAction:openSettings,
+      });
+      void paintPendingUploadRow();
+      return;
+    }
+  } catch (e) {
+    toast("无法检查待确认上传，已取消压缩：" + e.message);
+    return;
+  }
   const ok = await askConfirm({
     title: "压缩数据库",
     text:
@@ -656,6 +755,7 @@ function bindSettings() {
 
   $("#setCheck").addEventListener("click", (e) => runIntegrityCheck(e.currentTarget));
   $("#setCompact").addEventListener("click", () => startCompact());
+  $("#setPendingUploadCancel")?.addEventListener("click", () => void cancelPendingUpload());
   $("#setLock").addEventListener("click", () => lockVault());
 
   $("#setMcp").addEventListener("change", async (e) => {
@@ -1259,19 +1359,26 @@ function bindContent() {
     const row = e.target.closest(".row, .tile");
     const target = row && findById(row.dataset.id);
     clearDragHighlights();
+    /* External files dropped on a row must be handled here exactly once:
+       invalid rows must not bubble and upload to the current folder. */
+    if (e.dataTransfer?.files?.length) {
+      dragLink = null;
+      if (row) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!canUploadFiles(target))
+          return toast("请将文件拖入具体业务记录");
+        if (fileTaskBusy()) return toast("已有文件任务，请完成后再上传");
+        return uploadFiles(e.dataTransfer.files, target);
+      }
+      return; // blank area: the document handler chooses the current folder
+    }
     if (!target || target.type !== "folder") {
       dragLink = null;
       return;
     }
     e.preventDefault();
-    e.stopPropagation(); // Avoid duplicate upload by document-level handler.
-
-    if (e.dataTransfer?.files?.length) {
-      dragLink = null;
-      if (!canUploadFiles(target))
-        return toast("请将文件拖入具体业务记录");
-      return uploadFiles(e.dataTransfer.files, target);
-    }
+    e.stopPropagation(); // Internal link moves are never page uploads.
 
     const sourceDrag = dragLink;
     dragLink = null;
@@ -1301,19 +1408,22 @@ function bindContent() {
     }
   });
 
-  /* 整页拖入 */
-  ["dragover", "drop"].forEach((t) =>
-    document.addEventListener(t, (e) => {
-      if (!e.dataTransfer?.types?.includes("Files")) return;
-      e.preventDefault();
-    })
-  );
+  /* One page-level handler prevents the browser from navigating to dropped
+     files and performs the fallback action; defaultPrevented is NOT a signal
+     that another listener has already processed the drop. */
+  document.addEventListener("dragover", (e) => {
+    if (!e.dataTransfer?.types?.includes("Files")) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = canUploadFiles(findById(Drive.state.folderId))
+      && !fileTaskBusy() ? "copy" : "none";
+  });
   document.addEventListener("drop", (e) => {
-    if (!e.dataTransfer?.files?.length || e.defaultPrevented) return;
+    if (!e.dataTransfer?.files?.length) return;
     e.preventDefault();
     const node = findById(Drive.state.folderId);
-    if (canUploadFiles(node)) uploadFiles(e.dataTransfer.files, node);
-    else toast("请先进入具体业务记录，再上传附件");
+    if (fileTaskBusy()) return toast("已有文件任务，请完成后再上传");
+    if (canUploadFiles(node)) return uploadFiles(e.dataTransfer.files, node);
+    toast("请先进入具体业务记录，再上传附件");
   });
 }
 

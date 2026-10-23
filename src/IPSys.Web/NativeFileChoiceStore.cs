@@ -62,7 +62,8 @@ static partial class NativeFileChoiceStore
         }
         tx.Commit();
     }
-    internal static NativeFilePreparation Require(Vault vault,string workspace,string ticket)
+    internal static NativeFilePreparation Require(Vault vault,string workspace,string ticket,
+        bool allowExpired=false)
     {
         var pending=vault.PendingFile;
         if(pending is null || pending.Workspace!=workspace ||
@@ -71,7 +72,7 @@ static partial class NativeFileChoiceStore
                System.Text.Encoding.ASCII.GetBytes(pending.Ticket),
                System.Text.Encoding.ASCII.GetBytes(ticket)))
             throw new KeyNotFoundException("不存在该待确认上传。");
-        if(DateTimeOffset.UtcNow>=pending.ExpiresAt)
+        if(!allowExpired && DateTimeOffset.UtcNow>=pending.ExpiresAt)
         {
             Discard(vault.Db,pending);
             vault.PendingFile=null;

@@ -75,6 +75,23 @@ static class NativeFileChoiceHttpSmoke
             discard.EnsureSuccessStatusCode();
         var match=await Prepare(client,"company",b,"同字节不同名字.docx",raw);
         string ticket=match.GetProperty("ticket").GetString()!;
+        var pending=await client.GetFromJsonAsync<JsonElement>("/api/v2/files/pending");
+        Check(pending.GetProperty("writingCount").GetInt64()==1 &&
+              pending.GetProperty("pending").GetProperty("ticket").GetString()==ticket &&
+              pending.GetProperty("pending").GetProperty("workspace").GetString()=="company",
+              "authenticated pending status exposes only the active staged ticket");
+        using(var noAuth=new HttpClient{BaseAddress=client.BaseAddress})
+        using(var denied=await noAuth.GetAsync("/api/v2/files/pending"))
+            Check(denied.StatusCode==HttpStatusCode.Unauthorized,
+                "pending ticket must require vault authentication");
+        using(var wrongWorkspace=await client.DeleteAsync(
+            $"/api/v2/files/personal/prepared/{ticket}"))
+            Check(wrongWorkspace.StatusCode==HttpStatusCode.NotFound,
+                "cannot cancel another workspace ticket");
+        using(var badTicket=await client.DeleteAsync(
+            "/api/v2/files/company/prepared/not-the-ticket"))
+            Check(badTicket.StatusCode==HttpStatusCode.NotFound,
+                "cannot cancel a different staged ticket");
         Check(match.GetProperty("size").GetInt64()==raw.Length &&
               match.GetProperty("sha256").GetString()==
                     Convert.ToHexString(SHA256.HashData(raw)),
@@ -154,6 +171,10 @@ static class NativeFileChoiceHttpSmoke
         using(var cancel=await client.DeleteAsync(
             $"/api/v2/files/company/prepared/{canceledTicket}"))
             cancel.EnsureSuccessStatusCode();
+        var afterDiscard=await client.GetFromJsonAsync<JsonElement>("/api/v2/files/pending");
+        Check(afterDiscard.GetProperty("pending").ValueKind==JsonValueKind.Null &&
+              afterDiscard.GetProperty("writingCount").GetInt64()==0,
+            "explicit cancel clears only the staged original");
         using(var afterCancel=await client.PostAsJsonAsync(
             $"/api/v2/files/company/prepared/{canceledTicket}/resolve",
             new NativeFileDecision("independent")))

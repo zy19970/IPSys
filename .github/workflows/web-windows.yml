@@ -178,6 +178,7 @@ jobs:
             'explorer-file-associate-smoke.cjs' = 'Explorer F2-03 same-workspace file share and move regression failed'
             'explorer-record-transfer-smoke.cjs' = 'Explorer F2-04 whole-record copy/move/transfer regression failed'
             'explorer-internal-dragdrop-smoke.cjs' = 'Explorer F2-05 internal drag/drop and duplicate-upload regression failed'
+            'explorer-pending-upload-smoke.cjs' = 'Explorer D-05 pending-original recovery regression failed'
             'explorer-f2-final-consistency-smoke.cjs' = 'Explorer F2-06 menu/toolbar/detail/selection and state consistency regression failed'
             'explorer-capabilities-smoke.cjs'  = 'Streaming download / server search / purge progress failed'
             'upload-progress-smoke.cjs'        = 'Real upload progress/multiphase state smoke failed'
