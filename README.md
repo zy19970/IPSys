@@ -19,13 +19,13 @@ dotnet build src/IPSys.Web/IPSys.Web.csproj -c Debug
 dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
 ```
 
-Release 发布包为单独的 `IPSys.Web.exe`，但**不是完全免运行时**：目标机器需要 .NET 8 Windows Desktop Runtime 与 ASP.NET Core Runtime（x64）。前端打包需要 Node 22；`dist/` 是构建产物，不以手工编辑构建结果代替修改源码。CI 在 Windows 执行 Debug/Release、单 EXE、Explorer Node、Edge/HTTP、SQLCipher/HTTP 和 MCP 检查。
+上述本机默认 Release 命令构建的是单 EXE **依赖环境版**，目标机器需要 .NET 8 Windows Desktop Runtime 与 ASP.NET Core Runtime（x64）。GitHub 手动 Release 则同时构建自包含版和依赖环境版，见下文发布说明。前端打包需要 Node 22；`dist/` 是构建产物，不以手工编辑构建结果代替修改源码。CI 在 Windows 执行 Debug/Release、单 EXE、Explorer Node、Edge/HTTP、SQLCipher/HTTP 和 MCP 检查。
 
 ## 手动发布 GitHub Release
 
 IPSys 的正式发布由 [Publish IPSys Release](https://github.com/zy19970/IPSys/actions/workflows/publish-release.yml) 手动触发，不随普通代码提交自动发布。进入 Actions → Publish IPSys Release → Run workflow，分支选择 `main`，输入新的版本号（如 `v0.1.0-rc.1` 或 `v0.1.0`）。开发阶段建议保留默认勾选的「预发布版本」，准备正式交付时取消勾选。版本标签一旦使用，不允许重复发布覆盖。
 
-发布工作流**直接复用**当前完整的 Windows 构建与验收（`.github/workflows/web-windows.yml`）：全部成功后，下载本次 CI 产生的单文件 `IPSys.Web.exe`，生成 `IPSys.Web.exe.sha256`，使用本次被测的精确提交 SHA 自动创建 GitHub Release。失败、标签重复或测试期间 `main` 更新都会阻止发布，不会以旧构建或未测构建充数。Release 的产物仍依赖目标计算机安装 .NET 8 Windows Desktop Runtime 和 ASP.NET Core Runtime（x64）。完整验收方法见 [TESTING.md](./TESTING.md)。
+发布工作流**直接复用**当前完整的 Windows 构建与验收（`.github/workflows/web-windows.yml`）：全部成功后，从本次 CI 下载两份经过单独构建和启动验证的 Windows x64 EXE，并用该次被测的精确提交 SHA 创建 GitHub Release。每个 Release 同时包含 `IPSys-win-x64-SelfContained.exe`（自包含 .NET 8 运行时，电脑无需额外安装 .NET 8，体积较大）与 `IPSys-win-x64-FrameworkDependent.exe`（不打包 .NET 运行时，体积较小，需安装 .NET 8 Windows Desktop Runtime 和 ASP.NET Core Runtime），另有 `SHA256SUMS.txt` 对两份文件提供 SHA-256 校验。失败、标签重复或测试期间 `main` 更新都会阻止发布，不会以旧构建或未测构建充数。自包含版需 Windows x64，但无需单独安装 .NET 8；该版随 EXE 固定携带发布时的运行时，日后更新 .NET 安全补丁需重新发布 EXE。依赖环境版则使用电脑上安装的 .NET 8 运行时。完整验收方法见 [TESTING.md](./TESTING.md)。
 
 ## 当前验收状态
 

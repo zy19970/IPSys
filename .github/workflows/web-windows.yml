@@ -10,6 +10,7 @@ on:
       - "tests/retest-v2-2026-10-22/scripts/**"
       - "tests/retest-v2-2026-10-22/evidence/fixture.json"
       - ".github/workflows/web-windows.yml"
+      - ".github/workflows/publish-release.yml"
   workflow_dispatch:
     inputs:
       large_file_smoke:
@@ -331,6 +332,61 @@ jobs:
           if (-not (Test-Path $report)) { throw "Smoke completion report missing" }
           if ((Get-Content $report -Raw) -notmatch 'WEB SMOKE PASS') { throw "Smoke assertions incomplete" }
           Write-Host "WEB SMOKE PASS (WinExe process finished; report verified)"
+      - name: Publish self-contained Windows x64 single EXE
+        shell: pwsh
+        run: |
+          # Unlike the framework-dependent EXE, this bundles the .NET 8 runtime.
+          dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-contained true -p:SelfContained=true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/IPSys-Web-win-x64-self-contained
+          if ($LASTEXITCODE -ne 0) { throw 'Self-contained Release publish failed' }
+      - name: Verify both single-file deployment modes
+        shell: pwsh
+        run: |
+          $frameworkDir = 'artifacts/IPSys-Web-win-x64'
+          $selfContainedDir = 'artifacts/IPSys-Web-win-x64-self-contained'
+          foreach ($folder in @($frameworkDir,$selfContainedDir)) {
+            $exe = Join-Path $folder 'IPSys.Web.exe'
+            if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) {
+              throw "Missing EXE: $exe"
+            }
+            $unexpected = @(Get-ChildItem -LiteralPath $folder -Force | Where-Object { $_.Name -ne 'IPSys.Web.exe' })
+            if ($unexpected.Count -ne 0) {
+              $unexpected | Select-Object Name,Length | Format-Table -AutoSize
+              throw "Expected one EXE and no sidecars: $folder"
+            }
+          }
+          $frameworkBytes = (Get-Item (Join-Path $frameworkDir 'IPSys.Web.exe')).Length
+          $selfContainedBytes = (Get-Item (Join-Path $selfContainedDir 'IPSys.Web.exe')).Length
+          if ($selfContainedBytes -le $frameworkBytes) {
+            throw "The self-contained binary is not larger than the framework-dependent binary: $selfContainedBytes <= $frameworkBytes. Verify SelfContained=true."
+          }
+          Write-Host "Framework-dependent: $frameworkBytes bytes; self-contained: $selfContainedBytes bytes"
+          # Verify the actual filenames users download from GitHub Releases also run.
+          foreach ($variant in @(
+            @{source=(Join-Path $frameworkDir 'IPSys.Web.exe'); name='IPSys-win-x64-FrameworkDependent.exe'; mode='framework-dependent'},
+            @{source=(Join-Path $selfContainedDir 'IPSys.Web.exe'); name='IPSys-win-x64-SelfContained.exe'; mode='self-contained'}
+          )) {
+            $candidate = Join-Path $env:RUNNER_TEMP $variant.name
+            Copy-Item -LiteralPath $variant.source -Destination $candidate -Force
+            $report = Join-Path $env:RUNNER_TEMP ("ipsys-release-" + $variant.mode + ".txt")
+            $env:IPSYS_SMOKE_REPORT = $report
+            $proc = Start-Process -FilePath $candidate -ArgumentList '--smoke' -PassThru -Wait
+            if ($proc.ExitCode -ne 0) {
+              if (Test-Path -LiteralPath $report) { Write-Host (Get-Content -LiteralPath $report -Raw) }
+              throw "Release-named $($variant.mode) EXE smoke failed (exit $($proc.ExitCode))"
+            }
+            if (-not (Test-Path -LiteralPath $report) -or
+                (Get-Content -LiteralPath $report -Raw) -notmatch 'WEB SMOKE PASS') {
+              throw "Release-named $($variant.mode) EXE did not report WEB SMOKE PASS"
+            }
+            Remove-Item -LiteralPath $candidate -Force
+            Write-Host "Release-named $($variant.mode) EXE HTTP/SQLCipher smoke: PASS"
+          }
+      - name: Upload self-contained Windows executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: IPSys-Web-win-x64-self-contained
+          path: artifacts/IPSys-Web-win-x64-self-contained/IPSys.Web.exe
+          if-no-files-found: error
       - name: Generate physical ZIP64 archive above 4 GiB (generation only)
         if: ${{ (github.event_name == 'workflow_dispatch' && inputs.zip64_file_smoke) || contains(github.event.head_commit.message, '[zip64-real-test]') }}
         shell: pwsh

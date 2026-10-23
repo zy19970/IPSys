@@ -62,34 +62,47 @@ jobs:
       contents: read
 
   publish:
-    name: Publish tested EXE to GitHub Releases
+    name: Publish both tested EXEs to GitHub Releases
     needs: verify
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - name: Download EXE from this run's successful Windows CI
+      - name: Download framework-dependent EXE from this run
         uses: actions/download-artifact@v4
         with:
           name: IPSys-Web-win-x64
-          path: release-input
-      - name: Check package and SHA-256
+          path: release-input/framework-dependent
+      - name: Download self-contained EXE from this run
+        uses: actions/download-artifact@v4
+        with:
+          name: IPSys-Web-win-x64-self-contained
+          path: release-input/self-contained
+      - name: Require both single EXEs and verify SHA-256
         shell: bash
         run: |
           set -euo pipefail
-          test -f release-input/IPSys.Web.exe
-          count=$(find release-input -type f | wc -l)
-          if [[ "$count" -ne 1 ]]; then
-            echo "预期只有一个 EXE，但收到 $count 个文件。" >&2
+          for mode in framework-dependent self-contained; do
+            test -s "release-input/$mode/IPSys.Web.exe"
+            count=$(find "release-input/$mode" -type f | wc -l)
+            if [[ "$count" -ne 1 ]]; then
+              echo "构建产物 $mode 不是单 EXE（收到 $count 个文件）。" >&2
+              exit 1
+            fi
+          done
+          mkdir -p release
+          cp release-input/framework-dependent/IPSys.Web.exe release/IPSys-win-x64-FrameworkDependent.exe
+          cp release-input/self-contained/IPSys.Web.exe release/IPSys-win-x64-SelfContained.exe
+          framework_bytes=$(stat -c%s release/IPSys-win-x64-FrameworkDependent.exe)
+          self_bytes=$(stat -c%s release/IPSys-win-x64-SelfContained.exe)
+          if [[ "$self_bytes" -le "$framework_bytes" ]]; then
+            echo "自包含版体积未大于依赖环境版，疑似缺失运行时。" >&2
             exit 1
           fi
-          test -s release-input/IPSys.Web.exe
-          mkdir -p release
-          cp release-input/IPSys.Web.exe release/IPSys.Web.exe
-          (cd release && sha256sum IPSys.Web.exe > IPSys.Web.exe.sha256)
-          (cd release && sha256sum --check IPSys.Web.exe.sha256)
-          echo "单 EXE 包和 SHA-256：验证通过"
+          (cd release && sha256sum IPSys-win-x64-FrameworkDependent.exe IPSys-win-x64-SelfContained.exe > SHA256SUMS.txt)
+          (cd release && sha256sum --check SHA256SUMS.txt)
+          echo "两个独立 EXE 的完整性与 SHA-256：验证通过"
       - name: Create GitHub Release
         shell: bash
         env:
@@ -119,8 +132,10 @@ jobs:
 
           - 对应提交：$GITHUB_SHA
           - 验收依据：本次发布工作流调用的完整 Windows CI 已通过（Debug、Release、MCP、Node、Edge/HTTP、SQLCipher）。
-          - 下载文件：IPSys.Web.exe，以及 SHA-256 校验文件。
-          - 运行条件：目标计算机需安装 .NET 8 Windows Desktop Runtime (x64) 和 ASP.NET Core Runtime 8 (x64)。
+          - IPSys-win-x64-SelfContained.exe：自包含版，已打包 .NET 8 Windows Desktop 和 ASP.NET Core 运行时，目标 Windows x64 机器无需另外安装 .NET 8；文件体积较大。
+          - IPSys-win-x64-FrameworkDependent.exe：依赖环境版，体积较小，目标机器需自行安装 .NET 8 Windows Desktop Runtime (x64) 和 ASP.NET Core Runtime 8 (x64)。
+          - SHA256SUMS.txt：同时记录这两份 EXE 的 SHA-256，用于下载后检查完整性。
+          - 自包含版携带发布时的 .NET 运行时，更新 .NET 安全补丁需要重新构建发布新版 EXE。
           - 说明：2 GiB / 4 GiB 大文件专项压测不属于普通发布门禁，参阅仓库测试文档。
 
           构建与验收：https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
@@ -128,7 +143,7 @@ jobs:
           args=()
           if [[ "$IS_PRERELEASE" == 'true' ]]; then args+=(--prerelease); fi
           gh release create "$RELEASE_VERSION" \
-            release/IPSys.Web.exe release/IPSys.Web.exe.sha256 \
+            release/IPSys-win-x64-FrameworkDependent.exe release/IPSys-win-x64-SelfContained.exe release/SHA256SUMS.txt \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
             --title "IPSys $RELEASE_VERSION" \
@@ -136,5 +151,5 @@ jobs:
             "${args[@]}"
           url=$(gh release view "$RELEASE_VERSION" --repo "$GITHUB_REPOSITORY" --json url --jq '.url')
           echo "发布成功：$url" >> "$GITHUB_STEP_SUMMARY"
-          echo "产物：IPSys.Web.exe 和 IPSys.Web.exe.sha256" >> "$GITHUB_STEP_SUMMARY"
+          echo "产物：IPSys-win-x64-SelfContained.exe、IPSys-win-x64-FrameworkDependent.exe、SHA256SUMS.txt" >> "$GITHUB_STEP_SUMMARY"
           echo "源码：$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
