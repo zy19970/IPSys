@@ -39,7 +39,7 @@ static class SessionEndpoints
                 return Fail("资料库已打开或程序正在处理任务，不能更换文件。",409);
             try
             {
-                string? path=await LauncherHost.ChooseDatabasePathAsync(
+                string? path=await IPSys.Web.LauncherHost.ChooseDatabasePathAsync(
                     input.Create,input.CurrentPath,ctx.RequestAborted);
                 if(v.Unlocked || v.ExitRequested)
                     return Fail("资料库状态已发生变化，请重新打开登录页面。",409);

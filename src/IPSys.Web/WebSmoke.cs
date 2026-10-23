@@ -60,9 +60,9 @@ static class WebSmoke
             // Default database suggestions remain alongside IPSys.Web.exe;
             // never fall back to My Documents or silently move old databases.
             string defaultPath=SessionEndpoints.SuggestDatabasePath(AppContext.BaseDirectory);
-            var status=await client.GetFromJsonAsync<JsonElement>("/api/status");
-            if(status.GetProperty("unlocked").GetBoolean() ||
-               status.GetProperty("suggestion").GetString()!=defaultPath ||
+            var initialStatus=await client.GetFromJsonAsync<JsonElement>("/api/status");
+            if(initialStatus.GetProperty("unlocked").GetBoolean() ||
+               initialStatus.GetProperty("suggestion").GetString()!=defaultPath ||
                Path.GetDirectoryName(defaultPath)!=
                    Path.GetFullPath(AppContext.BaseDirectory).TrimEnd(Path.DirectorySeparatorChar))
                 throw new IOException("默认资料库路径不在程序所在目录。");
