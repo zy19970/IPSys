@@ -1,5 +1,8 @@
 # IPSys M0 统一字段、状态与实体字典（设计定稿 V1.0）
 
+> **适用口径（2026-10-23）**：本文获确认的业务字段、金额显示、状态枚举和 Excel 列映射继续有效；历史候选附件物理表草图不是现行数据库 DDL。真实 SQLCipher V2 Folder/File/Link/Version 结构统一以 [DESIGN.md](./DESIGN.md) 与 `src/IPSys.Web/ResourceSchemaV2.cs` 为准；Explorer 已并入 `main` 且 Windows CI [#39947975625](https://github.com/zy19970/IPSys/actions/runs/39947975625) 成功。
+
+
 > 阶段：M0 设计输入准备，2026-10-13  
 > 依据：[REQUIREMENTS.md](./REQUIREMENTS.md) V1.0 冻结范围与 [FREEZE_AUDIT.md](./FREEZE_AUDIT.md)  
 > **本文件为 2026-10-13 的 M0 历史设计交付物，不是现行 SQLCipher V2 物理 DDL。** 最新 Folder/File 结构以 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md) 和 `src/IPSys.Web/ResourceSchemaV2.cs` 为准；正式全业务 V2 主链路通过 [CI #38897477886](https://github.com/zy19970/IPSys/actions/runs/38897477886)，当前处于 N4 清理与完整验收阶段。本文已确认的业务字段和金额格式仍有效。

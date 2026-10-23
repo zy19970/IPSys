@@ -1,5 +1,8 @@
 # IPSys V1.0 需求基线（范围冻结版）
 
+> **现行口径（2026-10-23）**：Explorer 已合并 `main`（`8227d2c`），合并后的 Windows CI [#39947975625](https://github.com/zy19970/IPSys/actions/runs/39947975625) 成功。本文 Q1～Q162 及其后续明确覆盖决定继续约束业务；旧“待做 N3/N4、待合并、旧库迁移、旧前端”的时间点描述是历史，不覆盖实际 V2 + Explorer 实现。现行架构请看 [DESIGN.md](./DESIGN.md)，现行进度请看 [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md)，界面以 [UI_BASELINE.md](./UI_BASELINE.md) 和 Explorer 源码为准。
+
+
 > **2026-10-15 最新架构覆盖决定（优先于旧 Q127–131 兼容路线）**：所有现存数据库仅为测试数据，**取消旧库兼容、迁移及回填**，直接采用 [RESOURCE_REFACTOR_PLAN.md](./RESOURCE_REFACTOR_PLAN.md) 的 SQLCipher V2 统一 Folder/File 物理模型。所有业务条目和分类统一 Folder 身份（有业务属性、**无版本**），仅附件 File 有版本和全部选填的说明/标签/编号/日期等属性；同工作区 Folder 多对多共享 FileId 或仅复用相同 FileObject，内容相同时须展示已有文件名与文件夹路径，由用户决定，跨公司/个人工作区不共享物理 FileObject。有关「只统一界面、不统一物理表」「旧测试库增量升级、双向互开」的旧表述为历史记录，不再指导施工；业务字典、UI 基线和 T01–T09 安全目标继续有效。当前 N1/N2-01/N2-02 已有 Windows CI，下一项 N3-01，后续 N2-03/N4。
 
 

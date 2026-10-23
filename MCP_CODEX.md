@@ -1,5 +1,8 @@
 # IPSys 本机 Codex MCP
 
+> **当前主分支基线（2026-10-23）**：Explorer 已合并 `main`，Windows CI [#39947975625](https://github.com/zy19970/IPSys/actions/runs/39947975625) 的 MCP stdio、59 工具和错误协议检查通过。下文 69/70 工具、旧 `v2_*` 名称及“尚待合并”的文字是对应旧 SHA 的记录；本机特殊权限/不同 Windows 用户的人工复测不能被常规 CI 冒充。当前版本与状态查 [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md) 和 [TESTING.md](./TESTING.md)。
+
+
 > **当前已验证构建**：[`2620c109`](https://github.com/zy19970/IPSys/commit/2620c109043f779eeb57f411210f99bb2f21e554) / [Windows CI #39019604428](https://github.com/zy19970/IPSys/actions/runs/39019604428) **success**（59 工具、无 `v2_*`、SQLCipher/HTTP、Debug/Release/Node 回归）；本机 Codex/WorkBuddy 新一轮实测尚待进行。此处其余 69/70 工具、11 个 `v2_*` 等描述均为历史时间点记录，**下个会话一律以本文开头的 59 工具清单为准**，并参照 [HANDOFF.md](./HANDOFF.md)。
 
 > **当前唯一接口口径（2026-10-17 接口收敛）**：MCP 对外暴露 **59 个无版本前缀的工具**，原来的 11 个 `v2_*` 业务别名已下线；`create_project`、`update_ip`、`list_contracts` 等原名接口仍操作 SQLCipher V2 Folder/File 数据模型。项目/合同/IP 三个 `list_*` 继续输出网页友好结构（包含 `id` 和相应扁平化业务字段）；原生 `FolderSnapshot` 可在授权的 HTTP `/api/v2/folders/{workspace}/{kind}` 查询，但不再单独占用 MCP 工具名称。既有 70 工具黑盒报告和 `v2_*` 用例只适用于历史版本；新实机测试使用 [MCP_INTERFACE_CLEANUP_TEST.md](./MCP_INTERFACE_CLEANUP_TEST.md)。HTTP `/api/v2`、数据表、FileId/LinkId 与版本机制未改变。

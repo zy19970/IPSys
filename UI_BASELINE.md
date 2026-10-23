@@ -1,5 +1,8 @@
 # IPSys 资料管理系统：现行 UI 与文件夹交互基线（2026-10-17）
 
+> **Explorer 合并后适用说明（2026-10-23）**：现行 UI 源码已变更为 `frontend/explorer/`，主分支 [Windows CI #39947975625](https://github.com/zy19970/IPSys/actions/runs/39947975625) 成功。下文旧式卡片/表格与 `wwwroot/app.js` 交互细节中，与 Explorer 新壳已实现行为不一致的部分仅代表旧阶段；不可按它们恢复旧前端或修改 V2 资源模型。当前页面具体组件与事件以 [Explorer 源码与说明](./frontend/explorer/README.md) 和功能回归为准。未改变的业务数据、工作区、权限、归档/文件版本规则继续有效。
+
+
 > 本文件为持续有效的 UI 冻结基线。正式网页、附件、Excel、搜索、回收站、导出及 MCP 都已统一 SQLCipher V2 FolderId/FileId/LinkId。N4 两批清理与 MCP 三批自动回归已通过，最新业务源码 `080a599` 对应 [Windows CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431) success；尚须 Edge/Chrome 与本机 Codex/WorkBuddy 实际验收。MCP 工具扩展不改变本文件已冻结的卡片/表格导航与布局。
 
 ## 1. 产品交互模型
