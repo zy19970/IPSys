@@ -189,8 +189,18 @@ internal sealed class LauncherForm : Form
     {
         internal LauncherCard()
         {
-            BackColor = Canvas;
+            BackColor = Color.White;
             DoubleBuffered = true;
+        }
+
+        protected override void OnSizeChanged(EventArgs e)
+        {
+            base.OnSizeChanged(e);
+            if (Width < 2 || Height < 2) return;
+            using var outline = RoundedRect(new Rectangle(0, 0, Width, Height), 9);
+            var old = Region;
+            Region = new Region(outline);
+            old?.Dispose();
         }
 
         protected override void OnPaint(PaintEventArgs e)
