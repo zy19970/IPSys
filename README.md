@@ -26,7 +26,7 @@ Release 发布包为单独的 `IPSys.Web.exe`，但**不是完全免运行时**�
 | 验证范围 | 当前结论与证据 |
 | --- | --- |
 | Explorer F2-01～F2-06 核心业务、三批缺陷修复 | 功能与对应自动回归已完成；`main` 常规 Windows CI [#39947975625](https://github.com/zy19970/IPSys/actions/runs/39947975625) 成功 |
-| 运行期 401 重新登录、拖放与待确认上传、跨工作区关联/物理隔离 | 已修复；专项 Node/HTTP 与 Agent 取证见 [验收证据索引](./docs/TEST_EVIDENCE_INDEX.md) |
+| 运行期 401 重新登录、拖放与待确认上传、跨工作区关联/物理隔离 | 已修复；专项 Node/HTTP 与 Agent 取证见 [验收证据索引](./tests/TEST_EVIDENCE_INDEX.md) |
 | 超过 2 GiB SQLCipher/HTTP 原件及大库 VACUUM | 专项 [#39943364663](https://github.com/zy19970/IPSys/actions/runs/39943364663) 通过（未跳过压缩或完整性检查） |
 | 超过 4 GiB ZIP64 真实物理生成 | 专项 [#39944440866](https://github.com/zy19970/IPSys/actions/runs/39944440866) 通过 `PASS_GENERATION_ONLY`，并不代表 CI 做了第三方解包 |
 | 真实 Windows 原生保存/大文件交互 | 用户已反馈在本人电脑上完成手工验收；无公开上传的逐字节手工操作日志 |
@@ -43,7 +43,7 @@ Release 发布包为单独的 `IPSys.Web.exe`，但**不是完全免运行时**�
 | [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md) | 当前完成状态、可继续开发的事项和验收门槛 |
 | [MCP_CODEX.md](./MCP_CODEX.md) | 本机 MCP 接入、59 工具和安全规则 |
 | [USER_GUIDE.md](./USER_GUIDE.md) | Excel、搜索、附件/ZIP 与用户操作 |
-| [TESTING.md](./TESTING.md) 与 [测试证据索引](./docs/TEST_EVIDENCE_INDEX.md) | 现行验证方法与各次独立原始证据 |
+| [TESTING.md](./TESTING.md) 与 [测试证据索引](./tests/TEST_EVIDENCE_INDEX.md) | 现行验证方法与各次独立原始证据 |
 | [frontend/explorer/README.md](./frontend/explorer/README.md) | Explorer 前端源码、打包和代码契约 |
 
-历史计划、旧测试任务书与报告保留在 `docs/archive/`、`docs/agent-validation/`、`docs/retest-v2-2026-10-22/`、`MCP_TEST_RESULTS/`，其日期状态不覆盖本页。开发前遵循 [AIGT-templates](https://github.com/zy19970/AIGT-templates) 的 `AGENTS.md` 和 `AI_RULES/GIT_OPERATIONS.md`。
+历史计划、旧测试任务书与报告保留在 `docs/archive/`、`tests/agent-validation/`、`tests/retest-v2-2026-10-22/`、`tests/mcp-results/`，其日期状态不覆盖本页。开发前遵循 [AIGT-templates](https://github.com/zy19970/AIGT-templates) 的 `AGENTS.md` 和 `AI_RULES/GIT_OPERATIONS.md`。

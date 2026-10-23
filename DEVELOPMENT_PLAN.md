@@ -12,9 +12,9 @@ IPSys 为 Windows 本地资料管理器：WinForms 启动器、浏览器 Explore
 | --- | --- | --- |
 | M0 需求、字段字典与 WinForms 初始验证 | 已完成，字段逻辑持续有效 | [M0_DATA_DICTIONARY.md](./M0_DATA_DICTIONARY.md) |
 | N1～N4 SQLCipher V2 资源内核、原生业务接口和旧物理模型清理 | 已进入现行代码，历史专项 CI 已通过 | [DESIGN.md](./DESIGN.md)；Git 历史 |
-| MCP 安全、业务工具与 59 工具接口收敛 | 代码及标准 CI 已通过；旧 70 工具 Agent 报告属历史 | [MCP_CODEX.md](./MCP_CODEX.md)、[MCP_TEST_RESULTS](./MCP_TEST_RESULTS/README.md) |
+| MCP 安全、业务工具与 59 工具接口收敛 | 代码及标准 CI 已通过；旧 70 工具 Agent 报告属历史 | [MCP_CODEX.md](./MCP_CODEX.md)、[MCP_TEST_RESULTS](./tests/mcp-results/README.md) |
 | Explorer 重构 F2-01～F2-06 | 功能完成：建库/会话、档案目录混排、文件关联、整记录复制转移、拖放和统一动作入口 | [阶段计划历史](./docs/EXPLORER_PHASE2_FUNCTIONAL_COMPLETENESS_2026-10-22.md) |
-| 三批实机反馈与缺陷收敛 | 运行期 401、外部拖放、待确认原件；跨区物理隔离专项证据完成 | [TEST_EVIDENCE_INDEX](./docs/TEST_EVIDENCE_INDEX.md) |
+| 三批实机反馈与缺陷收敛 | 运行期 401、外部拖放、待确认原件；跨区物理隔离专项证据完成 | [TEST_EVIDENCE_INDEX](./tests/TEST_EVIDENCE_INDEX.md) |
 | 大文件与 ZIP64 | >2 GiB SQLCipher/HTTP 与 VACUUM CI 通过；实际 >4 GiB ZIP64 生成通过；用户确认本机人工环节已验证 | [#39943364663](https://github.com/zy19970/IPSys/actions/runs/39943364663)、[#39944440866](https://github.com/zy19970/IPSys/actions/runs/39944440866) |
 | 安全合并 `main` | **完成**：fast-forward、非强制、开发分支保留，合并后两分支对比 `identical` | [main CI #39947975625](https://github.com/zy19970/IPSys/actions/runs/39947975625) |
 
@@ -30,4 +30,4 @@ IPSys 为 Windows 本地资料管理器：WinForms 启动器、浏览器 Explore
 
 代码和现行文档使用 `main`，开发分支 `work/onedrive-file-manager` 作为历史参照保留。用户提供的真实资料库不得作为破坏性测试对象；测试创建独立 SQLCipher QA 库。按 AIGT-templates 的 `AGENTS.md` 与 `AI_RULES/GIT_OPERATIONS.md` 执行 Git、构建与验收，文档与测试证据分开管理。
 
-技术架构查 [DESIGN.md](./DESIGN.md)，操作说明查 [USER_GUIDE.md](./USER_GUIDE.md)，测试门禁查 [TESTING.md](./TESTING.md)，历史 Agent 报告查 [docs/TEST_EVIDENCE_INDEX.md](./docs/TEST_EVIDENCE_INDEX.md)。
+技术架构查 [DESIGN.md](./DESIGN.md)，操作说明查 [USER_GUIDE.md](./USER_GUIDE.md)，测试门禁查 [TESTING.md](./TESTING.md)，历史 Agent 报告查 [docs/TEST_EVIDENCE_INDEX.md](./tests/TEST_EVIDENCE_INDEX.md)。
