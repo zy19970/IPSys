@@ -62,6 +62,7 @@ const VaultStore = {
   locked: true,
   loading: false,
   error: null,
+  onSessionExpired: null,
 
   /* nodeId -> 业务数据 */
   biz: new Map(),
@@ -70,26 +71,39 @@ const VaultStore = {
 
   /* ---------------- HTTP ---------------- */
 
+  /* One transition per authenticated session. Late replies cannot revoke
+     the token from a newer /api/resume; shared by fetch, XHR and purge. */
+  expireSession(requestToken) {
+    if (!requestToken || this.token !== requestToken) return false;
+    this.token = "";
+    this.locked = true;
+    this.needsResume = false;
+    sessionStorage.removeItem("od-token");
+    sessionStorage.removeItem("od-db");
+    this.onSessionExpired?.();
+    return true;
+  },
+
   async api(path, opts = {}) {
+    const requestToken = this.token;
     const headers = new Headers(opts.headers || {});
-    if (this.token) headers.set("X-IPSys-Token", this.token);
+    if (requestToken) headers.set("X-IPSys-Token", requestToken);
     if (opts.json !== undefined) {
       headers.set("Content-Type", "application/json");
       opts.body = JSON.stringify(opts.json);
     }
     const res = await fetch(path, { ...opts, headers, cache: "no-store" });
+    if (res.status === 401) this.expireSession(requestToken);
     if (!res.ok) {
       let msg = `请求失败：${res.status}`;
       try {
         const j = await res.json();
         msg = j.error || msg;
       } catch {}
-      if (res.status === 401) {
-        this.token = "";
-        this.locked = true;
-      }
       throw new Error(msg);
     }
+    if (requestToken && this.token !== requestToken)
+      throw new Error("会话已变更，请重新连接资料库。");
     return res;
   },
 

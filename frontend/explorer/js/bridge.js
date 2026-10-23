@@ -23,16 +23,15 @@ const CapabilityApi = Object.assign(
     uploadProgress: globalThis.IPSysUploadProgress,
 
     async uploadFile(path, opts) {
+      const requestToken = VaultStore.token;
       try {
-        return await this.uploadProgress.request(path, opts, VaultStore.token);
+        const result = await this.uploadProgress.request(path, opts, requestToken);
+        if (requestToken && VaultStore.token !== requestToken)
+          throw new Error("会话已变更，请重新连接资料库。");
+        return result;
       } catch (error) {
-        /* 上传走 XHR,不经过 VaultStore.api,所以 401 要在这里自己收口:
-           否则界面会停在一个已失效的 token 上,后续每个请求都静默失败。 */
-        if (error?.status === 401) {
-          VaultStore.token = "";
-          VaultStore.locked = true;
-          showLogin("登录已失效,请重新解锁资料库");
-        }
+        /* XHR bypasses api(): use the exact same session transition. */
+        if (error?.status === 401) VaultStore.expireSession(requestToken);
         throw error;
       }
     },
@@ -522,14 +521,18 @@ function renderPurge(state) {
 /* 404 = 没有任务,不是错误,直接用 fetch 而不是 VaultStore.api —— api() 会把
    404 当成失败抛出来,分不清「没任务」和「查询失败」。 */
 async function purgeSnapshot() {
-  const headers = VaultStore.token ? { "X-IPSys-Token": VaultStore.token } : {};
-  const res = await fetch("/api/trash/purge-task", { headers, cache: "no-store" });
-  if (res.status === 404) return null;
+  const requestToken = VaultStore.token;
+  if (!requestToken) return null;
+  const res = await fetch("/api/trash/purge-task", {
+    headers: { "X-IPSys-Token": requestToken }, cache: "no-store",
+  });
   if (res.status === 401) {
-    VaultStore.token = "";
-    VaultStore.locked = true;
-    throw new Error("登录已失效,请重新解锁资料库");
+    VaultStore.expireSession(requestToken);
+    throw new Error("登录已失效，请重新解锁资料库");
   }
+  if (requestToken !== VaultStore.token)
+    throw new Error("会话已变更，请重新连接资料库。");
+  if (res.status === 404) return null;
   if (!res.ok) throw new Error(`删除进度查询失败:HTTP ${res.status}`);
   return res.json();
 }

@@ -173,6 +173,7 @@ jobs:
             'explorer-p1-regression-smoke.cjs' = 'Explorer P1 archive ordering and API error handling regression failed'
             'explorer-p2-interactions-smoke.cjs' = 'Explorer P2 safe recycle batching and UI regression failed'
             'explorer-vault-create-smoke.cjs' = 'Explorer new-vault entry and safe session resume failed'
+            'explorer-session-expiry-smoke.cjs' = 'Explorer D-01 runtime 401 recovery regression failed'
             'explorer-archive-operations-smoke.cjs' = 'Explorer F2-02 archive directory actions and mixed reorder regression failed'
             'explorer-file-associate-smoke.cjs' = 'Explorer F2-03 same-workspace file share and move regression failed'
             'explorer-record-transfer-smoke.cjs' = 'Explorer F2-04 whole-record copy/move/transfer regression failed'

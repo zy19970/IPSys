@@ -128,6 +128,20 @@ document.addEventListener("DOMContentLoaded", () => {
   startSession();
 });
 
+/* A revoked browser token never closes the server-side vault. */
+function handleSessionExpired() {
+  hideCtx();
+  closeSettings();
+  if (_resolveConfirm) settleConfirm(false);
+  Drive.state.ready = false;
+  Drive.state.wsPending = null;
+  Drive.state.loadError = null;
+  Drive.state.selection.clear();
+  Drive.resetSearch();
+  $("#appShell")?.setAttribute("aria-hidden", "true");
+  showLogin("登录已失效，请输入密码重新连接资料库。");
+}
+
 async function startSession() {
   try {
     const st = await VaultStore.status();
@@ -139,8 +153,11 @@ async function startSession() {
         await enterWorkspace(defaultWorkspace());
         return;
       } catch {
+        /* The shared 401 handler already displayed password recovery. */
+        if (!VaultStore.token && VaultStore.locked) return;
         VaultStore.token = "";
-        sessionStorage.clear();
+        sessionStorage.removeItem("od-token");
+        sessionStorage.removeItem("od-db");
       }
     }
   } catch (e) {
@@ -153,12 +170,20 @@ async function startSession() {
 function showLogin(hint) {
   const mask = $("#lockScreen");
   if (!mask) return;
+  /* The last successful login left submit disabled. The next login must be
+     interactive even without a page refresh; reset creation mode too. */
+  VaultStore.resetLoginMode?.();
+  const submit = $("#submitOpen");
+  if (submit) submit.disabled = false;
+  const password = $("#password");
+  if (password) password.value = "";
   mask.classList.add("show");
   const hp = $("#lockHint");
   if (hp) hp.textContent = hint || "";
 
   VaultStore.getJson("/api/status")
     .then((s) => {
+      if (VaultStore.token) return; // ignore an obsolete anonymous status reply
       /* 服务端已解锁但没有 token:改为密码恢复模式,路径只读 */
       VaultStore.needsResume = !!s.unlocked;
       const p = $("#dbPath");
@@ -252,6 +277,7 @@ async function switchWorkspace(ws) {
    ========================================================================== */
 
 function bootInteractions() {
+  VaultStore.onSessionExpired = handleSessionExpired;
   bindLockScreen();
   bindWorkspaceSwitch();
   bindTopBar();
@@ -292,6 +318,7 @@ function bindLockScreen() {
     const hint = $("#lockHint");
     if (hint) hint.textContent = "";
   };
+  VaultStore.resetLoginMode = () => setMode(false);
   switchMode?.addEventListener("click", () => {
     if (!VaultStore.needsResume) setMode(!creating);
   });
@@ -608,6 +635,7 @@ async function lockVault() {
   try {
     await VaultStore.api("/api/lock", { method: "POST" });
   } catch (e) {
+    if (!VaultStore.token && VaultStore.locked) return; // already showing password recovery
     /* 服务端拒绝(例如文件任务运行中)时，不丢失浏览器会话和资料库状态。 */
     toast("关闭资料库失败：" + (e.message || String(e)), { ms: 6000, tone: "error" });
     return;
