@@ -169,7 +169,7 @@ jobs:
       - name: Validate native-save evidence verifier syntax
         shell: pwsh
         run: |
-          $text = Get-Content -LiteralPath 'tools/qa/Verify-ExplorerExports.ps1' -Raw
+          $text = Get-Content -LiteralPath 'tests/tools/Verify-ExplorerExports.ps1' -Raw
           $tokens = $null; $errors = $null
           [System.Management.Automation.Language.Parser]::ParseInput($text,[ref]$tokens,[ref]$errors) | Out-Null
           if (@($errors).Count -ne 0) { $errors | Format-List; throw 'PowerShell evidence verifier syntax failed' }
@@ -198,7 +198,7 @@ jobs:
           @{zipPath=$saved;requireZip64=$false;files=@(
             @{sourcePath=$original;zipEntry='项目QA/原件.bin'}
           )} | ConvertTo-Json -Depth 7 | Set-Content -LiteralPath $manifest -Encoding utf8
-          pwsh -NoProfile -File tools/qa/Verify-ExplorerExports.ps1 -Manifest $manifest -EvidenceDirectory $qa
+          pwsh -NoProfile -File tests/tools/Verify-ExplorerExports.ps1 -Manifest $manifest -EvidenceDirectory $qa
           if ($LASTEXITCODE -ne 0) { throw 'Real ZIP32 audit fixture unexpectedly failed' }
           $proof = Get-Content (Join-Path $qa 'explorer-export-audit.json') -Raw | ConvertFrom-Json
           if ($proof.result -ne 'PASS' -or $proof.files.Count -ne 1 -or
