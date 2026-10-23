@@ -234,6 +234,7 @@ async function enterWorkspace(ws) {
     Drive.state.folderId = "root";
     Drive.state.view = "home";
     Drive.navigate("home");
+    void VaultStore.refreshStorage();
     const av = $("#btnAvatar");
     if (av) av.title = VaultStore.dbName || ME.name;
     /* A closed tab can leave an unconfirmed encrypted original staged.
@@ -720,6 +721,8 @@ async function pollCompact() {
     toast(`压缩未完成：${st.error || st.stage || st.state}`);
   }
   void paintCompactRow();
+  // VACUUM changes page allocations; refresh after it reports completion.
+  if (st.state === "succeeded") void VaultStore.refreshStorage();
 }
 
 /* 头像菜单和设置面板共用同一段关库逻辑 */
@@ -1925,6 +1928,7 @@ async function refreshCurrent() {
     Drive.state.view = "home";
   }
   Drive.render();
+  void VaultStore.refreshStorage();
 }
 
 /* ---------------- 文件下载 / 预览 ---------------- */

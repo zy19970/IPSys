@@ -10,12 +10,35 @@ static class VaultCompactHttpSmoke
     {
         if(!ok)throw new IOException("VAULT COMPACT HTTP: "+reason);
     }
+    private static void CheckStorage(JsonElement stats)
+    {
+        long count=stats.GetProperty("pageCount").GetInt64();
+        long free=stats.GetProperty("freePages").GetInt64();
+        long size=stats.GetProperty("pageSize").GetInt64();
+        long total=stats.GetProperty("totalBytes").GetInt64();
+        long used=stats.GetProperty("usedBytes").GetInt64();
+        long available=stats.GetProperty("freeBytes").GetInt64();
+        Check(count>0&&size>0&&free>=0&&free<=count,
+            "SQLite page_count / freelist_count / page_size must be valid");
+        Check(total==checked(count*size)&&
+              available==checked(free*size)&&
+              used==checked((count-free)*size)&&
+              total==used+available,
+            "total, used and free pages must reconcile exactly");
+    }
+
     public static async Task VerifyAsync(HttpClient client)
     {
         using(var anonymous=new HttpClient{BaseAddress=client.BaseAddress})
         using(var deny=await anonymous.GetAsync("/api/vault/compact/info"))
             Check(deny.StatusCode==HttpStatusCode.Unauthorized,
                 "database statistics must require the session token");
+        using(var anonymousStorage=new HttpClient{BaseAddress=client.BaseAddress})
+        using(var denied=await anonymousStorage.GetAsync("/api/vault/storage"))
+            Check(denied.StatusCode==HttpStatusCode.Unauthorized,
+                "vault page statistics must be authenticated");
+        var pagesBefore=await client.GetFromJsonAsync<JsonElement>("/api/vault/storage");
+        CheckStorage(pagesBefore);
         var info=await client.GetFromJsonAsync<JsonElement>("/api/vault/compact/info");
         Check(info.GetProperty("fileBytes").GetInt64()>0 &&
               info.GetProperty("requiredFreeBytes").GetInt64()>0 &&
@@ -93,6 +116,11 @@ static class VaultCompactHttpSmoke
         var verified=await check.Content.ReadFromJsonAsync<JsonElement>();
         Check(verified.GetProperty("result").GetString()=="ok",
             "encrypted database remains readable after compaction");
+        var pagesAfter=await client.GetFromJsonAsync<JsonElement>("/api/vault/storage");
+        CheckStorage(pagesAfter);
+        Check(pagesAfter.GetProperty("totalBytes").GetInt64()<=
+              pagesBefore.GetProperty("totalBytes").GetInt64(),
+            "VACUUM should not grow this test database's allocated pages");
         Console.WriteLine("VAULT COMPACT ENCRYPTED HTTP SMOKE PASS");
     }
 }

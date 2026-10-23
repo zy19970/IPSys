@@ -569,6 +569,30 @@ const Drive = {
     this.renderCrumb();
     this.renderContent();
     this.renderDetail();
+    this.paintStorage();
+  },
+
+  /* All capacity surfaces use one authenticated whole-vault page snapshot. */
+  paintStorage() {
+    const stats = VaultStore.storage;
+    const error = VaultStore.storageError;
+    const value = (field) => stats ? fmtSize(stats[field]) : (error || "读取中");
+    const rate = stats ? (100 * stats.used / stats.total).toFixed(1) + "%" : "—";
+    const width = stats ? (100 * stats.used / stats.total).toFixed(3) + "%" : "0%";
+    const side = $("#storageSideSummary");
+    if (side) side.textContent = stats ?
+      `总 ${fmtSize(stats.total)} · 已用 ${fmtSize(stats.used)}` : (error || "正在读取数据库容量…");
+    const spare = $("#storageSideFree");
+    if (spare) spare.textContent = stats ?
+      `空闲 ${fmtSize(stats.free)} · 使用率 ${rate}` : "";
+    for (const [field,selector] of [
+      ["total","[data-storage-total]"], ["used","[data-storage-used]"],
+      ["free","[data-storage-free]"]])
+      document.querySelectorAll(selector).forEach(el => { el.textContent = value(field); });
+    document.querySelectorAll("[data-storage-percent]").forEach(el => { el.textContent = rate; });
+    const fill = $("#storageFill");
+    const homeFill = $("#homeStorageFill");
+    for (const bar of [fill,homeFill]) if (bar) bar.style.width = width;
   },
 
   renderNav() {
@@ -597,18 +621,7 @@ const Drive = {
       )
       .join("");
 
-    /* 存储条改成资料量 */
-    const all = allFiles(ROOT);
-    const bytes = all.reduce((a, b) => a + (b.size || 0), 0);
-    const fill = $("#storageFill");
-    if (fill) {
-      /* 以 10 GB 为参考刻度,只表达量级,不假装有配额 */
-      const pct = Math.min(100, (bytes / (10 * GB)) * 100);
-      fill.style.width = `${Math.max(pct, 1.5)}%`;
-      fill.style.background = "";
-    }
-    const st = $(".storage-text");
-    if (st) st.innerHTML = `<b>${fmtSize(bytes)}</b> · ${all.length} 个附件`;
+    this.paintStorage();
   },
 
   /* 顶栏的工作区标识。数据未回来前先用待切换的目标,
@@ -885,7 +898,10 @@ const Drive = {
     /* 页头只留一句规模描述,不再摊成指标卡:这里是资料库,不是管理看板 */
     const sub = `${records.length} 条记录 · ${files.length} 个附件${bytes ? ` · ${fmtSize(bytes)}` : ""}`;
 
-    const pct = Math.min(100, Math.max(1.5, (bytes / (10 * GB)) * 100));
+    const usage = VaultStore.storage;
+    const storageValue = key => usage ? fmtSize(usage[key]) : (VaultStore.storageError || "读取中");
+    const storageRate = usage ? (100 * usage.used / usage.total).toFixed(1) + "%" : "—";
+    const storageWidth = usage ? (100 * usage.used / usage.total).toFixed(3) + "%" : "0%";
 
     return `
     <div class="dash">
@@ -958,9 +974,14 @@ const Drive = {
             <div class="ph"><h3>资料库</h3></div>
             <div class="store">
               <div class="dbname" title="${esc(dbName)}">${esc(dbName)}</div>
-              <div class="lbl"><span>已用 ${fmtSize(bytes) || "0 B"}</span><span>${files.length} 个附件</span></div>
-              <div class="bar"><i style="width:${pct.toFixed(1)}%"></i></div>
-              <div class="note">本地数据库，进度按 10 GB 参考刻度</div>
+              <div class="store-metrics">
+                <div><span>总大小</span><b data-storage-total>${storageValue("total")}</b></div>
+                <div><span>已用大小</span><b data-storage-used>${storageValue("used")}</b></div>
+                <div><span>空闲大小</span><b data-storage-free>${storageValue("free")}</b></div>
+              </div>
+              <div class="bar" title="已分配数据库页面的使用比例"><i id="homeStorageFill" style="width:${storageWidth}"></i></div>
+              <div class="store-legend"><span>已分配页面使用率 <b data-storage-percent>${storageRate}</b></span><span>当前工作区 ${files.length} 个附件</span></div>
+              <div class="note">空闲页可复用，不代表磁盘剩余空间</div>
             </div>
           </section>
         </div>

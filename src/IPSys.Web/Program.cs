@@ -118,6 +118,7 @@ NativeContractTransferEndpoints.Map(app, Fail);
 
 RecycleEndpoints.Map(app);
 VaultCompactEndpoints.Map(app);
+VaultStorageEndpoints.Map(app);
 
 SessionEndpoints.MapDiagnostics(app);
 

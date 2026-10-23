@@ -63,6 +63,40 @@ const VaultStore = {
   loading: false,
   error: null,
   onSessionExpired: null,
+  // Physical SQLCipher page usage is shared by all workspaces.
+  storage: null,
+  storageError: "",
+  storageRequest: 0,
+
+  async refreshStorage(attempt = 0) {
+    const token = this.token;
+    if (!token) return;
+    const request = ++this.storageRequest;
+    try {
+      const values = await this.getJson("/api/vault/storage");
+      if (token !== this.token || request !== this.storageRequest) return;
+      const total = Number(values.totalBytes);
+      const used = Number(values.usedBytes);
+      const free = Number(values.freeBytes);
+      if (![total, used, free].every(Number.isSafeInteger) ||
+          total <= 0 || used < 0 || free < 0 || used + free !== total)
+        throw new Error("数据库页面统计不完整");
+      this.storage = { total, used, free };
+      this.storageError = "";
+      Drive.paintStorage();
+    } catch (error) {
+      if (token !== this.token || request !== this.storageRequest) return;
+      // The read-only endpoint returns 409 instead of waiting for file tasks.
+      if (/请求失败：409|正在处理任务|文件任务进行中|数据库忙/.test(error.message) && attempt < 3) {
+        setTimeout(() => {
+          if (this.token === token) void this.refreshStorage(attempt + 1);
+        }, 650);
+        return;
+      }
+      this.storageError = "数据库空间暂不可用";
+      Drive.paintStorage();
+    }
+  },
 
   /* nodeId -> 业务数据 */
   biz: new Map(),
@@ -78,6 +112,9 @@ const VaultStore = {
     this.token = "";
     this.locked = true;
     this.needsResume = false;
+    this.storageRequest++;
+    this.storage = null;
+    this.storageError = "";
     sessionStorage.removeItem("od-token");
     sessionStorage.removeItem("od-db");
     this.onSessionExpired?.();
@@ -128,6 +165,9 @@ const VaultStore = {
     this.token = r.token;
     this.dbName = r.name;
     this.locked = false;
+    this.storageRequest++;
+    this.storage = null;
+    this.storageError = "";
     return r;
   },
 
@@ -139,6 +179,9 @@ const VaultStore = {
     this.token = r.token;
     this.dbName = r.name;
     this.locked = false;
+    this.storageRequest++;
+    this.storage = null;
+    this.storageError = "";
     return r;
   },
 
