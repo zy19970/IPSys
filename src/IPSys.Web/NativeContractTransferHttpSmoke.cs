@@ -26,7 +26,7 @@ static class NativeContractTransferHttpSmoke
             new{project=new{name,projectType="科研项目"}}));
         return result.GetProperty("id").GetInt64();
     }
-    public static async Task VerifyAsync(HttpClient client)
+    public static async Task VerifyAsync(HttpClient client,Vault vault)
     {
         var key=Guid.NewGuid().ToString("N")[..8];
         long a=await Project(client,"company","源项目"+key);
@@ -94,6 +94,7 @@ static class NativeContractTransferHttpSmoke
             $"/api/v2/files/personal/folders/{copyId}/links");
         long targetFile=targetLinks[0].GetProperty("fileId").GetInt64();
         Check(targetFile!=file,"cross workspace creates independent FileId");
+        NativeTransferIsolationProof.Verify(vault.Db,"company",file,"personal",targetFile);
         Check((await client.GetByteArrayAsync(
             $"/api/v2/files/personal/{targetFile}/versions/1/download"))
                 .SequenceEqual(v1),"cross workspace v1 bytes");

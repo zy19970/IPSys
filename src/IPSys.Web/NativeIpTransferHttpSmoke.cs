@@ -32,7 +32,7 @@ static class NativeIpTransferHttpSmoke
     static async Task<JsonElement> Transfer(HttpClient client,string workspace,long id,
         string target,bool move=false)=>await Response(await client.PostAsJsonAsync(
             $"/api/v2/ip/{workspace}/{id}/transfer",new{targetWorkspace=target,move}));
-    public static async Task VerifyAsync(HttpClient client)
+    public static async Task VerifyAsync(HttpClient client,Vault vault)
     {
         string unique="XFER-"+Guid.NewGuid().ToString("N")[..8];
         var created=await Response(await client.PostAsJsonAsync(
@@ -80,6 +80,9 @@ static class NativeIpTransferHttpSmoke
             long targetFile=link.GetProperty("fileId").GetInt64();
             var details=await client.GetFromJsonAsync<JsonElement>(
                 $"/api/v2/ip/personal/{to}/files/{targetFile}");
+            long originalFile=details.GetProperty("versions").GetArrayLength()==2?file1:file2;
+            NativeTransferIsolationProof.Verify(vault.Db,"company",originalFile,
+                "personal",targetFile);
             foreach(var version in details.GetProperty("versions").EnumerateArray())
             {
                 int number=version.GetProperty("version").GetInt32();

@@ -27,7 +27,7 @@ static class NativeProjectMilestoneSmoke
         req.Headers.Add("X-File-Name",Uri.EscapeDataString(name));
         return await Read(await client.SendAsync(req));
     }
-    public static async Task VerifyAsync(HttpClient client)
+    public static async Task VerifyAsync(HttpClient client,Vault vault)
     {
         string marker="N204-"+Guid.NewGuid().ToString("N")[..8];
         long project=(await Read(await client.PostAsJsonAsync(
@@ -120,6 +120,9 @@ static class NativeProjectMilestoneSmoke
               projectLinks[0].GetProperty("fileId").GetInt64()!=file,
             "target project/contract share a new logical FileId");
         long copiedFile=projectLinks[0].GetProperty("fileId").GetInt64();
+        // Verify the SQLCipher objects and encrypted chunk ownership, not
+        // merely different logical FileIds and equal downloaded bytes.
+        NativeTransferIsolationProof.Verify(vault.Db,"company",file,"personal",copiedFile);
         Check((await client.GetByteArrayAsync(
             $"/api/v2/files/personal/{copiedFile}/versions/1/download"))
             .SequenceEqual(original) &&

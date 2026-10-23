@@ -81,14 +81,14 @@ static class WebSmoke
             await NativeIpExcelHttpSmoke.VerifyAsync(client);
             await NativeIpUiHttpSmoke.VerifyAsync(client);
             await NativeProjectContractUiHttpSmoke.VerifyAsync(client,vault);
-            await NativeProjectMilestoneSmoke.VerifyAsync(client);
+            await NativeProjectMilestoneSmoke.VerifyAsync(client,vault);
             await NativeArchiveGeneralMilestoneSmoke.VerifyAsync(client);
             await NativeArchiveUiHttpSmoke.VerifyAsync(client);
             await NativeIpSearchRecycleHttpSmoke.VerifyAsync(client);
             await RecyclePurgeTaskHttpSmoke.VerifyAsync(client);
             await VaultCompactHttpSmoke.VerifyAsync(client);
-            await NativeIpTransferHttpSmoke.VerifyAsync(client);
-            await NativeContractTransferHttpSmoke.VerifyAsync(client);
+            await NativeIpTransferHttpSmoke.VerifyAsync(client,vault);
+            await NativeContractTransferHttpSmoke.VerifyAsync(client,vault);
             await SearchSmoke.VerifyAsync(client);
 
             using(var noAuth=new HttpClient{BaseAddress=client.BaseAddress})

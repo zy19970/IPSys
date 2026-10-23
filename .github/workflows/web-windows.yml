@@ -161,6 +161,14 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw "JavaScript syntax failed: $file" }
           }
           Write-Host 'Capability layer, bundled shell and offline PDF.js syntax: PASS'
+      - name: Validate native-save evidence verifier syntax
+        shell: pwsh
+        run: |
+          $text = Get-Content -LiteralPath 'tools/qa/Verify-ExplorerExports.ps1' -Raw
+          $tokens = $null; $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseInput($text,[ref]$tokens,[ref]$errors) | Out-Null
+          if (@($errors).Count -ne 0) { $errors | Format-List; throw 'PowerShell evidence verifier syntax failed' }
+          Write-Host 'Explorer real-save evidence tool parser: PASS'
       - name: Verify UI and capability smoke tests
         shell: pwsh
         run: |
