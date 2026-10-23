@@ -125,7 +125,7 @@ SessionEndpoints.MapDiagnostics(app);
 await app.StartAsync();
 string address = app.Services.GetRequiredService<IServer>().Features
     .Get<IServerAddressesFeature>()!.Addresses.Single();
-Console.WriteLine("IPSys 网页验证版：" + address);
+Console.WriteLine("IPSys 本地服务：" + address);
 // Current-user-only local pipe; background lifecycle follows the web host.
 Task mcpHost=McpLocal.RunHostAsync(app.Services.GetRequiredService<Vault>(),
     address,app.Lifetime.ApplicationStopping);

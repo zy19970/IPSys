@@ -18,6 +18,22 @@ internal sealed class LauncherForm : Form
     private readonly Vault _vault;
     private readonly IHostApplicationLifetime _lifetime;
     private readonly CancellationToken _stopping;
+    private readonly Label _browserStatus;
+    private readonly Label _memoryValue;
+    private readonly Label _cpuValue;
+    private readonly Label _uptimeValue;
+    private readonly System.Windows.Forms.Timer _monitorTimer;
+    private readonly Process _process;
+    private readonly Stopwatch _uptime = Stopwatch.StartNew();
+    private TimeSpan _previousCpuTime;
+    private long _previousSampleTick;
+
+    // Same restrained blue/neutral palette as the Explorer/OneDrive-style web shell.
+    private static readonly Color Canvas = Color.FromArgb(247, 249, 252);
+    private static readonly Color Accent = Color.FromArgb(15, 108, 189);
+    private static readonly Color TextPrimary = Color.FromArgb(36, 36, 36);
+    private static readonly Color TextSecondary = Color.FromArgb(97, 97, 97);
+    private static readonly Color Stroke = Color.FromArgb(225, 229, 235);
 
     internal LauncherForm(string address, Vault vault, IHostApplicationLifetime lifetime, CancellationToken stopping)
     {
@@ -26,81 +42,206 @@ internal sealed class LauncherForm : Form
         _lifetime = lifetime;
         _stopping = stopping;
         Text = "资料管理系统";
-        // The Windows taskbar/title bar uses the same icon embedded into IPSys.Web.exe.
         using (var iconStream = typeof(LauncherForm).Assembly.GetManifestResourceStream("IPSys.Web.AppIcon.ico"))
         {
             if (iconStream is not null) Icon = new Icon(iconStream);
         }
+
         StartPosition = FormStartPosition.CenterScreen;
         FormBorderStyle = FormBorderStyle.FixedSingle;
         MaximizeBox = false;
         MinimizeBox = true;
         ShowInTaskbar = true;
-        ClientSize = new Size(470, 272);
+        AutoScaleMode = AutoScaleMode.Dpi;
+        ClientSize = new Size(580, 460);
         MinimumSize = Size;
         MaximumSize = Size;
-        AutoScaleMode = AutoScaleMode.Dpi;
-        BackColor = Color.FromArgb(247, 249, 251);
+        BackColor = Canvas;
         Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Regular);
 
-        var heading = new Label
+        // Brand block, aligned to the top-left rather than a giant heading.
+        var logo = new PictureBox
         {
-            Text = "资料管理系统",
-            Font = new Font(Font.FontFamily, 22F, FontStyle.Bold),
-            ForeColor = Color.FromArgb(29, 88, 99),
-            Location = new Point(28, 25),
-            AutoSize = true
+            Location = new Point(28, 27),
+            Size = new Size(36, 36),
+            SizeMode = PictureBoxSizeMode.Zoom,
+            Image = Icon?.ToBitmap()
         };
-        var summary = new Label
-        {
-            Text = "本地加密资料管理 · 试运行",
-            Location = new Point(32, 83),
-            ForeColor = Color.FromArgb(105, 119, 131),
-            AutoSize = true
-        };
-        _status = new Label
-        {
-            Text = "● 本地服务已启动   ·   仅本机访问",
-            Location = new Point(32, 116),
-            ForeColor = Color.FromArgb(52, 130, 97),
-            AutoSize = true
-        };
-        var launch = new Button
-        {
-            Text = "打开浏览器管理界面",
-            Location = new Point(30, 160),
-            Size = new Size(255, 48),
-            FlatStyle = FlatStyle.Flat,
-            ForeColor = Color.White,
-            BackColor = Color.FromArgb(35, 109, 121),
-            Cursor = Cursors.Hand
-        };
-        launch.FlatAppearance.BorderSize = 0;
+        var heading = MakeLabel("资料管理系统", new Rectangle(77, 22, 450, 39),
+            20F, FontStyle.Bold, TextPrimary);
+        var summary = MakeLabel("本地加密资料管理", new Rectangle(79, 65, 430, 24),
+            10F, FontStyle.Regular, TextSecondary);
+
+        var statusCard = new LauncherCard { Location = new Point(24, 108), Size = new Size(532, 92) };
+        statusCard.Controls.Add(MakeLabel("运行状态", new Rectangle(22, 12, 180, 25),
+            10.5F, FontStyle.Bold, TextPrimary));
+        statusCard.Controls.Add(MakeLabel("●", new Rectangle(22, 48, 16, 25),
+            10F, FontStyle.Bold, Color.FromArgb(16, 124, 16)));
+        _status = MakeLabel("本地服务运行中", new Rectangle(42, 47, 220, 28),
+            10F, FontStyle.Regular, TextPrimary);
+        _browserStatus = MakeLabel("管理界面尚未打开", new Rectangle(277, 48, 232, 26),
+            9F, FontStyle.Regular, TextSecondary);
+        _browserStatus.TextAlign = ContentAlignment.MiddleRight;
+        statusCard.Controls.AddRange(new Control[] { _status, _browserStatus });
+
+        var monitorCard = new LauncherCard { Location = new Point(24, 213), Size = new Size(532, 132) };
+        monitorCard.Controls.Add(MakeLabel("资源监控", new Rectangle(22, 12, 180, 25),
+            10.5F, FontStyle.Bold, TextPrimary));
+        monitorCard.Controls.Add(MakeLabel("内存占用", new Rectangle(22, 49, 135, 23),
+            9F, FontStyle.Regular, TextSecondary));
+        monitorCard.Controls.Add(MakeLabel("CPU 占用", new Rectangle(194, 49, 135, 23),
+            9F, FontStyle.Regular, TextSecondary));
+        monitorCard.Controls.Add(MakeLabel("运行时长", new Rectangle(367, 49, 130, 23),
+            9F, FontStyle.Regular, TextSecondary));
+        _memoryValue = MakeLabel("—", new Rectangle(22, 74, 143, 34),
+            15F, FontStyle.Bold, TextPrimary);
+        _cpuValue = MakeLabel("—", new Rectangle(194, 74, 140, 34),
+            15F, FontStyle.Bold, TextPrimary);
+        _uptimeValue = MakeLabel("00:00:00", new Rectangle(367, 74, 150, 34),
+            15F, FontStyle.Bold, TextPrimary);
+        monitorCard.Controls.AddRange(new Control[] { _memoryValue, _cpuValue, _uptimeValue });
+        monitorCard.Controls.Add(new Panel { Location = new Point(180, 52), Size = new Size(1, 55), BackColor = Stroke });
+        monitorCard.Controls.Add(new Panel { Location = new Point(354, 52), Size = new Size(1, 55), BackColor = Stroke });
+
+        var launch = MakeButton("打开管理界面", new Rectangle(24, 363, 341, 46), primary: true);
         launch.Click += (_, _) => OpenBrowser();
+        var exit = MakeButton("退出程序", new Rectangle(378, 363, 178, 46), primary: false);
+        exit.Click += (_, _) => Close();
+        var hint = MakeLabel("关闭此窗口将停止本地服务。", new Rectangle(26, 425, 510, 22),
+            8.5F, FontStyle.Regular, TextSecondary);
+        Controls.AddRange(new Control[] { logo, heading, summary, statusCard, monitorCard, launch, exit, hint });
+        AcceptButton = launch;
 
-        var exit = new Button
+        // Both ASP.NET and this launcher live inside IPSys.Web.exe. Sampling
+        // that process therefore includes the UI and the local HTTP host.
+        _process = Process.GetCurrentProcess();
+        _previousCpuTime = _process.TotalProcessorTime;
+        _previousSampleTick = Stopwatch.GetTimestamp();
+        _monitorTimer = new System.Windows.Forms.Timer { Interval = 1000 };
+        _monitorTimer.Tick += (_, _) => UpdateResourceMonitor();
+        Shown += (_, _) =>
         {
-            Text = "退出程序",
-            Location = new Point(304, 160),
-            Size = new Size(136, 48),
+            UpdateResourceMonitor();
+            _monitorTimer.Start();
+        };
+    }
+
+    private Label MakeLabel(string text, Rectangle bounds, float size, FontStyle style, Color color) =>
+        new()
+        {
+            Text = text,
+            Location = bounds.Location,
+            Size = bounds.Size,
+            Font = new Font(Font.FontFamily, size, style),
+            ForeColor = color,
+            BackColor = Color.Transparent,
+            TextAlign = ContentAlignment.MiddleLeft,
+            AutoEllipsis = true
+        };
+
+    private static Button MakeButton(string text, Rectangle bounds, bool primary)
+    {
+        var button = new Button
+        {
+            Text = text,
+            Location = bounds.Location,
+            Size = bounds.Size,
+            Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold),
+            BackColor = primary ? Accent : Color.White,
+            ForeColor = primary ? Color.White : TextPrimary,
             FlatStyle = FlatStyle.Flat,
-            BackColor = Color.White,
-            ForeColor = Color.FromArgb(65, 81, 95),
+            UseVisualStyleBackColor = false,
             Cursor = Cursors.Hand
         };
-        exit.FlatAppearance.BorderColor = Color.FromArgb(214, 223, 231);
-        exit.Click += (_, _) => Close();
+        button.FlatAppearance.BorderSize = primary ? 0 : 1;
+        button.FlatAppearance.BorderColor = Stroke;
+        button.FlatAppearance.MouseOverBackColor = primary
+            ? Color.FromArgb(17, 90, 163) : Color.FromArgb(241, 246, 251);
+        button.FlatAppearance.MouseDownBackColor = primary
+            ? Color.FromArgb(12, 59, 94) : Color.FromArgb(232, 236, 242);
+        button.Resize += (_, _) => RoundButton(button);
+        RoundButton(button);
+        return button;
+    }
 
-        var hint = new Label
+    private static void RoundButton(Button button)
+    {
+        if (button.Width <= 0 || button.Height <= 0) return;
+        using var outline = RoundedRect(new Rectangle(0, 0, button.Width, button.Height), 7);
+        var old = button.Region;
+        button.Region = new Region(outline);
+        old?.Dispose();
+    }
+
+    private static System.Drawing.Drawing2D.GraphicsPath RoundedRect(Rectangle r, int radius)
+    {
+        var path = new System.Drawing.Drawing2D.GraphicsPath();
+        int d = radius * 2;
+        path.AddArc(r.X, r.Y, d, d, 180, 90);
+        path.AddArc(r.Right - d, r.Y, d, d, 270, 90);
+        path.AddArc(r.Right - d, r.Bottom - d, d, d, 0, 90);
+        path.AddArc(r.X, r.Bottom - d, d, d, 90, 90);
+        path.CloseFigure();
+        return path;
+    }
+
+    private sealed class LauncherCard : Panel
+    {
+        internal LauncherCard()
         {
-            Text = "关闭此窗口将安全停止本地服务；浏览器标签可以单独关闭。",
-            Location = new Point(31, 232),
-            ForeColor = Color.FromArgb(131, 144, 157),
-            Font = new Font(Font.FontFamily, 8.5F),
-            AutoSize = true
-        };
-        Controls.AddRange(new Control[] { heading, summary, _status, launch, exit, hint });
-        AcceptButton = launch;
+            BackColor = Canvas;
+            DoubleBuffered = true;
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+            if (Width < 2 || Height < 2) return;
+            e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            using var path = RoundedRect(new Rectangle(0, 0, Width - 1, Height - 1), 9);
+            using var fill = new SolidBrush(Color.White);
+            using var border = new Pen(Stroke);
+            e.Graphics.FillPath(fill, path);
+            e.Graphics.DrawPath(border, path);
+        }
+    }
+
+    private void UpdateResourceMonitor()
+    {
+        TimeSpan elapsed = _uptime.Elapsed;
+        _uptimeValue.Text = $"{(long)elapsed.TotalHours:00}:{elapsed.Minutes:00}:{elapsed.Seconds:00}";
+        try
+        {
+            _process.Refresh();
+            _memoryValue.Text = $"{_process.WorkingSet64 / (1024d * 1024d):0} MB";
+
+            long now = Stopwatch.GetTimestamp();
+            TimeSpan currentCpu = _process.TotalProcessorTime;
+            double wallMs = Stopwatch.GetElapsedTime(_previousSampleTick, now).TotalMilliseconds;
+            double cpuMs = (currentCpu - _previousCpuTime).TotalMilliseconds;
+            if (wallMs > 0)
+                _cpuValue.Text = $"{Math.Clamp(cpuMs / wallMs / Environment.ProcessorCount * 100d, 0d, 100d):0.0}%";
+            _previousCpuTime = currentCpu;
+            _previousSampleTick = now;
+        }
+        catch (InvalidOperationException)
+        {
+            _memoryValue.Text = "—";
+            _cpuValue.Text = "—";
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            _memoryValue.Text = "—";
+            _cpuValue.Text = "—";
+        }
+    }
+
+    protected override void OnFormClosed(FormClosedEventArgs e)
+    {
+        _monitorTimer.Stop();
+        _monitorTimer.Dispose();
+        _process.Dispose();
+        base.OnFormClosed(e);
     }
 
     protected override void OnFormClosing(FormClosingEventArgs e)
@@ -120,7 +261,7 @@ internal sealed class LauncherForm : Form
             if (choice != null)
             {
                 if (_vault.TryScheduleExit(choice, _lifetime, out string error))
-                    _status.Text = "● 正在安全退出并关闭数据库…";
+                    _status.Text = "正在安全退出…";
                 else
                     MessageBox.Show(this, error, "无法退出", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
@@ -138,30 +279,25 @@ internal sealed class LauncherForm : Form
             MaximizeBox = false,
             MinimizeBox = false,
             ShowInTaskbar = false,
-            ClientSize = new Size(465, 165),
+            ClientSize = new Size(476, 169),
+            AutoScaleMode = AutoScaleMode.Dpi,
+            BackColor = Canvas,
             Font = Font
         };
         dialog.Controls.Add(new Label
         {
-            Text = "正在上传文件。请选择退出处理方式：",
-            Location = new Point(20, 22),
-            Size = new Size(420, 45)
+            Text = "文件任务正在执行，请选择退出方式。",
+            Location = new Point(20, 23),
+            Size = new Size(436, 46),
+            ForeColor = TextPrimary,
+            TextAlign = ContentAlignment.MiddleLeft
         });
-        var cancelTask = new Button
-        {
-            Text = "取消任务并退出", DialogResult = DialogResult.Yes,
-            Location = new Point(16, 90), Size = new Size(142, 42)
-        };
-        var wait = new Button
-        {
-            Text = "任务完成后退出", DialogResult = DialogResult.No,
-            Location = new Point(163, 90), Size = new Size(142, 42)
-        };
-        var stay = new Button
-        {
-            Text = "暂不退出", DialogResult = DialogResult.Cancel,
-            Location = new Point(310, 90), Size = new Size(142, 42)
-        };
+        var cancelTask = MakeButton("取消任务并退出", new Rectangle(16, 97, 143, 42), primary: false);
+        cancelTask.DialogResult = DialogResult.Yes;
+        var wait = MakeButton("任务完成后退出", new Rectangle(165, 97, 144, 42), primary: true);
+        wait.DialogResult = DialogResult.No;
+        var stay = MakeButton("暂不退出", new Rectangle(315, 97, 143, 42), primary: false);
+        stay.DialogResult = DialogResult.Cancel;
         dialog.Controls.AddRange(new Control[] { cancelTask, wait, stay });
         dialog.CancelButton = stay;
         return dialog.ShowDialog(this) switch
@@ -172,11 +308,11 @@ internal sealed class LauncherForm : Form
         };
     }
 
-    private void OpenBrowser(string relativePath = "")
+    private void OpenBrowser()
     {
         try
         {
-            string target = _address.TrimEnd('/') + relativePath;
+            string target = _address.TrimEnd('/');
             // Reuse the default browser only when it is Chrome/Edge. Otherwise use Edge.
             string? browser = null;
             using (var choice = Registry.CurrentUser.OpenSubKey(
@@ -192,19 +328,18 @@ internal sealed class LauncherForm : Form
             Process.Start(browser is null
                 ? new ProcessStartInfo(target) { UseShellExecute = true }
                 : new ProcessStartInfo(browser, target) { UseShellExecute = true });
-            _status.Text = relativePath.Length == 0
-                ? "● 管理界面已在浏览器中打开"
-                : "● 模拟界面设计预览已在浏览器中打开";
+            _browserStatus.Text = "已启动浏览器管理界面";
         }
         catch (Exception ex)
         {
-            _status.Text = "● 本地服务仍在运行";
+            _browserStatus.Text = "管理界面尚未打开";
             MessageBox.Show(this,
                 "无法自动打开浏览器，请在 Edge 或 Chrome 手动访问：\n\n" +
-                (_address.TrimEnd('/') + relativePath) + "\n\n错误：" + ex.Message,
+                _address.TrimEnd('/') + "\n\n错误：" + ex.Message,
                 "打开浏览器失败", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
     }
+
 }
 
 internal static class LauncherHost
