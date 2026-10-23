@@ -1,0 +1,1425 @@
+{
+ "generatedAt": "2026-10-23T06:06:15.832Z",
+ "runId": "20261023-1115",
+ "sha8": "178cf558",
+ "head": "178cf558e4a878aadf4734b8b3725fb029c4b692",
+ "branch": "work/onedrive-file-manager",
+ "baseline": {
+  "report": "docs/agent-validation/phase2-final-20261023-0112-f5d206a",
+  "csvRows": 132,
+  "caseFiles": 132,
+  "oldResultsJsonEntries": 93,
+  "oldResultsJsonRole": "中间快照（不完整、且 E-10 曾为旧 BUG），不得作为最终统计口径",
+  "statusCount": {
+   "PASS": 126,
+   "GAP": 2,
+   "BLOCKED": 3,
+   "CONFIRMED_BUG": 1
+  },
+  "missingInCases": [],
+  "extraInCases": []
+ },
+ "supplement": {
+  "cases": 16,
+  "byStatus": {
+   "SUP-01": {
+    "status": "PASS",
+    "prior_case": "A-02",
+    "notes_head": "HEAD 178cf558 上 src/frontend 最后一次改动即 ff34a8be，对应 Actions run 39818858991（run #338）completed/success，唯一作业 smoke 在 windows"
+   },
+   "SUP-02": {
+    "status": "PASS",
+    "prior_case": "A-05",
+    "notes_head": "WinForms 启动器真实存在（窗口「资料管理系统」，PrintWindow 截图在案），OS 级点击「打开浏览器管理界面」后浏览器与宿主建立 6 条 HTTP 连接；关闭浏览器标签后宿主 PID 37436 仍在监听 15481 且 /"
+   },
+   "SUP-03": {
+    "status": "PASS",
+    "prior_case": "K-09",
+    "notes_head": "设置面板真实开关启用 MCP；两个独立 stdio 子进程 PID 16504/29960 各自 initialize 并列出 59 个工具；A 端 23ms 受理 33 MiB（34603008 B，SHA 1C1A59351C0B635"
+   },
+   "SUP-04": {
+    "status": "BLOCKED",
+    "prior_case": "K-11",
+    "notes_head": "【上传侧完整通过】源文件 2362232012 字节（2.20 GiB，严格 >2 GiB），SHA=7A8F2FD3D87741C85AA4AEC7C2FFDCA148F11997DA9879EAE61966021C0DFC33；经工具栏"
+   },
+   "SUP-05": {
+    "status": "BLOCKED",
+    "prior_case": "K-11",
+    "notes_head": "BLOCKED（导出落盘路径被 OS 级另存为阻塞，非产品缺陷结论）。可核实的静态事实：export.js 第 7 行 ZIP32_SAFE_LIMIT = 0xFFFFFFFF-64MiB = 4227858431 字节（约 3.875 "
+   },
+   "SUP-06": {
+    "status": "REQUIREMENT_GAP",
+    "prior_case": "I-06",
+    "notes_head": "工具栏只有一个「导出 Excel」按钮（页面内与范围相关的按钮文本仅 [\"筛选\",\"导出 Excel\",\"取消导出\"]，没有「仅选中/仅筛选/全部」三档选择）；未选择时请求体 {\"mode\":\"all\",\"ids\":null}，导出 16 "
+   },
+   "SUP-07": {
+    "status": "BLOCKED",
+    "prior_case": "H-04;I-03;K-06",
+    "notes_head": "BLOCKED（测试环境交互阻塞，非产品缺陷结论）。已确认的事实：①当前 Edge 的 File System Access API 可用（showSaveFilePicker/showDirectoryPicker 均为 function"
+   },
+   "SUP-08": {
+    "status": "PASS",
+    "prior_case": "D-01～D-10",
+    "notes_head": "公司业务档案下用真实控件建成 SUP08甲-S8n2hm/SUP08乙-S8n2hm/SUP08丙改-S8n2hm 三级目录，并在同一父目录建 2 个目录(SUP08丁-S8n2hm、SUP08戊-S8n2hm)+2 条资料(SUP08资料"
+   },
+   "SUP-09": {
+    "status": "PASS",
+    "prior_case": "E-04～E-09;F2-03",
+    "notes_head": "SUP09项目-S9y2ge 下上传 sup09-a-S9y2ge.txt 并追加第 2 版、上传超长名称附件 sup09-long-S9y2ge-用于检验超长附件名称在列表中显示与右键操作是否正常的测试文件-20261023.txt；共享"
+   },
+   "SUP-10": {
+    "status": "PASS",
+    "prior_case": "F-01～F-07",
+    "notes_head": "子场景 A（项目级）：公司项目 SUP10项目甲-S10vjty 建 2 个合同并各带 1 个原件；取消一次复制无写入；再经右键「复制整条记录」→「个人工作区」提交，个人工作区出现 SUP10项目甲-S10vjty，其下两个合同与项目原件/"
+   },
+   "SUP-11": {
+    "status": "PASS",
+    "prior_case": "F-08～F-11",
+    "notes_head": "真实右键菜单完成：SUP11知产转移-S111rqu 复制到个人工作区并在「知识产权与著作」可见；SUP11资料-S111rqu 转移到个人后公司侧消失、个人侧带原件且 SHA 与本地一致；SUP11档案-S111rqu 从业务档案转移到「"
+   },
+   "SUP-12": {
+    "status": "CONFIRMED_BUG",
+    "prior_case": "G-07;D-02",
+    "notes_head": "D-02 仍存在。用 CDP 真实文件拖放（Input.dispatchDragEvent 派发 dragEnter/dragOver/drop，页面收到 dataTransfer.types=[\"Files\"]、files=1）：首页空白"
+   },
+   "SUP-13": {
+    "status": "CONFIRMED_BUG",
+    "prior_case": "I-08;D-01",
+    "notes_head": "运行期 401 未把用户引向重新连接（D-01 仍存在）：注入 401 后锁屏=false，提示重新连接=false，但前端内存 token 已清空；随后刷新命中 5 个 401，仅提示「刷新失败：项目加载失败：请求失败：401」；点「关闭"
+   },
+   "SUP-14": {
+    "status": "CONFIRMED_BUG",
+    "prior_case": "K-03;D-05",
+    "notes_head": "【合格部分】真实点击「取消上传」后只读 SQLCipher 显示 writing=0（前端 finally 的 DELETE prepared/ticket 生效）；断网（Network.emulateNetworkConditions o"
+   },
+   "SUP-15": {
+    "status": "PASS",
+    "prior_case": "I-12;D-04",
+    "notes_head": "Node v22.22.2 / dotnet 10.0.401；dist/app.js SHA=79923357E3F5A3F42ECB195FA3321C2C0BBF111589D377840CBE53D0733D6BD0（225069 "
+   }
+  },
+  "records": "build-retest/supplement-20261023-1115/evidence/cases/SUP-*.json"
+ },
+ "cases": [
+  {
+   "case_id": "A-01",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/A-01.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T19:17:03.178Z"
+  },
+  {
+   "case_id": "A-02",
+   "priority": "P0",
+   "original_status": "GAP",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/A-02.json",
+   "original_case_file_exists": true,
+   "supplement_case": "SUP-01",
+   "supplement_status": "PASS",
+   "timestamp": "2026-10-22T19:17:12.232Z"
+  },
+  {
+   "case_id": "A-03",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/A-03.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T19:17:43.595Z"
+  },
+  {
+   "case_id": "A-04",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/A-04.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T19:17:41.475Z"
+  },
+  {
+   "case_id": "A-05",
+   "priority": "P1",
+   "original_status": "BLOCKED",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/A-05.json",
+   "original_case_file_exists": true,
+   "supplement_case": "SUP-02",
+   "supplement_status": "PASS",
+   "timestamp": "2026-10-22T19:17:12.238Z"
+  },
+  {
+   "case_id": "A-06",
+   "priority": "P1",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/A-06.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T19:19:00.667Z"
+  },
+  {
+   "case_id": "A-07",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/A-07.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T19:17:43.590Z"
+  },
+  {
+   "case_id": "A-08",
+   "priority": "P1",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/A-08.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T19:17:12.711Z"
+  },
+  {
+   "case_id": "B-01",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/B-01.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:25:18.605Z"
+  },
+  {
+   "case_id": "B-02",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/B-02.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:25:22.483Z"
+  },
+  {
+   "case_id": "B-03",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/B-03.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:25:20.196Z"
+  },
+  {
+   "case_id": "B-04",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/B-04.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:25:29.898Z"
+  },
+  {
+   "case_id": "B-05",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/B-05.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:25:35.435Z"
+  },
+  {
+   "case_id": "B-06",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/B-06.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:25:43.480Z"
+  },
+  {
+   "case_id": "B-07",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/B-07.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T19:19:35.233Z"
+  },
+  {
+   "case_id": "B-08",
+   "priority": "P1",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/B-08.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:25:47.552Z"
+  },
+  {
+   "case_id": "B-09",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/B-09.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:26:44.490Z"
+  },
+  {
+   "case_id": "B-10",
+   "priority": "P1",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/B-10.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:26:51.747Z"
+  },
+  {
+   "case_id": "C-01",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/C-01.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:28:12.422Z"
+  },
+  {
+   "case_id": "C-02",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/C-02.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:28:12.527Z"
+  },
+  {
+   "case_id": "C-03",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/C-03.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:28:12.542Z"
+  },
+  {
+   "case_id": "C-04",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/C-04.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:28:12.673Z"
+  },
+  {
+   "case_id": "C-05",
+   "priority": "P1",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/C-05.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:29:16.880Z"
+  },
+  {
+   "case_id": "C-06",
+   "priority": "P1",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/C-06.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:28:12.918Z"
+  },
+  {
+   "case_id": "C-07",
+   "priority": "P1",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/C-07.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:28:12.986Z"
+  },
+  {
+   "case_id": "C-08",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/C-08.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:28:13.097Z"
+  },
+  {
+   "case_id": "C-09",
+   "priority": "P1",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/C-09.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:28:13.192Z"
+  },
+  {
+   "case_id": "C-10",
+   "priority": "P1",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/C-10.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:28:14.885Z"
+  },
+  {
+   "case_id": "C-11",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/C-11.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:29:16.922Z"
+  },
+  {
+   "case_id": "C-12",
+   "priority": "P1",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/C-12.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:29:36.588Z"
+  },
+  {
+   "case_id": "D-01",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/D-01.json",
+   "original_case_file_exists": true,
+   "supplement_case": "SUP-08",
+   "supplement_status": "PASS",
+   "timestamp": "2026-10-22T17:30:11.604Z"
+  },
+  {
+   "case_id": "D-02",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/D-02.json",
+   "original_case_file_exists": true,
+   "supplement_case": "SUP-12",
+   "supplement_status": "CONFIRMED_BUG",
+   "timestamp": "2026-10-22T17:30:11.643Z"
+  },
+  {
+   "case_id": "D-03",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/D-03.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:30:11.649Z"
+  },
+  {
+   "case_id": "D-04",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/D-04.json",
+   "original_case_file_exists": true,
+   "supplement_case": "SUP-15",
+   "supplement_status": "PASS",
+   "timestamp": "2026-10-22T17:30:11.678Z"
+  },
+  {
+   "case_id": "D-05",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/D-05.json",
+   "original_case_file_exists": true,
+   "supplement_case": "SUP-14",
+   "supplement_status": "CONFIRMED_BUG",
+   "timestamp": "2026-10-22T17:30:11.698Z"
+  },
+  {
+   "case_id": "D-06",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/D-06.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:30:11.757Z"
+  },
+  {
+   "case_id": "D-07",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/D-07.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:30:38.931Z"
+  },
+  {
+   "case_id": "D-08",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/D-08.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:30:39.049Z"
+  },
+  {
+   "case_id": "D-09",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/D-09.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:30:11.918Z"
+  },
+  {
+   "case_id": "D-10",
+   "priority": "P1",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/D-10.json",
+   "original_case_file_exists": true,
+   "supplement_case": "SUP-08",
+   "supplement_status": "PASS",
+   "timestamp": "2026-10-22T17:30:11.924Z"
+  },
+  {
+   "case_id": "E-01",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/E-01.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:32:10.157Z"
+  },
+  {
+   "case_id": "E-02",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/E-02.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:32:10.188Z"
+  },
+  {
+   "case_id": "E-03",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/E-03.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:32:46.443Z"
+  },
+  {
+   "case_id": "E-04",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/E-04.json",
+   "original_case_file_exists": true,
+   "supplement_case": "SUP-09",
+   "supplement_status": "PASS",
+   "timestamp": "2026-10-22T17:32:10.235Z"
+  },
+  {
+   "case_id": "E-05",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/E-05.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:32:10.275Z"
+  },
+  {
+   "case_id": "E-06",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/E-06.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:32:10.342Z"
+  },
+  {
+   "case_id": "E-07",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/E-07.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:32:10.352Z"
+  },
+  {
+   "case_id": "E-08",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/E-08.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:32:10.385Z"
+  },
+  {
+   "case_id": "E-09",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/E-09.json",
+   "original_case_file_exists": true,
+   "supplement_case": "SUP-09",
+   "supplement_status": "PASS",
+   "timestamp": "2026-10-22T17:32:10.389Z"
+  },
+  {
+   "case_id": "E-10",
+   "priority": "P1",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/E-10.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:36:05.079Z"
+  },
+  {
+   "case_id": "E-11",
+   "priority": "P1",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/E-11.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:32:46.526Z"
+  },
+  {
+   "case_id": "E-12",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/E-12.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:32:48.779Z"
+  },
+  {
+   "case_id": "F-01",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/F-01.json",
+   "original_case_file_exists": true,
+   "supplement_case": "SUP-10",
+   "supplement_status": "PASS",
+   "timestamp": "2026-10-22T17:40:20.531Z"
+  },
+  {
+   "case_id": "F-02",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/F-02.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:40:20.665Z"
+  },
+  {
+   "case_id": "F-03",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/F-03.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:40:20.751Z"
+  },
+  {
+   "case_id": "F-04",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/F-04.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:40:20.848Z"
+  },
+  {
+   "case_id": "F-05",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/F-05.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:40:20.972Z"
+  },
+  {
+   "case_id": "F-06",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/F-06.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:40:21.065Z"
+  },
+  {
+   "case_id": "F-07",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/F-07.json",
+   "original_case_file_exists": true,
+   "supplement_case": "SUP-10",
+   "supplement_status": "PASS",
+   "timestamp": "2026-10-22T17:40:21.134Z"
+  },
+  {
+   "case_id": "F-08",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/F-08.json",
+   "original_case_file_exists": true,
+   "supplement_case": "SUP-11",
+   "supplement_status": "PASS",
+   "timestamp": "2026-10-22T17:40:21.310Z"
+  },
+  {
+   "case_id": "F-09",
+   "priority": "P1",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/F-09.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:40:21.510Z"
+  },
+  {
+   "case_id": "F-10",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/F-10.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:40:21.614Z"
+  },
+  {
+   "case_id": "F-11",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/F-11.json",
+   "original_case_file_exists": true,
+   "supplement_case": "SUP-11",
+   "supplement_status": "PASS",
+   "timestamp": "2026-10-22T17:40:21.642Z"
+  },
+  {
+   "case_id": "F-12",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/F-12.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T17:40:23.314Z"
+  },
+  {
+   "case_id": "G-01",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/G-01.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:09:12.537Z"
+  },
+  {
+   "case_id": "G-02",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/G-02.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:09:16.625Z"
+  },
+  {
+   "case_id": "G-03",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/G-03.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:09:26.144Z"
+  },
+  {
+   "case_id": "G-04",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/G-04.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:09:41.808Z"
+  },
+  {
+   "case_id": "G-05",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/G-05.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:09:47.582Z"
+  },
+  {
+   "case_id": "G-06",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/G-06.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:09:52.840Z"
+  },
+  {
+   "case_id": "G-07",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/G-07.json",
+   "original_case_file_exists": true,
+   "supplement_case": "SUP-12",
+   "supplement_status": "CONFIRMED_BUG",
+   "timestamp": "2026-10-22T18:10:00.526Z"
+  },
+  {
+   "case_id": "G-08",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/G-08.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:10:07.022Z"
+  },
+  {
+   "case_id": "G-09",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/G-09.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:10:13.824Z"
+  },
+  {
+   "case_id": "G-10",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/G-10.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:10:20.172Z"
+  },
+  {
+   "case_id": "G-11",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/G-11.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:10:27.805Z"
+  },
+  {
+   "case_id": "G-12",
+   "priority": "P1",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/G-12.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:10:36.222Z"
+  },
+  {
+   "case_id": "H-01",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/H-01.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:20:58.072Z"
+  },
+  {
+   "case_id": "H-02",
+   "priority": "P1",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/H-02.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:21:01.922Z"
+  },
+  {
+   "case_id": "H-03",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/H-03.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:21:08.816Z"
+  },
+  {
+   "case_id": "H-04",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/H-04.json",
+   "original_case_file_exists": true,
+   "supplement_case": "SUP-07",
+   "supplement_status": "BLOCKED",
+   "timestamp": "2026-10-22T19:26:52.262Z"
+  },
+  {
+   "case_id": "H-05",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/H-05.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:21:20.911Z"
+  },
+  {
+   "case_id": "H-06",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/H-06.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:21:20.914Z"
+  },
+  {
+   "case_id": "H-07",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/H-07.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:21:20.917Z"
+  },
+  {
+   "case_id": "H-08",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/H-08.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:21:27.761Z"
+  },
+  {
+   "case_id": "H-09",
+   "priority": "P1",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/H-09.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:21:31.827Z"
+  },
+  {
+   "case_id": "H-10",
+   "priority": "P1",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/H-10.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:21:38.888Z"
+  },
+  {
+   "case_id": "H-11",
+   "priority": "P1",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/H-11.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:21:46.865Z"
+  },
+  {
+   "case_id": "H-12",
+   "priority": "P1",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/H-12.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:21:53.996Z"
+  },
+  {
+   "case_id": "I-01",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/I-01.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:32:08.511Z"
+  },
+  {
+   "case_id": "I-02",
+   "priority": "P1",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/I-02.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:32:14.543Z"
+  },
+  {
+   "case_id": "I-03",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/I-03.json",
+   "original_case_file_exists": true,
+   "supplement_case": "SUP-07",
+   "supplement_status": "BLOCKED",
+   "timestamp": "2026-10-22T18:33:22.092Z"
+  },
+  {
+   "case_id": "I-04",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/I-04.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:25:23.065Z"
+  },
+  {
+   "case_id": "I-05",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/I-05.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:25:23.067Z"
+  },
+  {
+   "case_id": "I-06",
+   "priority": "P1",
+   "original_status": "GAP",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/I-06.json",
+   "original_case_file_exists": true,
+   "supplement_case": "SUP-06",
+   "supplement_status": "REQUIREMENT_GAP",
+   "timestamp": "2026-10-22T18:25:07.759Z"
+  },
+  {
+   "case_id": "I-07",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/I-07.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:33:23.305Z"
+  },
+  {
+   "case_id": "I-08",
+   "priority": "P0",
+   "original_status": "CONFIRMED_BUG",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/I-08.json",
+   "original_case_file_exists": true,
+   "supplement_case": "SUP-13",
+   "supplement_status": "CONFIRMED_BUG",
+   "timestamp": "2026-10-22T18:33:23.310Z"
+  },
+  {
+   "case_id": "I-09",
+   "priority": "P1",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/I-09.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:32:24.915Z"
+  },
+  {
+   "case_id": "I-10",
+   "priority": "P1",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/I-10.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:32:17.845Z"
+  },
+  {
+   "case_id": "I-11",
+   "priority": "P1",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/I-11.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:25:14.381Z"
+  },
+  {
+   "case_id": "I-12",
+   "priority": "P1",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/I-12.json",
+   "original_case_file_exists": true,
+   "supplement_case": "SUP-15",
+   "supplement_status": "PASS",
+   "timestamp": "2026-10-22T18:32:39.147Z"
+  },
+  {
+   "case_id": "J-01",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/J-01.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:39:37.273Z"
+  },
+  {
+   "case_id": "J-02",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/J-02.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:39:37.584Z"
+  },
+  {
+   "case_id": "J-03",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/J-03.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:39:43.457Z"
+  },
+  {
+   "case_id": "J-04",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/J-04.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:39:49.359Z"
+  },
+  {
+   "case_id": "J-05",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/J-05.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:39:55.403Z"
+  },
+  {
+   "case_id": "J-06",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/J-06.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:40:01.549Z"
+  },
+  {
+   "case_id": "J-07",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/J-07.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:41:44.503Z"
+  },
+  {
+   "case_id": "J-08",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/J-08.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:42:15.846Z"
+  },
+  {
+   "case_id": "J-09",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/J-09.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:43:53.403Z"
+  },
+  {
+   "case_id": "J-10",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/J-10.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:44:43.824Z"
+  },
+  {
+   "case_id": "J-11",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/J-11.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:49:12.620Z"
+  },
+  {
+   "case_id": "J-12",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/J-12.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:49:15.703Z"
+  },
+  {
+   "case_id": "K-01",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/K-01.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:58:05.816Z"
+  },
+  {
+   "case_id": "K-02",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/K-02.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:58:10.188Z"
+  },
+  {
+   "case_id": "K-03",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/K-03.json",
+   "original_case_file_exists": true,
+   "supplement_case": "SUP-14",
+   "supplement_status": "CONFIRMED_BUG",
+   "timestamp": "2026-10-22T19:03:25.907Z"
+  },
+  {
+   "case_id": "K-04",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/K-04.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T18:58:24.486Z"
+  },
+  {
+   "case_id": "K-05",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/K-05.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T19:06:56.421Z"
+  },
+  {
+   "case_id": "K-06",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/K-06.json",
+   "original_case_file_exists": true,
+   "supplement_case": "SUP-07",
+   "supplement_status": "BLOCKED",
+   "timestamp": "2026-10-22T19:26:54.524Z"
+  },
+  {
+   "case_id": "K-07",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/K-07.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T19:02:26.434Z"
+  },
+  {
+   "case_id": "K-08",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/K-08.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T19:07:27.584Z"
+  },
+  {
+   "case_id": "K-09",
+   "priority": "P0",
+   "original_status": "BLOCKED",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/K-09.json",
+   "original_case_file_exists": true,
+   "supplement_case": "SUP-03",
+   "supplement_status": "PASS",
+   "timestamp": "2026-10-22T19:08:26.492Z"
+  },
+  {
+   "case_id": "K-10",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/K-10.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T19:08:26.481Z"
+  },
+  {
+   "case_id": "K-11",
+   "priority": "P1",
+   "original_status": "BLOCKED",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/K-11.json",
+   "original_case_file_exists": true,
+   "supplement_case": "SUP-04",
+   "supplement_status": "BLOCKED",
+   "timestamp": "2026-10-22T19:08:26.496Z"
+  },
+  {
+   "case_id": "K-12",
+   "priority": "P1",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/K-12.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T19:08:08.008Z"
+  },
+  {
+   "case_id": "L-01",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/L-01.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T19:09:23.582Z"
+  },
+  {
+   "case_id": "L-02",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/L-02.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T19:09:23.689Z"
+  },
+  {
+   "case_id": "L-03",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/L-03.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T19:10:00.328Z"
+  },
+  {
+   "case_id": "L-04",
+   "priority": "P1",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/L-04.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T19:09:33.443Z"
+  },
+  {
+   "case_id": "L-05",
+   "priority": "P1",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/L-05.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T19:11:43.548Z"
+  },
+  {
+   "case_id": "L-06",
+   "priority": "P1",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/L-06.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T19:11:53.224Z"
+  },
+  {
+   "case_id": "L-07",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/L-07.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T19:25:27.759Z"
+  },
+  {
+   "case_id": "L-08",
+   "priority": "P0",
+   "original_status": "PASS",
+   "original_evidence": "phase2-final-20261023-0112-f5d206a/evidence/cases/L-08.json",
+   "original_case_file_exists": true,
+   "supplement_case": null,
+   "supplement_status": null,
+   "timestamp": "2026-10-22T19:27:32.016Z"
+  }
+ ]
+}
