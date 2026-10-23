@@ -21,6 +21,8 @@ dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-conta
 
 上述本机默认 Release 命令构建的是单 EXE **依赖环境版**，目标机器需要 .NET 8 Windows Desktop Runtime 与 ASP.NET Core Runtime（x64）。GitHub 手动 Release 则同时构建自包含版和依赖环境版，见下文发布说明。前端打包需要 Node 22；`dist/` 是构建产物，不以手工编辑构建结果代替修改源码。CI 在 Windows 执行 Debug/Release、单 EXE、Explorer Node、Edge/HTTP、SQLCipher/HTTP 和 MCP 检查。
 
+Windows EXE 应用图标为 [`src/IPSys.Web/assets/IPSys.ico`](./src/IPSys.Web/assets/IPSys.ico)，在 Visual Studio Debug、依赖环境版以及自包含版中均由同一个图标资源生成。WinForms 标题栏与任务栏也使用此图标。
+
 ## 手动发布 GitHub Release
 
 IPSys 的正式发布由 [Publish IPSys Release](https://github.com/zy19970/IPSys/actions/workflows/publish-release.yml) 手动触发，不随普通代码提交自动发布。进入 Actions → Publish IPSys Release → Run workflow，分支选择 `main`，输入新的版本号（如 `v0.1.0-rc.1` 或 `v0.1.0`）。开发阶段建议保留默认勾选的「预发布版本」，准备正式交付时取消勾选。版本标签一旦使用，不允许重复发布覆盖。

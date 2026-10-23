@@ -381,6 +381,48 @@ jobs:
             Remove-Item -LiteralPath $candidate -Force
             Write-Host "Release-named $($variant.mode) EXE HTTP/SQLCipher smoke: PASS"
           }
+      - name: Verify embedded application icon in both published EXEs
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Add-Type -AssemblyName System.Drawing.Common
+          $source = (Resolve-Path 'src/IPSys.Web/assets/IPSys.ico').Path
+          $expectedIcon = [System.Drawing.Icon]::new($source,32,32)
+          $expectedBmp = $expectedIcon.ToBitmap()
+          try {
+            foreach ($exe in @(
+              'src/IPSys.Web/bin/Debug/net8.0-windows/IPSys.Web.exe',
+              'artifacts/IPSys-Web-win-x64/IPSys.Web.exe',
+              'artifacts/IPSys-Web-win-x64-self-contained/IPSys.Web.exe'
+            )) {
+              $actualIcon = [System.Drawing.Icon]::ExtractAssociatedIcon((Resolve-Path $exe).Path)
+              if ($null -eq $actualIcon) { throw "Missing executable icon: $exe" }
+              $actualBmp = $actualIcon.ToBitmap()
+              try {
+                if ($actualBmp.Width -ne 32 -or $actualBmp.Height -ne 32) {
+                  throw "Unexpected EXE icon resolution: $exe ($($actualBmp.Width)x$($actualBmp.Height))"
+                }
+                $tested = 0; $matched = 0
+                for ($y = 0; $y -lt 32; $y++) {
+                  for ($x = 0; $x -lt 32; $x++) {
+                    $a = $expectedBmp.GetPixel($x,$y)
+                    if ($a.A -lt 180) { continue }
+                    $b = $actualBmp.GetPixel($x,$y)
+                    $tested++
+                    if ([math]::Abs([int]$a.R - [int]$b.R) -le 28 -and
+                        [math]::Abs([int]$a.G - [int]$b.G) -le 28 -and
+                        [math]::Abs([int]$a.B - [int]$b.B) -le 28) {
+                      $matched++
+                    }
+                  }
+                }
+                if ($tested -lt 500 -or $matched -lt [math]::Ceiling($tested * 0.9)) {
+                  throw "EXE icon does not match IPSys.ico: $exe ($matched/$tested matched)"
+                }
+                Write-Host "Windows PE icon matches IPSys.ico: $exe ($matched/$tested pixels)"
+              } finally { $actualBmp.Dispose(); $actualIcon.Dispose() }
+            }
+          } finally { $expectedBmp.Dispose(); $expectedIcon.Dispose() }
       - name: Upload self-contained Windows executable
         uses: actions/upload-artifact@v4
         with:

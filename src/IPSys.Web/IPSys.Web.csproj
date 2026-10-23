@@ -7,6 +7,8 @@
     <Nullable>enable</Nullable>
     <AssemblyName>IPSys.Web</AssemblyName>
     <RootNamespace>IPSys.Web</RootNamespace>
+    <!-- The Windows PE executable and WinForms launcher share this application icon. -->
+    <ApplicationIcon>assets\IPSys.ico</ApplicationIcon>
   </PropertyGroup>
   <!-- Debug remains multi-file; Release Publish is framework-dependent and produces one EXE. -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
@@ -20,6 +22,8 @@
     <IsTransformWebConfigDisabled>true</IsTransformWebConfigDisabled>
   </PropertyGroup>
   <ItemGroup>
+    <!-- Keep the same icon available as an in-assembly WinForms resource. -->
+    <EmbeddedResource Include="assets\IPSys.ico" LogicalName="IPSys.Web.AppIcon.ico" />
     <!-- Embed HTML/CSS/JS into the executable, no external wwwroot folder. -->
     <Content Remove="wwwroot\**\*" />
     <None Remove="wwwroot\**\*" />

@@ -26,6 +26,11 @@ internal sealed class LauncherForm : Form
         _lifetime = lifetime;
         _stopping = stopping;
         Text = "资料管理系统";
+        // The Windows taskbar/title bar uses the same icon embedded into IPSys.Web.exe.
+        using (var iconStream = typeof(LauncherForm).Assembly.GetManifestResourceStream("IPSys.Web.AppIcon.ico"))
+        {
+            if (iconStream is not null) Icon = new Icon(iconStream);
+        }
         StartPosition = FormStartPosition.CenterScreen;
         FormBorderStyle = FormBorderStyle.FixedSingle;
         MaximizeBox = false;
