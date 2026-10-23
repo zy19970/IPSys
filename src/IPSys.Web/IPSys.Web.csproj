@@ -23,12 +23,12 @@
     <!-- Embed HTML/CSS/JS into the executable, no external wwwroot folder. -->
     <Content Remove="wwwroot\**\*" />
     <None Remove="wwwroot\**\*" />
-    <!-- The shell (page / style / script) is produced by frontend/explorer/tools/bundle.cjs.
-         dist/ is generated at build time and is NOT committed: the repo holds the source only. -->
-    <EmbeddedResource Include="..\..\frontend\explorer\dist\index.html" LogicalName="IPSys.Web.Embedded.index.html" />
-    <EmbeddedResource Include="..\..\frontend\explorer\dist\style.css" LogicalName="IPSys.Web.Embedded.style.css" />
-    <EmbeddedResource Include="..\..\frontend\explorer\dist\app.js" LogicalName="IPSys.Web.Embedded.app.js" />
-    <!-- Capability layer stays next to the backend: self-contained scripts that build their own DOM. -->
+    <!-- The one official frontend lives in wwwroot/{index.html,css,js}.
+         wwwroot/dist is generated during builds and is never committed. -->
+    <EmbeddedResource Include="wwwroot\dist\index.html" LogicalName="IPSys.Web.Embedded.index.html" />
+    <EmbeddedResource Include="wwwroot\dist\style.css" LogicalName="IPSys.Web.Embedded.style.css" />
+    <EmbeddedResource Include="wwwroot\dist\app.js" LogicalName="IPSys.Web.Embedded.app.js" />
+    <!-- Frontend capability modules are embedded under the same web resource namespace. -->
     <EmbeddedResource Include="wwwroot\ip-v2.js" LogicalName="IPSys.Web.Embedded.ip-v2.js" />
     <EmbeddedResource Include="wwwroot\upload-progress.js" LogicalName="IPSys.Web.Embedded.upload-progress.js" />
     <EmbeddedResource Include="wwwroot\export.js" LogicalName="IPSys.Web.Embedded.export.js" />
@@ -41,11 +41,10 @@
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlcipher" Version="2.1.11" />
   </ItemGroup>
 
-  <!-- 前端壳的产物在构建前生成。源码只有一份：frontend/explorer/{index.html,css,js}；
-       dist/ 是产物，不入库。没装 Node 时若已有 dist 就只警告不阻断，
-       避免在 VS 里因为缺 Node 让整个项目编不动。 -->
+  <!-- 正式前端源码位于 wwwroot/{index.html,css,js}；wwwroot/dist 为构建生成目录。
+       如果没有 Node，沿用现有 dist 并提示风险；缺少产物则构建失败。 -->
   <PropertyGroup>
-    <ExplorerRoot>$(MSBuildProjectDirectory)\..\..\frontend\explorer</ExplorerRoot>
+    <ExplorerRoot>$(MSBuildProjectDirectory)\wwwroot</ExplorerRoot>
   </PropertyGroup>
   <Target Name="BundleExplorerShell" BeforeTargets="BeforeBuild">
     <Exec Command="node --version" ContinueOnError="true"
@@ -55,8 +54,8 @@
     <Exec Condition="'$(ExplorerNodeExit)' == '0'"
           Command="node &quot;$(ExplorerRoot)\tools\bundle.cjs&quot;" />
     <Error Condition="'$(ExplorerNodeExit)' != '0' And !Exists('$(ExplorerRoot)\dist\app.js')"
-           Text="前端产物缺失，且未找到 Node.js。请安装 Node.js，或手动运行 node frontend/explorer/tools/bundle.cjs 后重新编译。" />
+           Text="前端产物缺失，且未找到 Node.js。请安装 Node.js，或手动运行 node src/IPSys.Web/wwwroot/tools/bundle.cjs 后重新编译。" />
     <Warning Condition="'$(ExplorerNodeExit)' != '0' And Exists('$(ExplorerRoot)\dist\app.js')"
-             Text="未找到 Node.js，跳过前端打包，直接使用已有的 dist/。若改动过 frontend/explorer 下的源码，这份产物是旧的。" />
+             Text="未找到 Node.js，跳过前端打包，直接使用已有的 dist/。若改动过 wwwroot 下的源码，这份产物是旧的。" />
   </Target>
 </Project>

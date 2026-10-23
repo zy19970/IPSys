@@ -3,7 +3,7 @@
 "use strict";
 const assert=require("node:assert/strict"), fs=require("node:fs");
 const path=require("node:path"),vm=require("node:vm");
-const root=path.resolve(__dirname,"../../../frontend/explorer/js");
+const root=path.resolve(__dirname,"../wwwroot/js");
 const storeText=fs.readFileSync(path.join(root,"store.js"),"utf8");
 const ui=fs.readFileSync(path.join(root,"interactions.js"),"utf8");
 const bridge=fs.readFileSync(path.join(root,"bridge.js"),"utf8");

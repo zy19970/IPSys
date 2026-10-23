@@ -6,7 +6,7 @@
 
 IPSys 是离线、单用户的 Windows 资料管理系统。一个 SQLCipher V2 加密库内区分**个人资料与公司资料**工作区。使用 WinForms 窗口控制进程生命周期，ASP.NET Core 服务只监听 `127.0.0.1`，用户在 Edge/Chrome 访问 Explorer 界面。网页“关闭数据库”锁库并返回登录页；退出 WinForms 才终止宿主。
 
-前端**唯一源码**位于 [`frontend/explorer/`](./frontend/explorer/README.md)，采用无框架原生 JavaScript，构建时由 `frontend/explorer/tools/bundle.cjs` 生成 `dist/` 并嵌入 `IPSys.Web.exe`。旧 `src/IPSys.Web/wwwroot/index.html`、`app.js`、`style.css` 已退役；同目录的 `export.js`、`ip-v2.js`、`pdf-preview.js` 等仍承担具体能力，不能作为整套旧 UI 复活。
+程序的**唯一正式前端**集中于 [`src/IPSys.Web/wwwroot/`](./src/IPSys.Web/wwwroot/README.md)。页面源码是 `index.html`、`css/app.css` 和 `js/*.js`，文件管理、ZIP64、PDF、上传等能力模块也位于同一目录。Node 在编译期间生成 `wwwroot/dist/`，全部作为内嵌资源打包进 `IPSys.Web.exe`；不存在独立运行的第二套 UI。
 
 所有业务分类、项目、合同、知识产权及档案以 **Folder** 表示（Folder 无版本），真实附件以 **File / FileVersion** 表示，`folder_file_links` 保存归属，同工作区可按明确操作共享 FileId 或复用 FileObject 内容；跨公司/个人工作区**不得共享物理 FileObject**，须独立复制。合同必须属于有效项目，项目可以单独存在。原件和文件版本存储于加密 SQLCipher 库；不维护磁盘明文镜像。
 
@@ -44,6 +44,6 @@ Release 发布包为单独的 `IPSys.Web.exe`，但**不是完全免运行时**�
 | [MCP_CODEX.md](./MCP_CODEX.md) | 本机 MCP 接入、59 工具和安全规则 |
 | [USER_GUIDE.md](./USER_GUIDE.md) | Excel、搜索、附件/ZIP 与用户操作 |
 | [TESTING.md](./TESTING.md) 与 [测试证据索引](./tests/TEST_EVIDENCE_INDEX.md) | 现行验证方法与各次独立原始证据 |
-| [frontend/explorer/README.md](./frontend/explorer/README.md) | Explorer 前端源码、打包和代码契约 |
+| [正式前端源码说明](./src/IPSys.Web/wwwroot/README.md) | Explorer 前端源码、打包和代码契约 |
 
 历史计划、旧测试任务书与报告保留在 `docs/archive/`、`tests/agent-validation/`、`tests/retest-v2-2026-10-22/`、`tests/mcp-results/`，其日期状态不覆盖本页。开发前遵循 [AIGT-templates](https://github.com/zy19970/AIGT-templates) 的 `AGENTS.md` 和 `AI_RULES/GIT_OPERATIONS.md`。

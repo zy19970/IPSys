@@ -1,10 +1,10 @@
-/* 生成可部署到真实服务端的静态产物。
+/* 打包 IPSys 唯一正式前端，产物在编译时嵌入 EXE。
    --------------------------------------------------------------------------
-   原服务端把页面作为程序集资源(EmbeddedWebAssets),只暴露固定的 11 个路径:
+   服务端通过 EmbeddedWebAssets 提供固定的前端资源路径:
      /  /index.html  /style.css  /app.js
    所以前端必须收敛成 index.html + style.css + app.js 三个文件。
 
-   用法: node tools/bundle.cjs */
+   用法: node src/IPSys.Web/wwwroot/tools/bundle.cjs */
 
 const fs = require("fs");
 const path = require("path");
@@ -12,9 +12,8 @@ const path = require("path");
 const ROOT = path.resolve(__dirname, "..");
 const OUT = path.join(ROOT, "dist");
 
-/* bridge 是本壳与 wwwroot 能力层之间的适配:它只做形状转换,不引业务逻辑。
-   excel 是唯一从旧壳移植的业务代码(/api/v2/excel/* 全在旧 app.js 里)。
-   两者都放在 interactions 之前,保证交互层运行时已就位。 */
+/* bridge 是前端交互与同目录能力模块的接口适配，不引入额外业务状态。
+   excel 负责 V2 台账，二者先于 interactions 加载。 */
 const ORDER = ["js/icons.js", "js/data.js", "js/store.js", "js/app.js", "js/forms.js", "js/bridge.js", "js/excel.js", "js/interactions.js"];
 
 fs.mkdirSync(OUT, { recursive: true });

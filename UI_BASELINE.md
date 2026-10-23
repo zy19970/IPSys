@@ -1,6 +1,6 @@
 # IPSys 资料管理系统：现行 UI 与文件夹交互基线（2026-10-17）
 
-> **Explorer 合并后适用说明（2026-10-23）**：现行 UI 源码已变更为 `frontend/explorer/`，主分支 [Windows CI #39947975625](https://github.com/zy19970/IPSys/actions/runs/39947975625) 成功。下文旧式卡片/表格与 `wwwroot/app.js` 交互细节中，与 Explorer 新壳已实现行为不一致的部分仅代表旧阶段；不可按它们恢复旧前端或修改 V2 资源模型。当前页面具体组件与事件以 [Explorer 源码与说明](./frontend/explorer/README.md) 和功能回归为准。未改变的业务数据、工作区、权限、归档/文件版本规则继续有效。
+> **正式前端基线（2026-10-23）**：IPSys 唯一正式前端的源代码位于 [`src/IPSys.Web/wwwroot/`](./src/IPSys.Web/wwwroot/README.md)，已与 WinForms/SQLCipher V2 集成并嵌入 EXE。此文件中的业务导航、权限和交互原则持续有效；具体 DOM 组件、渲染函数、事件实现均以正式前端当前源码和回归为准。历史组件描述不能覆盖当前实现。[Explorer 主分支 CI #39947975625](https://github.com/zy19970/IPSys/actions/runs/39947975625) 为合并时的基线。
 
 
 > 本文件为持续有效的 UI 冻结基线。正式网页、附件、Excel、搜索、回收站、导出及 MCP 都已统一 SQLCipher V2 FolderId/FileId/LinkId。N4 两批清理与 MCP 三批自动回归已通过，最新业务源码 `080a599` 对应 [Windows CI #38930903431](https://github.com/zy19970/IPSys/actions/runs/38930903431) success；尚须 Edge/Chrome 与本机 Codex/WorkBuddy 实际验收。MCP 工具扩展不改变本文件已冻结的卡片/表格导航与布局。
@@ -55,7 +55,7 @@ IPSys 是业务化文件夹式本地资料管理器。用户面对的是「加�
 
 9. **真实资料详情附件区统一布局**：项目、合同、知识产权、资料档案及综合资料统一使用一套附件分区标题栏：附件名称、真实原件份数、全选、已选数量、导出已选文件夹/ZIP、上传附件。禁止在分区内容上方重复显示“原件附件 n 份/上传原件”工具栏，或在附件列表底部单独显示第二组导出按钮。知识产权的材料类别选择保留在标题栏；资料档案不再常驻“同内容复用存储”复选框，所有业务原件统一在内容查重后自动独立保存或对重复内容弹出共享/复用/独立保存选择。所有附件行仍支持左键预览、右键操作、最新版本批量选择以及单独勾选历史版本；未选中文件时导出按钮禁用。项目所属合同仍在对应分区标题栏显示份数并提供新增按钮；项目顶部整项目导出继续包含所属合同，附件标题栏的“导出已选”仅导出当前记录勾选附件。
 
-10. **UI 共用组件约束**：所有业务页面共享公共设计变量、列表工具栏、数据表格、详情标题/信息网格、附件行/版本分组、导航卡片、选择状态、导出菜单和弹窗基础样式。当前实际代码使用 `normalizeUiComponents()` 统一加组件标记，附件统一由 `attachmentFileRow()` 与 `attachmentFileGroup()` 渲染，项目内所属合同的批量控件使用稳定的 `data-ledger-actions` 分区标题插槽；各模块不得复制独立的“同功能另一套组件”。现行 Explorer 组件与回归以 [frontend/explorer/README.md](./frontend/explorer/README.md) 与主分支 Windows CI 为准；旧矩阵只作 [历史追溯](./docs/archive/UI_COMPONENT_MATRIX.md)。真实浏览器视觉回归须另行实测，自动 DOM/源码检查不能替代。
+10. **UI 共用组件约束**：所有业务页面共享公共设计变量、列表工具栏、数据表格、详情标题/信息网格、附件行/版本分组、导航卡片、选择状态、导出菜单和弹窗基础样式。实际组件实现及事件由正式前端源码统一维护；各业务模块不得复制独立的“同功能另一套组件”。现行 Explorer 组件与回归以 [正式前端 README](./src/IPSys.Web/wwwroot/README.md) 与主分支 Windows CI 为准；旧矩阵只作 [历史追溯](./docs/archive/UI_COMPONENT_MATRIX.md)。真实浏览器视觉回归须另行实测，自动 DOM/源码检查不能替代。
 
 ## 资料库手动压缩
 

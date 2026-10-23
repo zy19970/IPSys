@@ -5,8 +5,8 @@ const vm=require('node:vm');
 const path=require('node:path');
 const source=fs.readFileSync('src/IPSys.Web/wwwroot/upload-progress.js','utf8');
 const adapter=fs.readFileSync('src/IPSys.Web/wwwroot/ip-v2.js','utf8');
-/* Shell sources live in frontend/explorer; the capability scripts stayed in wwwroot. */
-const shell=path.resolve(__dirname,'../../../frontend/explorer');
+/* Official frontend sources and capability modules share the wwwroot directory. */
+const shell=path.resolve(__dirname,'../wwwroot');
 const bridge=fs.readFileSync(path.join(shell,'js/bridge.js'),'utf8');
 const html=fs.readFileSync(path.join(shell,'index.html'),'utf8');
 /* What actually matters: every capability script must define its global before

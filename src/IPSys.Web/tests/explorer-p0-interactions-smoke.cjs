@@ -8,7 +8,7 @@ const vm=require('node:vm');
 const path=require('node:path');
 
 const shell=fs.readFileSync(path.resolve(__dirname,
- '../../../frontend/explorer/js/interactions.js'),'utf8');
+ '../wwwroot/js/interactions.js'),'utf8');
 function extract(start,end){
  const a=shell.indexOf(start), b=shell.indexOf(end,a+start.length);
  assert.ok(a>=0 && b>a,'Cannot extract '+start);

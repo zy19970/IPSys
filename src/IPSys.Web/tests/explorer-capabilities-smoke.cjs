@@ -24,7 +24,7 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const path=require('node:path');
 
-const SHELL=path.resolve(__dirname,'../../../frontend/explorer');
+const SHELL=path.resolve(__dirname,'../wwwroot');
 const read=rel=>fs.readFileSync(path.join(SHELL,rel),'utf8');
 
 const app=read('js/app.js');

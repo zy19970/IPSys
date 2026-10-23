@@ -17,6 +17,8 @@
 
 历史执行过的测试方案还有 [归档测试说明](./archive/)，实际保存核验工具位于 [tools/](./tools/)。
 
+正式前端源码现已统一放在 [src/IPSys.Web/wwwroot/](../src/IPSys.Web/wwwroot/README.md)，与上传、导出和 PDF 模块同目录，不存在第二套前端。
+
 ## 自动化源码为什么保留原位置
 
 `src/IPSys.Web/tests/` 包含直接读取 Explorer 源码、项目文件和内嵌资源的 Node 冒烟测试，和 `src/IPSys.Web/*Smoke.cs` 内建 C# smoke 属于源码构建验证，暂时**仍随产品代码存放**。统一测试入口在此，但不为了移动目录而改变业务测试的路径计算和项目自动编译规则。

@@ -2,7 +2,7 @@
 "use strict";
 const assert=require("node:assert/strict"),fs=require("node:fs"),
  path=require("node:path"),vm=require("node:vm");
-const root=path.resolve(__dirname,"../../../frontend/explorer");
+const root=path.resolve(__dirname,"../wwwroot");
 const src=fs.readFileSync(path.join(root,"js/interactions.js"),"utf8");
 const css=fs.readFileSync(path.join(root,"css/app.css"),"utf8");
 assert.match(css,/#setPendingUploadCancel\[hidden\]\s*\{\s*display:\s*none/, "Pending action hidden must override .btn display");

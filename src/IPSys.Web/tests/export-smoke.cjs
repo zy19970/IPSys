@@ -115,7 +115,7 @@ assert.deepEqual(JSON.parse(JSON.stringify(plan.map(x=>x.path))),[
 // same invariants are asserted through that entry point: every version of every
 // attachment under the selected node, the right owner, and the archive folder
 // chain that lets the ZIP rebuild nested directories.
-const bridge=fs.readFileSync(path.resolve(__dirname,'../../../frontend/explorer/js/bridge.js'),'utf8');
+const bridge=fs.readFileSync(path.resolve(__dirname,'../wwwroot/js/bridge.js'),'utf8');
 const bridgeStart=bridge.indexOf('const EXPORTABLE_KINDS');
 const bridgeEnd=bridge.indexOf('async function exportNodes',bridgeStart);
 assert.ok(bridgeStart>=0&&bridgeEnd>bridgeStart,'Shell export projection missing');

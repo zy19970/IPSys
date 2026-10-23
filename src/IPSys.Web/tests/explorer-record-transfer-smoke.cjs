@@ -4,7 +4,7 @@ const assert=require("node:assert/strict");
 const fs=require("node:fs");
 const path=require("node:path");
 const vm=require("node:vm");
-const root=path.resolve(__dirname,"../../../frontend/explorer");
+const root=path.resolve(__dirname,"../wwwroot");
 const bridge=fs.readFileSync(path.join(root,"js/bridge.js"),"utf8");
 const interactions=fs.readFileSync(path.join(root,"js/interactions.js"),"utf8");
 assert.match(interactions,/MI\("copy-record",\s*"copy",\s*"复制整条记录"\)/);

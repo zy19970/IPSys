@@ -4,7 +4,7 @@ const assert=require("node:assert/strict");
 const fs=require("node:fs");
 const path=require("node:path");
 const vm=require("node:vm");
-const root=path.resolve(__dirname,"../../../frontend/explorer");
+const root=path.resolve(__dirname,"../wwwroot");
 const read=p=>fs.readFileSync(path.join(root,p),"utf8");
 const bridge=read("js/bridge.js"),inter=read("js/interactions.js"),app=read("js/app.js");
 const html=read("index.html");

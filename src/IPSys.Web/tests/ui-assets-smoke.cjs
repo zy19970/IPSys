@@ -1,9 +1,7 @@
 /* Shell asset contract.
    --------------------------------------------------------------------------
-   The old UI smoke test read wwwroot/{index.html,app.js,style.css} and asserted
-   the old shell's markup. Those files are gone: the shell now lives in
-   frontend/explorer and is bundled into dist/ before every build. What still
-   needs guarding is the wiring, and this file guards exactly that:
+   The official frontend source is in wwwroot/{index.html,css,js}, and the
+   generated wwwroot/dist assets are embedded at build time. This test guards:
 
      A. assets      — what index.html loads, what the csproj embeds, what the
                       bundler is told to concatenate;
@@ -18,7 +16,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const {execFileSync}=require('node:child_process');
 
-const SHELL=path.resolve(__dirname,'../../../frontend/explorer');
+const SHELL=path.resolve(__dirname,'../wwwroot');
 const WEB=path.resolve(__dirname,'..');
 const read=rel=>fs.readFileSync(path.join(SHELL,rel),'utf8');
 const srcHtml=read('index.html');
@@ -34,10 +32,10 @@ for(const file of ['/ip-v2.js','/upload-progress.js','/export.js','/pdf-preview.
  assert.ok(srcHtml.includes('src="'+file+'"'),'index.html must load the capability script '+file);
 
 for(const asset of ['index.html','style.css','app.js'])
- assert.ok(csproj.includes('..\\..\\frontend\\explorer\\dist\\'+asset)&&
+ assert.ok(csproj.includes('wwwroot\\dist\\'+asset)&&
   csproj.includes('LogicalName="IPSys.Web.Embedded.'+asset+'"'),
   'The csproj must embed dist/'+asset+' under its original logical name');
-/* Everything else the server serves still comes straight from wwwroot. */
+/* All runtime web modules come from the same wwwroot resource directory. */
 for(const asset of ['ip-v2.js','upload-progress.js','export.js','pdf-preview.js'])
  assert.ok(csproj.includes('Include="wwwroot\\'+asset+'"'),
   'The capability script '+asset+' must stay embedded from wwwroot');
@@ -115,11 +113,11 @@ if(!fs.existsSync(path.join(dist,'app.js')))
 const header='/* 资料库前端 — 由 tools/bundle.cjs 生成,请勿直接编辑。\n   源文件: '+order.map(f=>'js/'+f).join(' → ')+' */\n';
 const expected=header+order.map(f=>'\n/* ===== js/'+f+' ===== */\n'+read('js/'+f)).join('\n');
 assert.equal(fs.readFileSync(path.join(dist,'app.js'),'utf8'),expected,
- 'dist/app.js is stale — run node frontend/explorer/tools/bundle.cjs');
+ 'dist/app.js is stale — run node src/IPSys.Web/wwwroot/tools/bundle.cjs');
 assert.equal(fs.readFileSync(path.join(dist,'style.css'),'utf8'),srcCss,
- 'dist/style.css is stale — run node frontend/explorer/tools/bundle.cjs');
+ 'dist/style.css is stale — run node src/IPSys.Web/wwwroot/tools/bundle.cjs');
 assert.equal(fs.readFileSync(path.join(dist,'index.html'),'utf8'),srcHtml,
- 'dist/index.html is stale — run node frontend/explorer/tools/bundle.cjs');
+ 'dist/index.html is stale — run node src/IPSys.Web/wwwroot/tools/bundle.cjs');
 assert.ok(fs.statSync(path.join(dist,'app.js')).size>90*1024,
  'The bundled shell is suspiciously small; a module probably failed to load');
 

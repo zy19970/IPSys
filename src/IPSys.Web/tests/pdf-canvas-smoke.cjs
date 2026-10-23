@@ -15,8 +15,8 @@ function gitSha(bytes){
 }
 assert.equal(gitSha(pdfJS),'4d430208fdaff174b880faf78aa90eb5280ce90e');
 assert.equal(gitSha(worker),'6bbfaeede7465b9270475dd9028e2b7022a2a832');
-// The shell moved out of wwwroot to frontend/explorer; pdf-preview.js stayed put.
-const shell=path.resolve(__dirname,'../../../frontend/explorer');
+// The official frontend and the PDF preview module both reside in wwwroot.
+const shell=path.resolve(__dirname,'../wwwroot');
 const app=fs.readFileSync(path.join(shell,'js/interactions.js'),'utf8');
 const css=fs.readFileSync(path.join(shell,'css/app.css'),'utf8');
 const program=fs.readFileSync(path.resolve(__dirname,'../Program.cs'),'utf8');

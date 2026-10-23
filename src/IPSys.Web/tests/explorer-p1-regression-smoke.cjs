@@ -5,7 +5,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
-const shell = path.resolve(__dirname, "../../../frontend/explorer");
+const shell = path.resolve(__dirname, "../wwwroot");
 const source = p => fs.readFileSync(path.join(shell, "js", p), "utf8");
 
 const els = new Map();

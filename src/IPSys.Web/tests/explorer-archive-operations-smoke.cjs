@@ -4,7 +4,7 @@ const assert=require("node:assert/strict");
 const fs=require("node:fs");
 const path=require("node:path");
 const vm=require("node:vm");
-const root=path.resolve(__dirname,"../../../frontend/explorer");
+const root=path.resolve(__dirname,"../wwwroot");
 const code=fs.readFileSync(path.join(root,"js/interactions.js"),"utf8");
 const forms=fs.readFileSync(path.join(root,"js/forms.js"),"utf8");
 function extract(start,end){

@@ -6,7 +6,7 @@
 
 `src/IPSys.Web/IPSys.Web.csproj` 以 `net8.0-windows`、`UseWindowsForms=true`、`OutputType=WinExe` 构建。WinForms 启动器控制 ASP.NET Core/Kestrel 的生命周期，HTTP 只绑定 `127.0.0.1` 临时端口，Edge/Chrome 是客户端。关闭浏览器页面不终止程序；网页关库注销当前会话；仅 WinForms 退出结束程序，文件任务须按安全退出机制处理。
 
-正式 Explorer 源码是 `frontend/explorer/index.html`、`css/app.css`、`js/*.js`；`tools/bundle.cjs` 在构建时生成 `frontend/explorer/dist/index.html`、`style.css`、`app.js` 并作为 EmbeddedResource 嵌入 EXE。旧的 `wwwroot/index.html/app.js/style.css` 已删除。仍使用 `src/IPSys.Web/wwwroot/` 下的上传、下载、ZIP64、PDF.js 等**能力脚本**，这些文件不是旧应用壳。修改源文件需以 CI 资源一致性检查为准，不在 Git 中手工维护 `dist/`。
+正式前端全部位于 `src/IPSys.Web/wwwroot/`：页面源码 `index.html`、`css/app.css`、`js/*.js` 与上传、下载、ZIP64、PDF.js 等能力模块共享这一目录；`tools/bundle.cjs` 在构建时生成 `wwwroot/dist/index.html`、`style.css`、`app.js`，由 MSBuild 按固定逻辑资源名嵌入 EXE。运行时由 `EmbeddedWebAssets` 读取内嵌资源，不向外输出物理 `wwwroot` 文件夹。只修改前端源码，不在 Git 中维护生成的 `dist/`。
 
 Windows Release 以 `win-x64` / `PublishSingleFile=true` / `SelfContained=false` 发布为单一 EXE，目标机需 .NET 8 Windows Desktop 与 ASP.NET Core 两种运行时。MCP 由同一个 EXE 的 `--mcp` stdio 模式、受授权的同用户命名管道和宿主会话运行，正式清单为 **59 项无 `v2_*` 别名的工具**；详情见 [MCP_CODEX.md](./MCP_CODEX.md)。
 
@@ -36,7 +36,7 @@ ZIP 与文件夹式导出支持 ZIP64；正式 ZIP 生成代码在 `src/IPSys.We
 
 ## 4. UI、构建及验收权威
 
-业务导航、组件和交互依据 [UI_BASELINE.md](./UI_BASELINE.md)；**实际 Explorer 前端组件契约以 [frontend/explorer/README.md](./frontend/explorer/README.md) 与源代码为准**。早期 `UI_COMPONENT_MATRIX.md` 所记的旧 `wwwroot/app.js` 组件不再适用。
+业务导航、组件和交互依据 [UI_BASELINE.md](./UI_BASELINE.md)；**实际 Explorer 前端组件契约以 [正式前端说明](./src/IPSys.Web/wwwroot/README.md) 与源代码为准**。历史 `UI_COMPONENT_MATRIX.md` 所记的早期组件契约仅供追溯，以当前正式前端源码与回归为准。
 
 现行 Windows 工作流 `.github/workflows/web-windows.yml` 对产品代码与脚本改动执行 Debug 嵌入资源检查、Release 单 EXE、MCP stdio、Node/UI、Edge/HTTP、SQLCipher/HTTP。超过 2 GiB 数据与真实 4 GiB ZIP64 为 opt-in 专项，不随每次文档提交强制复跑。
 

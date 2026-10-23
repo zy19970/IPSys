@@ -1,6 +1,6 @@
 # IPSys 用户操作手册（Explorer / SQLCipher V2）
 
-> 适用：2026-10-23 已合并到 `main` 的 Explorer 版本。本文整合原 Excel、工作区搜索、附件管理及导出说明。实际控件以 `frontend/explorer/` 与当前构建为准。
+> 适用：2026-10-23 已合并到 `main` 的 Explorer 版本。本文整合原 Excel、工作区搜索、附件管理及导出说明。实际控件以 `src/IPSys.Web/wwwroot/` 与当前构建为准。
 
 ## 资料库和业务记录
 

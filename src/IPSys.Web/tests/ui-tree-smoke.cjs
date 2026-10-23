@@ -14,7 +14,7 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const path=require('node:path');
 
-const SHELL=path.resolve(__dirname,'../../../frontend/explorer');
+const SHELL=path.resolve(__dirname,'../wwwroot');
 /* store.js is a plain object literal at the top level — nothing runs until a
    method is called — so the whole file can be loaded without a DOM. */
 const ctx=vm.createContext({

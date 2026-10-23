@@ -5,7 +5,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 
-const root = path.resolve(__dirname, "../../../frontend/explorer");
+const root = path.resolve(__dirname, "../wwwroot");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const css = fs.readFileSync(path.join(root, "css/app.css"), "utf8");
 const code = fs.readFileSync(path.join(root, "js/interactions.js"), "utf8");
