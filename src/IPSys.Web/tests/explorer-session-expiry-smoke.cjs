@@ -16,7 +16,7 @@ for(const id of ["#lockScreen","#appShell","#lockForm","#switchLockMode",
  "#lockHeading","#lockSub","#lockHint","#createConfirmField",
  "#confirmPassword","#password","#dbPath","#submitOpen"]){
  elements.set(id,{classList:classes(),disabled:false,hidden:id==="#createConfirmField",
- value:"",textContent:"",addEventListener(){},setAttribute(k,v){this[k]=v;}});
+ value:"",textContent:"",addEventListener(){},setAttribute(k,v){if(k==="hidden")this.hidden=true;else this[k]=v;}});
 }
 const storage=new Map([["od-token","old-token"],["od-db","vault.db"]]);
 const state={ready:true,wsPending:null,loadError:null,selection:new Set(["p:1"]),searchSerial:0};
