@@ -1617,6 +1617,8 @@ svg { display: block; flex: none; }
 .lock-mode-toggle { width: 100%; height: 36px; justify-content: center; margin-top: 8px; }
 .lock-mode-toggle[hidden] { display: none; }
 .lock-confirm[hidden] { display: none; }
+/* Settings buttons use inline-flex; the pending-upload action must stay hidden until needed. */
+#setPendingUploadCancel[hidden] { display: none; }
 
 /* ==========================================================================
    首页（工作台）

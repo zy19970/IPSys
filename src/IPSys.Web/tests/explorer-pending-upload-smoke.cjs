@@ -4,6 +4,8 @@ const assert=require("node:assert/strict"),fs=require("node:fs"),
  path=require("node:path"),vm=require("node:vm");
 const root=path.resolve(__dirname,"../../../frontend/explorer");
 const src=fs.readFileSync(path.join(root,"js/interactions.js"),"utf8");
+const css=fs.readFileSync(path.join(root,"css/app.css"),"utf8");
+assert.match(css,/#setPendingUploadCancel\\[hidden\\]\\s*\\{\\s*display:\\s*none/, "Pending action hidden must override .btn display");
 const html=fs.readFileSync(path.join(root,"index.html"),"utf8");
 for(const marker of ['id="setPendingUploadMsg"','id="setPendingUploadCancel"'])
  assert.ok(html.includes(marker),"Missing recovery UI element "+marker);
