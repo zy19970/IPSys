@@ -27,6 +27,8 @@ internal sealed class LauncherForm : Form
     private TimeSpan _previousCpuTime;
     private long _previousSampleTick;
     private bool _explicitExit;
+    private readonly ContextMenuStrip _trayMenu;
+    private readonly NotifyIcon _trayIcon;
 
     // Same restrained blue/neutral palette as the Explorer/OneDrive-style web shell.
     private static readonly Color Canvas = Color.FromArgb(247, 249, 252);
@@ -97,13 +99,21 @@ internal sealed class LauncherForm : Form
         var launch = MakeButton("打开管理界面", new Rectangle(18, 186, 296, 43), primary: true);
         launch.Click += (_, _) => OpenBrowser();
         var exit = MakeButton("退出程序", new Rectangle(328, 186, 154, 43), primary: false);
-        exit.Click += (_, _) =>
-        {
-            _explicitExit = true;
-            Close();
-        };
+        exit.Click += (_, _) => RequestExit();
         Controls.AddRange(new Control[] { logo, heading, statusCard, monitorCard, launch, exit });
         AcceptButton = launch;
+
+        _trayMenu = new ContextMenuStrip();
+        _trayMenu.Items.Add("打开主窗口", null, (_, _) => RestoreFromTray());
+        _trayMenu.Items.Add(new ToolStripSeparator());
+        _trayMenu.Items.Add("退出程序", null, (_, _) => RequestExit());
+        _trayIcon = new NotifyIcon
+        {
+            Icon = Icon ?? SystemIcons.Application,
+            Text = "资料管理系统",
+            ContextMenuStrip = _trayMenu
+        };
+        _trayIcon.DoubleClick += (_, _) => RestoreFromTray();
 
         // Both ASP.NET and this launcher live inside IPSys.Web.exe. Sampling
         // that process therefore includes the UI and the local HTTP host.
@@ -114,6 +124,7 @@ internal sealed class LauncherForm : Form
         _monitorTimer.Tick += (_, _) => UpdateResourceMonitor();
         Shown += (_, _) =>
         {
+            _trayIcon.Visible = true;
             UpdateResourceMonitor();
             _monitorTimer.Start();
         };
@@ -241,23 +252,57 @@ internal sealed class LauncherForm : Form
 
     protected override void OnFormClosed(FormClosedEventArgs e)
     {
+        _trayIcon.Visible = false;
+        _trayIcon.Dispose();
+        _trayMenu.Dispose();
         _monitorTimer.Stop();
         _monitorTimer.Dispose();
         _process.Dispose();
         base.OnFormClosed(e);
     }
 
-    // The title-bar X is a minimize action. Only the dedicated Exit button
-    // requests shutdown; application/Windows shutdown remains unaffected.
-    internal static bool ShouldMinimize(CloseReason reason,bool explicitExit,bool stopping)=>
+    private void RequestExit()
+    {
+        if(_vault.ExitRequested || _stopping.IsCancellationRequested)return;
+        // In-flight file tasks may need the existing three-choice dialog.
+        if(_vault.FileTaskActive && !Visible)RestoreFromTray();
+        _explicitExit = true;
+        Close();
+    }
+
+    internal void HideToTray()
+    {
+        if(IsDisposed)return;
+        _trayIcon.Visible = true;
+        Hide();
+        ShowInTaskbar = false;
+    }
+
+    internal void RestoreFromTray()
+    {
+        if(IsDisposed)return;
+        ShowInTaskbar = true;
+        if(WindowState == FormWindowState.Minimized)
+            WindowState = FormWindowState.Normal;
+        if(!Visible)Show();
+        Activate();
+    }
+
+    // X hides to tray; only explicit Exit invokes file-task safety checks.
+    internal static bool ShouldHideToTray(CloseReason reason,bool explicitExit,bool stopping)=>
         reason==CloseReason.UserClosing && !explicitExit && !stopping;
+
+    // Returning a selected database path always hides the launcher so the
+    // browser login is unobstructed. Cancel preserves the previous visibility.
+    internal static bool HideAfterFilePicker(bool selected,bool wasHidden)=>
+        selected || wasHidden;
 
     protected override void OnFormClosing(FormClosingEventArgs e)
     {
-        if(ShouldMinimize(e.CloseReason,_explicitExit,_stopping.IsCancellationRequested))
+        if(ShouldHideToTray(e.CloseReason,_explicitExit,_stopping.IsCancellationRequested))
         {
             e.Cancel = true;
-            WindowState = FormWindowState.Minimized;
+            HideToTray();
             base.OnFormClosing(e);
             return;
         }
@@ -401,9 +446,11 @@ internal static class LauncherHost
                         catch(IOException) {}
                     }
 
-                    bool wasMinimized=form.WindowState==FormWindowState.Minimized;
-                    if(wasMinimized)form.WindowState=FormWindowState.Normal;
-                    form.Activate();
+                    bool wasHidden=!form.Visible ||
+                        form.WindowState==FormWindowState.Minimized;
+                    if(wasHidden)form.RestoreFromTray();
+                    else form.Activate();
+                    string? selectedPath=null;
                     try
                     {
                         using FileDialog picker=create
@@ -432,14 +479,16 @@ internal static class LauncherHost
                                 MessageBox.Show(form,"已有同名文件，请选择其他文件名。不会覆盖现有资料库。",
                                     "文件已存在",MessageBoxButtons.OK,MessageBoxIcon.Warning);
                             };
-                        answer.TrySetResult(picker.ShowDialog(form)==DialogResult.OK
-                            ?Path.GetFullPath(picker.FileName):null);
+                        if(picker.ShowDialog(form)==DialogResult.OK)
+                            selectedPath=Path.GetFullPath(picker.FileName);
                     }
                     finally
                     {
-                        if(wasMinimized && !form.IsDisposed)
-                            form.WindowState=FormWindowState.Minimized;
+                        if(!form.IsDisposed &&
+                           LauncherForm.HideAfterFilePicker(selectedPath is not null,wasHidden))
+                            form.HideToTray();
                     }
+                    answer.TrySetResult(selectedPath);
                 }
                 catch(Exception ex){answer.TrySetException(ex);}
             }));

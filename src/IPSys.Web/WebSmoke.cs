@@ -49,13 +49,20 @@ static class WebSmoke
                 throw new IOException("网页首页未引用正式 favicon。");
             if(!landing.Contains("id=\"dbPathBrowse\""))
                 throw new IOException("登录页缺少资料库文件选择按钮。");
-            if(!IPSys.Web.LauncherForm.ShouldMinimize(
+            if(!IPSys.Web.LauncherForm.ShouldHideToTray(
                 System.Windows.Forms.CloseReason.UserClosing,false,false) ||
-               IPSys.Web.LauncherForm.ShouldMinimize(
+               IPSys.Web.LauncherForm.ShouldHideToTray(
                 System.Windows.Forms.CloseReason.UserClosing,true,false) ||
-               IPSys.Web.LauncherForm.ShouldMinimize(
-                System.Windows.Forms.CloseReason.WindowsShutDown,false,false))
-                throw new IOException("窗口 X 最小化与退出按钮生命周期判定错误。");
+               IPSys.Web.LauncherForm.ShouldHideToTray(
+                System.Windows.Forms.CloseReason.WindowsShutDown,false,false) ||
+               IPSys.Web.LauncherForm.ShouldHideToTray(
+                System.Windows.Forms.CloseReason.UserClosing,false,true))
+                throw new IOException("窗口 X 托盘隐藏与显式退出生命周期判定错误。");
+            if(!IPSys.Web.LauncherForm.HideAfterFilePicker(true,false) ||
+               !IPSys.Web.LauncherForm.HideAfterFilePicker(true,true) ||
+               !IPSys.Web.LauncherForm.HideAfterFilePicker(false,true) ||
+               IPSys.Web.LauncherForm.HideAfterFilePicker(false,false))
+                throw new IOException("数据库文件选择完成后托盘隐藏策略错误。");
 
             // Default database suggestions remain alongside IPSys.Web.exe;
             // never fall back to My Documents or silently move old databases.
