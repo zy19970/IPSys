@@ -3,9 +3,9 @@
 > **当前主分支基线（2026-10-23）**：Explorer 已合并 `main`，Windows CI [#39947975625](https://github.com/zy19970/IPSys/actions/runs/39947975625) 的 MCP stdio、59 工具和错误协议检查通过。下文 69/70 工具、旧 `v2_*` 名称及“尚待合并”的文字是对应旧 SHA 的记录；本机特殊权限/不同 Windows 用户的人工复测不能被常规 CI 冒充。当前版本与状态查 [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md) 和 [TESTING.md](./TESTING.md)。
 
 
-> **当前已验证构建**：[`2620c109`](https://github.com/zy19970/IPSys/commit/2620c109043f779eeb57f411210f99bb2f21e554) / [Windows CI #39019604428](https://github.com/zy19970/IPSys/actions/runs/39019604428) **success**（59 工具、无 `v2_*`、SQLCipher/HTTP、Debug/Release/Node 回归）；本机 Codex/WorkBuddy 新一轮实测尚待进行。此处其余 69/70 工具、11 个 `v2_*` 等描述均为历史时间点记录，**下个会话一律以本文开头的 59 工具清单为准**，并参照 [HANDOFF.md](./HANDOFF.md)。
+> **当前已验证构建**：[`2620c109`](https://github.com/zy19970/IPSys/commit/2620c109043f779eeb57f411210f99bb2f21e554) / [Windows CI #39019604428](https://github.com/zy19970/IPSys/actions/runs/39019604428) **success**（59 工具、无 `v2_*`、SQLCipher/HTTP、Debug/Release/Node 回归）；本机 Codex/WorkBuddy 新一轮实测尚待进行。此处其余 69/70 工具、11 个 `v2_*` 等描述均为历史时间点记录，**下个会话一律以本文开头的 59 工具清单为准**，并参照 [HANDOFF.md](./DEVELOPMENT_PLAN.md)。
 
-> **当前唯一接口口径（2026-10-17 接口收敛）**：MCP 对外暴露 **59 个无版本前缀的工具**，原来的 11 个 `v2_*` 业务别名已下线；`create_project`、`update_ip`、`list_contracts` 等原名接口仍操作 SQLCipher V2 Folder/File 数据模型。项目/合同/IP 三个 `list_*` 继续输出网页友好结构（包含 `id` 和相应扁平化业务字段）；原生 `FolderSnapshot` 可在授权的 HTTP `/api/v2/folders/{workspace}/{kind}` 查询，但不再单独占用 MCP 工具名称。既有 70 工具黑盒报告和 `v2_*` 用例只适用于历史版本；新实机测试使用 [MCP_INTERFACE_CLEANUP_TEST.md](./MCP_INTERFACE_CLEANUP_TEST.md)。HTTP `/api/v2`、数据表、FileId/LinkId 与版本机制未改变。
+> **当前唯一接口口径（2026-10-17 接口收敛）**：MCP 对外暴露 **59 个无版本前缀的工具**，原来的 11 个 `v2_*` 业务别名已下线；`create_project`、`update_ip`、`list_contracts` 等原名接口仍操作 SQLCipher V2 Folder/File 数据模型。项目/合同/IP 三个 `list_*` 继续输出网页友好结构（包含 `id` 和相应扁平化业务字段）；原生 `FolderSnapshot` 可在授权的 HTTP `/api/v2/folders/{workspace}/{kind}` 查询，但不再单独占用 MCP 工具名称。既有 70 工具黑盒报告和 `v2_*` 用例只适用于历史版本；新实机测试使用 [MCP_INTERFACE_CLEANUP_TEST.md](./docs/archive/MCP_INTERFACE_CLEANUP_TEST.md)。HTTP `/api/v2`、数据表、FileId/LinkId 与版本机制未改变。
 
 `v2_list_projects`→`list_projects`、`v2_list_contracts`→`list_contracts`、`v2_list_ips`→`list_ips`：调用参数不变，但**返回结构不完全相同**，调用者必须按当前原名接口的 `id` 等字段取值，不能继续读取 `folder.ref.id`。其余 8 个 `v2_*` 写操作改为对应原名，参数和数据含义不变。客户端应刷新 MCP 工具清单；已注册旧名称的 Agent 需要替换工具调用后再连接。
 
@@ -15,7 +15,7 @@
 明确的业务拒绝（如 `restore_trash` 查无目标或 `create_archive_folder` 父 ID 非正数）现在留存 `done/businessOk=false`；在途取消与网络结果未知继续保留 `uncertain`。创建同级重名目录明确提示名称冲突，不显示 SQLite 内部码。同步 `upload_files` 失败时，`tools/call` 的顶层 `message/error` 对单文件给实际原因、多文件给失败数量及首个原因，`files[]` 仍保留逐文件结果。测试时不要复用修改了业务参数的旧 `request_id`，以及不得假定 24 路并发延迟升高必然由数据库体积造成。
 
 
-> **历史：MCP 黑盒缺陷修复阶段（2026-10-17）**：剩余 ISS-003～ISS-014 已按安全边界实现，源码提交 `30af13d4`、`a885d368`、`2d099748`、`24822d73`；最终 [Windows CI #39010080604](https://github.com/zy19970/IPSys/actions/runs/39010080604) **completed/success**。**当时 MCP 共 70 个工具**，在原 69 个基础上新增 `purge_trash`。包括 JSON-RPC 批请求明确拒绝、先初始化、统一结构化错误信封、按 IP 类型说明状态、按当前同区匹配规则提示共享/复用约束、UNC/网络路径明确拒绝、上传取消区分原因、下载目标中文错误以及安全地永久清理无附件的已删除资料。原先三批“69 工具”属于历史版本，不用于当前验收。**单轮完整实机复测入口**：[MCP_AGENT_FINAL_RETEST.md](./MCP_AGENT_FINAL_RETEST.md)。实机权限矩阵仍需 Agent 实际执行。
+> **历史：MCP 黑盒缺陷修复阶段（2026-10-17）**：剩余 ISS-003～ISS-014 已按安全边界实现，源码提交 `30af13d4`、`a885d368`、`2d099748`、`24822d73`；最终 [Windows CI #39010080604](https://github.com/zy19970/IPSys/actions/runs/39010080604) **completed/success**。**当时 MCP 共 70 个工具**，在原 69 个基础上新增 `purge_trash`。包括 JSON-RPC 批请求明确拒绝、先初始化、统一结构化错误信封、按 IP 类型说明状态、按当前同区匹配规则提示共享/复用约束、UNC/网络路径明确拒绝、上传取消区分原因、下载目标中文错误以及安全地永久清理无附件的已删除资料。原先三批“69 工具”属于历史版本，不用于当前验收。**单轮完整实机复测入口**：[MCP_AGENT_FINAL_RETEST.md](./docs/archive/MCP_AGENT_FINAL_RETEST.md)。实机权限矩阵仍需 Agent 实际执行。
 
 ## `purge_trash` 文件关联永久清理（2026-10-18）
 

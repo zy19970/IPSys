@@ -4,6 +4,7 @@
 
 | 归档文件 | 历史作用 / 当前替代 |
 | --- | --- |
+| `HANDOFF.md` | 已完成跨会话交接，现行进度见 DEVELOPMENT_PLAN |
 | `FREEZE_AUDIT.md` | 需求冻结审查及 T01～T09，现行需求见 REQUIREMENTS |
 | `RESOURCE_REFACTOR_PLAN.md` | SQLCipher V2 重构的 R/N 阶段施工记录，现行架构见 DESIGN |
 | `RESOURCE_REFACTOR_TEST_MATRIX.md` | 旧内核回归矩阵，现行方法见 TESTING |
