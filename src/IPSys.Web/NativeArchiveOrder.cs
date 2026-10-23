@@ -87,20 +87,19 @@ static class NativeArchiveOrder
         using var select=db.CreateCommand();
         select.Transaction=tx;
         select.CommandText="""
-            SELECT name,attributes_json,is_system,parent_id FROM folders
+            SELECT name,attributes_json,parent_id FROM folders
             WHERE id=$id AND workspace='company' AND kind=$kind
               AND section='achievement' AND deleted=0;
             """;
         select.Parameters.AddWithValue("$id",r.Id);
         select.Parameters.AddWithValue("$kind",r.Kind);
-        string name,json;long? oldParent;bool isSystem;
+        string name,json;long? oldParent;
         using(var rd=select.ExecuteReader())
         {
             if(!rd.Read())return false;
-            name=rd.GetString(0);json=rd.GetString(1);isSystem=rd.GetInt64(2)==1;
-            oldParent=rd.IsDBNull(3)?null:rd.GetInt64(3);
+            name=rd.GetString(0);json=rd.GetString(1);
+            oldParent=rd.IsDBNull(2)?null:rd.GetInt64(2);
         }
-        if(isSystem)throw new InvalidOperationException("系统预设目录不能移动。");
         if(oldParent==targetParent)return true;
 
         string updatedJson;
@@ -121,7 +120,7 @@ static class NativeArchiveOrder
                  AND kind IN ('archive','archive_folder')
                  AND COALESCE(parent_id,0)=COALESCE($parent,0) AND deleted=0)
             WHERE id=$id AND workspace='company' AND kind=$kind
-              AND section='achievement' AND deleted=0 AND is_system=0;
+              AND section='achievement' AND deleted=0;
             """;
         cmd.Parameters.AddWithValue("$parent",(object?)targetParent??DBNull.Value);
         cmd.Parameters.AddWithValue("$json",updatedJson);

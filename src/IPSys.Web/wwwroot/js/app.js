@@ -219,7 +219,7 @@ const Drive = {
     if (id.startsWith("af:")) return ARCHIVE_COLS;
     if (!id.startsWith("k:")) return null;
     const sec = id.slice(2);
-    /* 公司「业务档案」这一层是目录树(7 个系统目录),不是同类记录 → 通用三列 */
+    /* 公司业务档案入口展示普通目录树，所有目录操作规则一致 → 通用三列 */
     if (catIsDir(sec)) return null;
     return LEDGER_COLS[sec] || null;
   },
@@ -447,7 +447,7 @@ const Drive = {
       }
       let r = 0;
       if (sortBy === "name") {
-        /* 业务档案的系统目录带 order(后端 position),按业务顺序排;
+        /* 业务档案目录带 order(后端 position),按用户顺序排;
            其余节点没有 order,照旧按拼音。 */
         const ao = a.order ?? null;
         const bo = b.order ?? null;

@@ -250,6 +250,8 @@ sealed class Vault : IDisposable
     public static void ValidateSchema(SqliteConnection db)
     {
         ResourceSchemaV2.Validate(db);
+        // Normalize the seven legacy protected starter folders on existing V2 vaults.
+        ResourceSchemaV2.EnsureEditableArchiveSeeds(db);
         // An existing V2 database may have the original immutable-byte trigger.
         // Update only that guard, atomically, without changing FileId/Version/LinkId.
         ResourceSchemaV2.EnsureOrphanPurgeTrigger(db);

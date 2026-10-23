@@ -42,8 +42,67 @@ static class ResourceSchemaV2Smoke
                 }
                 using(var count=db.CreateCommand())
                 {
-                    count.CommandText="SELECT count(*) FROM folders WHERE is_system=1;";
-                    Check((long)count.ExecuteScalar()! == 7,"seven protected archive roots");
+                    count.CommandText="SELECT count(*) FROM folders WHERE is_system<>0;";
+                    Check((long)count.ExecuteScalar()! == 0,"initial archive folders are ordinary");
+                    count.CommandText="SELECT count(*) FROM folders WHERE workspace='company' AND kind='archive_folder';";
+                    Check((long)count.ExecuteScalar()! == 7,"seven initial archive folders");
+                }
+
+                // Simulate an older V2 vault's protected first directory.
+                // Normalization must preserve its FolderId, undo old triggers
+                // and never seed deleted folders again on a later open.
+                long legacyFolder;
+                using(var old=db.CreateCommand())
+                {
+                    old.CommandText="SELECT id FROM folders WHERE name='申报与认定' AND workspace='company';";
+                    legacyFolder=(long)old.ExecuteScalar()!;
+                    old.CommandText=$"""
+                        DROP TRIGGER folder_immutable_scope;
+                        UPDATE folders SET is_system=1 WHERE id={legacyFolder};
+                        CREATE TRIGGER folder_immutable_scope BEFORE UPDATE OF
+                          workspace,kind,section,is_system ON folders BEGIN
+                          SELECT RAISE(ABORT,'folder identity immutable');
+                        END;
+                        CREATE TRIGGER folder_protect_system BEFORE UPDATE OF name,parent_id,deleted
+                          ON folders WHEN OLD.is_system=1 BEGIN
+                          SELECT RAISE(ABORT,'system category is protected');
+                        END;
+                        CREATE TRIGGER folder_protect_system_delete BEFORE DELETE ON folders
+                          WHEN OLD.is_system=1 BEGIN
+                          SELECT RAISE(ABORT,'system category is protected');
+                        END;
+                        """;
+                    old.ExecuteNonQuery();
+                }
+                long legacyChild=ExecuteId(db,
+                    $"INSERT INTO folders(workspace,kind,section,parent_id,name) VALUES('company','archive_folder','achievement',{legacyFolder},'历史子目录')");
+                Reject(db,$"UPDATE folders SET name='曾受保护' WHERE id={legacyFolder}",
+                    "legacy protected initial folder rejects rename");
+                Vault.ValidateSchema(db);
+                using(var normalized=db.CreateCommand())
+                {
+                    normalized.CommandText=$"SELECT is_system FROM folders WHERE id={legacyFolder};";
+                    Check((long)normalized.ExecuteScalar()! == 0,
+                        "legacy FolderId retained and protection flag cleared");
+                    normalized.CommandText="SELECT count(*) FROM sqlite_master WHERE type='trigger' AND name IN ('folder_protect_system','folder_protect_system_delete');";
+                    Check((long)normalized.ExecuteScalar()! == 0,
+                        "legacy protections removed permanently");
+                    normalized.CommandText=$"SELECT count(*) FROM folders WHERE id={legacyChild} AND parent_id={legacyFolder};";
+                    Check((long)normalized.ExecuteScalar()! == 1,
+                        "historical child relationships remain intact");
+                    normalized.CommandText=$"UPDATE folders SET name='更名后的初始文件夹' WHERE id={legacyFolder};";
+                    Check(normalized.ExecuteNonQuery()==1,"initial folder can be renamed");
+                    normalized.CommandText=$"UPDATE folders SET parent_id=(SELECT id FROM folders WHERE name='其他业务资料') WHERE id={legacyFolder};";
+                    Check(normalized.ExecuteNonQuery()==1,"initial folder can move with existing children");
+                    normalized.CommandText=$"UPDATE folders SET parent_id=NULL WHERE id={legacyFolder};";
+                    Check(normalized.ExecuteNonQuery()==1,"initial folder can return to top level");
+                    normalized.CommandText=$"UPDATE folders SET name='申报与认定' WHERE id={legacyFolder};";
+                    Check(normalized.ExecuteNonQuery()==1,"initial folder rename can be reverted");
+                    normalized.CommandText="DELETE FROM folders WHERE name='其他业务资料' AND workspace='company' AND kind='archive_folder';";
+                    Check(normalized.ExecuteNonQuery()==1,"an empty initial folder can be deleted");
+                    normalized.CommandText="SELECT count(*) FROM folders WHERE kind='archive_folder' AND parent_id IS NULL;";
+                    Check((long)normalized.ExecuteScalar()! == 6,
+                        "the deleted starter is not automatically recreated");
                 }
                 folderId=ExecuteId(db,
                     "INSERT INTO folders(workspace,kind,name) VALUES('company','project','项目')");
@@ -136,6 +195,12 @@ static class ResourceSchemaV2Smoke
                 using var cmd=reopen.CreateCommand();
                 cmd.CommandText="SELECT count(*) FROM files;";
                 Check((long)cmd.ExecuteScalar()! == 2,"encrypted files survive reopen");
+                cmd.CommandText="SELECT count(*) FROM folders WHERE kind='archive_folder' AND parent_id IS NULL;";
+                Check((long)cmd.ExecuteScalar()! == 7,
+                    "only six surviving initial folders plus one user-created folder after reopen");
+                cmd.CommandText="SELECT count(*) FROM folders WHERE is_system<>0;";
+                Check((long)cmd.ExecuteScalar()! == 0,
+                    "legacy starter flags remain cleared after reopen");
             }
         }
         finally

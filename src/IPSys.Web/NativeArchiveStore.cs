@@ -165,7 +165,7 @@ static class NativeArchiveStore
         cmd.CommandText="""
             UPDATE folders SET name=$name,attributes_json=$json
             WHERE id=$id AND workspace=$w AND kind=$kind AND section=$section
-              AND deleted=0 AND is_system=0;
+              AND deleted=0;
             """;
         Bind(cmd,r);
         cmd.Parameters.AddWithValue("$name",data.Name);
@@ -183,14 +183,14 @@ static class NativeArchiveStore
             using var cmd=db.CreateCommand();
             cmd.CommandText="""
                 DELETE FROM folders WHERE id=$id AND workspace=$w
-                AND kind='archive_folder' AND section='achievement' AND is_system=0
+                AND kind='archive_folder' AND section='achievement'
                 AND NOT EXISTS(SELECT 1 FROM folders c WHERE c.parent_id=folders.id)
                 AND NOT EXISTS(SELECT 1 FROM folder_file_links l WHERE l.folder_id=folders.id);
                 """;
             Bind(cmd,r);
             if(cmd.ExecuteNonQuery()==1)return true;
             if(Get(db,r) is null)return false;
-            throw new InvalidOperationException("系统目录或含下级资料、附件的目录不能删除。");
+            throw new InvalidOperationException("目录内有下级资料或附件，不能删除非空目录。");
         }
         using var update=db.CreateCommand();
         update.CommandText="""

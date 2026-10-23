@@ -55,7 +55,7 @@ static partial class McpLocal
         },["workspace","section","archive_id"]),
         Tool("list_archive_folders","列出公司业务档案 V2 根目录或指定 parent_id 下的直接子目录。",new(){
             ["workspace"]=Field("string","仅公司工作区",["company"]),
-            ["parent_id"]=Field("integer","可选父目录 FolderId；省略则列出七个系统根")
+            ["parent_id"]=Field("integer","可选父目录 FolderId；省略则列出当前顶层目录")
         },["workspace"]),
         Tool("create_archive_folder","在有效父目录中新建公司业务档案下级目录。",new(){
             ["workspace"]=Field("string","仅公司工作区",["company"]),
@@ -67,7 +67,7 @@ static partial class McpLocal
             ["folder_id"]=Field("integer","目录 FolderId"),
             ["name"]=Field("string","新目录名称")
         },["workspace","folder_id","name"]),
-        Tool("delete_archive_folder","仅删除允许删除的空目录；系统根和非空目录不可删除。",new(){
+        Tool("delete_archive_folder","删除空业务档案目录（包括初始目录）；非空目录不可删除。",new(){
             ["workspace"]=Field("string","仅公司工作区",["company"]),
             ["folder_id"]=Field("integer","目录 FolderId")
         },["workspace","folder_id"]),

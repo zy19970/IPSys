@@ -1051,7 +1051,6 @@ function createArchiveFolder(parentId = archiveParentId()) {
 
 async function deleteArchiveFolder(node) {
   if (node?.biz?.kind !== "archive_folder") return;
-  if (node.biz.isSystem) return toast("系统目录不可删除");
   if ((node.children || []).length)
     return toast("目录内仍有下级资料或目录，请先整理内容", {tone:"error"});
   const approved = await askConfirm({
@@ -1115,7 +1114,6 @@ function moveArchiveEntry(node) {
   const folder = biz.kind === "archive_folder";
   if (VaultStore.ws !== "company" ||
     !(folder || (biz.kind === "archive" && biz.section === "achievement"))) return;
-  if (folder && biz.isSystem) return toast("系统目录不能移动");
   const archiveRoot = findById("k:achievement");
   const dirs = [];
   const visit = n => {
@@ -1430,13 +1428,11 @@ function bindContent() {
   });
 }
 
-/* F2 与右键重命名共用真正可提交的业务表单；自建档案目录
-   使用原生 Folder 更新接口，系统预置目录不可重命名。 */
+/* F2 与右键重命名共用目录更新接口；初始目录与后建目录同等处理。 */
 function renameNode(node) {
   if (!node || node.type !== "folder") return;
   const b = node.biz || {};
   if (b.kind !== "archive_folder") return RecordForms.edit(node);
-  if (b.isSystem) return toast("系统预置目录不能重命名");
   RecordForms.open({
     title: "重命名目录",
     fields: [{ key: "name", label: "目录名称", required: true }],
@@ -1487,15 +1483,14 @@ function showItemMenu(id, x, y) {
     isFolder && ["project","contract","ip","archive","general"].includes(b.kind)
       ? MI("transfer-record","move","移动或跨区转移") : "",
     '<div class="ctx-sep"></div>',
-    isFolder && (b.kind !== "archive_folder" || !b.isSystem)
-      ? MI("rename", "rename", "重命名", "F2") : "",
+    isFolder ? MI("rename", "rename", "重命名", "F2") : "",
     archiveSortAllowed(item) ? MI("sort-up", "arrow-up", "上移") : "",
     archiveSortAllowed(item) ? MI("sort-down", "arrow-down", "下移") : "",
-    (b.kind === "archive_folder" && !b.isSystem) ||
+    b.kind === "archive_folder" ||
       (b.kind === "archive" && b.section === "achievement")
       ? MI("move-archive", "move", "移动至其他目录") : "",
     b.kind === "archive_folder"
-      ? (!b.isSystem ? MI("delete-folder","trash","删除空目录","",true) : "")
+      ? MI("delete-folder","trash","删除空目录","",true)
       : MI("delete", "trash", "删除", "Del", true),
   ]
     .filter(Boolean)

@@ -131,14 +131,15 @@ const fn=name=>vm.runInContext(name,context);
  fn("moveArchiveEntry")(child);
  assert.ok(modals.at(-1).fields[0].options.some(x=>x.value==="0"),
   "A nested folder may move to archive root");
- const beforeSystem2=modals.length;
+ const beforeInitial=modals.length;
  fn("moveArchiveEntry")(parent);
- assert.equal(modals.length,beforeSystem2,
-  "A system directory cannot open the move dialog");
+ assert.equal(modals.length,beforeInitial+1,
+  "An initially seeded folder opens the same move dialog as a user folder");
+ assert.equal(modals.at(-1).title,"移动目录");
 
  const last=calls.length;
  await fn("deleteArchiveFolder")(parent);
- assert.equal(calls.length,last,"System folder cannot be removed");
+ assert.equal(calls.length,last,"Nonempty initial folder cannot be removed");
  await fn("deleteArchiveFolder")(child);
  assert.equal(calls.at(-1).url,
   "/api/v2/folders/company/archive_folder/71");
@@ -150,6 +151,20 @@ const fn=name=>vm.runInContext(name,context);
  allowDelete=false;
  await fn("deleteArchiveFolder")(other);
  assert.equal(calls.length,last+1,"Cancelled delete does not submit");
+ allowDelete=true;
+ const initialEmpty=folder(75,"初始空目录",[],null,true);
+ await fn("deleteArchiveFolder")(initialEmpty);
+ assert.equal(calls.at(-1).url,"/api/v2/folders/company/archive_folder/75",
+  "An empty initial directory is deleted through the normal endpoint");
+ assert.equal(calls.at(-1).opts.method,"DELETE");
+
+ vm.runInContext(extract("function renameNode(node) {","function showItemMenu(id, x, y) {"),context);
+ fn("renameNode")(parent);
+ assert.equal(modals.at(-1).title,"重命名目录",
+  "Initially seeded folders must permit F2 rename");
+ await modals.at(-1).onSubmit({name:"已改名初始目录"});
+ assert.equal(calls.at(-1).opts.method,"PUT");
+ assert.equal(calls.at(-1).url,"/api/v2/folders/company/archive_folder/70");
 
  const formContext=vm.createContext({
  catLabel:id=>id,VaultStore,toast:()=>{},refreshCurrent:async()=>{}

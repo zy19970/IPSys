@@ -51,7 +51,7 @@ const WS_CATS = {
 const catsOf = (ws) => WS_CATS[ws] || WS_CATS.personal;
 const catLabel = (id, ws) => (catsOf(ws || VaultStore.ws).find((c) => c.id === id) || {}).label || id;
 
-/* 公司「业务档案」的一级是目录(7 个系统目录),不是同类记录 ——
+/* 公司「业务档案」的一级是普通目录(新库默认建七个),不是同类记录 ——
    这一层不能出台账列,进了目录才出。 */
 const catIsDir = (id, ws) => id === "achievement" && (ws || VaultStore.ws) === "company";
 
@@ -545,15 +545,15 @@ const VaultStore = {
         }),
     };
 
-    /* 公司「业务档案」的一级是目录树:7 个系统目录(后端 is_system=1),
-       记录按 folderId 挂进目录;目录本身不是业务记录。 */
+    /* 公司业务档案以普通目录构成目录树，新库初始建立七个目录。
+       目录可以重命名、移动或删除；记录按 folderId 挂入目录。 */
 
     const buildArchiveDirs = (records) => {
       const folders = archive?.folders || [];
       const dirs = folders.map((f) => {
         const d = F(f.name || "未命名目录", { id: "af:" + f.id });
         d.biz = {
-          kind: "archive_folder", typeName: "目录", id: f.id, isSystem: !!f.isSystem,
+          kind: "archive_folder", typeName: "目录", id: f.id,
           parentId: f.parentId ?? null,
         };
         d.order = f.position == null ? null : Number(f.position);

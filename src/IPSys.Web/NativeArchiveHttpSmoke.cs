@@ -76,8 +76,27 @@ static class NativeArchiveHttpSmoke
                 new ArchiveEntryOrderItem("folder",b)])))
             Check(stale.StatusCode==HttpStatusCode.Conflict,"exact reorder permutation");
 
+        // An initially seeded folder is editable and movable just like a user folder.
+        long starter=roots.EnumerateArray().First(x=>x.GetProperty("folder")
+            .GetProperty("name").GetString()=="其他业务资料")
+            .GetProperty("folder").GetProperty("ref").GetProperty("id").GetInt64();
+        using(var renamed=await client.PutAsJsonAsync(dirs+"/"+starter,
+            new FolderMutationInput(ArchiveFolder:
+                new ArchiveFolderInput("可改名初始目录"+suffix,null))))
+            renamed.EnsureSuccessStatusCode();
+        using(var movedStarter=await client.PostAsJsonAsync(
+            dirs+$"/{starter}/move",new NativeFolderMoveInput(a)))
+            movedStarter.EnsureSuccessStatusCode();
+        using(var restoredStarter=await client.PostAsJsonAsync(
+            dirs+$"/{starter}/move",new NativeFolderMoveInput(null)))
+            restoredStarter.EnsureSuccessStatusCode();
+        using(var renamedBack=await client.PutAsJsonAsync(dirs+"/"+starter,
+            new FolderMutationInput(ArchiveFolder:
+                new ArchiveFolderInput("其他业务资料",null))))
+            renamedBack.EnsureSuccessStatusCode();
         using(var forbidden=await client.DeleteAsync(dirs+"/"+systemRoot))
-            Check(forbidden.StatusCode==HttpStatusCode.Conflict,"system root protected");
+            Check(forbidden.StatusCode==HttpStatusCode.Conflict,
+                "nonempty initial folder follows ordinary delete protection");
         using(var forbidden=await client.DeleteAsync(dirs+"/"+a))
             Check(forbidden.StatusCode==HttpStatusCode.Conflict,"nonempty directory protected");
         using(var cycle=await client.PostAsJsonAsync(dirs+$"/{a}/move",

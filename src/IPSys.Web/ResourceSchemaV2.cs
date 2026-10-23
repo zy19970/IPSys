@@ -81,15 +81,6 @@ static class ResourceSchemaV2
               workspace,kind,section,is_system ON folders BEGIN
               SELECT RAISE(ABORT,'folder identity immutable');
             END;
-            CREATE TRIGGER folder_protect_system BEFORE UPDATE OF name,parent_id,deleted
-              ON folders WHEN OLD.is_system=1 BEGIN
-              SELECT RAISE(ABORT,'system category is protected');
-            END;
-            CREATE TRIGGER folder_protect_system_delete BEFORE DELETE ON folders
-              WHEN OLD.is_system=1 BEGIN
-              SELECT RAISE(ABORT,'system category is protected');
-            END;
-
             CREATE TABLE files(
               id INTEGER PRIMARY KEY,
               workspace TEXT NOT NULL CHECK(workspace IN ('company','personal')),
@@ -196,14 +187,50 @@ static class ResourceSchemaV2
               PRIMARY KEY(workspace,request_id));
             CREATE INDEX idx_mcp_operations_created ON mcp_operations(workspace,created_at DESC);
 
-            INSERT INTO folders(workspace,kind,section,name,position,is_system)
-            VALUES('company','archive_folder','achievement','申报与认定',0,1),
-                  ('company','archive_folder','achievement','规划与管理',1,1),
-                  ('company','archive_folder','achievement','汇报与宣传',2,1),
-                  ('company','archive_folder','achievement','会议与活动',3,1),
-                  ('company','archive_folder','achievement','专项工作与合作',4,1),
-                  ('company','archive_folder','achievement','政策与行业资料',5,1),
-                  ('company','archive_folder','achievement','其他业务资料',6,1);
+            -- Initial archive folders are ordinary user-manageable folders.
+            -- Do not recreate missing seeds on later vault opens.
+            INSERT INTO folders(workspace,kind,section,name,position)
+            VALUES('company','archive_folder','achievement','申报与认定',0),
+                  ('company','archive_folder','achievement','规划与管理',1),
+                  ('company','archive_folder','achievement','汇报与宣传',2),
+                  ('company','archive_folder','achievement','会议与活动',3),
+                  ('company','archive_folder','achievement','专项工作与合作',4),
+                  ('company','archive_folder','achievement','政策与行业资料',5),
+                  ('company','archive_folder','achievement','其他业务资料',6);
+            """;
+        cmd.ExecuteNonQuery();
+        tx.Commit();
+    }
+
+    // Older V2 vaults created seven protected folders with is_system=1.
+    // Clear their legacy protection ONCE when an existing vault is opened,
+    // without touching folder IDs, parents, metadata, contents or order.
+    // The normal identity trigger is restored inside the same transaction.
+    public static void EnsureEditableArchiveSeeds(SqliteConnection db)
+    {
+        using var inspect=db.CreateCommand();
+        inspect.CommandText="""
+            SELECT count(*) FROM sqlite_master
+              WHERE type='trigger' AND name IN
+                ('folder_protect_system','folder_protect_system_delete');
+            """;
+        long oldProtections=(long)inspect.ExecuteScalar()!;
+        inspect.CommandText="SELECT count(*) FROM folders WHERE is_system<>0;";
+        long oldFlags=(long)inspect.ExecuteScalar()!;
+        if(oldProtections==0&&oldFlags==0)return;
+
+        using var tx=db.BeginTransaction();
+        using var cmd=db.CreateCommand();
+        cmd.Transaction=tx;
+        cmd.CommandText="""
+            DROP TRIGGER IF EXISTS folder_protect_system;
+            DROP TRIGGER IF EXISTS folder_protect_system_delete;
+            DROP TRIGGER IF EXISTS folder_immutable_scope;
+            UPDATE folders SET is_system=0 WHERE is_system<>0;
+            CREATE TRIGGER folder_immutable_scope BEFORE UPDATE OF
+              workspace,kind,section,is_system ON folders BEGIN
+              SELECT RAISE(ABORT,'folder identity immutable');
+            END;
             """;
         cmd.ExecuteNonQuery();
         tx.Commit();
