@@ -8,7 +8,7 @@
 | `FREEZE_AUDIT.md` | 需求冻结审查及 T01～T09，现行需求见 REQUIREMENTS |
 | `RESOURCE_REFACTOR_PLAN.md` | SQLCipher V2 重构的 R/N 阶段施工记录，现行架构见 DESIGN |
 | [资源内核回归矩阵](../../tests/archive/RESOURCE_REFACTOR_TEST_MATRIX.md) | 历史测试文件已集中 tests/archive，现行方法见 TESTING |
-| `UI_COMPONENT_MATRIX.md` | 已退役 `wwwroot/app.js` 共用组件，现行前端见 `frontend/explorer/` |
+| `UI_COMPONENT_MATRIX.md` | 已退役 `wwwroot/app.js` 共用组件，正式前端见 [`src/IPSys.Web/wwwroot/`](../../src/IPSys.Web/wwwroot/README.md) |
 | [Windows 测试历史](../../tests/archive/WEB_TESTING.md)、[大文件测试历史](../../tests/archive/LARGE_FILE_TESTING.md) | 已集中 tests/archive，现行门禁见 TESTING |
 | `EXCEL_LEDGER.md`、`SEARCH.md` | 早期功能文档，现行说明见 USER_GUIDE |
 | [MCP 黑盒任务书](../../tests/archive/MCP_AGENT_FINAL_RETEST.md)、[接口清理测试](../../tests/archive/MCP_INTERFACE_CLEANUP_TEST.md) | 已集中 tests/archive，现行接入见 MCP_CODEX |
