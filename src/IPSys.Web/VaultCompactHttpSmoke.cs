@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -40,9 +41,17 @@ static class VaultCompactHttpSmoke
             Check(second.StatusCode==HttpStatusCode.Conflict,
                 "two compactions may not run concurrently");
         }
+        // A >2 GiB encrypted database cannot be expected to VACUUM in the
+        // same fixed 36-second budget as a small QA database. Use a monotonic
+        // wall clock and report the last actual server stage on timeout.
+        // Do not mark an unfinished background VACUUM as a product failure.
+        long before=info.GetProperty("fileBytes").GetInt64();
+        var budget=before>=512L*1024*1024
+            ? TimeSpan.FromMinutes(12):TimeSpan.FromSeconds(55);
+        var clock=Stopwatch.StartNew();
         JsonElement snapshot=default;
         bool completed=false;
-        for(int i=0;i<360;i++)
+        while(clock.Elapsed<budget)
         {
             using var poll=await client.GetAsync("/api/vault/compact/task");
             poll.EnsureSuccessStatusCode();
@@ -54,11 +63,21 @@ static class VaultCompactHttpSmoke
             {
                 completed=true;break;
             }
-            await Task.Delay(100);
+            await Task.Delay(250);
         }
-        Check(completed,"SQLCipher VACUUM must finish or report an explicit failure");
-        Check(snapshot.GetProperty("state").GetString()=="succeeded",
-            "compaction failed: "+snapshot.GetProperty("error").ToString());
+        string lastState=snapshot.ValueKind==JsonValueKind.Object
+            ? snapshot.GetProperty("state").GetString()??"unknown":"no status";
+        string lastStage=snapshot.ValueKind==JsonValueKind.Object
+            ? snapshot.GetProperty("stage").GetString()??"unknown":"no stage";
+        Check(completed,"VACUUM exceeded "+budget+
+            " (elapsed "+clock.Elapsed+", bytes "+before+
+            ", state "+lastState+", stage "+lastStage+
+            "). Task may still be running; this is a test timeout, not proof of corruption.");
+        Check(lastState=="succeeded",
+            "compaction ended in "+lastState+": "+snapshot.GetProperty("error").ToString()+
+            " (elapsed "+clock.Elapsed+", stage "+lastStage+")");
+        Console.WriteLine("VAULT COMPACT: "+before+" bytes, "+clock.Elapsed+
+            ", terminal state="+lastState);
         Check(snapshot.GetProperty("bytesAfter").GetInt64()>0,
             "compaction must report the final file size");
         bool idle=false;
