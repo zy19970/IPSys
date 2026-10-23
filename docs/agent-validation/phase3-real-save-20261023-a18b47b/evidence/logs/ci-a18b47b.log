@@ -1,0 +1,741 @@
+﻿2026-10-23T08:19:07.1702147Z Current runner version: '2.338.0'
+2026-10-23T08:19:07.1732737Z ##[group]Runner Image Provisioner
+2026-10-23T08:19:07.1733586Z Hosted Compute Agent
+2026-10-23T08:19:07.1734199Z Version: 20261021.618
+2026-10-23T08:19:07.1734830Z Commit: 21505ad2541d5be6135ed84fc33697146cf75b8e
+2026-10-23T08:19:07.1735613Z Build Date: 2026-10-21T00:45:21Z
+2026-10-23T08:19:07.1736290Z Worker ID: {d5b68640-0662-40a8-8a8f-12acf1c55238}
+2026-10-23T08:19:07.1736978Z Region: westus
+2026-10-23T08:19:07.1737512Z Cloud: Azure
+2026-10-23T08:19:07.1738094Z ##[endgroup]
+2026-10-23T08:19:07.1739454Z ##[group]Operating System
+2026-10-23T08:19:07.1740111Z Microsoft Windows Server 2025
+2026-10-23T08:19:07.1740714Z 10.0.26100
+2026-10-23T08:19:07.1741271Z Datacenter
+2026-10-23T08:19:07.1741757Z ##[endgroup]
+2026-10-23T08:19:07.1742303Z ##[group]Runner Image
+2026-10-23T08:19:07.1743166Z Image: windows-2025-vs2026
+2026-10-23T08:19:07.1743768Z Version: 20261021.278.1
+2026-10-23T08:19:07.1745445Z Included Software: https://github.com/actions/runner-images/blob/win25-vs2026/20261021.278/images/windows/Windows2025-VS2026-Readme.md
+2026-10-23T08:19:07.1747296Z Image Release: https://github.com/actions/runner-images/releases/tag/win25-vs2026%2F20261021.278
+2026-10-23T08:19:07.1748285Z ##[endgroup]
+2026-10-23T08:19:07.1749489Z ##[group]GITHUB_TOKEN Permissions
+2026-10-23T08:19:07.1751439Z Contents: read
+2026-10-23T08:19:07.1752062Z Metadata: read
+2026-10-23T08:19:07.1752629Z Packages: read
+2026-10-23T08:19:07.1753168Z ##[endgroup]
+2026-10-23T08:19:07.1755273Z Secret source: Actions
+2026-10-23T08:19:07.1756194Z Cache mode: write
+2026-10-23T08:19:07.1756925Z Prepare workflow directory
+2026-10-23T08:19:07.2207878Z Prepare all required actions
+2026-10-23T08:19:07.2256621Z Getting action download info
+2026-10-23T08:19:07.5640455Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+2026-10-23T08:19:07.6946604Z Download action repository 'actions/setup-dotnet@v4' (SHA:67a3573c9a986a3f9c594539f4ab511d57bb3ce9)
+2026-10-23T08:19:08.1355470Z Download action repository 'actions/setup-node@v4' (SHA:49933ea5288caeca8642d1e84afbd3f7d6820020)
+2026-10-23T08:19:08.3203160Z Download action repository 'actions/setup-python@v5' (SHA:a26af69be951a213d495a4c3e4e4022e16d87065)
+2026-10-23T08:19:08.4728737Z Download action repository 'actions/upload-artifact@v4' (SHA:ea165f8d65b6e75b540449e92b4886f43607fa02)
+2026-10-23T08:19:08.8627956Z Complete job name: smoke
+2026-10-23T08:19:09.0515830Z ##[group]Run actions/checkout@v4
+2026-10-23T08:19:09.0517380Z with:
+2026-10-23T08:19:09.0518187Z   repository: zy19970/IPSys
+2026-10-23T08:19:09.0526102Z   token: ***
+2026-10-23T08:19:09.0526899Z   ssh-strict: true
+2026-10-23T08:19:09.0527722Z   ssh-user: git
+2026-10-23T08:19:09.0528543Z   persist-credentials: true
+2026-10-23T08:19:09.0529459Z   clean: true
+2026-10-23T08:19:09.0530290Z   sparse-checkout-cone-mode: true
+2026-10-23T08:19:09.0531564Z   fetch-depth: 1
+2026-10-23T08:19:09.0532380Z   fetch-tags: false
+2026-10-23T08:19:09.0533254Z   show-progress: true
+2026-10-23T08:19:09.0534245Z   lfs: false
+2026-10-23T08:19:09.0535042Z   submodules: false
+2026-10-23T08:19:09.0535882Z   set-safe-directory: true
+2026-10-23T08:19:09.0536834Z   allow-unsafe-pr-checkout: false
+2026-10-23T08:19:09.0538102Z ##[endgroup]
+2026-10-23T08:19:09.1980613Z Syncing repository: zy19970/IPSys
+2026-10-23T08:19:09.1983092Z ##[group]Getting Git version info
+2026-10-23T08:19:09.1984326Z Working directory is 'D:\a\IPSys\IPSys'
+2026-10-23T08:19:09.3023450Z [command]"C:\Program Files\Git\bin\git.exe" version
+2026-10-23T08:19:09.6894526Z git version 2.56.0.windows.2
+2026-10-23T08:19:09.6945974Z ##[endgroup]
+2026-10-23T08:19:09.6965445Z Temporarily overriding HOME='D:\a\_temp\cec9dfd5-ee5d-4a30-a45e-9ba81e24660f' before making global git config changes
+2026-10-23T08:19:09.6967753Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-23T08:19:09.6975624Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\IPSys\IPSys
+2026-10-23T08:19:09.7579466Z Deleting the contents of 'D:\a\IPSys\IPSys'
+2026-10-23T08:19:09.7585232Z ##[group]Initializing the repository
+2026-10-23T08:19:09.7593838Z [command]"C:\Program Files\Git\bin\git.exe" init D:\a\IPSys\IPSys
+2026-10-23T08:19:09.8461696Z Initialized empty Git repository in D:/a/IPSys/IPSys/.git/
+2026-10-23T08:19:09.8514158Z [command]"C:\Program Files\Git\bin\git.exe" remote add origin https://github.com/zy19970/IPSys
+2026-10-23T08:19:09.9186734Z ##[endgroup]
+2026-10-23T08:19:09.9189422Z ##[group]Disabling automatic garbage collection
+2026-10-23T08:19:09.9198403Z [command]"C:\Program Files\Git\bin\git.exe" config --local gc.auto 0
+2026-10-23T08:19:09.9643781Z ##[endgroup]
+2026-10-23T08:19:09.9645787Z ##[group]Setting up auth
+2026-10-23T08:19:09.9655992Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+2026-10-23T08:19:10.0057750Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+2026-10-23T08:19:11.3297046Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-23T08:19:11.3714038Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+2026-10-23T08:19:11.9553296Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-23T08:19:11.9949920Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+2026-10-23T08:19:12.5754928Z [command]"C:\Program Files\Git\bin\git.exe" config --local http.https://github.com/.extraheader "AUTHORIZATION: basic ***"
+2026-10-23T08:19:12.6162706Z ##[endgroup]
+2026-10-23T08:19:12.6163170Z ##[group]Fetching the repository
+2026-10-23T08:19:12.6182074Z [command]"C:\Program Files\Git\bin\git.exe" -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +a18b47b02dc86260fc328a3ac7ed33f7d017c4bc:refs/remotes/origin/work/onedrive-file-manager
+2026-10-23T08:19:14.2586787Z From https://github.com/zy19970/IPSys
+2026-10-23T08:19:14.2587772Z  * [new ref]         a18b47b02dc86260fc328a3ac7ed33f7d017c4bc -> origin/work/onedrive-file-manager
+2026-10-23T08:19:14.2630837Z ##[endgroup]
+2026-10-23T08:19:14.2631513Z ##[group]Determining the checkout info
+2026-10-23T08:19:14.2632179Z ##[endgroup]
+2026-10-23T08:19:14.2641282Z [command]"C:\Program Files\Git\bin\git.exe" sparse-checkout disable
+2026-10-23T08:19:14.3178062Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset-all extensions.worktreeConfig
+2026-10-23T08:19:14.3551645Z ##[group]Checking out the ref
+2026-10-23T08:19:14.3560903Z [command]"C:\Program Files\Git\bin\git.exe" checkout --progress --force -B work/onedrive-file-manager refs/remotes/origin/work/onedrive-file-manager
+2026-10-23T08:19:14.6339984Z Switched to a new branch 'work/onedrive-file-manager'
+2026-10-23T08:19:14.6362054Z branch 'work/onedrive-file-manager' set up to track 'origin/work/onedrive-file-manager'.
+2026-10-23T08:19:14.6418206Z ##[endgroup]
+2026-10-23T08:19:14.6891313Z [command]"C:\Program Files\Git\bin\git.exe" log -1 --format=%H
+2026-10-23T08:19:14.7250975Z a18b47b02dc86260fc328a3ac7ed33f7d017c4bc
+2026-10-23T08:19:14.7718242Z ##[group]Run actions/setup-dotnet@v4
+2026-10-23T08:19:14.7718621Z with:
+2026-10-23T08:19:14.7718831Z   dotnet-version: 8.0.x
+2026-10-23T08:19:14.7719089Z   cache: false
+2026-10-23T08:19:14.7719287Z ##[endgroup]
+2026-10-23T08:19:14.9413899Z (node:7332) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-10-23T08:19:14.9415897Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-10-23T08:19:15.0827315Z [command]"C:\Program Files\PowerShell\7\pwsh.exe" -NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command & 'D:\a\_actions\actions\setup-dotnet\v4\externals\install-dotnet.ps1' -SkipNonVersionedFiles -Runtime dotnet -Channel LTS
+2026-10-23T08:19:16.2561432Z dotnet-install: .NET Core Runtime with version '10.0.13' is already installed.
+2026-10-23T08:19:16.4049525Z [command]"C:\Program Files\PowerShell\7\pwsh.exe" -NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command & 'D:\a\_actions\actions\setup-dotnet\v4\externals\install-dotnet.ps1' -SkipNonVersionedFiles -Channel 8.0
+2026-10-23T08:19:17.1535663Z dotnet-install: .NET Core SDK with version '8.0.426' is already installed.
+2026-10-23T08:19:17.2643584Z ##[group]Run actions/setup-node@v4
+2026-10-23T08:19:17.2644141Z with:
+2026-10-23T08:19:17.2644396Z   node-version: 22
+2026-10-23T08:19:17.2644717Z   always-auth: false
+2026-10-23T08:19:17.2644923Z   check-latest: false
+2026-10-23T08:19:17.2647463Z   token: ***
+2026-10-23T08:19:17.2647649Z env:
+2026-10-23T08:19:17.2647824Z   DOTNET_ROOT: C:\Program Files\dotnet
+2026-10-23T08:19:17.2648067Z ##[endgroup]
+2026-10-23T08:19:17.4460546Z Found in cache @ C:\hostedtoolcache\windows\node\22.23.4\x64
+2026-10-23T08:19:17.4468067Z (node:6184) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-10-23T08:19:17.4468929Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-10-23T08:19:17.4471988Z ##[group]Environment details
+2026-10-23T08:19:21.6903254Z node: v22.23.4
+2026-10-23T08:19:21.6903608Z npm: 10.9.9
+2026-10-23T08:19:21.6903862Z yarn: 1.22.22
+2026-10-23T08:19:21.6905246Z ##[endgroup]
+2026-10-23T08:19:21.7250884Z ##[group]Run actions/setup-python@v5
+2026-10-23T08:19:21.7251212Z with:
+2026-10-23T08:19:21.7251396Z   python-version: 3.12
+2026-10-23T08:19:21.7251619Z   check-latest: false
+2026-10-23T08:19:21.7254163Z   token: ***
+2026-10-23T08:19:21.7254355Z   update-environment: true
+2026-10-23T08:19:21.7254573Z   allow-prereleases: false
+2026-10-23T08:19:21.7254781Z   freethreaded: false
+2026-10-23T08:19:21.7254963Z env:
+2026-10-23T08:19:21.7255137Z   DOTNET_ROOT: C:\Program Files\dotnet
+2026-10-23T08:19:21.7255383Z ##[endgroup]
+2026-10-23T08:19:21.8855919Z ##[group]Installed versions
+2026-10-23T08:19:21.9010372Z (node:1524) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-10-23T08:19:21.9011601Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-10-23T08:19:21.9012161Z Successfully set up CPython (3.12.10)
+2026-10-23T08:19:21.9012593Z ##[endgroup]
+2026-10-23T08:19:21.9283545Z ##[group]Run dotnet build src/IPSys.Web/IPSys.Web.csproj -c Debug
+2026-10-23T08:19:21.9284237Z [36;1mdotnet build src/IPSys.Web/IPSys.Web.csproj -c Debug[0m
+2026-10-23T08:19:21.9284785Z [36;1mif ($LASTEXITCODE -ne 0) { throw "Debug compilation failed" }[0m
+2026-10-23T08:19:21.9285352Z [36;1m$debugFolder = Join-Path $PWD 'src/IPSys.Web/bin/Debug/net8.0-windows'[0m
+2026-10-23T08:19:21.9286182Z [36;1mif (Test-Path (Join-Path $debugFolder 'wwwroot')) {[0m
+2026-10-23T08:19:21.9286655Z [36;1m  throw 'Debug build still contains external wwwroot'[0m
+2026-10-23T08:19:21.9287017Z [36;1m}[0m
+2026-10-23T08:19:21.9287324Z [36;1m$report = Join-Path $env:RUNNER_TEMP 'ipsys-debug-smoke.txt'[0m
+2026-10-23T08:19:21.9287758Z [36;1m$env:IPSYS_SMOKE_REPORT = $report[0m
+2026-10-23T08:19:21.9288117Z [36;1m$exe = Join-Path $debugFolder 'IPSys.Web.exe'[0m
+2026-10-23T08:19:21.9288634Z [36;1m$proc = Start-Process -FilePath $exe -ArgumentList '--smoke' -PassThru -Wait[0m
+2026-10-23T08:19:21.9289159Z [36;1mif ($proc.ExitCode -ne 0) {[0m
+2026-10-23T08:19:21.9289570Z [36;1m  if (Test-Path $report) { Write-Host (Get-Content $report -Raw) }[0m
+2026-10-23T08:19:21.9290116Z [36;1m  throw "Debug executable smoke failed (exit $($proc.ExitCode))"[0m
+2026-10-23T08:19:21.9290736Z [36;1m}[0m
+2026-10-23T08:19:21.9291038Z [36;1mif (-not (Test-Path $report)) { throw "Debug smoke report missing" }[0m
+2026-10-23T08:19:21.9291688Z [36;1mif ((Get-Content $report -Raw) -notmatch 'WEB SMOKE PASS') { throw "Debug smoke assertions incomplete" }[0m
+2026-10-23T08:19:21.9292389Z [36;1mWrite-Host 'Visual Studio Debug embedded HTML CSS JS and HTTP smoke: PASS'[0m
+2026-10-23T08:19:21.9738515Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-10-23T08:19:21.9738926Z env:
+2026-10-23T08:19:21.9739437Z   DOTNET_ROOT: C:\Program Files\dotnet
+2026-10-23T08:19:21.9740008Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:19:21.9740587Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.12.10\x64/lib/pkgconfig
+2026-10-23T08:19:21.9741124Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:19:21.9741567Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:19:21.9741985Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:19:21.9742303Z ##[endgroup]
+2026-10-23T08:19:29.6380028Z   Determining projects to restore...
+2026-10-23T08:19:34.1026559Z   Restored D:\a\IPSys\IPSys\src\IPSys.Web\IPSys.Web.csproj (in 3.78 sec).
+2026-10-23T08:19:34.5017992Z   bundle ΓåÆ D:\a\IPSys\IPSys\frontend\explorer\dist
+2026-10-23T08:19:34.5019675Z     index.html   12.7 KB
+2026-10-23T08:19:34.5021139Z     style.css    61.2 KB
+2026-10-23T08:19:34.5021896Z     app.js       227.2 KB
+2026-10-23T08:19:46.2740672Z ##[warning]D:\a\IPSys\IPSys\src\IPSys.Web\McpPipeSecurity.cs(60,19): warning CS8600: Converting null literal or possible null value to non-nullable type. [D:\a\IPSys\IPSys\src\IPSys.Web\IPSys.Web.csproj]
+2026-10-23T08:19:46.2748996Z ##[warning]D:\a\IPSys\IPSys\src\IPSys.Web\McpPipeSecurity.cs(62,13): warning CS8602: Dereference of a possibly null reference. [D:\a\IPSys\IPSys\src\IPSys.Web\IPSys.Web.csproj]
+2026-10-23T08:19:46.2751372Z ##[warning]D:\a\IPSys\IPSys\src\IPSys.Web\McpLocal.cs(350,42): warning CS8600: Converting null literal or possible null value to non-nullable type. [D:\a\IPSys\IPSys\src\IPSys.Web\IPSys.Web.csproj]
+2026-10-23T08:19:46.2753522Z ##[warning]D:\a\IPSys\IPSys\src\IPSys.Web\NativeFolderEndpoints.cs(238,61): warning CS0168: The variable 'ex' is declared but never used [D:\a\IPSys\IPSys\src\IPSys.Web\IPSys.Web.csproj]
+2026-10-23T08:19:46.2755513Z ##[warning]D:\a\IPSys\IPSys\src\IPSys.Web\NativeMcpSmoke.cs(777,26): warning CS8602: Dereference of a possibly null reference. [D:\a\IPSys\IPSys\src\IPSys.Web\IPSys.Web.csproj]
+2026-10-23T08:19:46.2759473Z ##[warning]D:\a\IPSys\IPSys\src\IPSys.Web\NativeMcpSmoke.cs(791,17): warning CS8602: Dereference of a possibly null reference. [D:\a\IPSys\IPSys\src\IPSys.Web\IPSys.Web.csproj]
+2026-10-23T08:19:46.5946841Z   IPSys.Web -> D:\a\IPSys\IPSys\src\IPSys.Web\bin\Debug\net8.0-windows\IPSys.Web.dll
+2026-10-23T08:19:46.6116225Z 
+2026-10-23T08:19:46.6123948Z Build succeeded.
+2026-10-23T08:19:46.6124224Z 
+2026-10-23T08:19:46.6127055Z ##[warning]D:\a\IPSys\IPSys\src\IPSys.Web\McpPipeSecurity.cs(60,19): warning CS8600: Converting null literal or possible null value to non-nullable type. [D:\a\IPSys\IPSys\src\IPSys.Web\IPSys.Web.csproj]
+2026-10-23T08:19:46.6131454Z ##[warning]D:\a\IPSys\IPSys\src\IPSys.Web\McpPipeSecurity.cs(62,13): warning CS8602: Dereference of a possibly null reference. [D:\a\IPSys\IPSys\src\IPSys.Web\IPSys.Web.csproj]
+2026-10-23T08:19:46.6136285Z ##[warning]D:\a\IPSys\IPSys\src\IPSys.Web\McpLocal.cs(350,42): warning CS8600: Converting null literal or possible null value to non-nullable type. [D:\a\IPSys\IPSys\src\IPSys.Web\IPSys.Web.csproj]
+2026-10-23T08:19:46.6140746Z ##[warning]D:\a\IPSys\IPSys\src\IPSys.Web\NativeFolderEndpoints.cs(238,61): warning CS0168: The variable 'ex' is declared but never used [D:\a\IPSys\IPSys\src\IPSys.Web\IPSys.Web.csproj]
+2026-10-23T08:19:46.6144889Z ##[warning]D:\a\IPSys\IPSys\src\IPSys.Web\NativeMcpSmoke.cs(777,26): warning CS8602: Dereference of a possibly null reference. [D:\a\IPSys\IPSys\src\IPSys.Web\IPSys.Web.csproj]
+2026-10-23T08:19:46.6150357Z ##[warning]D:\a\IPSys\IPSys\src\IPSys.Web\NativeMcpSmoke.cs(791,17): warning CS8602: Dereference of a possibly null reference. [D:\a\IPSys\IPSys\src\IPSys.Web\IPSys.Web.csproj]
+2026-10-23T08:19:46.6152519Z     6 Warning(s)
+2026-10-23T08:19:46.6152861Z     0 Error(s)
+2026-10-23T08:19:46.6153057Z 
+2026-10-23T08:19:46.6153260Z Time Elapsed 00:00:20.95
+2026-10-23T08:20:25.7687625Z Visual Studio Debug embedded HTML CSS JS and HTTP smoke: PASS
+2026-10-23T08:20:25.8099699Z ##[group]Run dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/IPSys-Web-win-x64
+2026-10-23T08:20:25.8101256Z [36;1mdotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/IPSys-Web-win-x64[0m
+2026-10-23T08:20:25.8182308Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-10-23T08:20:25.8182679Z env:
+2026-10-23T08:20:25.8182886Z   DOTNET_ROOT: C:\Program Files\dotnet
+2026-10-23T08:20:25.8183297Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:20:25.8183752Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.12.10\x64/lib/pkgconfig
+2026-10-23T08:20:25.8184204Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:20:25.8184673Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:20:25.8185073Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:20:25.8185389Z ##[endgroup]
+2026-10-23T08:20:27.0321221Z   Determining projects to restore...
+2026-10-23T08:20:34.2955106Z   Restored D:\a\IPSys\IPSys\src\IPSys.Web\IPSys.Web.csproj (in 6.95 sec).
+2026-10-23T08:20:34.6435347Z   bundle ΓåÆ D:\a\IPSys\IPSys\frontend\explorer\dist
+2026-10-23T08:20:34.6438852Z     index.html   12.7 KB
+2026-10-23T08:20:34.6439767Z     style.css    61.2 KB
+2026-10-23T08:20:34.6441850Z     app.js       227.2 KB
+2026-10-23T08:20:39.1191041Z ##[warning]D:\a\IPSys\IPSys\src\IPSys.Web\McpPipeSecurity.cs(60,19): warning CS8600: Converting null literal or possible null value to non-nullable type. [D:\a\IPSys\IPSys\src\IPSys.Web\IPSys.Web.csproj]
+2026-10-23T08:20:39.1195681Z ##[warning]D:\a\IPSys\IPSys\src\IPSys.Web\McpPipeSecurity.cs(62,13): warning CS8602: Dereference of a possibly null reference. [D:\a\IPSys\IPSys\src\IPSys.Web\IPSys.Web.csproj]
+2026-10-23T08:20:39.1200996Z ##[warning]D:\a\IPSys\IPSys\src\IPSys.Web\McpLocal.cs(350,42): warning CS8600: Converting null literal or possible null value to non-nullable type. [D:\a\IPSys\IPSys\src\IPSys.Web\IPSys.Web.csproj]
+2026-10-23T08:20:39.1204981Z ##[warning]D:\a\IPSys\IPSys\src\IPSys.Web\NativeFolderEndpoints.cs(238,61): warning CS0168: The variable 'ex' is declared but never used [D:\a\IPSys\IPSys\src\IPSys.Web\IPSys.Web.csproj]
+2026-10-23T08:20:39.1208753Z ##[warning]D:\a\IPSys\IPSys\src\IPSys.Web\NativeMcpSmoke.cs(777,26): warning CS8602: Dereference of a possibly null reference. [D:\a\IPSys\IPSys\src\IPSys.Web\IPSys.Web.csproj]
+2026-10-23T08:20:39.1212479Z ##[warning]D:\a\IPSys\IPSys\src\IPSys.Web\NativeMcpSmoke.cs(791,17): warning CS8602: Dereference of a possibly null reference. [D:\a\IPSys\IPSys\src\IPSys.Web\IPSys.Web.csproj]
+2026-10-23T08:20:39.2184438Z   IPSys.Web -> D:\a\IPSys\IPSys\src\IPSys.Web\bin\Release\net8.0-windows\win-x64\IPSys.Web.dll
+2026-10-23T08:20:39.2951322Z   IPSys.Web -> D:\a\IPSys\IPSys\artifacts\IPSys-Web-win-x64\
+2026-10-23T08:20:39.7477951Z ##[group]Run $installed = @(dotnet --list-runtimes)
+2026-10-23T08:20:39.7478406Z [36;1m$installed = @(dotnet --list-runtimes)[0m
+2026-10-23T08:20:39.7478899Z [36;1mforeach ($framework in @('Microsoft.WindowsDesktop.App', 'Microsoft.AspNetCore.App')) {[0m
+2026-10-23T08:20:39.7479558Z [36;1m  if (-not ($installed | Where-Object { $_ -match "^$([regex]::Escape($framework)) 8[.]" })) {[0m
+2026-10-23T08:20:39.7480846Z [36;1m    $installed | ForEach-Object { Write-Host $_ }[0m
+2026-10-23T08:20:39.7481201Z [36;1m    throw "Missing .NET 8 framework: $framework"[0m
+2026-10-23T08:20:39.7481478Z [36;1m  }[0m
+2026-10-23T08:20:39.7481644Z [36;1m}[0m
+2026-10-23T08:20:39.7482000Z [36;1mWrite-Host 'External .NET 8 desktop and ASP.NET Core shared runtimes available: PASS'[0m
+2026-10-23T08:20:39.7557136Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-10-23T08:20:39.7557475Z env:
+2026-10-23T08:20:39.7557672Z   DOTNET_ROOT: C:\Program Files\dotnet
+2026-10-23T08:20:39.7558067Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:20:39.7558531Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.12.10\x64/lib/pkgconfig
+2026-10-23T08:20:39.7558982Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:20:39.7559387Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:20:39.7559780Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:20:39.7560087Z ##[endgroup]
+2026-10-23T08:20:40.8789483Z External .NET 8 desktop and ASP.NET Core shared runtimes available: PASS
+2026-10-23T08:20:40.9734476Z ##[group]Run $folder = 'artifacts/IPSys-Web-win-x64'
+2026-10-23T08:20:40.9735210Z [36;1m$folder = 'artifacts/IPSys-Web-win-x64'[0m
+2026-10-23T08:20:40.9735811Z [36;1m$exe = Join-Path $folder 'IPSys.Web.exe'[0m
+2026-10-23T08:20:40.9736485Z [36;1mif (-not (Test-Path -LiteralPath $exe -PathType Leaf)) {[0m
+2026-10-23T08:20:40.9737216Z [36;1m  throw 'Single-file published executable missing'[0m
+2026-10-23T08:20:40.9737719Z [36;1m}[0m
+2026-10-23T08:20:40.9738443Z [36;1m$unexpected = @(Get-ChildItem -LiteralPath $folder -Force | Where-Object { $_.Name -ne 'IPSys.Web.exe' })[0m
+2026-10-23T08:20:40.9739371Z [36;1mif ($unexpected.Count -gt 0) {[0m
+2026-10-23T08:20:40.9740092Z [36;1m  $unexpected | Select-Object Name, FullName, Length | Format-Table -AutoSize[0m
+2026-10-23T08:20:40.9741180Z [36;1m  throw 'Portable publish must contain only IPSys.Web.exe (no runtimes, wwwroot, DLL, JSON or PDB)'[0m
+2026-10-23T08:20:40.9742000Z [36;1m}[0m
+2026-10-23T08:20:40.9742440Z [36;1mWrite-Host 'Portable single EXE layout: PASS'[0m
+2026-10-23T08:20:40.9864955Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-10-23T08:20:40.9865955Z env:
+2026-10-23T08:20:40.9866297Z   DOTNET_ROOT: C:\Program Files\dotnet
+2026-10-23T08:20:40.9866909Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:20:40.9867737Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.12.10\x64/lib/pkgconfig
+2026-10-23T08:20:40.9868580Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:20:40.9869309Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:20:40.9870041Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:20:40.9870640Z ##[endgroup]
+2026-10-23T08:20:41.4422202Z Portable single EXE layout: PASS
+2026-10-23T08:20:41.5171938Z ##[group]Run $exe = (Resolve-Path '.\artifacts\IPSys-Web-win-x64\IPSys.Web.exe').Path
+2026-10-23T08:20:41.5173424Z [36;1m$exe = (Resolve-Path '.\artifacts\IPSys-Web-win-x64\IPSys.Web.exe').Path[0m
+2026-10-23T08:20:41.5174285Z [36;1m$info = [System.Diagnostics.ProcessStartInfo]::new()[0m
+2026-10-23T08:20:41.5174672Z [36;1m$info.FileName = $exe[0m
+2026-10-23T08:20:41.5174935Z [36;1m$info.Arguments = '--mcp'[0m
+2026-10-23T08:20:41.5175209Z [36;1m$info.UseShellExecute = $false[0m
+2026-10-23T08:20:41.5175481Z [36;1m$info.CreateNoWindow = $true[0m
+2026-10-23T08:20:41.5175768Z [36;1m$info.RedirectStandardInput = $true[0m
+2026-10-23T08:20:41.5176069Z [36;1m$info.RedirectStandardOutput = $true[0m
+2026-10-23T08:20:41.5176364Z [36;1m$info.RedirectStandardError = $true[0m
+2026-10-23T08:20:41.5176711Z [36;1m$process = [System.Diagnostics.Process]::Start($info)[0m
+2026-10-23T08:20:41.5177305Z [36;1mtry {[0m
+2026-10-23T08:20:41.5177790Z [36;1m  $process.StandardInput.WriteLine('   ')[0m
+2026-10-23T08:20:41.5179177Z [36;1m  $process.StandardInput.WriteLine('{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"ci","version":"1"}}}')[0m
+2026-10-23T08:20:41.5180198Z [36;1m  $line = $process.StandardOutput.ReadLineAsync().WaitAsync([TimeSpan]::FromSeconds(12)).GetAwaiter().GetResult()[0m
+2026-10-23T08:20:41.5180768Z [36;1m  $initialized = $line | ConvertFrom-Json[0m
+2026-10-23T08:20:41.5181373Z [36;1m  if ($initialized.id -ne 1 -or $initialized.result.serverInfo.name -ne 'ipsys-local') { throw 'MCP initialize response mismatch' }[0m
+2026-10-23T08:20:41.5182170Z [36;1m  if ($initialized.result.protocolVersion -ne '2025-06-18') { throw 'Unexpected MCP protocol version' }[0m
+2026-10-23T08:20:41.5182980Z [36;1m  $process.StandardInput.WriteLine('{"jsonrpc":"2.0","id":99,"method":"initialize","params":{"protocolVersion":"9999-99-99","capabilities":{}}}')[0m
+2026-10-23T08:20:41.5183946Z [36;1m  $versionReply = ($process.StandardOutput.ReadLineAsync().WaitAsync([TimeSpan]::FromSeconds(12)).GetAwaiter().GetResult()) | ConvertFrom-Json[0m
+2026-10-23T08:20:41.5184834Z [36;1m  if ($versionReply.result.protocolVersion -ne '2025-06-18') { throw 'Unsupported protocol version echoed to client' }[0m
+2026-10-23T08:20:41.5185519Z [36;1m  $process.StandardInput.WriteLine('{"jsonrpc":"2.0","id":2,"method":"tools/list"}')[0m
+2026-10-23T08:20:41.5186214Z [36;1m  $line = $process.StandardOutput.ReadLineAsync().WaitAsync([TimeSpan]::FromSeconds(12)).GetAwaiter().GetResult()[0m
+2026-10-23T08:20:41.5186753Z [36;1m  $listing = $line | ConvertFrom-Json[0m
+2026-10-23T08:20:41.5187104Z [36;1m  $names = @($listing.result.tools | ForEach-Object { $_.name })[0m
+2026-10-23T08:20:41.5187592Z [36;1m  if ($names.Count -ne 59) { throw "Expected 59 MCP tools, received $($names.Count)" }[0m
+2026-10-23T08:20:41.5188066Z [36;1m  if (@($names | Where-Object { $_ -like 'v2_*' }).Count -gt 0) {[0m
+2026-10-23T08:20:41.5188464Z [36;1m    throw 'Retired v2_* MCP aliases must not be exposed'[0m
+2026-10-23T08:20:41.5188771Z [36;1m  }[0m
+2026-10-23T08:20:41.5189071Z [36;1m  foreach ($required in @('list_projects','create_project','update_project',[0m
+2026-10-23T08:20:41.5189616Z [36;1m                          'create_contract','upload_files','delete_project','delete_contract','delete_file',[0m
+2026-10-23T08:20:41.5190116Z [36;1m                          'list_ips','create_ip','update_ip','delete_ip')) {[0m
+2026-10-23T08:20:41.5190976Z [36;1m    if ($names -notcontains $required) { throw "MCP tool missing: $required" }[0m
+2026-10-23T08:20:41.5191366Z [36;1m  }[0m
+2026-10-23T08:20:41.5191635Z [36;1m  Write-Host 'MCP stdio initialize and tool manifest: PASS'[0m
+2026-10-23T08:20:41.5192088Z [36;1m  # Exercise the actual published stdio tools/call dispatch and schema[0m
+2026-10-23T08:20:41.5192550Z [36;1m  # validation. The GUI host is not running in this separate stage.[0m
+2026-10-23T08:20:41.5195665Z [36;1m  $process.StandardInput.WriteLine('{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"list_files_page","arguments":{"workspace":"company","unexpected_parameter":"reject"}}}')[0m
+2026-10-23T08:20:41.5196783Z [36;1m  $line = $process.StandardOutput.ReadLineAsync().WaitAsync([TimeSpan]::FromSeconds(12)).GetAwaiter().GetResult()[0m
+2026-10-23T08:20:41.5197357Z [36;1m  $validation = $line | ConvertFrom-Json[0m
+2026-10-23T08:20:41.5197767Z [36;1m  if ($validation.id -ne 3 -or $validation.result.isError -ne $true) {[0m
+2026-10-23T08:20:41.5198256Z [36;1m    throw 'MCP stdio tools/call failed to reject unknown input properties'[0m
+2026-10-23T08:20:41.5198625Z [36;1m  }[0m
+2026-10-23T08:20:41.5198923Z [36;1m  $structured = $validation.result.content[0].text | ConvertFrom-Json[0m
+2026-10-23T08:20:41.5199352Z [36;1m  if ($structured.message -notmatch '未声明的 MCP 参数') {[0m
+2026-10-23T08:20:41.5199929Z [36;1m    throw 'MCP stdio error JSON does not identify the rejected parameter'[0m
+2026-10-23T08:20:41.5200282Z [36;1m  }[0m
+2026-10-23T08:20:41.5200622Z [36;1m  if ($structured.ok -ne $false -or $structured.code -ne 'TOOL_CALL_REJECTED' -or[0m
+2026-10-23T08:20:41.5201137Z [36;1m      $structured.retryable -ne $false -or -not $structured.message) {[0m
+2026-10-23T08:20:41.5201574Z [36;1m    throw 'MCP tool error is not a structured JSON envelope'[0m
+2026-10-23T08:20:41.5201890Z [36;1m  }[0m
+2026-10-23T08:20:41.5202215Z [36;1m  $process.StandardInput.WriteLine('[{"jsonrpc":"2.0","id":5,"method":"ping"}]')[0m
+2026-10-23T08:20:41.5202960Z [36;1m  $batch = ($process.StandardOutput.ReadLineAsync().WaitAsync([TimeSpan]::FromSeconds(12)).GetAwaiter().GetResult()) | ConvertFrom-Json[0m
+2026-10-23T08:20:41.5203691Z [36;1m  if ($batch.error.code -ne -32600) { throw 'MCP batch request must return -32600' }[0m
+2026-10-23T08:20:41.5204206Z [36;1m  Write-Host 'MCP stdio tool dispatch, errors, and batch refusal: PASS'[0m
+2026-10-23T08:20:41.5204562Z [36;1m}[0m
+2026-10-23T08:20:41.5204731Z [36;1mfinally {[0m
+2026-10-23T08:20:41.5204984Z [36;1m  try { $process.StandardInput.Close() } catch {}[0m
+2026-10-23T08:20:41.5205354Z [36;1m  if (-not $process.WaitForExit(3000)) { $process.Kill() }[0m
+2026-10-23T08:20:41.5205677Z [36;1m  $process.Dispose()[0m
+2026-10-23T08:20:41.5205883Z [36;1m}[0m
+2026-10-23T08:20:41.5280383Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-10-23T08:20:41.5280729Z env:
+2026-10-23T08:20:41.5280938Z   DOTNET_ROOT: C:\Program Files\dotnet
+2026-10-23T08:20:41.5281283Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:20:41.5281736Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.12.10\x64/lib/pkgconfig
+2026-10-23T08:20:41.5282179Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:20:41.5282603Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:20:41.5283004Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:20:41.5283311Z ##[endgroup]
+2026-10-23T08:20:42.2400148Z MCP stdio initialize and tool manifest: PASS
+2026-10-23T08:20:42.2761295Z MCP stdio tool dispatch, errors, and batch refusal: PASS
+2026-10-23T08:20:42.3708901Z ##[group]Run $scripts = @(
+2026-10-23T08:20:42.3709431Z [36;1m$scripts = @([0m
+2026-10-23T08:20:42.3709871Z [36;1m  'src/IPSys.Web/wwwroot/ip-v2.js',[0m
+2026-10-23T08:20:42.3710452Z [36;1m  'src/IPSys.Web/wwwroot/upload-progress.js',[0m
+2026-10-23T08:20:42.3711051Z [36;1m  'src/IPSys.Web/wwwroot/export.js',[0m
+2026-10-23T08:20:42.3711607Z [36;1m  'src/IPSys.Web/wwwroot/pdf-preview.js',[0m
+2026-10-23T08:20:42.3712186Z [36;1m  'src/IPSys.Web/wwwroot/pdfjs/pdf.min.js',[0m
+2026-10-23T08:20:42.3712780Z [36;1m  'src/IPSys.Web/wwwroot/pdfjs/pdf.worker.min.js',[0m
+2026-10-23T08:20:42.3713351Z [36;1m  'frontend/explorer/dist/app.js')[0m
+2026-10-23T08:20:42.3713849Z [36;1mforeach ($file in $scripts) {[0m
+2026-10-23T08:20:42.3714379Z [36;1m  node --check $file[0m
+2026-10-23T08:20:42.3714961Z [36;1m  if ($LASTEXITCODE -ne 0) { throw "JavaScript syntax failed: $file" }[0m
+2026-10-23T08:20:42.3715568Z [36;1m}[0m
+2026-10-23T08:20:42.3716542Z [36;1mWrite-Host 'Capability layer, bundled shell and offline PDF.js syntax: PASS'[0m
+2026-10-23T08:20:42.3838593Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-10-23T08:20:42.3839173Z env:
+2026-10-23T08:20:42.3839481Z   DOTNET_ROOT: C:\Program Files\dotnet
+2026-10-23T08:20:42.3840063Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:20:42.3840864Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.12.10\x64/lib/pkgconfig
+2026-10-23T08:20:42.3841664Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:20:42.3842387Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:20:42.3843436Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:20:42.3843982Z ##[endgroup]
+2026-10-23T08:20:43.2819887Z Capability layer, bundled shell and offline PDF.js syntax: PASS
+2026-10-23T08:20:43.3732201Z ##[group]Run $text = Get-Content -LiteralPath 'tools/qa/Verify-ExplorerExports.ps1' -Raw
+2026-10-23T08:20:43.3733381Z [36;1m$text = Get-Content -LiteralPath 'tools/qa/Verify-ExplorerExports.ps1' -Raw[0m
+2026-10-23T08:20:43.3734145Z [36;1m$tokens = $null; $errors = $null[0m
+2026-10-23T08:20:43.3735078Z [36;1m[System.Management.Automation.Language.Parser]::ParseInput($text,[ref]$tokens,[ref]$errors) | Out-Null[0m
+2026-10-23T08:20:43.3736736Z [36;1mif (@($errors).Count -ne 0) { $errors | Format-List; throw 'PowerShell evidence verifier syntax failed' }[0m
+2026-10-23T08:20:43.3737812Z [36;1mWrite-Host 'Explorer real-save evidence tool parser: PASS'[0m
+2026-10-23T08:20:43.3738685Z [36;1m# Exercise the actual verifier on a real filesystem ZIP32 fixture.[0m
+2026-10-23T08:20:43.3739600Z [36;1m# Large ZIP64 with a real browser picker remains an Agent desktop test.[0m
+2026-10-23T08:20:43.3740503Z [36;1m$qa = Join-Path $env:RUNNER_TEMP 'ipsys-export-audit-fixture'[0m
+2026-10-23T08:20:43.3741296Z [36;1mNew-Item -ItemType Directory -Force -Path $qa | Out-Null[0m
+2026-10-23T08:20:43.3741971Z [36;1m$original = Join-Path $qa 'original.bin'[0m
+2026-10-23T08:20:43.3742700Z [36;1m[System.IO.File]::WriteAllBytes($original, [byte[]](0..255))[0m
+2026-10-23T08:20:43.3743356Z [36;1m$saved = Join-Path $qa 'qa-saved.zip'[0m
+2026-10-23T08:20:43.3743914Z [36;1m$stream = [System.IO.File]::Create($saved)[0m
+2026-10-23T08:20:43.3744401Z [36;1mtry {[0m
+2026-10-23T08:20:43.3744851Z [36;1m  $archive = [System.IO.Compression.ZipArchive]::new([0m
+2026-10-23T08:20:43.3745622Z [36;1m    $stream,[System.IO.Compression.ZipArchiveMode]::Create,$true)[0m
+2026-10-23T08:20:43.3746230Z [36;1m  try {[0m
+2026-10-23T08:20:43.3746623Z [36;1m    $entry = $archive.CreateEntry('项目QA/原件.bin')[0m
+2026-10-23T08:20:43.3747175Z [36;1m    $entryStream = $entry.Open()[0m
+2026-10-23T08:20:43.3747611Z [36;1m    try {[0m
+2026-10-23T08:20:43.3748069Z [36;1m      $payload = [System.IO.File]::ReadAllBytes($original)[0m
+2026-10-23T08:20:43.3748747Z [36;1m      $entryStream.Write($payload,0,$payload.Length)[0m
+2026-10-23T08:20:43.3749348Z [36;1m    } finally { $entryStream.Dispose() }[0m
+2026-10-23T08:20:43.3749871Z [36;1m  } finally { $archive.Dispose() }[0m
+2026-10-23T08:20:43.3750369Z [36;1m} finally { $stream.Dispose() }[0m
+2026-10-23T08:20:43.3750855Z [36;1m$manifest = Join-Path $qa 'manifest.json'[0m
+2026-10-23T08:20:43.3751428Z [36;1m@{zipPath=$saved;requireZip64=$false;files=@([0m
+2026-10-23T08:20:43.3752022Z [36;1m  @{sourcePath=$original;zipEntry='项目QA/原件.bin'}[0m
+2026-10-23T08:20:43.3752789Z [36;1m)} | ConvertTo-Json -Depth 7 | Set-Content -LiteralPath $manifest -Encoding utf8[0m
+2026-10-23T08:20:43.3754019Z [36;1mpwsh -NoProfile -File tools/qa/Verify-ExplorerExports.ps1 -Manifest $manifest -EvidenceDirectory $qa[0m
+2026-10-23T08:20:43.3755273Z [36;1mif ($LASTEXITCODE -ne 0) { throw 'Real ZIP32 audit fixture unexpectedly failed' }[0m
+2026-10-23T08:20:43.3756367Z [36;1m$proof = Get-Content (Join-Path $qa 'explorer-export-audit.json') -Raw | ConvertFrom-Json[0m
+2026-10-23T08:20:43.3757694Z [36;1mif ($proof.result -ne 'PASS' -or $proof.files.Count -ne 1 -or[0m
+2026-10-23T08:20:43.3758383Z [36;1m    $proof.files[0].shaMatch -ne $true) {[0m
+2026-10-23T08:20:43.3759063Z [36;1m  throw 'Audit fixture did not verify ZIP entry bytes and SHA-256'[0m
+2026-10-23T08:20:43.3759703Z [36;1m}[0m
+2026-10-23T08:20:43.3760192Z [36;1mWrite-Host 'Saved-file ZIP audit with real disk bytes: PASS'[0m
+2026-10-23T08:20:43.3844669Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-10-23T08:20:43.3845024Z env:
+2026-10-23T08:20:43.3845229Z   DOTNET_ROOT: C:\Program Files\dotnet
+2026-10-23T08:20:43.3846421Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:20:43.3846875Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.12.10\x64/lib/pkgconfig
+2026-10-23T08:20:43.3849457Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:20:43.3849981Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:20:43.3850404Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:20:43.3850715Z ##[endgroup]
+2026-10-23T08:20:43.8912321Z Explorer real-save evidence tool parser: PASS
+2026-10-23T08:20:45.1059812Z Evidence: D:\a\_temp\ipsys-export-audit-fixture\explorer-export-audit.json
+2026-10-23T08:20:45.1072821Z Result: PASS
+2026-10-23T08:20:45.2015969Z Saved-file ZIP audit with real disk bytes: PASS
+2026-10-23T08:20:45.2840035Z ##[group]Run # Ordered on purpose: ui-assets-smoke asserts that dist/ matches a fresh
+2026-10-23T08:20:45.2841090Z [36;1m# Ordered on purpose: ui-assets-smoke asserts that dist/ matches a fresh[0m
+2026-10-23T08:20:45.2841949Z [36;1m# bundle of the sources, so it must run before anything reads dist/.[0m
+2026-10-23T08:20:45.2842570Z [36;1m$tests = [ordered]@{[0m
+2026-10-23T08:20:45.2843348Z [36;1m  'ui-assets-smoke.cjs'              = 'Shell asset contract (load order, bridge globals, fresh bundle) failed'[0m
+2026-10-23T08:20:45.2844442Z [36;1m  'ui-tree-smoke.cjs'                = 'Drive tree (project / contract / original) smoke failed'[0m
+2026-10-23T08:20:45.2845519Z [36;1m  'explorer-p0-interactions-smoke.cjs' = 'Explorer P0 deletion and lock regression failed'[0m
+2026-10-23T08:20:45.2846781Z [36;1m  'explorer-p1-regression-smoke.cjs' = 'Explorer P1 archive ordering and API error handling regression failed'[0m
+2026-10-23T08:20:45.2848513Z [36;1m  'explorer-p2-interactions-smoke.cjs' = 'Explorer P2 safe recycle batching and UI regression failed'[0m
+2026-10-23T08:20:45.2849744Z [36;1m  'explorer-vault-create-smoke.cjs' = 'Explorer new-vault entry and safe session resume failed'[0m
+2026-10-23T08:20:45.2850937Z [36;1m  'explorer-session-expiry-smoke.cjs' = 'Explorer D-01 runtime 401 recovery regression failed'[0m
+2026-10-23T08:20:45.2852315Z [36;1m  'explorer-archive-operations-smoke.cjs' = 'Explorer F2-02 archive directory actions and mixed reorder regression failed'[0m
+2026-10-23T08:20:45.2853774Z [36;1m  'explorer-file-associate-smoke.cjs' = 'Explorer F2-03 same-workspace file share and move regression failed'[0m
+2026-10-23T08:20:45.2855189Z [36;1m  'explorer-record-transfer-smoke.cjs' = 'Explorer F2-04 whole-record copy/move/transfer regression failed'[0m
+2026-10-23T08:20:45.2856602Z [36;1m  'explorer-internal-dragdrop-smoke.cjs' = 'Explorer F2-05 internal drag/drop and duplicate-upload regression failed'[0m
+2026-10-23T08:20:45.2857986Z [36;1m  'explorer-pending-upload-smoke.cjs' = 'Explorer D-05 pending-original recovery regression failed'[0m
+2026-10-23T08:20:45.2859466Z [36;1m  'explorer-f2-final-consistency-smoke.cjs' = 'Explorer F2-06 menu/toolbar/detail/selection and state consistency regression failed'[0m
+2026-10-23T08:20:45.2860942Z [36;1m  'explorer-capabilities-smoke.cjs'  = 'Streaming download / server search / purge progress failed'[0m
+2026-10-23T08:20:45.2862088Z [36;1m  'upload-progress-smoke.cjs'        = 'Real upload progress/multiphase state smoke failed'[0m
+2026-10-23T08:20:45.2863295Z [36;1m  'upload-unique-autosave-smoke.cjs' = 'Unique original auto-save and duplicate confirmation smoke failed'[0m
+2026-10-23T08:20:45.2864356Z [36;1m  'export-smoke.cjs'                 = 'Directory/ZIP export smoke failed'[0m
+2026-10-23T08:20:45.2865153Z [36;1m  'zip64-smoke.cjs'                  = 'ZIP64 large-offset header smoke failed'[0m
+2026-10-23T08:20:45.2866055Z [36;1m  'pdf-canvas-smoke.cjs'             = 'PDF canvas rendering/zoom/pagination test failed'[0m
+2026-10-23T08:20:45.2866744Z [36;1m}[0m
+2026-10-23T08:20:45.2867049Z [36;1mforeach ($name in $tests.Keys) {[0m
+2026-10-23T08:20:45.2867825Z [36;1m  node "src/IPSys.Web/tests/$name"[0m
+2026-10-23T08:20:45.2868627Z [36;1m  if ($LASTEXITCODE -ne 0) { throw $tests[$name] }[0m
+2026-10-23T08:20:45.2869113Z [36;1m}[0m
+2026-10-23T08:20:45.2869445Z [36;1mWrite-Host 'All web smoke tests: PASS'[0m
+2026-10-23T08:20:45.2970748Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-10-23T08:20:45.2971303Z env:
+2026-10-23T08:20:45.2971607Z   DOTNET_ROOT: C:\Program Files\dotnet
+2026-10-23T08:20:45.2972173Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:20:45.2972948Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.12.10\x64/lib/pkgconfig
+2026-10-23T08:20:45.2973711Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:20:45.2976851Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:20:45.2977642Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:20:45.2978201Z ##[endgroup]
+2026-10-23T08:20:45.8137617Z UI ASSETS SMOKE PASS: load order, bridge globals, fresh bundle, product invariants, MCP independence
+2026-10-23T08:20:45.8887994Z DRIVE TREE SMOKE PASS: project / contract / original nesting, rollups, identity, orphan guard
+2026-10-23T08:20:45.9579170Z EXPLORER P0 INTERACTIONS PASS: logical delete dedup, partial failure refresh, refused lock preserves session
+2026-10-23T08:20:46.3940310Z EXPLORER P1 PASS: mixed archive order, module 500 error, trash 503 error, retry success
+2026-10-23T08:20:46.4663350Z EXPLORER P2 PASS: 403 serial purge, failed-batch stop, F2 rename, safe upload target, no false pin
+2026-10-23T08:20:46.5327144Z EXPLORER VAULT CREATE PASS: create entry, confirmation, no-overwrite, normal open and secure resume
+2026-10-23T08:20:47.5794772Z EXPLORER SESSION EXPIRY PASS: 401 lock screen, concurrent/late auth, stale success, 409, resume controls, XHR/purge
+2026-10-23T08:20:47.6481072Z EXPLORER ARCHIVE F2-02 PASS: create, true parentId, mixed position, safe moves, deletion
+2026-10-23T08:20:47.7447680Z EXPLORER F2-03 PASS: shared/moved LinkId, target scopes, duplicate, 409, workspace and task locks
+2026-10-23T08:20:47.8132495Z EXPLORER F2-04 PASS: project/contract/IP/archive/general transfers, modules, project target and busy/409
+2026-10-23T08:20:47.8821694Z EXPLORER F2-05 PASS: real drop dispatch, cancel, workspace lock, forbidden targets, 409 and single external upload
+2026-10-23T08:20:47.9476669Z EXPLORER PENDING UPLOAD PASS: staged status, safe cancel, busy guard, stale write guidance
+2026-10-23T08:20:48.0136962Z EXPLORER F2-06 PASS: row/menu selection, folder exportedCalls, virtual scope, chrome, modal guards and refresh state
+2026-10-23T08:20:48.0960107Z EXPLORER CAPABILITIES PASS: streaming download, server search and purge progress
+2026-10-23T08:20:48.1703685Z UPLOAD PROGRESS SMOKE PASS: progress, server confirmation, failure/cancel and success auto-hide
+2026-10-23T08:20:48.2396818Z UPLOAD UNIQUE AUTO-SAVE AND DUPLICATE CONFIRMATION SMOKE PASS
+2026-10-23T08:20:48.3235544Z ARCHIVE DIRECTORY EXPORT PASS: recursive path hierarchy in ZIP
+2026-10-23T08:20:48.3239254Z EXPORT SMOKE PASS: naming, nested projects, archive directories, repeated folders, ZIP bytes, partial failures
+2026-10-23T08:20:48.3863889Z ZIP64 BIGINT RECORD SMOKE PASS
+2026-10-23T08:20:48.4667025Z PDF CANVAS SMOKE PASS: offline assets, full-page Canvas, pagination, zoom, cleanup, security
+2026-10-23T08:20:48.5351958Z All web smoke tests: PASS
+2026-10-23T08:20:48.6451641Z ##[group]Run $ErrorActionPreference = 'Stop'
+2026-10-23T08:20:48.6452119Z [36;1m$ErrorActionPreference = 'Stop'[0m
+2026-10-23T08:20:48.6452546Z [36;1m$exe = Join-Path $PWD 'src/IPSys.Web/bin/Debug/net8.0-windows/IPSys.Web.exe'[0m
+2026-10-23T08:20:48.6453024Z [36;1m$evidence = Join-Path $PWD $env:IPSYS_EVIDENCE_DIR[0m
+2026-10-23T08:20:48.6453457Z [36;1mNew-Item -ItemType Directory -Path $evidence -Force | Out-Null[0m
+2026-10-23T08:20:48.6453983Z [36;1m$hostOut = Join-Path $env:RUNNER_TEMP "ipsys-host-$env:IPSYS_RETEST_RUN_ID.out.log"[0m
+2026-10-23T08:20:48.6454766Z [36;1m$hostErr = Join-Path $env:RUNNER_TEMP "ipsys-host-$env:IPSYS_RETEST_RUN_ID.err.log"[0m
+2026-10-23T08:20:48.6455182Z [36;1m$hostProc = $null[0m
+2026-10-23T08:20:48.6455394Z [36;1mtry {[0m
+2026-10-23T08:20:48.6455727Z [36;1m  if (-not (Test-Path -LiteralPath $exe)) { throw "Debug host EXE missing: $exe" }[0m
+2026-10-23T08:20:48.6456629Z [36;1m  $hostProc = Start-Process -FilePath $exe -PassThru -WorkingDirectory $PWD -WindowStyle Hidden -RedirectStandardOutput $hostOut -RedirectStandardError $hostErr[0m
+2026-10-23T08:20:48.6457327Z [36;1m  $base = $null[0m
+2026-10-23T08:20:48.6457576Z [36;1m  $deadline = [DateTime]::UtcNow.AddSeconds(45)[0m
+2026-10-23T08:20:48.6457950Z [36;1m  while ([DateTime]::UtcNow -lt $deadline -and -not $base) {[0m
+2026-10-23T08:20:48.6458305Z [36;1m    if ($hostProc.HasExited) {[0m
+2026-10-23T08:20:48.6458673Z [36;1m      $out = if (Test-Path $hostOut) { Get-Content $hostOut -Raw } else { '' }[0m
+2026-10-23T08:20:48.6459144Z [36;1m      $err = if (Test-Path $hostErr) { Get-Content $hostErr -Raw } else { '' }[0m
+2026-10-23T08:20:48.6459656Z [36;1m      throw "IPSys host exited early ($($hostProc.ExitCode)). STDOUT=$out STDERR=$err"[0m
+2026-10-23T08:20:48.6460049Z [36;1m    }[0m
+2026-10-23T08:20:48.6460497Z [36;1m    $listeners = @(Get-NetTCPConnection -State Listen -OwningProcess $hostProc.Id -ErrorAction SilentlyContinue |[0m
+2026-10-23T08:20:48.6461154Z [36;1m      Where-Object { $_.LocalAddress -eq '127.0.0.1' -and $_.LocalPort -gt 0 })[0m
+2026-10-23T08:20:48.6461555Z [36;1m    foreach ($listener in $listeners) {[0m
+2026-10-23T08:20:48.6461937Z [36;1m      $candidate = "http://127.0.0.1:$($listener.LocalPort)"[0m
+2026-10-23T08:20:48.6462254Z [36;1m      try {[0m
+2026-10-23T08:20:48.6462610Z [36;1m        $response = Invoke-WebRequest -Uri "$candidate/" -UseBasicParsing -TimeoutSec 2[0m
+2026-10-23T08:20:48.6463123Z [36;1m        if ($response.StatusCode -eq 200) { $base = $candidate; break }[0m
+2026-10-23T08:20:48.6463468Z [36;1m      } catch {}[0m
+2026-10-23T08:20:48.6463662Z [36;1m    }[0m
+2026-10-23T08:20:48.6463881Z [36;1m    if (-not $base -and (Test-Path $hostOut)) {[0m
+2026-10-23T08:20:48.6464191Z [36;1m      $hostLog = Get-Content $hostOut -Raw[0m
+2026-10-23T08:20:48.6464525Z [36;1m      if ($hostLog -match 'http://127\.0\.0\.1:(\d+)') {[0m
+2026-10-23T08:20:48.6464892Z [36;1m        $candidate = "http://127.0.0.1:$($Matches[1])"[0m
+2026-10-23T08:20:48.6465175Z [36;1m        try {[0m
+2026-10-23T08:20:48.6465542Z [36;1m          $response = Invoke-WebRequest -Uri "$candidate/" -UseBasicParsing -TimeoutSec 2[0m
+2026-10-23T08:20:48.6466049Z [36;1m          if ($response.StatusCode -eq 200) { $base = $candidate }[0m
+2026-10-23T08:20:48.6466376Z [36;1m        } catch {}[0m
+2026-10-23T08:20:48.6466576Z [36;1m      }[0m
+2026-10-23T08:20:48.6466736Z [36;1m    }[0m
+2026-10-23T08:20:48.6466963Z [36;1m    if (-not $base) { Start-Sleep -Milliseconds 250 }[0m
+2026-10-23T08:20:48.6467247Z [36;1m  }[0m
+2026-10-23T08:20:48.6467418Z [36;1m  if (-not $base) {[0m
+2026-10-23T08:20:48.6467741Z [36;1m    $out = if (Test-Path $hostOut) { Get-Content $hostOut -Raw } else { '' }[0m
+2026-10-23T08:20:48.6468231Z [36;1m    $err = if (Test-Path $hostErr) { Get-Content $hostErr -Raw } else { '' }[0m
+2026-10-23T08:20:48.6470853Z [36;1m    throw "Timed out waiting for loopback host. STDOUT=$out STDERR=$err"[0m
+2026-10-23T08:20:48.6471309Z [36;1m  }[0m
+2026-10-23T08:20:48.6471553Z [36;1m  Write-Host "Isolated test host ready: $base"[0m
+2026-10-23T08:20:48.6471858Z [36;1m  $env:IPSYS_BASE = $base[0m
+2026-10-23T08:20:48.6472232Z [36;1m  node docs/retest-v2-2026-10-22/scripts/fixture.cjs $env:IPSYS_RETEST_RUN_ID[0m
+2026-10-23T08:20:48.6472740Z [36;1m  if ($LASTEXITCODE -ne 0) { throw 'Disposable V2 fixture setup failed' }[0m
+2026-10-23T08:20:48.6473227Z [36;1m  node docs/retest-v2-2026-10-22/scripts/t-http.cjs $env:IPSYS_RETEST_RUN_ID[0m
+2026-10-23T08:20:48.6473767Z [36;1m  if ($LASTEXITCODE -ne 0) { throw 'V2 HTTP retest failed before writing its result JSON' }[0m
+2026-10-23T08:20:48.6474501Z [36;1m  node docs/retest-v2-2026-10-22/scripts/t-browser.cjs $env:IPSYS_RETEST_RUN_ID[0m
+2026-10-23T08:20:48.6475061Z [36;1m  if ($LASTEXITCODE -ne 0) { throw 'V2 Edge retest failed before writing its result JSON' }[0m
+2026-10-23T08:20:48.6475647Z [36;1m  $env:IPSYS_CASES_OUTPUT = Join-Path $evidence 'IPSys_Explorer_Full_Retest_V2_Cases.csv'[0m
+2026-10-23T08:20:48.6476140Z [36;1m  python docs/retest-v2-2026-10-22/scripts/gen-cases.py[0m
+2026-10-23T08:20:48.6476588Z [36;1m  if ($LASTEXITCODE -ne 0) { throw 'V2 run-specific case CSV generation failed' }[0m
+2026-10-23T08:20:48.6477080Z [36;1m  foreach ($name in @('http-results.json', 'browser-results.json')) {[0m
+2026-10-23T08:20:48.6477484Z [36;1m    $resultPath = Join-Path $evidence $name[0m
+2026-10-23T08:20:48.6477965Z [36;1m    if (-not (Test-Path -LiteralPath $resultPath)) { throw "Missing test results: $resultPath" }[0m
+2026-10-23T08:20:48.6478538Z [36;1m    $items = @(Get-Content -LiteralPath $resultPath -Raw | ConvertFrom-Json)[0m
+2026-10-23T08:20:48.6478975Z [36;1m    Write-Host "=== $name ($($items.Count) results) ==="[0m
+2026-10-23T08:20:48.6479496Z [36;1m    $items | Group-Object result | Sort-Object Name | ForEach-Object { Write-Host "$($_.Name)=$($_.Count)" }[0m
+2026-10-23T08:20:48.6479982Z [36;1m  }[0m
+2026-10-23T08:20:48.6480154Z [36;1m}[0m
+2026-10-23T08:20:48.6480313Z [36;1mfinally {[0m
+2026-10-23T08:20:48.6480551Z [36;1m  if ($hostProc -and -not $hostProc.HasExited) {[0m
+2026-10-23T08:20:48.6480962Z [36;1m    Stop-Process -Id $hostProc.Id -Force -ErrorAction SilentlyContinue[0m
+2026-10-23T08:20:48.6481311Z [36;1m  }[0m
+2026-10-23T08:20:48.6481496Z [36;1m  Start-Sleep -Milliseconds 300[0m
+2026-10-23T08:20:48.6482028Z [36;1m  if (Test-Path $hostOut) { Copy-Item -LiteralPath $hostOut -Destination (Join-Path $evidence 'host-stdout.log') -Force }[0m
+2026-10-23T08:20:48.6482826Z [36;1m  if (Test-Path $hostErr) { Copy-Item -LiteralPath $hostErr -Destination (Join-Path $evidence 'host-stderr.log') -Force }[0m
+2026-10-23T08:20:48.6483349Z [36;1m}[0m
+2026-10-23T08:20:48.6557027Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-10-23T08:20:48.6557369Z env:
+2026-10-23T08:20:48.6557565Z   DOTNET_ROOT: C:\Program Files\dotnet
+2026-10-23T08:20:48.6557904Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:20:48.6558354Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.12.10\x64/lib/pkgconfig
+2026-10-23T08:20:48.6558793Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:20:48.6559193Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:20:48.6559579Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:20:48.6559908Z   IPSYS_RETEST_RUN_ID: v2ci-39923781118-1
+2026-10-23T08:20:48.6560282Z   IPSYS_EVIDENCE_DIR: docs/retest-v2-2026-10-22/evidence/runs/v2ci-39923781118-1
+2026-10-23T08:20:48.6560651Z ##[endgroup]
+2026-10-23T08:20:50.6094057Z Isolated test host ready: http://127.0.0.1:53884
+2026-10-23T08:20:50.6712646Z BASE=http://127.0.0.1:53884
+2026-10-23T08:20:50.6716026Z DB=D:\a\IPSys\IPSys\build-retest\agent-explorer-full-v2\vault-v2ci-39923781118-1.db
+2026-10-23T08:20:51.7217210Z open create -> token len=64
+2026-10-23T08:20:51.7691233Z system folders: 7 -> 1:申报与认定, 2:规划与管理, 3:汇报与宣传, 4:会议与活动, 5:专项工作与合作, 6:政策与行业资料, 7:其他业务资料
+2026-10-23T08:20:51.7933200Z 二级-A -> {"id":8,"reference":{"workspace":"company","kind":"archive_folder","id":8,"section":"achievement","isValid":true}}
+2026-10-23T08:20:51.7998487Z 三级-A1 -> {"id":9,"reference":{"workspace":"company","kind":"archive_folder","id":9,"section":"achievement","isValid":true}}
+2026-10-23T08:20:51.8113860Z 档案-01 -> id=10 folderId=9
+2026-10-23T08:20:51.8167113Z 档案-02 -> id=11 folderId=1
+2026-10-23T08:20:51.8237415Z 档案-03 -> id=12 folderId=1
+2026-10-23T08:20:51.8331999Z 档案-04 -> id=13 folderId=1
+2026-10-23T08:20:51.8458943Z 档案-05 -> id=14 folderId=1
+2026-10-23T08:20:51.8878062Z 项目A=15 项目B=16
+2026-10-23T08:20:51.9220198Z 合同C1=17 合同C2=18（均挂项目A）
+2026-10-23T08:20:51.9417795Z IP-A=19 IP-B=20
+2026-10-23T08:20:51.9523306Z 综合资料G1=21
+2026-10-23T08:20:52.0108054Z 项目A附件 -> {"fileId":1,"version":1,"size":25,"sha256":"50D3600D818FCB5DA3E269840BD2C5807774243F3603803714A2AE5126F8A8DA","linkId":1}
+2026-10-23T08:20:52.0225266Z 合同C1附件 -> {"fileId":2,"version":1,"size":23,"sha256":"5F07D78147687BF9FE753CB9E4253FA045BF93B5663400C5F885CE420C239005","linkId":2}
+2026-10-23T08:20:52.0335767Z IP-A附件 -> {"fileId":3,"version":1,"size":22,"sha256":"3B5E7EB7A7E458E7086799C798CC9910DFCF8FBBFF16F17C63DB6C155942871D","linkId":3}
+2026-10-23T08:20:52.0420179Z IP-A 附件 v2 -> {"fileId":3,"version":2,"size":37,"sha256":"70412AE068F04626EAF443EE7E2E5017F1DD064DB8B3746E20D5973FD02805D7"}
+2026-10-23T08:20:52.0556690Z associate IP-A.fileId=3 link=3 -> IP-B(20) : 200 {"ok":true,"fileId":3,"sourceLinkId":3,"targetFolderId":20,"moved":false}
+2026-10-23T08:20:52.0959743Z 档案-01附件 -> {"fileId":4,"version":1,"size":27,"sha256":"91A157586C81268725670D76809B3E98C7E48E0F846E84049E136B92E5695126","linkId":5}
+2026-10-23T08:20:52.1064957Z 综合资料附件 -> {"fileId":5,"version":1,"size":24,"sha256":"2AC79DC36FFDD47CEC1077DC44ABCB1A534AF436508257D6B6696EE52D4811B1","linkId":6}
+2026-10-23T08:20:52.1174031Z 同名附件(公司) -> {"fileId":6,"version":1,"size":38,"sha256":"2BF6ECC79A2FD68281CC94795D2D6B27EB88E7F5671C97CA392165DC8A76C97A","linkId":7}
+2026-10-23T08:20:52.1290012Z 个人项目P=22
+2026-10-23T08:20:52.1349592Z 个人IP-P=23
+2026-10-23T08:20:52.1453445Z 同名附件(个人) -> {"fileId":7,"version":1,"size":52,"sha256":"3307914D222044F3AAC347057D6758404705A0C45C8486D405ACBDC92FD1231C","linkId":8}
+2026-10-23T08:20:52.1759081Z 预览素材 -> pdf/png/docx [8,9,10]
+2026-10-23T08:20:52.7931226Z 33MiB -> fileId=11 size=34603008
+2026-10-23T08:20:52.8043164Z delete 合同C1 -> 200 {"ok":true}
+2026-10-23T08:20:52.8109810Z delete 项目A附件 link -> 200 {"ok":true}
+2026-10-23T08:20:52.8149356Z delete 项目B -> 200 {"ok":true}
+2026-10-23T08:20:52.8195788Z delete 档案-05 -> 200 {"ok":true}
+2026-10-23T08:20:52.8251469Z 回收站(company): [{"kind":"project","id":16,"name":"项目B","section":"","parent":null},{"kind":"v2_archive","id":14,"name":"档案-05","section":"achievement","parent":null},{"kind":"contract","id":17,"name":"合同C1","section":"","parent":"项目A"},{"kind":"v2_file","id":1,"name":"项目A说明.txt","section":"","parent":"项目A"}]
+2026-10-23T08:20:52.8271858Z 回收站(personal): []
+2026-10-23T08:20:52.8579274Z GET /api/v2/ui/archive/company -> 200 (["archives","general","folders","orders","files"])
+2026-10-23T08:20:52.8672006Z GET /api/v2/ui/projects/company -> 200 (1 rows)
+2026-10-23T08:20:52.8778246Z GET /api/v2/ui/ip/company -> 200 (["rows","files"])
+2026-10-23T08:20:52.8800804Z GET /api/v2/ui/general/company -> 404 ([])
+2026-10-23T08:20:52.8879553Z GET /api/v2/ui/contracts/company -> 200 (1 rows)
+2026-10-23T08:20:52.8955256Z GET /api/v2/ui/project-files/company -> 200 (5 rows)
+2026-10-23T08:20:52.8963388Z fixture.json 已写入
+2026-10-23T08:20:53.5536682Z 连接方式: resume
+2026-10-23T08:20:53.5665827Z [PASS] T-P0-01#backend :: folders=9, 二级 parent=1, 三级 parent=8, 记录 folderId=9
+2026-10-23T08:20:53.5743353Z [PASS] T-P0-02#api :: 接口返回 4 行、2 个 linkId、版本 [2,1,2,1]、总字节 118
+2026-10-23T08:20:53.5938154Z [PASS] T-P0-03 :: 第一次 200、第二次 409（关联已解除。）
+2026-10-23T08:20:53.6161211Z 自愈 档案-06 -> 200 {"id":24,"reference":{"workspace":"company","kind":"archive","id":24,"section":"achievement","isValid":true}}
+2026-10-23T08:20:53.6202391Z [IMPLEMENTATION_GAP] T-P0-05 :: 同一 fileId 在 IP-A/IP-B 各有独立 link（3 / 4）；UI 仅 IP 特例有入口
+2026-10-23T08:20:53.6494844Z [PASS] T-P1-02#cascade :: 整体删项目：回收站 project=true contract=false；恢复后合同回来=true
+2026-10-23T08:20:53.6805836Z [IMPLEMENTATION_GAP] T-P1-03 :: 后端 move -> 200，folderId 变为 8；transfer -> 200；前端零入口
+2026-10-23T08:20:53.7005255Z [IMPLEMENTATION_GAP] T-P1-04 :: 后端改名 200、删空目录 200、删系统目录 409、删非空目录 409；前端无入口
+2026-10-23T08:20:53.7262604Z [IMPLEMENTATION_GAP] T-P1-05 :: 后端 reorder 200 且顺序生效；缺项 409；非法 id 409；前端无入口
+2026-10-23T08:20:53.7311820Z [BLOCKED] T-P1-07 :: compact/info reusableBytes=0, canCompact=true；窗口过短无法抓拍
+2026-10-23T08:20:53.7579292Z [PASS] T-P2-07 :: 命中 2 条；IP-A 附件归属映射=true（ip/19）；无关词结果=0
+2026-10-23T08:20:53.8679554Z [PASS] T-P2-12 :: Host 403 / Origin 403 / 无 token 401 / localhost 403
+2026-10-23T08:20:53.9118238Z [PASS] R-03 :: 删 IP-B 引用后 IP-A 引用仍在（1），最新版仍可取 37B；同名附件公司/个人 fileId 不同
+2026-10-23T08:20:53.9144017Z [PASS] R-05 :: 最新版 37B / 历史 59B / DB 35471360B / 逻辑 1 条
+2026-10-23T08:20:53.9146784Z 
+2026-10-23T08:20:53.9147030Z === 汇总 ===
+2026-10-23T08:20:53.9148864Z T-P0-01#backend	PASS	folders=9, 二级 parent=1, 三级 parent=8, 记录 folderId=9
+2026-10-23T08:20:53.9150057Z T-P0-02#api	PASS	接口返回 4 行、2 个 linkId、版本 [2,1,2,1]、总字节 118
+2026-10-23T08:20:53.9150851Z T-P0-03	PASS	第一次 200、第二次 409（关联已解除。）
+2026-10-23T08:20:53.9153248Z T-P0-05	IMPLEMENTATION_GAP	同一 fileId 在 IP-A/IP-B 各有独立 link（3 / 4）；UI 仅 IP 特例有入口
+2026-10-23T08:20:53.9154903Z T-P1-02#cascade	PASS	整体删项目：回收站 project=true contract=false；恢复后合同回来=true
+2026-10-23T08:20:53.9156604Z T-P1-03	IMPLEMENTATION_GAP	后端 move -> 200，folderId 变为 8；transfer -> 200；前端零入口
+2026-10-23T08:20:53.9157265Z T-P1-04	IMPLEMENTATION_GAP	后端改名 200、删空目录 200、删系统目录 409、删非空目录 409；前端无入口
+2026-10-23T08:20:53.9157877Z T-P1-05	IMPLEMENTATION_GAP	后端 reorder 200 且顺序生效；缺项 409；非法 id 409；前端无入口
+2026-10-23T08:20:53.9158508Z T-P1-07	BLOCKED	compact/info reusableBytes=0, canCompact=true；窗口过短无法抓拍
+2026-10-23T08:20:53.9159093Z T-P2-07	PASS	命中 2 条；IP-A 附件归属映射=true（ip/19）；无关词结果=0
+2026-10-23T08:20:53.9159586Z T-P2-12	PASS	Host 403 / Origin 403 / 无 token 401 / localhost 403
+2026-10-23T08:20:53.9160142Z R-03	PASS	删 IP-B 引用后 IP-A 引用仍在（1），最新版仍可取 37B；同名附件公司/个人 fileId 不同
+2026-10-23T08:20:53.9160602Z R-05	PASS	最新版 37B / 历史 59B / DB 35471360B / 逻辑 1 条
+2026-10-23T08:20:58.6368773Z [PASS] T-P1-01 :: noCreate=false；按钮=["资料库文件","密码","确认密码","重新连接","创建新资料库"]；含『新建/创建』=false；checkboxes=[]
+2026-10-23T08:21:01.5728126Z [PASS] T-P0-01 :: 树中 af:8=true, af:9=true, 最深记录=true；分类根直接列出 7 行
+2026-10-23T08:21:02.3208775Z [PASS] T-P0-02 :: 同一 linkId 显示 1 行（期望 1），行内大小 ["37 B"]
+2026-10-23T08:21:04.3192334Z [PASS] T-P0-03 :: 选中 1 行删除后：服务端剩余 0 行、界面仍显示 0 行；反馈「已删除 1 项」
+2026-10-23T08:21:05.7383831Z [PASS] T-P2-01 :: 右键表单=true，提交改名=true；F2表单=true，恢复原名=true
+2026-10-23T08:21:07.0698030Z [CONFIRMED_BUG] T-P2-02 :: 内部拖拽后提示「无法识别内部附件拖动，请重新操作」，文件未移动
+2026-10-23T08:21:07.1038262Z [PASS] T-P2-03 :: 不支持自定义快捷方式的假添加按钮已经移除
+2026-10-23T08:21:07.4968861Z [PASS] T-P2-04 :: 首页导入入口存在=false，文件选择器打开次数=0，提示=无法识别内部附件拖动，请重新操作 | 请先进入具体业务记录，再上传附件
+2026-10-23T08:21:10.0043207Z [PASS] T-P2-06 :: Ctrl+A 选中 2/2，Esc 清空=true，Delete 确认=true，Alt+Left → k:project
+2026-10-23T08:21:16.3351878Z [PASS] T-P2-07 :: 档案精确跳转=true（a:achievement:10）；附件命中=true；归属映射=true
+2026-10-23T08:21:17.9514822Z [PASS] T-P2-09 :: page1=true(1 / 2; status empty)；page2=true(2 / 2; status empty)
+2026-10-23T08:21:19.7190561Z [PASS] T-P2-11 :: 1366x768@1x scroll=1366/1366；1920x1080@1x scroll=1920/1920；1366x768@1.5x scroll=1366/1366
+2026-10-23T08:21:19.7192744Z 
+2026-10-23T08:21:19.7193225Z === 浏览器层汇总 ===
+2026-10-23T08:21:19.7197103Z T-P1-01	PASS	noCreate=false；按钮=["资料库文件","密码","确认密码","重新连接","创建新资料库"]；含『新建/创建』=false；checkboxes=[]
+2026-10-23T08:21:19.7198301Z T-P0-01	PASS	树中 af:8=true, af:9=true, 最深记录=true；分类根直接列出 7 行
+2026-10-23T08:21:19.7199182Z T-P0-02	PASS	同一 linkId 显示 1 行（期望 1），行内大小 ["37 B"]
+2026-10-23T08:21:19.7199923Z T-P0-03	PASS	选中 1 行删除后：服务端剩余 0 行、界面仍显示 0 行；反馈「已删除 1 项」
+2026-10-23T08:21:19.7203318Z T-P2-01	PASS	右键表单=true，提交改名=true；F2表单=true，恢复原名=true
+2026-10-23T08:21:19.7204332Z T-P2-02	CONFIRMED_BUG	内部拖拽后提示「无法识别内部附件拖动，请重新操作」，文件未移动
+2026-10-23T08:21:19.7205111Z T-P2-03	PASS	不支持自定义快捷方式的假添加按钮已经移除
+2026-10-23T08:21:19.7206109Z T-P2-04	PASS	首页导入入口存在=false，文件选择器打开次数=0，提示=无法识别内部附件拖动，请重新操作 | 请先进入具体业务记录，再上传附件
+2026-10-23T08:21:19.7207269Z T-P2-06	PASS	Ctrl+A 选中 2/2，Esc 清空=true，Delete 确认=true，Alt+Left → k:project
+2026-10-23T08:21:19.7208352Z T-P2-07	PASS	档案精确跳转=true（a:achievement:10）；附件命中=true；归属映射=true
+2026-10-23T08:21:19.7209761Z T-P2-09	PASS	page1=true(1 / 2; status empty)；page2=true(2 / 2; status empty)
+2026-10-23T08:21:19.7211621Z T-P2-11	PASS	1366x768@1x scroll=1366/1366；1920x1080@1x scroll=1920/1920；1366x768@1.5x scroll=1366/1366
+2026-10-23T08:21:51.3386864Z rows 38
+2026-10-23T08:21:51.3387812Z statuses Counter({'BLOCKED': 16, 'PASS': 15, 'IMPLEMENTATION_GAP': 5, 'CONFIRMED_BUG': 1, 'DOC_GAP': 1})
+2026-10-23T08:21:51.3388937Z methods Counter({'-': 13, 'MIXED': 9, 'DYNAMIC-BROWSER': 9, 'DYNAMIC-HTTP': 4, 'STATIC': 3})
+2026-10-23T08:21:51.3584294Z === http-results.json (13 results) ===
+2026-10-23T08:21:51.3689513Z BLOCKED=1
+2026-10-23T08:21:51.3695638Z IMPLEMENTATION_GAP=4
+2026-10-23T08:21:51.3702296Z PASS=8
+2026-10-23T08:21:51.3723293Z === browser-results.json (12 results) ===
+2026-10-23T08:21:51.3735043Z CONFIRMED_BUG=1
+2026-10-23T08:21:51.3743768Z PASS=11
+2026-10-23T08:21:51.7375147Z ##[group]Run $report = Join-Path $env:RUNNER_TEMP 'ipsys-web-smoke.txt'
+2026-10-23T08:21:51.7375749Z [36;1m$report = Join-Path $env:RUNNER_TEMP 'ipsys-web-smoke.txt'[0m
+2026-10-23T08:21:51.7376136Z [36;1m$env:IPSYS_SMOKE_REPORT = $report[0m
+2026-10-23T08:21:51.7376526Z [36;1m$exe = (Resolve-Path '.\artifacts\IPSys-Web-win-x64\IPSys.Web.exe').Path[0m
+2026-10-23T08:21:51.7377053Z [36;1m$proc = Start-Process -FilePath $exe -ArgumentList '--smoke' -PassThru -Wait[0m
+2026-10-23T08:21:51.7377459Z [36;1mif ($proc.ExitCode -ne 0) {[0m
+2026-10-23T08:21:51.7377813Z [36;1m  if (Test-Path $report) { Write-Host (Get-Content $report -Raw) }[0m
+2026-10-23T08:21:51.7378238Z [36;1m  throw "WinExe smoke failed (exit $($proc.ExitCode))"[0m
+2026-10-23T08:21:51.7378538Z [36;1m}[0m
+2026-10-23T08:21:51.7378831Z [36;1mif (-not (Test-Path $report)) { throw "Smoke completion report missing" }[0m
+2026-10-23T08:21:51.7379443Z [36;1mif ((Get-Content $report -Raw) -notmatch 'WEB SMOKE PASS') { throw "Smoke assertions incomplete" }[0m
+2026-10-23T08:21:51.7380426Z [36;1mWrite-Host "WEB SMOKE PASS (WinExe process finished; report verified)"[0m
+2026-10-23T08:21:51.7456330Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-10-23T08:21:51.7456886Z env:
+2026-10-23T08:21:51.7457085Z   DOTNET_ROOT: C:\Program Files\dotnet
+2026-10-23T08:21:51.7457433Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:21:51.7457910Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.12.10\x64/lib/pkgconfig
+2026-10-23T08:21:51.7458377Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:21:51.7458799Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:21:51.7459216Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:21:51.7459564Z   IPSYS_LARGE_FILE_SMOKE: 1
+2026-10-23T08:21:51.7459783Z ##[endgroup]
+2026-10-23T08:23:48.4184657Z WEB SMOKE FAIL
+2026-10-23T08:23:48.4185607Z System.IO.IOException: VAULT COMPACT HTTP: SQLCipher VACUUM must finish or report an explicit failure
+2026-10-23T08:23:48.4186739Z    at VaultCompactHttpSmoke.Check(Boolean ok, String reason) in D:\a\IPSys\IPSys\src\IPSys.Web\VaultCompactHttpSmoke.cs:line 10
+2026-10-23T08:23:48.4187986Z    at VaultCompactHttpSmoke.VerifyAsync(HttpClient client) in D:\a\IPSys\IPSys\src\IPSys.Web\VaultCompactHttpSmoke.cs:line 59
+2026-10-23T08:23:48.4189032Z    at WebSmoke.Run(String address, Vault vault) in D:\a\IPSys\IPSys\src\IPSys.Web\WebSmoke.cs:line 89
+2026-10-23T08:23:48.4189892Z    at Program.<Main>$(String[] args) in D:\a\IPSys\IPSys\src\IPSys.Web\Program.cs:line 141
+2026-10-23T08:23:48.6153327Z [31;1mException: [0mD:\a\_temp\d96c705a-3991-4627-aed7-ae96ab8f35b4.ps1:8[0m
+2026-10-23T08:23:48.6154244Z [31;1m[0m[36;1mLine |[0m
+2026-10-23T08:23:48.6155185Z [31;1m[0m[36;1m[36;1m   8 | [0m   [36;1mthrow "WinExe smoke failed (exit $($proc.ExitCode))"[0m
+2026-10-23T08:23:48.6156031Z [31;1m[0m[36;1m[36;1m[0m[36;1m[0m[36;1m     | [31;1m   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-10-23T08:23:48.6156820Z [31;1m[0m[36;1m[36;1m[0m[36;1m[0m[36;1m[31;1m[31;1m[36;1m     | [31;1mWinExe smoke failed (exit -532462766)[0m
+2026-10-23T08:23:48.6384014Z ##[error]Process completed with exit code 1.
+2026-10-23T08:23:48.6595083Z ##[group]Run actions/upload-artifact@v4
+2026-10-23T08:23:48.6595443Z with:
+2026-10-23T08:23:48.6595679Z   name: IPSys-Explorer-V2-Retest-39923781118-1
+2026-10-23T08:23:48.6596075Z   path: docs/retest-v2-2026-10-22/evidence/runs/v2ci-39923781118-1/**
+2026-10-23T08:23:48.6596424Z   if-no-files-found: warn
+2026-10-23T08:23:48.6596644Z   retention-days: 30
+2026-10-23T08:23:48.6596845Z   compression-level: 6
+2026-10-23T08:23:48.6597041Z   overwrite: false
+2026-10-23T08:23:48.6597241Z   include-hidden-files: false
+2026-10-23T08:23:48.6597461Z env:
+2026-10-23T08:23:48.6597643Z   DOTNET_ROOT: C:\Program Files\dotnet
+2026-10-23T08:23:48.6597974Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:23:48.6598428Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.12.10\x64/lib/pkgconfig
+2026-10-23T08:23:48.6598874Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:23:48.6599334Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:23:48.6599731Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+2026-10-23T08:23:48.6600039Z ##[endgroup]
+2026-10-23T08:23:48.8589705Z (node:2008) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-10-23T08:23:48.8591185Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-10-23T08:23:48.8803704Z With the provided path, there will be 47 files uploaded
+2026-10-23T08:23:48.8810133Z Artifact name is valid!
+2026-10-23T08:23:48.8811952Z Root directory input is valid!
+2026-10-23T08:23:49.2911460Z Beginning upload of artifact content to blob storage
+2026-10-23T08:23:49.3897165Z (node:2008) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-10-23T08:23:50.0807874Z Uploaded bytes 645498
+2026-10-23T08:23:50.1533885Z Finished uploading artifact content to blob storage!
+2026-10-23T08:23:50.1535218Z SHA256 digest of uploaded artifact zip is a5ee79381878a6292f69a54fd41b6ee8bb431b1aa85e049d206e1404a7516d24
+2026-10-23T08:23:50.1537554Z Finalizing artifact upload
+2026-10-23T08:23:50.6393277Z Artifact IPSys-Explorer-V2-Retest-39923781118-1.zip successfully finalized. Artifact ID 12489120377
+2026-10-23T08:23:50.6395423Z Artifact IPSys-Explorer-V2-Retest-39923781118-1 has been successfully uploaded! Final size is 645498 bytes. Artifact ID is 12489120377
+2026-10-23T08:23:50.6406174Z Artifact download URL: https://github.com/zy19970/IPSys/actions/runs/39923781118/artifacts/12489120377
+2026-10-23T08:23:50.6775782Z Post job cleanup.
+2026-10-23T08:23:50.9178295Z [command]"C:\Program Files\Git\bin\git.exe" version
+2026-10-23T08:23:50.9637618Z git version 2.56.0.windows.2
+2026-10-23T08:23:50.9717161Z Temporarily overriding HOME='D:\a\_temp\909c5d64-7a71-4067-a7e2-8bebfdeecd53' before making global git config changes
+2026-10-23T08:23:50.9718722Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-23T08:23:50.9730948Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\IPSys\IPSys
+2026-10-23T08:23:51.0156674Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+2026-10-23T08:23:51.0579213Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+2026-10-23T08:23:51.6774746Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-23T08:23:51.7134139Z http.https://github.com/.extraheader
+2026-10-23T08:23:51.7185466Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset-all http.https://github.com/.extraheader
+2026-10-23T08:23:51.7609793Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+2026-10-23T08:23:52.4808196Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-23T08:23:52.5224890Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+2026-10-23T08:23:53.1439599Z Cleaning up orphan processes
+2026-10-23T08:23:53.1737851Z Terminate orphan process: pid (6028) (VBCSCompiler)
+2026-10-23T08:23:53.1841437Z Terminate orphan process: pid (9176) (conhost)
+2026-10-23T08:23:53.2013840Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/setup-dotnet@v4, actions/setup-node@v4, actions/setup-python@v5, actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

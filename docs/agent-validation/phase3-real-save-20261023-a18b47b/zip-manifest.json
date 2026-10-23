@@ -1,0 +1,9 @@
+{
+  "zipPath": "E://Github//管理系统//build-retest//phase3-20261023-1809//evidence//artifacts//st303-first-attempt-defaultdir.zip",
+  "requireZip64": false,
+  "files": [
+    { "sourcePath": "E://IPSys-QA//inputs//p3-project-attach.txt", "zipEntry": "P3项目甲/p3-project-attach.txt" },
+    { "sourcePath": "E://IPSys-QA//inputs//p3-contract-a.txt", "zipEntry": "P3项目甲/P3合同一/p3-contract-a.txt" },
+    { "sourcePath": "E://IPSys-QA//inputs//p3-contract-b.txt", "zipEntry": "P3项目甲/P3合同二/p3-contract-b.txt" }
+  ]
+}

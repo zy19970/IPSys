@@ -1,0 +1,130 @@
+{
+ "run": "phase3-real-save-20261023-a18b47b",
+ "head": "a18b47b02dc86260fc328a3ac7ed33f7d017c4bc",
+ "branch": "work/onedrive-file-manager",
+ "generatedAt": "2026-10-23T10:49:02.869Z",
+ "cases": {
+  "ST3-01": "NOT_RUN",
+  "ST3-02": "NOT_RUN",
+  "ST3-03": "BLOCKED",
+  "ST3-04": "BLOCKED"
+ },
+ "findings": [
+  "C-01 CI red on HEAD at VaultCompactHttpSmoke (isolation proof not reached)",
+  "C-02 unattended OS save-dialog automation unstable",
+  "C-03 7z missing, independent extractor NOT_RUN"
+ ],
+ "artifactsLocalOnly": [
+  {
+   "path": "build-retest/phase3-20261023-1809/evidence/artifacts/st303-first-attempt-defaultdir.zip",
+   "bytes": 12908,
+   "sha256": "5D16C579D8CC429D57A24FAF467891A95CC22233B9B2FD2BE9BC528E9AEDC8D8"
+  },
+  {
+   "path": "build-retest/phase3-20261023-1809/qa/vault-p3.db",
+   "bytes": 159744
+  }
+ ],
+ "files": [
+  {
+   "path": "EVIDENCE_INDEX.md",
+   "bytes": 3800,
+   "sha256": "F7F569D5D21B4ED00EEF6FECBD94A027DF2A3B3120F442ED4700A9904CB36490"
+  },
+  {
+   "path": "evidence/json/diag-export.json",
+   "bytes": 4506,
+   "sha256": "7EAF04BD81140A4A795A263AD2EB84208E9C1C8B904E71DBD3B12980F94BF8B4"
+  },
+  {
+   "path": "evidence/json/env.json",
+   "bytes": 678,
+   "sha256": "E5D8B40145AF5F3A6647CC2D8AE0AE856E1E3F93888194AA5DCDE418827331CD"
+  },
+  {
+   "path": "evidence/json/st303-setup.json",
+   "bytes": 283,
+   "sha256": "3ED8D246C9F1E309A12BB2584AA3A0C5DE07DB7D5A0F0BE6C2345040E802586B"
+  },
+  {
+   "path": "evidence/json/st303-setup2.json",
+   "bytes": 1913,
+   "sha256": "B0B30F6920573CC6C561CE0D4B7BF850E41B11737859FC8172A0C5DDF02B76F5"
+  },
+  {
+   "path": "evidence/json/st304-objects.json",
+   "bytes": 2507,
+   "sha256": "1C6CF38384AA9B30CD967E369EDDF0BB28FEA587971B464E15DA6232F732430E"
+  },
+  {
+   "path": "evidence/json/st304-ui.json",
+   "bytes": 1919,
+   "sha256": "5347420E0E1DD3947BCFC754858AC78C4405C83A28FC4D1080024AA2C6344754"
+  },
+  {
+   "path": "evidence/json/st304.sql",
+   "bytes": 686,
+   "sha256": "44F2F4F7036249F090D2A1E4FFE2E2DDD0E130EAEBD69C5E9B6C77286FF20C55"
+  },
+  {
+   "path": "evidence/logs/ci-14fd8a8.log",
+   "bytes": 73514,
+   "sha256": "554FEB51E7605A118B6E689EED779FBDBDA76B47C417154C24995705B2F384E7"
+  },
+  {
+   "path": "evidence/logs/ci-a18b47b.log",
+   "bytes": 73035,
+   "sha256": "2138DB6EDA890547571155809A10D81E3C6B7BE6514AE7B3EF10416A5E32804E"
+  },
+  {
+   "path": "evidence/shots/diag-export.png",
+   "bytes": 179729,
+   "sha256": "A312645D5B8BB68BDC415DC35117020A68AAD2274476038D39D4C874E167A31E"
+  },
+  {
+   "path": "evidence/shots/env-unlock.png",
+   "bytes": 257210,
+   "sha256": "1C24AE236A363820D07E1CDC360772763ADD377354100C361C1C12BD328450E7"
+  },
+  {
+   "path": "evidence/shots/probe-commit.png",
+   "bytes": 84909,
+   "sha256": "708ECB727AADAE2776F2E27740F008B673D75B232770B52009F7CCA082942348"
+  },
+  {
+   "path": "evidence/shots/ST3-03-saveas-dialog.png",
+   "bytes": 34696,
+   "sha256": "60708D22AA7C82D62375ADC9643E0A08AB9949084F61B4C071CDB2DAFB485298"
+  },
+  {
+   "path": "evidence/shots/ST3-04-company.png",
+   "bytes": 168407,
+   "sha256": "E1D7C1BEDF80A2B9C28DDFBCB0B2BF7D39F89B9B5494CF569C76B9B4935A9585"
+  },
+  {
+   "path": "evidence/shots/st303-inner.png",
+   "bytes": 159097,
+   "sha256": "38C9D9840AE58A57D4740CA680648C02799A324E41BA2DA8784D30DDD72839E2"
+  },
+  {
+   "path": "explorer-export-audit.json",
+   "bytes": 1630,
+   "sha256": "CB56C7B0494FA53D6D9BCA997D7EB64E0D784E6949C95A8B6EE2AF3624891A02"
+  },
+  {
+   "path": "PHASE3_REPORT.md",
+   "bytes": 9461,
+   "sha256": "971927508479C46A0588D4A29BA486C642ED743979592940B557938DE0729B80"
+  },
+  {
+   "path": "PHASE3_RESULTS.csv",
+   "bytes": 2215,
+   "sha256": "D17E3EFFD9B6883B5D2BB8874B8DF44C0A0F209B4203F8365E9159E88E052D23"
+  },
+  {
+   "path": "zip-manifest.json",
+   "bytes": 541,
+   "sha256": "EF87F961914CC04B3EBF18F8E10F2F1CF7ECAA46672177DF1F1B1A7B0DBCC2C1"
+  }
+ ]
+}

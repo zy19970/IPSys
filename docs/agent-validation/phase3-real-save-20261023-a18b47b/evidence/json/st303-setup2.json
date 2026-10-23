@@ -1,0 +1,99 @@
+{
+ "unlock": {
+  "submitLabel": "重新连接",
+  "after": "{\"lock\":false,\"viewRoot\":true,\"text\":\"资料库\\n个人工作区\\n新建\\n首页\\n我的文件\\n6\\n回收站\\n快捷访问\\n身份与资质\\n0\\n知识产权与著作\\n0\\n科研与合作项目\\n0\\n成果与奖励\\n0\\n学术与社会活动\\n0\\n其他\"}",
+  "attempt": 1,
+  "pwLenOk": true,
+  "pathFill": {
+   "filled": false,
+   "reason": "disabled",
+   "was": "C:\\Users\\Joey\\Documents\\IPSys-web-test.db"
+  }
+ },
+ "steps": [
+  {
+   "step": "project-rows",
+   "rows": [
+    {
+     "id": "p:8",
+     "name": "P3项目甲"
+    }
+   ]
+  },
+  {
+   "step": "project-inner",
+   "rows": [
+    {
+     "id": "c:10",
+     "name": "P3合同二"
+    },
+    {
+     "id": "c:9",
+     "name": "P3合同一"
+    },
+    {
+     "id": "f:1:1",
+     "name": "TXT\np3-project-attach.txt"
+    }
+   ]
+  },
+  {
+   "step": "upload",
+   "contract": "P3合同二",
+   "cid": "c:10",
+   "picked": "E:\\IPSys-QA\\inputs\\p3-contract-b.txt",
+   "stage": "上传已结束。 已保存 1，失败 0，跳过/未处理 0。",
+   "active": false
+  },
+  {
+   "step": "upload",
+   "contract": "P3合同一",
+   "cid": "c:9",
+   "picked": "E:\\IPSys-QA\\inputs\\p3-contract-a.txt",
+   "stage": "上传已结束。 已保存 1，失败 0，跳过/未处理 0。",
+   "active": false
+  },
+  {
+   "step": "final-inner",
+   "rows": [
+    {
+     "id": "c:10",
+     "name": "P3合同二"
+    },
+    {
+     "id": "c:9",
+     "name": "P3合同一"
+    },
+    {
+     "id": "f:1:1",
+     "name": "TXT\np3-project-attach.txt"
+    }
+   ]
+  }
+ ],
+ "projectId": "p:8",
+ "contracts": [
+  {
+   "id": "c:10",
+   "name": "P3合同二"
+  },
+  {
+   "id": "c:9",
+   "name": "P3合同一"
+  }
+ ],
+ "finalInner": [
+  {
+   "id": "c:10",
+   "name": "P3合同二"
+  },
+  {
+   "id": "c:9",
+   "name": "P3合同一"
+  },
+  {
+   "id": "f:1:1",
+   "name": "TXT\np3-project-attach.txt"
+  }
+ ]
+}

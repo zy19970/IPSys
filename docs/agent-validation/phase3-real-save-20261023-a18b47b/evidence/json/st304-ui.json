@@ -1,0 +1,109 @@
+{
+ "startedAt": "2026-10-23T10:43:13.204Z",
+ "steps": [
+  {
+   "step": "create-project",
+   "filled": true,
+   "type": {
+    "ok": true,
+    "value": "科研项目",
+    "text": "科研项目"
+   },
+   "sub": {
+    "errBefore": "",
+    "closed": true,
+    "errAfter": null
+   }
+  },
+  {
+   "step": "project",
+   "projId": "p:11"
+  },
+  {
+   "step": "upload-v1",
+   "stage": "上传已结束。 已保存 1，失败 0，跳过/未处理 0。"
+  },
+  {
+   "step": "upload-v2",
+   "fileId": "f:4:1",
+   "stage": "上传已结束。 已保存 1，失败 0，跳过/未处理 0。",
+   "acts": [
+    "open",
+    "download",
+    "newver",
+    "assoc",
+    "assoc-move",
+    "delete"
+   ]
+  },
+  {
+   "step": "create-contract",
+   "sub": {
+    "errBefore": "",
+    "closed": true,
+    "errAfter": null
+   }
+  },
+  {
+   "step": "upload-contract-file",
+   "contractId": "c:12",
+   "stage": "上传已结束。 已保存 1，失败 0，跳过/未处理 0。"
+  },
+  {
+   "step": "create-ip",
+   "ipType": {
+    "ok": true,
+    "value": "发明专利",
+    "text": "发明专利"
+   },
+   "ipStatus": {
+    "ok": true,
+    "value": "已申请",
+    "text": "已申请"
+   },
+   "sub": {
+    "errBefore": "",
+    "closed": true,
+    "errAfter": null
+   }
+  },
+  {
+   "step": "upload-ip-file",
+   "ipId": "i:13",
+   "stage": "上传已结束。 已保存 1，失败 0，跳过/未处理 0。"
+  },
+  {
+   "step": "copy-project-form",
+   "selProj": {
+    "ok": true,
+    "value": "personal",
+    "text": "个人工作区"
+   }
+  },
+  {
+   "step": "copy-project",
+   "sub": {
+    "errBefore": "",
+    "closed": true,
+    "errAfter": null
+   }
+  },
+  {
+   "step": "copy-ip",
+   "selIp": {
+    "ok": true,
+    "value": "personal",
+    "text": "个人工作区"
+   },
+   "sub": {
+    "errBefore": "",
+    "closed": true,
+    "errAfter": null
+   }
+  }
+ ],
+ "projectId": "p:11",
+ "contractId": "c:12",
+ "ipId": "i:13",
+ "fileId": "f:4:1"
+}

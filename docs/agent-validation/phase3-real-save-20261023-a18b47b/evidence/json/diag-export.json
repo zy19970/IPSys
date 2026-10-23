@@ -1,0 +1,212 @@
+[
+ {
+  "t": 0,
+  "phase": "menu",
+  "acts": [
+   "open",
+   "newcontract",
+   "props",
+   "download",
+   "copy-record",
+   "transfer-record",
+   "rename",
+   "delete"
+  ]
+ },
+ {
+  "t": 1,
+  "active": false,
+  "bar": true,
+  "text": "",
+  "toasts": [],
+  "hasPicker": "function",
+  "vis": "visible",
+  "windows": [
+   "警告: 此站点可以看到你所做的编辑|#32770",
+   "资料库 - 个人 - Microsoft\\u200b Edg|Chrome_WidgetWin_1",
+   "WorkBuddy|Chrome_WidgetWin_1"
+  ]
+ },
+ {
+  "t": 2,
+  "active": false,
+  "bar": true,
+  "text": "",
+  "toasts": [],
+  "hasPicker": "function",
+  "vis": "visible",
+  "windows": [
+   "警告: 此站点可以看到你所做的编辑|#32770",
+   "资料库 - 个人 - Microsoft\\u200b Edg|Chrome_WidgetWin_1",
+   "WorkBuddy|Chrome_WidgetWin_1"
+  ]
+ },
+ {
+  "t": 3,
+  "active": false,
+  "bar": true,
+  "text": "",
+  "toasts": [],
+  "hasPicker": "function",
+  "vis": "visible",
+  "windows": [
+   "警告: 此站点可以看到你所做的编辑|#32770",
+   "资料库 - 个人 - Microsoft\\u200b Edg|Chrome_WidgetWin_1",
+   "WorkBuddy|Chrome_WidgetWin_1"
+  ]
+ },
+ {
+  "t": 4,
+  "active": false,
+  "bar": true,
+  "text": "",
+  "toasts": [],
+  "hasPicker": "function",
+  "vis": "visible",
+  "windows": [
+   "警告: 此站点可以看到你所做的编辑|#32770",
+   "资料库 - 个人 - Microsoft\\u200b Edg|Chrome_WidgetWin_1",
+   "WorkBuddy|Chrome_WidgetWin_1"
+  ]
+ },
+ {
+  "t": 5,
+  "active": false,
+  "bar": true,
+  "text": "",
+  "toasts": [],
+  "hasPicker": "function",
+  "vis": "visible",
+  "windows": [
+   "警告: 此站点可以看到你所做的编辑|#32770",
+   "资料库 - 个人 - Microsoft\\u200b Edg|Chrome_WidgetWin_1",
+   "WorkBuddy|Chrome_WidgetWin_1"
+  ]
+ },
+ {
+  "t": 6,
+  "active": false,
+  "bar": true,
+  "text": "",
+  "toasts": [],
+  "hasPicker": "function",
+  "vis": "visible",
+  "windows": [
+   "警告: 此站点可以看到你所做的编辑|#32770",
+   "资料库 - 个人 - Microsoft\\u200b Edg|Chrome_WidgetWin_1",
+   "WorkBuddy|Chrome_WidgetWin_1"
+  ]
+ },
+ {
+  "t": 7,
+  "active": false,
+  "bar": true,
+  "text": "",
+  "toasts": [],
+  "hasPicker": "function",
+  "vis": "visible",
+  "windows": [
+   "警告: 此站点可以看到你所做的编辑|#32770",
+   "资料库 - 个人 - Microsoft\\u200b Edg|Chrome_WidgetWin_1",
+   "WorkBuddy|Chrome_WidgetWin_1"
+  ]
+ },
+ {
+  "t": 8,
+  "active": false,
+  "bar": true,
+  "text": "",
+  "toasts": [],
+  "hasPicker": "function",
+  "vis": "visible",
+  "windows": [
+   "警告: 此站点可以看到你所做的编辑|#32770",
+   "资料库 - 个人 - Microsoft\\u200b Edg|Chrome_WidgetWin_1",
+   "WorkBuddy|Chrome_WidgetWin_1"
+  ]
+ },
+ {
+  "t": 9,
+  "active": false,
+  "bar": true,
+  "text": "",
+  "toasts": [],
+  "hasPicker": "function",
+  "vis": "visible",
+  "windows": [
+   "警告: 此站点可以看到你所做的编辑|#32770",
+   "资料库 - 个人 - Microsoft\\u200b Edg|Chrome_WidgetWin_1",
+   "WorkBuddy|Chrome_WidgetWin_1"
+  ]
+ },
+ {
+  "t": 10,
+  "active": false,
+  "bar": true,
+  "text": "",
+  "toasts": [],
+  "hasPicker": "function",
+  "vis": "visible",
+  "windows": [
+   "警告: 此站点可以看到你所做的编辑|#32770",
+   "资料库 - 个人 - Microsoft\\u200b Edg|Chrome_WidgetWin_1",
+   "WorkBuddy|Chrome_WidgetWin_1"
+  ]
+ },
+ {
+  "t": 11,
+  "active": false,
+  "bar": true,
+  "text": "",
+  "toasts": [],
+  "hasPicker": "function",
+  "vis": "visible",
+  "windows": [
+   "警告: 此站点可以看到你所做的编辑|#32770",
+   "资料库 - 个人 - Microsoft\\u200b Edg|Chrome_WidgetWin_1",
+   "WorkBuddy|Chrome_WidgetWin_1"
+  ]
+ },
+ {
+  "t": 12,
+  "active": false,
+  "bar": true,
+  "text": "",
+  "toasts": [],
+  "hasPicker": "function",
+  "vis": "visible",
+  "windows": [
+   "警告: 此站点可以看到你所做的编辑|#32770",
+   "资料库 - 个人 - Microsoft\\u200b Edg|Chrome_WidgetWin_1",
+   "WorkBuddy|Chrome_WidgetWin_1"
+  ]
+ },
+ {
+  "t": 13,
+  "active": false,
+  "bar": true,
+  "text": "",
+  "toasts": [],
+  "hasPicker": "function",
+  "vis": "visible",
+  "windows": [
+   "警告: 此站点可以看到你所做的编辑|#32770",
+   "资料库 - 个人 - Microsoft\\u200b Edg|Chrome_WidgetWin_1",
+   "WorkBuddy|Chrome_WidgetWin_1"
+  ]
+ },
+ {
+  "t": 14,
+  "active": false,
+  "bar": true,
+  "text": "",
+  "toasts": [],
+  "hasPicker": "function",
+  "vis": "visible",
+  "windows": [
+   "警告: 此站点可以看到你所做的编辑|#32770",
+   "资料库 - 个人 - Microsoft\\u200b Edg|Chrome_WidgetWin_1",
+   "WorkBuddy|Chrome_WidgetWin_1"
+  ]
+ }
+]

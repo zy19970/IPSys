@@ -1,0 +1,38 @@
+{
+  "generatedAt": "2026-10-23T18:46:43.0150714+08:00",
+  "sourceManifest": "E:\\Github\\管理系统\\docs\\agent-validation\\phase3-real-save-20261023-a18b47b\\zip-manifest.json",
+  "zipPath": "E:\\Github\\管理系统\\build-retest\\phase3-20261023-1809\\evidence\\artifacts\\st303-first-attempt-defaultdir.zip",
+  "zipBytes": 12908,
+  "requiredZip64": false,
+  "zip64LocatorFound": false,
+  "zip64EocdFound": false,
+  "independentExtractor": "NOT_RUN:7z missing",
+  "files": [
+    {
+      "entrySha256": "A5F0FC8B3A0E0F5353674080158FC3C506238CF506CDC29177F2760F9B57C686",
+      "shaMatch": true,
+      "size": 4132,
+      "sourceSha256": "A5F0FC8B3A0E0F5353674080158FC3C506238CF506CDC29177F2760F9B57C686",
+      "entry": "P3项目甲/p3-project-attach.txt",
+      "sourcePath": "E:\\IPSys-QA\\inputs\\p3-project-attach.txt"
+    },
+    {
+      "entrySha256": "1C181E448406D9CA410D49640823A66BDC0836178AF62F78A19904A605DEAB39",
+      "shaMatch": true,
+      "size": 4124,
+      "sourceSha256": "1C181E448406D9CA410D49640823A66BDC0836178AF62F78A19904A605DEAB39",
+      "entry": "P3项目甲/P3合同一/p3-contract-a.txt",
+      "sourcePath": "E:\\IPSys-QA\\inputs\\p3-contract-a.txt"
+    },
+    {
+      "entrySha256": "AB9620FA7E23F9FCA3EECB6FFE087FAE4841E152EB43BC713764468F3D16C4B0",
+      "shaMatch": true,
+      "size": 4124,
+      "sourceSha256": "AB9620FA7E23F9FCA3EECB6FFE087FAE4841E152EB43BC713764468F3D16C4B0",
+      "entry": "P3项目甲/P3合同二/p3-contract-b.txt",
+      "sourcePath": "E:\\IPSys-QA\\inputs\\p3-contract-b.txt"
+    }
+  ],
+  "errors": [],
+  "result": "PASS"
+}
