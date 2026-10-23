@@ -232,7 +232,7 @@ static partial class McpLocal
         Tool("upload_files","本机上传到 V2 项目/合同/知识产权/档案/综合资料 FolderId；同内容必须显式确认 duplicate_mode；追加版本需为本 Folder 已关联 FileId。每份上限 8 GiB；大文件建议使用 start_upload_task 异步上传并轮询状态。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
             ["kind"]=Field("string","原件归属类别",["project","contract","ip","archive","general"]),
-            ["section"]=Field("string","归档分类 archive 必填：certificate、achievement、academic；其它类型不需要"),
+            ["section"]=Field("string","kind=archive 必填；公司可用 certificate、achievement、party（党团建设），个人可用 certificate、achievement、academic"),
             ["owner_id"]=Field("integer","归属资料 FolderId"),
             ["paths"]=new {type="array",minItems=1,maxItems=20,items=Field("string","本机绝对文件路径")},
             ["on_conflict"]=Field("string","new 独立原件；update 更新已有原件版本",["new","update"]),
@@ -246,7 +246,7 @@ static partial class McpLocal
             Tool("start_upload_task","异步启动 1–20 个本机原件上传，立即返回 request_id；其余参数与 upload_files 相同。请使用 get_task_status/cancel_task。",new(){
                 ["workspace"]=Field("string","工作区",Workspaces),
                 ["kind"]=Field("string","归属资源",["project","contract","ip","archive","general"]),
-                ["section"]=Field("string","archive 所属分类"),
+                ["section"]=Field("string","kind=archive 必填；公司 certificate/achievement/party（党团建设），个人 certificate/achievement/academic"),
                 ["owner_id"]=Field("integer","资料 FolderId"),
                 ["paths"]=new {type="array",minItems=1,maxItems=20,items=Field("string","本机绝对路径")},
                 ["on_conflict"]=Field("string","new 或 update",["new","update"]),
@@ -801,7 +801,9 @@ static partial class McpLocal
            "reorder_entries" or "reorder_records" or "reorder_archive_records" or
            "search_records" or "list_trash" or "restore_trash" or "purge_trash")
             return await ExecuteExtraAsync(client,workspace,name,args,stop);
-        if(name is "list_archives" or "create_archive" or "update_archive" or
+        if(name is "list_party_archives" or "create_party_archive" or
+           "update_party_archive" or "delete_party_archive" or
+           "list_archives" or "create_archive" or "update_archive" or
            "delete_archive" or "list_archive_folders" or "create_archive_folder" or
            "update_archive_folder" or "delete_archive_folder" or "list_general" or
            "create_general" or "update_general" or "delete_general")

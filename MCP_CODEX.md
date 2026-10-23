@@ -1,11 +1,19 @@
 # IPSys 本机 Codex MCP
 
-> **当前主分支基线（2026-10-23）**：Explorer 已合并 `main`，Windows CI [#39947975625](https://github.com/zy19970/IPSys/actions/runs/39947975625) 的 MCP stdio、59 工具和错误协议检查通过。下文 69/70 工具、旧 `v2_*` 名称及“尚待合并”的文字是对应旧 SHA 的记录；本机特殊权限/不同 Windows 用户的人工复测不能被常规 CI 冒充。当前版本与状态查 [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md) 和 [TESTING.md](./TESTING.md)。
+> **当前主分支接口口径（2026-10-24，待本次 CI 复核）**：MCP 工具由 59 个扩展为 **63 个无版本前缀的工具**，新增 `list_party_archives`、`create_party_archive`、`update_party_archive`、`delete_party_archive`，专用于公司工作区“党团建设”。既有通用 `list_archives/create_archive/update_archive/delete_archive` 仍支持 `workspace=company, section=party`。以下此前的“59 工具”描述属于旧提交验收历史，不能再当作当前清单。更新 EXE 后需重启本机 MCP 客户端，使 Agent 刷新 `tools/list`。
+
+## 党团建设 MCP（公司工作区）
+
+党团建设与网页使用同一 SQLCipher V2 档案 FolderId，独立 `section=party`，不是“业务档案 achievement”下的子目录。专用命令 `list_party_archives(workspace=company)`、`create_party_archive(workspace=company,name,category?,remarks?,tags?,year?,request_id?)`、`update_party_archive(workspace=company,archive_id,name?,category?,remarks?,tags?,year?,request_id?)`、`delete_party_archive(workspace=company,archive_id,request_id?)`。专用命令不需要 `section` 或 `folder_id`；写操作沿用 MCP 幂等日志与回收站机制。
+
+党团资料附件直接使用现有 `upload_files(workspace=company,kind=archive,section=party,owner_id=档案FolderId,paths=[本机绝对路径])` 或对应 `start_upload_task`；文件管理使用 `list_files_page(kind=archive,owner_id=...)`、`get_file_details`、`download_file_version`、`delete_file`、`copy_file` 等共用接口。整条复制可使用 `transfer_archive(workspace=company,section=party,target_workspace=company,target_section=party,archive_id=...,move=false)`；不允许转移到个人工作区或其它不兼容分类。删除后的精确恢复使用 `list_trash` 返回的 `kind=v2_archive,id,section=party` 调用 `restore_trash`。
+
+> **历史主分支基线（2026-10-23）**：Explorer 已合并 `main`，Windows CI [#39947975625](https://github.com/zy19970/IPSys/actions/runs/39947975625) 的 MCP stdio、59 工具和错误协议检查通过。下文 69/70 工具、旧 `v2_*` 名称及“尚待合并”的文字是对应旧 SHA 的记录；本机特殊权限/不同 Windows 用户的人工复测不能被常规 CI 冒充。当前版本与状态查 [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md) 和 [TESTING.md](./TESTING.md)。
 
 
-> **当前已验证构建**：[`2620c109`](https://github.com/zy19970/IPSys/commit/2620c109043f779eeb57f411210f99bb2f21e554) / [Windows CI #39019604428](https://github.com/zy19970/IPSys/actions/runs/39019604428) **success**（59 工具、无 `v2_*`、SQLCipher/HTTP、Debug/Release/Node 回归）；本机 Codex/WorkBuddy 新一轮实测尚待进行。此处其余 69/70 工具、11 个 `v2_*` 等描述均为历史时间点记录，**下个会话一律以本文开头的 59 工具清单为准**，并参照 [HANDOFF.md](./DEVELOPMENT_PLAN.md)。
+> **历史已验证构建**：[`2620c109`](https://github.com/zy19970/IPSys/commit/2620c109043f779eeb57f411210f99bb2f21e554) / [Windows CI #39019604428](https://github.com/zy19970/IPSys/actions/runs/39019604428) **success**（59 工具、无 `v2_*`、SQLCipher/HTTP、Debug/Release/Node 回归）；本机 Codex/WorkBuddy 新一轮实测尚待进行。此处其余 69/70 工具、11 个 `v2_*` 等描述均为历史时间点记录，**当前工具总数已更新为 63，参见本文最上方**，并参照 [HANDOFF.md](./DEVELOPMENT_PLAN.md)。
 
-> **当前唯一接口口径（2026-10-17 接口收敛）**：MCP 对外暴露 **59 个无版本前缀的工具**，原来的 11 个 `v2_*` 业务别名已下线；`create_project`、`update_ip`、`list_contracts` 等原名接口仍操作 SQLCipher V2 Folder/File 数据模型。项目/合同/IP 三个 `list_*` 继续输出网页友好结构（包含 `id` 和相应扁平化业务字段）；原生 `FolderSnapshot` 可在授权的 HTTP `/api/v2/folders/{workspace}/{kind}` 查询，但不再单独占用 MCP 工具名称。既有 70 工具黑盒报告和 `v2_*` 用例只适用于历史版本；新实机测试使用 [MCP_INTERFACE_CLEANUP_TEST.md](./tests/archive/MCP_INTERFACE_CLEANUP_TEST.md)。HTTP `/api/v2`、数据表、FileId/LinkId 与版本机制未改变。
+> **历史接口口径（2026-10-17 接口收敛）**：MCP 对外暴露 **59 个无版本前缀的工具**，原来的 11 个 `v2_*` 业务别名已下线；`create_project`、`update_ip`、`list_contracts` 等原名接口仍操作 SQLCipher V2 Folder/File 数据模型。项目/合同/IP 三个 `list_*` 继续输出网页友好结构（包含 `id` 和相应扁平化业务字段）；原生 `FolderSnapshot` 可在授权的 HTTP `/api/v2/folders/{workspace}/{kind}` 查询，但不再单独占用 MCP 工具名称。既有 70 工具黑盒报告和 `v2_*` 用例只适用于历史版本；新实机测试使用 [MCP_INTERFACE_CLEANUP_TEST.md](./tests/archive/MCP_INTERFACE_CLEANUP_TEST.md)。HTTP `/api/v2`、数据表、FileId/LinkId 与版本机制未改变。
 
 `v2_list_projects`→`list_projects`、`v2_list_contracts`→`list_contracts`、`v2_list_ips`→`list_ips`：调用参数不变，但**返回结构不完全相同**，调用者必须按当前原名接口的 `id` 等字段取值，不能继续读取 `folder.ref.id`。其余 8 个 `v2_*` 写操作改为对应原名，参数和数据含义不变。客户端应刷新 MCP 工具清单；已注册旧名称的 Agent 需要替换工具调用后再连接。
 
@@ -189,7 +197,7 @@ stdio 初始化只声明真正支持的 `2025-06-18` 协议版本；空行静默
 | `search_records` | 单工作区结构化统一检索，不读取文件正文 |
 | `list_trash` / `restore_trash` | 返回回收站原 kind/id/section，并按精确身份恢复一条记录 |
 
-所有工具均需显式指定 `workspace`（`company` 公司、`personal` 个人）。`upload_files` 支持 `kind=project/contract/ip/archive/general`、归属 `owner_id=FolderId` 和本机绝对路径数组 `paths`（1–20 条）；`kind=archive` 必须填写所属分类 `section`（公司 certificate/achievement；个人 certificate/achievement/academic），且所选 FolderId 及 section 必须一致。`on_conflict=new/update`；更新需指定目标 `file_id=FileId` 且同 Folder 有效关联；同内容已有候选必须明确 `duplicate_mode=independent/reuse/share`，复用/共享还须正确 `source_file_id`。IP 的 `material_category` 可设为申请材料/通知文件/证书文件/其他材料，其他类型不可传此专用类别。
+所有工具均需显式指定 `workspace`（`company` 公司、`personal` 个人）。`upload_files` 支持 `kind=project/contract/ip/archive/general`、归属 `owner_id=FolderId` 和本机绝对路径数组 `paths`（1–20 条）；`kind=archive` 必须填写所属分类 `section`（公司 certificate/achievement/party；个人 certificate/achievement/academic），且所选 FolderId 及 section 必须一致。`on_conflict=new/update`；更新需指定目标 `file_id=FileId` 且同 Folder 有效关联；同内容已有候选必须明确 `duplicate_mode=independent/reuse/share`，复用/共享还须正确 `source_file_id`。IP 的 `material_category` 可设为申请材料/通知文件/证书文件/其他材料，其他类型不可传此专用类别。
 
 `create_ip` 的必填参数为 `workspace`、`name`、`ip_type`，`update_ip` 使用 `ip_id` 查找记录。可填写 `status`、`applicants`、`right_holders`、`creators`、`application_no`、`application_date`、`publication_no`、`publication_date`、`grant_notice_no`、`grant_notice_date`、`publication_info`、`grant_date`、`registration_no`、`first_published_date`、`registration_date`、`category`、`remarks`、`tags`。支持发明、实用新型、外观设计专利等既有七种知识产权类型，状态和日期自动走原有业务校验；更新时不改变未传入的字段。
 

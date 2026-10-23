@@ -97,12 +97,12 @@ static partial class McpLocal
             ["target_workspace"]=Field("string","目标工作区",Workspaces),
             ["move"]=new Dictionary<string,object>{{"type","boolean"},{"description","true 移动，false 复制"}}
         },["workspace","ip_id","target_workspace"]),
-        Tool("transfer_archive","在语义兼容类别间复制/移动档案与版本。company/achievement 与 personal/achievement 或 personal/academic 对应科研成果；证书 certificate 仅在相同工作区类别内使用。实际接受范围以 ArchiveRules.Module 校验为准。move=true 返回目标新 ID，来源软删除入原工作区回收站；恢复来源会形成并存副本。",new(){
+        Tool("transfer_archive","在语义兼容类别间复制/移动档案与版本。company/achievement 与 personal/achievement 或 personal/academic 对应科研成果；证书 certificate 仅在相同工作区类别内使用；党团建设 party 仅支持 company/party 内复制，不跨区。实际接受范围以 ArchiveRules.Module 校验为准。move=true 返回目标新 ID，来源软删除入原工作区回收站；恢复来源会形成并存副本。",new(){
             ["workspace"]=Field("string","来源工作区",Workspaces),
             ["section"]=Field("string","来源资料类别"),
             ["archive_id"]=Field("integer","档案 FolderId"),
             ["target_workspace"]=Field("string","目标工作区",Workspaces),
-            ["target_section"]=Field("string","目标类别：achievement ↔ academic（科研成果），certificate 不跨工作区"),
+            ["target_section"]=Field("string","目标类别：achievement ↔ academic（科研成果）；certificate 不跨区；party 只可 company/party"),
             ["move"]=new Dictionary<string,object>{{"type","boolean"},{"description","true 移动，false 复制"}}
         },["workspace","section","archive_id","target_workspace","target_section"]),
         Tool("transfer_general","复制/移动综合资料及历史文件。move=true 返回目标新 ID，来源软删除入原工作区回收站；恢复来源会形成并存副本。",new(){

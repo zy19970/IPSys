@@ -49,7 +49,7 @@ IPSys 的正式发布由 [Publish IPSys Release](https://github.com/zy19970/IPSy
 | [DESIGN.md](./DESIGN.md) | 现行系统架构、SQLCipher V2 资源与安全边界 |
 | [UI_BASELINE.md](./UI_BASELINE.md) | 当前业务导航和交互原则；实际 Explorer 入口以源码为准 |
 | [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md) | 当前完成状态、可继续开发的事项和验收门槛 |
-| [MCP_CODEX.md](./MCP_CODEX.md) | 本机 MCP 接入、59 工具和安全规则 |
+| [MCP_CODEX.md](./MCP_CODEX.md) | 本机 MCP 接入、63 个工具（含党团建设专用接口）与安全规则 |
 | [USER_GUIDE.md](./USER_GUIDE.md) | Excel、搜索、附件/ZIP 与用户操作 |
 | [TESTING.md](./TESTING.md) 与 [测试证据索引](./tests/TEST_EVIDENCE_INDEX.md) | 现行验证方法与各次独立原始证据 |
 | [正式前端源码说明](./src/IPSys.Web/wwwroot/README.md) | Explorer 前端源码、打包和代码契约 |

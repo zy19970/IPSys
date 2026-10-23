@@ -26,7 +26,9 @@ static class NativeMcpArchiveSmoke
         Check(new[]{"list_archives","create_archive","update_archive","delete_archive",
             "list_archive_folders","create_archive_folder","update_archive_folder",
             "delete_archive_folder","list_general","create_general","update_general",
-            "delete_general"}.All(names.Contains),"12 native archive/general actions registered");
+            "delete_general","list_party_archives","create_party_archive",
+            "update_party_archive","delete_party_archive"}.All(names.Contains),
+            "archive/general and four company party actions registered");
         // ISS-002: invalid archive classification is a known local refusal,
         // not an unknown write outcome.
         string badSectionId=Guid.NewGuid().ToString("N");
@@ -247,6 +249,113 @@ static class NativeMcpArchiveSmoke
         catch(IOException){sectionDenied=true;}
         Check(sectionDenied,"archive section must match workspace");
 
+
+        // Company-only 党团建设: dedicated tools share the canonical
+        // archive FolderId, SQLCipher files and existing MCP safety envelope.
+        var partySchema=JsonSerializer.SerializeToElement(McpLocal.Tools())
+            .EnumerateArray().First(x=>x.GetProperty("name").GetString()=="create_party_archive")
+            .GetProperty("inputSchema").GetProperty("properties");
+        Check(!partySchema.TryGetProperty("section",out _) &&
+            !partySchema.TryGetProperty("folder_id",out _) &&
+            partySchema.GetProperty("workspace").GetProperty("enum")[0].GetString()=="company",
+            "party MCP schema is discoverable, company-only and needs no parent directory");
+        var partyProtocol=await McpLocal.RunSmokeProtocolToolAsync("list_party_archives",
+            Args(new{workspace="company"}));
+        Check(partyProtocol["result"]?["isError"]?.GetValue<bool>()==false &&
+            partyProtocol["result"]?["content"]?[0]?["text"]?.GetValue<string>() is string partyJson &&
+            JsonNode.Parse(partyJson) is JsonArray,
+            "public stdio MCP party listing returns a JSON array");
+        string partyKey="N204-PARTY-"+Guid.NewGuid().ToString("N")[..8];
+        var rejectedParty=await McpLocal.RunSmokeProtocolToolAsync(
+            "create_party_archive",Args(new{
+                workspace="personal",name=partyKey+"越区"
+            }));
+        Check(rejectedParty["result"]?["isError"]?.GetValue<bool>()==true,
+            "party tool schema rejects personal-workspace writes");
+        long party=Id(await Run("create_party_archive",new{
+            workspace="company",name=partyKey+"党团活动",category="组织活动",
+            remarks="新增记录",year=2026
+        }));
+        Check(Has(await Run("list_party_archives",new{workspace="company"}),party) &&
+            Has(await Run("list_archives",new{workspace="company",section="party"}),party),
+            "party dedicated list and generic archive list share FolderId");
+        await Run("update_party_archive",new{
+            workspace="company",archive_id=party,remarks="更新后的活动资料"
+        });
+        var partyEdited=await client.GetFromJsonAsync<JsonElement>(
+            $"/api/v2/folders/company/archive/{party}?section=party");
+        Check(partyEdited.GetProperty("businessData").GetProperty("remarks")
+            .GetString()=="更新后的活动资料" &&
+            partyEdited.GetProperty("businessData").GetProperty("year").GetString()=="2026",
+            "party partial edit preserves historical archive fields");
+        bool cannotCrossParty=false;
+        try
+        {
+            await Run("transfer_archive",new{
+                workspace="company",section="party",archive_id=party,
+                target_workspace="personal",target_section="academic",move=false
+            });
+        }
+        catch(IOException){cannotCrossParty=true;}
+        Check(cannotCrossParty,"party archives cannot leak into the personal workspace");
+        var copiedParty=await Run("transfer_archive",new{
+            workspace="company",section="party",archive_id=party,
+            target_workspace="company",target_section="party",move=false
+        });
+        long copiedPartyId=Id(copiedParty);
+        Check(copiedPartyId!=party &&
+            Has(await Run("list_party_archives",new{workspace="company"}),copiedPartyId),
+            "generic transfer_archive supports same-category company party copies");
+        await Run("delete_party_archive",new{
+            workspace="company",archive_id=copiedPartyId
+        });
+        Check(!Has(await Run("list_party_archives",new{workspace="company"}),copiedPartyId),
+            "party deletion soft-deletes copied record");
+        var partyTrash=await Run("list_trash",new{workspace="company"});
+        Check(partyTrash is JsonArray trash && trash.Any(x=>
+                x?["kind"]?.GetValue<string>()=="v2_archive" &&
+                x?["id"]?.GetValue<long>()==copiedPartyId &&
+                x?["section"]?.GetValue<string>()=="party"),
+            "party trash exposes exact section for restore_trash");
+        await Run("restore_trash",new{
+            workspace="company",kind="v2_archive",id=copiedPartyId,section="party"
+        });
+        Check(Has(await Run("list_party_archives",new{workspace="company"}),copiedPartyId),
+            "restored party record returns to its original category");
+        await Run("delete_party_archive",new{
+            workspace="company",archive_id=copiedPartyId
+        });
+        // Also exercise the same standard archive upload path and file listing.
+        string partyPath=Path.Combine(Path.GetTempPath(),partyKey+".txt");
+        await File.WriteAllBytesAsync(partyPath,RandomNumberGenerator.GetBytes(102));
+        try
+        {
+            var upload=await Run("upload_files",new{
+                workspace="company",kind="archive",section="party",
+                owner_id=party,paths=new[]{partyPath}
+            });
+            Check(upload["succeeded"]?.GetValue<int>()==1,
+                "company party uploads via existing archive upload_files");
+            long partyLink=upload["files"]?[0]?["result"]?["linkId"]?.GetValue<long>()??0;
+            long partyFile=upload["files"]?[0]?["result"]?["fileId"]?.GetValue<long>()??0;
+            var page=await Run("list_files_page",new{
+                workspace="company",kind="archive",owner_id=party,limit=10
+            });
+            Check(partyLink>0 && partyFile>0 &&
+                page["items"] is JsonArray partyFiles && partyFiles.Any(x=>
+                    x?["id"]?.GetValue<long>()==partyLink &&
+                    x?["section"]?.GetValue<string>()=="party"),
+                "party attachment is visible in paginated MCP file queries");
+            await Run("delete_file",new{
+                workspace="company",owner_id=party,file_id=partyFile,link_id=partyLink
+            });
+            Check((await Run("list_files_page",new{
+                workspace="company",kind="archive",owner_id=party
+            }))["items"] is JsonArray unlinked && unlinked.Count==0,
+                "party attachment can be unlinked using the standard file tool");
+        }
+        finally{File.Delete(partyPath);}
+        await Run("delete_party_archive",new{workspace="company",archive_id=party});
         long general=Id(await Run("create_general",new{
             workspace="company",title=tag+"综合资料"
         }));

@@ -30,7 +30,7 @@ static partial class McpLocal
         },["workspace","section"]),
         Tool("create_archive","创建 V2 档案；公司 achievement 必须指定有效业务目录 folder_id。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
-            ["section"]=Field("string","certificate、achievement 或 academic"),
+            ["section"]=Field("string","company: certificate、achievement、party；personal: certificate、achievement、academic"),
             ["name"]=Field("string","档案名称"),
             ["category"]=Field("string","可选类别"),
             ["remarks"]=Field("string","可选备注"),
@@ -53,6 +53,32 @@ static partial class McpLocal
             ["section"]=Field("string","所属资料分类"),
             ["archive_id"]=Field("integer","档案 FolderId")
         },["workspace","section","archive_id"]),
+        // Dedicated discovery for the company-only 党团建设 module.
+        // Reuse archive FolderId and the existing file/link/version tools.
+        Tool("list_party_archives","列出公司工作区“党团建设”资料，返回 V2 档案 FolderId。",new(){
+            ["workspace"]=Field("string","仅公司工作区",["company"])
+        },["workspace"]),
+        Tool("create_party_archive","在公司“党团建设”中新增档案。返回可用于 upload_files(kind=archive,section=party) 的 FolderId。",new(){
+            ["workspace"]=Field("string","仅公司工作区",["company"]),
+            ["name"]=Field("string","档案名称"),
+            ["category"]=Field("string","可选类别"),
+            ["remarks"]=Field("string","可选备注"),
+            ["tags"]=Field("string","可选标签"),
+            ["year"]=Field("string","可选年度")
+        },["workspace","name"]),
+        Tool("update_party_archive","按 FolderId 更新公司“党团建设”档案，未传字段保留原值。",new(){
+            ["workspace"]=Field("string","仅公司工作区",["company"]),
+            ["archive_id"]=Field("integer","档案 FolderId"),
+            ["name"]=Field("string","新名称"),
+            ["category"]=Field("string","类别"),
+            ["remarks"]=Field("string","备注"),
+            ["tags"]=Field("string","标签"),
+            ["year"]=Field("string","年度")
+        },["workspace","archive_id"]),
+        Tool("delete_party_archive","按 FolderId 将公司“党团建设”档案移入回收站；可使用 restore_trash 恢复。",new(){
+            ["workspace"]=Field("string","仅公司工作区",["company"]),
+            ["archive_id"]=Field("integer","档案 FolderId")
+        },["workspace","archive_id"]),
         Tool("list_archive_folders","列出公司业务档案 V2 根目录或指定 parent_id 下的直接子目录。",new(){
             ["workspace"]=Field("string","仅公司工作区",["company"]),
             ["parent_id"]=Field("integer","可选父目录 FolderId；省略则列出当前顶层目录")
@@ -91,6 +117,25 @@ static partial class McpLocal
     private static async Task<JsonNode> ExecuteArchiveAsync(HttpClient client,
         string workspace,string name,JsonElement args)
     {
+        // Dedicated party commands adapt to the canonical archive operations.
+        // No new data type, HTTP route or duplicate business logic.
+        string? partyAction=name switch
+        {
+            "list_party_archives"=>"list_archives",
+            "create_party_archive"=>"create_archive",
+            "update_party_archive"=>"update_archive",
+            "delete_party_archive"=>"delete_archive",
+            _=>null
+        };
+        if(partyAction is not null)
+        {
+            if(workspace!="company")
+                throw new McpKnownRejectionException("党团建设仅属于公司工作区。");
+            var canonical=JsonNode.Parse(args.GetRawText())!.AsObject();
+            canonical["section"]="party";
+            return await ExecuteArchiveAsync(client,workspace,partyAction,
+                JsonSerializer.SerializeToElement(canonical));
+        }
         switch(name)
         {
             case "list_archives":
