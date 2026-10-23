@@ -26,7 +26,7 @@ static partial class McpLocal
     [
         Tool("list_archives","列出当前工作区指定资料分类的 V2 档案 FolderId。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
-            ["section"]=Field("string","certificate、achievement；个人另有 academic")
+            ["section"]=Field("string","certificate、achievement、party（仅公司）；个人另有 academic")
         },["workspace","section"]),
         Tool("create_archive","创建 V2 档案；公司 achievement 必须指定有效业务目录 folder_id。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),

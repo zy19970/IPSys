@@ -60,6 +60,7 @@ ctx.__fixtures={
   archives:[
    {id:31,name:'资质证书甲',section:'certificate',year:'2025'},
    {id:32,name:'成果乙',section:'achievement',year:'2024'},
+   {id:33,name:'党团会议',section:'party',year:'2026'},
   ],
   folders:[{id:70,name:'申报与认定',parentId:null,position:1,isSystem:true}],
   files:[{linkId:5,fileId:501,version:1,ownerId:31,kind:'archive',section:'certificate',name:'证书扫描件.pdf',size:70}],
@@ -76,6 +77,15 @@ ctx.__fixtures={
 };
 
 run('ROOT=VaultStore.buildTree(Object.assign({ws:"company"},__fixtures));');
+assert.deepEqual(Array.from(run('catsOf("company")'),x=>x.id),
+ ['certificate','achievement','project','ip','general','party'],
+ 'company workspace must display six categories in stable order');
+assert.equal(run('findById("k:party").children[0].name'),'党团会议',
+ 'party records belong to their independent category');
+assert.equal(run('VaultStore.summary().find(c=>c.kind==="party").count'),1,
+ 'dashboard counts real party records, not mock placeholders');
+assert.equal(run('catsOf("personal").some(c=>c.id==="party")'),false,
+ 'personal workspace must not gain the company-only party category');
 
 const hits=[
  {kind:'project',id:1},

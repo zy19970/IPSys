@@ -246,6 +246,7 @@ function recordTransferOptions(node, move) {
       achievement:["company/achievement","personal/achievement","personal/academic"],
       academic:["company/achievement","personal/achievement","personal/academic"],
       certificate:[ws+"/certificate"],
+      party:["company/party"],
     };
     const options=(modules[section]||[]).filter(item =>
       item===ws+"/"+section || section!=="certificate");
@@ -254,7 +255,8 @@ function recordTransferOptions(node, move) {
         "personal/achievement":"个人 · 成果资料",
         "personal/academic":"个人 · 学术资料",
         "company/certificate":"公司 · 企业资质",
-        "personal/certificate":"个人 · 资质证书" })[item]||item,
+        "personal/certificate":"个人 · 资质证书",
+        "company/party":"公司 · 党团建设" })[item]||item,
     }));
   }
   return ["company","personal"].filter(w=>!move || kind==="contract" || w!==ws)

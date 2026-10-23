@@ -89,6 +89,7 @@ const LEDGER_COLS = {
   certificate: ARCHIVE_COLS,
   achievement: ARCHIVE_COLS,
   academic: ARCHIVE_COLS,
+  party: ARCHIVE_COLS,
   general: [
     NAME("资料名称"),
     { k: "remarks", t: "备注", w: "minmax(160px,1fr)", f: "sub" },

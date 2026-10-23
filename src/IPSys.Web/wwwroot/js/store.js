@@ -37,6 +37,7 @@ const WS_CATS = {
     { id: "project", label: "公司项目" },
     { id: "ip", label: "知识产权" },
     { id: "general", label: "综合资料" },
+    { id: "party", label: "党团建设" },
   ],
   personal: [
     { id: "certificate", label: "身份与资质" },
@@ -463,6 +464,7 @@ const VaultStore = {
       certificate: () => archiveRecordsOf("certificate"),
       achievement: () => archiveRecordsOf("achievement"),
       academic: () => archiveRecordsOf("academic"),
+      party: () => archiveRecordsOf("party"),
 
       project: () =>
         (projects || []).map((p) => {

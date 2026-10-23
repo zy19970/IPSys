@@ -36,7 +36,7 @@ static class SearchStore
         var contracts=NativeFolderStore.List(db,workspace,FolderKinds.Contract);
         var projectTitles=projects.ToDictionary(x=>x.Folder.Ref.Id,x=>x.Folder.Name);
         var ips=NativeFolderStore.List(db,workspace,FolderKinds.Ip);
-        var archiveSections=workspace=="company"?new[]{"certificate","achievement"}:
+        var archiveSections=workspace=="company"?new[]{"certificate","achievement","party"}:
             new[]{"certificate","achievement","academic"};
         var archive=archiveSections.SelectMany(section=>
             NativeArchiveStore.List(db,workspace,FolderKinds.Archive,section)).ToArray();

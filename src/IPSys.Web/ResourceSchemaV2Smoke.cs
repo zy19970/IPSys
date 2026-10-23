@@ -122,6 +122,14 @@ static class ResourceSchemaV2Smoke
                 Reject(db,$"UPDATE folders SET parent_id={child} WHERE id={linkFolder}",
                     "cycle detection");
 
+                var partyFolder=ExecuteId(db,
+                    "INSERT INTO folders(workspace,kind,section,name) VALUES('company','archive','party','党团建设资料')");
+                Check(partyFolder>0,"company party archive accepts standalone records");
+                Reject(db,"INSERT INTO folders(workspace,kind,section,name) VALUES('personal','archive','party','非法个人党团资料')",
+                    "party section is company-only");
+                Reject(db,$"INSERT INTO folders(workspace,kind,section,parent_id,name) VALUES('company','archive','party',{linkFolder},'非法党团子记录')",
+                    "party records do not enter achievement directories");
+                ResourceSchemaV2.EnsurePartyArchiveSection(db); // idempotent on new V2 vaults
                 fileId=ExecuteId(db,"INSERT INTO files(workspace,name) VALUES('company','原件.pdf')");
                 objectId=ExecuteId(db,
                     "INSERT INTO file_objects(workspace,state,expected_size) VALUES('company','writing',3)");

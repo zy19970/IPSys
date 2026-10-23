@@ -34,7 +34,7 @@ static class ResourceSchemaV2
               CHECK(kind!='archive_folder' OR
                 (workspace='company' AND section='achievement')),
               CHECK(kind!='archive' OR
-                (workspace='company' AND section IN ('certificate','achievement') OR
+                (workspace='company' AND section IN ('certificate','achievement','party') OR
                  workspace='personal' AND section IN ('certificate','achievement','academic'))),
               CHECK(parent_id IS NULL OR kind IN ('contract','archive_folder','archive')),
               CHECK(kind!='archive' OR section='achievement' OR parent_id IS NULL),
@@ -200,6 +200,71 @@ static class ResourceSchemaV2
             """;
         cmd.ExecuteNonQuery();
         tx.Commit();
+    }
+
+    // SQLite cannot extend a CHECK constraint in place. Existing V2 vaults
+    // retain their exact FolderIds, version history and encrypted file bytes.
+    public static void EnsurePartyArchiveSection(SqliteConnection db)
+    {
+        using var inspect=db.CreateCommand();
+        inspect.CommandText="SELECT sql FROM sqlite_master WHERE type='table' AND name='folders';";
+        string definition=inspect.ExecuteScalar() as string
+            ?? throw new IOException("资料库缺少文件夹表。");
+        const string before="workspace='company' AND section IN ('certificate','achievement')";
+        const string after="workspace='company' AND section IN ('certificate','achievement','party')";
+        if(definition.Contains(after,StringComparison.Ordinal))return;
+        if(!definition.Contains(before,StringComparison.Ordinal))
+            throw new IOException("资料库文件夹约束未知，拒绝自动更新。");
+
+        string replacement=definition.Replace("CREATE TABLE folders(",
+            "CREATE TABLE folders_party_upgrade(",StringComparison.OrdinalIgnoreCase)
+            .Replace(before,after,StringComparison.Ordinal);
+        if(!replacement.Contains("CREATE TABLE folders_party_upgrade(",
+                StringComparison.OrdinalIgnoreCase))
+            throw new IOException("资料库文件夹建表语句未知，拒绝自动更新。");
+
+        // Explicit indexes and triggers disappear when their table is dropped.
+        // Recreate the actual definitions from this vault after the table swap.
+        var dependentSql=new List<string>();
+        inspect.CommandText="""
+            SELECT sql FROM sqlite_master
+            WHERE tbl_name='folders' AND type IN ('index','trigger')
+              AND sql IS NOT NULL ORDER BY type,name;
+            """;
+        using(var reader=inspect.ExecuteReader())
+            while(reader.Read())dependentSql.Add(reader.GetString(0));
+
+        // The FK references from FileLinks and other tables keep targeting
+        // 'folders'. Only this connection is used while the vault opens.
+        using var pragma=db.CreateCommand();
+        pragma.CommandText="PRAGMA foreign_keys=OFF;";
+        pragma.ExecuteNonQuery();
+        try
+        {
+            using var tx=db.BeginTransaction();
+            using var cmd=db.CreateCommand();
+            cmd.Transaction=tx;
+            cmd.CommandText=replacement+";"+
+                "INSERT INTO folders_party_upgrade SELECT * FROM folders;"+
+                "DROP TABLE folders;"+
+                "ALTER TABLE folders_party_upgrade RENAME TO folders;";
+            cmd.ExecuteNonQuery();
+            foreach(string sql in dependentSql)
+            {
+                cmd.CommandText=sql;
+                cmd.ExecuteNonQuery();
+            }
+            cmd.CommandText="PRAGMA foreign_key_check;";
+            using(var check=cmd.ExecuteReader())
+                if(check.Read())
+                    throw new IOException("文件夹约束更新后的外键校验失败，操作已回滚。");
+            tx.Commit();
+        }
+        finally
+        {
+            pragma.CommandText="PRAGMA foreign_keys=ON;";
+            pragma.ExecuteNonQuery();
+        }
     }
 
     // Older V2 vaults created seven protected folders with is_system=1.

@@ -35,6 +35,15 @@ static class NativeArchiveUiHttpSmoke
         long certificate=await Add(client,"/api/v2/folders/company/archive",
             new {section="certificate",archive=new {
                 name=marker+"证书",remarks="档案页面"}});
+        long party=await Add(client,"/api/v2/folders/company/archive",
+            new {section="party",archive=new {
+                name=marker+"党团会议",year="2026",remarks="党团建设档案"}});
+        byte[] partyBytes=RandomNumberGenerator.GetBytes(97);
+        await Upload(client,$"/api/v2/files/company/upload?folderId={party}",
+            partyBytes,marker+"党团材料.pdf");
+        using(var blocked=await client.PostAsJsonAsync(
+            "/api/v2/folders/personal/archive",new{section="party",archive=new{name="越界党团"}}))
+            Assert(!blocked.IsSuccessStatusCode,"party section must be company-only");
         long general=await Add(client,"/api/v2/folders/company/general",
             new {general=new{title=marker+"综合资料"}});
         var baseSnapshot=await client.GetFromJsonAsync<JsonElement>(
@@ -44,6 +53,13 @@ static class NativeArchiveUiHttpSmoke
                baseSnapshot.GetProperty("general").EnumerateArray().Any(x=>
                 x.GetProperty("id").GetInt64()==general),
                "current archive/general browser reads same native FolderId as CRUD");
+        Assert(baseSnapshot.GetProperty("archives").EnumerateArray().Any(x=>
+                x.GetProperty("id").GetInt64()==party &&
+                x.GetProperty("section").GetString()=="party") &&
+               baseSnapshot.GetProperty("files").EnumerateArray().Any(x=>
+                x.GetProperty("ownerId").GetInt64()==party &&
+                x.GetProperty("section").GetString()=="party"),
+               "company party record and original must appear in Explorer snapshot");
         var roots=baseSnapshot.GetProperty("folders");
         long root=roots.EnumerateArray().First(x=>x.GetProperty("name").GetString()
             =="申报与认定").GetProperty("id").GetInt64();

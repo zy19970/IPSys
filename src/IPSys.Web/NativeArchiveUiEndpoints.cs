@@ -6,7 +6,7 @@ using Microsoft.Data.Sqlite;
 static class NativeArchiveUiEndpoints
 {
     private static string[] Sections(string w)=>w=="company"?
-        ["certificate","achievement"]:
+        ["certificate","achievement","party"]:
         ["certificate","achievement","academic"];
 
     public static void Map(WebApplication app,Func<string,int,IResult> fail)

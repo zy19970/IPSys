@@ -46,6 +46,7 @@ const ICON_PATHS = {
   archive: '<rect x="4.2" y="4.6" width="15.6" height="4.4" rx="1"/><path d="M5.4 9v9.4a1.2 1.2 0 0 0 1.2 1.2h10.8a1.2 1.2 0 0 0 1.2-1.2V9"/><path d="M10 12.4h4"/>',
   brief: '<rect x="3.6" y="7.4" width="16.8" height="12.1" rx="2"/><path d="M9 7.4V5.6a1.4 1.4 0 0 1 1.4-1.4h3.2A1.4 1.4 0 0 1 15 5.6v1.8"/><path d="M3.8 12.5h16.4"/>',
   cert: '<circle cx="12" cy="9.2" r="4.7"/><path d="M9.3 13.1 8 20.4l4-2.3 4 2.3-1.3-7.3"/>',
+  flag: '<path d="M5.4 20.5V4.1"/><path d="M5.7 5.3c2.9-1.8 5.5 1.8 8.4 0 1.7-1 3.2-.7 4.5-.1v9.1c-1.6-.8-3.2-1.1-4.9 0-2.8 1.6-5.5-1.9-8 .1"/>',
   shield: '<path d="M12 3.6 18.9 6v6.3c0 4-3 7.1-6.9 8.2-3.9-1.1-6.9-4.2-6.9-8.2V6z"/><path d="M9.3 12.1l2 2 3.5-3.8"/>',
   trophy: '<path d="M8.2 4.4h7.6v4.1a3.8 3.8 0 0 1-7.6 0z"/><path d="M8.2 5.9H6a1.9 1.9 0 0 0 1.9 3.2M15.8 5.9H18a1.9 1.9 0 0 1-1.9 3.2"/><path d="M12 12.3v3.3"/><path d="M8.9 19.6h6.2"/><path d="M10.2 15.6h3.6l.6 4H9.6z"/>',
   book: '<path d="M5.2 5.4a1.7 1.7 0 0 1 1.7-1.7h11.9v14.8H6.9a1.7 1.7 0 0 0-1.7 1.7z"/><path d="M5.2 18.9a1.7 1.7 0 0 1 1.7-1.7h11.9"/><path d="M8.8 7.6h6.2M8.8 10.6h4.2"/>',
@@ -161,6 +162,7 @@ const CAT_TYPES = {
   academic:    { glyph: "book",    color: "#0F7B7B", soft: "#E3F4F4" },
   ip:          { glyph: "shield",  color: "#2F6B4F", soft: "#E7F3EC" },
   general:     { glyph: "archive", color: "#5B6570", soft: "#EFF1F3" },
+  party:       { glyph: "flag",    color: "#C42B31", soft: "#FCEBEC" },
 };
 
 function hasCat(section) {

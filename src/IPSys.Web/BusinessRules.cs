@@ -147,6 +147,7 @@ static class ArchiveRules
         ("company","certificate") => "company_certificate",
         ("personal","certificate") => "personal_certificate",
         ("company","achievement") => "research_output",
+        ("company","party") => "company_party",
         ("personal","achievement") => "research_output",
         ("personal","academic") => "research_output",
         _ => null
