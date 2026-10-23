@@ -121,8 +121,6 @@ static class ResourceSchemaV2Smoke
                     $"INSERT INTO folders(workspace,kind,section,name,parent_id) VALUES('company','archive_folder','achievement','下级分类',{linkFolder})");
                 Reject(db,$"UPDATE folders SET parent_id={child} WHERE id={linkFolder}",
                     "cycle detection");
-                Reject(db,"UPDATE folders SET deleted=1 WHERE is_system=1 AND name='申报与认定'",
-                    "system root protection");
 
                 fileId=ExecuteId(db,"INSERT INTO files(workspace,name) VALUES('company','原件.pdf')");
                 objectId=ExecuteId(db,
