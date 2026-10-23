@@ -15,11 +15,13 @@
 | [第三批实机任务书](./IPSys_Explorer_Phase3_Real_Windows_Agent_2026-10-23.md) | 大文件保存与跨区物理隔离 |
 | [ZIP64 物理生成验收](./IPSys_Explorer_ZIP64_Generation_Only_2026-10-23.md) | 已使用的 ZIP64 生成测试操作说明 |
 
+历史执行过的测试方案还有 [归档测试说明](./archive/)，实际保存核验工具位于 [tools/](./tools/)。
+
 ## 自动化源码为什么保留原位置
 
 `src/IPSys.Web/tests/` 包含直接读取 Explorer 源码、项目文件和内嵌资源的 Node 冒烟测试，和 `src/IPSys.Web/*Smoke.cs` 内建 C# smoke 属于源码构建验证，暂时**仍随产品代码存放**。统一测试入口在此，但不为了移动目录而改变业务测试的路径计算和项目自动编译规则。
 
-`.github/workflows/web-windows.yml` 调用 `tests/retest-v2-2026-10-22/scripts/` 的 Edge/HTTP 复测脚本。移动后已经同步路径；原来 `src/IPSys.Web/tests/` 的相对读取逻辑不变。`tools/qa/Verify-ExplorerExports.ps1` 是真实保存核验工具，目前仍由工作流从原位置调用。
+`.github/workflows/web-windows.yml` 调用 `tests/retest-v2-2026-10-22/scripts/` 的 Edge/HTTP 复测脚本。移动后已经同步路径；原来 `src/IPSys.Web/tests/` 的相对读取逻辑不变。[tests/tools/Verify-ExplorerExports.ps1](./tools/Verify-ExplorerExports.ps1) 是真实保存核验工具，已集中并同步 Windows CI。
 
 ## 使用约定
 

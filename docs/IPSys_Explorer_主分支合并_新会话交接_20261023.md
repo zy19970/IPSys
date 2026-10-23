@@ -15,7 +15,7 @@
 本交接文件自身提交后，源分支 HEAD **会再次前进一个仅文档提交**；新会话必须获取实时 HEAD，不能把上述 SHA 当成最后待合并 SHA。
 
 1. **先读取** <https://github.com/zy19970/AIGT-templates/blob/main/AGENTS.md> 和 <https://github.com/zy19970/AIGT-templates/blob/main/AI_RULES/GIT_OPERATIONS.md>，遵守 Git 原子提交、通知、禁止强推和不覆盖用户既有工作等规定；按规则读取 `main` 的完整提交历史及提交说明。
-2. 读取**本文件**、[合并前审查报告](./IPSys_Explorer_PreMerge_Readiness_2026-10-23.md)，必要时核对 [第三批 Agent 报告](./agent-validation/phase3-real-save-20261023-a18b47b/PHASE3_REPORT.md) 和现行 `.github/workflows/web-windows.yml`。
+2. 读取**本文件**、[合并前审查报告](../tests/IPSys_Explorer_PreMerge_Readiness_2026-10-23.md)，必要时核对 [第三批 Agent 报告](../tests/agent-validation/phase3-real-save-20261023-a18b47b/PHASE3_REPORT.md) 和现行 `.github/workflows/web-windows.yml`。
 3. 读取 GitHub **最新**的两个分支 SHA、`compare/main...work/onedrive-file-manager`、保护规则或可能阻挡推送的状态、当前 HEAD 相应 CI。检查是否有新增提交、合并中状态或未完成工作。
 4. 若 `main` 仍是开发分支祖先、关键 CI 通过且变更审查无新的 P0 风险，则在用户新会话**明确提出开始合并**时，采用**非强制、受 HEAD 比对保护的快进方式**把 `main` 前进到开发分支 HEAD，保留所有历史提交；不要另建临时分支、做 squash/rebase 或创建 PR，除非直接合并受平台规则限制或用户明确改变流程。
 5. 合并后读取 GitHub 最新 refs，验证 `main` 与原目标开发分支处在期望提交、无遗漏分叉，再审查合并后 `main` Windows Actions 的构建与 SQLCipher/Edge/MCP/Node 回归；将是否成功、最终 SHA、运行链接及未解决的真实问题报告给用户。
@@ -105,11 +105,11 @@
 
 ## 6. 重要证据入口（优先读这些，不需重读数百份文件）
 
-1. [合并前审查与两项收敛](./IPSys_Explorer_PreMerge_Readiness_2026-10-23.md)。
-2. [第三批 Windows 实机测试原始报告](./agent-validation/phase3-real-save-20261023-a18b47b/PHASE3_REPORT.md) 与 [原始证据索引](./agent-validation/phase3-real-save-20261023-a18b47b/EVIDENCE_INDEX.md)。
-3. [第三批 Agent 实机任务书](./IPSys_Explorer_Phase3_Real_Windows_Agent_2026-10-23.md)。
-4. [ZIP64 物理归档生成与本机留存指南](./IPSys_Explorer_ZIP64_Generation_Only_2026-10-23.md)。
-5. [第二阶段完整性计划](./EXPLORER_PHASE2_FUNCTIONAL_COMPLETENESS_2026-10-22.md)、[132 项原始验收任务书](./IPSys_Explorer_Phase2_Agent_Complete_Retest.md) 与 `docs/agent-validation/phase2-final-20261023-0112-f5d206a/` 原始结果（只作历史，不自动改写状态）。
+1. [合并前审查与两项收敛](../tests/IPSys_Explorer_PreMerge_Readiness_2026-10-23.md)。
+2. [第三批 Windows 实机测试原始报告](../tests/agent-validation/phase3-real-save-20261023-a18b47b/PHASE3_REPORT.md) 与 [原始证据索引](../tests/agent-validation/phase3-real-save-20261023-a18b47b/EVIDENCE_INDEX.md)。
+3. [第三批 Agent 实机任务书](../tests/IPSys_Explorer_Phase3_Real_Windows_Agent_2026-10-23.md)。
+4. [ZIP64 物理归档生成与本机留存指南](../tests/IPSys_Explorer_ZIP64_Generation_Only_2026-10-23.md)。
+5. [第二阶段完整性计划](./EXPLORER_PHASE2_FUNCTIONAL_COMPLETENESS_2026-10-22.md)、[132 项原始验收任务书](../tests/IPSys_Explorer_Phase2_Agent_Complete_Retest.md) 与 `docs/agent-validation/phase2-final-20261023-0112-f5d206a/` 原始结果（只作历史，不自动改写状态）。
 6. CI: [大库 VACUUM 绿灯](https://github.com/zy19970/IPSys/actions/runs/39943364663)，[ZIP64 物理生成绿灯](https://github.com/zy19970/IPSys/actions/runs/39944440866)。
 7. 原有 `HANDOFF.md` 是较早阶段文档，包含 “Agent 尚未验收” 和旧前端路径等**历史表述**，不能优先于此文件和实时 Git 状态。
 
