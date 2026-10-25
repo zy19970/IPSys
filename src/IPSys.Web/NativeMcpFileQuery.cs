@@ -61,10 +61,18 @@ static class NativeMcpFileQuery
         return parts.Distinct(StringComparer.Ordinal).ToArray();
     }
 
+    // Align SQL-only filtering with the Unicode whitespace characters treated
+    // as blank by .NET string.IsNullOrWhiteSpace, without adding a full-text
+    // index or scanning through a separate per-file RPC.
+    private static readonly int[] WhitespaceCodes=[
+        9,10,11,12,13,32,133,160,5760,
+        8192,8193,8194,8195,8196,8197,8198,8199,8200,8201,8202,
+        8232,8233,8239,8287,12288
+    ];
+    private static readonly string WhitespaceSql=
+        string.Join("||",WhitespaceCodes.Select(x=>"char("+x+")"));
     private static string EmptySql(string field)=>
-        "trim(COALESCE(file."+field+
-        ",''), ' '||char(9)||char(10)||char(13)||char(11)||char(12)"+
-        "||char(160)||char(12288)||char(8239)) = ''";
+        "trim(COALESCE(file."+field+",''), "+WhitespaceSql+") = ''";
 
     public static object Read(SqliteConnection db,string workspace,
         string? kind,string? name,long ownerId,int offset,int limit,bool paged,
