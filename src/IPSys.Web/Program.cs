@@ -135,6 +135,7 @@ if (smoke)
     {
         FolderModelSmoke.Run();
         ResourceSchemaV2Smoke.Run();
+        NativeMcpFileQuerySmoke.Run();
         NativeFileStoreSmoke.Run();
         RecyclePurgeSmoke.Run();
         VaultCompactSmoke.Run();
