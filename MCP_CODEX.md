@@ -1,5 +1,17 @@
 # IPSys 本机 Codex MCP
 
+## 第三阶段：设置中的 Agent 规范管理（源码已实现，CI/真机待验）
+
+在 IPSys 的「设置 → Agent 工作规范」中可按 index、search、upload、metadata 浏览。index 是不可编辑的轻量目录；其余三篇允许编辑内容、预览当前有效文本、单篇恢复内置默认、导出或导入用户覆盖配置。默认规范与 upload/metadata 共用的文件读取和权限安全规则仍随 EXE 内嵌且不能被覆盖。
+
+专项覆盖保存在当前 Windows 用户的 LocalApplicationData/IPSys/agent-guidance.json，**不是任何业务资料库文件**。浏览器必须解锁资料库并携带现有会话 token 才能使用管理 API；MCP 仍需要单独手动启用授权。POST/PUT 写配置不产生 FileId、LinkId 或 FileVersion，也不修改 SQLCipher 业务数据。配置按同用户范围生效，切换公司/个人工作区或资料库时不变；不同 Windows 用户彼此独立。配置属于用户本机文本文件，建议不要存密码、密钥、令牌或隐私全文。
+
+接口为 GET /api/agent-guidance（目录）、GET /api/agent-guidance/{topic}（含当前有效正文、原始编辑正文和版本）、PUT /api/agent-guidance/{topic}（content 和 expectedRevision）、POST /api/agent-guidance/{topic}/restore（expectedRevision）、GET /api/agent-guidance/export、POST /api/agent-guidance/import（config 和 expectedRevision）。仅可覆盖 search/upload/metadata。保存、恢复、导入都检查配置版本，另一个标签页先更新会得到 409，应刷新后检查再操作。单篇规范不超过 48 KiB，配置文件不超过 256 KiB。
+
+导出的 JSON 为 schemaVersion=1 和 overrides 映射（仅含用户自定义正文），可在另一台机器/用户账户导入；导入会整体替换目标用户的三个专项覆盖，建议先备份原有配置。默认规范和共享安全附录无须导出，始终以目标 EXE 的内置版本为准。正在运行的 MCP tools/call、prompts/get 每次读取当前有效内容并返回内容派生版本；initialize.instructions 保持短内置总入口，已有 Agent 若持有旧正文，需要重新调用相应规范或重连，无法强制刷新外部模型缓存。
+
+本阶段已提交自动化测试：独立用户配置持久化/版本冲突/坏文件拒绝、授权 HTTP 管理 API、MCP 与 Prompts 同源读取、并发一致性、浏览器交互，以及扩展 SQLCipher 缺项筛选压力样本。**Windows CI 和真实 Codex/Windows 浏览器交互尚须以对应提交的执行证据验收，不把自动测试源码视为已通过。**
+
 ## Agent 分层规范读取（2026-10-25，第二阶段源码已实施，CI/本机 Agent 待核验）
 
 **标准 MCP Prompts：** 在协议 `2025-06-18` 的 initialize.capabilities 声明 `prompts: { listChanged: false }`；`prompts/list` 列出内置 `index/search/upload/metadata` 四个名称和简短摘要，不含全文。客户端 `prompts/get(name="search")` 等按需获得一条 role=user / type=text 的规范消息；正文与 `get_agent_guidance` 共用内置资源。目录 metadata 可在未授权时列出，但 prompts/get 的正文必须通过同用户命名管道、已解锁数据库和手动启用的 MCP 授权。Prompts 是可选择的模板，不能保证每款 Agent 自动加载。
