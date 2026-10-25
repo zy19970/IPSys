@@ -470,6 +470,7 @@ function openSettings() {
   if (!mask) return;
   paintSettings();
   mask.classList.add("show");
+  void loadAgentGuidance();
 }
 
 function closeSettings() {
@@ -842,6 +843,205 @@ function bindSettings() {
     Prefs.set("detail", on ? "1" : "0");
     Drive.state.detailOpen = on;
     Drive.renderDetail();
+  });
+  bindAgentGuidanceSettings();
+}
+
+/* ---------------- 设置 · Agent 工作规范 ---------------- */
+/* Never keep localStorage copies of full prompts; only the authorized host
+   owns persisted user overrides shared by browser and MCP sessions. */
+const agentGuideUi = { topic: "index", data: null, serial: 0, loading: false };
+
+function agentGuideIsDirty() {
+  const original = agentGuideUi.data?.editableContent;
+  return agentGuideUi.topic !== "index" && typeof original === "string" &&
+    ($("#setAgentEditor")?.value || "") !== original;
+}
+
+function paintAgentGuideUi() {
+  const data = agentGuideUi.data;
+  const editor = $("#setAgentEditor");
+  const meta = $("#setAgentMeta");
+  const topic = $("#setAgentTopic");
+  const save = $("#setAgentSave");
+  const restore = $("#setAgentRestore");
+  if (!editor || !meta || !topic || !save || !restore) return;
+  const editable = agentGuideUi.topic !== "index" && !!data && !agentGuideUi.loading;
+  topic.value = agentGuideUi.topic;
+  editor.disabled = !editable;
+  save.disabled = !editable || !agentGuideIsDirty();
+  restore.disabled = !editable || data.source !== "user_override";
+  if (data) {
+    meta.textContent = (data.title || agentGuideUi.topic) +
+      " · " + (data.source === "user_override" ? "用户覆盖" : "内置默认") +
+      " · 版本 " + (data.version || "—") +
+      " · 更新 " + (data.updatedAt || "—");
+  } else {
+    meta.textContent = agentGuideUi.loading ? "正在读取规范…" : "尚未加载";
+  }
+}
+
+async function loadAgentGuidance(topic = agentGuideUi.topic) {
+  const serial = ++agentGuideUi.serial;
+  agentGuideUi.loading = true;
+  agentGuideUi.topic = topic;
+  agentGuideUi.data = null;
+  const editor = $("#setAgentEditor");
+  const preview = $("#setAgentPreviewText");
+  if (editor) editor.value = "";
+  if (preview) preview.hidden = true;
+  paintAgentGuideUi();
+  const token = VaultStore.token;
+  try {
+    const detail = await VaultStore.getJson("/api/agent-guidance/" + encodeURIComponent(topic));
+    if (serial !== agentGuideUi.serial || token !== VaultStore.token) return;
+    agentGuideUi.data = detail;
+    if (editor) editor.value = topic === "index" ? "" : (detail.editableContent || "");
+  } catch (e) {
+    if (serial === agentGuideUi.serial) {
+      toast("读取 Agent 规范失败：" + e.message, { tone: "error", ms: 6500 });
+    }
+  } finally {
+    if (serial === agentGuideUi.serial) {
+      agentGuideUi.loading = false;
+      paintAgentGuideUi();
+    }
+  }
+}
+
+async function saveAgentGuidance() {
+  const data = agentGuideUi.data;
+  if (!data || !agentGuideIsDirty() || agentGuideUi.loading) return;
+  const topic = agentGuideUi.topic;
+  const editor = $("#setAgentEditor");
+  const content = editor.value;
+  agentGuideUi.loading = true;
+  paintAgentGuideUi();
+  try {
+    const res = await VaultStore.api("/api/agent-guidance/" + encodeURIComponent(topic), {
+      method: "PUT", json: { content, expectedRevision: data.revision },
+    });
+    agentGuideUi.data = await res.json();
+    editor.value = agentGuideUi.data.editableContent || "";
+    $("#setAgentPreviewText").hidden = true;
+    toast("Agent 规范已保存，新工具读取立即获取有效版本");
+  } catch (e) {
+    toast("保存规范失败：" + e.message, { tone:"error", ms:8000 });
+  } finally {
+    agentGuideUi.loading = false;
+    paintAgentGuideUi();
+  }
+}
+
+async function restoreAgentGuidance() {
+  const data = agentGuideUi.data;
+  if (!data || data.source !== "user_override" || agentGuideUi.loading) return;
+  const topic = agentGuideUi.topic;
+  const ok = await askConfirm({
+    title:"恢复内置规范",
+    text:"恢复「" + (data.title || topic) + "」的内置正文？仅删除此专项的用户覆盖，其他专项和资料库不受影响。",
+    okText:"恢复默认",
+  });
+  if (!ok) return;
+  agentGuideUi.loading = true;
+  paintAgentGuideUi();
+  try {
+    const result = await VaultStore.api(
+      "/api/agent-guidance/" + encodeURIComponent(topic) + "/restore", {
+        method:"POST", json:{ expectedRevision:data.revision },
+      });
+    agentGuideUi.data = await result.json();
+    $("#setAgentEditor").value = agentGuideUi.data.editableContent || "";
+    $("#setAgentPreviewText").hidden = true;
+    toast("已恢复内置规范");
+  } catch(e) {
+    toast("恢复规范失败：" + e.message, {tone:"error",ms:8000});
+  } finally {
+    agentGuideUi.loading = false;
+    paintAgentGuideUi();
+  }
+}
+
+function previewAgentGuidance() {
+  const detail = agentGuideUi.data;
+  const box = $("#setAgentPreviewText");
+  if (!detail || !box) return;
+  if (!box.hidden) { box.hidden = true; return; }
+  box.textContent = agentGuideUi.topic === "index"
+    ? (detail.entries || []).map(x =>
+        x.id + " — " + x.title + "\n" + x.summary + "\n版本：" + x.version).join("\n\n")
+    : (detail.content || "");
+  box.hidden = false;
+}
+
+async function exportAgentGuidance() {
+  try {
+    const data = await VaultStore.getJson("/api/agent-guidance/export");
+    const bytes = new Blob([JSON.stringify(data,null,2)],{type:"application/json;charset=utf-8"});
+    const url = URL.createObjectURL(bytes);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "IPSys-Agent-guidance.json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url),1000);
+    toast("已导出当前用户的专项覆盖配置");
+  } catch(e) {
+    toast("导出配置失败：" + e.message, {tone:"error",ms:6500});
+  }
+}
+
+async function importAgentGuidance(file) {
+  if (!file) return;
+  if (file.size > 256 * 1024) {
+    toast("配置文件不能超过 256 KiB", {tone:"error"});
+    return;
+  }
+  let config;
+  try { config = JSON.parse(await file.text()); }
+  catch { toast("导入内容不是有效的 JSON", {tone:"error"}); return; }
+  const ok = await askConfirm({
+    title:"导入 Agent 规范",
+    text:"将用这份配置整体替换当前 Windows 用户的专项覆盖。建议先导出备份；不会修改任何资料库。",
+    okText:"确认导入",
+  });
+  if (!ok) return;
+  try {
+    const existing = await VaultStore.getJson("/api/agent-guidance/export");
+    await VaultStore.api("/api/agent-guidance/import", {
+      method:"POST", json:{ config,expectedRevision:existing.revision },
+    });
+    toast("导入完成，新读取立即生效；已连接的 Agent 可主动刷新规范");
+    await loadAgentGuidance();
+  } catch(e) {
+    toast("导入配置失败：" + e.message, {tone:"error",ms:8000});
+  }
+}
+
+function bindAgentGuidanceSettings() {
+  $("#setAgentTopic")?.addEventListener("change",async (e) => {
+    const next = e.target.value;
+    if (agentGuideIsDirty()) {
+      const ok = await askConfirm({
+        title:"切换规范",
+        text:"当前编辑尚未保存，是否放弃这些修改并切换？",
+        okText:"放弃并切换",
+      });
+      if (!ok) { e.target.value = agentGuideUi.topic; return; }
+    }
+    void loadAgentGuidance(next);
+  });
+  $("#setAgentEditor")?.addEventListener("input", paintAgentGuideUi);
+  $("#setAgentSave")?.addEventListener("click", () => void saveAgentGuidance());
+  $("#setAgentRestore")?.addEventListener("click", () => void restoreAgentGuidance());
+  $("#setAgentPreview")?.addEventListener("click", previewAgentGuidance);
+  $("#setAgentExport")?.addEventListener("click", () => void exportAgentGuidance());
+  $("#setAgentImport")?.addEventListener("click", () => $("#setAgentImportFile")?.click());
+  $("#setAgentImportFile")?.addEventListener("change", (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    void importAgentGuidance(file);
   });
 }
 
