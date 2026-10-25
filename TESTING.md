@@ -6,6 +6,12 @@
 
 将“源码已实现”“自动 Windows CI 通过”“本地 Agent 实际执行”“用户人工反馈通过”“未执行/阻塞/失败”分别标记，并给出对应 SHA。任何一次旧报告中的 FAIL/BLOCKED 都是当时的真实记录，后续修复不得改写其原文；旧版本失败也不等于当前产品未修复。人工验证无截图、SHA 或独立解包日志的，不虚构证据。
 
+## Agent 分层规范第三阶段自动回归（执行状态待取证）
+
+宿主 --smoke 对 AgentGuidanceStore 使用独立临时配置文件，不修改当前用户正式 LocalAppData 配置；执行 AgentGuidanceStoreSmoke 覆盖默认、覆盖持久化、导入导出、版本冲突、根规则不可编辑、共享文件阅读规则保持等。WebSmoke 中的 AgentGuidanceHttpSmoke 验证浏览器会话鉴权、HTTP 编辑/恢复/导入与 MCP/Prompts 实时同源、并行读取一致性；Node agent-guidance-ui-smoke 检查设置控件和真实 JS 交互。NativeMcpFileQuerySmoke 追加 350 条缺项元数据并报告按 FileId 去重和分页查询耗时。
+
+需以当前源码 SHA 的 Windows CI / SQLCipher、MCP stdio、Node/Explorer、Release 编译及真实 Codex 实机报告分别确认通过。测试文件存在不等于运行通过；本地实测不得操作用户真实资料库。
+
 ## 主分支 Windows CI
 
 主工作流 `.github/workflows/web-windows.yml`，产品源码、Explorer 前端及关联脚本改动触发 Windows 托管 runner。包括 Debug 编译和嵌入前端检查、Release 单 EXE、.NET 8 运行时前提、MCP stdio（现行源码 64 工具；最后一次成功 CI 属旧 63 工具基线）、Node/Explorer 交互回归、Edge/HTTP 真实浏览器回归、SQLCipher/HTTP 及业务事务检查。最近业务提交 `8c1ca9a` 对应 [Windows CI #40162144248](https://github.com/zy19970/IPSys/actions/runs/40162144248) 全部必运行步骤通过；合并点 `8227d2c` 的 [历史主分支 CI #39947975625](https://github.com/zy19970/IPSys/actions/runs/39947975625) 也已通过。
