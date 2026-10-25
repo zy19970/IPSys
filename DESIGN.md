@@ -30,6 +30,8 @@
 
 正式业务网页、MCP、固定 Excel、统一搜索、回收站、PDF 预览与导出统一 V2 Folder/File/Link/Version 身份。已有历史 `--smoke` 兼容断言不表示正式程序继续开放旧 V1 业务接口。MCP 的 64 个工具、同用户授权和会话撤销规则独立于 Explorer 外观。
 
+Agent 工作规范配置位于当前 Windows 用户的 LocalApplicationData/IPSys/agent-guidance.json，独立于数据库与前端 localStorage；内置资源 + 用户覆盖由 AgentGuidance/AgentGuidanceStore 为同一权威来源。GET/PUT/POST 管理接口必须通过现有浏览器会话授权，MCP 工具读取还需本机授权；配置版本与正文哈希供客户端识别旧内容。第三阶段代码已提交，动态 CI/本机验收独立跟进。
+
 上传/下载为流式，单原件代码容量保护为 **8 GiB**；包含同内容暂存、确认、取消、版本追加和跨区任务绑定。可恢复性、并发文件任务锁、真正的任务成功终态、失败可见以及删除事务回滚为硬约束。回收站永久删除按最后引用关系回收物理对象，删除后 SQLCipher 文件体积不保证立即缩小；设置中的压缩以 VACUUM 实际完成且 `integrity_check` 通过为判据，不能展示伪造的实时百分比。
 
 ZIP 与文件夹式导出支持 ZIP64；正式 ZIP 生成代码在 `src/IPSys.Web/wwwroot/export.js`。产品 Node 生成器已写出真实超过 4 GiB 的 ZIP64 并验证物理结构；专项 CI 使用可重复流/写入适配层，**不等同于第三方解包器或系统保存窗口的自动端到端验证**。用户另行确认本机人工验收通过，详见 [TESTING.md](./TESTING.md)。
