@@ -139,6 +139,33 @@ static class NativeMcpFileQuerySmoke
             }
             Check(Page("description,tags").Items.All(x=>x.MissingFields!=null),
                 "response contains the complete missing-fields list");
+            // A few hundred metadata-only links measure bounded DB-side
+            // filtration, avoiding one detail request per FileId.
+            for(int i=0;i<350;i++)
+            {
+                long file=File("company","批次材料-"+i.ToString("D4")+".pdf",
+                    null,null,null,null);
+                Link("company",p1,file);
+            }
+            var watch=System.Diagnostics.Stopwatch.StartNew();
+            var observed=new HashSet<long>();
+            int next=0,pages=0;
+            while(true)
+            {
+                var batch=Page("all",offset:next,limit:80);
+                pages++;
+                foreach(var item in batch.Items)
+                    Check(observed.Add(item.FileId),"large-page duplicate FileId");
+                if(!batch.HasMore)break;
+                next=batch.NextOffset!.Value;
+                Check(pages<30,"large-file query never terminates");
+            }
+            watch.Stop();
+            Check(observed.Count==354 && pages>=5,
+                "large SQLCipher missing-filter walk covers all qualifying FileIds");
+            Console.WriteLine("MCP missing-field SQL filter: "+observed.Count+
+                " distinct FileIds / "+pages+" pages in "+
+                watch.ElapsedMilliseconds+" ms (disposable fixture)");
             using var check=db.CreateCommand();
             check.CommandText="""
                 SELECT
