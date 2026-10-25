@@ -26,6 +26,12 @@
     <EmbeddedResource Include="wwwroot\favicon.ico" LogicalName="IPSys.Web.Embedded.favicon.ico" />
     <!-- Keep the same icon available as an in-assembly WinForms resource. -->
     <EmbeddedResource Include="assets\IPSys.ico" LogicalName="IPSys.Web.AppIcon.ico" />
+    <!-- Agent guidance is shipped with the EXE; no loose files or database dependency. -->
+    <EmbeddedResource Include="AgentGuidance\index.md" LogicalName="IPSys.Web.AgentGuidance.index.md" />
+    <EmbeddedResource Include="AgentGuidance\search.md" LogicalName="IPSys.Web.AgentGuidance.search.md" />
+    <EmbeddedResource Include="AgentGuidance\upload.md" LogicalName="IPSys.Web.AgentGuidance.upload.md" />
+    <EmbeddedResource Include="AgentGuidance\metadata.md" LogicalName="IPSys.Web.AgentGuidance.metadata.md" />
+    <EmbeddedResource Include="AgentGuidance\file-reading.md" LogicalName="IPSys.Web.AgentGuidance.file-reading.md" />
     <!-- Embed HTML/CSS/JS into the executable, no external wwwroot folder. -->
     <Content Remove="wwwroot\**\*" />
     <None Remove="wwwroot\**\*" />
