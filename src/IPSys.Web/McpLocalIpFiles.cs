@@ -48,9 +48,27 @@ static partial class McpLocal
         string kind=ReadString(args,"kind"),name=ReadString(args,"name");
         long ownerId=args.TryGetProperty("owner_id",out var owner)&&
             owner.ValueKind!=JsonValueKind.Null?ReadId(args,"owner_id"):0;
+        string missing="";
+        if(args.TryGetProperty("missing_fields",out var requested)&&
+            requested.ValueKind!=JsonValueKind.Null)
+        {
+            if(requested.ValueKind==JsonValueKind.String)
+                missing=requested.GetString()??"";
+            else if(requested.ValueKind==JsonValueKind.Array)
+            {
+                string[] chosen=requested.EnumerateArray()
+                    .Select(x=>x.GetString()??"").ToArray();
+                if(chosen.Length==0)throw new IOException("missing_fields 数组不能为空。");
+                missing=string.Join(",",chosen);
+            }
+            else throw new IOException("missing_fields 必须为 all、字段名或字段数组。");
+        }
+        string missingMode=ReadString(args,"missing_mode");
         var query=$"?paged=true&offset={offset}&limit={limit}&ownerId={ownerId}"+
             "&kind="+Uri.EscapeDataString(kind)+
-            "&name="+Uri.EscapeDataString(name);
+            "&name="+Uri.EscapeDataString(name)+
+            "&missingFields="+Uri.EscapeDataString(missing)+
+            "&missingMode="+Uri.EscapeDataString(missingMode);
         return await RequestAsync(client,HttpMethod.Get,
             "/api/v2/mcp/files/"+workspace+query);
     }
