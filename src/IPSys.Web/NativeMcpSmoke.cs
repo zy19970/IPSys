@@ -119,14 +119,14 @@ static class NativeMcpSmoke
             "omitted topic defaults to index");
         foreach(string topic in new[]{"search","upload","metadata"})
         {
-            JsonNode item=await Guidance(new {topic});
-            string body=item["content"]?.GetValue<string>()??"";
-            Check(item["id"]?.GetValue<string>()==topic &&
-                  item["source"]?.GetValue<string>()=="builtin" &&
-                  !string.IsNullOrWhiteSpace(item["version"]?.GetValue<string>()) &&
-                  !string.IsNullOrWhiteSpace(item["updatedAt"]?.GetValue<string>()) &&
-                  item["guidanceOnly"]?.GetValue<bool>()==true &&
-                  item["entries"]==null && body.Length>200,
+            JsonNode guidanceItem=await Guidance(new {topic});
+            string body=guidanceItem["content"]?.GetValue<string>()??"";
+            Check(guidanceItem["id"]?.GetValue<string>()==topic &&
+                  guidanceItem["source"]?.GetValue<string>()=="builtin" &&
+                  !string.IsNullOrWhiteSpace(guidanceItem["version"]?.GetValue<string>()) &&
+                  !string.IsNullOrWhiteSpace(guidanceItem["updatedAt"]?.GetValue<string>()) &&
+                  guidanceItem["guidanceOnly"]?.GetValue<bool>()==true &&
+                  guidanceItem["entries"]==null && body.Length>200,
                 "independent topic metadata and full content: "+topic);
             Check(topic switch {
                 "search"=>body.Contains("search_records")&&!body.Contains("# upload："),
