@@ -8,7 +8,7 @@
 
 ## 主分支 Windows CI
 
-主工作流 `.github/workflows/web-windows.yml`，产品源码、Explorer 前端及关联脚本改动触发 Windows 托管 runner。包括 Debug 编译和嵌入前端检查、Release 单 EXE、.NET 8 运行时前提、MCP stdio（63 工具）、Node/Explorer 交互回归、Edge/HTTP 真实浏览器回归、SQLCipher/HTTP 及业务事务检查。最近业务提交 `8c1ca9a` 对应 [Windows CI #40162144248](https://github.com/zy19970/IPSys/actions/runs/40162144248) 全部必运行步骤通过；合并点 `8227d2c` 的 [历史主分支 CI #39947975625](https://github.com/zy19970/IPSys/actions/runs/39947975625) 也已通过。
+主工作流 `.github/workflows/web-windows.yml`，产品源码、Explorer 前端及关联脚本改动触发 Windows 托管 runner。包括 Debug 编译和嵌入前端检查、Release 单 EXE、.NET 8 运行时前提、MCP stdio（现行源码 64 工具；最后一次成功 CI 属旧 63 工具基线）、Node/Explorer 交互回归、Edge/HTTP 真实浏览器回归、SQLCipher/HTTP 及业务事务检查。最近业务提交 `8c1ca9a` 对应 [Windows CI #40162144248](https://github.com/zy19970/IPSys/actions/runs/40162144248) 全部必运行步骤通过；合并点 `8227d2c` 的 [历史主分支 CI #39947975625](https://github.com/zy19970/IPSys/actions/runs/39947975625) 也已通过。
 
 `tests/retest-v2-2026-10-22/scripts/` 和相应 fixture **仍被 CI 调用**，即使路径包含历史日期，也不是可随意删除的废弃文件。测试实际入口以工作流和 `src/IPSys.Web/tests/` 中的现行引用为准。
 
