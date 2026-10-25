@@ -1,7 +1,7 @@
 # metadata：已入库文件属性维护工作规范
 
 1. 这是已有文件的补录流程，不是再次上传。先确定用户授权的工作区、目录/项目、时间范围（如有可靠时间字段）以及要补录的字段：description、tags、file_number、file_date；未指定时检查四类可补录属性。
-2. 第二阶段将在现有 list_files_page 增加 missing_fields（all 或字段列表）及 missing_mode（any/all）服务端筛选，针对 NULL、空串、纯空白先在 SQLCipher 判空后分页，返回每条文件的 missing_fields；本阶段只提供规范，**当前接口尚未实现缺项筛选，不能假装已经支持**。在功能实施前，若确需处理，应使用已有分页与必要的详情核实，并如实说明额外调用。
+2. 通过现有 list_files_page(workspace, missing_fields, missing_mode, offset, limit) 服务端筛选。missing_fields=all 表示检查所有四项，也可用字段数组 [description,tags,file_number,file_date] 的任意子集；missing_mode=any（默认）匹配任一指定缺项，all 匹配所有指定缺项。后端先在 SQLCipher 判别 NULL、空串、纯空白，再按 FileId 去重和分页；每条返回 missingFields 列表（JSON 驼峰字段名），无筛选调用仍按 LinkId 列出关联。分页应持续至 hasMore=false。
 3. 检索/筛选结果按当前工作区 FileId 去重，保留每个 FolderId/LinkId 的实际归属信息。同一 FileId 只需阅读最新版原件一次、更新一次；历史版本仅在用户明确指定时处理。
 4. 仅对需要补录的文件按版本调用 download_file_version，使用 Agent 现有文档/图像工具读取原件，按文末的“文件内容读取共用规范”提取可信证据。只查询缺项时不下载、不 OCR、不更新。
 5. 仅填写能核实的缺项，保留已有非空且正确的说明、标签、编号、日期。用户明确要求扩充标签时可将经核实标签合并；已存在信息若有冲突，标记待确认而不自动覆盖。
