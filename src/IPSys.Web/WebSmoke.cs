@@ -189,6 +189,7 @@ static class WebSmoke
                 throw new IOException("本机 MCP 授权开关失败。");
             await NativeMcpSmoke.VerifyAsync(client,vault);
             await NativeMcpArchiveSmoke.VerifyAsync(client);
+            await AgentGuidanceHttpSmoke.VerifyAsync(client,vault);
             (await client.PostAsJsonAsync("/api/mcp",
                 new McpAccessInput(false))).EnsureSuccessStatusCode();
 
