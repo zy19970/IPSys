@@ -91,6 +91,7 @@ app.MapGet("/pdf-preview.js", () => Results.Bytes(pdfPreviewScript, contentType:
 app.MapGet("/pdfjs/LICENSE.txt", () => Results.Bytes(pdfJsLicense, contentType: "text/plain; charset=utf-8"));
 
 SessionEndpoints.Map(app, Fail);
+AgentGuidanceEndpoints.Map(app);
 
 SearchLedgerEndpoints.Map(app, Fail);
 
