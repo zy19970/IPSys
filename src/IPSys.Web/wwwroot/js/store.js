@@ -502,16 +502,20 @@ const VaultStore = {
         (ip?.rows || []).map((row) => {
           const d = row.data || row;
           const node = F(d.name || d.Name || `知识产权 ${row.id}`, { id: `i:${row.id}` });
-          node.mtime = toTs(d.applicationDate || d.ApplicationDate || d.grantDate || d.GrantDate);
-          node.dateLabel = d.applicationDate || d.ApplicationDate || d.grantDate || d.GrantDate || "";
+          // 知识产权的业务年份只取申请日,没有申请日就不显示授权年份。
+          const applicationDate = d.applicationDate || d.ApplicationDate || "";
+          const year = String(applicationDate).match(/^\d{4}/)?.[0] || "";
+          node.mtime = toTs(applicationDate);
+          node.dateLabel = applicationDate;
           node.biz = {
             kind: "ip",
             typeName: d.ipType || d.IpType || "知识产权",
             status: d.status || d.Status || "",
             code: d.number || d.Number || "",
             owner: d.rightHolders || d.RightHolders || "",
-            start: d.applicationDate || d.ApplicationDate || "",
+            start: applicationDate,
             end: d.grantDate || d.GrantDate || "",
+            year,
             category: d.category || d.Category || "",
             remarks: d.remarks || d.Remarks || "",
             tags: d.tags || d.Tags || "",

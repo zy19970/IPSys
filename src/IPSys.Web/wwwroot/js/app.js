@@ -56,8 +56,8 @@ const Prefs = {
    所以不能像以前那样硬编码在行首 —— 位置由列集决定。排序键统一映射到 name。 */
 const NAME = (t) => ({ k: "_name", t, w: "minmax(180px,1fr)" });
 
-/* 年份:档案类后端直接给 year,项目与知产只有起止日期,统一从日期里取前四位。
-   见 Drive.yearOf()。 */
+/* 年份:档案用明确 year,项目按业务起止日期;知识产权必须只按申请日。
+   申请日为空时,即使有授权日也不代填年份。见 Drive.yearOf()。 */
 const YEAR = { k: "_year", t: "年份", w: "84px", f: "num" };
 
 const ARCHIVE_COLS = [
@@ -261,10 +261,14 @@ const Drive = {
     return `<button class="head-check" id="selectAll" title="全选"></button>${cells}<div class="col-gap"></div>`;
   },
 
-  /* 年份:档案类有 year 字段,项目/知产只有日期。都从这两个地方取,
-     取不到就留空(表格显示「—」),不要拿创建时间凑。 */
+  /* 知识产权年份唯一来源为申请日期,不按授权日、登记日或创建时间兜底。
+     其它模块沿用独立年度字段或项目起止日期规则。 */
   yearOf(it) {
     const b = it.biz || {};
+    if (b.kind === "ip") {
+      const applied = String(b.start || "").match(/^\d{4}/);
+      return applied ? applied[0] : "";
+    }
     const y = String(b.year || "").match(/\d{4}/);
     if (y) return y[0];
     const d = String(b.start || b.end || "").match(/\d{4}/);
@@ -1261,8 +1265,8 @@ const Drive = {
       line("状态", b.status);
       line(contract ? "签约方" : "负责人", b.owner);
       line("承担单位", b.org);
-      line(contract ? "签订日期" : "开始日期", b.start);
-      line("结束日期", b.end);
+      line(contract ? "签订日期" : b.kind === "ip" ? "申请日期" : "开始日期", b.start);
+      line(b.kind === "ip" ? "授权日期" : "结束日期", b.end);
       line("金额", b.amount);
       line("所属年度", b.year);
       line("类别", b.category);

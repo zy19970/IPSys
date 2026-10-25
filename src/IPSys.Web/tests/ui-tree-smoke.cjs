@@ -164,4 +164,23 @@ assert.equal(run("findById('i:93').size"),14,
 assert.equal(run("findById('p:1').size"),12,
  'Project rollup must count newest project and contract originals, not old versions');
 
-console.log('DRIVE TREE SMOKE PASS: project / contract / original nesting, rollups, identity, orphan guard');
+/* The IP business-year snapshot and generic date label must never borrow grantDate. */
+const ipYearData = {
+  ws:'company', projects:[], contracts:[], projectFiles:[], archive:{},
+  ip:{ rows:[
+    {id:601,data:{name:'早申请晚授权',applicationDate:'2022-05-16',grantDate:'2026-10-01'}},
+    {id:602,data:{name:'仅有授权日',applicationDate:'',grantDate:'2025-08-21'}},
+    {id:603,data:{name:'新申请日',ApplicationDate:'2024-12-01',GrantDate:'2025-05-05'}},
+  ], files:[] },
+};
+run('ROOT=VaultStore.buildTree('+JSON.stringify(ipYearData)+')');
+assert.equal(run("findById('i:601').biz.year"),'2022');
+assert.equal(run("findById('i:601').dateLabel"),'2022-05-16');
+assert.equal(run("findById('i:601').biz.start"),'2022-05-16');
+assert.equal(run("findById('i:601').biz.end"),'2026-10-01');
+assert.equal(run("findById('i:602').biz.year"),'');
+assert.equal(run("findById('i:602').dateLabel"),'');
+assert.equal(run("findById('i:602').mtime"),null);
+assert.equal(run("findById('i:603').biz.year"),'2024');
+
+console.log('DRIVE TREE SMOKE PASS: project / contract / original nesting, rollups, identity, IP application year');

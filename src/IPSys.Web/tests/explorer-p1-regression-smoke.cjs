@@ -86,6 +86,17 @@ run("Drive.state.folderId='af:70';Drive.enterContext();");
 assert.equal(run("Drive.state.sortBy"), "position",
   "Reopening archive must restore persistent order");
 
+/* 知识产权的年份仅取申请日期;授权日期不可作为隐含年份。 */
+assert.equal(run("Drive.yearOf({biz:{kind:'ip',start:'2023-06-15',end:'2026-09-20',year:'2026'}})"),"2023");
+assert.equal(run("Drive.cellValue({biz:{kind:'ip',start:'2023-06-15',end:'2026-09-20'}},{k:'_year'})"),"2023");
+assert.equal(run("Drive.yearOf({biz:{kind:'ip',start:'',end:'2026-09-20',year:'2026'}})"),"",
+  "Grant date or a stale year field cannot replace a missing IP application date");
+assert.equal(run("Drive.yearOf({biz:{kind:'ip',start:'2024-01-01',end:''}})"),"2024");
+assert.equal(run("Drive.yearOf({biz:{kind:'archive',year:'2025'}})"),"2025",
+  "Explicit archive year must retain its current meaning");
+assert.equal(run("Drive.yearOf({biz:{kind:'project',start:'',end:'2022-12-31'}})"),"2022",
+  "Project year fallback must remain unchanged");
+
 (async () => {
   const oldRoot = run("ROOT");
   const vault = run("VaultStore");
