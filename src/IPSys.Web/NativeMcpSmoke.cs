@@ -71,7 +71,7 @@ static class NativeMcpSmoke
             "second batch of V2 MCP endpoint adapters registered");
         Check(new[]{"start_upload_task","get_task_status","cancel_task","purge_trash"}
             .All(names.Contains) && names.Distinct().Count()==names.Length &&
-            names.Length==63 &&
+            names.Length==64 && names.Contains("get_agent_guidance") &&
             new[]{"list_party_archives","create_party_archive",
                 "update_party_archive","delete_party_archive"}.All(names.Contains),
             "MCP registry keeps all prior tools and adds explicit trash purge");
@@ -82,6 +82,81 @@ static class NativeMcpSmoke
         await McpLocal.VerifyRestrictedPipeAclAsync(); // Owner + DACL: only user and SYSTEM.
         var parallel=await Task.WhenAll(Enumerable.Range(0,12).Select(_=>Original("list_files_page",new{workspace="company",limit=10})));
         Check(parallel.All(x=>x["items"] is JsonArray),"concurrent file-page reads complete without 409");
+        // Agent guidance: one short initialize entry, three independent topics,
+        // a directory without full text, existing MCP authorization and no DB writes.
+        string root=AgentGuidance.InitializeInstructions;
+        Check(root.Length is >0 and <=512 &&
+              root.Contains("get_agent_guidance") &&
+              new[]{"search","upload","metadata"}.All(root.Contains) &&
+              !root.Contains("# upload："),"initialize supplies a short useful root only");
+        long[] Counts()=>new[]{"folders","files","file_versions",
+            "folder_file_links","mcp_operations"}.Select(table=>{
+                using var count=vault.Db.CreateCommand();
+                count.CommandText="SELECT COUNT(*) FROM "+table+";";
+                return (long)count.ExecuteScalar()!;
+            }).ToArray();
+        long[] beforeGuidance=Counts();
+        async Task<JsonNode> Guidance(object args)
+        {
+            JsonNode reply=await McpLocal.RunSmokeProtocolToolAsync(
+                "get_agent_guidance",Args(args));
+            Check(reply["result"]?["isError"]?.GetValue<bool>()==false,
+                "get_agent_guidance succeeds through MCP: "+reply.ToJsonString());
+            string? body=reply["result"]?["content"]?[0]?["text"]?.GetValue<string>();
+            return JsonNode.Parse(body??"null") ??
+                throw new IOException("Agent guidance must return a JSON object.");
+        }
+        JsonNode index=await Guidance(new {});
+        Check(index["id"]?.GetValue<string>()=="index" &&
+              index["content"]==null &&
+              index["entries"] is JsonArray directory && directory.Count==3 &&
+              directory.Select(x=>x?["id"]?.GetValue<string>())
+                  .SequenceEqual(new[]{"search","upload","metadata"}) &&
+              index["guidanceOnly"]?.GetValue<bool>()==true,
+            "directory lists exactly three topics without their content");
+        JsonNode defaultIndex=await Guidance(new {topic="index"});
+        Check(defaultIndex.ToJsonString()==index.ToJsonString(),
+            "omitted topic defaults to index");
+        foreach(string topic in new[]{"search","upload","metadata"})
+        {
+            JsonNode item=await Guidance(new {topic});
+            string body=item["content"]?.GetValue<string>()??"";
+            Check(item["id"]?.GetValue<string>()==topic &&
+                  item["source"]?.GetValue<string>()=="builtin" &&
+                  !string.IsNullOrWhiteSpace(item["version"]?.GetValue<string>()) &&
+                  !string.IsNullOrWhiteSpace(item["updatedAt"]?.GetValue<string>()) &&
+                  item["guidanceOnly"]?.GetValue<bool>()==true &&
+                  item["entries"]==null && body.Length>200,
+                "independent topic metadata and full content: "+topic);
+            Check(topic switch {
+                "search"=>body.Contains("search_records")&&!body.Contains("# upload："),
+                "upload"=>body.Contains("upload_files")&&
+                    body.Contains("只上传")&&body.Contains("文件内容读取共用规范"),
+                _=>body.Contains("list_files_page")&&body.Contains("missing_fields")&&
+                    body.Contains("文件内容读取共用规范")
+            },"topic contains its actual scoped workflow: "+topic);
+        }
+        JsonNode invalid=await McpLocal.RunSmokeProtocolToolAsync(
+            "get_agent_guidance",Args(new {topic="unknown"}));
+        Check(invalid["result"]?["isError"]?.GetValue<bool>()==true,
+            "unknown topic is rejected rather than returning all content");
+        JsonNode invalidParameter=await McpLocal.RunSmokeProtocolToolAsync(
+            "get_agent_guidance",Args(new {topic="search",workspace="company"}));
+        Check(invalidParameter["result"]?["isError"]?.GetValue<bool>()==true,
+            "guidance has no invented workspace parameter");
+        Check(vault.SetMcpEnabled(false),"test can revoke MCP access");
+        try
+        {
+            JsonNode denied=await McpLocal.RunSmokeProtocolToolAsync(
+                "get_agent_guidance",Args(new {topic="search"}));
+            string? deniedRaw=denied["result"]?["content"]?[0]?["text"]?.GetValue<string>();
+            Check(denied["result"]?["isError"]?.GetValue<bool>()==true &&
+                  deniedRaw?.Contains("未授权")==true,
+                "guidance obeys the existing named-pipe MCP authorization");
+        }
+        finally { Check(vault.SetMcpEnabled(true),"restore smoke MCP access"); }
+        Check(beforeGuidance.SequenceEqual(Counts()),
+            "all guidance reads, errors and denied calls leave V2 data and journal unchanged");
         var schemas=JsonSerializer.SerializeToElement(McpLocal.Tools());
         JsonElement Properties(string tool)=>schemas.EnumerateArray().First(x=>
             x.GetProperty("name").GetString()==tool)
