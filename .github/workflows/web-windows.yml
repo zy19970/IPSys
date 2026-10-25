@@ -109,6 +109,12 @@ jobs:
             $initialized = $line | ConvertFrom-Json
             if ($initialized.id -ne 1 -or $initialized.result.serverInfo.name -ne 'ipsys-local') { throw 'MCP initialize response mismatch' }
             if ($initialized.result.protocolVersion -ne '2025-06-18') { throw 'Unexpected MCP protocol version' }
+            if (-not $initialized.result.instructions -or
+                $initialized.result.instructions.Length -gt 512 -or
+                $initialized.result.instructions -notmatch 'get_agent_guidance' -or
+                $initialized.result.instructions -notmatch 'metadata') {
+              throw 'MCP initialize did not expose a concise Agent guidance entry'
+            }
             $process.StandardInput.WriteLine('{"jsonrpc":"2.0","id":99,"method":"initialize","params":{"protocolVersion":"9999-99-99","capabilities":{}}}')
             $versionReply = ($process.StandardOutput.ReadLineAsync().WaitAsync([TimeSpan]::FromSeconds(12)).GetAwaiter().GetResult()) | ConvertFrom-Json
             if ($versionReply.result.protocolVersion -ne '2025-06-18') { throw 'Unsupported protocol version echoed to client' }
@@ -124,7 +130,8 @@ jobs:
                                     'create_contract','upload_files','delete_project','delete_contract','delete_file',
                                     'list_ips','create_ip','update_ip','delete_ip',
                                     'list_party_archives','create_party_archive',
-                                    'update_party_archive','delete_party_archive')) {
+                                    'update_party_archive','delete_party_archive',
+                                    'get_agent_guidance')) {
               if ($names -notcontains $required) { throw "MCP tool missing: $required" }
             }
             Write-Host 'MCP stdio initialize and tool manifest: PASS'
