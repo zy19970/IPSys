@@ -82,14 +82,18 @@ sealed class AgentGuidanceStore
     private Package Load()
     {
         if(!File.Exists(path))return new Package();
-        var bytes=new FileInfo(path).Length;
-        if(bytes>MaxPackageBytes)
-            throw new IOException("Agent 规范配置超过大小限制。");
         Package config;
         try
         {
+            // FileShare.Delete allows atomic profile replacement while an
+            // independent MCP reader holds the previous complete snapshot.
+            using var input=new FileStream(path,FileMode.Open,FileAccess.Read,
+                FileShare.ReadWrite|FileShare.Delete);
+            if(input.Length>MaxPackageBytes)
+                throw new IOException("Agent 规范配置超过大小限制。");
+            using var reader=new StreamReader(input,Encoding.UTF8,true);
             config=JsonSerializer.Deserialize<Package>(
-                File.ReadAllText(path,Encoding.UTF8),Options) ??
+                reader.ReadToEnd(),Options) ??
                 throw new IOException("Agent 规范配置为空。");
         }
         catch(JsonException ex){throw new IOException("Agent 规范配置 JSON 已损坏。",ex);}
