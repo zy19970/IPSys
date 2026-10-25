@@ -200,6 +200,22 @@ static class NativeMcpSmoke
               filtered["offset"]?.GetValue<int>()==0 &&
               filtered["limit"]?.GetValue<int>()==20,
             "MCP list_files_page delegates missing-attribute filtering");
+        // HTTP uses the same native SQL and token gate as the MCP pipe adapter.
+        using(var httpFiltered=await client.GetAsync(
+            "/api/v2/mcp/files/company?paged=true&missingFields=all&missingMode=any&limit=20"))
+        {
+            httpFiltered.EnsureSuccessStatusCode();
+            JsonNode body=JsonNode.Parse(await httpFiltered.Content.ReadAsStringAsync())!;
+            Check(body["items"] is JsonArray httpItems &&
+                  httpItems.Count==filtered["items"]?.AsArray().Count &&
+                  httpItems.All(x=>x?["missingFields"] is JsonArray),
+                "HTTP missing-filter endpoint matches authorized MCP result shape");
+        }
+        using(var invalidHttp=await client.GetAsync(
+            "/api/v2/mcp/files/company?paged=true&missingFields=not_a_field"))
+            Check(invalidHttp.StatusCode==System.Net.HttpStatusCode.BadRequest,
+                "HTTP unknown missing field is rejected as 400");
+
         var invalidMissing=await McpLocal.RunSmokeProtocolToolAsync(
             "list_files_page",Args(new{workspace="company",
                 missing_fields="nonexistent_field"}));
