@@ -27,7 +27,7 @@ IPSys 为 Windows 本地资料管理器：WinForms 启动器、浏览器 Explore
 
 如进入正式产品发布，应单独检查目标 Windows 运行时依赖、可恢复性、备份与异常退出、外置磁盘及磁盘不足、安全恢复和 T01～T09 尚未被本次合并涵盖的完整边界。不得把“完成主分支合并”写成“所有发布条件完成”。
 
-## 3.1 已确认、待实施：分层 Agent 提示词服务
+## 3.1 分层 Agent 工作规范服务：三阶段源码已提交，动态验收待完成
 
 新增需求的唯一实施基线为 [《IPSys 本地 Agent 分层提示词服务实施方案（2026-10-25）》](./docs/IPSys_Agent_分层提示词服务_实施方案_20261025.md)。核心原则：轻量总规范通过 MCP 初始化告知目录和读取办法，search/upload/metadata 专项按需获取；Agent 可自主读取、先看目录选择，也可由用户手动指定只读查看。该功能目前**第一阶段源码已实施、CI 与真机 Agent 实测待核验**：内嵌 index/search/upload/metadata 规范、短 initialize.instructions、只读 get_agent_guidance 及 MCP 动态回归已提交。第二阶段标准 Prompts 和 SQLCipher 通用缺项筛选的源码及自动测试已提交、CI/实机待验；第二阶段真实智能入库/补录端到端 Agent 验收尚未完成，第三阶段软件级设置管理、配置导入导出及对应自动回归的源码已提交，仍待 Windows CI 与真实 Agent 完整验收；后续跨会话继续前必须先阅读方案并核对实时 main。
 
