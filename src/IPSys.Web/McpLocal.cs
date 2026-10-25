@@ -241,6 +241,12 @@ static partial class McpLocal
         },["workspace","kind","owner_id","paths"])
         ];
         return [..tools,..ArchiveTools(),..ExtraTools(),
+            Tool("get_agent_guidance",
+                "只读获取本机 IPSys Agent 工作规范。topic=index 只列专项目录；search/upload/metadata 每次只返回单篇。读取规范不触发业务操作，须先在宿主启用 MCP 授权。",
+                new(){
+                    ["topic"]=Field("string","规范 ID；省略时仅列目录",
+                        ["index","search","upload","metadata"])
+                },[]),
             Tool("start_upload_task","异步启动 1–20 个本机原件上传，立即返回 request_id；其余参数与 upload_files 相同。请使用 get_task_status/cancel_task。",new(){
                 ["workspace"]=Field("string","工作区",Workspaces),
                 ["kind"]=Field("string","归属资源",["project","contract","ip","archive","general"]),
@@ -320,7 +326,7 @@ static partial class McpLocal
                             protocolVersion="2025-06-18",
                             capabilities=new {tools=new {listChanged=false}},
                             serverInfo=new {name="ipsys-local",version="1.0.0"},
-                            instructions="请在已解锁的 IPSys 系统设置中开启本机 MCP 授权。仅可操作本机当前数据库。"
+                            instructions=AgentGuidance.InitializeInstructions
                         }),
                         "ping"=>Success(id,new {}),
                         "tools/list"=>Success(id,new {tools=Tools()}),
