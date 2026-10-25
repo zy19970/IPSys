@@ -2,12 +2,12 @@ using System.Text.Json;
 
 // Authenticated local-browser settings API. Never exposes the per-user storage
 // file path and never grants MCP access by itself.
+record AgentGuidanceUpdateInput(string Content,string ExpectedRevision);
+record AgentGuidanceRestoreInput(string ExpectedRevision);
+record AgentGuidanceImportInput(JsonElement Config,string ExpectedRevision);
+
 static class AgentGuidanceEndpoints
 {
-    private sealed record UpdateInput(string Content,string ExpectedRevision);
-    private sealed record RestoreInput(string ExpectedRevision);
-    private sealed record ImportInput(JsonElement Config,string ExpectedRevision);
-
     private static IResult Handle(Func<IResult> action)
     {
         try{return action();}
@@ -32,7 +32,7 @@ static class AgentGuidanceEndpoints
                 Results.Json(AgentGuidance.Editable(topic))));
 
         app.MapPut("/api/agent-guidance/{topic}",(
-            HttpContext ctx,Vault vault,string topic,UpdateInput input)=>
+            HttpContext ctx,Vault vault,string topic,AgentGuidanceUpdateInput input)=>
         {
             if(!vault.Allowed(ctx))return Results.Unauthorized();
             return Handle(()=>
@@ -44,7 +44,7 @@ static class AgentGuidanceEndpoints
         });
 
         app.MapPost("/api/agent-guidance/{topic}/restore",(
-            HttpContext ctx,Vault vault,string topic,RestoreInput input)=>
+            HttpContext ctx,Vault vault,string topic,AgentGuidanceRestoreInput input)=>
         {
             if(!vault.Allowed(ctx))return Results.Unauthorized();
             return Handle(()=>
@@ -55,7 +55,7 @@ static class AgentGuidanceEndpoints
         });
 
         app.MapPost("/api/agent-guidance/import",(
-            HttpContext ctx,Vault vault,ImportInput input)=>
+            HttpContext ctx,Vault vault,AgentGuidanceImportInput input)=>
         {
             if(!vault.Allowed(ctx))return Results.Unauthorized();
             return Handle(()=>
