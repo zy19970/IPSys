@@ -1,5 +1,17 @@
 # IPSys 本机 Codex MCP
 
+## Agent 轻量搜索（2026-10-25）
+
+IPSys 只提供工作区内结构化关键词检索及原件版本下载，不解析 PDF/Word 正文、不做 OCR 或模型推理。Agent 自主选择同义词进行多轮检索，再使用 `get_file_details`、`list_file_links` 和 `download_file_version` 获取原件并分析。
+
+现行 `search_records(workspace,query,kind?,offset?,limit?)` 支持可选结果类别 `project/contract/ip/archive/archive_folder/general/file`，指定 offset 或 limit 任意一个即可进入无分组截断的分页模式。默认 offset=0、limit=100，最大单页 200；响应有 `total/offset/limit/hasMore/nextOffset`。Agent 应继续分页直到 hasMore=false。完全不传分页参数保留旧页面所依赖的每类别最多 60 条结果与 truncated 提示。
+
+命中项包含 `matchedFields`（命中依据）、`path`（业务目录路径）、`folderId`；文件命中另包含 `fileId/linkId/ownerId/ownerKind/latestVersion/size/tags/fileNumber/fileDate`。历史 `id` 对文件仍表示 FileId，并非 LinkId；相同 FileId 出现在多个位置时应保留各位置但避免重复下载。分页期间发生文件变更时应重新校验。
+
+项目、合同、知识产权、业务档案及文件属性中的 `tags` 均支持中英文分号（`；`、`;`）分隔，服务端规范化为英文分号、去前后空格、空项与重复项。标签、说明、编号均参与统一检索；MCP 的 `create_*`、`update_*`、`update_file_metadata` 自动执行同一规则，所有属性选填，文件内容及版本不受元数据编辑影响。
+
+
+
 > 本手册的**现行操作规则**以前置章节（知识产权三编号、党团建设、63 工具及安全操作）为准；下文按日期保留的“新增工具”“当前版本”“59/69/70 个工具”“`v2_*` 工具仍有效”等是对应历史提交的增量记录，不可直接作为现行接口清单。合同不设独立 Excel 导入或导出，该限制不影响合同业务 MCP 新增、编辑及附件接口。
 
 ## 知识产权 MCP：十类型、统一三个编号（2026-10-25）

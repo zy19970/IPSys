@@ -120,18 +120,57 @@ static class SearchSmoke
             throw new IOException("合同编号搜索未命中。");
 
         string filename=marker+"-项目原件.pdf";
+        long fileId=0;
         using(var body=new ByteArrayContent(Encoding.UTF8.GetBytes("PDF-file-search-test")))
         {
             body.Headers.Add("X-File-Name",Uri.EscapeDataString(filename));
             using var result=await client.PostAsync(
                 $"/api/v2/files/company/upload?folderId={projectId}",body);
             result.EnsureSuccessStatusCode();
+            fileId=(await result.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
+                .GetProperty("fileId").GetInt64();
         }
         var attached=await Find(client,"company",filename);
         if(!attached.Results.Any(h=>h.Kind=="file"&&h.OwnerKind=="project"&&h.OwnerId==projectId))
             throw new IOException("附件名称必须定位到真实所属项目。");
         if((await Find(client,"personal",filename)).Results.Count!=0)
             throw new IOException("个人工作区不允许检索公司附件。");
+
+        string keyword=marker+"-标签", description=marker+"-说明", numberKey=marker+"-编号";
+        using(var updated=await client.PutAsJsonAsync(
+            $"/api/v2/files/company/{fileId}/metadata",new {
+                name=filename,description="地下铲运机"+description,
+                tags="铲运机；"+keyword+"; "+keyword+"；LHD;;",
+                fileNumber=numberKey,fileDate="2026-10-25"
+            }))
+            updated.EnsureSuccessStatusCode();
+        var properties=await client.GetFromJsonAsync<System.Text.Json.JsonElement>(
+            $"/api/v2/files/company/{fileId}");
+        if(properties.GetProperty("tags").GetString()!="铲运机;"+keyword+";LHD")
+            throw new IOException("附件标签未按分号、空格、重复项规范化。");
+        foreach(var (term,field) in new[]{
+            (keyword,"tags"),(description,"description"),(numberKey,"fileNumber")})
+        {
+            var result=await Find(client,"company",term);
+            if(!result.Results.Any(x=>x.Kind=="file"&&x.FileId==fileId&&
+                x.LinkId>0&&x.OwnerId==projectId&&x.FolderId==projectId&&
+                x.Path.Contains(filename)&&x.MatchedFields.Contains(field)))
+                throw new IOException("附件元数据命中或 ID 定位失败："+field);
+            if((await Find(client,"personal",term)).Results.Count!=0)
+                throw new IOException("跨工作区检索泄漏："+field);
+        }
+        string pageBase="/api/v2/search/company?q="+Uri.EscapeDataString(marker)+
+            "&kind=file&limit=1&offset=";
+        var page=await client.GetFromJsonAsync<SearchResponse>(pageBase+"0");
+        var page2=await client.GetFromJsonAsync<SearchResponse>(pageBase+"1");
+        if(page is null||page.Total<2||page.HasMore!=true||page.NextOffset!=1||
+            page.Results.Count!=1||page2?.Results.Count!=1||
+            page.Results[0].LinkId==page2.Results[0].LinkId)
+            throw new IOException("搜索分页/文件关联不正确。");
+        using(var badPage=await client.GetAsync(
+            "/api/v2/search/company?q="+marker+"&offset=-1&limit=500"))
+            if(badPage.StatusCode!=HttpStatusCode.BadRequest)
+                throw new IOException("无效搜索分页参数未拒绝。");
 
         var empty=await Find(client,"company"," ");
         if(empty.Results.Count!=0)throw new IOException("空关键词不应返回全部资料。");

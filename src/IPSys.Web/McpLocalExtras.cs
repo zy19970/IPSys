@@ -141,7 +141,10 @@ static partial class McpLocal
         },["workspace","section","ids"]),
         Tool("search_records","工作区统一搜索；文件命中 kind=file 只是搜索结果种类，不等于回收站 kind=v2_file/v2_ip_file。恢复前必须 list_trash。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
-            ["query"]=Field("string","检索词，最长 100 字")
+            ["query"]=Field("string","检索词，最长 100 字；匹配记录名称、附件说明、分号标签、文件编号及路径。返回命中字段和明确的文件/关联 ID。"),
+            ["kind"]=Field("string","可选类别：project/contract/ip/archive/archive_folder/general/file"),
+            ["offset"]=Field("integer","可选分页偏移，从 0 开始；指定分页参数即可枚举全部结果"),
+            ["limit"]=Field("integer","可选单页条数 1–200，默认 100")
         },["workspace","query"]),
         Tool("list_trash","查询工作区回收站；文件关联 kind=v2_file 或 v2_ip_file，与搜索结果 kind=file 不同。恢复必须采用本工具返回原值。",new(){
             ["workspace"]=Field("string","工作区",Workspaces)
@@ -424,9 +427,24 @@ static partial class McpLocal
                     JsonSerializer.SerializeToNode(new {ids})!);
             }
             case "search_records":
-                return await RequestAsync(client,HttpMethod.Get,
-                    "/api/v2/search/"+workspace+"?q="+
-                    Uri.EscapeDataString(ReadString(args,"query")));
+            {
+                string url="/api/v2/search/"+workspace+"?q="+
+                    Uri.EscapeDataString(ReadString(args,"query"));
+                if(args.TryGetProperty("kind",out var filter) &&
+                   filter.ValueKind!=JsonValueKind.Null)
+                    url+="&kind="+Uri.EscapeDataString(ReadString(args,"kind"));
+                foreach(string key in new[]{"offset","limit"})
+                {
+                    if(!args.TryGetProperty(key,out var v) ||
+                       v.ValueKind==JsonValueKind.Null)continue;
+                    if(!v.TryGetInt32(out int n) ||
+                       (key=="offset"&&n<0) ||
+                       (key=="limit"&&(n<1||n>200)))
+                        throw new McpKnownRejectionException("搜索分页参数无效："+key);
+                    url+="&"+key+"="+n;
+                }
+                return await RequestAsync(client,HttpMethod.Get,url);
+            }
             case "list_trash":
                 return await RequestAsync(client,HttpMethod.Get,"/api/trash/"+workspace);
             case "restore_trash":

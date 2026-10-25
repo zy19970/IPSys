@@ -36,7 +36,7 @@ static class SearchStore
     private static string Summary(params string?[] fields)=>string.Join(" · ",
         fields.Where(x=>!string.IsNullOrWhiteSpace(x)).Select(x=>x!.Trim()));
     public static SearchResponse Find(SqliteConnection db,string workspace,string? text,
-        int maxPerGroup=MaxPerGroup,int? offset=null,int? limit=null,string? kind=null)
+        int maxPerGroup=MaxPerGroup,int? offset=null,int? limit=null,string? filterKind=null)
     {
         if(!Vault.WorkspaceValid(workspace))throw new InvalidDataException("搜索工作区无效。");
         string query=(text??"").Trim();
@@ -45,7 +45,7 @@ static class SearchStore
         bool paged=offset.HasValue||limit.HasValue;
         if(offset is <0 || limit is <1 or >200)
             throw new InvalidDataException("搜索分页参数不合法：offset 非负，limit 为 1–200。");
-        if(kind is not (null or "" or "project" or "contract" or "ip" or
+        if(filterKind is not (null or "" or "project" or "contract" or "ip" or
             "archive" or "archive_folder" or "general" or "file"))
             throw new InvalidDataException("搜索类别无效。");
         var results=new List<SearchHit>();
@@ -55,7 +55,7 @@ static class SearchStore
         var counts=new Dictionary<string,int>(StringComparer.Ordinal);
         void Add(SearchHit hit)
         {
-            if(!string.IsNullOrEmpty(kind) && hit.Kind!=kind)return;
+            if(!string.IsNullOrEmpty(filterKind) && hit.Kind!=filterKind)return;
             counts.TryGetValue(hit.Kind,out var current);
             if(!paged && current>=maxPerGroup){truncated=true;return;}
             counts[hit.Kind]=current+1;

@@ -151,6 +151,18 @@ static class NativeMcpSmoke
         });
         long project=Id(created);
         Check(project>0,"created V2 project");
+        var found=await Original("search_records",new {
+            workspace="company",query=name,kind="project",offset=0,limit=1
+        });
+        Check(found["results"] is JsonArray foundHits&&foundHits.Count==1&&
+              foundHits[0]?["folderId"]?.GetValue<long>()==project&&
+              foundHits[0]?["matchedFields"] is JsonArray&&
+              found["total"]?.GetValue<int>()>=1&&found["limit"]?.GetValue<int>()==1,
+              "MCP search_records: pagination and matched source");
+        var invalidSearch=await McpLocal.RunSmokeProtocolToolAsync(
+            "search_records",Args(new{workspace="company",query=name,limit=500}));
+        Check(invalidSearch["result"]?["isError"]?.GetValue<bool>()==true,
+              "MCP search_records rejects invalid limit");
         // ISS-001: call the actual JSON-RPC adapter, not just the pipe.
         await CheckArrayRpc("list_projects",new{workspace="company"});
         await CheckArrayRpc("list_contracts",new{workspace="company"});
