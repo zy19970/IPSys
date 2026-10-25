@@ -868,6 +868,7 @@ function paintAgentGuideUi() {
   if (!editor || !meta || !topic || !save || !restore) return;
   const editable = agentGuideUi.topic !== "index" && !!data && !agentGuideUi.loading;
   topic.value = agentGuideUi.topic;
+  topic.disabled = agentGuideUi.loading;
   editor.disabled = !editable;
   save.disabled = !editable || !agentGuideIsDirty();
   restore.disabled = !editable || data.source !== "user_override";
