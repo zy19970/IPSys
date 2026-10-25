@@ -157,6 +157,66 @@ static class NativeMcpSmoke
         finally { Check(vault.SetMcpEnabled(true),"restore smoke MCP access"); }
         Check(beforeGuidance.SequenceEqual(Counts()),
             "all guidance reads, errors and denied calls leave V2 data and journal unchanged");
+        // MCP Prompts must be generated from the same built-in registry as
+        // get_agent_guidance, and prompt text must pass the authorization pipe.
+        var listedPrompts=JsonSerializer.SerializeToNode(AgentGuidance.Prompts())!.AsArray();
+        Check(listedPrompts.Count==4 &&
+              listedPrompts.Select(p=>p?["name"]?.GetValue<string>())
+                .SequenceEqual(new[]{"index","search","upload","metadata"}) &&
+              listedPrompts.All(p=>p?["description"]!=null),
+            "MCP prompts/list advertises only directory metadata");
+        foreach(string topic in new[]{"index","search","upload","metadata"})
+        {
+            var prompt=await McpLocal.RunSmokeProtocolPromptAsync(topic);
+            string? text=prompt["result"]?["messages"]?[0]?["content"]?["text"]?
+                .GetValue<string>();
+            Check(prompt["result"]?["messages"]?[0]?["role"]?.GetValue<string>()
+                    =="user" &&
+                  text!=null &&
+                  (topic=="index" ? text.Contains("\"entries\"") &&
+                      !text.Contains("# search：")
+                   : text==AgentGuidance.Read(topic)["content"]?.GetValue<string>()),
+                "MCP prompts/get uses the same entry/body as the tool: "+topic);
+        }
+        var unknownPrompt=await McpLocal.RunSmokeProtocolPromptAsync("absent");
+        Check(unknownPrompt["error"]?["code"]?.GetValue<int>()==-32602,
+            "unknown prompt is a JSON-RPC invalid-params error");
+        Check(vault.SetMcpEnabled(false),"revoke before prompts/get authorization test");
+        try
+        {
+            bool promptDenied=false;
+            try {await McpLocal.RunSmokeProtocolPromptAsync("search");}
+            catch(IOException ex)when(ex.Message.Contains("未授权")){promptDenied=true;}
+            Check(promptDenied,"prompts/get cannot bypass MCP host authorization");
+        }
+        finally { Check(vault.SetMcpEnabled(true),"restore after prompt access test"); }
+        Check(beforeGuidance.SequenceEqual(Counts()),
+            "prompts/get and unauthorized prompts leave database unchanged");
+        var filtered=await Original("list_files_page",new {
+            workspace="company",missing_fields="all",missing_mode="any",
+            offset=0,limit=20
+        });
+        Check(filtered["items"] is JsonArray &&
+              filtered["offset"]?.GetValue<int>()==0 &&
+              filtered["limit"]?.GetValue<int>()==20,
+            "MCP list_files_page delegates missing-attribute filtering");
+        var invalidMissing=await McpLocal.RunSmokeProtocolToolAsync(
+            "list_files_page",Args(new{workspace="company",
+                missing_fields="nonexistent_field"}));
+        Check(invalidMissing["result"]?["isError"]?.GetValue<bool>()==true,
+            "MCP rejects unknown missing field");
+        var badMode=await McpLocal.RunSmokeProtocolToolAsync(
+            "list_files_page",Args(new{workspace="company",
+                missing_fields=new[]{"description"},missing_mode="invalid"}));
+        Check(badMode["result"]?["isError"]?.GetValue<bool>()==true,
+            "MCP rejects unknown missing mode");
+        var missingSchema=JsonSerializer.SerializeToElement(McpLocal.Tools())
+            .EnumerateArray().First(x=>x.GetProperty("name").GetString()
+                =="list_files_page").GetProperty("inputSchema").GetProperty("properties");
+        Check(missingSchema.TryGetProperty("missing_fields",out _) &&
+              missingSchema.TryGetProperty("missing_mode",out _),
+            "new SQLCipher missing filter is discoverable in tools/list");
+
         var schemas=JsonSerializer.SerializeToElement(McpLocal.Tools());
         JsonElement Properties(string tool)=>schemas.EnumerateArray().First(x=>
             x.GetProperty("name").GetString()==tool)
