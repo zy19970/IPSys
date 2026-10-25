@@ -23,9 +23,11 @@ static class AgentGuidanceEndpoints
             !vault.Allowed(ctx)?Results.Unauthorized():Handle(()=>
                 Results.Json(AgentGuidance.Read("index"))));
 
-        app.MapGet("/api/agent-guidance/export",(HttpContext ctx,Vault vault)=>
+        app.MapGet("/api/agent-guidance/export",(HttpContext ctx,Vault vault,string? mode)=>
             !vault.Allowed(ctx)?Results.Unauthorized():Handle(()=>
-                Results.Json(AgentGuidanceStore.Current.Export())));
+                mode is null or "effective" or "overrides"
+                    ?Results.Json(AgentGuidanceStore.Current.Export(mode!="overrides"))
+                    :Results.BadRequest(new{error="导出模式仅支持 effective 或 overrides。"})));
 
         app.MapGet("/api/agent-guidance/{topic}",(HttpContext ctx,Vault vault,string topic)=>
             !vault.Allowed(ctx)?Results.Unauthorized():Handle(()=>

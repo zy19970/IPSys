@@ -975,19 +975,20 @@ function previewAgentGuidance() {
   box.hidden = false;
 }
 
-async function exportAgentGuidance() {
+async function exportAgentGuidance(onlyOverrides=false) {
   try {
-    const data = await VaultStore.getJson("/api/agent-guidance/export");
+    const data = await VaultStore.getJson("/api/agent-guidance/export" +
+      (onlyOverrides ? "?mode=overrides" : ""));
     const bytes = new Blob([JSON.stringify(data,null,2)],{type:"application/json;charset=utf-8"});
     const url = URL.createObjectURL(bytes);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "IPSys-Agent-guidance.json";
+    a.download = onlyOverrides ? "IPSys-Agent-overrides.json" : "IPSys-Agent-effective.json";
     document.body.appendChild(a);
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url),1000);
-    toast("已导出当前用户的专项覆盖配置");
+    toast(onlyOverrides ? "已导出用户修改的专项覆盖" : "已导出三篇当前有效规范");
   } catch(e) {
     toast("导出配置失败：" + e.message, {tone:"error",ms:6500});
   }
@@ -1004,7 +1005,9 @@ async function importAgentGuidance(file) {
   catch { toast("导入内容不是有效的 JSON", {tone:"error"}); return; }
   const ok = await askConfirm({
     title:"导入 Agent 规范",
-    text:"将用这份配置整体替换当前 Windows 用户的专项覆盖。建议先导出备份；不会修改任何资料库。",
+    text:config?.exportMode === "effective"
+      ? "将恢复备份中的三篇专项正文。相同内置规则保持内置来源，旧版本的差异保存为用户覆盖；不会更改安全附录。建议先备份当前设置。"
+      : "将用这份配置整体替换当前 Windows 用户的专项覆盖。建议先导出备份；不会修改任何资料库。",
     okText:"确认导入",
   });
   if (!ok) return;
@@ -1038,6 +1041,8 @@ function bindAgentGuidanceSettings() {
   $("#setAgentRestore")?.addEventListener("click", () => void restoreAgentGuidance());
   $("#setAgentPreview")?.addEventListener("click", previewAgentGuidance);
   $("#setAgentExport")?.addEventListener("click", () => void exportAgentGuidance());
+  $("#setAgentExportOverrides")?.addEventListener("click",
+    () => void exportAgentGuidance(true));
   $("#setAgentImport")?.addEventListener("click", () => $("#setAgentImportFile")?.click());
   $("#setAgentImportFile")?.addEventListener("change", (event) => {
     const file = event.target.files?.[0];

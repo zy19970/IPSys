@@ -337,11 +337,12 @@
         </div>
         <pre id="setAgentPreviewText" class="set-agent-preview" hidden></pre>
         <div class="set-agent-actions">
-          <button type="button" class="btn" id="setAgentExport">导出配置</button>
+          <button type="button" class="btn" id="setAgentExport">导出全部规范</button>
+          <button type="button" class="btn" id="setAgentExportOverrides">仅导出修改</button>
           <button type="button" class="btn" id="setAgentImport">导入配置</button>
           <input type="file" id="setAgentImportFile" accept=".json,application/json" hidden>
         </div>
-        <small class="set-agent-hint">导入会整体替换当前用户的专项覆盖配置。请勿把密码、令牌或数据库密钥写入规范；需要旧会话读取新版本时，请重新连接 Agent 或主动获取规范。</small>
+        <small class="set-agent-hint">默认导出三篇当前有效规范及只读目录（未经修改也含正文）；“仅导出修改”只备份用户覆盖。两种格式均可导入；内置总入口和共用安全附录不可替换。旧 Agent 会话请主动刷新。</small>
       </section>
     </div>
 

@@ -178,16 +178,40 @@ sealed class AgentGuidanceStore
             return Revision(config);
         }
     }
-    internal object Export()
+    internal object Export(bool includeEffective=false)
     {
         lock(gate)
         {
             var config=Load();
+            string revision=Revision(config);
+            if(!includeEffective)
+                return new {
+                    schemaVersion=1,
+                    overrides=config.Overrides.ToDictionary(x=>x.Key,
+                        x=>x.Value.Content,StringComparer.Ordinal),
+                    revision
+                };
+
+            // Export every effective topic even when the user has no overrides.
+            // Keep editable text separate from immutable shared safeguards:
+            // restoring the editable text must not duplicate those safeguards.
+            var topics=new Dictionary<string,object>(StringComparer.Ordinal);
+            foreach(string topic in new[]{"search","upload","metadata"})
+            {
+                var item=AgentGuidance.Editable(topic,this);
+                topics[topic]=new {
+                    source=item["source"]!.GetValue<string>(),
+                    content=item["editableContent"]!.GetValue<string>(),
+                    effectiveContent=item["content"]!.GetValue<string>(),
+                    version=item["version"]!.GetValue<string>()
+                };
+            }
             return new {
                 schemaVersion=1,
-                overrides=config.Overrides.ToDictionary(x=>x.Key,
-                    x=>x.Value.Content,StringComparer.Ordinal),
-                revision=Revision(config)
+                exportMode="effective",
+                index=AgentGuidance.Read("index",this),
+                topics,
+                revision
             };
         }
     }
@@ -198,25 +222,59 @@ sealed class AgentGuidanceStore
         string json=package.GetRawText();
         if(Encoding.UTF8.GetByteCount(json)>MaxPackageBytes)
             throw new ArgumentException("导入配置超过大小限制。");
-        if(package.ValueKind!=JsonValueKind.Object ||
-           !package.TryGetProperty("schemaVersion",out var schema) ||
+        if(!package.TryGetProperty("schemaVersion",out var schema) ||
            schema.ValueKind!=JsonValueKind.Number ||
-           !schema.TryGetInt32(out int schemaVersion) ||
-           schemaVersion!=1 ||
-           !package.TryGetProperty("overrides",out var overrides) ||
-           overrides.ValueKind!=JsonValueKind.Object)
-            throw new ArgumentException("导入文件必须包含 schemaVersion=1 和 overrides 对象。");
+           !schema.TryGetInt32(out int schemaVersion) || schemaVersion!=1)
+            throw new ArgumentException("导入文件必须包含 schemaVersion=1。");
         var replacement=new Package();
-        foreach(var item in overrides.EnumerateObject())
+        if(package.TryGetProperty("exportMode",out var mode))
         {
-            ValidateTopic(item.Name);
-            if(item.Value.ValueKind!=JsonValueKind.String)
-                throw new ArgumentException("导入的规范内容必须为字符串。");
-            string content=item.Value.GetString()??"";
-            ValidateContent(content);
-            replacement.Overrides[item.Name]=new OverrideText{
-                Content=content,UpdatedAt=DateTimeOffset.UtcNow.ToString("O")
-            };
+            if(mode.ValueKind!=JsonValueKind.String ||
+               mode.GetString()!="effective" ||
+               !package.TryGetProperty("topics",out var topics) ||
+               topics.ValueKind!=JsonValueKind.Object ||
+               topics.EnumerateObject().Count()!=3)
+                throw new ArgumentException("全量规范备份必须包含三个专项正文。");
+            foreach(var topic in topics.EnumerateObject())
+            {
+                ValidateTopic(topic.Name); // immutable index is never imported
+                if(topic.Value.ValueKind!=JsonValueKind.Object ||
+                   !topic.Value.TryGetProperty("source",out var source) ||
+                   source.ValueKind!=JsonValueKind.String ||
+                   source.GetString() is not ("builtin" or "user_override") ||
+                   !topic.Value.TryGetProperty("content",out var value) ||
+                   value.ValueKind!=JsonValueKind.String)
+                    throw new ArgumentException("全量备份正文或来源无效："+topic.Name);
+                string content=value.GetString()??"";
+                ValidateContent(content);
+                // Preserve source=builtin on the same EXE; if built-in rules
+                // differ across EXE versions, restore the saved snapshot as an
+                // ordinary user override rather than silently replacing it.
+                if(source.GetString()=="builtin" &&
+                   content==AgentGuidance.BuiltinEditable(topic.Name))
+                    continue;
+                replacement.Overrides[topic.Name]=new OverrideText{
+                    Content=content,UpdatedAt=DateTimeOffset.UtcNow.ToString("O")
+                };
+            }
+        }
+        else
+        {
+            // Original schemaVersion=1 override-only backups still import.
+            if(!package.TryGetProperty("overrides",out var overrides) ||
+               overrides.ValueKind!=JsonValueKind.Object)
+                throw new ArgumentException("仅覆盖备份必须包含 overrides 对象。");
+            foreach(var item in overrides.EnumerateObject())
+            {
+                ValidateTopic(item.Name);
+                if(item.Value.ValueKind!=JsonValueKind.String)
+                    throw new ArgumentException("导入的规范内容必须为字符串。");
+                string content=item.Value.GetString()??"";
+                ValidateContent(content);
+                replacement.Overrides[item.Name]=new OverrideText{
+                    Content=content,UpdatedAt=DateTimeOffset.UtcNow.ToString("O")
+                };
+            }
         }
         ValidatePackage(replacement);
         lock(gate)

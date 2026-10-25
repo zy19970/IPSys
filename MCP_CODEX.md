@@ -6,9 +6,9 @@
 
 专项覆盖保存在当前 Windows 用户的 LocalApplicationData/IPSys/agent-guidance.json，**不是任何业务资料库文件**。浏览器必须解锁资料库并携带现有会话 token 才能使用管理 API；MCP 仍需要单独手动启用授权。POST/PUT 写配置不产生 FileId、LinkId 或 FileVersion，也不修改 SQLCipher 业务数据。配置按同用户范围生效，切换公司/个人工作区或资料库时不变；不同 Windows 用户彼此独立。配置属于用户本机文本文件，建议不要存密码、密钥、令牌或隐私全文。
 
-接口为 GET /api/agent-guidance（目录）、GET /api/agent-guidance/{topic}（含当前有效正文、原始编辑正文和版本）、PUT /api/agent-guidance/{topic}（content 和 expectedRevision）、POST /api/agent-guidance/{topic}/restore（expectedRevision）、GET /api/agent-guidance/export、POST /api/agent-guidance/import（config 和 expectedRevision）。仅可覆盖 search/upload/metadata。保存、恢复、导入都检查配置版本，另一个标签页先更新会得到 409，应刷新后检查再操作。单篇规范不超过 48 KiB，配置文件不超过 256 KiB。
+接口为 GET /api/agent-guidance（目录）、GET /api/agent-guidance/{topic}（含当前有效正文、原始编辑正文和版本）、PUT /api/agent-guidance/{topic}（content 和 expectedRevision）、POST /api/agent-guidance/{topic}/restore（expectedRevision）、GET /api/agent-guidance/export（默认完整有效规范）、GET /api/agent-guidance/export?mode=overrides（仅用户覆盖）、POST /api/agent-guidance/import（config 和 expectedRevision）。仅可覆盖 search/upload/metadata。保存、恢复、导入都检查配置版本，另一个标签页先更新会得到 409，应刷新后检查再操作。单篇规范不超过 48 KiB，配置文件不超过 256 KiB。
 
-导出的 JSON 为 schemaVersion=1 和 overrides 映射（仅含用户自定义正文），可在另一台机器/用户账户导入；导入会整体替换目标用户的三个专项覆盖，建议先备份原有配置。默认规范和共享安全附录无须导出，始终以目标 EXE 的内置版本为准。正在运行的 MCP tools/call、prompts/get 每次读取当前有效内容并返回内容派生版本；initialize.instructions 保持短内置总入口，已有 Agent 若持有旧正文，需要重新调用相应规范或重连，无法强制刷新外部模型缓存。
+默认完整导出格式为 schemaVersion=1、exportMode="effective"、index（只读目录）及 topics 映射：每篇包含 source、content（可恢复的可编辑正文）、effectiveContent（实际运行正文，含不可修改的安全附录）和 version。即使 Windows 用户从未保存覆盖，也有三篇正文。导入全量格式时，只恢复 topics 中允许编辑的 content，不把 effectiveContent 的内置共用规则重复写入；相同 EXE 内置内容保留 source=builtin，换版本后内置正文不同则使用用户覆盖保留备份的内容快照。旧格式仍为 schemaVersion=1 和 overrides（仅用户自定义正文），由 ?mode=overrides 导出，导入时整体替换用户覆盖。index 与内置共享安全附录无法导入覆盖。正在运行的 MCP tools/call、prompts/get 每次读取当前有效内容并返回内容派生版本；initialize.instructions 保持短内置总入口，已有 Agent 若持有旧正文，需要重新调用或重连。
 
 本阶段已提交自动化测试：独立用户配置持久化/版本冲突/坏文件拒绝、授权 HTTP 管理 API、MCP 与 Prompts 同源读取、并发一致性、浏览器交互，以及扩展 SQLCipher 缺项筛选压力样本。**Windows CI 和真实 Codex/Windows 浏览器交互尚须以对应提交的执行证据验收，不把自动测试源码视为已通过。**
 

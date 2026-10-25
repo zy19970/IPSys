@@ -8,7 +8,7 @@ const html=fs.readFileSync(path.join(root,"index.html"),"utf8");
 const source=fs.readFileSync(path.join(root,"js/interactions.js"),"utf8");
 const ids=["setAgentTopic","setAgentMeta","setAgentEditor","setAgentSave",
   "setAgentRestore","setAgentPreview","setAgentPreviewText",
-  "setAgentExport","setAgentImport","setAgentImportFile"];
+  "setAgentExport","setAgentExportOverrides","setAgentImport","setAgentImportFile"];
 for(const id of ids)assert(html.includes('id="'+id+'"'),"missing settings node: "+id);
 assert(html.includes("Agent 工作规范") && html.includes("总规范目录（只读）"));
 assert(!source.includes('setAgentEditor").innerHTML'),
@@ -27,6 +27,8 @@ const nodes=Object.fromEntries(ids.map(id=>[id,{
 }]));
 nodes.setAgentTopic.value="index";
 const calls=[];
+const exportUrls=[];
+const downloads=[];
 const messages=[];
 let custom=null,revision="r0";
 const getDetail=(topic)=>topic==="index"?{
@@ -42,8 +44,17 @@ const host={
   VaultStore:{
     token:"smoke",
     async getJson(url){
-      if(url==="/api/agent-guidance/export")
-        return{schemaVersion:1,overrides:custom===null?{}:{search:custom},revision};
+      if(url.startsWith("/api/agent-guidance/export")){
+        exportUrls.push(url);
+        if(url.endsWith("?mode=overrides"))
+          return{schemaVersion:1,overrides:custom===null?{}:{search:custom},revision};
+        return{schemaVersion:1,exportMode:"effective",topics:{
+          search:{source:custom===null?"builtin":"user_override",
+            content:custom??"初始规则",effectiveContent:custom??"初始规则"},
+          upload:{source:"builtin",content:"上传",effectiveContent:"上传+附录"},
+          metadata:{source:"builtin",content:"维护",effectiveContent:"维护+附录"}
+        },revision};
+      }
       return getDetail(decodeURIComponent(url.split("/").pop()));
     },
     async api(url,request){
@@ -58,7 +69,10 @@ const host={
         return{json:async()=>getDetail("search")};
       }
       if(url.endsWith("/import")){
-        custom=request.json.config.overrides.search??null;revision="r3";
+        custom=request.json.config.exportMode==="effective"
+          ?request.json.config.topics.search.content
+          :request.json.config.overrides.search??null;
+        revision="r3";
         return{json:async()=>getDetail("index")};
       }
       throw Error("unexpected request: "+url);
@@ -71,7 +85,7 @@ const host={
     revokeObjectURL:()=>{},
   },
   document:{body:{appendChild(){}},createElement:()=>({
-    href:"",download:"",click(){},remove(){}
+    href:"",download:"",click(){downloads.push(this.download)},remove(){}
   })},
   setTimeout:()=>{},
 };
@@ -95,6 +109,22 @@ vm.runInContext(fragment,host);
   assert.equal(custom,null);
   assert.equal(nodes.setAgentRestore.disabled,true);
   assert(calls.some(x=>x.url.endsWith("/restore")));
+  await vm.runInContext("exportAgentGuidance()",host);
+  await vm.runInContext("exportAgentGuidance(true)",host);
+  assert.deepEqual(exportUrls,["/api/agent-guidance/export",
+    "/api/agent-guidance/export?mode=overrides"]);
+  assert.deepEqual(downloads,["IPSys-Agent-effective.json",
+    "IPSys-Agent-overrides.json"]);
+  host.testImportFile={size:150,async text(){return JSON.stringify({
+    schemaVersion:1,exportMode:"effective",topics:{
+      search:{source:"user_override",content:"# 来自完整备份"},
+      upload:{source:"builtin",content:"上传"},
+      metadata:{source:"builtin",content:"维护"}
+    }
+  })}};
+  await vm.runInContext("importAgentGuidance(testImportFile)",host);
+  assert.equal(custom,"# 来自完整备份");
+  assert(calls.some(x=>x.url==="/api/agent-guidance/import"));
   await vm.runInContext("loadAgentGuidance('index')",host);
   assert.equal(nodes.setAgentEditor.disabled,true);
   assert.equal(nodes.setAgentSave.disabled,true);

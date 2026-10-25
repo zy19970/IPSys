@@ -29,6 +29,11 @@ static class AgentGuidance
     internal static bool HasTopic(string topic)=>
         topic=="index"||Guides.Any(g=>g.Id==topic);
 
+    // Keep built-in text linked to this EXE when restoring an unchanged snapshot.
+    internal static string BuiltinEditable(string topic)=>
+        ReadEmbedded(Guides.FirstOrDefault(g=>g.Id==topic)?.Resource
+            ?? throw new ArgumentException("未知 Agent 专项规范。"));
+
     internal static object[] Prompts()=>
     [
         new {name="index",title="Agent 工作规范目录",

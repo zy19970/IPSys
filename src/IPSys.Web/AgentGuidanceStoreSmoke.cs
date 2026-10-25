@@ -20,6 +20,25 @@ static class AgentGuidanceStoreSmoke
             var store=new AgentGuidanceStore(path);
             var baseline=AgentGuidance.Read("search",store);
             var initialRevision=store.RevisionNow();
+            // A pristine profile still exports all active topics, not {}.
+            var defaultSnapshot=JsonSerializer.SerializeToElement(store.Export(true));
+            var defaultTopics=defaultSnapshot.GetProperty("topics");
+            Check(defaultSnapshot.GetProperty("exportMode").GetString()=="effective" &&
+                  defaultTopics.EnumerateObject().Count()==3 &&
+                  defaultTopics.GetProperty("search").GetProperty("content")
+                      .GetString()!.Contains("search_records") &&
+                  defaultTopics.GetProperty("upload").GetProperty("effectiveContent")
+                      .GetString()!.Contains("文件内容读取共用规范") &&
+                  defaultSnapshot.GetProperty("index").GetProperty("entries").GetArrayLength()==3 &&
+                  !defaultSnapshot.GetProperty("index").TryGetProperty("content",out _) &&
+                  !File.Exists(path),
+                "default full export contains all active rules without writing a profile file");
+            var defaultCopy=new AgentGuidanceStore(Path.Combine(folder,"default-copy.json"));
+            defaultCopy.Import(defaultSnapshot,defaultCopy.RevisionNow());
+            Check(AgentGuidance.Read("search",defaultCopy)["source"]?.GetValue<string>()=="builtin" &&
+                  AgentGuidance.Read("metadata",defaultCopy)["source"]?.GetValue<string>()=="builtin" &&
+                  File.Exists(Path.Combine(folder,"default-copy.json")),
+                "importing an unchanged full snapshot retains built-in sources");
             Check(baseline["source"]?.GetValue<string>()=="builtin" &&
                 !File.Exists(path),"new profile uses in-assembly default without writing file");
             var index=AgentGuidance.Read("index",store);
@@ -57,6 +76,34 @@ static class AgentGuidanceStoreSmoke
                 "shared safety/reading rules remain immutable with custom topic");
             Check(metadata!=newRevision,"second topic changes profile version");
 
+            var fullCustom=JsonSerializer.SerializeToElement(store.Export(true));
+            Check(fullCustom.GetProperty("topics").GetProperty("search")
+                    .GetProperty("content").GetString()==custom &&
+                  fullCustom.GetProperty("topics").GetProperty("metadata")
+                    .GetProperty("source").GetString()=="user_override" &&
+                  fullCustom.GetProperty("topics").GetProperty("upload")
+                    .GetProperty("source").GetString()=="builtin",
+                "full export combines current overrides with unmodified topics");
+            var fullCopy=new AgentGuidanceStore(Path.Combine(folder,"full-copy.json"));
+            fullCopy.Import(fullCustom,fullCopy.RevisionNow());
+            string uploadFull=AgentGuidance.Read("upload",fullCopy)["content"]!.GetValue<string>();
+            string metadataFull=AgentGuidance.Read("metadata",fullCopy)["content"]!.GetValue<string>();
+            Check(AgentGuidance.Read("search",fullCopy)["content"]?.GetValue<string>()==custom &&
+                  AgentGuidance.Read("upload",fullCopy)["source"]?.GetValue<string>()=="builtin" &&
+                  AgentGuidance.Read("metadata",fullCopy)["source"]?.GetValue<string>()=="user_override" &&
+                  uploadFull.Split("文件内容读取共用规范").Length==2 &&
+                  metadataFull.Split("文件内容读取共用规范").Length==2,
+                "full snapshot import restores text/source and appends immutable safeguards once");
+            var foreign=JsonNode.Parse(JsonSerializer.Serialize(defaultSnapshot))!;
+            foreign["topics"]!["search"]!["content"]="# 旧版内置检索规范";
+            var foreignCopy=new AgentGuidanceStore(Path.Combine(folder,"old-exe.json"));
+            foreignCopy.Import(JsonSerializer.SerializeToElement(foreign),
+                foreignCopy.RevisionNow());
+            Check(AgentGuidance.Read("search",foreignCopy)["source"]?.GetValue<string>()==
+                    "user_override" &&
+                  AgentGuidance.Read("search",foreignCopy)["content"]?.GetValue<string>()==
+                    "# 旧版内置检索规范",
+                "cross-version full import freezes mismatched built-in snapshot safely");
             var exported=JsonSerializer.SerializeToElement(store.Export());
             Check(exported.GetProperty("overrides").GetProperty("search")
                 .GetString()==custom && !exported.TryGetProperty("password",out _),
