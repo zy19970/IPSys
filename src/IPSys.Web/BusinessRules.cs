@@ -43,6 +43,23 @@ record FolderMutationInput(
     // 与 parentId 等价的顶层别名，合同专用；解析与冲突判定见 ContractOwner。
     long? ProjectId = null);
 
+// Semicolon-separated tags remain one optional field; no secondary index/table.
+static class TagRules
+{
+    public static string? Normalize(string? raw)
+    {
+        if(string.IsNullOrWhiteSpace(raw))return null;
+        var result=new List<string>();
+        var seen=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach(var part in raw.Replace('；',';').Split(';'))
+        {
+            string tag=part.Trim();
+            if(tag.Length>0 && seen.Add(tag))result.Add(tag);
+        }
+        return result.Count==0?null:string.Join(";",result);
+    }
+}
+
 // Pure V2 business rules: no obsolete SQL writes or schema upgrades.
 static class ProjectRules
 {

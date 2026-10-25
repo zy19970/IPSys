@@ -455,6 +455,48 @@ const RecordForms = {
     });
   },
 
+  /* ---------------- 所有格式附件共用文件属性 ---------------- */
+
+  async file(node) {
+    const meta = VaultStore.metaOf(node?.id);
+    if (!meta?.fileId || node?.type !== "file") return toast("附件信息缺失，无法编辑属性");
+    const workspace = VaultStore.ws;
+    const id = meta.fileId;
+    try {
+      const url = `/api/v2/files/${encodeURIComponent(workspace)}/${id}`;
+      const current = await VaultStore.getJson(url);
+      if (VaultStore.ws !== workspace || !current) return;
+      this.open({
+        title: "文件属性",
+        values: {
+          name: current.name || "",
+          description: current.description || "",
+          tags: current.tags || "",
+          fileNumber: current.fileNumber || "",
+          fileDate: current.fileDate || "",
+        },
+        fields: [
+          { key: "name", label: "文件名称", span: 2, required: true },
+          { key: "description", label: "文件说明", type: "textarea", span: 2 },
+          { key: "tags", label: "标签", span: 2, hint: "多个标签用中文或英文分号分隔，保存时自动去重" },
+          { key: "fileNumber", label: "文件编号" },
+          { key: "fileDate", label: "文件日期", type: "date" },
+        ],
+        onSubmit: async (data) => {
+          if (VaultStore.ws !== workspace) throw new Error("工作区已切换，请重新打开文件属性");
+          await VaultStore.api(url + "/metadata", { method: "PUT", json: {
+            name: data.name, description: data.description, tags: data.tags,
+            fileNumber: data.fileNumber, fileDate: data.fileDate,
+          }});
+          toast("文件属性已保存");
+          await refreshCurrent();
+        },
+      });
+    } catch (e) {
+      toast("无法加载文件属性：" + (e.message || String(e)), { tone: "error" });
+    }
+  },
+
   /* ---------------- 分发 ---------------- */
 
   edit(node) {
@@ -464,6 +506,7 @@ const RecordForms = {
     if (kind === "archive") return this.archive(node.biz.section, node);
     if (kind === "ip") return this.ip(node);
     if (kind === "general") return this.general(node);
+    if (kind === "file") return this.file(node);
     toast("这条记录没有可编辑的业务字段");
   },
 };

@@ -39,7 +39,7 @@ static class NativeFileStore
         if(date!=null && (!DateOnly.TryParseExact(date,"yyyy-MM-dd",System.Globalization.CultureInfo.InvariantCulture,System.Globalization.DateTimeStyles.None,out _)))
             throw new ArgumentException("文件日期格式应为 yyyy-MM-dd。");
         return new(ValidName(input.Name),Optional(input.Description,2000,"文件说明"),
-            Optional(input.Tags,500,"标签"),Optional(input.FileNumber,120,"文件编号"),date);
+            Optional(TagRules.Normalize(input.Tags),500,"标签"),Optional(input.FileNumber,120,"文件编号"),date);
     }
     private static void Scope(string workspace)
     {

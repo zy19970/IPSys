@@ -24,7 +24,8 @@ static class NativeFolderStore
                 var p=x.Project with {Name=x.Project.Name!.Trim(),
                     ProjectType=x.Project.ProjectType!.Trim(),
                     ProjectStatus=string.IsNullOrWhiteSpace(x.Project.ProjectStatus)
-                        ? "筹备中" : x.Project.ProjectStatus.Trim()};
+                        ? "筹备中" : x.Project.ProjectStatus.Trim(),
+                    Tags=TagRules.Normalize(x.Project.Tags)};
                 return (p.Name!,JsonSerializer.Serialize(p));
             // The owning project is resolved by ContractOwner and stored in
             // folders.parent_id; it is deliberately NOT part of the attributes.
@@ -32,12 +33,13 @@ static class NativeFolderStore
                 x.Ip is null:
                 if (ContractRules.Validate(x.Contract) is string ce) throw new ArgumentException(ce);
                 var c=x.Contract with {Name=x.Contract.Name!.Trim(),
-                    Amount=x.Contract.Amount?.Trim(),ProjectId=null};
+                    Amount=x.Contract.Amount?.Trim(),ProjectId=null,
+                    Tags=TagRules.Normalize(x.Contract.Tags)};
                 return (c.Name!,JsonSerializer.Serialize(c));
             case FolderKinds.Ip when x.Ip is not null && x.Project is null &&
                 x.Contract is null && x.ParentId is null:
                 if (IpRules.Validate(x.Ip) is string ie) throw new ArgumentException(ie);
-                var ip=IpRules.Normalize(x.Ip);
+                var ip=IpRules.Normalize(x.Ip) with {Tags=TagRules.Normalize(x.Ip.Tags)};
                 return (ip.Name!,JsonSerializer.Serialize(ip));
             default:
                 throw new ArgumentException(

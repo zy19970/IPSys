@@ -1501,7 +1501,7 @@ function showItemMenu(id, x, y) {
     /* 合同挂在项目下,所以在项目节点上直接给一个建合同的入口 —— 比先打开
        项目再点工具栏少一步。 */
     b.kind === "project" ? MI("newcontract", "folder", "新建合同") : "",
-    isFolder && b.kind !== "archive_folder" ? MI("props", "info", "属性") : "",
+    (isFolder && b.kind !== "archive_folder") || !isFolder ? MI("props", "info", "属性") : "",
     MI("download", "download", isFolder ? "打包下载" : "下载"),
     !isFolder ? MI("newver", "upload", "上传新版本") : "",
     !isFolder ? MI("assoc", "copy", "共享原件到其它记录") : "",

@@ -61,7 +61,8 @@ static class NativeArchiveStore
                 }
                 else if(archive.FolderId is not null)
                     throw new ArgumentException("该资料类型不能指定业务档案目录。");
-                archive=archive with {Name=archive.Name!.Trim()};
+                archive=archive with {Name=archive.Name!.Trim(),
+                    Tags=TagRules.Normalize(archive.Tags)};
                 return (archive.Name!,JsonSerializer.Serialize(archive),
                     archive.FolderId,scope);
 

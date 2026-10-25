@@ -1224,7 +1224,9 @@ const Drive = {
 
     /* 「修改」入口:只有挂在分类下、带业务字段的记录才给。
        固定分类(没有记录可改)、附件、回收站里的删除项都不出现这个按钮。 */
-    const canEdit = isFolder && !it.synthetic && !locked && !!b.kind && b.kind !== "trash" && b.kind !== "archive_folder" && !!b.id;
+    const canEdit = !locked && (isFolder
+      ? !it.synthetic && !!b.kind && b.kind !== "trash" && b.kind !== "archive_folder" && !!b.id
+      : !!VaultStore.metaOf(it.id)?.fileId);
     const editAct = canEdit
       ? `<button class="sec-act" data-detail-act="edit" title="修改这条记录的属性">${icon("rename", 13)}<span>修改</span></button>`
       : "";
