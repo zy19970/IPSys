@@ -171,6 +171,10 @@ static partial class McpLocal
     {
         if(!vault.McpEnabled && !preReserved)
             throw new IOException("MCP 未授权或授权已撤销。");
+        // Guidance is strictly read-only and has no workspace or SQLCipher side effects.
+        // It still traverses the same user-restricted pipe and MCP authorization gate.
+        if(name=="get_agent_guidance")
+            return AgentGuidance.Read(ReadString(args,"topic","index"));
         string workspace=Workspace(args);
         if(name=="get_operation_result")
             return await ReadOperationAsync(vault,workspace,
