@@ -200,6 +200,8 @@ search_records、get_file_details、update_file_metadata、upload_files、start_
 
 ### 第二阶段：标准 Prompts 与真实 Agent 工作流
 
+> 本地 Agent 实机验收任务书：[第二阶段测试任务书](./IPSys_Agent_分层提示词服务_第二阶段_本地Agent验收任务书_20261025.md)。正式验收需附同 SHA 的 Windows CI 和脱敏 Agent 操作日志，不以源码存在替代实际通过。
+
 > 实施进展（2026-10-25）：标准 MCP 2025-06-18 Prompts/list/get 共用 AgentGuidance 注册表；prompts/get 复用宿主授权。list_files_page 已增加可选 missing_fields（all、逗号分隔或字段数组）与 missing_mode（any/all）；SQLCipher 先判空后分页，并在有筛选时按 FileId 去重，每条结果返回 missingFields 驼峰字段；无筛选保持旧 LinkId 列表。已加入独立 SQLCipher 冒烟、HTTP/MCP 一致性、Prompts 协议与授权检查。**本机 Codex 真实扩词/上传/补录和扫描件 OCR 测试仍待运行；CI 结论需以实际 Windows Actions 为准。**
 
 1. 基于同一注册表实现 prompts capability、prompts/list、prompts/get，兼容仓库实际 2025-06-18 协议；不会重复维护提示词正文。
