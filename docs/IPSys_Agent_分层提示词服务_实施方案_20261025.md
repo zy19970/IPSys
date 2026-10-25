@@ -1,6 +1,6 @@
 # IPSys 本地 Agent 分层提示词服务实施方案
 
-> 文档状态：需求及路线已确认。**第一阶段源码已实施，Windows CI 与真实 Agent 验收待核验；第二、第三阶段仍未实施。**
+> 文档状态：需求及路线已确认。**第一阶段源码已实施；第二阶段 Prompts/缺项筛选代码及回归已提交，Windows CI 和真实 Agent 工作流验收仍待核验；第三阶段未实施。**
 >
 > 形成日期：2026-10-25。后续每次实施、审查、跨会话续接本任务，必须先读取本文，再核对仓库 main 最新代码与 MCP 协议。本文不是已经生效的 Agent 系统指令。
 >
@@ -137,7 +137,7 @@ search_records、get_file_details、update_file_metadata、upload_files、start_
 **正式独立场景：历史文件可能由用户自己上传，也可能由 Agent 只上传原件，导致文件说明、标签、编号、日期等任意可补录属性缺失。用户要求补录时，IPSys 应在授权范围内直接从数据库元数据筛选缺失字段并返回缺项清单；Agent 只下载真正需要补录的文件、阅读原件、通过 `update_file_metadata` 补齐有依据的属性，不重复上传文件，也不创建新文件版本。**
 
 1. 先确定用户授权的工作区、业务目录/项目、文件范围与待补字段，支持“只补日期”“只补编号”“只补标签”“只补说明”“补齐所有可补录缺项”等请求。用户没有指定字段时，筛选所有可补录文件属性的缺项，不再局限于说明和标签。若指定最近一段时间，应使用真实且含义明确的可用时间字段；不存在可靠入库时间数据时不猜测或伪造筛选结果。
-2. **在现有 MCP `list_files_page` 增加可选的服务端缺失属性筛选**（详见第 4.3.1 节）。IPSys 一次 SQL 查询直接检查 SQLCipher 中的文件元数据，筛选出存在缺项的记录，并在每条结果中标明 `missing_fields`；筛选在数据库端分页前执行，Agent 不必为了发现空白字段而对所有文件逐个调用 `get_file_details`。现有接口尚无此参数，属第二阶段明确需要实施的增量功能。
+2. **在现有 MCP `list_files_page` 增加可选的服务端缺失属性筛选**（详见第 4.3.1 节）。IPSys 一次 SQL 查询直接检查 SQLCipher 中的文件元数据，筛选出存在缺项的记录，并在每条结果中标明 `missing_fields`；筛选在数据库端分页前执行，Agent 不必为了发现空白字段而对所有文件逐个调用 `get_file_details`。该参数已在第二阶段源码实现，须结合独立 SQLCipher/HTTP、MCP 和 Agent 实测确认。
 3. 按工作区和 FileId 去重。同一逻辑文件关联多个 FolderId/LinkId 时保留所有归属信息，但同一版本只需读取一次、执行一次元数据更新；默认读取最新有效版本，用户指定历史版本时遵从要求。必要时可对筛出的目标使用 `get_file_details` 核实当前属性或版本，不将其作为筛选全部文件的强制步骤。
 4. 根据第 4.4 节的通用解析规则通过 `download_file_version` 下载并理解原件。Word 正文、Excel 表头及关键区域、PDF 文字层和可用 OCR 的扫描件均按实际能力处理；只寻找需要补齐字段的可靠证据，无法解析或证据不足时保留字段空白并汇报。
 5. **默认只填写缺失属性，不覆盖已有非空且正确的人工信息。** 已有标签可以在用户明确要求扩充时与有依据的新标签合并；若发现已有说明、编号、日期与文件内容冲突，标记待确认，不擅自重写。文件编号或日期可能本来就不存在，缺失仅意味着“待检查是否有依据”，绝不意味着必须填满。
@@ -199,6 +199,8 @@ search_records、get_file_details、update_file_metadata、upload_files、start_
 交付：最小可用规范服务，Codex 可通过自然语言点名读取单篇。
 
 ### 第二阶段：标准 Prompts 与真实 Agent 工作流
+
+> 实施进展（2026-10-25）：标准 MCP 2025-06-18 Prompts/list/get 共用 AgentGuidance 注册表；prompts/get 复用宿主授权。list_files_page 已增加可选 missing_fields（all、逗号分隔或字段数组）与 missing_mode（any/all）；SQLCipher 先判空后分页，并在有筛选时按 FileId 去重，每条结果返回 missingFields 驼峰字段；无筛选保持旧 LinkId 列表。已加入独立 SQLCipher 冒烟、HTTP/MCP 一致性、Prompts 协议与授权检查。**本机 Codex 真实扩词/上传/补录和扫描件 OCR 测试仍待运行；CI 结论需以实际 Windows Actions 为准。**
 
 1. 基于同一注册表实现 prompts capability、prompts/list、prompts/get，兼容仓库实际 2025-06-18 协议；不会重复维护提示词正文。
 2. MCP 相关工具描述仅追加简短的按需获取提示，不改变原业务操作返回体或把全文塞到检索结果。
@@ -265,7 +267,7 @@ search_records、get_file_details、update_file_metadata、upload_files、start_
 
 1. 先读 AIGT-templates 的 AGENTS.md、AI_RULES/GIT_OPERATIONS.md，再读本文。
 2. 读取 IPSys main 最新 HEAD、完整提交历史及提交说明，核对 McpLocal.cs / McpLocalExtras.cs / NativeMcpSmoke.cs、MCP_CODEX.md 与最新 CI。
-3. 明确区分“本方案已制定”和“功能已实施”。原始方案提交时仅形成设计；当前已实现第一阶段 get_agent_guidance 和短初始化入口，尚未实现真实 Prompts、设置管理界面与 list_files_page 缺项筛选。
+3. 明确区分“本方案已制定”和“功能已实施”。原始方案提交时仅形成设计；当前已实现第一阶段 get_agent_guidance 和短初始化入口，第二阶段 Prompts 和 list_files_page 缺项筛选已加入源码，设置管理界面与 Agent 真实业务验收仍待完成。
 4. 从本文第六章**最早尚未验收的阶段**开始执行；优先完成该阶段代码、独立测试和提交，不擅自改变需求或合并后续阶段。**不得遗漏两个独立闭环：新文件上传默认阅读并提取属性，以及存量文件先由 MCP 通用缺项查询（无需逐个详情）再下载阅读、批量补录。**
 5. 用户后续要求更改方案时先同步修改本文，再根据修订后的目标实施；每一阶段完成后回写状态、SHA 与证据链接。
 
