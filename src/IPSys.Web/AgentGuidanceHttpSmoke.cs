@@ -53,6 +53,11 @@ static class AgentGuidanceHttpSmoke
         Check(prompt["result"]?["messages"]?[0]?["content"]?["text"]?
                 .GetValue<string>()==customized,
             "standard Prompts reuses the current override");
+        var concurrent=await Task.WhenAll(Enumerable.Range(0,8).Select(_=>
+            McpLocal.RunSmokeProtocolPromptAsync("search")));
+        Check(concurrent.All(x=>x["result"]?["messages"]?[0]?["content"]?["text"]?
+            .GetValue<string>()==customized),
+            "independent MCP readers see the same current user override");
         var fresh=await client.GetFromJsonAsync<JsonElement>("/api/agent-guidance/search");
         using(var stale=await client.PutAsJsonAsync("/api/agent-guidance/search",
             new {content="stale writer",expectedRevision=originalRevision}))
