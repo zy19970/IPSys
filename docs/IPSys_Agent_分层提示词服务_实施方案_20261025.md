@@ -1,6 +1,6 @@
 # IPSys 本地 Agent 分层提示词服务实施方案
 
-> 文档状态：已确认的需求与实施路线，**尚未实施提示词服务功能**。
+> 文档状态：需求及路线已确认。**第一阶段源码已实施，Windows CI 与真实 Agent 验收待核验；第二、第三阶段仍未实施。**
 >
 > 形成日期：2026-10-25。后续每次实施、审查、跨会话续接本任务，必须先读取本文，再核对仓库 main 最新代码与 MCP 协议。本文不是已经生效的 Agent 系统指令。
 >
@@ -187,6 +187,8 @@ search_records、get_file_details、update_file_metadata、upload_files、start_
 
 ### 第一阶段：规范内容与基础读取通路
 
+> 实施进展（2026-10-25）：已新增五份随 EXE 内嵌的规范资源（index/search/upload/metadata/file-reading）、AgentGuidance.cs 单一注册表、短 initialize.instructions、只读 get_agent_guidance、动态 MCP 冒烟与 Windows CI 工具数量断言。已写入 main，自动 Windows CI 成功及真实 Codex 加载能力需以实际验收证据为准。
+
 目标是先把“只有一个总入口，能找到并单独读取专项规范”打通，暂不制作复杂设置 UI。
 
 1. 建立内置规范目录、总入口文本和 search/upload/metadata 正文资源，统一元数据/版本来源；固定 upload 默认自动提取属性、metadata 批量补录流程及两者共用的文件内容读取规范。
@@ -263,7 +265,7 @@ search_records、get_file_details、update_file_metadata、upload_files、start_
 
 1. 先读 AIGT-templates 的 AGENTS.md、AI_RULES/GIT_OPERATIONS.md，再读本文。
 2. 读取 IPSys main 最新 HEAD、完整提交历史及提交说明，核对 McpLocal.cs / McpLocalExtras.cs / NativeMcpSmoke.cs、MCP_CODEX.md 与最新 CI。
-3. 明确区分“本方案已制定”和“功能已实施”。本文提交时，仅形成实施设计，不代表新增 get_agent_guidance、真实 Prompts 或设置管理界面。
+3. 明确区分“本方案已制定”和“功能已实施”。原始方案提交时仅形成设计；当前已实现第一阶段 get_agent_guidance 和短初始化入口，尚未实现真实 Prompts、设置管理界面与 list_files_page 缺项筛选。
 4. 从本文第六章**最早尚未验收的阶段**开始执行；优先完成该阶段代码、独立测试和提交，不擅自改变需求或合并后续阶段。**不得遗漏两个独立闭环：新文件上传默认阅读并提取属性，以及存量文件先由 MCP 通用缺项查询（无需逐个详情）再下载阅读、批量补录。**
 5. 用户后续要求更改方案时先同步修改本文，再根据修订后的目标实施；每一阶段完成后回写状态、SHA 与证据链接。
 
