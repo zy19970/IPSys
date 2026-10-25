@@ -274,6 +274,8 @@ const VaultStore = {
         ? `a:${hit.section}:${id}`
         : hit.kind === "general"
         ? `g:${id}`
+        : hit.kind === "archive_folder"
+        ? `af:${id}`
         : "";
     return nodeId ? findById(nodeId) : null;
   },
