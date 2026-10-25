@@ -1,6 +1,6 @@
 # IPSys 本地 Agent 分层提示词服务实施方案
 
-> 文档状态：需求及路线已确认。**第一阶段源码已实施；第二阶段 Prompts/缺项筛选代码及回归已提交，Windows CI 和真实 Agent 工作流验收仍待核验；第三阶段未实施。**
+> 文档状态：需求与路线已确认。**三阶段的计划内源码已提交：第一阶段按需读取、第二阶段标准 Prompts/通用缺项查询、第三阶段软件级覆盖及设置管理。Windows CI、真实 Codex 与桌面交互验收仍待与最终 SHA 对应的证据；不得把源码存在视作功能已通过实测。**
 >
 > 形成日期：2026-10-25。后续每次实施、审查、跨会话续接本任务，必须先读取本文，再核对仓库 main 最新代码与 MCP 协议。本文不是已经生效的 Agent 系统指令。
 >
@@ -216,6 +216,10 @@ search_records、get_file_details、update_file_metadata、upload_files、start_
 
 ### 第三阶段：设置管理、版本更新及完整回归
 
+> 源码进展（2026-10-25）：已实现当前 Windows 用户 LocalApplicationData/IPSys/agent-guidance.json 软件级可迁移覆盖、只编辑 search/upload/metadata、index 与共用文件读取安全规则不可覆盖，内置/有效版本哈希、每篇更新时间与 source、乐观 revision 冲突校验、原子文件替换。增加受浏览器现行令牌保护的目录/单篇/保存/恢复/配置导入导出 API，设置 UI 与 MCP tools/prompts 共用 AgentGuidance 注册表。独立用户配置、HTTP–MCP 实时一致性/授权、Node UI 交互、并发读取、SQLCipher 数百条元数据分页回归已写入现行 Windows smoke/CI。**Windows CI 实际结论以及本机 Codex/多用户/真实浏览器验证仍待执行并取得证据。**
+
+> [第三阶段本地 Agent 实机验收任务书](./IPSys_Agent_分层提示词服务_第三阶段_本地Agent验收任务书_20261025.md)。该任务书为操作清单，不是已完成测试报告。
+
 1. 在 IPSys 设置中提供规范目录、单篇编辑、预览、恢复默认、导入/导出；明确默认资源与用户覆盖优先级。
 2. 有效版本/更新时间及缓存失效规则贯通 MCP、设置界面；用户更新后新工具读取立即生效，初始化重新连接刷新；避免客户端误用旧版本。
 3. 用独立测试 SQLCipher 库验证公司/个人隔离、未授权宿主、工作区切换、会话撤权、并发多 Agent、异常参数与只读语义；对第二阶段已落地的通用缺项筛选在大批文件情况下验证响应速度与分页正确性。仅在性能证据显示必要时才研究轻量查询优化，不因字段缺失检索自动增加持久化索引或全文服务。
@@ -269,7 +273,7 @@ search_records、get_file_details、update_file_metadata、upload_files、start_
 
 1. 先读 AIGT-templates 的 AGENTS.md、AI_RULES/GIT_OPERATIONS.md，再读本文。
 2. 读取 IPSys main 最新 HEAD、完整提交历史及提交说明，核对 McpLocal.cs / McpLocalExtras.cs / NativeMcpSmoke.cs、MCP_CODEX.md 与最新 CI。
-3. 明确区分“本方案已制定”和“功能已实施”。原始方案提交时仅形成设计；当前已实现第一阶段 get_agent_guidance 和短初始化入口，第二阶段 Prompts 和 list_files_page 缺项筛选已加入源码，设置管理界面与 Agent 真实业务验收仍待完成。
+3. 明确区分“本方案已制定”和“功能已实施”。原始方案提交时仅形成设计；当前已实现第一阶段 get_agent_guidance 和短初始化入口，第二阶段 Prompts 和 list_files_page 缺项筛选已加入源码，第三阶段设置管理及软件级用户覆盖也已加入源码；Windows CI 与 Agent 真实业务、跨会话、双用户验收仍需结果证据。
 4. 从本文第六章**最早尚未验收的阶段**开始执行；优先完成该阶段代码、独立测试和提交，不擅自改变需求或合并后续阶段。**不得遗漏两个独立闭环：新文件上传默认阅读并提取属性，以及存量文件先由 MCP 通用缺项查询（无需逐个详情）再下载阅读、批量补录。**
 5. 用户后续要求更改方案时先同步修改本文，再根据修订后的目标实施；每一阶段完成后回写状态、SHA 与证据链接。
 
