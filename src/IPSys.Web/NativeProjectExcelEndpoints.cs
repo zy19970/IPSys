@@ -23,7 +23,8 @@ static class NativeProjectExcelEndpoints
             {
                 if(!v.Allowed(ctx))return Results.Unauthorized();
                 try{return Results.File(ExcelLedger.NativeProjectExport(v.Db,workspace,
-                    kind,input.Mode,input.Ids),ExcelLedger.ContentType,kind+"-ledger.xlsx");}
+                    kind,input.Mode,ExcelLedger.ExportIds(v.Db,workspace,kind,"",input)),
+                    ExcelLedger.ContentType,kind+"-ledger.xlsx");}
                 catch(InvalidDataException ex){return fail(ex.Message,400);}
                 catch(ArgumentException ex){return fail(ex.Message,400);}
             }
