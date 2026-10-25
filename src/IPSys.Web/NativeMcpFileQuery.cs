@@ -25,7 +25,7 @@ static class NativeMcpFileQuery
           WHERE child.deleted=0
         )
         SELECT l.id,l.file_id,l.folder_id,folder.kind,folder.section,
-               COALESCE(l.display_name,file.name),
+               COALESCE(l.display_name,file.name) AS name,
                version.version,obj.size,obj.sha256,
                file.description,file.tags,file.file_number,file.file_date
         FROM folder_file_links l
