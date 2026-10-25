@@ -16,6 +16,35 @@ static class AgentGuidance
         new("metadata","属性维护规范","已入库文件按可补录缺项筛选、去重阅读并保守回写","metadata.md")
     ];
 
+    // The standard MCP Prompts listing and tool directory use the same records.
+    // Built-in names and metadata are non-sensitive; full prompt text still
+    // requires an authorized host connection.
+    internal static object[] Prompts()=>
+    [
+        new {name="index",title="Agent 工作规范目录",
+            description="列出 search、upload、metadata 的 ID、摘要和版本，不加载全文"},
+        ..Guides.Select(g=>(object)new {
+            name=g.Id,title=g.Title,description=g.Summary
+        })
+    ];
+
+    internal static bool HasTopic(string name)=>
+        name=="index" || Guides.Any(g=>g.Id==name);
+
+    internal static object PromptFromGuidance(JsonNode guidance)
+    {
+        string name=guidance["id"]?.GetValue<string>()??"";
+        if(!HasTopic(name))throw new IOException("未知 Agent 规范："+name);
+        // MCP protocol 2025-06-18 uses role=user and type=text.
+        string body=name=="index"?guidance.ToJsonString():
+            guidance["content"]?.GetValue<string>()??
+            throw new IOException("规范正文不可用："+name);
+        return new {
+            description=guidance["summary"]?.GetValue<string>(),
+            messages=new[] { new { role="user",content=new {type="text",text=body} } }
+        };
+    }
+
     private static string ReadEmbedded(string name)
     {
         string resource="IPSys.Web.AgentGuidance."+name;
