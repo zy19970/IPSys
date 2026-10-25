@@ -134,13 +134,19 @@ static partial class McpLocal
         Tool("list_files","列出工作区全部 V2 项目、合同、知识产权、档案和综合资料有效原件；id 是 LinkId，fileId 是逻辑文件身份。",new(){
             ["workspace"]=Field("string","工作区",Workspaces)
         },["workspace"]),
-        Tool("list_files_page","分页查询同一工作区 V2 文件关联；返回 items/offset/limit/hasMore/nextOffset，支持按资料类别、所属 FolderId 和名称过滤。建议代替不分页的 list_files。",new(){
+        Tool("list_files_page","分页查询 V2 文件关联；有缺项要求时指定 missing_fields=all 或字段列表及 missing_mode=any/all，将在 SQLCipher 内筛选并按 FileId 去重，返回每条 missingFields；原有无筛选语义不变。批量补录前按需读取 metadata 规范。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
             ["kind"]=Field("string","业务资料类别",["project","contract","ip","archive","general"]),
             ["owner_id"]=Field("integer","仅返回指定所属 FolderId 的关联"),
             ["name"]=Field("string","文件位置显示名或文件名的部分匹配"),
             ["offset"]=Field("integer","从零开始的偏移量（默认 0）"),
-            ["limit"]=Field("integer","每页 1–200 条（默认 100）")
+            ["limit"]=Field("integer","每页 1–200 条（默认 100）"),
+            ["missing_fields"]=new {
+                type=new[]{"string","array","null"},
+                description="选填：all 或字段数组或逗号分隔字段，支持 description、tags、file_number、file_date；不传则使用原有列表语义",
+                items=new {type="string"}
+            },
+            ["missing_mode"]=Field("string","任一字段缺项 any（默认），或全部指定字段缺项 all",["any","all"])
         },["workspace"]),
         Tool("create_project","在已解锁的 IPSys 中创建项目。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
@@ -227,7 +233,7 @@ static partial class McpLocal
             ["file_id"]=Field("integer","原件 FileId"),
             ["link_id"]=Field("integer","关联 LinkId")
         },["workspace","ip_id","file_id","link_id"]),
-        Tool("upload_files","本机上传到 V2 项目/合同/知识产权/档案/综合资料 FolderId；同内容必须显式确认 duplicate_mode；追加版本需为本 Folder 已关联 FileId。每份上限 8 GiB；大文件建议使用 start_upload_task 异步上传并轮询状态。",new(){
+        Tool("upload_files","上传前默认应按需读取 upload 规范并分析原件、生成可靠属性；用户明确只上传则跳过分析。上传到 V2 项目/合同/知识产权/档案/综合资料 FolderId；同内容必须显式确认 duplicate_mode；追加版本需为本 Folder 已关联 FileId。每份上限 8 GiB；大文件建议使用 start_upload_task 异步上传并轮询状态。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
             ["kind"]=Field("string","原件归属类别",["project","contract","ip","archive","general"]),
             ["section"]=Field("string","kind=archive 必填；公司可用 certificate、achievement、party（党团建设），个人可用 certificate、achievement、academic"),
@@ -247,7 +253,7 @@ static partial class McpLocal
                     ["topic"]=Field("string","规范 ID；省略时仅列目录",
                         ["index","search","upload","metadata"])
                 },[]),
-            Tool("start_upload_task","异步启动 1–20 个本机原件上传，立即返回 request_id；其余参数与 upload_files 相同。请使用 get_task_status/cancel_task。",new(){
+            Tool("start_upload_task","上传前按需读取 upload 规范并处理属性；异步启动 1–20 个本机原件上传，立即返回 request_id；其余参数与 upload_files 相同。请使用 get_task_status/cancel_task。",new(){
                 ["workspace"]=Field("string","工作区",Workspaces),
                 ["kind"]=Field("string","归属资源",["project","contract","ip","archive","general"]),
                 ["section"]=Field("string","kind=archive 必填；公司 certificate/achievement/party（党团建设），个人 certificate/achievement/academic"),
@@ -324,7 +330,7 @@ static partial class McpLocal
                     {
                         "initialize"=>Success(id,new {
                             protocolVersion="2025-06-18",
-                            capabilities=new {tools=new {listChanged=false}},
+                            capabilities=new {tools=new {listChanged=false},prompts=new {listChanged=false}},
                             serverInfo=new {name="ipsys-local",version="1.0.0"},
                             instructions=AgentGuidance.InitializeInstructions
                         }),
@@ -332,7 +338,8 @@ static partial class McpLocal
                         "tools/list"=>Success(id,new {tools=Tools()}),
                         "tools/call"=>await CallToolAsync(id,root),
                         "resources/list"=>Success(id,new {resources=Array.Empty<object>()}),
-                        "prompts/list"=>Success(id,new {prompts=Array.Empty<object>()}),
+                        "prompts/list"=>Success(id,new {prompts=AgentGuidance.Prompts()}),
+                        "prompts/get"=>await CallPromptAsync(id,root),
                         _=>Error(id,-32601,"Unknown MCP method: "+method)
                     };
                 }
@@ -344,6 +351,37 @@ static partial class McpLocal
                 Console.Error.WriteLine("IPSys MCP 协议输入错误："+ex.Message);
             }
         }
+    }
+
+    private static async Task<object> CallPromptAsync(JsonElement id,JsonElement root)
+    {
+        if(!root.TryGetProperty("params",out var args)||
+           args.ValueKind!=JsonValueKind.Object ||
+           !args.TryGetProperty("name",out var n) ||
+           n.ValueKind!=JsonValueKind.String ||
+           !AgentGuidance.HasTopic(n.GetString()??""))
+            return Error(id,-32602,"无效的 MCP prompt name；可用 index、search、upload、metadata。");
+        // All built-in prompts have no template arguments. Reject parameters
+        // rather than silently disregarding a caller's requested substitutions.
+        if(args.EnumerateObject().Any(p=>p.Name is not ("name" or "arguments"))||
+           args.TryGetProperty("arguments",out var templateArgs)&&
+             (templateArgs.ValueKind!=JsonValueKind.Object ||
+              templateArgs.EnumerateObject().Any()))
+            return Error(id,-32602,"当前 MCP 规范没有模板参数；arguments 必须为空对象。");
+        var guidance=await CallHostAsync("get_agent_guidance",
+            JsonSerializer.SerializeToElement(new {topic=n.GetString()}));
+        return Success(id,AgentGuidance.PromptFromGuidance(guidance));
+    }
+
+    internal static async Task<JsonNode> RunSmokeProtocolPromptAsync(string name)
+    {
+        using var request=JsonDocument.Parse(JsonSerializer.Serialize(new {
+            jsonrpc="2.0",id=1,method="prompts/get",
+            @params=new {name}
+        },Json));
+        var value=await CallPromptAsync(JsonSerializer.SerializeToElement(1),
+            request.RootElement);
+        return JsonSerializer.SerializeToNode(value,Json)??new JsonObject();
     }
 
     private static async Task<object> CallToolAsync(JsonElement id,JsonElement root)
