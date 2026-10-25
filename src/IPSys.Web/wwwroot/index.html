@@ -313,6 +313,36 @@
           <button type="button" class="btn" id="setLock">关闭资料库</button>
         </div>
       </section>
+
+      <section class="set-group set-agent-guidance">
+        <h3>Agent 工作规范</h3>
+        <p class="set-agent-hint">统一规范保存在当前 Windows 用户的应用配置中，不随资料库切换。内置总入口不可修改，专项规范可以单独覆盖；原有授权和业务安全规则始终生效。</p>
+        <div class="set-agent-controls">
+          <label for="setAgentTopic">选择规范</label>
+          <select id="setAgentTopic" aria-label="选择 Agent 规范">
+            <option value="index">总规范目录（只读）</option>
+            <option value="search">智能检索</option>
+            <option value="upload">智能入库</option>
+            <option value="metadata">属性维护</option>
+          </select>
+        </div>
+        <small class="set-agent-meta" id="setAgentMeta">正在读取当前有效版本…</small>
+        <label class="set-agent-label" for="setAgentEditor">专项规范编辑内容</label>
+        <textarea id="setAgentEditor" rows="8" spellcheck="false" maxlength="49000"
+          placeholder="选择 search、upload 或 metadata 后加载规范正文"></textarea>
+        <div class="set-agent-actions">
+          <button type="button" class="btn solid" id="setAgentSave" disabled>保存修改</button>
+          <button type="button" class="btn" id="setAgentRestore" disabled>恢复内置默认</button>
+          <button type="button" class="btn" id="setAgentPreview">预览生效内容</button>
+        </div>
+        <pre id="setAgentPreviewText" class="set-agent-preview" hidden></pre>
+        <div class="set-agent-actions">
+          <button type="button" class="btn" id="setAgentExport">导出配置</button>
+          <button type="button" class="btn" id="setAgentImport">导入配置</button>
+          <input type="file" id="setAgentImportFile" accept=".json,application/json" hidden>
+        </div>
+        <small class="set-agent-hint">导入会整体替换当前用户的专项覆盖配置。请勿把密码、令牌或数据库密钥写入规范；需要旧会话读取新版本时，请重新连接 Agent 或主动获取规范。</small>
+      </section>
     </div>
 
     <div class="dlg-foot">
