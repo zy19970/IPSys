@@ -110,6 +110,10 @@ static class SearchSmoke
         if(!ipOriginal.Results.Any(x=>x.Kind=="file"&&x.OwnerKind=="ip"
              &&x.OwnerId==ipId&&x.Title==ipFilename))
             throw new IOException("V2 知识产权原件应按真实 FolderId 进入统一搜索。");
+        var plainIp=ipOriginal.Results.Single(x=>x.Kind=="file"&&x.FileId>0);
+        if(plainIp.Description!="" || plainIp.OwnerLabel is not string ipOwnerLabel ||
+           !ipOwnerLabel.Contains(marker+"-专利"))
+            throw new IOException("无原件说明时不得用项目摘要伪造 description。");
         if((await Find(client,"personal",ipFilename)).Results.Count!=0)
             throw new IOException("V2 知识产权原件不允许跨工作区搜索。");
         var byProject=await Find(client,"company",marker+"-P");
@@ -152,10 +156,17 @@ static class SearchSmoke
             (keyword,"tags"),(description,"description"),(numberKey,"fileNumber")})
         {
             var result=await Find(client,"company",term);
-            if(!result.Results.Any(x=>x.Kind=="file"&&x.FileId==fileId&&
-                x.LinkId>0&&x.OwnerId==projectId&&x.FolderId==projectId&&
-                x.Path.Contains(filename)&&x.MatchedFields.Contains(field)))
+            var hit=result.Results.FirstOrDefault(x=>x.Kind=="file"&&
+                x.FileId==fileId&&x.LinkId>0&&x.OwnerId==projectId&&
+                x.FolderId==projectId&&x.Path.Contains(filename)&&
+                x.MatchedFields.Contains(field));
+            if(hit is null)
                 throw new IOException("附件元数据命中或 ID 定位失败："+field);
+            if(hit.Description!="地下铲运机"+description ||
+               hit.OwnerLabel?.Contains(marker+"-公司项目")!=true ||
+               hit.OwnerLabel.Contains(filename)==false ||
+               hit.Tags!="铲运机;"+keyword+";LHD")
+                throw new IOException("检索必须分别返回真实说明和归属摘要："+field);
             if((await Find(client,"personal",term)).Results.Count!=0)
                 throw new IOException("跨工作区检索泄漏："+field);
         }

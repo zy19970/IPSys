@@ -31,7 +31,7 @@ MCP initialize.instructions 只输出来自内嵌 index.md 的短入口，必须
 
 IPSys 只提供工作区内结构化关键词检索及原件版本下载，不解析 PDF/Word 正文、不做 OCR 或模型推理。Agent 自主选择同义词进行多轮检索，再使用 `get_file_details`、`list_file_links` 和 `download_file_version` 获取原件并分析。
 
-现行 `search_records(workspace,query,kind?,offset?,limit?)` 支持可选结果类别 `project/contract/ip/archive/archive_folder/general/file`，指定 offset 或 limit 任意一个即可进入无分组截断的分页模式。默认 offset=0、limit=100，最大单页 200；响应有 `total/offset/limit/hasMore/nextOffset`。Agent 应继续分页直到 hasMore=false。完全不传分页参数保留旧页面所依赖的每类别最多 60 条结果与 truncated 提示。
+现行 `search_records(workspace,query,kind?,offset?,limit?)` 支持可选结果类别 `project/contract/ip/archive/archive_folder/general/file`，指定 offset 或 limit 任意一个即可进入无分组截断的分页模式。默认 offset=0、limit=100，最大单页 200；响应有 `total/offset/limit/hasMore/nextOffset`。Agent 应继续分页直到 hasMore=false。实际逐条核查时建议 limit=10–20，避免客户端只显示大页预览；预览不等于完整阅读。完全不传分页参数保留旧页面所依赖的每类别最多 60 条结果与 truncated 提示。文件搜索项 description 现为真实原件说明（无说明时为空），ownerLabel 另存“目录/项目 · 原件名”展示摘要，matchedFields=description 根据真实原件说明计算。检索结果 total 按命中的业务项/文件关联计数，不保证等于唯一 FileId 数量。
 
 命中项包含 `matchedFields`（命中依据）、`path`（业务目录路径）、`folderId`；文件命中另包含 `fileId/linkId/ownerId/ownerKind/latestVersion/size/tags/fileNumber/fileDate`。历史 `id` 对文件仍表示 FileId，并非 LinkId；相同 FileId 出现在多个位置时应保留各位置但避免重复下载。分页期间发生文件变更时应重新校验。
 

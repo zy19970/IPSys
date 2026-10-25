@@ -68,9 +68,12 @@ static partial class McpLocal
             if(type=="array")
             {
                 int length=param.Value.GetArrayLength();
-                if(field.TryGetProperty("minItems",out var lower)&&length<lower.GetInt32() ||
-                    field.TryGetProperty("maxItems",out var upper)&&length>upper.GetInt32())
-                    throw new IOException("数组元素数量无效："+param.Name);
+                if(field.TryGetProperty("minItems",out var lower)&&length<lower.GetInt32())
+                    throw new IOException("数组参数 "+param.Name+" 至少需要 "+
+                        lower.GetInt32()+" 个元素。");
+                if(field.TryGetProperty("maxItems",out var upper)&&length>upper.GetInt32())
+                    throw new IOException("数组参数 "+param.Name+" 最多 "+
+                        upper.GetInt32()+" 个元素；请按上限分批提交。");
                 if(field.TryGetProperty("items",out var itemSchema))
                 {
                     string itemType=itemSchema.GetProperty("type").GetString()!;

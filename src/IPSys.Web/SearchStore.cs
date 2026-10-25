@@ -6,6 +6,8 @@ record SearchHit(string Kind,long Id,string Section,string Title,string Descript
     string OwnerKind="",long OwnerId=0)
 {
     public string Path {get;init;}="";
+    // Display context is independent from the actual file description.
+    public string? OwnerLabel {get;init;}
     public string[] MatchedFields {get;init;}=[];
     public long? FolderId {get;init;}
     public long? FileId {get;init;}
@@ -244,8 +246,9 @@ static class SearchStore
                 if(m.Length==0)continue;
                 Add(new SearchHit("file",link.FileId,
                     kind==FolderKinds.Archive?item.Folder.Ref.Section:"",location,
-                    Summary(ancestry,parentTitle,link.MaterialCategory,
-                        latest.OriginalName),kind,owner){
+                    details.Description??"",kind,owner){
+                    OwnerLabel=Summary(ancestry,parentTitle,link.MaterialCategory,
+                        latest.OriginalName),
                     Path=parentPath+" / "+location,MatchedFields=m,
                     FolderId=owner,FileId=link.FileId,LinkId=link.Id,
                     Tags=details.Tags,FileNumber=details.FileNumber,

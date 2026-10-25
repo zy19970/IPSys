@@ -323,6 +323,22 @@ static class NativeMcpSmoke
               foundHits[0]?["matchedFields"] is JsonArray&&
               found["total"]?.GetValue<int>()>=1&&found["limit"]?.GetValue<int>()==1,
               "MCP search_records: pagination and matched source");
+        // Validate both upload entry points before any file I/O.
+        foreach(string uploadTool in new[]{"upload_files","start_upload_task"})
+        {
+            var tooMany=await McpLocal.RunSmokeProtocolToolAsync(
+                uploadTool,Args(new {
+                    workspace="company",kind="project",owner_id=project,
+                    paths=Enumerable.Repeat("C:\\not-a-real-upload.pdf",21).ToArray(),
+                    request_id="smoke-too-many-paths"
+                }));
+            string? body=tooMany["result"]?["content"]?[0]?["text"]?.GetValue<string>();
+            string? msg=body==null?null:JsonNode.Parse(body)?["message"]?.GetValue<string>();
+            Check(tooMany["result"]?["isError"]?.GetValue<bool>()==true &&
+                  msg?.Contains("paths")==true &&
+                  msg.Contains("最多 20")==true && msg.Contains("分批")==true,
+                uploadTool+" paths limit must be actionable: "+body);
+        }
         var invalidSearch=await McpLocal.RunSmokeProtocolToolAsync(
             "search_records",Args(new{workspace="company",query=name,limit=500}));
         Check(invalidSearch["result"]?["isError"]?.GetValue<bool>()==true,
