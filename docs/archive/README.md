@@ -1,6 +1,6 @@
 # IPSys 历史文档归档索引
 
-本目录保存已完成阶段的技术决策、测试过程与旧界面/接口方案。文档内容是对应日期的原始历史，不作为当前施工指令。现行权威入口：仓库根目录 [README](../../README.md)、[REQUIREMENTS](../../REQUIREMENTS.md)、[DESIGN](../../DESIGN.md)、[DEVELOPMENT_PLAN](../../DEVELOPMENT_PLAN.md)、[TESTING](../../TESTING.md)。
+本目录保存已完成阶段的技术决策、测试过程与旧界面/接口方案。**截至 2026-10-25，项目处于功能细节优化阶段**，本目录文档的旧技术路线、日期、分支、合同 Excel 导出、知识产权旧字段与 MCP 旧工具数量均按原样保留，仅作为历史证据，**不作为当前施工指令**。现行权威入口：仓库根目录 [README](../../README.md)、[REQUIREMENTS](../../REQUIREMENTS.md)、[DESIGN](../../DESIGN.md)、[DEVELOPMENT_PLAN](../../DEVELOPMENT_PLAN.md)、[TESTING](../../TESTING.md)。
 
 | 归档文件 | 历史作用 / 当前替代 |
 | --- | --- |
@@ -10,7 +10,7 @@
 | [资源内核回归矩阵](../../tests/archive/RESOURCE_REFACTOR_TEST_MATRIX.md) | 历史测试文件已集中 tests/archive，现行方法见 TESTING |
 | `UI_COMPONENT_MATRIX.md` | 已退役 `wwwroot/app.js` 共用组件，正式前端见 [`src/IPSys.Web/wwwroot/`](../../src/IPSys.Web/wwwroot/README.md) |
 | [Windows 测试历史](../../tests/archive/WEB_TESTING.md)、[大文件测试历史](../../tests/archive/LARGE_FILE_TESTING.md) | 已集中 tests/archive，现行门禁见 TESTING |
-| `EXCEL_LEDGER.md`、`SEARCH.md` | 早期功能文档，现行说明见 USER_GUIDE |
+| `EXCEL_LEDGER.md`、`SEARCH.md` | 早期 Excel/搜索设计，包含已经取消的合同独立 Excel 导出；现行实际模板与范围见 [USER_GUIDE](../../USER_GUIDE.md) 和 [M0_DATA_DICTIONARY](../../M0_DATA_DICTIONARY.md) |
 | [MCP 黑盒任务书](../../tests/archive/MCP_AGENT_FINAL_RETEST.md)、[接口清理测试](../../tests/archive/MCP_INTERFACE_CLEANUP_TEST.md) | 已集中 tests/archive，现行接入见 MCP_CODEX |
 | `ONEDRIVE_REFACTOR_PLAN.md`、`P0_COMPONENT_EVALUATION.md` | React/Vite 选型试验已被零依赖原生 Explorer 取代 |
 

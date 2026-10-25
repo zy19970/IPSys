@@ -1,5 +1,7 @@
 # IPSys Explorer 合并主分支前验收与准备结论（2026-10-23）
 
+> **历史合并前审查快照（2026-10-25 补充定位）**：正文“尚未执行合并”、旧 `main`/开发分支 SHA 及当时的文件差异均只在 2026-10-23 有效。合并已完成，当前仅 `main`，最新产品代码 `8c1ca9a` 的 [Windows CI #40162144248](https://github.com/zy19970/IPSys/actions/runs/40162144248) 已通过；现行进度请查 [DEVELOPMENT_PLAN](../DEVELOPMENT_PLAN.md)。不得修改正文原始测试结论。
+
 > **状态：已完成 C-01 / ZIP64 生成限定范围的收敛；可以准备合并评审，但尚未执行合并。**
 > 对比范围：`main` @ `c22ea1f836b5e3763780a674f1cbb1f56fb68d05` → `work/onedrive-file-manager` @ `d457a8077fd05923e9cbb30af73d545691cdc70f`。当目标分支产生新提交，必须重新核对 HEAD 和 CI 结果。
 

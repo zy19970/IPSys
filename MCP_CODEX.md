@@ -1,5 +1,7 @@
 # IPSys 本机 Codex MCP
 
+> 本手册的**现行操作规则**以前置章节（知识产权三编号、党团建设、63 工具及安全操作）为准；下文按日期保留的“新增工具”“当前版本”“59/69/70 个工具”“`v2_*` 工具仍有效”等是对应历史提交的增量记录，不可直接作为现行接口清单。合同不设独立 Excel 导入或导出，该限制不影响合同业务 MCP 新增、编辑及附件接口。
+
 ## 知识产权 MCP：十类型、统一三个编号（2026-10-25）
 
 开发测试阶段采用最新 V2 数据结构，**不做旧数据库迁移或旧字段兼容**。更新 EXE 后刷新客户端 MCP `tools/list`。现行 `create_ip` / `update_ip` 使用 `workspace`、`name`、`ip_type`、可选 `number`、`publication_no`、`grant_notice_no`；其它非编号字段（日期、人员、权利人、状态、标签等）按工具声明填写。名称与类型必填，其余均可空。旧 `application_no` / `registration_no` 参数已移除，不应发送；本次工具总数不变。
@@ -8,7 +10,7 @@
 
 示例：`create_ip(workspace="company",name="示例国家标准",ip_type="国家标准",number="GB/T XXXXX—2026",status="已发布")`；`create_ip(workspace="company",name="示例专利",ip_type="发明专利",number="202610000001.1",publication_no="CNXXXXXXXXXA",grant_notice_no="CNXXXXXXXXXB")`。以上仅为格式示例。
 
-> **当前主分支接口口径（2026-10-24，待本次 CI 复核）**：MCP 工具由 59 个扩展为 **63 个无版本前缀的工具**，新增 `list_party_archives`、`create_party_archive`、`update_party_archive`、`delete_party_archive`，专用于公司工作区“党团建设”。既有通用 `list_archives/create_archive/update_archive/delete_archive` 仍支持 `workspace=company, section=party`。以下此前的“59 工具”描述属于旧提交验收历史，不能再当作当前清单。更新 EXE 后需重启本机 MCP 客户端，使 Agent 刷新 `tools/list`。
+> **当前主分支接口口径（2026-10-25，已验证）**：`8c1ca9a` 对应 [Windows CI #40162144248](https://github.com/zy19970/IPSys/actions/runs/40162144248) 的 MCP stdio `tools/list` 验证通过。工具由旧 59 个扩展为 **63 个无版本前缀的工具**，新增 `list_party_archives`、`create_party_archive`、`update_party_archive`、`delete_party_archive`，专用于公司工作区“党团建设”。既有通用 `list_archives/create_archive/update_archive/delete_archive` 仍支持 `workspace=company, section=party`。以下此前的“59 工具”描述属于旧提交验收历史，不能再当作当前清单。更新 EXE 后需重启本机 MCP 客户端，使 Agent 刷新 `tools/list`。
 
 ## 党团建设 MCP（公司工作区）
 
@@ -16,7 +18,7 @@
 
 党团资料附件直接使用现有 `upload_files(workspace=company,kind=archive,section=party,owner_id=档案FolderId,paths=[本机绝对路径])` 或对应 `start_upload_task`；文件管理使用 `list_files_page(kind=archive,owner_id=...)`、`get_file_details`、`download_file_version`、`delete_file`、`copy_file` 等共用接口。整条复制可使用 `transfer_archive(workspace=company,section=party,target_workspace=company,target_section=party,archive_id=...,move=false)`；不允许转移到个人工作区或其它不兼容分类。删除后的精确恢复使用 `list_trash` 返回的 `kind=v2_archive,id,section=party` 调用 `restore_trash`。
 
-> **历史主分支基线（2026-10-23）**：Explorer 已合并 `main`，Windows CI [#39947975625](https://github.com/zy19970/IPSys/actions/runs/39947975625) 的 MCP stdio、59 工具和错误协议检查通过。下文 69/70 工具、旧 `v2_*` 名称及“尚待合并”的文字是对应旧 SHA 的记录；本机特殊权限/不同 Windows 用户的人工复测不能被常规 CI 冒充。当前版本与状态查 [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md) 和 [TESTING.md](./TESTING.md)。
+> **历史主分支基线（2026-10-23）**：Explorer 已合并 `main`，Windows CI [#39947975625](https://github.com/zy19970/IPSys/actions/runs/39947975625) 的 MCP stdio、当时 59 工具和错误协议检查通过。下文 69/70 工具、旧 `v2_*` 名称及“尚待合并”的文字是对应旧 SHA 的记录；本机特殊权限/不同 Windows 用户的人工复测不能被常规 CI 冒充。当前版本与状态查 [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md) 和 [TESTING.md](./TESTING.md)。
 
 
 > **历史已验证构建**：[`2620c109`](https://github.com/zy19970/IPSys/commit/2620c109043f779eeb57f411210f99bb2f21e554) / [Windows CI #39019604428](https://github.com/zy19970/IPSys/actions/runs/39019604428) **success**（59 工具、无 `v2_*`、SQLCipher/HTTP、Debug/Release/Node 回归）；本机 Codex/WorkBuddy 新一轮实测尚待进行。此处其余 69/70 工具、11 个 `v2_*` 等描述均为历史时间点记录，**当前工具总数已更新为 63，参见本文最上方**，并参照 [HANDOFF.md](./DEVELOPMENT_PLAN.md)。

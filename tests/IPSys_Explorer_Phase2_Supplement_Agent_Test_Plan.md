@@ -1,5 +1,7 @@
 # IPSys Explorer 第二阶段补充实机验收方案（针对未覆盖与证据不足项）
 
+> **已执行的历史 16 项补测任务书**：编制时“待执行”和“不合并 main”是旧状态。补测原始结果（9 PASS / 3 BLOCKED / 1 GAP / 3 BUG）保留在 [报告](./agent-validation/phase2-supplement-20261023-1115-178cf558/SUPPLEMENT_TEST_REPORT.md)；后续修复及最新 CI 见 [证据索引](./TEST_EVIDENCE_INDEX.md)。
+
 > **执行状态：待本地 Agent 实际执行。** 本文件只安排补测，不预先断言结果。目标仓库 [zy19970/IPSys](https://github.com/zy19970/IPSys)，工作分支 `work/onedrive-file-manager`，编制时 HEAD `b96e2007746b5accc2f7f67b03ce1c421370b50f`（真正执行前重新记录远程 HEAD）。不得合并 `main`。
 >
 > 补测依据：[上一轮 132 项报告](./agent-validation/phase2-final-20261023-0112-f5d206a/AGENT_TEST_REPORT.md)、[缺陷](./agent-validation/phase2-final-20261023-0112-f5d206a/DEFECTS.md)、[阻塞项](./agent-validation/phase2-final-20261023-0112-f5d206a/TEST_ERRORS_AND_BLOCKERS.md)、[方案审查](./agent-validation/phase2-final-20261023-0112-f5d206a/PLAN_REVIEW.md)。原报告结果 126 PASS / 1 CONFIRMED_BUG / 3 BLOCKED / 2 GAP；其记录是历史事实，不应被新报告覆盖。

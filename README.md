@@ -57,11 +57,11 @@ D:\资料管理系统\
 
 换电脑时，可以在新电脑准备可运行的 EXE，将安全退出后备份的 DB 文件放在自己选定的位置，再在网页登录页通过文件夹按钮选中它，输入原数据库密码。**更换 EXE 或关闭浏览器不会自动删除 DB；但删除、覆盖或遗失 DB 文件会导致资料受损或丢失。**
 
-本软件目前是**本机离线资料库**：采用 OneDrive 风格的操作界面，不代表已接入 OneDrive 云端，也不具备自动云同步。EXE 分为自包含版和依赖环境版：自包含版不需要另装 .NET 8；依赖环境版需要安装对应的 .NET 8 Windows Desktop Runtime 和 ASP.NET Core Runtime（x64）。普通用户优先使用正式发布的自包含版，具体以[发布说明](#手动发布-github-release)为准。
+本软件目前是**本机离线资料库**：采用 OneDrive 风格的操作界面，不代表已接入 OneDrive 云端，也不具备自动云同步。EXE 分为自包含版和依赖环境版：自包含版不需要另装 .NET 8；依赖环境版需要安装对应的 .NET 8 Windows Desktop Runtime 和 ASP.NET Core Runtime（x64）。普通用户优先使用与需求匹配、经过验证的自包含版，具体以[发布说明](#手动发布-github-release)为准。
 
 ---
 
-> **当前项目入口（2026-10-23）**。Explorer 重构分支 `work/onedrive-file-manager` 已以非强制 fast-forward 并入 `main`，合并提交基线 `8227d2c`；[main Windows CI #39947975625](https://github.com/zy19970/IPSys/actions/runs/39947975625) 已通过。历史文档中“仍待合并”“旧网页入口”“未开展本地 Agent 测试”等陈述只代表当时的提交，不再是当前待办。
+> **当前执行基线（2026-10-25）**：Explorer 已并入 `main`，当前仓库仅保留 `main` 分支。最近一次产品功能提交为 [`8c1ca9a`](https://github.com/zy19970/IPSys/commit/8c1ca9adc2bc92903926c44c46e200363bfa2e94)，对应 [Windows CI #40162144248](https://github.com/zy19970/IPSys/actions/runs/40162144248) 全部通过。当前阶段为**基于真实使用反馈的功能细节优化**；历史计划中的“待合并/待开展 Agent 测试”等描述只反映原日期状态。本次文档同步不等同于重新运行产品 CI。
 
 ## 产品及技术现状
 
@@ -70,6 +70,8 @@ IPSys 是离线、单用户的 Windows 资料管理系统。一个 SQLCipher V2 
 程序的**唯一正式前端**集中于 [`src/IPSys.Web/wwwroot/`](./src/IPSys.Web/wwwroot/README.md)。页面源码是 `index.html`、`css/app.css` 和 `js/*.js`，文件管理、ZIP64、PDF、上传等能力模块也位于同一目录。Node 在编译期间生成 `wwwroot/dist/`，全部作为内嵌资源打包进 `IPSys.Web.exe`；不存在独立运行的第二套 UI。
 
 所有业务分类、项目、合同、知识产权及档案以 **Folder** 表示（Folder 无版本），真实附件以 **File / FileVersion** 表示，`folder_file_links` 保存归属，同工作区可按明确操作共享 FileId 或复用 FileObject 内容；跨公司/个人工作区**不得共享物理 FileObject**，须独立复制。合同必须属于有效项目，项目可以单独存在。原件和文件版本存储于加密 SQLCipher 库；不维护磁盘明文镜像。
+
+**当前业务细节**：知识产权分十种类型，以三个可选编号字段（统一编号、公开号、授权公告号）表示；固定 XLSX 模板为 19 列。适用业务模块的 Excel 导出可选择**当前筛选结果**或**本模块全部记录**，筛选在服务端覆盖完整匹配记录，不受搜索页每组 60 条展示上限限制；**合同不提供独立的 Excel 导入或导出**，仅在所属项目中管理。公司业务档案七个预置目录创建后就是普通目录；公司还具有独立党团建设分类。MCP 对外为 **63 个无 `v2_*` 别名的工具**。PDF 预览支持多页连续滚动和按需渲染，启动器显示本程序/整机 CPU 占用。
 
 ## 使用与开发
 
@@ -94,12 +96,13 @@ IPSys 的正式发布由 [Publish IPSys Release](https://github.com/zy19970/IPSy
 
 | 验证范围 | 当前结论与证据 |
 | --- | --- |
-| Explorer F2-01～F2-06 核心业务、三批缺陷修复 | 功能与对应自动回归已完成；`main` 常规 Windows CI [#39947975625](https://github.com/zy19970/IPSys/actions/runs/39947975625) 成功 |
+| Explorer F2-01～F2-06 核心业务、三批缺陷修复 | 功能与对应自动回归已完成，历史合并 CI [#39947975625](https://github.com/zy19970/IPSys/actions/runs/39947975625) 成功 |
+| 最新 Excel、知识产权、PDF、启动器与 MCP 调整 | 最近代码基线 `8c1ca9a`：[Windows CI #40162144248](https://github.com/zy19970/IPSys/actions/runs/40162144248) 成功；包括 19 列知识产权模板、按完整记录筛选导出、取消合同独立 Excel 接口、63 个 MCP 工具 |
 | 运行期 401 重新登录、拖放与待确认上传、跨工作区关联/物理隔离 | 已修复；专项 Node/HTTP 与 Agent 取证见 [验收证据索引](./tests/TEST_EVIDENCE_INDEX.md) |
 | 超过 2 GiB SQLCipher/HTTP 原件及大库 VACUUM | 专项 [#39943364663](https://github.com/zy19970/IPSys/actions/runs/39943364663) 通过（未跳过压缩或完整性检查） |
 | 超过 4 GiB ZIP64 真实物理生成 | 专项 [#39944440866](https://github.com/zy19970/IPSys/actions/runs/39944440866) 通过 `PASS_GENERATION_ONLY`，并不代表 CI 做了第三方解包 |
 | 真实 Windows 原生保存/大文件交互 | 用户已反馈在本人电脑上完成手工验收；无公开上传的逐字节手工操作日志 |
-| 正式软件发布 | **尚未发布**；合并及 CI 通过不等于产品所有环境/故障注入条件均已验收 |
+| 软件发布 | 已有 [`v0.9.0-rc`](https://github.com/zy19970/IPSys/releases/tag/v0.9.0-rc) 和 [`v0.9.1-rc1`](https://github.com/zy19970/IPSys/releases/tag/v0.9.1-rc1) **预发布版**；尚未发布 GA 稳定版。预发布产物并非自动包含最新 `main` 代码 |
 
 ## 文档入口（统一口径）
 

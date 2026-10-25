@@ -1,5 +1,7 @@
 # IPSys Explorer 第三批 Windows 实机验收任务书（SUP-04／SUP-05／SUP-07＋物理隔离）
 
+> **历史第三批任务书（2026-10-25 状态说明）**：本任务书不再作为“尚未执行的本轮计划”。后续已有 [Agent 原始报告](./agent-validation/phase3-real-save-20261023-a18b47b/PHASE3_REPORT.md)、2 GiB/VACUUM 专项和 4 GiB ZIP64 `PASS_GENERATION_ONLY` CI，以及用户独立反馈的人工验证；自动证据与人工反馈不可混同。当前 `main` 和验证状态见 [证据索引](./TEST_EVIDENCE_INDEX.md)。
+
 > 状态：**自动化物理隔离证据已编制，Windows 原生保存与真实 ZIP64 实机证据仍待本地 Agent 运行。** 本文是执行任务书，不预设大文件或原生对话框 PASS。沿用现行开发分支 `work/onedrive-file-manager`；实测前记录精确 HEAD 与 Windows CI SHA。禁止合并 `main`。
 >
 > 测试对象：先确认仓库 `zy19970/AIGT-templates/AGENTS.md` 与 `AI_RULES/GIT_OPERATIONS.md`；再以本分支当前源码、前次 `SUPPLEMENT_TEST_REPORT.md` 为依据。旧 132+16 项报告保持原样，不能覆盖它们改变历史计数。

@@ -1,5 +1,7 @@
 # IPSys Explorer 第二阶段最终本地 Agent 实机验收任务书
 
+> **已交付并执行的历史测试任务书**：此任务书编制时写“待执行”及旧开发分支，是当时状态，不是当前待办。132 项原始结果已归档于 [Agent 报告](./agent-validation/phase2-final-20261023-0112-f5d206a/AGENT_TEST_REPORT.md)（当时 126 PASS / 1 BUG / 3 BLOCKED / 2 GAP）；后续修改见 [证据索引](./TEST_EVIDENCE_INDEX.md)。现行主分支仅 `main`。
+
 > 本任务书为 **待执行的测试计划**，不是已完成的测试报告。适用仓库：https://github.com/zy19970/IPSys ，指定分支：work/onedrive-file-manager。开始前必须以远程最新 HEAD 和真实 Windows CI 作基线，记录精确 SHA；不得使用 main 或旧 V2/V3 报告的 SHA 冒充本轮结果。
 >
 > 开发阶段覆盖 F2-01～F2-06：首次创建资料库、多级业务档案目录/混排、附件共享/移动、整记录复制/转移、内部拖放及共用入口一致性。此前 P0/P1/P2 缺陷亦列入完整回归。只允许本地 Agent 在 **独立测试数据库与测试文件目录** 执行，任何永久删除、一键清空、跨区转移等破坏性操作均只针对专用测试数据。

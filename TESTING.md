@@ -1,6 +1,6 @@
 # IPSys 现行测试与验收规则
 
-> 适用于 2026-10-23 Explorer 合并后的 `main`。本文件汇总历史 `WEB_TESTING.md`、`LARGE_FILE_TESTING.md`、`RESOURCE_REFACTOR_TEST_MATRIX.md` 的仍有效测试原则，原报告和过程证据仍需按 [证据索引](./tests/TEST_EVIDENCE_INDEX.md) 追溯。
+> 适用于 2026-10-25 `main` 的功能细节优化阶段：最近产品代码 `8c1ca9a` 对应 [Windows CI #40162144248](https://github.com/zy19970/IPSys/actions/runs/40162144248) 成功。本文件汇总历史 `WEB_TESTING.md`、`LARGE_FILE_TESTING.md`、`RESOURCE_REFACTOR_TEST_MATRIX.md` 的仍有效测试原则，原报告和过程证据仍需按 [证据索引](./tests/TEST_EVIDENCE_INDEX.md) 追溯。
 
 ## 测试结果必须分层
 
@@ -8,9 +8,13 @@
 
 ## 主分支 Windows CI
 
-主工作流 `.github/workflows/web-windows.yml`，产品源码、Explorer 前端及关联脚本改动触发 Windows 托管 runner。包括 Debug 编译和嵌入前端检查、Release 单 EXE、.NET 8 运行时前提、MCP stdio（59 工具）、Node/Explorer 交互回归、Edge/HTTP 真实浏览器回归、SQLCipher/HTTP 及业务事务检查。合并版本 `8227d2c` 的主分支 [#39947975625](https://github.com/zy19970/IPSys/actions/runs/39947975625) 全部必运行步骤通过。
+主工作流 `.github/workflows/web-windows.yml`，产品源码、Explorer 前端及关联脚本改动触发 Windows 托管 runner。包括 Debug 编译和嵌入前端检查、Release 单 EXE、.NET 8 运行时前提、MCP stdio（63 工具）、Node/Explorer 交互回归、Edge/HTTP 真实浏览器回归、SQLCipher/HTTP 及业务事务检查。最近业务提交 `8c1ca9a` 对应 [Windows CI #40162144248](https://github.com/zy19970/IPSys/actions/runs/40162144248) 全部必运行步骤通过；合并点 `8227d2c` 的 [历史主分支 CI #39947975625](https://github.com/zy19970/IPSys/actions/runs/39947975625) 也已通过。
 
 `tests/retest-v2-2026-10-22/scripts/` 和相应 fixture **仍被 CI 调用**，即使路径包含历史日期，也不是可随意删除的废弃文件。测试实际入口以工作流和 `src/IPSys.Web/tests/` 中的现行引用为准。
+
+## Excel 和知识产权现行回归
+
+当前固定 XLSX：项目 11 列、知识产权 19 列（三编号相关列唯一）、档案/资质/公司党团 4 列、综合资料 1 列；合同**不设独立 Excel 导入或导出**。 `src/IPSys.Web/tests/excel-scope-smoke.cjs` 检查筛选/全量/取消、项目/知识产权/档案端点与工作区范围；`NativeIpExcelHttpSmoke.cs` 验证真实 XLSX 19 列、三编号及筛选 HTTP 往返。服务端筛选导出不得直接复用每组 60 条上限的交互搜索命中列表。最新 [Windows CI #40162144248](https://github.com/zy19970/IPSys/actions/runs/40162144248) 已完成 Windows/Node/SQLCipher/Edge/HTTP 相关回归；本机人工操作外观与大批量实际台账仍可进一步专项复核。
 
 ## 大文件与 ZIP64 专项
 

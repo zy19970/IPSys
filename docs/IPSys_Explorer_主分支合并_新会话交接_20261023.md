@@ -1,5 +1,7 @@
 # IPSys Explorer 开发分支合并回 main：新会话交接文件
 
+> **历史交接文件，不再执行合并步骤（2026-10-25 更新）**：正文完整保留当时尚未合并的任务背景，仅供重现历史决策。Explorer 已非强制快进并入 `main`；当前仓库仅有 `main`，不再存在 `work/onedrive-file-manager` 可供继续合并。新的工作入口是 [开发状态](../DEVELOPMENT_PLAN.md) 与 [现行测试证据](../tests/TEST_EVIDENCE_INDEX.md)；最近代码 [Windows CI #40162144248](https://github.com/zy19970/IPSys/actions/runs/40162144248) 通过。
+
 > **交接日期：2026-10-23**  
 > **交接目的：** 在新的 ChatGPT 会话中直接执行 `work/onedrive-file-manager` → `main` 的合并前核对、合并及合并后验收。  
 > **本次交接仅新增文档，不代表已合并。**  
