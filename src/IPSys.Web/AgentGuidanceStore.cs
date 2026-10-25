@@ -189,13 +189,16 @@ sealed class AgentGuidanceStore
     }
     internal string Import(JsonElement package,string expectedRevision)
     {
+        if(package.ValueKind!=JsonValueKind.Object)
+            throw new ArgumentException("导入配置必须为 JSON 对象。");
         string json=package.GetRawText();
         if(Encoding.UTF8.GetByteCount(json)>MaxPackageBytes)
             throw new ArgumentException("导入配置超过大小限制。");
         if(package.ValueKind!=JsonValueKind.Object ||
            !package.TryGetProperty("schemaVersion",out var schema) ||
            schema.ValueKind!=JsonValueKind.Number ||
-           schema.GetInt32()!=1 ||
+           !schema.TryGetInt32(out int schemaVersion) ||
+           schemaVersion!=1 ||
            !package.TryGetProperty("overrides",out var overrides) ||
            overrides.ValueKind!=JsonValueKind.Object)
             throw new ArgumentException("导入文件必须包含 schemaVersion=1 和 overrides 对象。");
