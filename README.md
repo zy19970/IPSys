@@ -61,7 +61,7 @@ D:\资料管理系统\
 
 ---
 
-> **当前执行基线（2026-10-25）**：Explorer 已并入 `main`，当前仓库仅保留 `main` 分支。最近一次产品功能提交为 [`8c1ca9a`](https://github.com/zy19970/IPSys/commit/8c1ca9adc2bc92903926c44c46e200363bfa2e94)，对应 [Windows CI #40162144248](https://github.com/zy19970/IPSys/actions/runs/40162144248) 全部通过。当前阶段为**基于真实使用反馈的功能细节优化**；历史计划中的“待合并/待开展 Agent 测试”等描述只反映原日期状态。本次文档同步不等同于重新运行产品 CI。
+> **当前执行基线（2026-10-25）**：Explorer 已并入 `main`，当前仓库仅保留 `main` 分支。最近一次产品功能提交为 [`8c1ca9a`](https://github.com/zy19970/IPSys/commit/8c1ca9adc2bc92903926c44c46e200363bfa2e94)，对应 [Windows CI #40162144248](https://github.com/zy19970/IPSys/actions/runs/40162144248) 全部通过。当前阶段为**基于真实使用反馈的功能细节优化**；历史计划中的“待合并/待开展 Agent 测试”等描述只反映原日期状态。文档提交不改变产品功能；是否触发 CI 以实际工作流路径规则及本次运行状态为准。
 
 ## 产品及技术现状
 

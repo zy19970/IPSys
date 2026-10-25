@@ -1,6 +1,6 @@
 # IPSys 现行技术设计（SQLCipher V2 + Explorer）
 
-> **现行技术基线（2026-10-25）**：Explorer/SQLCipher V2 已并入 `main`，最新产品代码基线 `8c1ca9a` 的 [Windows CI #40162144248](https://github.com/zy19970/IPSys/actions/runs/40162144248) 全部成功；历史 N1～N4、R0～R4 与 OneDrive 选型仅供追溯。本次文档统一不触发 Windows 产品 CI。
+> **现行技术基线（2026-10-25）**：Explorer/SQLCipher V2 已并入 `main`，最新产品代码基线 `8c1ca9a` 的 [Windows CI #40162144248](https://github.com/zy19970/IPSys/actions/runs/40162144248) 全部成功；历史 N1～N4、R0～R4 与 OneDrive 选型仅供追溯。文档修改不改变产品源码；由于正式前端目录在 Windows CI 路径过滤内，同目录的 README 更新也可能触发自动构建，应以实际 Actions 结果为准。
 
 ## 1. 进程与界面架构
 
