@@ -165,8 +165,10 @@ static class NativeIpExcelHttpSmoke
             x.GetProperty("businessData").GetProperty("number").GetString()==stdNo);
         Check(standardRow.ValueKind==JsonValueKind.Object &&
               standardRow.GetProperty("businessData").GetProperty("ipType").GetString()=="国家标准" &&
-              standardRow.GetProperty("businessData").GetProperty("publicationNo").ValueKind==JsonValueKind.Null &&
-              standardRow.GetProperty("businessData").GetProperty("grantNoticeNo").ValueKind==JsonValueKind.Null,
+              string.IsNullOrEmpty(standardRow.GetProperty("businessData")
+                  .GetProperty("publicationNo").GetString()) &&
+              string.IsNullOrEmpty(standardRow.GetProperty("businessData")
+                  .GetProperty("grantNoticeNo").GetString()),
               "standard Excel import retains only unified number");
         Console.WriteLine("N2-03-03 V2 IP XLSX HTTP SQLCIPHER SMOKE PASS");
     }
