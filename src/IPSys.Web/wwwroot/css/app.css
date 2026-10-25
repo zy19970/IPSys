@@ -2191,19 +2191,27 @@ svg { display: block; flex: none; }
   font-variant-numeric: tabular-nums;
 }
 .pdf-canvas-area {
+  position: relative;
   flex: 1;
   min-height: 0;
   width: 100%;
   overflow: auto;
   padding: 16px;
   background: var(--surface-pressed);
+  overscroll-behavior: contain;
+}
+.pdf-page {
+  position: relative;
+  margin: 0 auto 16px;
+  flex: none;
+  background: #fff;
+  box-shadow: var(--shadow-4);
 }
 .pdf-canvas {
   display: block;
   max-width: none;
-  margin: 0 auto;
+  margin: 0;
   background: #fff;
-  box-shadow: var(--shadow-4);
 }
 .pdf-render-status {
   font-size: 12px;

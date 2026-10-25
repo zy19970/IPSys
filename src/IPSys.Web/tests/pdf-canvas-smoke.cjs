@@ -34,20 +34,47 @@ function cssBlock(selector){
 assert.ok(/display:\s*flex/.test(cssBlock('.pdf-mode'))&&
  /flex-direction:\s*column/.test(cssBlock('.pdf-mode')),'PDF must occupy actual modal viewport');
 assert.ok(/flex:\s*1/.test(cssBlock('.pdf-canvas-area'))&&
- /min-height:\s*0/.test(cssBlock('.pdf-canvas-area')),'Canvas area must own the leftover height');
+ /min-height:\s*0/.test(cssBlock('.pdf-canvas-area'))&&
+ /overflow:\s*auto/.test(cssBlock('.pdf-canvas-area')),
+ 'PDF document area must scroll vertically within the modal');
+assert.ok(/position:\s*relative/.test(cssBlock('.pdf-page'))&&
+ /margin:\s*0 auto 16px/.test(cssBlock('.pdf-page')),
+ 'Continuous PDF pages must be stacked with a visible gap');
 
 const elements=[];
+let rafId=0;
+const frames=new Map();
+const resizeListeners={};
 function node(tag){
  const e={
   tag,children:[],listeners:{},className:'',attributes:{},style:{},disabled:false,
   classList:{add(){},remove(){}},
-  clientWidth:850,width:0,height:0,textContent:'',
-  append(...items){this.children.push(...items);},
-  replaceChildren(){this.children=[];},
+  clientWidth:850,clientHeight:620,scrollTop:0,width:0,height:0,textContent:'',
+  parent:null,
+  append(...items){for(const item of items){item.parent=this;this.children.push(item);}},
+  replaceChildren(){for(const child of this.children)child.parent=null;this.children=[];},
   addEventListener(event,cb){this.listeners[event]=cb;},
+  removeEventListener(event){delete this.listeners[event];},
   setAttribute(key,value){this.attributes[key]=value;},
   click(){this.listeners.click?.();},
-  getContext(){return {fillRect(){}};}
+  remove(){
+   if(this.parent){
+    const at=this.parent.children.indexOf(this);
+    if(at>=0)this.parent.children.splice(at,1);
+   }
+   this.parent=null;
+  },
+  getContext(){return {fillRect(){}};},
+  get offsetHeight(){return parseInt(this.style.height,10)||0;},
+  get offsetTop(){
+   if(!this.parent)return 0;
+   let y=16; // scroll area's top padding
+   for(const previous of this.parent.children){
+    if(previous===this)break;
+    y+=previous.offsetHeight+16; // inter-page gutter
+   }
+   return y;
+  }
  };
  elements.push(e);
  return e;
@@ -61,12 +88,12 @@ const library={
   loadingSettings=options;
   return {
    promise:Promise.resolve({
-    numPages:3,
+    numPages:7,
     async getPage(no){
      return {
       getViewport({scale}){return {width:600*scale,height:840*scale};},
       render(opts){
-       views.push({page:no,canvasWidth:opts.canvasContext,viewport:opts.viewport});
+       views.push({page:no,viewport:opts.viewport});
        return {promise:Promise.resolve(),cancel(){}};
       }
      };
@@ -78,32 +105,72 @@ const library={
  }
 };
 const vmCtx=vm.createContext({
- document:{createElement:node},window:{pdfjsLib:library,devicePixelRatio:2},
+ document:{createElement:node},
+ window:{
+  pdfjsLib:library,devicePixelRatio:2,
+  requestAnimationFrame(cb){const id=++rafId;frames.set(id,cb);return id;},
+  cancelAnimationFrame(id){frames.delete(id);},
+  addEventListener(event,cb){resizeListeners[event]=cb;},
+  removeEventListener(event){delete resizeListeners[event];}
+ },
  Uint8Array,Math,Promise,Error
 });
 vm.runInContext(fs.readFileSync(path.join(root,'pdf-preview.js'),'utf8'),vmCtx);
+async function flushViewer(){
+ for(let i=0;i<25;i++){
+  const ready=Array.from(frames.values());
+  frames.clear();
+  for(const frame of ready)frame();
+  await Promise.resolve();
+  await new Promise(resolve=>setImmediate(resolve));
+  if(frames.size===0)break;
+ }
+}
 (async()=>{
  const viewer=vmCtx.window.IPSysPdfViewer.create(body,new Uint8Array([37,80,68,70]));
  await viewer.open();
+ await flushViewer();
  assert.equal(loadingSettings.isEvalSupported,false,'Must prohibit unsafe PDF font evaluator');
  assert.equal(library.GlobalWorkerOptions.workerSrc,'/pdfjs/pdf.worker.min.js');
- assert.equal(views.length,1,'Render only the first page by default');
  assert.ok(body.children.some(e=>e.className==='pdf-toolbar'));
  assert.ok(!elements.some(e=>e.tag==='iframe'),'No PDF iframe may be created');
  const area=elements.find(e=>e.className==='pdf-canvas-area');
- const canvas=elements.find(e=>e.tag==='canvas');
- assert.ok(area&&canvas&&canvas.height>0&&canvas.width>0,'A full size canvas is required');
- assert.ok(canvas.width*canvas.height<=16000000+10000,'Canvas render must cap memory');
- const next=elements.find(e=>e.tag==='button'&&e.textContent==='下一页');
- assert.ok(next);next.click();
- await new Promise(r=>setImmediate(r));
- assert.equal(views.at(-1).page,2,'Next button must render a new PDF page');
+ assert.ok(area,'A scrollable PDF document area is required');
+ assert.equal(area.children.length,7,'All seven pages must form a continuous document');
+ assert.ok(area.children.every(e=>e.className==='pdf-page'),'Each page must have a scroll placeholder');
+ assert.ok(!elements.some(e=>e.tag==='button'&&
+  (e.textContent==='上一页'||e.textContent==='下一页')),
+  'Continuous reader must not depend on previous/next buttons');
+ assert.ok(views.some(v=>v.page===1),'First page should be rendered');
+ assert.ok(views.length<7,'Long PDFs must lazily render, not rasterize every page');
+ assert.ok(elements.filter(e=>e.tag==='canvas').every(c=>c.width*c.height<=16000000+10000),
+  'Every rasterized page must cap Canvas memory');
+
+ const original=elements.find(e=>e.tag==='canvas'&&e.attributes['aria-label']==='PDF 第 1 页');
+ assert.ok(original&&original.width>0,'First page Canvas must have pixels');
+ area.scrollTop=2500;
+ area.listeners.scroll();
+ await flushViewer();
+ assert.ok(views.some(v=>v.page>=3),'Scrolling down must automatically render later PDF pages');
+ assert.equal(original.width,0,'Distant page Canvas must release pixel memory');
+ const count=elements.find(e=>e.className==='pdf-count');
+ assert.ok(count.textContent.includes(' / 7 页'),'Page position must follow scroll');
+ const nextPage=views.at(-1).page;
  const zoom=elements.find(e=>e.tag==='button'&&e.textContent==='＋');
- const before=canvas.width;zoom.click();await new Promise(r=>setImmediate(r));
- assert.ok(canvas.width>before,'Zoom button must change canvas resolution');
+ assert.ok(zoom,'Zoom controls should be retained');
+ const before=views.at(-1).viewport.width;
+ zoom.click();
+ await flushViewer();
+ assert.ok(views.some(v=>v.viewport.width>before),
+  'Zoom must rerender pages around the current reading position');
+ assert.ok(views.at(-1).page>=2,'Zoom must not reset reading to page one');
+ assert.equal(typeof resizeListeners.resize,'function','Resize must recalculate page layout');
+
  viewer.destroy();
- assert.equal(canvas.width,0,'Destroy must release canvas dimensions');
- assert.equal(wasDestroyed,true,'Destroy must release PDF document/worker');
+ assert.ok(elements.filter(e=>e.tag==='canvas').every(e=>e.width===0),
+  'Closing viewer must release all Canvas raster buffers');
+ assert.equal(wasDestroyed,true,'Closing viewer must destroy PDF document/worker');
+ assert.equal(frames.size,0,'Closing viewer must cancel scheduled scroll work');
 
  /* BUG-018: test the Explorer preview entry itself, not just the standalone
     viewer's open method. create() without open() leaves the canvas empty. */
@@ -154,5 +221,5 @@ vm.runInContext(fs.readFileSync(path.join(root,'pdf-preview.js'),'utf8'),vmCtx);
  assert.equal(opened,1,'Explorer must call viewer.open() so PDF parsing starts');
  assert.equal(destroyed,0,'Viewer must stay open during preview');
 
- console.log('PDF CANVAS SMOKE PASS: offline assets, full-page Canvas, pagination, zoom, cleanup, security');
+ console.log('PDF CONTINUOUS SCROLL SMOKE PASS: all pages, scroll-driven lazy canvas, zoom, cleanup, offline security');
 })().catch(e=>{console.error(e);process.exitCode=1;});
