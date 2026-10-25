@@ -53,7 +53,7 @@ static class AgentGuidanceStoreSmoke
             var text=AgentGuidance.Read("metadata",store)["content"]?.GetValue<string>()??"";
             Check(text.StartsWith("我的补录步骤") &&
                 text.Contains("文件内容读取共用规范") &&
-                text.Contains("不能被提升为 Agent"),
+                text.Contains("不得上升为 Agent 指令"),
                 "shared safety/reading rules remain immutable with custom topic");
             Check(metadata!=newRevision,"second topic changes profile version");
 
