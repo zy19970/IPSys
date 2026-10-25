@@ -17,10 +17,10 @@ record ContractInput(string? Name, string? ContractNo, string? SignDate, string?
 record IpInput(
     string? Name, string? IpType, string? Status,
     string? Applicants, string? RightHolders, string? Creators,
-    string? ApplicationNo, string? ApplicationDate,
+    string? Number, string? ApplicationDate,
     string? PublicationNo, string? PublicationDate,
     string? GrantNoticeNo, string? GrantNoticeDate, string? PublicationInfo,
-    string? GrantDate, string? RegistrationNo,
+    string? GrantDate,
     string? FirstPublishedDate, string? RegistrationDate,
     string? Category, string? Remarks, string? Tags);
 
@@ -96,7 +96,10 @@ static class IpRules
         ["软件著作权"] = ["准备中", "登记中", "已登记"],
         ["其他著作权"] = ["准备中", "登记中", "已登记"],
         ["商标"] = ["准备中", "申请中", "已注册", "已失效"],
-        ["集成电路布图设计"] = ["准备中", "登记中", "已登记"]
+        ["集成电路布图设计"] = ["准备中", "登记中", "已登记"],
+        ["国家标准"] = ["准备中", "制定中", "已发布", "已废止"],
+        ["行业标准"] = ["准备中", "制定中", "已发布", "已废止"],
+        ["企业标准"] = ["准备中", "制定中", "已发布", "已废止"]
     };
 
     private static string Clean(string? value) => value?.Trim() ?? "";
@@ -108,11 +111,11 @@ static class IpRules
     {
         if (Clean(x.Name).Length is 0 or > 300) return "知识产权名称必填，最多 300 字。";
         if (!AllowedStatuses.TryGetValue(Clean(x.IpType), out var legal))
-            return "必须选择已确认的七种知识产权类型。";
+            return "必须选择已确认的十种知识产权类型。";
         if (Clean(x.Status).Length != 0 && !legal.Contains(Clean(x.Status)))
             return "所选状态不适用于该知识产权类型。"+ "该类型可用状态："+string.Join("、",legal)+"。";
-        foreach (var field in new [] {x.Applicants,x.RightHolders,x.Creators,x.ApplicationNo,
-            x.PublicationNo,x.GrantNoticeNo,x.PublicationInfo,x.RegistrationNo,
+        foreach (var field in new [] {x.Applicants,x.RightHolders,x.Creators,x.Number,
+            x.PublicationNo,x.GrantNoticeNo,x.PublicationInfo,
             x.Category,x.Remarks,x.Tags})
             if (field?.Length > 4000) return "字段内容超过可保存长度。";
         foreach (var date in new [] {x.ApplicationDate,x.PublicationDate,x.GrantNoticeDate,

@@ -38,7 +38,7 @@ static class NativeIpTransferHttpSmoke
         var created=await Response(await client.PostAsJsonAsync(
             "/api/v2/folders/company/ip",new{
                 ip=new{name=unique,ipType="发明专利",status="实质审查中",
-                    applicationNo=unique+"-CN",remarks="复制全文档版本"}
+                    number=unique+"-CN",remarks="复制全文档版本"}
             }));
         long id=created.GetProperty("id").GetInt64();
         byte[] a=RandomNumberGenerator.GetBytes(3333),

@@ -64,7 +64,7 @@ function chooseExcelDuplicatePolicy() {
     dialog.className = "input-dialog";
     dialog.innerHTML =
       "<h3>重复记录如何处理？</h3>" +
-      '<p class="hint">系统会按项目编号、申请/登记号等识别疑似重复项。正确行继续导入，错误行单独报告。</p>' +
+      '<p class="hint">系统会按项目编号、知识产权统一编号与类型等识别疑似重复项。正确行继续导入，错误行单独报告。</p>' +
       '<div class="excel-choice">' +
       '<button class="btn" data-excel-policy="skip">跳过重复记录（推荐）</button>' +
       '<button class="btn" data-excel-policy="update">更新已有记录</button>' +

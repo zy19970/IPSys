@@ -1,5 +1,13 @@
 # IPSys 本机 Codex MCP
 
+## 知识产权 MCP：十类型、统一三个编号（2026-10-25）
+
+开发测试阶段采用最新 V2 数据结构，**不做旧数据库迁移或旧字段兼容**。更新 EXE 后刷新客户端 MCP `tools/list`。现行 `create_ip` / `update_ip` 使用 `workspace`、`name`、`ip_type`、可选 `number`、`publication_no`、`grant_notice_no`；其它非编号字段（日期、人员、权利人、状态、标签等）按工具声明填写。名称与类型必填，其余均可空。旧 `application_no` / `registration_no` 参数已移除，不应发送；本次工具总数不变。
+
+固定类型：发明专利、实用新型专利、外观设计专利、软件著作权、其他著作权、商标、集成电路布图设计、国家标准、行业标准、企业标准。发明/实用新型/外观设计专利的 `number` 填申请号，确有公开号或授权公告号时使用后两个编号字段；软件/其他著作权的 `number` 填登记号；商标填申请号或注册号；三种标准填标准号。非专利只需填 `number`，不要伪造或补齐另两个编号。
+
+示例：`create_ip(workspace="company",name="示例国家标准",ip_type="国家标准",number="GB/T XXXXX—2026",status="已发布")`；`create_ip(workspace="company",name="示例专利",ip_type="发明专利",number="202610000001.1",publication_no="CNXXXXXXXXXA",grant_notice_no="CNXXXXXXXXXB")`。以上仅为格式示例。
+
 > **当前主分支接口口径（2026-10-24，待本次 CI 复核）**：MCP 工具由 59 个扩展为 **63 个无版本前缀的工具**，新增 `list_party_archives`、`create_party_archive`、`update_party_archive`、`delete_party_archive`，专用于公司工作区“党团建设”。既有通用 `list_archives/create_archive/update_archive/delete_archive` 仍支持 `workspace=company, section=party`。以下此前的“59 工具”描述属于旧提交验收历史，不能再当作当前清单。更新 EXE 后需重启本机 MCP 客户端，使 Agent 刷新 `tools/list`。
 
 ## 党团建设 MCP（公司工作区）

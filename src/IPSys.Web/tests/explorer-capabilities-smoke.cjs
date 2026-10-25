@@ -31,6 +31,17 @@ const app=read('js/app.js');
 const store=read('js/store.js');
 const bridge=read('js/bridge.js');
 const interactions=read('js/interactions.js');
+const forms=read('js/forms.js');
+assert.match(forms,/国家标准:\s*\[/,'IP form must offer national standards');
+assert.match(forms,/行业标准:\s*\[/,'IP form must offer industry standards');
+assert.match(forms,/企业标准:\s*\[/,'IP form must offer enterprise standards');
+assert.match(forms,/key: "number", label: "编号"/,'IP form uses one universal number slot');
+assert.match(forms,/key: "publicationNo", label: "公开号"/,'IP form exposes patent publication number');
+assert.match(forms,/key: "grantNoticeNo", label: "授权公告号"/,'IP form exposes patent grant notice number');
+assert.match(forms,/\.\.\.r,/,'Editing IP must preserve extra attributes not displayed in the compact form');
+assert.ok(!forms.includes('key: "applicationNo"')&&!forms.includes('key: "registrationNo"'),
+ 'No obsolete application/registration field is offered');
+assert.match(app,/k: "code", t: "编号"/,'IP ledger column must show unified number');
 
 function between(text,from,to){
  const a=text.indexOf(from);
@@ -67,7 +78,7 @@ ctx.__fixtures={
   general:[{id:41,title:'杂项资料',files:[{linkId:6,fileId:601,version:1,name:'说明.txt',size:9}]}],
  },
  ip:{
-  rows:[{id:21,data:{name:'一种装置',ipType:'发明专利',applicationNo:'CN001'}}],
+  rows:[{id:21,data:{name:'一种装置',ipType:'发明专利',number:'CN001'}}],
   files:[{linkId:7,fileId:701,version:1,folderId:21,name:'专利证书.pdf',size:30}],
  },
  projectFiles:[

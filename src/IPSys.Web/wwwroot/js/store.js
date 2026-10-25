@@ -508,7 +508,7 @@ const VaultStore = {
             kind: "ip",
             typeName: d.ipType || d.IpType || "知识产权",
             status: d.status || d.Status || "",
-            code: d.applicationNo || d.ApplicationNo || "",
+            code: d.number || d.Number || "",
             owner: d.rightHolders || d.RightHolders || "",
             start: d.applicationDate || d.ApplicationDate || "",
             end: d.grantDate || d.GrantDate || "",

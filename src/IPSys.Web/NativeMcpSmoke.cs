@@ -233,21 +233,53 @@ static class NativeMcpSmoke
         string patent="原生MCP专利"+suffix;
         long ip=Id(await Call("create_ip",new{
             workspace="company",name=patent,ip_type="发明专利",
-            status="实质审查中",application_no="CN202610000002.0",
+            status="实质审查中",number="CN202610000002.0",
             remarks="初始说明"
         }));
         await CheckArrayRpc("list_ip_files",new{workspace="company",ip_id=ip});
         var ips=await Call("list_ips",new{workspace="company"});
-        Check(Find(ips,ip)?["businessData"]?["applicationNo"]?.GetValue<string>()
+        Check(Find(ips,ip)?["businessData"]?["number"]?.GetValue<string>()
               =="CN202610000002.0","MCP V2 IP on native Folder Store");
         await Call("update_ip",new{
             workspace="company",ip_id=ip,name="修改后的"+patent,remarks="新备注"
         });
         ips=await Call("list_ips",new{workspace="company"});
-        Check(Find(ips,ip)?["businessData"]?["applicationNo"]?.GetValue<string>()
+        Check(Find(ips,ip)?["businessData"]?["number"]?.GetValue<string>()
               =="CN202610000002.0" &&
               Find(ips,ip)?["businessData"]?["remarks"]?.GetValue<string>()=="新备注",
-              "IP updates preserve application number");
+              "IP updates preserve unified number");
+        // Three optional business number slots are shared by every IP type.
+        // Standards and copyright only populate number; patents may use all three.
+        long completePatent=Id(await Call("create_ip",new{
+            workspace="company",name="编号字段专利"+suffix,ip_type="发明专利",
+            number="CN2026"+suffix,publication_no="CN2026"+suffix+"A",
+            grant_notice_no="CN2026"+suffix+"B"
+        }));
+        var completeDetails=Find(await Call("list_ips",new{workspace="company"}),completePatent);
+        Check(completeDetails?["businessData"]?["number"]?.GetValue<string>()=="CN2026"+suffix &&
+              completeDetails?["businessData"]?["publicationNo"]?.GetValue<string>()=="CN2026"+suffix+"A" &&
+              completeDetails?["businessData"]?["grantNoticeNo"]?.GetValue<string>()=="CN2026"+suffix+"B",
+              "patent stores exactly three common number slots");
+        foreach(var standardType in new[]{"国家标准","行业标准","企业标准"})
+        {
+            long standardId=Id(await Call("create_ip",new{
+                workspace="company",name=standardType+"验收"+suffix,
+                ip_type=standardType,status="已发布",number="STD-"+suffix+standardType
+            }));
+            var standard=Find(await Call("list_ips",new{workspace="company"}),standardId);
+            Check(standard?["businessData"]?["ipType"]?.GetValue<string>()==standardType &&
+                  standard?["businessData"]?["number"]?.GetValue<string>()=="STD-"+suffix+standardType &&
+                  standard?["businessData"]?["publicationNo"]?.GetValue<string>() is null &&
+                  standard?["businessData"]?["grantNoticeNo"]?.GetValue<string>() is null,
+                  "each standard type uses only number without patent numbers");
+        }
+        long copyrightId=Id(await Call("create_ip",new{
+            workspace="company",name="登记号软著"+suffix,
+            ip_type="软件著作权",number="2026SR"+suffix
+        }));
+        Check(Find(await Call("list_ips",new{workspace="company"}),copyrightId)?
+            ["businessData"]?["number"]?.GetValue<string>()=="2026SR"+suffix,
+            "software copyright registration number uses unified field");
         // The MCP IP-file actions previously lacked direct MCP coverage.
         string ipPath=Path.Combine(Path.GetTempPath(),"IPSys-MCP-IP-"+suffix+".bin");
         await File.WriteAllBytesAsync(ipPath,Guid.NewGuid().ToByteArray());

@@ -1,5 +1,8 @@
 # IPSys V1.0 需求基线（范围冻结版）
 
+> **2026-10-25 知识产权字段与类型最新确认（覆盖历史七类型/双编号描述）**：开发测试阶段，不做旧数据库兼容或迁移。固定类型为原七类加「国家标准、行业标准、企业标准」，共十类，类型以标签展示。统一编号字段为 `number`（编号），专利填申请号、著作权填登记号、商标填申请/注册号、标准填标准号。另有 `publication_no`（公开号）、`grant_notice_no`（授权公告号），仅三种专利按实际情况选填。全部编号选填，名称和类型仍为仅有的必填项。网页、MCP、Excel、搜索和 V2 模型必须统一，旧 `application_no`、`registration_no` 不再进入新版本接口；其它非编号日期、人员、附件及版本规则仍有效。下文旧 Q79–84 描述保留为历史需求来源，以本条最新决定为准。
+
+
 > **现行口径（2026-10-23）**：Explorer 已合并 `main`（`8227d2c`），合并后的 Windows CI [#39947975625](https://github.com/zy19970/IPSys/actions/runs/39947975625) 成功。本文 Q1～Q162 及其后续明确覆盖决定继续约束业务；旧“待做 N3/N4、待合并、旧库迁移、旧前端”的时间点描述是历史，不覆盖实际 V2 + Explorer 实现。现行架构请看 [DESIGN.md](./DESIGN.md)，现行进度请看 [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md)，界面以 [UI_BASELINE.md](./UI_BASELINE.md) 和 Explorer 源码为准。
 
 

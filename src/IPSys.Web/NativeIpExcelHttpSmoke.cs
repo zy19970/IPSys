@@ -11,9 +11,9 @@ static class NativeIpExcelHttpSmoke
     {
         if(!ok)throw new IOException("N2-03-03 V2 Excel: "+why);
     }
-    static IpInput Ip(string name,string applicationNo,string remark)=>new(
-        name,"发明专利","已申请","测试申请人",null,null,applicationNo,null,
-        null,null,null,null,null,null,null,null,null,null,remark,null);
+    static IpInput Ip(string name,string number,string remark)=>new(
+        name,"发明专利","已申请","测试申请人",null,null,number,null,
+        null,null,null,null,null,null,null,null,null,remark,null);
 
     static async Task<JsonElement> Json(HttpResponseMessage response)
     {
@@ -55,7 +55,7 @@ static class NativeIpExcelHttpSmoke
             new FolderMutationInput(Ip:Ip(originalName,appNo,"初始说明"))));
         long fixtureId=fixture.GetProperty("id").GetInt64();
         var source=await Export(client,personal+"/export","filtered",[fixtureId]);
-        Check(source.Length>800,"V2 20-column Excel workbook fixture");
+        Check(source.Length>800,"V2 19-column Excel workbook fixture");
 
         using(var anonymous=new HttpClient{BaseAddress=client.BaseAddress})
         using(var blocked=await anonymous.PostAsJsonAsync(company+"/export",
@@ -74,7 +74,7 @@ static class NativeIpExcelHttpSmoke
         var natives=await client.GetFromJsonAsync<JsonElement>(
             "/api/v2/folders/company/ip");
         var entry=natives.EnumerateArray().FirstOrDefault(x=>
-            x.GetProperty("businessData").GetProperty("applicationNo")
+            x.GetProperty("businessData").GetProperty("number")
                 .GetString()==appNo);
         Check(entry.ValueKind==JsonValueKind.Object,"new IP exists only in native folders");
         long nativeId=entry.GetProperty("folder").GetProperty("ref")
@@ -129,7 +129,7 @@ static class NativeIpExcelHttpSmoke
             var personalRows=await client.GetFromJsonAsync<JsonElement>(
                 "/api/v2/folders/personal/ip");
             var personalIp=personalRows.EnumerateArray().First(x=>
-                x.GetProperty("businessData").GetProperty("applicationNo")
+                x.GetProperty("businessData").GetProperty("number")
                     .GetString()==appNo);
             long personalId=personalIp.GetProperty("folder")
                 .GetProperty("ref").GetProperty("id").GetInt64();
@@ -146,6 +146,28 @@ static class NativeIpExcelHttpSmoke
                 Check(invalid.StatusCode==HttpStatusCode.BadRequest,
                     "corrupt workbook rejected without new IP");
         }
+        // A standard number uses exactly the same exported Excel column as
+        // a patent application number; the two patent-only slots stay blank.
+        string stdNo="GB/T-"+code;
+        var sourceStandard=await Json(await client.PostAsJsonAsync(
+            "/api/v2/folders/personal/ip",
+            new FolderMutationInput(Ip:Ip("Excel国家标准"+code,stdNo,"标准说明")
+                with {IpType="国家标准",Status="已发布"})));
+        long sourceStandardId=sourceStandard.GetProperty("id").GetInt64();
+        var stdWorkbook=await Export(client,personal+"/export","filtered",[sourceStandardId]);
+        var stdImport=await Import(client,company+"/import","create",stdWorkbook);
+        Check(stdImport.GetProperty("created").GetInt32()==1 &&
+              stdImport.GetProperty("failed").GetInt32()==0,
+              "standard number roundtrips through the same XLSX header");
+        var standardRows=await client.GetFromJsonAsync<JsonElement>(
+            "/api/v2/folders/company/ip");
+        var standardRow=standardRows.EnumerateArray().FirstOrDefault(x=>
+            x.GetProperty("businessData").GetProperty("number").GetString()==stdNo);
+        Check(standardRow.ValueKind==JsonValueKind.Object &&
+              standardRow.GetProperty("businessData").GetProperty("ipType").GetString()=="国家标准" &&
+              standardRow.GetProperty("businessData").GetProperty("publicationNo").ValueKind==JsonValueKind.Null &&
+              standardRow.GetProperty("businessData").GetProperty("grantNoticeNo").ValueKind==JsonValueKind.Null,
+              "standard Excel import retains only unified number");
         Console.WriteLine("N2-03-03 V2 IP XLSX HTTP SQLCIPHER SMOKE PASS");
     }
 }

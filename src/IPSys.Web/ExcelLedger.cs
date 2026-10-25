@@ -24,10 +24,10 @@ static partial class ExcelLedger
     [
         new("name","知识产权名称"),new("ipType","知识产权类型"),new("status","状态"),
         new("applicants","申请人"),new("rightHolders","当前权利人"),new("creators","发明人／作者"),
-        new("applicationNo","申请号"),new("applicationDate","申请日"),new("publicationNo","公开号"),
+        new("number","编号"),new("applicationDate","申请日"),new("publicationNo","公开号"),
         new("publicationDate","公开日"),new("grantNoticeNo","授权公告号"),
         new("grantNoticeDate","授权公告日"),new("publicationInfo","公开／授权公告信息"),
-        new("grantDate","授权日"),new("registrationNo","登记／注册号"),
+        new("grantDate","授权日"),
         new("firstPublishedDate","首次发表日期"),new("registrationDate","登记／注册日期"),
         new("category","辅助分类"),new("remarks","备注"),new("tags","标签")
     ];
@@ -267,6 +267,6 @@ static partial class ExcelLedger
         string.IsNullOrWhiteSpace(v[7])?"筹备中":v[7],v[8],v[9],v[10]);
     private static IpInput Ip(string[] v)=>new(
         v[0],v[1],v[2],v[3],v[4],v[5],v[6],v[7],v[8],v[9],v[10],
-        v[11],v[12],v[13],v[14],v[15],v[16],v[17],v[18],v[19]);
+        v[11],v[12],v[13],v[14],v[15],v[16],v[17],v[18]);
     private static bool Same(string a,string b)=>string.Equals(a.Trim(),b.Trim(),StringComparison.OrdinalIgnoreCase);
 }

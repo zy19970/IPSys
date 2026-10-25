@@ -15,7 +15,7 @@ static class NativeIpSearchRecycleHttpSmoke
         string tag="IPNATIVE-"+Guid.NewGuid().ToString("N")[..9];
         var ip=await client.PostAsJsonAsync("/api/v2/folders/company/ip",
             new{ip=new{name=tag+"申请",ipType="发明专利",status="实质审查中",
-                applicationNo=tag+"CN"}});
+                number=tag+"CN"}});
         ip.EnsureSuccessStatusCode();
         long id=(await ip.Content.ReadFromJsonAsync<JsonElement>())
             .GetProperty("id").GetInt64();

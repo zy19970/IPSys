@@ -28,7 +28,7 @@ static class SearchSmoke
             .GetProperty("id").GetInt64();
         using var ip=await client.PostAsJsonAsync("/api/v2/folders/company/ip",new {
             ip=new{name=marker+"-专利",ipType="发明专利",
-                status="实质审查中",applicationNo=marker+"-CN"}
+                status="实质审查中",number=marker+"-CN"}
         });
         ip.EnsureSuccessStatusCode();
         long ipId=(await ip.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
@@ -95,7 +95,7 @@ static class SearchSmoke
             throw new IOException("个人搜索不应泄漏公司记录。");
         var number=await Find(client,"company",marker+"-CN");
         if(!number.Results.Any(h=>h.Kind=="ip"&&h.Id==ipId))
-            throw new IOException("知识产权申请号搜索未命中。");
+            throw new IOException("知识产权统一编号搜索未命中。");
         byte[] ipBytes=Encoding.UTF8.GetBytes("IP-V2-original-"+marker);
         string ipFilename=marker+"-专利证书.pdf";
         using(var upload=new HttpRequestMessage(HttpMethod.Post,

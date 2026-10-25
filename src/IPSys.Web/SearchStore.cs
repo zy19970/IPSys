@@ -91,11 +91,11 @@ static class SearchStore
         foreach(var ip in ips)
         {
             var d=(IpInput)ip.BusinessData;
-            if(!Any(query,d.Name,d.IpType,d.Status,d.ApplicationNo,d.RegistrationNo,
+            if(!Any(query,d.Name,d.IpType,d.Status,d.Number,
                 d.Applicants,d.RightHolders,d.Creators,d.PublicationNo,d.GrantNoticeNo,
                 d.PublicationInfo,d.Category,d.Remarks,d.Tags))continue;
             Add(new SearchHit("ip",ip.Folder.Ref.Id,"",Label(d.Name),
-                Summary(d.IpType,d.ApplicationNo,d.RegistrationNo)));
+                Summary(d.IpType,d.Number,d.PublicationNo,d.GrantNoticeNo)));
         }
         foreach(var row in archive)
         {

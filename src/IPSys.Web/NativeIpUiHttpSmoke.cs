@@ -22,7 +22,7 @@ static class NativeIpUiHttpSmoke
         string suffix=Guid.NewGuid().ToString("N")[..8];
         var input=new IpInput("前端V2文件身份"+suffix,"发明专利","已申请",
             null,null,null,null,null,null,null,null,null,null,
-            null,null,null,null,null,null,null);
+            null,null,null,null,null,null);
         var created=await Json(await client.PostAsJsonAsync(
             "/api/v2/folders/company/ip",new FolderMutationInput(Ip:input)));
         long ipId=created.GetProperty("id").GetInt64();

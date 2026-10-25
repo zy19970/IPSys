@@ -17,6 +17,9 @@ const IP_TYPES = {
   其他著作权: ["准备中", "登记中", "已登记"],
   商标: ["准备中", "申请中", "已注册", "已失效"],
   集成电路布图设计: ["准备中", "登记中", "已登记"],
+  国家标准: ["准备中", "制定中", "已发布", "已废止"],
+  行业标准: ["准备中", "制定中", "已发布", "已废止"],
+  企业标准: ["准备中", "制定中", "已发布", "已废止"],
 };
 
 const RecordForms = {
@@ -290,7 +293,9 @@ const RecordForms = {
             name: r.name || "",
             ipType: r.ipType || "",
             status: r.status || "",
-            applicationNo: r.applicationNo || "",
+            number: r.number || "",
+            publicationNo: r.publicationNo || "",
+            grantNoticeNo: r.grantNoticeNo || "",
             applicationDate: r.applicationDate || "",
             applicants: r.applicants || "",
             rightHolders: r.rightHolders || "",
@@ -305,7 +310,9 @@ const RecordForms = {
         { key: "name", label: "名称", span: 2, required: true },
         { key: "ipType", label: "类型", type: "select", options: Object.keys(IP_TYPES), required: true },
         { key: "status", label: "状态", type: "select" },
-        { key: "applicationNo", label: "申请号" },
+        { key: "number", label: "编号", hint: "专利填申请号，著作权填登记号，商标填申请/注册号，标准填标准号" },
+        { key: "publicationNo", label: "公开号", hint: "仅专利有此编号时填写，其余类型留空" },
+        { key: "grantNoticeNo", label: "授权公告号", hint: "仅专利有此编号时填写，其余类型留空" },
         { key: "applicationDate", label: "申请日", type: "date" },
         { key: "grantDate", label: "授权日", type: "date" },
         { key: "category", label: "类别" },
@@ -318,13 +325,18 @@ const RecordForms = {
       onSubmit: async (d) => {
         const payload = {
           ip: {
+            // Keep optional metadata not displayed in the compact form,
+            // such as notice/registration dates and publication information.
+            ...r,
             name: d.name,
             ipType: d.ipType,
             status: d.status,
             applicants: d.applicants,
             rightHolders: d.rightHolders,
             creators: d.creators,
-            applicationNo: d.applicationNo,
+            number: d.number,
+            publicationNo: d.publicationNo,
+            grantNoticeNo: d.grantNoticeNo,
             applicationDate: d.applicationDate,
             grantDate: d.grantDate,
             category: d.category,

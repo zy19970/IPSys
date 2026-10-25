@@ -14,12 +14,11 @@ static partial class ExcelLedger
         foreach(var item in items)
         {
             var existing=(IpInput)item.BusinessData;
-            if(!string.IsNullOrWhiteSpace(input.ApplicationNo)
-                ? Same(existing.ApplicationNo??"",input.ApplicationNo!)
-                : !string.IsNullOrWhiteSpace(input.RegistrationNo)
-                    ? Same(existing.RegistrationNo??"",input.RegistrationNo!)
-                    : Same(existing.Name??"",input.Name??"") &&
-                      Same(existing.IpType??"",input.IpType??""))
+            if(!string.IsNullOrWhiteSpace(input.Number)
+                ? Same(existing.Number??"",input.Number!) &&
+                  Same(existing.IpType??"",input.IpType??"")
+                : Same(existing.Name??"",input.Name??"") &&
+                  Same(existing.IpType??"",input.IpType??""))
                 return (item.Folder.Ref.Id,existing);
         }
         return null;

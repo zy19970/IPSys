@@ -81,7 +81,7 @@ const LEDGER_COLS = {
     YEAR,
     { k: "typeName", t: "类型", w: "92px", f: "tag" },
     NAME("名称"),
-    { k: "code", t: "申请/登记号", w: "132px", f: "mono" },
+    { k: "code", t: "编号", w: "132px", f: "mono" },
     { k: "owner", t: "当前权利人", w: "176px" },
     { k: "status", t: "状态", w: "96px", f: "pill" },
     { k: "_files", t: "附件", w: "56px", f: "num", r: 1 },
@@ -1253,6 +1253,10 @@ const Drive = {
          共用一个字段表但按 kind 换标签,免得把「负责人」扣在合同上。 */
       const contract = b.kind === "contract";
       line("编号", b.code);
+      if (b.kind === "ip") {
+        line("公开号", b.raw?.publicationNo);
+        line("授权公告号", b.raw?.grantNoticeNo);
+      }
       line("类型", b.typeName);
       line("状态", b.status);
       line(contract ? "签约方" : "负责人", b.owner);
