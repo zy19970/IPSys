@@ -12,7 +12,7 @@ IPSys 为 Windows 本地资料管理器：WinForms 启动器、浏览器 Explore
 | --- | --- | --- |
 | M0 需求、字段字典与 WinForms 初始验证 | 已完成，字段逻辑持续有效 | [M0_DATA_DICTIONARY.md](./M0_DATA_DICTIONARY.md) |
 | N1～N4 SQLCipher V2 资源内核、原生业务接口和旧物理模型清理 | 已进入现行代码，历史专项 CI 已通过 | [DESIGN.md](./DESIGN.md)；Git 历史 |
-| MCP 安全、业务工具与 **63 工具**接口收敛 | 代码及标准 CI 已通过；旧 70 工具 Agent 报告属历史 | [MCP_CODEX.md](./MCP_CODEX.md)、[MCP_TEST_RESULTS](./tests/mcp-results/README.md) |
+| MCP 安全、业务工具与原 **63 工具**接口收敛（后续新增第 64 项只读规范工具） | 代码及标准 CI 已通过；旧 70 工具 Agent 报告属历史 | [MCP_CODEX.md](./MCP_CODEX.md)、[MCP_TEST_RESULTS](./tests/mcp-results/README.md) |
 | Explorer 重构 F2-01～F2-06 | 功能完成：建库/会话、档案目录混排、文件关联、整记录复制转移、拖放和统一动作入口 | [阶段计划历史](./docs/EXPLORER_PHASE2_FUNCTIONAL_COMPLETENESS_2026-10-22.md) |
 | 三批实机反馈与缺陷收敛 | 运行期 401、外部拖放、待确认原件；跨区物理隔离专项证据完成 | [TEST_EVIDENCE_INDEX](./tests/TEST_EVIDENCE_INDEX.md) |
 | 大文件与 ZIP64 | >2 GiB SQLCipher/HTTP 与 VACUUM CI 通过；实际 >4 GiB ZIP64 生成通过；用户确认本机人工环节已验证 | [#39943364663](https://github.com/zy19970/IPSys/actions/runs/39943364663)、[#39944440866](https://github.com/zy19970/IPSys/actions/runs/39944440866) |
@@ -29,7 +29,7 @@ IPSys 为 Windows 本地资料管理器：WinForms 启动器、浏览器 Explore
 
 ## 3.1 已确认、待实施：分层 Agent 提示词服务
 
-新增需求的唯一实施基线为 [《IPSys 本地 Agent 分层提示词服务实施方案（2026-10-25）》](./docs/IPSys_Agent_分层提示词服务_实施方案_20261025.md)。核心原则：轻量总规范通过 MCP 初始化告知目录和读取办法，search/upload/metadata 专项按需获取；Agent 可自主读取、先看目录选择，也可由用户手动指定只读查看。该功能目前**仅完成方案，尚未实现**；后续跨会话继续前必须先阅读方案并核对实时 main。
+新增需求的唯一实施基线为 [《IPSys 本地 Agent 分层提示词服务实施方案（2026-10-25）》](./docs/IPSys_Agent_分层提示词服务_实施方案_20261025.md)。核心原则：轻量总规范通过 MCP 初始化告知目录和读取办法，search/upload/metadata 专项按需获取；Agent 可自主读取、先看目录选择，也可由用户手动指定只读查看。该功能目前**第一阶段源码已实施、CI 与真机 Agent 实测待核验**：内嵌 index/search/upload/metadata 规范、短 initialize.instructions、只读 get_agent_guidance 及 MCP 动态回归已提交。第二阶段标准 Prompts、通用缺项筛选、真实智能入库/补录流程及第三阶段设置管理尚未实施；后续跨会话继续前必须先阅读方案并核对实时 main。
 
 ## 4. 开发与协作
 
