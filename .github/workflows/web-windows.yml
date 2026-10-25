@@ -134,6 +134,24 @@ jobs:
                                     'get_agent_guidance')) {
               if ($names -notcontains $required) { throw "MCP tool missing: $required" }
             }
+            if ($null -eq $initialized.result.capabilities.prompts -or
+                $initialized.result.capabilities.prompts.listChanged -ne $false) {
+              throw 'MCP prompts capability must be declared for 2025-06-18'
+            }
+            $process.StandardInput.WriteLine('{"jsonrpc":"2.0","id":21,"method":"prompts/list"}')
+            $promptsReply = ($process.StandardOutput.ReadLineAsync().WaitAsync([TimeSpan]::FromSeconds(12)).GetAwaiter().GetResult()) | ConvertFrom-Json
+            $promptNames = @($promptsReply.result.prompts | ForEach-Object { $_.name })
+            if ($promptNames.Count -ne 4 -or
+                (@($promptNames | Where-Object { $_ -in @('index','search','upload','metadata') }).Count -ne 4)) {
+              throw 'MCP prompts/list must expose the four shared registry names'
+            }
+            if ($promptsReply.result.prompts | Where-Object { $_.messages -or $_.content }) {
+              throw 'MCP prompts/list must not return full content'
+            }
+            $process.StandardInput.WriteLine('{"jsonrpc":"2.0","id":22,"method":"prompts/get","params":{"name":"unknown"}}')
+            $invalidPrompt = ($process.StandardOutput.ReadLineAsync().WaitAsync([TimeSpan]::FromSeconds(12)).GetAwaiter().GetResult()) | ConvertFrom-Json
+            if ($invalidPrompt.error.code -ne -32602) { throw 'Unknown prompt must be rejected as invalid params' }
+            Write-Host 'MCP standard Prompts manifest and invalid-name protocol: PASS'
             Write-Host 'MCP stdio initialize and tool manifest: PASS'
             # Exercise the actual published stdio tools/call dispatch and schema
             # validation. The GUI host is not running in this separate stage.
