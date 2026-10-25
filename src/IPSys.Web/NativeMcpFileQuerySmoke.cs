@@ -68,7 +68,7 @@ static class NativeMcpFileQuerySmoke
             long f3=File("company","材料三.docx","说明","标签","", "2026-10-03");
             long f4=File("company","材料四.xlsx","说明","标签","X04","2026-10-04");
             long f5=File("personal","个人文档.pdf",null,null,null,null);
-            long f6=File("company","材料六.pdf","说明","　","X06","2026-10-06");
+            long f6=File("company","材料六.pdf","说明"," ","X06","2026-10-06");
             long firstLink=Link("company",p1,f1);
             Link("company",p2,f1,"共享材料一.pdf");
             Link("company",p1,f2);
