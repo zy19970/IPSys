@@ -1,0 +1,133 @@
+{
+ "ts": "2026-10-25T23:02:42",
+ "source": {
+  "S01": {
+   "path": "S01 地下矿山铲运机LHD液压系统说明.pdf",
+   "exists": true,
+   "size": 4979,
+   "sha256": "B837551D1829141ECE3A91C172180889129C975B2D9F260BF2A17364AA03FAF6"
+  },
+  "S06b": {
+   "path": "S01 地下矿山铲运机LHD液压系统说明.pdf",
+   "exists": true,
+   "size": 3453,
+   "sha256": "380985F60D810D3E7C1F1CEC5484E94C6A8629A3A1178D1F1CB6DBB879D56C22"
+  }
+ },
+ "details_1": {
+  "ok": true,
+  "raw": {
+   "id": 1,
+   "workspace": "company",
+   "name": "S01 地下矿山铲运机LHD液压系统说明.pdf",
+   "description": "地下矿山 6 立方米级柴油铲运机（LHD）液压系统说明：系统由变量柱塞泵、优先阀、工作油缸、转向油缸、回油滤芯与液压油散热器组成，额定压力 25 MPa；规定井下运输时油温低于 85 ℃、重载下坡联合制动，以及 500 小时更换回油滤芯、2000 小时检测主泵容积效率。",
+   "tags": "铲运机;LHD;液压系统;液压泵;井下运输;设备维护",
+   "fileNumber": "TEST-LHD-2026-01",
+   "fileDate": "2026-10-20",
+   "versions": [
+    {
+     "id": 1,
+     "version": 1,
+     "originalName": "S01 地下矿山铲运机LHD液压系统说明.pdf",
+     "versionNote": null,
+     "size": 4979,
+     "sha256": "B837551D1829141ECE3A91C172180889129C975B2D9F260BF2A17364AA03FAF6",
+     "createdAt": "2026-10-25T14:25:04Z"
+    }
+   ]
+  }
+ },
+ "links_1": {
+  "ok": true,
+  "items": [
+   {
+    "id": 1,
+    "fileId": 1,
+    "folderId": 8,
+    "fileName": "S01 地下矿山铲运机LHD液压系统说明.pdf",
+    "displayName": null,
+    "materialCategory": null,
+    "position": 0,
+    "deleted": false,
+    "latestVersion": 1,
+    "size": 4979,
+    "sha256": "B837551D1829141ECE3A91C172180889129C975B2D9F260BF2A17364AA03FAF6"
+   },
+   {
+    "id": 32,
+    "fileId": 1,
+    "folderId": 10,
+    "fileName": "S01 地下矿山铲运机LHD液压系统说明.pdf",
+    "displayName": null,
+    "materialCategory": null,
+    "position": 14,
+    "deleted": false,
+    "latestVersion": 1,
+    "size": 4979,
+    "sha256": "B837551D1829141ECE3A91C172180889129C975B2D9F260BF2A17364AA03FAF6"
+   }
+  ]
+ },
+ "download_1": {
+  "ok": false,
+  "raw": "{\"ok\":false,\"status\":\"failed\",\"code\":\"TOOL_CALL_REJECTED\",\"message\":\"\\u7F3A\\u5C11\\u5FC5\\u586B\\u53C2\\u6570\\uFF1Aoutput_path\",\"error\":\"\\u7F3A\\u5C11\\u5FC5\\u586B\\u53C2\\u6570\\uFF1Aoutput_path\",\"retryable\":false}"
+ },
+ "details_7": {
+  "ok": true,
+  "raw": {
+   "id": 7,
+   "workspace": "company",
+   "name": "S01 地下矿山铲运机LHD液压系统说明.pdf",
+   "description": null,
+   "tags": null,
+   "fileNumber": null,
+   "fileDate": null,
+   "versions": [
+    {
+     "id": 7,
+     "version": 1,
+     "originalName": "S01 地下矿山铲运机LHD液压系统说明.pdf",
+     "versionNote": null,
+     "size": 3453,
+     "sha256": "380985F60D810D3E7C1F1CEC5484E94C6A8629A3A1178D1F1CB6DBB879D56C22",
+     "createdAt": "2026-10-25T14:26:22Z"
+    }
+   ]
+  }
+ },
+ "links_7": {
+  "ok": true,
+  "items": [
+   {
+    "id": 7,
+    "fileId": 7,
+    "folderId": 8,
+    "fileName": "S01 地下矿山铲运机LHD液压系统说明.pdf",
+    "displayName": null,
+    "materialCategory": null,
+    "position": 6,
+    "deleted": false,
+    "latestVersion": 1,
+    "size": 3453,
+    "sha256": "380985F60D810D3E7C1F1CEC5484E94C6A8629A3A1178D1F1CB6DBB879D56C22"
+   }
+  ]
+ },
+ "download_7": {
+  "ok": false,
+  "raw": "{\"ok\":false,\"status\":\"failed\",\"code\":\"TOOL_CALL_REJECTED\",\"message\":\"\\u7F3A\\u5C11\\u5FC5\\u586B\\u53C2\\u6570\\uFF1Aoutput_path\",\"error\":\"\\u7F3A\\u5C11\\u5FC5\\u586B\\u53C2\\u6570\\uFF1Aoutput_path\",\"retryable\":false}"
+ },
+ "opresult_acc-20261025-up-s06b2": {
+  "ok": true,
+  "raw": "{\"requestId\":\"acc-20261025-up-s06b2\",\"state\":\"done\",\"tool\":\"upload_files\",\"result\":{\"files\":[{\"path\":\"<HOME>\\\\AppData\\\\Local\\\\Temp\\\\IPSys-Acceptance-20261025-01\\\\sources\\\\\\u540C\\u540D\\u5F02\\u5185\\u5BB9\\\\S01 \\u5730\\u4E0B\\u77FF\\u5C71\\u94F2\\u8FD0\\u673ALHD\\u6DB2\\u538B\\u7CFB\\u7EDF\\u8BF4\\u660E.pdf\",\"ok\":true,\"result\":{\"choice\":\"independent\",\"fileId\":7,\"linkId\":7,\"size\":3453,\"sha256\":\"380985F60D810D3E7C1F1CEC5484E94C6A8629A3A1178D1F1CB6DBB879D56C22\",\"reusedContent\":false}}],\"succeeded\":1,\"failed\":0,\"requested\":1,\"cancelReason\":null,\"status\":\"success\",\"retryAdvice\":null},\"businessOk\":true}"
+ },
+ "opresult_acc-20261025-up-s06b": {
+  "ok": true,
+  "raw": "{\"requestId\":\"acc-20261025-up-s06b\",\"state\":\"done\",\"tool\":\"upload_files\",\"result\":{\"files\":[{\"path\":\"<HOME>\\\\AppData\\\\Local\\\\Temp\\\\IPSys-Acceptance-20261025-01\\\\sources\\\\S06b \\u540C\\u540D\\u5F02\\u5185\\u5BB9\\\\S01 \\u5730\\u4E0B\\u77FF\\u5C71\\u94F2\\u8FD0\\u673ALHD\\u6DB2\\u538B\\u7CFB\\u7EDF\\u8BF4\\u660E.pdf\",\"ok\":false,\"error\":\"\\u6307\\u5B9A\\u672C\\u673A\\u6587\\u4EF6\\u4E0D\\u5B58\\u5728\\u3002\"}],\"succeeded\":0,\"failed\":1,\"requested\":1,\"cancelReason\":null,\"status\":\"failed\",\"retryAdvice\":\"\\u4EC5\\u6309\\u8FD4\\u56DE\\u7684\\u5931\\u8D25\\u8DEF\\u5F84\\u8FDB\\u884C\\u4EBA\\u5DE5\\u6838\\u5BF9\\uFF1B\\u5DF2\\u6210\\u529F\\u6587\\u4EF6\\u4E0D\\u5E94\\u76F2\\u76EE\\u91CD\\u4F20\\u3002\"},\"businessOk\":false}"
+ },
+ "opresult_acc-20261025-up-06b": {
+  "ok": true,
+  "raw": "{\"state\":\"not_found\",\"requestId\":\"acc-20261025-up-06b\"}"
+ },
+ "downloaded": {}
+}

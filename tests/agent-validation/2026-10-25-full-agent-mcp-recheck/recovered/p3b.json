@@ -1,0 +1,99 @@
+{
+ "ok": true,
+ "fileId": 7,
+ "choice": "independent",
+ "sha": "380985F60D810D3E7C1F1CEC5484E94C6A8629A3A1178D1F1CB6DBB879D56C22",
+ "links": [
+  {
+   "id": 1,
+   "fileId": 1,
+   "folderId": 8,
+   "fileName": "S01 地下矿山铲运机LHD液压系统说明.pdf",
+   "displayName": null,
+   "materialCategory": null,
+   "position": 0,
+   "deleted": false,
+   "latestVersion": 1,
+   "size": 4979,
+   "sha256": "B837551D1829141ECE3A91C172180889129C975B2D9F260BF2A17364AA03FAF6"
+  },
+  {
+   "id": 2,
+   "fileId": 2,
+   "folderId": 8,
+   "fileName": "S02 装备型撬毛机器人远程控制系统.docx",
+   "displayName": null,
+   "materialCategory": null,
+   "position": 1,
+   "deleted": false,
+   "latestVersion": 1,
+   "size": 37407,
+   "sha256": "E01058E2EA92603E6DC9BF01CD8821A240250DC8E92CFC4960F799E0A5E9948A"
+  },
+  {
+   "id": 3,
+   "fileId": 3,
+   "folderId": 8,
+   "fileName": "S03 矿山机器人测试台账.xlsx",
+   "displayName": null,
+   "materialCategory": null,
+   "position": 2,
+   "deleted": false,
+   "latestVersion": 1,
+   "size": 5815,
+   "sha256": "745A4703C00907ADBB83B10254B7B1D74DFEBCD330F1DAB5ADD52BF3F877F5C3"
+  },
+  {
+   "id": 4,
+   "fileId": 4,
+   "folderId": 8,
+   "fileName": "S04 井下通风设备维护说明.pdf",
+   "displayName": null,
+   "materialCategory": null,
+   "position": 3,
+   "deleted": false,
+   "latestVersion": 1,
+   "size": 3201,
+   "sha256": "3A6D4255D99771D085A4F1C65CEEA388E4DFC16DB2CC07FA6D37A806EC6EB56C"
+  },
+  {
+   "id": 5,
+   "fileId": 5,
+   "folderId": 8,
+   "fileName": "S08 选矿厂设备点检记录.pdf",
+   "displayName": null,
+   "materialCategory": null,
+   "position": 4,
+   "deleted": false,
+   "latestVersion": 1,
+   "size": 3569,
+   "sha256": "8A3BDCAA6418552F0A1C1C62F698A4984B2B8D7A1E2462CBBACFC6BEE413E8F3"
+  },
+  {
+   "id": 6,
+   "fileId": 6,
+   "folderId": 8,
+   "fileName": "S06 同内容异名-铲运机说明副本.pdf",
+   "displayName": null,
+   "materialCategory": null,
+   "position": 5,
+   "deleted": false,
+   "latestVersion": 1,
+   "size": 4979,
+   "sha256": "B837551D1829141ECE3A91C172180889129C975B2D9F260BF2A17364AA03FAF6"
+  },
+  {
+   "id": 7,
+   "fileId": 7,
+   "folderId": 8,
+   "fileName": "S01 地下矿山铲运机LHD液压系统说明.pdf",
+   "displayName": null,
+   "materialCategory": null,
+   "position": 6,
+   "deleted": false,
+   "latestVersion": 1,
+   "size": 3453,
+   "sha256": "380985F60D810D3E7C1F1CEC5484E94C6A8629A3A1178D1F1CB6DBB879D56C22"
+  }
+ ]
+}

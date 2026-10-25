@@ -1,0 +1,435 @@
+{
+ "company_project": 8,
+ "personal_project": 9,
+ "files": {
+  "S01": {
+   "fileId": 1,
+   "linkId": 1,
+   "folderId": 8
+  },
+  "S02": {
+   "fileId": 2,
+   "linkId": 2,
+   "folderId": 8
+  },
+  "S03": {
+   "fileId": 3,
+   "linkId": 3,
+   "folderId": 8
+  },
+  "S04": {
+   "fileId": 4,
+   "linkId": 4,
+   "folderId": 8
+  }
+ },
+ "details": {
+  "S01": {
+   "id": 1,
+   "workspace": "company",
+   "name": "S01 地下矿山铲运机LHD液压系统说明.pdf",
+   "description": "地下矿山 6 立方米级柴油铲运机（LHD）液压系统说明：系统由变量柱塞泵、优先阀、工作油缸、转向油缸、回油滤芯与液压油散热器组成，额定压力 25 MPa；规定井下运输时油温低于 85 ℃、重载下坡联合制动，以及 500 小时更换回油滤芯、2000 小时检测主泵容积效率。",
+   "tags": "铲运机;LHD;液压系统;液压泵;井下运输;设备维护",
+   "fileNumber": "TEST-LHD-2026-01",
+   "fileDate": "2026-10-20",
+   "versions": [
+    {
+     "id": 1,
+     "version": 1,
+     "originalName": "S01 地下矿山铲运机LHD液压系统说明.pdf",
+     "versionNote": null,
+     "size": 4979,
+     "sha256": "B837551D1829141ECE3A91C172180889129C975B2D9F260BF2A17364AA03FAF6",
+     "createdAt": "2026-10-25T14:25:04Z"
+    }
+   ]
+  },
+  "S02": {
+   "id": 2,
+   "workspace": "company",
+   "name": "S02 装备型撬毛机器人远程控制系统.docx",
+   "description": "装备型撬毛机器人远程控制系统说明：以井下基站加泄漏电缆构成通信链路，遥控终端无线接入，链路中断时机器人自动停止并保持制动；设就地/遥控/检修三种模式且切换需双人确认，含 2 路视频回传与不小于 100 米控制距离的指标表。",
+   "tags": "撬毛机器人;远程控制;通信链路;井下采场;浮石处理",
+   "fileNumber": null,
+   "fileDate": null,
+   "versions": [
+    {
+     "id": 2,
+     "version": 1,
+     "originalName": "S02 装备型撬毛机器人远程控制系统.docx",
+     "versionNote": null,
+     "size": 37407,
+     "sha256": "E01058E2EA92603E6DC9BF01CD8821A240250DC8E92CFC4960F799E0A5E9948A",
+     "createdAt": "2026-10-25T14:25:04Z"
+    }
+   ]
+  },
+  "S03": {
+   "id": 3,
+   "workspace": "company",
+   "name": "S03 矿山机器人测试台账.xlsx",
+   "description": "矿山机器人测试台账：工作表「项目清单」列凿岩机器人（TEST-RIG-2026-03）、撬毛机器人（TEST-SCL-2026-01）与铲运机远程遥控系统（TEST-LHD-2026-02）及状态；工作表「验收信息」记录各项目验收日期（含 2026-10-21）、结论与验收人。",
+   "tags": "矿山机器人;凿岩机器人;撬毛机器人;测试台账;验收记录",
+   "fileNumber": "TEST-RIG-2026-03",
+   "fileDate": "2026-10-21",
+   "versions": [
+    {
+     "id": 3,
+     "version": 1,
+     "originalName": "S03 矿山机器人测试台账.xlsx",
+     "versionNote": null,
+     "size": 5815,
+     "sha256": "745A4703C00907ADBB83B10254B7B1D74DFEBCD330F1DAB5ADD52BF3F877F5C3",
+     "createdAt": "2026-10-25T14:25:04Z"
+    }
+   ]
+  },
+  "S04": {
+   "id": 4,
+   "workspace": "company",
+   "name": "S04 井下通风设备维护说明.pdf",
+   "description": "井下通风设备维护说明：适用于主通风机、局部通风机与风门，规定主通风机每季度检查叶片紧固与轴承温度、局部通风机每月检查风筒连接、风门每月检查闭锁与密封，并给出风量风压参数要求。",
+   "tags": "井下通风;主通风机;局部通风机;风门;设备维护",
+   "fileNumber": null,
+   "fileDate": null,
+   "versions": [
+    {
+     "id": 4,
+     "version": 1,
+     "originalName": "S04 井下通风设备维护说明.pdf",
+     "versionNote": null,
+     "size": 3201,
+     "sha256": "3A6D4255D99771D085A4F1C65CEEA388E4DFC16DB2CC07FA6D37A806EC6EB56C",
+     "createdAt": "2026-10-25T14:25:04Z"
+    }
+   ]
+  }
+ },
+ "a07": {
+  "pages": [
+   {
+    "offset": 0,
+    "n": 2,
+    "hasMore": true,
+    "nextOffset": 2
+   },
+   {
+    "offset": 2,
+    "n": 2,
+    "hasMore": false,
+    "nextOffset": null
+   }
+  ],
+  "seen": [
+   [
+    1,
+    1
+   ],
+   [
+    2,
+    2
+   ],
+   [
+    3,
+    3
+   ],
+   [
+    4,
+    4
+   ]
+  ]
+ },
+ "p3_links": [
+  {
+   "id": 1,
+   "fileId": 1,
+   "folderId": 8,
+   "fileName": "S01 地下矿山铲运机LHD液压系统说明.pdf",
+   "displayName": null,
+   "materialCategory": null,
+   "position": 0,
+   "deleted": false,
+   "latestVersion": 1,
+   "size": 4979,
+   "sha256": "B837551D1829141ECE3A91C172180889129C975B2D9F260BF2A17364AA03FAF6"
+  },
+  {
+   "id": 2,
+   "fileId": 2,
+   "folderId": 8,
+   "fileName": "S02 装备型撬毛机器人远程控制系统.docx",
+   "displayName": null,
+   "materialCategory": null,
+   "position": 1,
+   "deleted": false,
+   "latestVersion": 1,
+   "size": 37407,
+   "sha256": "E01058E2EA92603E6DC9BF01CD8821A240250DC8E92CFC4960F799E0A5E9948A"
+  },
+  {
+   "id": 3,
+   "fileId": 3,
+   "folderId": 8,
+   "fileName": "S03 矿山机器人测试台账.xlsx",
+   "displayName": null,
+   "materialCategory": null,
+   "position": 2,
+   "deleted": false,
+   "latestVersion": 1,
+   "size": 5815,
+   "sha256": "745A4703C00907ADBB83B10254B7B1D74DFEBCD330F1DAB5ADD52BF3F877F5C3"
+  },
+  {
+   "id": 4,
+   "fileId": 4,
+   "folderId": 8,
+   "fileName": "S04 井下通风设备维护说明.pdf",
+   "displayName": null,
+   "materialCategory": null,
+   "position": 3,
+   "deleted": false,
+   "latestVersion": 1,
+   "size": 3201,
+   "sha256": "3A6D4255D99771D085A4F1C65CEEA388E4DFC16DB2CC07FA6D37A806EC6EB56C"
+  },
+  {
+   "id": 5,
+   "fileId": 5,
+   "folderId": 8,
+   "fileName": "S08 选矿厂设备点检记录.pdf",
+   "displayName": null,
+   "materialCategory": null,
+   "position": 4,
+   "deleted": false,
+   "latestVersion": 1,
+   "size": 3569,
+   "sha256": "8A3BDCAA6418552F0A1C1C62F698A4984B2B8D7A1E2462CBBACFC6BEE413E8F3"
+  },
+  {
+   "id": 6,
+   "fileId": 6,
+   "folderId": 8,
+   "fileName": "S06 同内容异名-铲运机说明副本.pdf",
+   "displayName": null,
+   "materialCategory": null,
+   "position": 5,
+   "deleted": false,
+   "latestVersion": 1,
+   "size": 4979,
+   "sha256": "B837551D1829141ECE3A91C172180889129C975B2D9F260BF2A17364AA03FAF6"
+  }
+ ],
+ "async": {
+  "rid": "acc-20261025-task-01",
+  "states": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ],
+  "landed": 8
+ },
+ "s05": {
+  "fileId": 17
+ },
+ "matrix_project": 10,
+ "matrix_uploaded": true,
+ "matrix": {
+  "T01": 18,
+  "T02": 19,
+  "T03": 20,
+  "T04": 21,
+  "T05": 22,
+  "T06": 23,
+  "T07": 24,
+  "T08": 25,
+  "T09": 26,
+  "T10": 27,
+  "T11": 28,
+  "T12": 29,
+  "T13": 30,
+  "T14": 31
+ },
+ "p4": {
+  "matrix_project": 10,
+  "summary": {
+   "all/any": {
+    "期望": 13,
+    "实得": 13,
+    "一致": true,
+    "多": [],
+    "少": []
+   },
+   "desc+date/any": {
+    "期望": 10,
+    "实得": 10,
+    "一致": true,
+    "多": [],
+    "少": []
+   },
+   "desc+date/all": {
+    "期望": 2,
+    "实得": 2,
+    "一致": true,
+    "多": [],
+    "少": []
+   },
+   "description": {
+    "期望": 8,
+    "实得": 8,
+    "一致": true,
+    "多": [],
+    "少": []
+   },
+   "tags": {
+    "期望": 5,
+    "实得": 5,
+    "一致": true,
+    "多": [],
+    "少": []
+   },
+   "file_number": {
+    "期望": 4,
+    "实得": 4,
+    "一致": true,
+    "多": [],
+    "少": []
+   },
+   "file_date": {
+    "期望": 4,
+    "实得": 4,
+    "一致": true,
+    "多": [],
+    "少": []
+   },
+   "all/all": {
+    "期望": 2,
+    "实得": 2,
+    "一致": true,
+    "多": [],
+    "少": []
+   }
+  }
+ },
+ "backfill": {
+  "rows": [
+   {
+    "tag": "T03",
+    "fileId": 20,
+    "版本不变": true,
+    "非空字段未覆盖": true,
+    "关联不变": true,
+    "补录": [
+     "description"
+    ],
+    "当前": {
+     "num": "BULK-TEST",
+     "date": "2026-10-01"
+    }
+   },
+   {
+    "tag": "T07",
+    "fileId": 24,
+    "版本不变": true,
+    "非空字段未覆盖": true,
+    "关联不变": true,
+    "补录": [
+     "description",
+     "tags"
+    ],
+    "当前": {
+     "num": "BULK-TEST",
+     "date": "2026-10-01"
+    }
+   },
+   {
+    "tag": "T05",
+    "fileId": 22,
+    "版本不变": true,
+    "非空字段未覆盖": true,
+    "关联不变": true,
+    "补录": [
+     "file_number"
+    ],
+    "当前": {
+     "num": "BULK-05",
+     "date": "2026-10-01"
+    }
+   },
+   {
+    "tag": "T06",
+    "fileId": 23,
+    "版本不变": true,
+    "非空字段未覆盖": true,
+    "关联不变": true,
+    "补录": [],
+    "当前": {
+     "num": "BULK-TEST",
+     "date": null
+    }
+   },
+   {
+    "tag": "S02",
+    "fileId": 2,
+    "版本不变": true,
+    "非空字段未覆盖": true,
+    "关联不变": true,
+    "补录": [],
+    "当前": {
+     "num": null,
+     "date": null
+    }
+   }
+  ],
+  "applied": {
+   "20": {
+    "description": "排水泵运行日志：三台主排水泵轮换运行，电流平稳。"
+   },
+   "24": {
+    "description": "变电所巡检记录：高压柜温度正常，无放电痕迹。",
+    "tags": "四不两直;测试小样;记录表"
+   },
+   "22": {
+    "file_number": "BULK-05"
+   },
+   "23": {},
+   "2": {}
+  }
+ },
+ "share": {
+  "link_ids": [
+   1,
+   32
+  ],
+  "folders": [
+   8,
+   10
+  ]
+ }
+}

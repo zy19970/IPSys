@@ -1,0 +1,90 @@
+{
+ "ts": "2026-10-25T23:02:57",
+ "dl_1": {
+  "ok": true,
+  "raw": {
+   "path": "<LOCAL_WORK>\\work\\acceptance_r2\\downloads_r2\\s06b\\file1_v1.pdf",
+   "fileId": 1,
+   "version": 1,
+   "size": 4979
+  },
+  "exists": true,
+  "size": 4979,
+  "sha256": "B837551D1829141ECE3A91C172180889129C975B2D9F260BF2A17364AA03FAF6"
+ },
+ "dl_7": {
+  "ok": true,
+  "raw": {
+   "path": "<LOCAL_WORK>\\work\\acceptance_r2\\downloads_r2\\s06b\\file7_v1.pdf",
+   "fileId": 7,
+   "version": 1,
+   "size": 3453
+  },
+  "exists": true,
+  "size": 3453,
+  "sha256": "380985F60D810D3E7C1F1CEC5484E94C6A8629A3A1178D1F1CB6DBB879D56C22"
+ },
+ "op_acc-20261025-up-s06b2": {
+  "ok": true,
+  "payload": {
+   "requestId": "acc-20261025-up-s06b2",
+   "state": "done",
+   "tool": "upload_files",
+   "result": {
+    "files": [
+     {
+      "path": "<HOME>\\AppData\\Local\\Temp\\IPSys-Acceptance-20261025-01\\sources\\同名异内容\\S01 地下矿山铲运机LHD液压系统说明.pdf",
+      "ok": true,
+      "result": {
+       "choice": "independent",
+       "fileId": 7,
+       "linkId": 7,
+       "size": 3453,
+       "sha256": "380985F60D810D3E7C1F1CEC5484E94C6A8629A3A1178D1F1CB6DBB879D56C22",
+       "reusedContent": false
+      }
+     }
+    ],
+    "succeeded": 1,
+    "failed": 0,
+    "requested": 1,
+    "cancelReason": null,
+    "status": "success",
+    "retryAdvice": null
+   },
+   "businessOk": true
+  }
+ },
+ "op_acc-20261025-up-s06b": {
+  "ok": true,
+  "payload": {
+   "requestId": "acc-20261025-up-s06b",
+   "state": "done",
+   "tool": "upload_files",
+   "result": {
+    "files": [
+     {
+      "path": "<HOME>\\AppData\\Local\\Temp\\IPSys-Acceptance-20261025-01\\sources\\S06b 同名异内容\\S01 地下矿山铲运机LHD液压系统说明.pdf",
+      "ok": false,
+      "error": "指定本机文件不存在。"
+     }
+    ],
+    "succeeded": 0,
+    "failed": 1,
+    "requested": 1,
+    "cancelReason": null,
+    "status": "failed",
+    "retryAdvice": "仅按返回的失败路径进行人工核对；已成功文件不应盲目重传。"
+   },
+   "businessOk": false
+  }
+ },
+ "src_S01": {
+  "size": 4979,
+  "sha256": "B837551D1829141ECE3A91C172180889129C975B2D9F260BF2A17364AA03FAF6"
+ },
+ "src_S06b": {
+  "size": 3453,
+  "sha256": "380985F60D810D3E7C1F1CEC5484E94C6A8629A3A1178D1F1CB6DBB879D56C22"
+ }
+}

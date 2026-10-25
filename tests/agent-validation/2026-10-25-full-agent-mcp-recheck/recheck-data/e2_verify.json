@@ -1,0 +1,49 @@
+{
+ "B": {
+  "ok": true,
+  "n": 105
+ },
+ "C": {
+  "ok": true,
+  "n": 4
+ },
+ "pages": [
+  {
+   "offset": 0,
+   "n": 100,
+   "total": 110,
+   "hasMore": true,
+   "nextOffset": 100,
+   "truncated": false,
+   "first": "S01 地下矿山铲运机LHD液压系统说明.pdf",
+   "last": "R2 铲运机备件清单-083.pdf"
+  },
+  {
+   "offset": 100,
+   "n": 10,
+   "total": 110,
+   "hasMore": false,
+   "nextOffset": null,
+   "truncated": false,
+   "first": "R2 铲运机备件清单-084.pdf",
+   "last": "R2 铲运机备件清单-093.pdf"
+  }
+ ],
+ "zhayunji": {
+  "ok": true,
+  "total": 0,
+  "n": 0
+ },
+ "robot": {
+  "ok": true,
+  "total": 6,
+  "titles": [
+   "R2-20261025-C 矿山机器人技术资料",
+   "S03 矿山机器人测试台账.xlsx",
+   "R2 凿岩机器人技术规格书.pdf",
+   "R2 凿岩机器人定位系统说明.pdf",
+   "R2 撬毛机器人作业指导书.pdf",
+   "R2 井下巡检机器人适用性评估.pdf"
+  ]
+ }
+}

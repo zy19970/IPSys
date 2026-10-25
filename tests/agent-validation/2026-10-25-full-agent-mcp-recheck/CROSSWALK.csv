@@ -1,0 +1,44 @@
+﻿项,第一轮状态,原始证据状态,本轮是否真实执行,新证据,最新状态,原因
+A01,PASS,BROKEN_PATH,是,recheck-data/e0_env.json；recovered/protocol_probe.json,PASS,重新握手：protocolVersion=2025-06-18、64 工具、v2_*=0、capabilities 含 prompts；原索引路径写错已修正
+A02,PASS,SUMMARY_ONLY,是,recheck-data/a02_a05.json,PASS,index 仅 id/title/summary/version/updatedAt/source/guidanceOnly/entries，无 content/body
+A03,PASS,SUMMARY_ONLY,是,recheck-data/a02_a05.json,PASS,三篇 758/1438/1568 字互异；prompts 与工具逐字相等；upload∩metadata 共用段实测 474 字（第一轮写 106 字，已更正），search 与二者公共段仅 18/22 字
+A04,PASS,VALID,是,recheck-data/a02_a05.json counts_before/after,PASS,连续读三篇规范前后计数完全一致（company 项目 5、IP 0、files 150；personal 项目 1、IP 0）
+A05,PASS,VALID,是,recheck-data/a02_a05.json prompt_vs_tool,PASS,search/upload/metadata 三篇 prompts/get 与 get_agent_guidance 逐字相等，长度差均为 0
+A06,PASS,SUMMARY_ONLY,是,recheck-data/trace_e2.json；MCP_RAW_RECHECK.jsonl actor=agent-e2-search,PASS,真实 Agent 自主检索 19 次：查运机 0 → 铲运机 110 → LHD 4 → 撬毛/凿岩/遥控/巡检；对无关文件逐条排除；personal 隔离由 A12-conc 佐证
+A07,PASS,SUMMARY_ONLY,是,recheck-data/trace_e2.json；MCP_RAW_RECHECK.jsonl,PASS,"铲运机 offset=0/limit=100 返回 100 条 hasMore=true → offset=100 返回 10 条 hasMore=false；FileId 1 的 LinkId=[1,32] 归属 folder 8/10"
+A08,PASS,VALID,是,recheck-data/e3_verify.json；trace_e3.json,PASS,6 份 PDF/DOCX/XLSX/扫描件全部 SHA 与源一致、版本 1；编号/日期判定 6/6 正确
+A09,PASS,VALID,是（部分）,recheck-data/e1_s06b_dl.json；MCP_RAW_RECHECK.jsonl,PASS,S06b 因果链由服务端 request_id 记录补齐；同名未覆盖、版本未变；uncertain 语义按 result.status 判定，非缺陷
+A10,PASS,VALID,否（按任务书不机械重测）,recovered/ctx.json（backfill）,PASS,第一轮证据含逐项布尔（版本不变/非空未覆盖/关联不变），未发现矛盾；本轮未重测
+A11,BLOCKED,MISSING,否,GUI_AUTH_DB_RESULTS.md（人工步骤）,NOT_RUN,GUI 编辑/导入导出/版本冲突需真实登录态操作，Agent 无法执行；401 与文件不存在均不能替代
+A12,PASS,VALID（部分）,部分,recovered/p6_concurrency.json；GUI_AUTH_DB_RESULTS.md,PARTIAL,neg/noeffect/conc 三项证据有效；A12-rev（GUI 撤权）与 A12-db（双库）未执行，主项不得整体 PASS
+A13,PASS,VALID,是,recheck-data/trace_e2.json 步骤 2-3；trace_e3.json 步骤 1-3,PASS,两个独立会话均在检索/上传之前自主加载 get_agent_guidance（E2 读 index+search，E3 读 index+upload+metadata）
+A14,PASS,SUMMARY_ONLY,部分,GitHub Actions run #429（3926caa，success）,PARTIAL,CI 最新成功运行为 #429（#424–428 均 failure，说明 CI 较脆弱）；A14-gui NOT_RUN
+A15,PASS,VALID,否,recovered/ctx.json（fileId 5 四项 NULL）,PASS,第一轮“用户明确说只上传”场景证据有效；本轮样本把该要求写在文件名/正文里，判据不同，单列 PARTIAL，不影响本项
+A16,PASS,VALID,是,recheck-data/e3_verify.json（FileId 148）；trace_e3.json 23:16:33,PASS,无文字层扫描件抽出 PNG 后视觉阅读，读出 0.23/3.1/6.8 mm/s 与“外圈早期剥落”；未把设备编号 MG-2207 当文件编号
+A17,PASS,VALID,否（组合缺项已充分证明）,recovered/ctx.json（p4）、recovered/dedupe.json,PASS,6 组期望/实得全一致；同一 FileId 两处关联在缺项查询里只出 1 次；本轮未重测
+A18,PASS,VALID,是（旁证）,recheck-data/trace_e2.json（list_file_links file_id=1）,PASS,FileId 1 两处归属本轮再次回读确认；批内部分失败证据见第一轮日志 partial_success
+A19,PASS,VALID,是（部分）,recheck-data/e2_verify.json；recovered/ctx.json,PASS,分页 hasMore/nextOffset 本轮再验；空白变体归一为 NULL 见第一轮 ctx.json
+A20,PASS,VALID,是,recheck-data/e3_verify.json（FileId 147/148）,PASS,表内项目编号 PRJ-2026-0031、行级验收日期 2026-08-30、设备编号 MG-2207 均未被填成文件编号/日期
+A02-neg,PASS,VALID,是,recheck-data/a02_a05.json negatives,PASS,prompts/get(name=bogus) → JSON-RPC -32602“无效的 MCP prompt name”；guidance topic=bogus → TOOL_CALL_REJECTED
+A06-a,PASS,SUMMARY_ONLY,是,recheck-data/trace_e2.json,PASS,扩词由 Agent 自主完成，且记录了它自己打错“撑毛”(0 条) 并纠正为“撬毛”
+A07-dl,PASS,VALID,是,recheck-data/e1_s06b_dl.json（downloads_r2/s06b）,PASS,本轮重新下载 FileId 1/7 到全新目录，SHA 分别等于源 S01/S06b
+A07-link,PASS,VALID,是,recheck-data/trace_e2.json,PASS,FileId 1 → LinkId 1(folder 8) / 32(folder 10)
+A08-a,PASS,VALID,是,recheck-data/e3_verify.json FileId 143,PASS,有文字层 PDF：编号 BKTN-2026-0147、日期 2026-09-12 均来自正文明确标注
+A08-b,PASS,VALID,是,recheck-data/e3_verify.json FileId 145,PASS,DOCX 含 4 行工序表，编号/日期保持空，表格用时被正确读出
+A08-c,PASS,VALID,是,recheck-data/e3_verify.json FileId 147,PASS,XLSX 双表：读到第二张表的“共 12 台套”；项目编号与行级日期均未挪用
+A09-a,PASS,VALID,否,recovered/ctx.json（p3_links FileId 6）,PASS,同内容异名副本独立建档，SHA 与 FileId 1 相同
+A09-b,PASS,VALID,是,recheck-data/e1_s06b_dl.json；S06B_RECONCILIATION.md,PASS,服务端 get_operation_result 证明 acc-20261025-up-s06b2 → fileId 7，SHA 380985F6…；同名未覆盖 FileId 1
+A09-c,PASS,VALID,否,MCP_ACTION_LOG.jsonl（第一轮 22:26:13 失败记录）,PASS,逐文件错误返回“指定本机文件不存在。”，ok=false 且 isError=true
+A09-d,PASS,VALID,否,recovered/async2.json,PASS,state=uncertain + result.status=interrupted + cancelReason=user_cancel + succeeded1/failed1/requested12；实际仅 1 个落地
+A11-version,PASS,SUMMARY_ONLY,否,—,NOT_RUN,仅“目录版本=正文版本”的读数，没有 GUI 保存后的一致性证据；随 A11 一并待人工
+A12-conc,PASS,VALID,否,recovered/p6_concurrency.json,PASS,8+8 次并发最大 151 ms，personal 恒 0 命中
+A12-db,BLOCKED,MISSING,否,GUI_AUTH_DB_RESULTS.md 步骤 14-15,BLOCKED,需在 GUI 新建并切换 Acceptance-B 空库；company/personal 切换不能代替
+A12-neg,PASS,VALID,否,MCP_ACTION_LOG.jsonl,PASS,跨工作区 404、错配 LinkId 拒绝、不存在 ID 404
+A12-noeffect,PASS,VALID,否,recovered/cases.json,PASS,FileId 5 版本数=1、说明 NULL，越界写未生效
+A12-rev,BLOCKED,MISSING,否,GUI_AUTH_DB_RESULTS.md 步骤 12-13,BLOCKED,需在 GUI 关闭 MCP 授权后测试；宿主不在导致的 15 秒超时不算撤权证据
+A14-gui,NOT_RUN,MISSING,否,GUI_AUTH_DB_RESULTS.md 步骤 16-17,NOT_RUN,需两种窗口宽度 + 150% 缩放的真实截图
+A17-dedupe,PASS,VALID,否,recovered/dedupe.json,PASS,缺项查询 13 条唯一，FileId 5 只出现 1 次；普通列表出现 2 次（两处关联）
+A17-eff,PASS,VALID,否,recovered/ctx.json（p4 performance）,PASS,7 页 any 查询 0.35 s
+A18-a,PASS,VALID,是（旁证）,recheck-data/trace_e2.json,PASS,"本轮再读 FileId 1 的 links=[1,32]；第一轮 associate 响应 sourceLinkId=1 → folder 10"
+A18-b,PASS,VALID,否,MCP_ACTION_LOG.jsonl,PASS,批内 3 个路径 2 成功 1 失败，status=partial_success 且逐文件给原因
+A19-neg,PASS,VALID,否,MCP_ACTION_LOG.jsonl,PASS,missing_fields=bogus → 400 中文拒绝

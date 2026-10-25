@@ -1,0 +1,132 @@
+{
+ "ts": "2026-10-25T23:01:56",
+ "db_before": {
+  "test": {
+   "path": "<IPSYS_DIR>\\IPSys-test.db",
+   "exists": true,
+   "size": 6995968,
+   "mtime": "2026-10-25T22:31:59",
+   "sha256": "61E6708DE73248162DADE34E0900CD36C1DC17F5C2DD3FA1C8FCF74C1FD8654F"
+  },
+  "prod": {
+   "path": "<IPSYS_DIR>\\IPSys.db",
+   "exists": true,
+   "size": 250970112,
+   "mtime": "2026-10-25T11:06:42",
+   "sha256": "F1B0B6E00BFE4FCBAD53002679E5A934BFE0D3115CA11A5DB45597E0EDEFDD0E"
+  },
+  "exe": {
+   "path": "<IPSYS_DIR>\\IPSys-win-x64-FrameworkDependent.exe",
+   "exists": true,
+   "size": 5556454,
+   "mtime": "2026-10-25T13:35:34",
+   "sha256": "9A59C91B67E97A1FAE9C6D57CBBC4429D482D9850A24BB70D7C21BC8C6BAA694"
+  }
+ },
+ "protocol": {
+  "protocolVersion": "2025-06-18",
+  "serverInfo": {
+   "name": "ipsys-local",
+   "version": "1.0.0"
+  },
+  "capabilities": {
+   "tools": {
+    "listChanged": false
+   },
+   "prompts": {
+    "listChanged": false
+   }
+  },
+  "instructions_len": 281,
+  "tool_count": 64
+ },
+ "counts": {
+  "company.list_projects": {
+   "ok": true,
+   "n": 2,
+   "names": [
+    "验收测试项目-公司A",
+    "验收测试项目-字段矩阵"
+   ]
+  },
+  "company.list_ips": {
+   "ok": true,
+   "n": 0,
+   "names": []
+  },
+  "personal.list_projects": {
+   "ok": true,
+   "n": 1,
+   "names": [
+    "验收测试项目-个人B"
+   ]
+  },
+  "personal.list_ips": {
+   "ok": true,
+   "n": 0,
+   "names": []
+  },
+  "company.files": {
+   "ok": true,
+   "n": 35,
+   "ids": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30
+   ]
+  }
+ },
+ "marker_project": {
+  "ok": true,
+  "raw": "{\"id\":11,\"reference\":{\"workspace\":\"company\",\"kind\":\"project\",\"id\":11,\"section\":\"\",\"isValid\":true}}"
+ },
+ "db_after": {
+  "test": {
+   "path": "<IPSYS_DIR>\\IPSys-test.db",
+   "exists": true,
+   "size": 6995968,
+   "mtime": "2026-10-25T23:01:57",
+   "sha256": "63B935707CBA985A18F41BFB777C292D570538F67DB32771AB308D15E1422D57"
+  },
+  "prod": {
+   "path": "<IPSYS_DIR>\\IPSys.db",
+   "exists": true,
+   "size": 250970112,
+   "mtime": "2026-10-25T11:06:42",
+   "sha256": "F1B0B6E00BFE4FCBAD53002679E5A934BFE0D3115CA11A5DB45597E0EDEFDD0E"
+  }
+ },
+ "binding_proof": {
+  "test_mtime_changed": true,
+  "test_sha_changed": true,
+  "prod_mtime_changed": false,
+  "prod_sha_changed": false
+ }
+}

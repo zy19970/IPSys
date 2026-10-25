@@ -1,0 +1,90 @@
+{
+ "counts_before": {
+  "company.list_projects": 5,
+  "company.list_ips": 0,
+  "personal.list_projects": 1,
+  "personal.list_ips": 0,
+  "company.files_page": 150
+ },
+ "index": {
+  "ok": true,
+  "keys": [
+   "id",
+   "title",
+   "summary",
+   "version",
+   "updatedAt",
+   "source",
+   "guidanceOnly",
+   "entries"
+  ],
+  "raw_head": "{\"id\":\"index\",\"title\":\"Agent \\u5DE5\\u4F5C\\u89C4\\u8303\\u76EE\\u5F55\",\"summary\":\"\\u4EC5\\u5217\\u51FA\\u53EF\\u5355\\u72EC\\u83B7\\u53D6\\u7684\\u4E13\\u9879\\u89C4\\u8303\\uFF0C\\u4E0D\\u5305\\u542B\\u4E13\\u9879\\u6B63\\u6587\",\"version\":\"1.0.0\\u002Bb6b606861caf\",\"updatedAt\":\"2026-10-25\",\"source\":\"builtin\",\"guidanceOnly\":true,\"entries\":[{\"id\":\"search\",\"title\":\"\\u667A\\u80FD\\u68C0\\u7D22\\u89C4\\u8303\",\"summary\":\"\\u5173\\u952E\\u8BCD\\u6269\\u5C55\\u3001\\u5B8C\\u6574\\u5206\\u9875\\u3001\\u6587\\u4EF6\\u8EAB\\u4EFD\\u53CA\\u539F\\u4EF6\\u6838\\u5B9E\",\"version\":\"1.0.0\\u002B955481576c9a\",\"updatedAt\":\"2026-10-25\",\"source\":\"builtin\"},{\"id\":\"",
+  "has_content_field": false
+ },
+ "topics": {
+  "search": {
+   "len": 758,
+   "sha": "955481576c9ac3aa"
+  },
+  "upload": {
+   "len": 1438,
+   "sha": "320211aa29b32a05"
+  },
+  "metadata": {
+   "len": 1568,
+   "sha": "ab41eb79c3db0dde"
+  }
+ },
+ "prompts_list": [
+  "index",
+  "search",
+  "upload",
+  "metadata"
+ ],
+ "prompt_vs_tool": {
+  "search": {
+   "prompt_len": 758,
+   "prompt_sha": "955481576c9ac3aa",
+   "tool_len": 758,
+   "tool_sha": "955481576c9ac3aa",
+   "equal": true,
+   "len_delta": 0
+  },
+  "upload": {
+   "prompt_len": 1438,
+   "prompt_sha": "320211aa29b32a05",
+   "tool_len": 1438,
+   "tool_sha": "320211aa29b32a05",
+   "equal": true,
+   "len_delta": 0
+  },
+  "metadata": {
+   "prompt_len": 1568,
+   "prompt_sha": "ab41eb79c3db0dde",
+   "tool_len": 1568,
+   "tool_sha": "ab41eb79c3db0dde",
+   "equal": true,
+   "len_delta": 0
+  }
+ },
+ "shared_upload_metadata": {
+  "exact_lcs_len": 474,
+  "note": "精确二分求得 upload 与 metadata 的最长公共子串为 474 字（第一轮报告写 106 字，属口径偏小，本轮更正）",
+  "segment_head": "## 文件内容读取共用规范（upload 与 metadata 共用）",
+  "in_search": false,
+  "search_upload_lcs_len": 18,
+  "search_metadata_lcs_len": 22
+ },
+ "negatives": {
+  "prompts_get_bogus": "{\"jsonrpc\": \"2.0\", \"id\": 15, \"error\": {\"code\": -32602, \"message\": \"无效的 MCP prompt name；可用 index、search、upload、metadata。\"}}",
+  "guidance_bogus": "{\"ok\":false,\"status\":\"failed\",\"code\":\"TOOL_CALL_REJECTED\",\"message\":\"\\u53C2\\u6570\\u679A\\u4E3E\\u503C\\u65E0\\u6548\\uFF1Atopic\",\"error\":\"\\u53C2\\u6570\\u679A\\u4E3E\\u503C\\u65E0\\u6548\\uFF1Atopic\",\"retryable\":false}"
+ },
+ "counts_after": {
+  "company.list_projects": 5,
+  "company.list_ips": 0,
+  "personal.list_projects": 1,
+  "personal.list_ips": 0,
+  "company.files_page": 150
+ },
+ "no_side_effect": true
+}

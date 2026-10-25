@@ -1,0 +1,44 @@
+﻿用例ID,第一轮状态,第一轮证据字段（原文引用，非本目录路径）,证据分类,说明,本轮是否复核,脱敏副本位置
+A01,PASS,reports/protocol_probe.json,BROKEN_PATH,引用 reports/protocol_probe.json，实际文件在仓库根目录（已存在），reports/ 子路径不存在,是,
+A02,PASS,sha=688d7da2d43129c3,SUMMARY_ONLY,只给 sha=688d7da2…，无对应文件与原始响应,部分,
+A03,PASS,"sha: search=955481576c9ac3aa,upload=320211aa29b32a05,metadata=ab41eb79c3db0dde",SUMMARY_ONLY,只给三篇 sha 前缀，无正文与原始响应,部分,
+A04,PASS,MCP_ACTION_LOG.jsonl,VALID,MCP_ACTION_LOG.jsonl 存在，含只读规范调用；项目/IP 计数 0→0 另见 recovered/cases.json,是,
+A05,PASS,reports/cases.json,VALID,recovered/cases.json 内含 prompts/get 与 tools/call 的哈希比对结果,是,recovered/
+A06,PASS,search_records 实际返回,SUMMARY_ONLY,证据写“search_records 实际返回”，但已提交日志中 search_records 出现 0 次，无原始请求响应,部分,
+A07,PASS,,SUMMARY_ONLY,recovered/ctx.json 有 a07 分页摘要（offset/n/hasMore/nextOffset），但无 search_records 原始请求响应,部分,
+A08,PASS,cases A08-a/A08-b/A08-c,VALID,recovered/ctx.json 的 details 段含逐文件 fileNumber/fileDate/版本/说明,是,recovered/
+A09,PASS,cases A09-a~d,VALID,recovered/async2.json + p3b.json + 日志中 failed 上传响应，覆盖 a~d,是,recovered/
+A10,PASS,,VALID,recovered/ctx.json 的 backfill 段含版本不变/非空未覆盖逐项布尔,是,recovered/
+A11,BLOCKED,A11-version；curl 401；%LOCALAPPDATA%\IPSys\agent-guidance.json 不存在,MISSING,A11 主项为 BLOCKED，无 GUI 证据；A11-version 仅有目录版本号,部分,
+A12,PASS,cases A12-neg/A12-noeffect/A12-conc,VALID,recovered/p6_concurrency.json 含 8+8 并发与 personal 0 命中；A12-db/A12-rev 另行 BLOCKED,是,
+A13,PASS,MCP_ACTION_LOG.jsonl + 会话内实际调用,VALID,MCP_ACTION_LOG.jsonl 含 9 次 get_agent_guidance 真实调用,是,
+A14,PASS,https://github.com/zy19970/IPSys/actions/runs/40198175759,SUMMARY_ONLY,仅给 CI run 链接；CI 运行本身可查，但 GUI 子项 NOT_RUN,部分,
+A15,PASS,,VALID,recovered/ctx.json 的 details 显示 fileId 5 四项属性为 NULL,是,
+A16,PASS,evidence/S05_p1.png,VALID,evidence/S05_p1.png 已在仓库；文字层 0 字与视觉识别结论见 cases,是,
+A17,PASS,共 7 页 any 查询 0.35s,VALID,recovered/ctx.json 的 p4 段含 6 组期望/实得比对,是,recovered/
+A18,PASS,cases A18-a/A18-b,VALID,"recovered/ctx.json 的 share 段含 link_ids [1,32] 与 folders [8,10]",是,recovered/
+A19,PASS,,VALID,recovered/ctx.json 含空白变体归一为 NULL 的记录,是,recovered/
+A20,PASS,,VALID,recovered/ctx.json 的 backfill 段含 T06/S02 保持空白的结论,是,recovered/
+A02-neg,PASS,,VALID,recovered/cases.json 含非法 topic 拒绝记录,是,
+A06-a,PASS,,SUMMARY_ONLY,同 A06，无 search_records 原始调用,部分,
+A07-dl,PASS,,VALID,第一轮 downloads/ 目录存在，A07-dl 下载件 SHA 与源一致；本轮另建 R2 下载,是,
+A07-link,PASS,,VALID,"recovered/ctx.json 的 share 段含 FileId 1 的 LinkId [1,32]",是,
+A08-a,PASS,,VALID,recovered/ctx.json details.S01,是,
+A08-b,PASS,,VALID,recovered/ctx.json details.S02（编号/日期为空）,是,
+A08-c,PASS,,VALID,recovered/ctx.json details.S03,是,
+A09-a,PASS,,VALID,recovered/ctx.json p3_links 含 S06 fileId=6 同内容,是,
+A09-b,PASS,,VALID,recovered/p3b.json 含 fileId=7、choice=independent、SHA 380985F6…,是,
+A09-c,PASS,,VALID,MCP_ACTION_LOG.jsonl 有 ok=false 的 upload_files 记录,是,
+A09-d,PASS,reports/async2.json,VALID,recovered/async2.json 含状态序列、interrupted、succeeded/failed/requested,是,
+A11-version,PASS,get_agent_guidance(index/各篇),SUMMARY_ONLY,仅记录目录与正文版本号一致，无 GUI 操作证据,部分,
+A12-conc,PASS,reports/p6_concurrency.json,VALID,recovered/p6_concurrency.json,是,
+A12-db,BLOCKED,,MISSING,BLOCKED，未做跨库实验,部分,
+A12-neg,PASS,,VALID,MCP_ACTION_LOG.jsonl 含跨工作区 404 与错配 LinkId 拒绝,是,
+A12-noeffect,PASS,,VALID,recovered/cases.json 含 FileId 5 版本数=1、说明 NULL 回读,是,
+A12-rev,BLOCKED,,MISSING,BLOCKED，未做 GUI 撤权实验,部分,
+A14-gui,NOT_RUN,,MISSING,NOT_RUN，无 GUI 证据,部分,
+A17-dedupe,PASS,reports/dedupe.json,VALID,recovered/dedupe.json 含 missing/plain 两组 fileId 列表，file5 只出现一次,是,
+A17-eff,PASS,,VALID,recovered/ctx.json p4 含 7 页查询耗时,是,
+A18-a,PASS,,VALID,recovered/ctx.json share 段 + 日志 associate_file,是,
+A18-b,PASS,,VALID,MCP_ACTION_LOG.jsonl 含 partial_success 记录,是,
+A19-neg,PASS,,VALID,MCP_ACTION_LOG.jsonl 含非法 missing_fields 拒绝,是,

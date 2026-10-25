@@ -1,0 +1,69 @@
+{
+ "states": [
+  "uncertain",
+  "uncertain",
+  "uncertain",
+  "uncertain",
+  "uncertain",
+  "uncertain",
+  "uncertain",
+  "uncertain",
+  "uncertain",
+  "uncertain",
+  "uncertain",
+  "uncertain",
+  "uncertain",
+  "uncertain",
+  "uncertain",
+  "uncertain",
+  "uncertain",
+  "uncertain",
+  "uncertain",
+  "uncertain"
+ ],
+ "op": {
+  "requestId": "acc-20261025-task-02",
+  "state": "uncertain",
+  "tool": "upload_files",
+  "result": {
+   "files": [
+    {
+     "path": "<HOME>\\AppData\\Local\\Temp\\IPSys-Acceptance-20261025-01\\sources\\bulk\\T09 通风机振动检测.pdf",
+     "ok": true,
+     "result": {
+      "choice": "independent",
+      "fileId": 16,
+      "linkId": 16,
+      "size": 2118,
+      "sha256": "96EEC0D6ACB2771354B04D307E1F67E2D58CC6AC65A29A1DDEE03864FBBBED70",
+      "reusedContent": false
+     }
+    },
+    {
+     "path": "<HOME>\\AppData\\Local\\Temp\\IPSys-Acceptance-20261025-01\\sources\\bulk\\T10 井下消防器材台账.pdf",
+     "ok": false,
+     "error": "用户请求取消；已发出的请求可能已经写入，请核对文件关联。",
+     "cancelReason": "user_cancel"
+    }
+   ],
+   "succeeded": 1,
+   "failed": 1,
+   "requested": 12,
+   "cancelReason": "user_cancel",
+   "status": "interrupted",
+   "retryAdvice": "仅按返回的失败路径进行人工核对；已成功文件不应盲目重传。"
+  },
+  "businessOk": null
+ },
+ "landed": [
+  "T01 井下照明配电箱检查表.pdf",
+  "T02 提升机钢丝绳检查记录.pdf",
+  "T03 排水泵运行日志.pdf",
+  "T04 压风管路巡检卡.pdf",
+  "T05 井筒装备检查表.pdf",
+  "T06 带式输送机保护试验.pdf",
+  "T07 变电所巡检记录.pdf",
+  "T08 充填站运行记录.pdf",
+  "T09 通风机振动检测.pdf"
+ ]
+}

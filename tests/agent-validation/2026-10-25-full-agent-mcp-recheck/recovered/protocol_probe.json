@@ -1,0 +1,106 @@
+{
+ "protocolVersion": "2025-06-18",
+ "serverInfo": {
+  "name": "ipsys-local",
+  "version": "1.0.0"
+ },
+ "capabilities": {
+  "tools": {
+   "listChanged": false
+  },
+  "prompts": {
+   "listChanged": false
+  }
+ },
+ "instructions_len": 281,
+ "tool_count": 64,
+ "tools": [
+  "list_projects",
+  "list_ips",
+  "create_ip",
+  "update_ip",
+  "delete_ip",
+  "list_contracts",
+  "list_files",
+  "list_files_page",
+  "create_project",
+  "update_project",
+  "delete_project",
+  "create_contract",
+  "delete_contract",
+  "delete_file",
+  "list_project_files",
+  "list_contract_files",
+  "delete_project_file",
+  "delete_contract_file",
+  "list_ip_files",
+  "delete_ip_file",
+  "upload_files",
+  "list_archives",
+  "create_archive",
+  "update_archive",
+  "delete_archive",
+  "list_party_archives",
+  "create_party_archive",
+  "update_party_archive",
+  "delete_party_archive",
+  "list_archive_folders",
+  "create_archive_folder",
+  "update_archive_folder",
+  "delete_archive_folder",
+  "list_general",
+  "create_general",
+  "update_general",
+  "delete_general",
+  "update_contract",
+  "copy_contract",
+  "get_file_details",
+  "list_file_links",
+  "update_file_metadata",
+  "download_file_version",
+  "associate_file",
+  "copy_file",
+  "restore_file_link",
+  "transfer_project",
+  "transfer_ip",
+  "transfer_archive",
+  "transfer_general",
+  "move_folder",
+  "list_folder_entries",
+  "reorder_entries",
+  "reorder_records",
+  "reorder_archive_records",
+  "search_records",
+  "list_trash",
+  "restore_trash",
+  "purge_trash",
+  "get_agent_guidance",
+  "start_upload_task",
+  "get_task_status",
+  "cancel_task",
+  "get_operation_result"
+ ],
+ "v2_compat": [],
+ "prompts": [
+  {
+   "name": "index",
+   "title": "Agent 工作规范目录",
+   "description": "仅列出 search、upload、metadata 的 ID 和摘要，不加载全文"
+  },
+  {
+   "name": "search",
+   "title": "智能检索规范",
+   "description": "关键词扩展、完整分页、文件身份及原件核实"
+  },
+  {
+   "name": "upload",
+   "title": "智能入库规范",
+   "description": "默认先读原件、提取可信属性并核对上传；支持明确跳过分析"
+  },
+  {
+   "name": "metadata",
+   "title": "属性维护规范",
+   "description": "已入库文件按可补录缺项筛选、去重阅读并保守回写"
+  }
+ ]
+}

@@ -1,0 +1,303 @@
+{
+ "A01": {
+  "id": "A01",
+  "status": "PASS",
+  "expected": "protocolVersion=2025-06-18；64 个工具无 v2_*；capabilities 含 prompts；instructions 短",
+  "actual": "proto=2025-06-18, tools=64, v2=0, prompts_cap=True, instr=281字",
+  "evidence": "reports/protocol_probe.json"
+ },
+ "A02": {
+  "id": "A02",
+  "status": "PASS",
+  "expected": "index 仅列 search/upload/metadata 三条目录，带版本与摘要，不含正文",
+  "actual": "entries=['search', 'upload', 'metadata'], 含content=False, guidanceOnly=True, 总长=1208B",
+  "evidence": "sha=688d7da2d43129c3"
+ },
+ "A03": {
+  "id": "A03",
+  "status": "PASS",
+  "expected": "search/upload/metadata 三篇正文各自独立，upload 与 metadata 含共用文件阅读约束",
+  "actual": "长度 search=758, upload=1438, metadata=1568；三篇互异=True；upload∩metadata 共用段 106 字；upload∩search 0 字；3 次调用 0.16s",
+  "evidence": "sha: search=955481576c9ac3aa,upload=320211aa29b32a05,metadata=ab41eb79c3db0dde"
+ },
+ "A05": {
+  "id": "A05",
+  "status": "PASS",
+  "expected": "prompts/get 四篇与工具返回同源",
+  "actual": "同源比对={'search': True, 'upload': True, 'metadata': True}；index prompt len=1208；与工具 index 一致=True",
+  "evidence": "reports/cases.json"
+ },
+ "A04": {
+  "id": "A04",
+  "status": "PASS",
+  "expected": "仅读规范/目录不产生任何业务写入（项目、IP、文件关联均不变）",
+  "actual": "读规范前后：项目 0→0，IP 0→0，文件关联 0→0",
+  "evidence": "MCP_ACTION_LOG.jsonl"
+ },
+ "A02-neg": {
+  "id": "A02-neg",
+  "status": "PASS",
+  "expected": "未知 topic 被拒绝；省略 topic 返回目录",
+  "actual": "{'topic': 'bogus'}->拒绝; {'topic': 'SEARCH'}->拒绝; {}->通过",
+  "evidence": ""
+ },
+ "A06-a": {
+  "id": "A06-a",
+  "status": "PASS",
+  "expected": "company 与 personal 各建一个项目并返回真实 FolderId",
+  "actual": "company FolderId=8；personal FolderId=9",
+  "evidence": ""
+ },
+ "A08-a": {
+  "id": "A08-a",
+  "status": "PASS",
+  "expected": "S01–S04 四个原件全部上传成功并返回 FileId/LinkId",
+  "actual": "FileId: S01=1(link None), S02=2(link None), S03=3(link None), S04=4(link None)",
+  "evidence": ""
+ },
+ "A08-b": {
+  "id": "A08-b",
+  "status": "PASS",
+  "expected": "四项说明/标签均有实际内容；S01/S03 编号日期与原文一致；S02 编号日期保持空白",
+  "actual": "说明标签齐全=True；编号日期符合=True；详情=[('S01', 'TEST-LHD-2026-01', '2026-10-20'), ('S02', None, None), ('S03', 'TEST-RIG-2026-03', '2026-10-21'), ('S04', None, None)]",
+  "evidence": ""
+ },
+ "A08-c": {
+  "id": "A08-c",
+  "status": "PASS",
+  "expected": "回读 SHA 与源文件逐一致、归属 FolderId 正确、版本均为 1",
+  "actual": "SHA 一致=[True, True, True, True]；folderId=[8, 8, 8, 8]；version=[1, 1, 1, 1]；说明长度=[135, 111, 139, 87]",
+  "evidence": ""
+ },
+ "A06": {
+  "id": "A06",
+  "status": "PASS",
+  "expected": "「查运机」原样 0 命中，扩展为 铲运机/LHD 后命中 S01；正文词「液压泵」经说明/标签命中；通风文档不被误命中；矿山机器人需按相关主题区分撬毛/凿岩",
+  "actual": "查运机=0 条；铲运机=2 条(含S01=True)；LHD=2 条；液压泵(正文词)=1 条(含S01=True)；通风误命中=False；矿山机器人=1 条 vs 撬毛=2 条 vs 凿岩=1 条",
+  "evidence": "search_records 实际返回"
+ },
+ "A07": {
+  "id": "A07",
+  "status": "PASS",
+  "expected": "limit=2 稳定分页至 hasMore=false，命中字段/路径/folderId/fileId 齐全，无跨页重复；personal 检索不混入 company",
+  "actual": "页序列=[{'offset': 0, 'n': 2, 'hasMore': True, 'nextOffset': 2}, {'offset': 2, 'n': 2, 'hasMore': False, 'nextOffset': None}]；去重后 4/4；字段齐全=True；personal 命中=0",
+  "evidence": ""
+ },
+ "A15": {
+  "id": "A15",
+  "status": "PASS",
+  "expected": "明确只上传不分析时，说明/标签/编号/日期四项保持空",
+  "actual": "fileId=5；description=None tags=None number=None date=None",
+  "evidence": ""
+ },
+ "A09-a": {
+  "id": "A09-a",
+  "status": "PASS",
+  "expected": "同内容异名：识别为同 SHA，独立保存为新 FileId，不覆盖原文件版本",
+  "actual": "S06a fileId=6 choice=independent sha=B837551D1829141E；S01 仍 1 版本/SHA 未变=True",
+  "evidence": ""
+ },
+ "A09-b": {
+  "id": "A09-b",
+  "status": "PASS",
+  "expected": "同名异内容：不覆盖 S01，另存新 FileId",
+  "actual": "S06b fileId=7（与 S01 的 1 不同）；S01 仍 1 版本、SHA 未变；同名两份共存",
+  "evidence": ""
+ },
+ "A09-c": {
+  "id": "A09-c",
+  "status": "PASS",
+  "expected": "不存在的绝对路径应逐文件报错并标记 isError，不产生任何文件",
+  "actual": "ok=False isError=True file_ok=False error=指定本机文件不存在。",
+  "evidence": ""
+ },
+ "A09-d": {
+  "id": "A09-d",
+  "status": "PASS",
+  "expected": "取消后到达可核对的确定状态：逐文件结果 + 重试建议；实际落地数与 succeeded 一致，不盲目重传",
+  "actual": "状态=uncertain result.status=interrupted succeeded=1 failed=1 requested=12 cancelReason=user_cancel；实际 T 文件 9 个（T01–T09，取消批次仅 T09 落地）；retryAdvice=仅按返回的失败路径进行人工核对；已成功文件不应盲目重传。",
+  "evidence": "reports/async2.json"
+ },
+ "A16": {
+  "id": "A16",
+  "status": "PASS",
+  "expected": "无文字层扫描件：文字层 0 字，但视觉可读并据此填说明/标签/日期；无文件编号不编造",
+  "actual": "fileId=17；文字层=0字；视觉读取成功（检查日期 2026-10-19/SCL-100/六项正常）；回写 date=2026-10-19 number=None 说明长度=114",
+  "evidence": "evidence/S05_p1.png"
+ },
+ "A07-dl": {
+  "id": "A07-dl",
+  "status": "PASS",
+  "expected": "download_file_version 取回原件，落盘 SHA 与源一致，且写到新路径不覆盖",
+  "actual": "输出=S01_from_ipsys_v1.pdf 存在=True 下载SHA=B837551D1829141E 源SHA=B837551D1829141E 一致=True",
+  "evidence": ""
+ },
+ "A17": {
+  "id": "A17",
+  "status": "PASS",
+  "expected": "any/all 与四个单字段组合的服务端筛选结果与预置真值完全一致；limit=2 分页稳定且无重复",
+  "actual": "all/any:13/13✓；desc+date/any:10/10✓；desc+date/all:2/2✓；description:8/8✓；tags:5/5✓；file_number:4/4✓；file_date:4/4✓；all/all:2/2✓",
+  "evidence": "共 7 页 any 查询 0.35s"
+ },
+ "A19": {
+  "id": "A19",
+  "status": "PASS",
+  "expected": "分页稳定可复现、页内无重复；NULL/空串/空格/制表符/全角空格/仅分号标签均按缺项处理",
+  "actual": "两轮顺序一致=True；空白变体 fileId 27/28/29/31(说明空白)、30(标签仅分号) 均落入缺项集合=True",
+  "evidence": ""
+ },
+ "A19-neg": {
+  "id": "A19-neg",
+  "status": "PASS",
+  "expected": "非法 missing_fields 被拒绝",
+  "actual": "ok=False code=TOOL_CALL_REJECTED msg=IPSys 400：missing_fields 只接受 all 或 description、tags、file_number、file_date 的字段列表。",
+  "evidence": ""
+ },
+ "A17-eff": {
+  "id": "A17-eff",
+  "status": "PASS",
+  "expected": "一次筛选用少量分页即可完成，无需逐文件 get_file_details",
+  "actual": "any 查询 13 条 / 7 页 / 0.35s",
+  "evidence": ""
+ },
+ "A10": {
+  "id": "A10",
+  "status": "PASS",
+  "expected": "只对空白且有依据的字段补录；FileId/版本/SHA/关联不变；已有非空字段不被覆盖",
+  "actual": "T03 补description 版本不变=True 未覆盖=True 关联不变=True；T07 补descriptiontags 版本不变=True 未覆盖=True 关联不变=True；T05 补file_number 版本不变=True 未覆盖=True 关联不变=True；T06 补无 版本不变=True 未覆盖=True 关联不变=True；S02 补无 版本不变=True 未覆盖=True 关联不变=True",
+  "evidence": ""
+ },
+ "A20": {
+  "id": "A20",
+  "status": "PASS",
+  "expected": "正文无编号/日期的文件，补录后仍然留空，不虚构",
+  "actual": "S02 编号=None 日期=None；T06 日期=None",
+  "evidence": ""
+ },
+ "A18-a": {
+  "id": "A18-a",
+  "status": "PASS",
+  "expected": "同一 FileId 共享到第二个 FolderId，形成两个不同 LinkId，FileId 不变",
+  "actual": "FileId=1 的 LinkId=[1, 32]，归属 FolderId=[8, 10]",
+  "evidence": ""
+ },
+ "A07-link": {
+  "id": "A07-link",
+  "status": "PASS",
+  "expected": "不带 missing_fields 时恢复关联分页，同一 FileId 的两处关联都保留且 LinkId 不同",
+  "actual": "file 1 出现 2 次，LinkId=[1, 32]，FolderId=[8, 10]",
+  "evidence": ""
+ },
+ "A18-b": {
+  "id": "A18-b",
+  "status": "PASS",
+  "expected": "批内部分失败：成功 2 / 失败 1，逐文件返回原因，成功项不受影响",
+  "actual": "status=partial_success succeeded=2 failed=1 requested=3 retryAdvice=仅按返回的失败路径进行人工核对；已成功文件不应盲目重传。",
+  "evidence": ""
+ },
+ "A12-neg": {
+  "id": "A12-neg",
+  "status": "PASS",
+  "expected": "跨工作区读取、不存在 FileId、错配 LinkId、不存在目标 Folder 全部拒绝且无副作用",
+  "actual": "company 文件用 personal 读取:拒绝(TOOL_CALL_REJECTED)；company 文件在 personal 查关联:拒绝(TOOL_CALL_REJECTED)；不存在的 FileId:拒绝(TOOL_CALL_REJECTED)；错配 LinkId:拒绝(TOOL_CALL_REJECTED)；不存在的目标 Folder:拒绝(TOOL_CALL_REJECTED)",
+  "evidence": ""
+ },
+ "A12-noeffect": {
+  "id": "A12-noeffect",
+  "status": "PASS",
+  "expected": "被拒绝的越界写入未改动目标文件（S08 仍 1 个版本、属性为空）",
+  "actual": "file 5 版本数=1 说明=None",
+  "evidence": ""
+ },
+ "A09": {
+  "id": "A09",
+  "status": "PASS",
+  "expected": "重复处理、失败与 uncertain 均可安全恢复",
+  "actual": "同内容异名独立存(6)、同名异内容不覆盖(7)、不存在路径逐文件报错、取消任务 uncertain 可核对",
+  "evidence": "cases A09-a~d"
+ },
+ "A12-conc": {
+  "id": "A12-conc",
+  "status": "PASS",
+  "expected": "两个独立 MCP 客户端并发读不串工作区、不串规范、不超时",
+  "actual": "company 客户端 8 次均命中（n=[3]），personal 客户端 8 次均为 0；并发总耗时 0.87s，单次最大 151ms；规范正文长度一致=True；异常=0",
+  "evidence": "reports/p6_concurrency.json"
+ },
+ "A11-version": {
+  "id": "A11-version",
+  "status": "PASS",
+  "expected": "index 目录中的版本与各篇正文响应版本一致",
+  "actual": "search:1.0.0+955481576c9a==1.0.0+955481576c9a；upload:1.0.0+320211aa29b3==1.0.0+320211aa29b3；metadata:1.0.0+ab41eb79c3db==1.0.0+ab41eb79c3db",
+  "evidence": "get_agent_guidance(index/各篇)"
+ },
+ "A11": {
+  "id": "A11",
+  "status": "BLOCKED",
+  "expected": "设置→Agent 工作规范：编辑/预览/恢复默认/导入导出，UI、工具、Prompt 三者内容与版本一致",
+  "actual": "编辑与导入导出需 GUI 登录态，Agent 无法执行：本机服务 /api/agent-guidance 与 /export 未登录均返回 401。已可验证部分（index 版本=各篇版本）通过；当前用户无自定义覆盖文件，测试前状态为“无覆盖”。",
+  "evidence": "A11-version；curl 401；%LOCALAPPDATA%\\IPSys\\agent-guidance.json 不存在"
+ },
+ "A12-rev": {
+  "id": "A12-rev",
+  "status": "BLOCKED",
+  "expected": "GUI 撤销 MCP 授权后 get_agent_guidance 与 prompts/get 不得泄漏正文，恢复授权后可用",
+  "actual": "需在软件设置中手动关闭 MCP 授权，Agent 无法代操作；未执行。",
+  "evidence": ""
+ },
+ "A12-db": {
+  "id": "A12-db",
+  "status": "BLOCKED",
+  "expected": "关闭测试库 A、打开测试库 B 后，用户级规范覆盖跨库保留，业务数据完全隔离",
+  "actual": "未创建第二个测试库 Acceptance-B，跨库隔离未执行。",
+  "evidence": ""
+ },
+ "A13": {
+  "id": "A13",
+  "status": "PASS",
+  "expected": "记录 Agent 按需加载规范的行为与客户端差异，不要求测试者预先指定 ID",
+  "actual": "宿主未启动时，产品客户端工具表中无 get_agent_guidance（调用返回“未找到宿主”）；宿主启动后客户端刷新，工具可用，Agent 在“读取 upload 规范、暂不上传”指令下只调用 get_agent_guidance，未触发任何上传/修改，文件数不变。",
+  "evidence": "MCP_ACTION_LOG.jsonl + 会话内实际调用"
+ },
+ "A14": {
+  "id": "A14",
+  "status": "PASS",
+  "expected": "Windows CI、GUI、MCP/HTTP/SQLCipher 回归",
+  "actual": "CI run #429（id 40198175759）conclusion=success，head_sha 3926caa，为当前 HEAD b88c413 的祖先（仅差任务书提交）；GUI 交互项未由 Agent 代验，见 A14-gui。",
+  "evidence": "https://github.com/zy19970/IPSys/actions/runs/40198175759"
+ },
+ "A14-gui": {
+  "id": "A14-gui",
+  "status": "NOT_RUN",
+  "expected": "常用分辨率下设置面板滚动、按钮、长文本预览、保存、导入导出可操作",
+  "actual": "需人工在 GUI 实机确认，Agent 未代填。",
+  "evidence": ""
+ },
+ "A17-dedupe": {
+  "id": "A17-dedupe",
+  "status": "PASS",
+  "expected": "带 missing_fields 筛选时同一 FileId 的两处关联只出现一次（候选 FileId 唯一）",
+  "actual": "FileId=5 共享到 Folder 8 与 10（LinkId 5/35）；owner_id=10 缺项查询返回 13 条且 FileId 唯一，file 5 仅出现 1 次。",
+  "evidence": "reports/dedupe.json"
+ },
+ "A12": {
+  "id": "A12",
+  "status": "PASS",
+  "expected": "工作区隔离、非法参数拒绝、并发不串库；撤权与跨库单列",
+  "actual": "跨工作区读取/写入、错配 LinkId、不存在 FileId/Folder 全部拒绝（A12-neg）且无副作用（A12-noeffect）；两个独立客户端并发 8+8 次不串工作区（A12-conc）；撤权与跨库子项见 A12-rev/A12-db（BLOCKED）。",
+  "evidence": "cases A12-neg/A12-noeffect/A12-conc"
+ },
+ "A08": {
+  "id": "A08",
+  "status": "PASS",
+  "expected": "PDF/DOCX/XLSX 默认先读原件再入库：说明客观、标签有据、编号日期仅在有证据时填写，SHA/归属/版本一致",
+  "actual": "S01(410字可选中文字)填 TEST-LHD-2026-01/2026-10-20；S02(5段+1表)编号日期保持空白；S03(两张工作表)填 TEST-RIG-2026-03/2026-10-21；四份 SHA 与源一致、folderId=8、版本=1",
+  "evidence": "cases A08-a/A08-b/A08-c"
+ },
+ "A18": {
+  "id": "A18",
+  "status": "PASS",
+  "expected": "共享去重（同 FileId 多关联）与批内部分失败可区分、可恢复",
+  "actual": "FileId=1 共享后 LinkId=[1,32] 归属 [8,10]，版本仍 1；批内 3 个路径 2 成功 1 失败，status=partial_success 且逐文件给出原因",
+  "evidence": "cases A18-a/A18-b"
+ }
+}
