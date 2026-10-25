@@ -15,6 +15,8 @@ if(args.Contains("--mcp"))
     return;
 }
 var smoke = args.Contains("--smoke");
+using var agentGuidanceSmokeScope=smoke?
+    AgentGuidanceStore.UseTemporaryForSmoke():null;
 // One GUI/SQLCipher host per interactive Windows user session.
 // Named EventWaitHandle lifetime is handle-based (safe across async continuations).
 // --mcp exits above this guard: Agent bridge subprocesses remain unlimited.
@@ -136,6 +138,7 @@ if (smoke)
     {
         FolderModelSmoke.Run();
         ResourceSchemaV2Smoke.Run();
+        AgentGuidanceStoreSmoke.Run();
         NativeMcpFileQuerySmoke.Run();
         NativeFileStoreSmoke.Run();
         RecyclePurgeSmoke.Run();
