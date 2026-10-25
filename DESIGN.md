@@ -8,7 +8,7 @@
 
 正式前端全部位于 `src/IPSys.Web/wwwroot/`：页面源码 `index.html`、`css/app.css`、`js/*.js` 与上传、下载、ZIP64、PDF.js 等能力模块共享这一目录；`tools/bundle.cjs` 在构建时生成 `wwwroot/dist/index.html`、`style.css`、`app.js`，由 MSBuild 按固定逻辑资源名嵌入 EXE。运行时由 `EmbeddedWebAssets` 读取内嵌资源，不向外输出物理 `wwwroot` 文件夹。只修改前端源码，不在 Git 中维护生成的 `dist/`。
 
-本地默认 Windows Release 以 `win-x64` / `PublishSingleFile=true` / `SelfContained=false` 构建为依赖环境的单一 EXE，目标机需 .NET 8 Windows Desktop 与 ASP.NET Core 两种运行时；手动 GitHub Release 同时生成自包含版与依赖环境版。MCP 由同一个 EXE 的 `--mcp` stdio 模式、受授权的同用户命名管道和宿主会话运行，正式清单为 **63 项无 `v2_*` 别名的工具**；详情见 [MCP_CODEX.md](./MCP_CODEX.md)。
+本地默认 Windows Release 以 `win-x64` / `PublishSingleFile=true` / `SelfContained=false` 构建为依赖环境的单一 EXE，目标机需 .NET 8 Windows Desktop 与 ASP.NET Core 两种运行时；手动 GitHub Release 同时生成自包含版与依赖环境版。MCP 由同一个 EXE 的 `--mcp` stdio 模式、受授权的同用户命名管道和宿主会话运行，现行源码清单为 **64 项无 `v2_*` 别名的工具**；详情见 [MCP_CODEX.md](./MCP_CODEX.md)。
 
 ## 2. SQLCipher V2 数据身份
 
@@ -28,7 +28,7 @@
 
 ## 3. 服务、接口与任务安全
 
-正式业务网页、MCP、固定 Excel、统一搜索、回收站、PDF 预览与导出统一 V2 Folder/File/Link/Version 身份。已有历史 `--smoke` 兼容断言不表示正式程序继续开放旧 V1 业务接口。MCP 的 63 个工具、同用户授权和会话撤销规则独立于 Explorer 外观。
+正式业务网页、MCP、固定 Excel、统一搜索、回收站、PDF 预览与导出统一 V2 Folder/File/Link/Version 身份。已有历史 `--smoke` 兼容断言不表示正式程序继续开放旧 V1 业务接口。MCP 的 64 个工具、同用户授权和会话撤销规则独立于 Explorer 外观。
 
 上传/下载为流式，单原件代码容量保护为 **8 GiB**；包含同内容暂存、确认、取消、版本追加和跨区任务绑定。可恢复性、并发文件任务锁、真正的任务成功终态、失败可见以及删除事务回滚为硬约束。回收站永久删除按最后引用关系回收物理对象，删除后 SQLCipher 文件体积不保证立即缩小；设置中的压缩以 VACUUM 实际完成且 `integrity_check` 通过为判据，不能展示伪造的实时百分比。
 
