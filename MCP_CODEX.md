@@ -1,10 +1,18 @@
 # IPSys 本机 Codex MCP
 
-## Agent 分层规范读取（2026-10-25，第一阶段源码已实施，CI 待核验）
+## Agent 分层规范读取（2026-10-25，第二阶段源码已实施，CI/本机 Agent 待核验）
+
+**标准 MCP Prompts：** 在协议 `2025-06-18` 的 initialize.capabilities 声明 `prompts: { listChanged: false }`；`prompts/list` 列出内置 `index/search/upload/metadata` 四个名称和简短摘要，不含全文。客户端 `prompts/get(name="search")` 等按需获得一条 role=user / type=text 的规范消息；正文与 `get_agent_guidance` 共用内置资源。目录 metadata 可在未授权时列出，但 prompts/get 的正文必须通过同用户命名管道、已解锁数据库和手动启用的 MCP 授权。Prompts 是可选择的模板，不能保证每款 Agent 自动加载。
+
+**通用文件缺项筛选：** `list_files_page(workspace="company", missing_fields="all", missing_mode="any", offset=0, limit=100)` 在 SQLCipher 分页前找出四个可选文件属性至少缺少一个的原件，按 FileId 去重；还支持 `missing_fields=["description","file_date"]`（或字符串 `"description,file_date"`）与 `missing_mode="all"` 组合。字段白名单为 `description/tags/file_number/file_date`。有筛选时每条 `items[]` 附加 `missingFields` 数组（JSON 驼峰风格），用来指示具体缺项。无筛选时保持 LinkId 关联分页，兼容旧响应。只查缺项本身不下载、修改或创建版本。HTTP 内部同源查询使用 `missingFields`、`missingMode` 参数；无持久化空白索引。
+
+**真实 Agent 任务的界限：** 智能扩词、PDF/Word/Excel 内容提取及补录由 Agent 在真实本地路径和用户授权下执行。工具可供 Agent 调用，不代表服务器已自动为每次上传提取属性。无法阅读或缺少可靠证据时必须允许属性继续为空；出现 uncertain 先查询操作结果，不能盲目重传。正式 Windows CI 和实机验证结果必须独立记录。
+
+
 
 现行 tools/list 在此前 63 项业务工具之外增加 **get_agent_guidance** 只读工具，合计 **64 项**；原有 63 项接口不改名、不改变参数语义。调用 `get_agent_guidance()` 或 `get_agent_guidance(topic="index")` 只返回 search/upload/metadata 专项的 ID、标题、摘要、版本；分别调用 `topic="search"`、`topic="upload"`、`topic="metadata"` 才返回单篇正文。未知 topic 明确拒绝。用户仅要求读取规范时不会上传、下载原件、修改属性或删除资料。
 
-MCP initialize.instructions 只输出来自内嵌 index.md 的短入口，必须先在资料库中人工开启 MCP 授权；规范读取通过现行受限命名管道及宿主授权门禁，不依赖外网或额外本地服务。内嵌规范文件统一位于 src/IPSys.Web/AgentGuidance/，由 AgentGuidance.cs 注册并读取，upload/metadata 共享 file-reading.md 内容。用户换 Agent 或刷新工具清单时需重启或重新连接客户端。此阶段仅提供指导文本及只读获取能力，**尚未让任何客户端自动执行智能入库或批量补录**；标准 MCP prompts/list/get、list_files_page 缺失属性筛选和设置界面属于后续阶段。最新源码必须先经 Windows CI 和真机客户端分别验收，不得把此前 63 工具的 CI 结果记为新增工具通过。
+MCP initialize.instructions 只输出来自内嵌 index.md 的短入口，必须先在资料库中人工开启 MCP 授权；规范读取通过现行受限命名管道及宿主授权门禁，不依赖外网或额外本地服务。内嵌规范文件统一位于 src/IPSys.Web/AgentGuidance/，由 AgentGuidance.cs 注册并读取，upload/metadata 共享 file-reading.md 内容。用户换 Agent 或刷新工具清单时需重启或重新连接客户端。当前第二阶段源码已提供标准 MCP Prompts、通用缺失属性筛选；**真实智能入库和补录仍需本地 Agent 实测**，设置编辑/覆盖界面属于第三阶段。最新源码必须先经 Windows CI 和真机客户端分别验收，不得把此前 63 工具的 CI 结果记为新增工具通过。
 
 
 ## Agent 轻量搜索（2026-10-25）
