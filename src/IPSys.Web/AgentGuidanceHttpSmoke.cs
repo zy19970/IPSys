@@ -150,7 +150,7 @@ static class AgentGuidanceHttpSmoke
             "/api/agent-guidance/metadata");
         Check(importedFull.GetProperty("source").GetString()=="user_override" &&
               importedFull.GetProperty("content").GetString()!
-                .Split("文件内容读取共用规范").Length==2,
+                .Split("## 文件内容读取共用规范（upload 与 metadata 共用）").Length==2,
             "effective snapshot reimport does not duplicate immutable appendix");
         using(var reset=await client.PostAsJsonAsync("/api/agent-guidance/import",new{
             config=new{schemaVersion=1,overrides=new{}},

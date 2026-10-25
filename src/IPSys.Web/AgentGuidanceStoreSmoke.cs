@@ -91,8 +91,8 @@ static class AgentGuidanceStoreSmoke
             Check(AgentGuidance.Read("search",fullCopy)["content"]?.GetValue<string>()==custom &&
                   AgentGuidance.Read("upload",fullCopy)["source"]?.GetValue<string>()=="builtin" &&
                   AgentGuidance.Read("metadata",fullCopy)["source"]?.GetValue<string>()=="user_override" &&
-                  uploadFull.Split("文件内容读取共用规范").Length==2 &&
-                  metadataFull.Split("文件内容读取共用规范").Length==2,
+                  uploadFull.Split("## 文件内容读取共用规范（upload 与 metadata 共用）").Length==2 &&
+                  metadataFull.Split("## 文件内容读取共用规范（upload 与 metadata 共用）").Length==2,
                 "full snapshot import restores text/source and appends immutable safeguards once");
             var foreign=JsonNode.Parse(JsonSerializer.Serialize(defaultSnapshot))!;
             foreign["topics"]!["search"]!["content"]="# 旧版内置检索规范";
