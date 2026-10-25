@@ -77,10 +77,15 @@ static class AgentGuidanceHttpSmoke
         {
             var browserStillAllowed=await client.GetFromJsonAsync<JsonElement>(
                 "/api/agent-guidance/search");
-            var externalDenied=await McpLocal.RunSmokeProtocolPromptAsync("search");
+            bool promptDenied=false;
+            try {await McpLocal.RunSmokeProtocolPromptAsync("search");}
+            catch(IOException ex)when(ex.Message.Contains("未授权") ||
+                                      ex.Message.Contains("授权已撤销"))
+            {
+                promptDenied=true;
+            }
             Check(browserStillAllowed.GetProperty("content").GetString()==customized &&
-                  externalDenied["error"]?["message"]?.GetValue<string>()
-                    .Contains("未授权")==true,
+                  promptDenied,
                 "revoke blocks external prompt while logged-in browser still manages rules");
         }
         finally
