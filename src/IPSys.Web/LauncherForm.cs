@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Drawing;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
 using Microsoft.Win32;
@@ -26,6 +27,10 @@ internal sealed class LauncherForm : Form
     private readonly Stopwatch _uptime = Stopwatch.StartNew();
     private TimeSpan _previousCpuTime;
     private long _previousSampleTick;
+    private ulong _previousSystemIdle;
+    private ulong _previousSystemKernel;
+    private ulong _previousSystemUser;
+    private bool _hasSystemCpuSample;
     private bool _explicitExit;
     private readonly ContextMenuStrip _trayMenu;
     private readonly NotifyIcon _trayIcon;
@@ -80,21 +85,21 @@ internal sealed class LauncherForm : Form
         statusCard.Controls.Add(_status);
 
         var monitorCard = new LauncherCard { Location = new Point(18, 65), Size = new Size(464, 106) };
-        monitorCard.Controls.Add(MakeLabel("内存占用", new Rectangle(19, 14, 131, 23),
+        monitorCard.Controls.Add(MakeLabel("内存占用", new Rectangle(19, 14, 113, 23),
             9F, FontStyle.Regular, TextSecondary));
-        monitorCard.Controls.Add(MakeLabel("CPU 占用", new Rectangle(173, 14, 129, 23),
+        monitorCard.Controls.Add(MakeLabel("CPU（程序 / 整机）", new Rectangle(154, 14, 174, 23),
             9F, FontStyle.Regular, TextSecondary));
-        monitorCard.Controls.Add(MakeLabel("运行时长", new Rectangle(329, 14, 125, 23),
+        monitorCard.Controls.Add(MakeLabel("运行时长", new Rectangle(345, 14, 115, 23),
             9F, FontStyle.Regular, TextSecondary));
-        _memoryValue = MakeLabel("—", new Rectangle(19, 46, 137, 34),
-            15F, FontStyle.Bold, TextPrimary);
-        _cpuValue = MakeLabel("—", new Rectangle(173, 46, 139, 34),
-            15F, FontStyle.Bold, TextPrimary);
-        _uptimeValue = MakeLabel("00:00:00", new Rectangle(329, 46, 130, 34),
+        _memoryValue = MakeLabel("—", new Rectangle(19, 46, 113, 34),
             14F, FontStyle.Bold, TextPrimary);
+        _cpuValue = MakeLabel("— / —", new Rectangle(154, 46, 174, 34),
+            12F, FontStyle.Bold, TextPrimary);
+        _uptimeValue = MakeLabel("00:00:00", new Rectangle(345, 46, 114, 34),
+            12.5F, FontStyle.Bold, TextPrimary);
         monitorCard.Controls.AddRange(new Control[] { _memoryValue, _cpuValue, _uptimeValue });
-        monitorCard.Controls.Add(new Panel { Location = new Point(155, 16), Size = new Size(1, 72), BackColor = Stroke });
-        monitorCard.Controls.Add(new Panel { Location = new Point(311, 16), Size = new Size(1, 72), BackColor = Stroke });
+        monitorCard.Controls.Add(new Panel { Location = new Point(140, 16), Size = new Size(1, 72), BackColor = Stroke });
+        monitorCard.Controls.Add(new Panel { Location = new Point(330, 16), Size = new Size(1, 72), BackColor = Stroke });
 
         var launch = MakeButton("打开管理界面", new Rectangle(18, 186, 296, 43), primary: true);
         launch.Click += (_, _) => OpenBrowser();
@@ -120,6 +125,8 @@ internal sealed class LauncherForm : Form
         _process = Process.GetCurrentProcess();
         _previousCpuTime = _process.TotalProcessorTime;
         _previousSampleTick = Stopwatch.GetTimestamp();
+        _hasSystemCpuSample = ReadSystemCpuTimes(
+            out _previousSystemIdle,out _previousSystemKernel,out _previousSystemUser);
         _monitorTimer = new System.Windows.Forms.Timer { Interval = 1000 };
         _monitorTimer.Tick += (_, _) => UpdateResourceMonitor();
         Shown += (_, _) =>
@@ -220,6 +227,47 @@ internal sealed class LauncherForm : Form
         }
     }
 
+    // Windows GetSystemTimes reports idle, kernel (including idle), and
+    // user CPU time across the machine. This is distinct from this EXE's
+    // Process.TotalProcessorTime and matches Task Manager's overall scale.
+    [StructLayout(LayoutKind.Sequential)]
+    private struct CpuFileTime
+    {
+        public uint Low;
+        public uint High;
+        public readonly ulong Ticks => ((ulong)High << 32) | Low;
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetSystemTimes(
+        out CpuFileTime idle,out CpuFileTime kernel,out CpuFileTime user);
+
+    private static bool ReadSystemCpuTimes(out ulong idle,out ulong kernel,out ulong user)
+    {
+        bool ok=GetSystemTimes(out var i,out var k,out var u);
+        idle=i.Ticks;
+        kernel=k.Ticks;
+        user=u.Ticks;
+        return ok;
+    }
+
+    // kernel time includes idle time; otherwise system CPU would be overstated.
+    internal static double? CalculateSystemCpuPercent(
+        ulong previousIdle,ulong previousKernel,ulong previousUser,
+        ulong idle,ulong kernel,ulong user)
+    {
+        if(idle<previousIdle || kernel<previousKernel || user<previousUser)
+            return null;
+        ulong total=(kernel-previousKernel)+(user-previousUser);
+        if(total==0)return null;
+        ulong idleDelta=idle-previousIdle;
+        return Math.Clamp(100d * (1d - (double)idleDelta / total),0d,100d);
+    }
+
+    internal static string FormatCpuPercent(double processCpu,double? systemCpu)=>
+        $"{processCpu:0.0}% / {(systemCpu.HasValue ? $"{systemCpu.Value:0.0}%" : "—")}";
+
     private void UpdateResourceMonitor()
     {
         TimeSpan elapsed = _uptime.Elapsed;
@@ -229,24 +277,43 @@ internal sealed class LauncherForm : Form
             _process.Refresh();
             _memoryValue.Text = $"{_process.WorkingSet64 / (1024d * 1024d):0} MB";
 
-            long now = Stopwatch.GetTimestamp();
-            TimeSpan currentCpu = _process.TotalProcessorTime;
-            double wallMs = Stopwatch.GetElapsedTime(_previousSampleTick, now).TotalMilliseconds;
-            double cpuMs = (currentCpu - _previousCpuTime).TotalMilliseconds;
-            if (wallMs > 0)
-                _cpuValue.Text = $"{Math.Clamp(cpuMs / wallMs / Environment.ProcessorCount * 100d, 0d, 100d):0.0}%";
-            _previousCpuTime = currentCpu;
-            _previousSampleTick = now;
+            long now=Stopwatch.GetTimestamp();
+            TimeSpan currentCpu=_process.TotalProcessorTime;
+            double wallMs=Stopwatch.GetElapsedTime(_previousSampleTick,now).TotalMilliseconds;
+            double cpuMs=(currentCpu-_previousCpuTime).TotalMilliseconds;
+
+            double? systemCpu=null;
+            if(ReadSystemCpuTimes(out ulong idle,out ulong kernel,out ulong user))
+            {
+                if(_hasSystemCpuSample)
+                    systemCpu=CalculateSystemCpuPercent(
+                        _previousSystemIdle,_previousSystemKernel,_previousSystemUser,
+                        idle,kernel,user);
+                _previousSystemIdle=idle;
+                _previousSystemKernel=kernel;
+                _previousSystemUser=user;
+                _hasSystemCpuSample=true;
+            }
+            else _hasSystemCpuSample=false;
+
+            if(wallMs>0)
+            {
+                double processCpu=Math.Clamp(
+                    cpuMs / wallMs / Environment.ProcessorCount * 100d,0d,100d);
+                _cpuValue.Text=FormatCpuPercent(processCpu,systemCpu);
+            }
+            _previousCpuTime=currentCpu;
+            _previousSampleTick=now;
         }
-        catch (InvalidOperationException)
+        catch(InvalidOperationException)
         {
-            _memoryValue.Text = "—";
-            _cpuValue.Text = "—";
+            _memoryValue.Text="—";
+            _cpuValue.Text="— / —";
         }
-        catch (System.ComponentModel.Win32Exception)
+        catch(System.ComponentModel.Win32Exception)
         {
-            _memoryValue.Text = "—";
-            _cpuValue.Text = "—";
+            _memoryValue.Text="—";
+            _cpuValue.Text="— / —";
         }
     }
 

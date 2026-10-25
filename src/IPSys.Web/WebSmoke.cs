@@ -63,6 +63,16 @@ static class WebSmoke
                !IPSys.Web.LauncherForm.HideAfterFilePicker(false,true) ||
                IPSys.Web.LauncherForm.HideAfterFilePicker(false,false))
                 throw new IOException("数据库文件选择完成后托盘隐藏策略错误。");
+            double? overallCpu=IPSys.Web.LauncherForm.CalculateSystemCpuPercent(
+                1000,3000,2000,1400,3700,2300);
+            if(!overallCpu.HasValue || Math.Abs(overallCpu.Value-60d)>0.001 ||
+               IPSys.Web.LauncherForm.CalculateSystemCpuPercent(
+                   1000,3000,2000,1000,3000,2000).HasValue ||
+               IPSys.Web.LauncherForm.CalculateSystemCpuPercent(
+                   1000,3000,2000,900,3600,2300).HasValue ||
+               IPSys.Web.LauncherForm.FormatCpuPercent(1d,13d)!="1.0% / 13.0%" ||
+               IPSys.Web.LauncherForm.FormatCpuPercent(1d,null)!="1.0% / —")
+                throw new IOException("启动器 CPU 本程序/整机采样和格式化不正确。");
 
             // Default database suggestions remain alongside IPSys.Web.exe;
             // never fall back to My Documents or silently move old databases.
