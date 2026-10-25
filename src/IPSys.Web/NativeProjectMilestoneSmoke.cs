@@ -70,10 +70,9 @@ static class NativeProjectMilestoneSmoke
               "fixed XLSX project import creates native personal folder");
         using(var contractExcel=await client.PostAsJsonAsync(
             "/api/v2/excel/company/contract/export",
-            new ExcelExportInput("filtered",[contract])))
-            Check(contractExcel.IsSuccessStatusCode &&
-                (await contractExcel.Content.ReadAsByteArrayAsync()).Length>700,
-                "contract read-only V2 export");
+            new ExcelExportInput("all",null)))
+            Check(contractExcel.StatusCode==HttpStatusCode.BadRequest,
+                "contract has no standalone Excel export");
         using(var prohibited=await client.PostAsync(
             "/api/v2/excel/company/contract/import?policy=create",
             new ByteArrayContent(export)))

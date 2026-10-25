@@ -8,7 +8,7 @@
      POST /api/v2/excel/{ws}/{kind}/export[?section=]   body {mode,ids} → xlsx
      POST /api/v2/excel/{ws}/{kind}/import?policy=&section=  body=文件 → 报告 JSON
    kind ∈ project | ip | general | archive;archive 必须带 section。
-   mode 只有 all / filtered 两种,新壳没有台账行概念,统一用 all。
+   all 忽略筛选;filtered 在服务端匹配完整模块数据,无需依赖可见条目。
    ========================================================================== */
 
 /* 分类 id → 后端台账。分类 id 恰好等于 archive 的 section 名。 */
@@ -16,6 +16,7 @@ const EXCEL_TARGETS = {
   certificate: { kind: "archive", section: "certificate", label: "资质" },
   achievement: { kind: "archive", section: "achievement", label: "业务档案" },
   academic: { kind: "archive", section: "academic", label: "学术成果" },
+  party: { kind: "archive", section: "party", label: "党团建设" },
   project: { kind: "project", section: "", label: "项目台账" },
   ip: { kind: "ip", section: "", label: "知识产权" },
   general: { kind: "general", section: "", label: "综合资料" },
@@ -40,15 +41,52 @@ function downloadBlob(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
 
+function chooseExcelExportScope() {
+  return new Promise((resolve) => {
+    const dialog = document.createElement("dialog");
+    dialog.className = "input-dialog";
+    dialog.innerHTML = '<h3>选择 Excel 导出范围</h3>' +
+      '<p class="hint">当前筛选结果包括全部匹配记录，不限于页面已显示的条目。</p>' +
+      '<div class="excel-choice">' +
+      '<button class="btn" data-excel-mode="filtered">导出当前筛选结果</button>' +
+      '<button class="btn" data-excel-mode="all">导出当前模块全部记录</button>' +
+      '<button class="btn" data-excel-cancel="1">取消</button></div>';
+    document.body.append(dialog);
+    let finished = false;
+    const finish = (mode) => {
+      if (finished) return;
+      finished = true;
+      if (dialog.open) dialog.close();
+      dialog.remove();
+      resolve(mode);
+    };
+    dialog.addEventListener("click", (event) => {
+      const mode = event.target.closest("[data-excel-mode]")?.dataset.excelMode;
+      if (mode) finish(mode);
+      else if (event.target.closest("[data-excel-cancel]")) finish(null);
+    });
+    dialog.addEventListener("cancel", (event) => {
+      event.preventDefault();
+      finish(null);
+    });
+    dialog.showModal();
+  });
+}
+
 async function exportLedger(categoryId) {
   const target = excelTargetOf(categoryId);
   if (!target) return toast("当前分类不支持 Excel 导出");
+  const mode = await chooseExcelExportScope();
+  if (!mode) return;
 
   const ws = VaultStore.ws;
+  const query = mode === "filtered" ? Drive.state.query.trim() : null;
+  const status = mode === "filtered" ? (Drive.state.statusFilter || "") : null;
+  // 服务端针对完整工作区数据匹配,不能把有数量上限的搜索结果当成导出范围。
   try {
     const res = await api(`/api/v2/excel/${ws}/${target.kind}/export${excelQueryOf(target)}`, {
       method: "POST",
-      json: { mode: "all", ids: null },
+      json: { mode, ids: null, query, status },
     });
     downloadBlob(await res.blob(), `${target.label}-${ws}.xlsx`);
     toast("Excel 已导出");

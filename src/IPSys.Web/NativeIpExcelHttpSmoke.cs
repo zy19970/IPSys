@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.IO.Compression;
+using System.Xml.Linq;
 
 // A V2-generated fixed-column workbook is imported across isolated workspaces.
 // No V1 data source is required to exercise the full Excel update cycle.
@@ -15,6 +17,21 @@ static class NativeIpExcelHttpSmoke
         name,"发明专利","已申请","测试申请人",null,null,number,null,
         null,null,null,null,null,null,null,null,null,remark,null);
 
+    static int WorkbookRows(byte[] bytes)
+    {
+        using var zip=new ZipArchive(new MemoryStream(bytes),ZipArchiveMode.Read);
+        using var data=zip.GetEntry("xl/worksheets/sheet1.xml")!.Open();
+        XNamespace x="http://schemas.openxmlformats.org/spreadsheetml/2006/main";
+        var rows=XDocument.Load(data).Descendants(x+"sheetData")
+            .Elements(x+"row").ToArray();
+        var cells=rows[0].Elements(x+"c").ToArray();
+        Check(cells.Length==19,"IP workbook must contain exactly 19 fixed columns");
+        string[] titles=cells.Select(c=>string.Concat(c.Descendants(x+"t").Select(t=>t.Value))).ToArray();
+        foreach(string title in new[]{"编号","公开号","授权公告号"})
+            Check(titles.Count(t=>t==title)==1,"unique IP number column "+title);
+        return rows.Length-1;
+    }
+
     static async Task<JsonElement> Json(HttpResponseMessage response)
     {
         using(response)
@@ -24,10 +41,10 @@ static class NativeIpExcelHttpSmoke
         }
     }
     static async Task<byte[]> Export(HttpClient client,string path,string mode,
-        long[]? ids=null)
+        long[]? ids=null,string? query=null,string? status=null)
     {
         using var r=await client.PostAsJsonAsync(path,
-            new ExcelExportInput(mode,ids));
+            new ExcelExportInput(mode,ids,query,status));
         r.EnsureSuccessStatusCode();
         return await r.Content.ReadAsByteArrayAsync();
     }
@@ -56,6 +73,12 @@ static class NativeIpExcelHttpSmoke
         long fixtureId=fixture.GetProperty("id").GetInt64();
         var source=await Export(client,personal+"/export","filtered",[fixtureId]);
         Check(source.Length>800,"V2 19-column Excel workbook fixture");
+        Check(WorkbookRows(source)==1,"source workbook contains one IP row");
+        var matching=await Export(client,personal+"/export","filtered",null,originalName);
+        Check(WorkbookRows(matching)==1,"filtered export includes matching IP");
+        var notMatching=await Export(client,personal+"/export","filtered",null,
+            "不存在的关键词"+code);
+        Check(WorkbookRows(notMatching)==0,"filtered export excludes nonmatching IP");
 
         using(var anonymous=new HttpClient{BaseAddress=client.BaseAddress})
         using(var blocked=await anonymous.PostAsJsonAsync(company+"/export",

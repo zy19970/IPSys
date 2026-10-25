@@ -28,7 +28,8 @@ static class NativeArchiveGeneralExcelEndpoints
                     try
                     {
                         return Results.File(ExcelLedger.NativeArchiveGeneralExport(
-                            v.Db,workspace,kind,section??"",input.Mode,input.Ids),
+                            v.Db,workspace,kind,section??"",input.Mode,
+                            ExcelLedger.ExportIds(v.Db,workspace,kind,section??"",input)),
                             ExcelLedger.ContentType,kind+"-ledger.xlsx");
                     }
                     catch(ArgumentException ex){return fail(ex.Message,400);}

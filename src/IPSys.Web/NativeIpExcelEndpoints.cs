@@ -26,7 +26,8 @@ static class NativeIpExcelEndpoints
                 if(!v.Allowed(ctx))return Results.Unauthorized();
                 try
                 {
-                    var bytes=ExcelLedger.NativeIpExport(v.Db,workspace,input.Mode,input.Ids);
+                    var bytes=ExcelLedger.NativeIpExport(v.Db,workspace,input.Mode,
+                        ExcelLedger.ExportIds(v.Db,workspace,"ip","",input));
                     return Results.File(bytes,ExcelLedger.ContentType,"ip-ledger.xlsx");
                 }
                 catch(InvalidDataException ex){return fail(ex.Message,400);}

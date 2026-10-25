@@ -1,6 +1,6 @@
 using System.Xml;
 
-// Fixed-template XLSX for native project folders and read-only contracts.
+// Fixed-template XLSX for native project folders; contracts do not have an Excel entry.
 static class NativeProjectExcelEndpoints
 {
     public static void Map(WebApplication app,Func<string,int,IResult> fail)
@@ -16,7 +16,7 @@ static class NativeProjectExcelEndpoints
             HttpContext ctx,Vault v,string workspace,string kind,ExcelExportInput input)=>
         {
             if(!v.Allowed(ctx))return (IResult)Results.Unauthorized();
-            if(!Vault.WorkspaceValid(workspace)||kind is not ("project" or "contract"))
+            if(!Vault.WorkspaceValid(workspace)||kind!="project")
                 return fail("工作区或 Excel 模块无效。",400);
             await v.Gate.WaitAsync(ctx.RequestAborted);
             try

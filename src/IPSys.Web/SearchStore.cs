@@ -15,7 +15,7 @@ static class SearchStore
     private static string Label(string? name)=>string.IsNullOrWhiteSpace(name)?"未命名":name;
     private static string Summary(params string?[] fields)=>string.Join(" · ",
         fields.Where(x=>!string.IsNullOrWhiteSpace(x)).Select(x=>x!.Trim()));
-    public static SearchResponse Find(SqliteConnection db,string workspace,string? text)
+    public static SearchResponse Find(SqliteConnection db,string workspace,string? text,int maxPerGroup=MaxPerGroup)
     {
         if(!Vault.WorkspaceValid(workspace))throw new InvalidDataException("搜索工作区无效。");
         string query=(text??"").Trim();
@@ -28,7 +28,7 @@ static class SearchStore
         void Add(SearchHit hit)
         {
             counts.TryGetValue(hit.Kind,out var current);
-            if(current>=MaxPerGroup){truncated=true;return;}
+            if(current>=maxPerGroup){truncated=true;return;}
             counts[hit.Kind]=current+1;
             results.Add(hit);
         }

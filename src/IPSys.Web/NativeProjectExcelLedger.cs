@@ -1,37 +1,24 @@
 using Microsoft.Data.Sqlite;
-using System.Globalization;
 
-// V2 project / contract fixed ledger identities. Existing XLSX columns
+// V2 project fixed ledger identities. Existing XLSX columns
 // remain stable; only FolderId and native attributes_json are authoritative.
 static partial class ExcelLedger
 {
     internal static byte[] NativeProjectExport(SqliteConnection db,string w,string kind,
         string mode,long[]? ids)
     {
-        if(!Vault.WorkspaceValid(w)||kind is not ("project" or "contract") ||
+        if(!Vault.WorkspaceValid(w)||kind!="project" ||
            mode is not ("all" or "filtered") || mode=="filtered" && (ids?.Length??0)>10000)
             throw new InvalidDataException("工作区、模块或筛选方式无效。");
         HashSet<long>? set=mode=="filtered"?new(ids??[]):null;
-        var cols=kind=="project"?Projects:Contracts;
+        var cols=Projects;
         var result=new List<string[]>();
-        var projects=NativeFolderStore.List(db,w,FolderKinds.Project);
-        var names=projects.ToDictionary(x=>x.Folder.Ref.Id,x=>x.Folder.Name);
-        var rows=kind=="project"?projects:NativeFolderStore.List(db,w,FolderKinds.Contract);
-        foreach(var snapshot in rows)
+        foreach(var snapshot in NativeFolderStore.List(db,w,FolderKinds.Project))
         {
             long id=snapshot.Folder.Ref.Id;
             if(set!=null&&!set.Contains(id))continue;
-            if(kind=="contract" &&
-               (snapshot.Folder.Parent is not ResourceRef parent ||
-                !names.ContainsKey(parent.Id)))continue;
             var json=JsonOf(snapshot.BusinessData);
-            string[] fields=cols.Select(c=>c.Property=="projectName"
-                ?names[snapshot.Folder.Parent!.Value.Id]
-                :Text(json,c.Property)).ToArray();
-            if(kind=="contract" && decimal.TryParse(fields[4],
-                NumberStyles.AllowLeadingSign|NumberStyles.AllowDecimalPoint,
-                CultureInfo.InvariantCulture,out var amount))
-                fields[4]=amount.ToString("0.00",CultureInfo.InvariantCulture);
+            string[] fields=cols.Select(c=>Text(json,c.Property)).ToArray();
             result.Add(fields);
             if(result.Count>20000)throw new InvalidDataException("单次最多导出 20000 行。");
         }

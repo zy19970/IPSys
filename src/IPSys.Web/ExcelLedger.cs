@@ -37,14 +37,7 @@ static partial class ExcelLedger
         new("remarks","备注"),new("tags","标签")
     ];
     private static readonly Column[] GeneralColumns=[new("title","资料名称")];
-    private static readonly Column[] Contracts=
-    [
-        new("name","合同名称"),new("projectName","所属项目"),
-        new("contractNo","合同编号"),new("signDate","签订日期"),
-        new("amount","合同金额（人民币元）"),new("signingParties","签约主体"),
-        new("category","辅助分类"),new("remarks","备注"),new("tags","标签")
-    ];
-    internal static bool ValidKind(string kind)=>kind is "project" or "ip" or "archive" or "general" or "contract";
+    internal static bool ValidKind(string kind)=>kind is "project" or "ip" or "archive" or "general";
     internal static bool SupportsImport(string kind)=>kind is "project" or "ip" or "archive" or "general";
     internal static bool ValidScope(string workspace,string kind,string? section)=>
         ValidKind(kind)&&(kind!="archive"||ArchiveRules.Module(workspace,section??"")!=null);
@@ -52,7 +45,7 @@ static partial class ExcelLedger
     private static Column[] Columns(string kind)=>kind switch
     {
         "project"=>Projects,"ip"=>IntellectualProperty,"archive"=>ArchiveColumns,
-        "general"=>GeneralColumns,"contract"=>Contracts,
+        "general"=>GeneralColumns,
         _=>throw new InvalidDataException("无效的 Excel 台账模块。")
     };
     private static string Text(JsonElement json,string key)
