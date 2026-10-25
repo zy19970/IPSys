@@ -21,7 +21,26 @@ sealed class AgentGuidanceStore
     private readonly string path;
     private const int MaxTopicBytes=48*1024;
     private const int MaxPackageBytes=256*1024;
-    internal static AgentGuidanceStore Current {get;}=new(DefaultPath());
+    private static AgentGuidanceStore current=new(DefaultPath());
+    internal static AgentGuidanceStore Current=>Volatile.Read(ref current);
+    private sealed class SmokeScope(AgentGuidanceStore previous,string directory) : IDisposable
+    {
+        public void Dispose()
+        {
+            Interlocked.Exchange(ref current,previous);
+            try{Directory.Delete(directory,true);}catch(IOException){}
+            catch(UnauthorizedAccessException){}
+        }
+    }
+    internal static IDisposable UseTemporaryForSmoke()
+    {
+        string directory=Path.Combine(Path.GetTempPath(),
+            "ipsys-guidance-smoke-"+Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        var before=Interlocked.Exchange(ref current,
+            new AgentGuidanceStore(Path.Combine(directory,"agent-guidance.json")));
+        return new SmokeScope(before,directory);
+    }
 
     private static string DefaultPath()
     {
@@ -66,9 +85,14 @@ sealed class AgentGuidanceStore
         var bytes=new FileInfo(path).Length;
         if(bytes>MaxPackageBytes)
             throw new IOException("Agent 规范配置超过大小限制。");
-        Package config=JsonSerializer.Deserialize<Package>(
-            File.ReadAllText(path,Encoding.UTF8),Options) ??
-            throw new IOException("Agent 规范配置为空。");
+        Package config;
+        try
+        {
+            config=JsonSerializer.Deserialize<Package>(
+                File.ReadAllText(path,Encoding.UTF8),Options) ??
+                throw new IOException("Agent 规范配置为空。");
+        }
+        catch(JsonException ex){throw new IOException("Agent 规范配置 JSON 已损坏。",ex);}
         ValidatePackage(config);
         return config;
     }
