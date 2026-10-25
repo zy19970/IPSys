@@ -1,0 +1,128 @@
+{
+ "workflow": "IPSys Windows build and smoke",
+ "run_number": 430,
+ "head_sha": "bb37eb1611671fdfa2c861b09b0f2d1f354c01fd",
+ "conclusion": "success",
+ "jobs": [
+  {
+   "name": "smoke",
+   "conclusion": "success",
+   "started_at": "2026-10-25T16:05:01Z",
+   "completed_at": "2026-10-25T16:11:48Z",
+   "steps": [
+    {
+     "name": "Set up job",
+     "conclusion": "success"
+    },
+    {
+     "name": "Run actions/checkout@v4",
+     "conclusion": "success"
+    },
+    {
+     "name": "Run actions/setup-dotnet@v4",
+     "conclusion": "success"
+    },
+    {
+     "name": "Run actions/setup-node@v4",
+     "conclusion": "success"
+    },
+    {
+     "name": "Run actions/setup-python@v5",
+     "conclusion": "success"
+    },
+    {
+     "name": "Verify Visual Studio Debug embedded web assets",
+     "conclusion": "success"
+    },
+    {
+     "name": "Publish Windows x64 portable web app",
+     "conclusion": "success"
+    },
+    {
+     "name": "Verify framework-dependent Release runtime prerequisites",
+     "conclusion": "success"
+    },
+    {
+     "name": "Verify portable Release package contains only one EXE",
+     "conclusion": "success"
+    },
+    {
+     "name": "Verify published MCP stdio handshake and tools",
+     "conclusion": "success"
+    },
+    {
+     "name": "Verify browser JavaScript syntax",
+     "conclusion": "success"
+    },
+    {
+     "name": "Validate native-save evidence verifier syntax",
+     "conclusion": "success"
+    },
+    {
+     "name": "Verify UI and capability smoke tests",
+     "conclusion": "success"
+    },
+    {
+     "name": "Run corrected Explorer V2 HTTP and Edge retest",
+     "conclusion": "success"
+    },
+    {
+     "name": "Verify SQLCipher and local HTTP roundtrip",
+     "conclusion": "success"
+    },
+    {
+     "name": "Publish self-contained Windows x64 single EXE",
+     "conclusion": "success"
+    },
+    {
+     "name": "Verify both single-file deployment modes",
+     "conclusion": "success"
+    },
+    {
+     "name": "Verify embedded application icon in both published EXEs",
+     "conclusion": "success"
+    },
+    {
+     "name": "Upload self-contained Windows executable",
+     "conclusion": "success"
+    },
+    {
+     "name": "Generate physical ZIP64 archive above 4 GiB (generation only)",
+     "conclusion": "skipped"
+    },
+    {
+     "name": "Upload ZIP64 generation metadata only",
+     "conclusion": "skipped"
+    },
+    {
+     "name": "Upload Windows executable with embedded web assets",
+     "conclusion": "success"
+    },
+    {
+     "name": "Upload isolated Explorer V2 retest evidence",
+     "conclusion": "success"
+    },
+    {
+     "name": "Post Run actions/setup-python@v5",
+     "conclusion": "success"
+    },
+    {
+     "name": "Post Run actions/setup-node@v4",
+     "conclusion": "success"
+    },
+    {
+     "name": "Post Run actions/setup-dotnet@v4",
+     "conclusion": "success"
+    },
+    {
+     "name": "Post Run actions/checkout@v4",
+     "conclusion": "success"
+    },
+    {
+     "name": "Complete job",
+     "conclusion": "success"
+    }
+   ]
+  }
+ ]
+}

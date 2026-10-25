@@ -1,0 +1,42 @@
+{
+ "case": "A15-A",
+ "path": "A15-BLIND-A 精矿脱水车间设备巡检记录 20261026.docx",
+ "calls": [
+  {
+   "tool": "upload_files",
+   "fileId": 149,
+   "duplicate_mode": "independent",
+   "request_id": "a15a-20261026-r3-01"
+  }
+ ],
+ "target_project": {
+  "id": 10,
+  "name": "验收测试项目-字段矩阵"
+ },
+ "upload_raw": "{\"files\":[{\"path\":\"<LOCAL_WORK>\\\\work\\\\acceptance_r3\\\\samples\\\\A15-BLIND-A \\u7CBE\\u77FF\\u8131\\u6C34\\u8F66\\u95F4\\u8BBE\\u5907\\u5DE1\\u68C0\\u8BB0\\u5F55 20261026.docx\",\"ok\":true,\"result\":{\"choice\":\"independent\",\"fileId\":149,\"linkId\":151,\"size\":37343,\"sha256\":\"2E3854DF7A4B565B123F7CD071B88A2E40987B460B796E15BB8CCF1CD8C6B1EA\",\"reusedContent\":false}}],\"succeeded\":1,\"failed\":0,\"requested\":1,\"cancelReason\":null,\"status\":\"success\",\"retryAdvice\":null}",
+ "fileId": 149,
+ "details": {
+  "description": null,
+  "tags": null,
+  "fileNumber": null,
+  "fileDate": null,
+  "name": "A15-BLIND-A 精矿脱水车间设备巡检记录 20261026.docx",
+  "versionCount": 1,
+  "v1_originalName": "A15-BLIND-A 精矿脱水车间设备巡检记录 20261026.docx",
+  "v1_size": 37343,
+  "v1_sha256": "2E3854DF7A4B565B123F7CD071B88A2E40987B460B796E15BB8CCF1CD8C6B1EA",
+  "v1_version": 1
+ },
+ "checks": {
+  "description_empty": true,
+  "tags_empty": true,
+  "fileNumber_empty": true,
+  "fileDate_empty": true,
+  "sha_match": true,
+  "size_match": true,
+  "name_match": true,
+  "single_version": true
+ },
+ "pass": true,
+ "note": "四字段留空符合「只上传不分析」；正文虽含 XJ-JK-2026-0316 与 2026-10-19，但未写入属性"
+}

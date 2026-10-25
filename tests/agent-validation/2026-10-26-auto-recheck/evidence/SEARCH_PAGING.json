@@ -1,0 +1,397 @@
+{
+ "query": "液压",
+ "limit": 5,
+ "pages": [
+  {
+   "offset_called": 0,
+   "offset_echo": 0,
+   "limit_echo": 5,
+   "total": 17,
+   "hasMore": true,
+   "nextOffset": 5,
+   "count": 5,
+   "linkIds": [
+    1,
+    7,
+    17,
+    162,
+    32
+   ]
+  },
+  {
+   "offset_called": 5,
+   "offset_echo": 5,
+   "limit_echo": 5,
+   "total": 17,
+   "hasMore": true,
+   "nextOffset": 10,
+   "count": 5,
+   "linkIds": [
+    156,
+    159,
+    153,
+    157,
+    160
+   ]
+  },
+  {
+   "offset_called": 10,
+   "offset_echo": 10,
+   "limit_echo": 5,
+   "total": 17,
+   "hasMore": true,
+   "nextOffset": 15,
+   "count": 5,
+   "linkIds": [
+    163,
+    40,
+    154,
+    158,
+    155
+   ]
+  },
+  {
+   "offset_called": 15,
+   "offset_echo": 15,
+   "limit_echo": 5,
+   "total": 17,
+   "hasMore": false,
+   "nextOffset": null,
+   "count": 2,
+   "linkIds": [
+    161,
+    164
+   ]
+  }
+ ],
+ "items": [
+  {
+   "kind": "file",
+   "fileId": 1,
+   "linkId": 1,
+   "folderId": 8,
+   "ownerId": 8,
+   "title": "S01 地下矿山铲运机LHD液压系统说明.pdf",
+   "description": "地下矿山 6 立方米级柴油铲运机（LHD）液压系统说明：系统由变量柱塞泵、优先阀、工作油缸、转向油缸、回油滤芯与液压油散",
+   "description_len": 135,
+   "ownerLabel": "验收测试项目-公司A · S01 地下矿山铲运机LHD液压系统说明.pdf",
+   "matchedFields": [
+    "name",
+    "fileName",
+    "originalName",
+    "description",
+    "tags"
+   ],
+   "tags": "铲运机;LHD;液压系统;液压泵;井下运输;设备维护",
+   "fileNumber": "TEST-LHD-2026-01"
+  },
+  {
+   "kind": "file",
+   "fileId": 7,
+   "linkId": 7,
+   "folderId": 8,
+   "ownerId": 8,
+   "title": "S01 地下矿山铲运机LHD液压系统说明.pdf",
+   "description": "",
+   "description_len": 0,
+   "ownerLabel": "验收测试项目-公司A · S01 地下矿山铲运机LHD液压系统说明.pdf",
+   "matchedFields": [
+    "name",
+    "fileName",
+    "originalName"
+   ],
+   "tags": null,
+   "fileNumber": null
+  },
+  {
+   "kind": "file",
+   "fileId": 17,
+   "linkId": 17,
+   "folderId": 8,
+   "ownerId": 8,
+   "title": "S05 撬毛机器人安全检查记录-扫描件.pdf",
+   "description": "撬毛机器人（设备编号 SCL-100）夜班安全检查记录：逐项检查行走机构、液压锤打击功能、远程遥控链路、视频回传、急停按",
+   "description_len": 114,
+   "ownerLabel": "验收测试项目-公司A · S05 撬毛机器人安全检查记录-扫描件.pdf",
+   "matchedFields": [
+    "description"
+   ],
+   "tags": "撬毛机器人;安全检查;点检记录;远程遥控;井下作业",
+   "fileNumber": null
+  },
+  {
+   "kind": "file",
+   "fileId": 38,
+   "linkId": 162,
+   "folderId": 8,
+   "ownerId": 8,
+   "title": "R2 铲运机液压系统技术说明.pdf",
+   "description": "",
+   "description_len": 0,
+   "ownerLabel": "验收测试项目-公司A · R2 铲运机液压系统技术说明.pdf",
+   "matchedFields": [
+    "name",
+    "fileName",
+    "originalName"
+   ],
+   "tags": null,
+   "fileNumber": null
+  },
+  {
+   "kind": "file",
+   "fileId": 1,
+   "linkId": 32,
+   "folderId": 10,
+   "ownerId": 10,
+   "title": "S01 地下矿山铲运机LHD液压系统说明.pdf",
+   "description": "地下矿山 6 立方米级柴油铲运机（LHD）液压系统说明：系统由变量柱塞泵、优先阀、工作油缸、转向油缸、回油滤芯与液压油散",
+   "description_len": 135,
+   "ownerLabel": "验收测试项目-字段矩阵 · S01 地下矿山铲运机LHD液压系统说明.pdf",
+   "matchedFields": [
+    "name",
+    "fileName",
+    "originalName",
+    "description",
+    "tags"
+   ],
+   "tags": "铲运机;LHD;液压系统;液压泵;井下运输;设备维护",
+   "fileNumber": "TEST-LHD-2026-01"
+  },
+  {
+   "kind": "file",
+   "fileId": 7,
+   "linkId": 156,
+   "folderId": 10,
+   "ownerId": 10,
+   "title": "S01 地下矿山铲运机LHD液压系统说明.pdf",
+   "description": "",
+   "description_len": 0,
+   "ownerLabel": "验收测试项目-字段矩阵 · S01 地下矿山铲运机LHD液压系统说明.pdf",
+   "matchedFields": [
+    "name",
+    "fileName",
+    "originalName"
+   ],
+   "tags": null,
+   "fileNumber": null
+  },
+  {
+   "kind": "file",
+   "fileId": 17,
+   "linkId": 159,
+   "folderId": 10,
+   "ownerId": 10,
+   "title": "S05 撬毛机器人安全检查记录-扫描件.pdf",
+   "description": "撬毛机器人（设备编号 SCL-100）夜班安全检查记录：逐项检查行走机构、液压锤打击功能、远程遥控链路、视频回传、急停按",
+   "description_len": 114,
+   "ownerLabel": "验收测试项目-字段矩阵 · S05 撬毛机器人安全检查记录-扫描件.pdf",
+   "matchedFields": [
+    "description"
+   ],
+   "tags": "撬毛机器人;安全检查;点检记录;远程遥控;井下作业",
+   "fileNumber": null
+  },
+  {
+   "kind": "file",
+   "fileId": 1,
+   "linkId": 153,
+   "folderId": 11,
+   "ownerId": 11,
+   "title": "S01 地下矿山铲运机LHD液压系统说明.pdf",
+   "description": "地下矿山 6 立方米级柴油铲运机（LHD）液压系统说明：系统由变量柱塞泵、优先阀、工作油缸、转向油缸、回油滤芯与液压油散",
+   "description_len": 135,
+   "ownerLabel": "R2-20261025-A 复验测试项目 · S01 地下矿山铲运机LHD液压系统说明.pdf",
+   "matchedFields": [
+    "name",
+    "fileName",
+    "originalName",
+    "description",
+    "tags"
+   ],
+   "tags": "铲运机;LHD;液压系统;液压泵;井下运输;设备维护",
+   "fileNumber": "TEST-LHD-2026-01"
+  },
+  {
+   "kind": "file",
+   "fileId": 7,
+   "linkId": 157,
+   "folderId": 11,
+   "ownerId": 11,
+   "title": "S01 地下矿山铲运机LHD液压系统说明.pdf",
+   "description": "",
+   "description_len": 0,
+   "ownerLabel": "R2-20261025-A 复验测试项目 · S01 地下矿山铲运机LHD液压系统说明.pdf",
+   "matchedFields": [
+    "name",
+    "fileName",
+    "originalName"
+   ],
+   "tags": null,
+   "fileNumber": null
+  },
+  {
+   "kind": "file",
+   "fileId": 17,
+   "linkId": 160,
+   "folderId": 11,
+   "ownerId": 11,
+   "title": "S05 撬毛机器人安全检查记录-扫描件.pdf",
+   "description": "撬毛机器人（设备编号 SCL-100）夜班安全检查记录：逐项检查行走机构、液压锤打击功能、远程遥控链路、视频回传、急停按",
+   "description_len": 114,
+   "ownerLabel": "R2-20261025-A 复验测试项目 · S05 撬毛机器人安全检查记录-扫描件.pdf",
+   "matchedFields": [
+    "description"
+   ],
+   "tags": "撬毛机器人;安全检查;点检记录;远程遥控;井下作业",
+   "fileNumber": null
+  },
+  {
+   "kind": "file",
+   "fileId": 38,
+   "linkId": 163,
+   "folderId": 11,
+   "ownerId": 11,
+   "title": "R2 铲运机液压系统技术说明.pdf",
+   "description": "",
+   "description_len": 0,
+   "ownerLabel": "R2-20261025-A 复验测试项目 · R2 铲运机液压系统技术说明.pdf",
+   "matchedFields": [
+    "name",
+    "fileName",
+    "originalName"
+   ],
+   "tags": null,
+   "fileNumber": null
+  },
+  {
+   "kind": "file",
+   "fileId": 38,
+   "linkId": 40,
+   "folderId": 12,
+   "ownerId": 12,
+   "title": "R2 铲运机液压系统技术说明.pdf",
+   "description": "",
+   "description_len": 0,
+   "ownerLabel": "R2-20261025-B 井下无轨设备资料库 · R2 铲运机液压系统技术说明.pdf",
+   "matchedFields": [
+    "name",
+    "fileName",
+    "originalName"
+   ],
+   "tags": null,
+   "fileNumber": null
+  },
+  {
+   "kind": "file",
+   "fileId": 1,
+   "linkId": 154,
+   "folderId": 12,
+   "ownerId": 12,
+   "title": "S01 地下矿山铲运机LHD液压系统说明.pdf",
+   "description": "地下矿山 6 立方米级柴油铲运机（LHD）液压系统说明：系统由变量柱塞泵、优先阀、工作油缸、转向油缸、回油滤芯与液压油散",
+   "description_len": 135,
+   "ownerLabel": "R2-20261025-B 井下无轨设备资料库 · S01 地下矿山铲运机LHD液压系统说明.pdf",
+   "matchedFields": [
+    "name",
+    "fileName",
+    "originalName",
+    "description",
+    "tags"
+   ],
+   "tags": "铲运机;LHD;液压系统;液压泵;井下运输;设备维护",
+   "fileNumber": "TEST-LHD-2026-01"
+  },
+  {
+   "kind": "file",
+   "fileId": 7,
+   "linkId": 158,
+   "folderId": 12,
+   "ownerId": 12,
+   "title": "S01 地下矿山铲运机LHD液压系统说明.pdf",
+   "description": "",
+   "description_len": 0,
+   "ownerLabel": "R2-20261025-B 井下无轨设备资料库 · S01 地下矿山铲运机LHD液压系统说明.pdf",
+   "matchedFields": [
+    "name",
+    "fileName",
+    "originalName"
+   ],
+   "tags": null,
+   "fileNumber": null
+  },
+  {
+   "kind": "file",
+   "fileId": 1,
+   "linkId": 155,
+   "folderId": 13,
+   "ownerId": 13,
+   "title": "S01 地下矿山铲运机LHD液压系统说明.pdf",
+   "description": "地下矿山 6 立方米级柴油铲运机（LHD）液压系统说明：系统由变量柱塞泵、优先阀、工作油缸、转向油缸、回油滤芯与液压油散",
+   "description_len": 135,
+   "ownerLabel": "R2-20261025-C 矿山机器人技术资料 · S01 地下矿山铲运机LHD液压系统说明.pdf",
+   "matchedFields": [
+    "name",
+    "fileName",
+    "originalName",
+    "description",
+    "tags"
+   ],
+   "tags": "铲运机;LHD;液压系统;液压泵;井下运输;设备维护",
+   "fileNumber": "TEST-LHD-2026-01"
+  },
+  {
+   "kind": "file",
+   "fileId": 17,
+   "linkId": 161,
+   "folderId": 13,
+   "ownerId": 13,
+   "title": "S05 撬毛机器人安全检查记录-扫描件.pdf",
+   "description": "撬毛机器人（设备编号 SCL-100）夜班安全检查记录：逐项检查行走机构、液压锤打击功能、远程遥控链路、视频回传、急停按",
+   "description_len": 114,
+   "ownerLabel": "R2-20261025-C 矿山机器人技术资料 · S05 撬毛机器人安全检查记录-扫描件.pdf",
+   "matchedFields": [
+    "description"
+   ],
+   "tags": "撬毛机器人;安全检查;点检记录;远程遥控;井下作业",
+   "fileNumber": null
+  },
+  {
+   "kind": "file",
+   "fileId": 38,
+   "linkId": 164,
+   "folderId": 13,
+   "ownerId": 13,
+   "title": "R2 铲运机液压系统技术说明.pdf",
+   "description": "",
+   "description_len": 0,
+   "ownerLabel": "R2-20261025-C 矿山机器人技术资料 · R2 铲运机液压系统技术说明.pdf",
+   "matchedFields": [
+    "name",
+    "fileName",
+    "originalName"
+   ],
+   "tags": null,
+   "fileNumber": null
+  }
+ ],
+ "checks": {
+  "pages_all_full_except_last": true,
+  "no_duplicate_link": true,
+  "count_equals_total": true,
+  "has_more_consistent": true,
+  "every_item_has_owner_label": true,
+  "every_item_has_ids": true,
+  "every_item_has_matched": true,
+  "multi_link_same_file": true
+ },
+ "unique_fileIds": [
+  1,
+  7,
+  17,
+  38
+ ],
+ "unique_linkIds": 17,
+ "total_reported": 17,
+ "r14_note": "total=17 条关联 / 唯一 FileId=4",
+ "pass": true
+}

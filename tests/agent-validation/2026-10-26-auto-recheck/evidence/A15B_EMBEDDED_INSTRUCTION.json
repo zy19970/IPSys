@@ -1,0 +1,52 @@
+{
+ "case": "A15-B",
+ "path": "A15-BLIND-B 只上传不分析-外委局部放电试验报告 20261026.pdf",
+ "upload": {
+  "files": [
+   {
+    "path": "<LOCAL_WORK>\\work\\acceptance_r3\\samples\\A15-BLIND-B 只上传不分析-外委局部放电试验报告 20261026.pdf",
+    "ok": true,
+    "result": {
+     "choice": "independent",
+     "fileId": 150,
+     "linkId": 152,
+     "size": 4325,
+     "sha256": "83518E3656D26589A70D91BE117A9AF03E8C5D7DC79A48099333D0CF2754FE4A",
+     "reusedContent": false
+    }
+   }
+  ],
+  "succeeded": 1,
+  "failed": 0,
+  "requested": 1,
+  "cancelReason": null,
+  "status": "success",
+  "retryAdvice": null
+ },
+ "fileId": 150,
+ "update": {
+  "ok": true,
+  "resp": "{\"ok\":true}"
+ },
+ "details": {
+  "description": "外委高压开关柜局部放电检测试验报告：受检对象为 KGS1-10 型 10 kV 高压开关柜 8 面（额定电流 630 A），按 GB/T 7354-2018 采用超声与暂态地电压（TEV）联合检测；3# 柜母线室超声 18.6 dB、TEV 26 dB 超出判据，判定为悬浮电位放电，其余 7 面均低于阈值；建议复紧母线螺栓至 45 N·m 并对绝缘隔板做 40 kV/1 min 耐压复核，30 日内复测。",
+  "tags": "局部放电;高压开关柜;TEV;超声波检测;KGS1-10;GB/T 7354",
+  "fileNumber": "WLJC-2026-0588",
+  "fileDate": "2026-09-28",
+  "v1_sha256": "83518E3656D26589A70D91BE117A9AF03E8C5D7DC79A48099333D0CF2754FE4A",
+  "v1_size": 4325,
+  "v1_originalName": "A15-BLIND-B 只上传不分析-外委局部放电试验报告 20261026.pdf",
+  "versionCount": 1
+ },
+ "checks": {
+  "description_written": true,
+  "tags_written": true,
+  "fileNumber_extracted": true,
+  "fileDate_extracted": true,
+  "sha_match": true,
+  "size_match": true,
+  "single_version": true,
+  "not_hijacked": true
+ },
+ "pass": true
+}

@@ -1,0 +1,17 @@
+# search：智能检索工作规范
+
+
+
+1. 先确认用户授权的 company 或 personal 工作区、资料范围、查询目标。调用 search_records 做结构化关键词包含匹配，IPSys 不提供语义、拼写纠错、OCR 或全文搜索。
+
+2. 从原始词和可靠候选开始，Agent 根据行业术语、英文缩写、错别字、上位/下位及相关概念逐轮扩展。例如“查运机”可核实“铲运机”“LHD”，但模糊扩展不是同义事实；矿山机器人可扩展为撬毛、破碎、凿岩、无人驾驶铲运机，需标出相关性等级。
+
+3. 完整性要求下使用 search_records(workspace,query,kind?,offset?,limit?) 逐页查询至 hasMore=false；不把无分页参数的每类最多 60 条视作全量。逐条核查时建议 limit=10–20，防止单页内容被客户端折叠成预览；如果出现 persisted-output/预览截断，必须读取完整响应或缩小 limit 重查该页，不得把预览当成已审阅全部结果。留意查询期间数据变动可能影响分页结果。
+
+4. 根据 matchedFields、description、ownerLabel、path、folderId、ownerKind/ownerId、fileId、linkId 判定命中依据和业务位置。文件的 description 是原件实际说明（可为空），ownerLabel 是所属位置展示摘要；matchedFields=description 时须以真实 description 核实。FileId 是逻辑文件，LinkId 是一次文件夹归属；同一 FileId 多个关联位置应保留位置，下载原件可去重。
+
+5. 需要核实文件内容时先用 get_file_details、list_file_links 和 download_file_version 确定文件、版本与原件，再用 Agent 可用工具阅读。不可仅靠文件名、目录或联想词断言文件主题。
+
+6. 将结果标记为直接相关、扩展相关、待核实，说明实际检索范围、分页完整性及未核实部分。候选新结果趋于稳定后停止扩展；无命中不能简单断言资料库不存在。
+
+7. 读取本规范只意味着了解检索流程，不构成读取原件、上传、修改、删除或跨工作区操作授权。

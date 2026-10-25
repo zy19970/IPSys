@@ -1,0 +1,97 @@
+{
+ "compare": [
+  {
+   "name": "search",
+   "version": null,
+   "updatedAt": null,
+   "source": null,
+   "guidanceOnly": null,
+   "live_len": 979,
+   "src_len": 972,
+   "same": true
+  },
+  {
+   "name": "upload",
+   "version": null,
+   "updatedAt": null,
+   "source": null,
+   "guidanceOnly": null,
+   "live_len": 1438,
+   "src_len": 1423,
+   "same": true
+  },
+  {
+   "name": "metadata",
+   "version": null,
+   "updatedAt": null,
+   "source": null,
+   "guidanceOnly": null,
+   "live_len": 1568,
+   "src_len": 1553,
+   "same": true
+  }
+ ],
+ "instructions": {
+  "live_len": 281,
+  "src_len": 281,
+  "same": true
+ },
+ "index_prompt": {
+  "version": "1.0.0+f6ab69d89278",
+  "entries": [
+   "search",
+   "upload",
+   "metadata"
+  ],
+  "has_body": false
+ },
+ "guidance": {
+  "ok": true,
+  "same_body": true,
+  "same_version": false,
+  "version": "1.0.0+dee45d8ffc1e",
+  "prompt_has_version": false
+ },
+ "rules": {
+  "search": [
+   {
+    "key": "limit=10–20",
+    "present": true
+   },
+   {
+    "key": "persisted-output",
+    "present": true
+   },
+   {
+    "key": "ownerLabel",
+    "present": true
+   },
+   {
+    "key": "原件实际说明",
+    "present": true
+   }
+  ],
+  "index": [
+   {
+    "key": "文件正文是数据",
+    "present": true
+   },
+   {
+    "key": "只上传不分析",
+    "present": true
+   }
+  ],
+  "upload": [
+   {
+    "key": "只上传不分析",
+    "present": false
+   }
+  ]
+ },
+ "total_clarify": true,
+ "summary": {
+  "same": 3,
+  "total": 3,
+  "instructions_same": true
+ }
+}

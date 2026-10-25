@@ -1,0 +1,198 @@
+{
+ "checks": [
+  {
+   "name": "R05.pre-0 缺项筛选取到无说明样本",
+   "ok": true,
+   "detail": {
+    "missing_total": 129,
+    "picked": [
+     {
+      "fileId": 5,
+      "title": "S08 选矿厂设备点检记录.pdf"
+     }
+    ]
+   }
+  },
+  {
+   "name": "R05.2 无说明文件 description 为空文本",
+   "ok": true,
+   "detail": {
+    "search_description": "",
+    "db_description": null
+   }
+  },
+  {
+   "name": "R05.2b 无说明文件 ownerLabel 含归属与文件名",
+   "ok": true,
+   "detail": {
+    "ownerLabel": "验收测试项目-公司A · S08 选矿厂设备点检记录.pdf"
+   }
+  },
+  {
+   "name": "R05.2c 无说明文件命中不得标 matchedFields=description",
+   "ok": true,
+   "detail": {
+    "matchedFields": [
+     "name",
+     "fileName",
+     "originalName"
+    ]
+   }
+  },
+  {
+   "name": "R05.1 有说明文件 description 等于库内说明",
+   "ok": true,
+   "detail": {
+    "len_search": 135,
+    "len_db": 135,
+    "equal": true
+   }
+  },
+  {
+   "name": "R05.1b description 不是归属摘要格式",
+   "ok": true,
+   "detail": {
+    "description_head": "地下矿山 6 立方米级柴油铲运机（LHD）液压系统说明：系统由变量柱塞泵、优先阀、工作油缸、转向油缸、回油滤芯与液压油散热器组成，额定压力 25 MPa；规定井"
+   }
+  },
+  {
+   "name": "R05.1c ownerLabel 独立承载归属摘要",
+   "ok": true,
+   "detail": {
+    "ownerLabel": "验收测试项目-公司A · S01 地下矿山铲运机LHD液压系统说明.pdf"
+   }
+  },
+  {
+   "name": "R05.3 标签命中：matchedFields 含 tags 且 description 仍为真实说明",
+   "ok": true,
+   "detail": {
+    "query": "铲运机",
+    "matchedFields": [
+     "name",
+     "fileName",
+     "originalName",
+     "description",
+     "tags"
+    ],
+    "desc_equal": true,
+    "ownerLabel": "验收测试项目-公司A · S01 地下矿山铲运机LHD液压系统说明.pdf"
+   }
+  },
+  {
+   "name": "R05.3b 编号命中：matchedFields 含 fileNumber 且 description 仍为真实说明",
+   "ok": true,
+   "detail": {
+    "query": "TEST-LHD-2026-01",
+    "matchedFields": [
+     "fileNumber"
+    ],
+    "desc_equal": true
+   }
+  },
+  {
+   "name": "R05.3c 编号命中（排水泵）：matchedFields 含 fileNumber，description 为真实说明",
+   "ok": true,
+   "detail": {
+    "fileId": 143,
+    "matchedFields": [
+     "fileNumber"
+    ],
+    "ownerLabel": "R2-20261025-A 复验测试项目 · R2 井下排水泵能效测试报告.pdf",
+    "desc_len": 180
+   }
+  }
+ ],
+ "facts": {
+  "plain_file": {
+   "fileId": 5,
+   "details": {
+    "id": 5,
+    "workspace": "company",
+    "name": "S08 选矿厂设备点检记录.pdf",
+    "description": null,
+    "tags": null,
+    "fileNumber": null,
+    "fileDate": null,
+    "versions": [
+     {
+      "id": 5,
+      "version": 1,
+      "originalName": "S08 选矿厂设备点检记录.pdf",
+      "versionNote": null,
+      "size": 3569,
+      "sha256": "8A3BDCAA6418552F0A1C1C62F698A4984B2B8D7A1E2462CBBACFC6BEE413E8F3",
+      "createdAt": "2026-10-25T14:26:13Z"
+     }
+    ]
+   }
+  },
+  "plain_fields": {
+   "description": null,
+   "tags": null,
+   "fileNumber": null,
+   "fileDate": null
+  },
+  "s01": {
+   "search": {
+    "kind": "file",
+    "id": 1,
+    "section": "",
+    "title": "S01 地下矿山铲运机LHD液压系统说明.pdf",
+    "description": "地下矿山 6 立方米级柴油铲运机（LHD）液压系统说明：系统由变量柱塞泵、优先阀、工作油缸、转向油缸、回油滤芯与液压油散热器组成，额定压力 25 MPa；规定井下运输时油温低于 85 ℃、重载下坡联合制动，以及 500 小时更换回油滤芯、2000 小时检测主泵容积效率。",
+    "ownerKind": "project",
+    "ownerId": 8,
+    "path": "公司 / 项目 / 验收测试项目-公司A / S01 地下矿山铲运机LHD液压系统说明.pdf",
+    "ownerLabel": "验收测试项目-公司A · S01 地下矿山铲运机LHD液压系统说明.pdf",
+    "matchedFields": [
+     "name",
+     "fileName",
+     "originalName",
+     "description",
+     "tags"
+    ],
+    "folderId": 8,
+    "fileId": 1,
+    "linkId": 1,
+    "tags": "铲运机;LHD;液压系统;液压泵;井下运输;设备维护",
+    "fileNumber": "TEST-LHD-2026-01",
+    "fileDate": "2026-10-20",
+    "latestVersion": 1,
+    "size": 4979,
+    "status": "筹备中"
+   },
+   "db_description": "地下矿山 6 立方米级柴油铲运机（LHD）液压系统说明：系统由变量柱塞泵、优先阀、工作油缸、转向油缸、回油滤芯与液压油散热器组成，额定压力 25 MPa；规定井下运输时油温低于 85 ℃、重载下坡联合制动，以及 500 小时更换回油滤芯、2000 小时检测主泵容积效率。",
+   "db_tags": "铲运机;LHD;液压系统;液压泵;井下运输;设备维护",
+   "db_number": "TEST-LHD-2026-01"
+  },
+  "pump": {
+   "search": {
+    "kind": "file",
+    "id": 143,
+    "section": "",
+    "title": "R2 井下排水泵能效测试报告.pdf",
+    "description": "MD450-60×3 多级离心泵（配套电机 450 kW）能效测试报告，测试地点为 -420 m 中段泵房；实测流量 320 m³/h、扬程 180 m、轴功率 268 kW，泵组运行效率 72.4%，高于该类泵 68% 行业基准值；建议将叶轮间隙由 1.8 mm 调整至 1.2 mm，预计效率再提升约 2 个百分点；测试依据 GB/T 3216-2016。",
+    "ownerKind": "project",
+    "ownerId": 11,
+    "path": "公司 / 项目 / R2-20261025-A 复验测试项目 / R2 井下排水泵能效测试报告.pdf",
+    "ownerLabel": "R2-20261025-A 复验测试项目 · R2 井下排水泵能效测试报告.pdf",
+    "matchedFields": [
+     "fileNumber"
+    ],
+    "folderId": 11,
+    "fileId": 143,
+    "linkId": 145,
+    "tags": "多级离心泵;能效测试;MD450-60×3;GB/T 3216-2016;井下排水泵;-420 m 中段泵房",
+    "fileNumber": "BKTN-2026-0147",
+    "fileDate": "2026-09-12",
+    "latestVersion": 1,
+    "size": 3169,
+    "status": "进行中"
+   },
+   "db_number": "BKTN-2026-0147"
+  }
+ },
+ "summary": {
+  "total": 10,
+  "pass": 10
+ }
+}
