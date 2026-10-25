@@ -35,7 +35,7 @@ static partial class McpLocal
             ["signing_parties"]=Field("string","签约方"),
             ["category"]=Field("string","合同类别"),
             ["remarks"]=Field("string","备注"),
-            ["tags"]=Field("string","检索标签")
+            ["tags"]=Field("string","检索标签；多个标签以中文或英文分号分隔，服务端自动去重和规范化")
         },["workspace","contract_id"]),
         Tool("copy_contract","在同一工作区和所属项目下复制合同业务属性及全部有效文件关联；返回新合同 FolderId，附件共享 FileId/历史版本，不重复写原件。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
@@ -54,7 +54,7 @@ static partial class McpLocal
             ["file_id"]=Field("integer","FileId"),
             ["name"]=Field("string","新文件名称"),
             ["description"]=Field("string","选填说明"),
-            ["tags"]=Field("string","选填检索标签"),
+            ["tags"]=Field("string","选填检索标签；多个标签以中文或英文分号分隔，服务端自动去重和规范化"),
             ["file_number"]=Field("string","文件编号"),
             ["file_date"]=Field("string","文件日期 yyyy-MM-dd")
         },["workspace","file_id"]),

@@ -34,7 +34,7 @@ static partial class McpLocal
             ["name"]=Field("string","档案名称"),
             ["category"]=Field("string","可选类别"),
             ["remarks"]=Field("string","可选备注"),
-            ["tags"]=Field("string","可选标签"),
+            ["tags"]=Field("string","可选标签；多个标签以中文或英文分号分隔，服务端自动去重和规范化"),
             ["year"]=Field("string","可选年度"),
             ["folder_id"]=Field("integer","公司业务档案的父目录 FolderId")
         },["workspace","section","name"]),
@@ -45,7 +45,7 @@ static partial class McpLocal
             ["name"]=Field("string","新名称"),
             ["category"]=Field("string","类别"),
             ["remarks"]=Field("string","备注"),
-            ["tags"]=Field("string","标签"),
+            ["tags"]=Field("string","标签；多个标签以中文或英文分号分隔，服务端自动去重和规范化"),
             ["year"]=Field("string","年度")
         },["workspace","section","archive_id"]),
         Tool("delete_archive","按 V2 FolderId 将档案移入回收站。",new(){
@@ -63,7 +63,7 @@ static partial class McpLocal
             ["name"]=Field("string","档案名称"),
             ["category"]=Field("string","可选类别"),
             ["remarks"]=Field("string","可选备注"),
-            ["tags"]=Field("string","可选标签"),
+            ["tags"]=Field("string","可选标签；多个标签以中文或英文分号分隔，服务端自动去重和规范化"),
             ["year"]=Field("string","可选年度")
         },["workspace","name"]),
         Tool("update_party_archive","按 FolderId 更新公司“党团建设”档案，未传字段保留原值。",new(){
@@ -72,7 +72,7 @@ static partial class McpLocal
             ["name"]=Field("string","新名称"),
             ["category"]=Field("string","类别"),
             ["remarks"]=Field("string","备注"),
-            ["tags"]=Field("string","标签"),
+            ["tags"]=Field("string","标签；多个标签以中文或英文分号分隔，服务端自动去重和规范化"),
             ["year"]=Field("string","年度")
         },["workspace","archive_id"]),
         Tool("delete_party_archive","按 FolderId 将公司“党团建设”档案移入回收站；可使用 restore_trash 恢复。",new(){

@@ -88,6 +88,11 @@ static class NativeMcpSmoke
             .GetProperty("inputSchema").GetProperty("properties");
         bool Accepts(JsonElement property,string kind)=>
             property.GetProperty("type").EnumerateArray().Any(x=>x.GetString()==kind);
+        foreach(string tool in new[]{"create_project","update_project","create_ip",
+            "create_archive","create_party_archive","update_file_metadata"})
+            Check(Properties(tool).GetProperty("tags").GetProperty("description")
+                    .GetString()?.Contains("分号")==true,
+                "MCP tools/list must advertise semicolon-separated tags: "+tool);
         Check(!Properties("upload_files").TryGetProperty("group_id",out _),
             "obsolete group_id must not appear in the tool schema");
         Check(Accepts(Properties("create_contract").GetProperty("amount"),"number") &&

@@ -99,7 +99,7 @@ static partial class McpLocal
             ["registration_date"]=Field("string","登记日期 yyyy-MM-dd"),
             ["category"]=Field("string","自定义分类"),
             ["remarks"]=Field("string","备注"),
-            ["tags"]=Field("string","标签")
+            ["tags"]=Field("string","标签；多个标签以中文或英文分号分隔，服务端自动去重和规范化")
         },["workspace","name","ip_type"]),
         Tool("update_ip","按 V2 FolderId 更新知识产权，仅改变明确传入的字段。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
@@ -122,7 +122,7 @@ static partial class McpLocal
             ["registration_date"]=Field("string","登记日期 yyyy-MM-dd"),
             ["category"]=Field("string","自定义分类"),
             ["remarks"]=Field("string","备注"),
-            ["tags"]=Field("string","标签")
+            ["tags"]=Field("string","标签；多个标签以中文或英文分号分隔，服务端自动去重和规范化")
         },["workspace","ip_id"]),
         Tool("delete_ip","按 V2 FolderId 将知识产权移入回收站。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
@@ -154,7 +154,7 @@ static partial class McpLocal
             ["project_status"]=Field("string","项目状态（可选）",["筹备中","进行中","已完成","已终止"]),
             ["category"]=Field("string","辅助分类（可选）"),
             ["remarks"]=Field("string","备注（可选）"),
-            ["tags"]=Field("string","标签（可选）")
+            ["tags"]=Field("string","标签（可选）；多个标签以中文或英文分号分隔，服务端自动去重和规范化")
         },["workspace","name","project_type"]),
         Tool("update_project","更新项目指定字段，未提供的字段保留原值。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
@@ -169,7 +169,7 @@ static partial class McpLocal
             ["project_status"]=Field("string","项目状态",["筹备中","进行中","已完成","已终止"]),
             ["category"]=Field("string","辅助分类"),
             ["remarks"]=Field("string","备注"),
-            ["tags"]=Field("string","标签")
+            ["tags"]=Field("string","标签；多个标签以中文或英文分号分隔，服务端自动去重和规范化")
         },["workspace","project_id"]),
         Tool("delete_project","将项目及所属合同移至回收站，允许在 IPSys 中恢复。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
@@ -185,7 +185,7 @@ static partial class McpLocal
             ["signing_parties"]=Field("string","签约方（可选）"),
             ["category"]=Field("string","分类（可选）"),
             ["remarks"]=Field("string","备注（可选）"),
-            ["tags"]=Field("string","标签（可选）")
+            ["tags"]=Field("string","标签（可选）；多个标签以中文或英文分号分隔，服务端自动去重和规范化")
         },["workspace","project_id","name"]),
         Tool("delete_contract","将所选合同移至回收站，可在 IPSys 内恢复。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
