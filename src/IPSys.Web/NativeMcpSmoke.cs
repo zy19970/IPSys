@@ -150,9 +150,17 @@ static class NativeMcpSmoke
             JsonNode denied=await McpLocal.RunSmokeProtocolToolAsync(
                 "get_agent_guidance",Args(new {topic="search"}));
             string? deniedRaw=denied["result"]?["content"]?[0]?["text"]?.GetValue<string>();
+            // MCP content is serialized JSON. JsonSerializerDefaults.Web may
+            // escape Chinese messages as \\uXXXX; decode before matching text.
+            JsonNode? deniedBody=deniedRaw==null?null:JsonNode.Parse(deniedRaw);
+            string? denialMessage=deniedBody?["message"]?.GetValue<string>();
             Check(denied["result"]?["isError"]?.GetValue<bool>()==true &&
-                  deniedRaw?.Contains("未授权")==true,
-                "guidance obeys the existing named-pipe MCP authorization");
+                  deniedBody?["code"]?.GetValue<string>()=="TOOL_CALL_REJECTED" &&
+                  (denialMessage?.Contains("未授权")==true ||
+                   denialMessage?.Contains("授权已撤销")==true) &&
+                  deniedBody?["content"]==null,
+                "guidance obeys the existing named-pipe MCP authorization: "+
+                deniedRaw);
         }
         finally { Check(vault.SetMcpEnabled(true),"restore smoke MCP access"); }
         Check(beforeGuidance.SequenceEqual(Counts()),
