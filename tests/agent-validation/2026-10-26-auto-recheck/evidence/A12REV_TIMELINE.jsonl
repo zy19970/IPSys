@@ -1,0 +1,230 @@
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 181, "ts": "2026-10-26T00:44:51.443"}
+{"ch": "mcp", "handshake": true, "hs_ms": 441, "call_ms": 543, "call": "ok", "text_len": 4051, "body_len": 971, "version": "1.0.0+0b920eeed716", "source": "user_override", "ts": "2026-10-26T00:44:51.830"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 24, "ts": "2026-10-26T00:44:52.470"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:44:53.476"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:44:54.482"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:44:55.487"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:44:56.493"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:44:57.499"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:44:58.505"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:44:59.510"}
+{"ch": "mcp", "handshake": true, "hs_ms": 328, "call_ms": 429, "call": "ok", "text_len": 4051, "body_len": 971, "version": "1.0.0+0b920eeed716", "source": "user_override", "ts": "2026-10-26T00:45:00.291"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:45:00.515"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:01.521"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:45:02.527"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:45:03.532"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:45:04.538"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:45:05.543"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:06.547"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:45:07.553"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:45:08.558"}
+{"ch": "mcp", "handshake": true, "hs_ms": 391, "call_ms": 492, "call": "ok", "text_len": 4051, "body_len": 971, "version": "1.0.0+0b920eeed716", "source": "user_override", "ts": "2026-10-26T00:45:08.817"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:09.564"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:10.569"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:11.574"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:12.579"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:13.584"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:45:14.590"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:15.594"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:45:16.600"}
+{"ch": "mcp", "handshake": true, "hs_ms": 385, "call_ms": 487, "call": "ok", "text_len": 4051, "body_len": 971, "version": "1.0.0+0b920eeed716", "source": "user_override", "ts": "2026-10-26T00:45:17.334"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:17.606"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:45:18.611"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:45:19.617"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:20.621"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:21.626"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 25, "ts": "2026-10-26T00:45:22.653"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:23.658"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:24.664"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:45:25.669"}
+{"ch": "mcp", "handshake": true, "hs_ms": 395, "call_ms": 496, "call": "ok", "text_len": 4051, "body_len": 971, "version": "1.0.0+0b920eeed716", "source": "user_override", "ts": "2026-10-26T00:45:25.871"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:26.674"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:45:27.680"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:45:28.685"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 5, "ts": "2026-10-26T00:45:29.693"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:45:30.700"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:31.706"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:32.710"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:33.715"}
+{"ch": "mcp", "handshake": true, "hs_ms": 331, "call_ms": 431, "call": "ok", "text_len": 4051, "body_len": 971, "version": "1.0.0+0b920eeed716", "source": "user_override", "ts": "2026-10-26T00:45:34.337"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:34.720"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:45:35.725"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:36.730"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:37.735"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:38.740"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:39.745"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:40.750"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:45:41.755"}
+{"ch": "mcp", "handshake": true, "hs_ms": 277, "call_ms": 377, "call": "ok", "text_len": 4051, "body_len": 971, "version": "1.0.0+0b920eeed716", "source": "user_override", "ts": "2026-10-26T00:45:42.747"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:42.760"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:43.765"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:44.770"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:45:45.775"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:45:46.781"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:47.786"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:48.791"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 14, "ts": "2026-10-26T00:45:49.807"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:50.812"}
+{"ch": "mcp", "handshake": true, "hs_ms": 328, "call_ms": 429, "call": "ok", "text_len": 4051, "body_len": 971, "version": "1.0.0+0b920eeed716", "source": "user_override", "ts": "2026-10-26T00:45:51.208"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:51.816"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:52.821"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:53.827"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:54.831"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 18, "ts": "2026-10-26T00:45:55.852"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:56.857"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:57.863"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:58.868"}
+{"ch": "mcp", "handshake": true, "hs_ms": 328, "call_ms": 378, "call": "ok", "text_len": 4051, "body_len": 971, "version": "1.0.0+0b920eeed716", "source": "user_override", "ts": "2026-10-26T00:45:59.624"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:45:59.872"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:46:00.877"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:46:01.882"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:46:02.888"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:46:03.893"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:46:04.898"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:46:05.903"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:46:06.908"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:46:07.912"}
+{"ch": "mcp", "handshake": true, "hs_ms": 327, "call_ms": 429, "call": "ok", "text_len": 4051, "body_len": 971, "version": "1.0.0+0b920eeed716", "source": "user_override", "ts": "2026-10-26T00:46:08.075"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:46:08.917"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:46:09.922"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:46:10.927"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:46:11.933"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 22, "ts": "2026-10-26T00:46:12.957"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:46:13.962"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:46:14.967"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:46:15.971"}
+{"ch": "mcp", "handshake": true, "hs_ms": 382, "call_ms": 483, "call": "ok", "text_len": 4051, "body_len": 971, "version": "1.0.0+0b920eeed716", "source": "user_override", "ts": "2026-10-26T00:46:16.589"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 26, "ts": "2026-10-26T00:46:16.000"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:46:18.005"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:46:19.009"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:46:20.014"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:46:21.020"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:46:22.024"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:46:23.028"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 5, "ts": "2026-10-26T00:46:24.037"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:46:25.043"}
+{"ch": "mcp", "handshake": true, "hs_ms": 446, "call_ms": 602, "call": "isError", "text_len": 228, "body_len": 0, "version": null, "err_text": "{\"ok\":false,\"status\":\"failed\",\"code\":\"TOOL_CALL_REJECTED\",\"message\":\"MCP \\u672A\\u6388\\u6743\\u6216\\u6388\\u6743\\u5DF2\\u64A4\\u9500\\u3002\",\"error\":\"MCP \\u672A\\u6388\\u6743\\u6216\\u6388\\u6743\\u5DF2\\u64A4\\u95", "ts": "2026-10-26T00:46:25.235"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:46:26.049"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:46:27.055"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:46:28.061"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:46:29.066"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:46:30.072"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 18, "ts": "2026-10-26T00:46:31.092"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 66, "ts": "2026-10-26T00:46:32.163"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:46:33.168"}
+{"ch": "mcp", "handshake": true, "hs_ms": 384, "call_ms": 484, "call": "isError", "text_len": 228, "body_len": 0, "version": null, "err_text": "{\"ok\":false,\"status\":\"failed\",\"code\":\"TOOL_CALL_REJECTED\",\"message\":\"MCP \\u672A\\u6388\\u6743\\u6216\\u6388\\u6743\\u5DF2\\u64A4\\u9500\\u3002\",\"error\":\"MCP \\u672A\\u6388\\u6743\\u6216\\u6388\\u6743\\u5DF2\\u64A4\\u95", "ts": "2026-10-26T00:46:33.751"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:46:34.175"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:46:35.181"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:46:36.186"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 4, "ts": "2026-10-26T00:46:37.193"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:46:38.198"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:46:39.204"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 14, "ts": "2026-10-26T00:46:40.220"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:46:41.226"}
+{"ch": "mcp", "handshake": true, "hs_ms": 284, "call_ms": 385, "call": "isError", "text_len": 228, "body_len": 0, "version": null, "err_text": "{\"ok\":false,\"status\":\"failed\",\"code\":\"TOOL_CALL_REJECTED\",\"message\":\"MCP \\u672A\\u6388\\u6743\\u6216\\u6388\\u6743\\u5DF2\\u64A4\\u9500\\u3002\",\"error\":\"MCP \\u672A\\u6388\\u6743\\u6216\\u6388\\u6743\\u5DF2\\u64A4\\u95", "ts": "2026-10-26T00:46:42.172"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 14, "ts": "2026-10-26T00:46:42.244"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:46:43.248"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:46:44.253"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:46:45.258"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:46:46.262"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:46:47.267"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 28, "ts": "2026-10-26T00:46:48.298"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 13, "ts": "2026-10-26T00:46:49.314"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:46:50.319"}
+{"ch": "mcp", "handshake": true, "hs_ms": 446, "call_ms": 546, "call": "isError", "text_len": 228, "body_len": 0, "version": null, "err_text": "{\"ok\":false,\"status\":\"failed\",\"code\":\"TOOL_CALL_REJECTED\",\"message\":\"MCP \\u672A\\u6388\\u6743\\u6216\\u6388\\u6743\\u5DF2\\u64A4\\u9500\\u3002\",\"error\":\"MCP \\u672A\\u6388\\u6743\\u6216\\u6388\\u6743\\u5DF2\\u64A4\\u95", "ts": "2026-10-26T00:46:50.745"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:46:51.325"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:46:52.330"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:46:53.336"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 6, "ts": "2026-10-26T00:46:54.347"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:46:55.353"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:46:56.357"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 48, "ts": "2026-10-26T00:46:57.423"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:46:58.429"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:46:59.436"}
+{"ch": "mcp", "handshake": true, "hs_ms": 602, "call_ms": 703, "call": "isError", "text_len": 228, "body_len": 0, "version": null, "err_text": "{\"ok\":false,\"status\":\"failed\",\"code\":\"TOOL_CALL_REJECTED\",\"message\":\"MCP \\u672A\\u6388\\u6743\\u6216\\u6388\\u6743\\u5DF2\\u64A4\\u9500\\u3002\",\"error\":\"MCP \\u672A\\u6388\\u6743\\u6216\\u6388\\u6743\\u5DF2\\u64A4\\u95", "ts": "2026-10-26T00:46:59.481"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:47:00.443"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:47:01.448"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:47:02.454"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:47:03.459"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:47:04.464"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 4, "ts": "2026-10-26T00:47:05.470"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:47:06.475"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:47:07.480"}
+{"ch": "mcp", "handshake": true, "hs_ms": 391, "call_ms": 493, "call": "ok", "text_len": 4051, "body_len": 971, "version": "1.0.0+0b920eeed716", "source": "user_override", "ts": "2026-10-26T00:47:08.022"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:47:08.490"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:47:09.497"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:47:10.502"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:47:11.510"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:47:12.515"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:47:13.520"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:47:14.525"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:47:15.529"}
+{"ch": "mcp", "handshake": true, "hs_ms": 329, "call_ms": 429, "call": "ok", "text_len": 4051, "body_len": 971, "version": "1.0.0+0b920eeed716", "source": "user_override", "ts": "2026-10-26T00:47:16.464"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:47:16.534"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:47:17.539"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:47:18.545"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:47:19.550"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:47:20.555"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 17, "ts": "2026-10-26T00:47:21.575"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:47:22.580"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 26, "ts": "2026-10-26T00:47:23.608"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:47:24.613"}
+{"ch": "mcp", "handshake": true, "hs_ms": 329, "call_ms": 429, "call": "ok", "text_len": 4051, "body_len": 971, "version": "1.0.0+0b920eeed716", "source": "user_override", "ts": "2026-10-26T00:47:24.920"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:47:25.618"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:47:26.623"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:47:27.629"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:47:28.633"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:47:29.637"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:47:30.642"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:47:31.646"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:47:32.651"}
+{"ch": "mcp", "handshake": true, "hs_ms": 327, "call_ms": 428, "call": "ok", "text_len": 4051, "body_len": 971, "version": "1.0.0+0b920eeed716", "source": "user_override", "ts": "2026-10-26T00:47:33.372"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:47:33.655"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:47:34.661"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:47:35.665"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:47:36.671"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:47:37.676"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:47:38.680"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:47:39.685"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:47:40.689"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:47:41.694"}
+{"ch": "mcp", "handshake": true, "hs_ms": 331, "call_ms": 433, "call": "ok", "text_len": 4051, "body_len": 971, "version": "1.0.0+0b920eeed716", "source": "user_override", "ts": "2026-10-26T00:47:41.837"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:47:42.699"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:47:43.704"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:47:44.709"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:47:45.714"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:47:46.719"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:47:47.725"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:47:48.729"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:47:49.735"}
+{"ch": "mcp", "handshake": true, "hs_ms": 276, "call_ms": 326, "call": "ok", "text_len": 4051, "body_len": 971, "version": "1.0.0+0b920eeed716", "source": "user_override", "ts": "2026-10-26T00:47:50.193"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:47:50.740"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:47:51.745"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:47:52.750"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:47:53.755"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:47:54.760"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:47:55.765"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:47:56.770"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:47:57.775"}
+{"ch": "mcp", "handshake": true, "hs_ms": 277, "call_ms": 328, "call": "ok", "text_len": 4051, "body_len": 971, "version": "1.0.0+0b920eeed716", "source": "user_override", "ts": "2026-10-26T00:47:58.552"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:47:58.780"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:47:59.785"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:48:00.789"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:48:01.794"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:48:02.799"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:48:03.803"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:48:04.808"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:48:05.813"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:48:06.817"}
+{"ch": "mcp", "handshake": true, "hs_ms": 277, "call_ms": 327, "call": "ok", "text_len": 4051, "body_len": 971, "version": "1.0.0+0b920eeed716", "source": "user_override", "ts": "2026-10-26T00:48:06.908"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 17, "ts": "2026-10-26T00:48:07.837"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:48:08.842"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:48:09.848"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:48:10.853"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 3, "ts": "2026-10-26T00:48:11.858"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 23, "ts": "2026-10-26T00:48:12.884"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 22, "ts": "2026-10-26T00:48:13.907"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:48:14.912"}
+{"ch": "mcp", "handshake": true, "hs_ms": 284, "call_ms": 334, "call": "ok", "text_len": 4051, "body_len": 971, "version": "1.0.0+0b920eeed716", "source": "user_override", "ts": "2026-10-26T00:48:15.273"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:48:15.917"}
+{"ch": "http", "code": 401, "len": 0, "body": "", "ms": 2, "ts": "2026-10-26T00:48:16.922"}

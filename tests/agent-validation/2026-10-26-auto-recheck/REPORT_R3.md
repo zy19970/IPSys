@@ -1,7 +1,7 @@
 # 自动项复验报告（第三轮，2026-10-26）
 
 > 依据：`IPSys_Agent_MCP_自动修复与人工验收分工_20261025.md`
-> 范围：**只做「不需要人工操作」的第 1–7 项**；四项桌面 GUI 门禁（A11 / A12-rev / A12-db / A14-gui）按要求留待人工，本轮不判 PASS。
+> 范围：第 1–7 项「不需要人工操作」的自动复验；**A12-rev 已于 2026-10-26 00:44–00:48 由人工配合实测，MCP 半场通过**（见 §九）。其余三项 GUI 门禁（A11 / A12-db / A14-gui）仍留待人工，本轮不判 PASS。
 > 代码基线：`bb37eb1`（`fix(agent): 修复搜索说明字段与上传路径上限提示并补充自动回归`），CI run **#430 success**。
 
 ---
@@ -17,8 +17,9 @@
 | 5. 搜索规范执行复测（新关键词、多关联、逐页审阅） | **PASS** | 关键词「液压」limit=5 分 4 页读完：17 条关联 = 17 条实收，LinkId 无重复，每条含 FileId/LinkId/description/ownerLabel/matchedFields |
 | 6. ISSUE-R14 `total` 口径澄清 | **PASS** | `MCP_CODEX.md` 已写明；实测 total=17 而唯一 FileId=4，与澄清一致 |
 | 7. ISSUE-R07/R08/R09/R10/R11 处置 | **PASS（确认本轮不改）** | 逐条理由见 §7；R11 的判据已由 A15 结果支持 |
+| 8. A12-rev 撤销授权 / 恢复（人工配合） | **PASS（MCP 半场）** | 三态 230 个采样点：撤销期 5 次采样全部 `TOOL_CALL_REJECTED`、四篇 `prompts/get` 全 `-32603`；恢复后正文 971 字、版本 `1.0.0+0b920eeed716` 不变（§九、`evidence/A12REV_RESULT.json`） |
 
-**主项合计：6 PASS / 1 PARTIAL / 0 FAIL**（另 4 项 GUI 未执行，不计入）。
+**主项合计：7 PASS / 1 PARTIAL / 0 FAIL**（含 A12-rev 的 MCP 半场；另 3 项 GUI 未执行，不计入）。A12-rev 的 HTTP 半场因匿名恒 401 未测，见 §9.5。
 
 ---
 
@@ -154,12 +155,76 @@
 
 ---
 
-## 九、未执行项
+## 九、A12-rev 撤销授权 / 恢复（人工配合，MCP 半场 PASS）
+
+执行方式：宿主保持运行（PID 25468，启动 `00:17:53`）、资料库保持解锁，由人工在设置里关掉 MCP 授权，约 43 秒后再打开；执行端用 `watch_a12rev.py` 双通道连续采样（HTTP 1 s / MCP 8 s，每点新起一个 `--mcp` 桥接进程），全程 230 个采样点。
+
+### 9.1 三态时间线（`evidence/A12REV_TIMELINE.jsonl`）
+
+| 阶段 | 起 | 止 | 采样 | 结果 |
+| --- | --- | --- | --- | --- |
+| 已授权 | `00:44:51.830` | `00:46:16.589` | 11 | 全部 ok，正文 971 字，版本 `1.0.0+0b920eeed716` |
+| **已撤销** | **`00:46:25.235`** | **`00:46:59.481`** | **5** | **全部 `TOOL_CALL_REJECTED`，正文 0 字** |
+| 已恢复 | `00:47:08.022` | `00:48:15.273` | 9 | 全部 ok，正文 971 字，版本不变 |
+
+切换点被 8 秒采样周期夹住：真实撤销时长落在 **34.2–51.4 秒** 区间内。
+
+### 9.2 撤销期间的入口矩阵（`evidence/A12REV_OFF_STATE.json`）
+
+| 入口 | 结果 |
+| --- | --- |
+| `initialize` | **成功**，`serverInfo: ipsys-local 1.0.0` |
+| `tools/list` | **成功**，返回 64 个工具名 |
+| `prompts/list` | **成功**，返回 4 个规范名（index/search/upload/metadata） |
+| `prompts/get(index / search / upload / metadata)` | 四篇**全部** `-32603 MCP 未授权或授权已撤销。`，正文 0 字 |
+| `tools/call get_agent_guidance` | `TOOL_CALL_REJECTED`，正文 0 字 |
+| `tools/call search_records`（纯读） | `TOOL_CALL_REJECTED` |
+| `tools/call list_projects`（纯读） | `TOOL_CALL_REJECTED` |
+
+拒绝原文：
+
+```json
+{"ok":false,"status":"failed","code":"TOOL_CALL_REJECTED",
+ "message":"MCP 未授权或授权已撤销。","retryable":false}
+```
+
+**设计观察（非缺陷）**：授权校验发生在**调用期**，不在**发现期**——发现接口仍可枚举 64 个工具名和 4 个规范名，但任何调用、任何正文都拿不到。不要把「能列出工具」误当成「已授权」。
+
+### 9.3 恢复后一致性
+
+| 检查 | 结果 |
+| --- | --- |
+| 正文 | 971 字，与撤销前、与仓库 `search.md` 三者逐字一致 |
+| 版本 | `1.0.0+0b920eeed716` 不变 → 开关**不重建**规范内容 |
+| 覆盖文件 `%LOCALAPPDATA%\IPSys\agent-guidance.json` | mtime 保持 `00:40:26`、大小 12050 不变 → 开关**不触碰**该文件 |
+| 宿主进程 | PID 与启动时间不变 → 开关**不重启**进程；无残留 `--mcp` 子进程 |
+
+> **更正**：先前把 `00:39:56–00:40:26` 对覆盖文件的写入归因于授权开关，本次实测证伪——开关不写该文件，那次写入应是设置页的另一次保存动作。
+
+### 9.4 版本号构成（新发现，可直接复用）
+
+`version = "1.0.0+" + sha256(该主题正文)[:12]`，三篇实测吻合：
+
+| 主题 | version | sha256(正文)[:12] |
+| --- | --- | --- |
+| search | `1.0.0+0b920eeed716` | `0b920eeed716` |
+| upload | `1.0.0+58f758baf8c7` | `58f758baf8c7` |
+| metadata | `1.0.0+505721c7e4a4` | `505721c7e4a4` |
+
+因此 `version` 可直接当正文指纹：A11 要「比对正文/版本」时，比这一串即可，无须逐字 diff。
+
+### 9.5 未闭环：HTTP 半场
+
+`http://127.0.0.1:10588/api/agent-guidance` 对匿名请求**恒 401**（205 个采样点全为 401），与授权开关无关；`/api/mcp/status`、`/api/authorization`、`/api/health`、`/api/ping` 均 404，没有任何匿名端点会反映授权状态。要验证「撤销后 HTTP 接口也不返回正文」，须在登录态浏览器里带 Cookie 请求一次——这一项保持**未测**，不并入 PASS。
+
+---
+
+## 十、未执行项
 
 | 项 | 状态 | 原因 |
 | --- | --- | --- |
 | A11 设置界面编辑/保存/导出/冲突 | **NOT_RUN** | 需 GUI 登录态人工操作 |
-| A12-rev 撤权/恢复 | **NOT_RUN** | 需在宿主运行时手动关 MCP 授权 |
+| A12-rev 撤权/恢复 | **MCP 半场 PASS / HTTP 半场 NOT_RUN** | MCP 侧已由人工配合实测闭环（§九）；HTTP 侧匿名恒 401，须登录态浏览器补测 |
 | A12-db 第二个 SQLCipher 库 | **NOT_RUN** | 需 GUI 创建并切换库 |
 | A14-gui 两种宽度 + 150% 缩放 | **NOT_RUN** | 需人工截图 |
 | 本地 `--smoke` 复跑 | **未执行（不判失败）** | 单实例互斥：GUI 宿主在运行，`Program.cs:22-30` 对 `--smoke` 同样抛"已在当前用户会话中运行"。CI #430 已在干净 runner 上执行同一断言集 |
@@ -167,7 +232,7 @@
 
 ---
 
-## 十、复现方法
+## 十一、复现方法
 
 ```bash
 # 1) CI 状态
@@ -188,18 +253,23 @@ python work/acceptance_r3/run_a15b.py
 
 # 6) 搜索分页复测（先 prep_links.py 造多关联）
 python work/acceptance_r3/prep_links.py && python work/acceptance_r3/run_search_paging.py
+
+# 7) A12-rev：先起采样，再人工关授权 ~40s 后打开，最后汇总
+python work/acceptance_r3/watch_a12rev.py &      # 双通道采样 15 分钟
+python work/acceptance_r3/build_a12rev.py        # 三态分段 + 断言 + 脱敏打包
 ```
 
 证据目录：`tests/agent-validation/2026-10-26-auto-recheck/`
 
-- `MCP_RAW_R3.jsonl`（108 条真实 JSON-RPC 记录：104 成功 / 4 预期失败）
+- `MCP_RAW_R3.jsonl`（138 条真实 JSON-RPC 记录：126 成功 / 12 预期失败 —— R06 假路径 2、R3-LINK 校验 2、A12-rev 撤权期 8）
 - `evidence/R05_SEARCH_FIELDS.json`、`A15A_UPLOAD_ONLY.json`、`A15B_EMBEDDED_INSTRUCTION.json`、`SEARCH_PAGING.json`、`SPEC_COMPARE.json`、`LINK_PREP.json`
+- `evidence/A12REV_RESULT.json`（三态分段 + 6 条断言 + 撤销期入口矩阵）、`A12REV_TIMELINE.jsonl`（230 个采样点）、`A12REV_OFF_STATE.json`（撤销期四通道原始返回）
 - `evidence/guidance_snapshot/`（四篇规范的实机返回快照）
 - `evidence/CI_RUN_430.json`（run 与全部 step 结论）
 
 ---
 
-## 十一、测试数据影响（仅测试库）
+## 十二、测试数据影响（仅测试库）
 
 | 动作 | 对象 | 可回滚方式 |
 | --- | --- | --- |
@@ -208,3 +278,5 @@ python work/acceptance_r3/prep_links.py && python work/acceptance_r3/run_search_
 | 共享关联 12 条 | FileId 1/7/17/38 → 项目 8/10/11/12/13 | 逐条解除关联 |
 
 正式库 `IPSys.db` 本轮未打开、未写入。
+
+A12-rev 全程只读：撤销期 8 次调用全部被拒、恢复后仅做 `get_agent_guidance` / `list_projects` / `search_records` 读操作，**未产生任何写入**，无回滚项。

@@ -1,0 +1,163 @@
+{
+ "case": "A12-rev",
+ "verdict": "PASS（MCP 半场已闭环；HTTP 半场匿名不可测，待登录态补测）",
+ "host": {
+  "pid": 25468,
+  "start": "2026-10-26 00:17:53",
+  "restarted_by_toggle": false
+ },
+ "window": {
+  "first_sample": "2026-10-26T00:44:51.443",
+  "last_sample": "2026-10-26T00:48:16.922",
+  "rows": 230
+ },
+ "phases": [
+  {
+   "state": "authorized",
+   "from": "2026-10-26T00:44:51.830",
+   "to": "2026-10-26T00:46:16.589",
+   "samples": 11,
+   "body_lens": [
+    971
+   ],
+   "versions": [
+    "1.0.0+0b920eeed716"
+   ],
+   "error": null
+  },
+  {
+   "state": "revoked_but_handshake_ok",
+   "from": "2026-10-26T00:46:25.235",
+   "to": "2026-10-26T00:46:59.481",
+   "samples": 5,
+   "body_lens": [],
+   "versions": [],
+   "error": "{\"ok\":false,\"status\":\"failed\",\"code\":\"TOOL_CALL_REJECTED\",\"message\":\"MCP \\u672A\\u6388\\u6743\\u6216\\u6388\\u6743\\u5DF2\\u64A4\\u9500\\u3002\",\"error\":\"MCP \\u672A\\u6388\\u6743\\u6216\\u6388\\u6743\\u5DF2\\u64A4\\u95"
+  },
+  {
+   "state": "authorized",
+   "from": "2026-10-26T00:47:08.022",
+   "to": "2026-10-26T00:48:15.273",
+   "samples": 9,
+   "body_lens": [
+    971
+   ],
+   "versions": [
+    "1.0.0+0b920eeed716"
+   ],
+   "error": null
+  }
+ ],
+ "revoked_window": {
+  "first_reject": "2026-10-26T00:46:25.235",
+  "last_reject": "2026-10-26T00:46:59.481",
+  "duration_bound_sec": [
+   34.2,
+   51.4
+  ],
+  "duration_note": "真实撤销时长落在 [上次成功+间隔, 首次恢复+间隔] 之间，采样周期 8s 所致",
+  "samples_checked": 5,
+  "all_rejected": true,
+  "error_code": "TOOL_CALL_REJECTED",
+  "error_message": "MCP 未授权或授权已撤销。",
+  "handshake_still_ok": true,
+  "tools_list_leaks_names_only": {
+   "tools": 64,
+   "prompts": 4,
+   "bodies": 0
+  }
+ },
+ "off_state_probes": {
+  "initialize": {
+   "ok": true,
+   "serverInfo": {
+    "name": "ipsys-local",
+    "version": "1.0.0"
+   }
+  },
+  "tools_list": {
+   "resp": "ok",
+   "n": 64,
+   "error": null
+  },
+  "prompts_list": {
+   "resp": "ok",
+   "names": [
+    "index",
+    "search",
+    "upload",
+    "metadata"
+   ],
+   "error": null
+  },
+  "prompts_get_search": {
+   "resp": "error",
+   "text_len": 0,
+   "head": "",
+   "error": {
+    "code": -32603,
+    "message": "MCP 未授权或授权已撤销。"
+   }
+  },
+  "tool_get_agent_guidance": {
+   "ok": false,
+   "text_len": 228,
+   "text": "{\"ok\":false,\"status\":\"failed\",\"code\":\"TOOL_CALL_REJECTED\",\"message\":\"MCP \\u672A\\u6388\\u6743\\u6216\\u6388\\u6743\\u5DF2\\u64A4\\u9500\\u3002\",\"error\":\"MCP \\u672A\\u6388\\u6743\\u6216\\u6388\\u6743\\u5DF2\\u64A4\\u9500\\u3002\",\"retryable\":false}"
+  },
+  "tool_list_projects": {
+   "ok": false,
+   "text": "{\"ok\":false,\"status\":\"failed\",\"code\":\"TOOL_CALL_REJECTED\",\"message\":\"MCP \\u672A\\u6388\\u6743\\u6216\\u6388\\u6743\\u5DF2\\u64A4\\u9500\\u3002\",\"error\":\"MCP \\u672A\\u6388\\u6743\\u6216\\u6388\\u6743\\u5DF2\\u64A4\\u9500\\u3002\",\"retryable\":false}"
+  }
+ },
+ "content_invariance": {
+  "before_sha256_12": "0b920eeed716",
+  "after_sha256_12": "0b920eeed716",
+  "unchanged": true,
+  "len": 971,
+  "equals_repo_search_md": true,
+  "store_file_untouched_by_toggle": true,
+  "store_mtime": "2026-10-26 00:40:26"
+ },
+ "version_scheme": "1.0.0+sha256(该主题正文)[:12]（实测 search/upload/metadata 三篇均吻合）",
+ "http_channel": {
+  "endpoint": "http://127.0.0.1:10588/api/agent-guidance",
+  "anonymous_status": 401,
+  "samples": 205,
+  "all_401": true,
+  "conclusion": "匿名请求恒 401，与授权开关无关；无任何匿名端点暴露授权状态（/api/mcp/status、/api/authorization、/api/health、/api/ping 均 404）"
+ },
+ "assertions": [
+  {
+   "id": "A12rev-1",
+   "claim": "撤销授权后 prompts/get 四篇均不返回正文",
+   "pass": true
+  },
+  {
+   "id": "A12rev-2",
+   "claim": "撤销授权后 tools/call 一律 TOOL_CALL_REJECTED（含只读）",
+   "pass": true
+  },
+  {
+   "id": "A12rev-3",
+   "claim": "撤销期间 tools/list、prompts/list 仅暴露名称，无正文",
+   "pass": true,
+   "note": "设计观察：门禁在调用期而非发现期"
+  },
+  {
+   "id": "A12rev-4",
+   "claim": "恢复授权后正文与版本与撤销前完全一致",
+   "pass": true
+  },
+  {
+   "id": "A12rev-5",
+   "claim": "开关不重启宿主、不重建覆盖文件",
+   "pass": true
+  },
+  {
+   "id": "A12rev-6",
+   "claim": "/api/agent-guidance 在撤销期间不返回正文（HTTP 半场）",
+   "pass": null,
+   "note": "匿名恒 401，无法区分；需登录态浏览器补测"
+  }
+ ]
+}
