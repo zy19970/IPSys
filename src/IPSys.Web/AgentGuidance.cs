@@ -78,7 +78,11 @@ static class AgentGuidance
                 ["summary"]="仅列出可单独获取的专项规范，不包含专项正文",
                 ["version"]=BuiltinVersion+"+"+Fingerprint(
                     string.Join("|",entries.Select(x=>x?["version"]?.GetValue<string>()))),
-                ["updatedAt"]=BuiltinUpdatedAt,["source"]="builtin",
+                ["updatedAt"]=entries.Select(x=>x?["updatedAt"]?.GetValue<string>())
+                    .Where(x=>!string.IsNullOrEmpty(x))
+                    .OrderByDescending(x=>x,StringComparer.Ordinal)
+                    .FirstOrDefault()??BuiltinUpdatedAt,
+                ["source"]="builtin",
                 ["guidanceOnly"]=true,["entries"]=entries
             };
         }
