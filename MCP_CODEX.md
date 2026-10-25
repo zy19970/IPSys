@@ -1,5 +1,12 @@
 # IPSys 本机 Codex MCP
 
+## Agent 分层规范读取（2026-10-25，第一阶段源码已实施，CI 待核验）
+
+现行 tools/list 在此前 63 项业务工具之外增加 **get_agent_guidance** 只读工具，合计 **64 项**；原有 63 项接口不改名、不改变参数语义。调用 `get_agent_guidance()` 或 `get_agent_guidance(topic="index")` 只返回 search/upload/metadata 专项的 ID、标题、摘要、版本；分别调用 `topic="search"`、`topic="upload"`、`topic="metadata"` 才返回单篇正文。未知 topic 明确拒绝。用户仅要求读取规范时不会上传、下载原件、修改属性或删除资料。
+
+MCP initialize.instructions 只输出来自内嵌 index.md 的短入口，必须先在资料库中人工开启 MCP 授权；规范读取通过现行受限命名管道及宿主授权门禁，不依赖外网或额外本地服务。内嵌规范文件统一位于 src/IPSys.Web/AgentGuidance/，由 AgentGuidance.cs 注册并读取，upload/metadata 共享 file-reading.md 内容。用户换 Agent 或刷新工具清单时需重启或重新连接客户端。此阶段仅提供指导文本及只读获取能力，**尚未让任何客户端自动执行智能入库或批量补录**；标准 MCP prompts/list/get、list_files_page 缺失属性筛选和设置界面属于后续阶段。最新源码必须先经 Windows CI 和真机客户端分别验收，不得把此前 63 工具的 CI 结果记为新增工具通过。
+
+
 ## Agent 轻量搜索（2026-10-25）
 
 IPSys 只提供工作区内结构化关键词检索及原件版本下载，不解析 PDF/Word 正文、不做 OCR 或模型推理。Agent 自主选择同义词进行多轮检索，再使用 `get_file_details`、`list_file_links` 和 `download_file_version` 获取原件并分析。
@@ -12,7 +19,7 @@ IPSys 只提供工作区内结构化关键词检索及原件版本下载，不�
 
 
 
-> 本手册的**现行操作规则**以前置章节（知识产权三编号、党团建设、63 工具及安全操作）为准；下文按日期保留的“新增工具”“当前版本”“59/69/70 个工具”“`v2_*` 工具仍有效”等是对应历史提交的增量记录，不可直接作为现行接口清单。合同不设独立 Excel 导入或导出，该限制不影响合同业务 MCP 新增、编辑及附件接口。
+> 本手册的**现行操作规则**以前置章节（知识产权三编号、党团建设、64 工具及安全操作）为准；下文按日期保留的“新增工具”“当前版本”“59/69/70 个工具”“`v2_*` 工具仍有效”等是对应历史提交的增量记录，不可直接作为现行接口清单。合同不设独立 Excel 导入或导出，该限制不影响合同业务 MCP 新增、编辑及附件接口。
 
 ## 知识产权 MCP：十类型、统一三个编号（2026-10-25）
 
@@ -22,7 +29,7 @@ IPSys 只提供工作区内结构化关键词检索及原件版本下载，不�
 
 示例：`create_ip(workspace="company",name="示例国家标准",ip_type="国家标准",number="GB/T XXXXX—2026",status="已发布")`；`create_ip(workspace="company",name="示例专利",ip_type="发明专利",number="202610000001.1",publication_no="CNXXXXXXXXXA",grant_notice_no="CNXXXXXXXXXB")`。以上仅为格式示例。
 
-> **当前主分支接口口径（2026-10-25，已验证）**：`8c1ca9a` 对应 [Windows CI #40162144248](https://github.com/zy19970/IPSys/actions/runs/40162144248) 的 MCP stdio `tools/list` 验证通过。工具由旧 59 个扩展为 **63 个无版本前缀的工具**，新增 `list_party_archives`、`create_party_archive`、`update_party_archive`、`delete_party_archive`，专用于公司工作区“党团建设”。既有通用 `list_archives/create_archive/update_archive/delete_archive` 仍支持 `workspace=company, section=party`。以下此前的“59 工具”描述属于旧提交验收历史，不能再当作当前清单。更新 EXE 后需重启本机 MCP 客户端，使 Agent 刷新 `tools/list`。
+> **历史已验证接口口径（2026-10-25，8c1ca9a）**：`8c1ca9a` 对应 [Windows CI #40162144248](https://github.com/zy19970/IPSys/actions/runs/40162144248) 的 MCP stdio `tools/list` 验证通过。工具由旧 59 个扩展为 **63 个无版本前缀的工具**，新增 `list_party_archives`、`create_party_archive`、`update_party_archive`、`delete_party_archive`，专用于公司工作区“党团建设”。既有通用 `list_archives/create_archive/update_archive/delete_archive` 仍支持 `workspace=company, section=party`。以下此前的“59 工具”描述属于旧提交验收历史，不能再当作当前清单。更新 EXE 后需重启本机 MCP 客户端，使 Agent 刷新 `tools/list`。
 
 ## 党团建设 MCP（公司工作区）
 
