@@ -1374,6 +1374,36 @@ svg { display: block; flex: none; }
   white-space: nowrap;
 }
 
+/* Software-wide Agent guidance editor: scoped to existing scrollable settings. */
+.set-agent-guidance { display: flex; flex-direction: column; gap: 8px; }
+.set-agent-hint { font-size: 11.5px; line-height: 1.6; color: var(--text-3); margin: 0; }
+.set-agent-controls { display: flex; gap: 12px; align-items: center; }
+.set-agent-controls label { font-size: 12.5px; color: var(--text-2); flex: none; }
+.set-agent-controls select {
+  flex: 1; min-width: 0; height: 32px; border: 1px solid var(--stroke-2);
+  border-radius: var(--r-sm); color: var(--text-1); background: var(--surface);
+  padding: 0 8px; font: inherit;
+}
+.set-agent-meta { font-size: 11.5px; line-height: 1.5; color: var(--text-3); overflow-wrap: anywhere; }
+.set-agent-label { font-size: 12px; font-weight: 600; color: var(--text-2); }
+#setAgentEditor, .set-agent-preview {
+  box-sizing: border-box; width: 100%; min-height: 140px; padding: 9px 10px;
+  border: 1px solid var(--stroke-2); border-radius: var(--r-sm);
+  background: var(--surface); color: var(--text-1);
+  font: 12px/1.55 Consolas, "Microsoft YaHei", monospace;
+  overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere;
+}
+#setAgentEditor { resize: vertical; max-height: 340px; }
+#setAgentEditor:disabled { opacity: .65; cursor: not-allowed; }
+.set-agent-preview { max-height: 260px; margin: 0; background: var(--surface-subtle); }
+.set-agent-preview[hidden] { display: none; }
+.set-agent-actions { display: flex; gap: 7px; flex-wrap: wrap; }
+.set-agent-actions .btn { white-space: nowrap; }
+@media (max-width: 600px) {
+  .set-agent-controls { align-items: stretch; flex-direction: column; }
+  .set-agent-actions .btn { flex: 1; }
+}
+
 /* Dropdown /新建 menu reuse .ctx */
 
 /* ==========================================================================
