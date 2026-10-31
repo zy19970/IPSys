@@ -240,7 +240,9 @@ const RecordForms = {
         : {},
       fields: [
         { key: "name", label: "名称", span: 2, required: true },
-        { key: "category", label: "类别" },
+        { key: "category", label: "类别",
+          hint: sec === "achievement" && VaultStore.ws === "company"
+            ? "仅修改资料属性；所属目录由独立的移动操作维护。" : "" },
         { key: "year", label: "年度", placeholder: "如 2026" },
         { key: "tags", label: "标签", span: 2 },
         {
@@ -368,18 +370,21 @@ const RecordForms = {
     this.open({
       title: isEdit ? "资料属性" : "新建资料",
       submitText: isEdit ? "保存" : "创建",
-      values: isEdit ? { title: r.title || node.name || "" } : {},
-      fields: [{ key: "title", label: "资料名称", span: 2, required: true }],
+      values: isEdit ? { title: r.title || node.name || "", remarks: r.remarks || "" } : {},
+      fields: [
+        { key: "title", label: "资料名称", span: 2, required: true },
+        { key: "remarks", label: "备注", type: "textarea", span: 2 },
+      ],
       onSubmit: async (d) => {
         if (isEdit) {
           await VaultStore.api(`/api/v2/folders/${VaultStore.ws}/general/${b.id}`, {
             method: "PUT",
-            json: { general: { title: d.title } },
+            json: { general: { title: d.title, remarks: d.remarks } },
           });
         } else {
           await VaultStore.api(`/api/v2/folders/${VaultStore.ws}/general`, {
             method: "POST",
-            json: { general: { title: d.title } },
+            json: { general: { title: d.title, remarks: d.remarks } },
           });
         }
         toast(isEdit ? "已保存" : "已创建");

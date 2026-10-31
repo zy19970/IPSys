@@ -183,10 +183,11 @@ static class SearchStore
         }
         foreach(var r in general)
         {
-            var m=Matched(query,("name",r.Folder.Name));
+            var info=(TitleInput)r.BusinessData;
+            var m=Matched(query,("name",r.Folder.Name),("remarks",info.Remarks));
             if(m.Length>0)
                 Add(new SearchHit("general",r.Folder.Ref.Id,"",
-                    r.Folder.Name,workspace=="company"?"综合资料":"其他资料"){
+                    r.Folder.Name,info.Remarks??""){
                     Path=root+" / "+(workspace=="company"?"综合资料":"其他资料")+
                          " / "+r.Folder.Name,
                     MatchedFields=m,FolderId=r.Folder.Ref.Id

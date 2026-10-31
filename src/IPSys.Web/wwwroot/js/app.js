@@ -1265,7 +1265,7 @@ const Drive = {
       }
       line("类型", b.typeName);
       line("状态", b.status);
-      line(contract ? "签约方" : "负责人", b.owner);
+      line(contract ? "签约方" : b.kind === "ip" ? "当前权利人" : "负责人", b.owner);
       line("承担单位", b.org);
       line(contract ? "签订日期" : b.kind === "ip" ? "申请日期" : "开始日期", b.start);
       line(b.kind === "ip" ? "授权日期" : "结束日期", b.end);

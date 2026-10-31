@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.IO.Compression;
+using System.Xml.Linq;
 
 // Native N2-04 archive/general XLSX, search and recycle against SQLCipher.
 static class NativeArchiveGeneralMilestoneSmoke
@@ -36,6 +38,41 @@ static class NativeArchiveGeneralMilestoneSmoke
             $"/api/v2/excel/{workspace}/{kind}/import"+query,
             new ByteArrayContent(bytes)));
     }
+    // Mutate only the synthetic workbook XML. Test the public HTTP importer
+    // against real 4-column/1-column historical exports and newer cells.
+    private static byte[] RewriteSheet(byte[] workbook,int keepColumns=99,
+        string? cell=null,string? value=null)
+    {
+        using var input=new ZipArchive(new MemoryStream(workbook),ZipArchiveMode.Read);
+        using var buffer=new MemoryStream();
+        using(var output=new ZipArchive(buffer,ZipArchiveMode.Create,true))
+        foreach(var entry in input.Entries)
+        {
+            var copy=output.CreateEntry(entry.FullName);
+            using var src=entry.Open();
+            using var dst=copy.Open();
+            if(entry.FullName!="xl/worksheets/sheet1.xml")
+            {src.CopyTo(dst);continue;}
+            var xml=XDocument.Load(src);
+            XNamespace x="http://schemas.openxmlformats.org/spreadsheetml/2006/main";
+            foreach(var row in xml.Descendants(x+"sheetData").Elements(x+"row"))
+            foreach(var c in row.Elements(x+"c").ToArray())
+            {
+                string address=(string?)c.Attribute("r")??"";
+                int col=address[0]-'A'+1;
+                if(col>keepColumns){c.Remove();continue;}
+                if(address==cell)
+                {
+                    var t=c.Descendants(x+"t").FirstOrDefault();
+                    if(t is null)throw new IOException("test sheet cell missing: "+cell);
+                    t.Value=value??"";
+                }
+            }
+            xml.Save(dst);
+        }
+        return buffer.ToArray();
+    }
+
     public static async Task VerifyAsync(HttpClient client)
     {
         var savedArchive=new ArchiveInput("原资质","企业资质","原备注","原标签",
@@ -55,7 +92,15 @@ static class NativeArchiveGeneralMilestoneSmoke
                 name=mark+"企业资质",category="企业资质",
                 remarks="可检索备注",tags="专属标签"}}))).GetProperty("id").GetInt64();
         long general=(await Read(await client.PostAsJsonAsync(cg,new{
-            general=new{title=mark+"综合资料"}}))).GetProperty("id").GetInt64();
+            general=new{title=mark+"综合资料",remarks=mark+"综合备注"}}))).GetProperty("id").GetInt64();
+        var generalRecord=await client.GetFromJsonAsync<JsonElement>($"{cg}/{general}");
+        Check(generalRecord.GetProperty("businessData").GetProperty("remarks")
+                .GetString()==mark+"综合备注","general remarks round-trip through SQLCipher");
+        var generalSearch=await client.GetFromJsonAsync<SearchResponse>(
+            "/api/v2/search/company?q="+Uri.EscapeDataString(mark+"综合备注"));
+        Check(generalSearch?.Results.Any(x=>x.Kind=="general"&&
+              x.Id==general&&x.MatchedFields.Contains("remarks"))==true,
+            "general remarks participate in unified search");
         var roots=await client.GetFromJsonAsync<JsonElement>(
             "/api/v2/folders/company/archive_folder");
         long root=roots.EnumerateArray().First(x=>x.GetProperty("folder")
@@ -78,6 +123,29 @@ static class NativeArchiveGeneralMilestoneSmoke
             "/api/v2/search/company?q="+Uri.EscapeDataString("申报与认定"));
         Check(ancestor is not null && ancestor.Results.Any(x=>x.Kind=="archive"&&
             x.Id==business),"ancestor folder names searchable");
+
+        // Nested directories are independent from editable business categories.
+        long nested=(await Read(await client.PostAsJsonAsync(
+            "/api/v2/folders/company/archive_folder",
+            new{archiveFolder=new{name=mark+"二级目录",parentId=root},
+                section="achievement"}))).GetProperty("id").GetInt64();
+        long nestedRecord=(await Read(await client.PostAsJsonAsync(ca,new{
+            section="achievement",archive=new{
+                name=mark+"深层资料",category="自定义业务标签",
+                folderId=nested,year="2024"}}))).GetProperty("id").GetInt64();
+        var nestedSheet=await Export(client,"archive","company","achievement",nestedRecord);
+        var nestedImport=await Import(client,"archive","company","achievement",
+            "update",nestedSheet);
+        Check(nestedImport.GetProperty("updated").GetInt32()==1 &&
+              nestedImport.GetProperty("created").GetInt32()==0,
+            "nested directory survives Excel roundtrip with independent category");
+        var nestedStored=await client.GetFromJsonAsync<JsonElement>(
+            $"{ca}/{nestedRecord}?section=achievement");
+        Check(nestedStored.GetProperty("folder").GetProperty("parent")
+                .GetProperty("id").GetInt64()==nested &&
+              nestedStored.GetProperty("businessData").GetProperty("year")
+                .GetString()=="2024",
+            "nested archive keeps directory FolderId and year");
 
         byte[] original=RandomNumberGenerator.GetBytes(1317);
         byte[] revised=RandomNumberGenerator.GetBytes(2379);
@@ -102,6 +170,11 @@ static class NativeArchiveGeneralMilestoneSmoke
         long link=files[0].GetProperty("id").GetInt64();
         byte[] workbook=await Export(client,"archive","company","certificate",certificate);
         Check(workbook.Length>750,"archive fixed XLSX export");
+        var legacyArchive=RewriteSheet(workbook,4);
+        var legacySkip=await Import(client,"archive","company","certificate",
+            "skip",legacyArchive);
+        Check(legacySkip.GetProperty("skipped").GetInt32()==1,
+            "historical 4-column archive XLSX remains importable");
         var skip=await Import(client,"archive","company","certificate","skip",workbook);
         Check(skip.GetProperty("skipped").GetInt32()==1,"native duplicate skipping");
         var update=await Import(client,"archive","company","certificate","update",workbook);
@@ -130,14 +203,47 @@ static class NativeArchiveGeneralMilestoneSmoke
         Check(emptyFiles.GetArrayLength()==0,"Excel does not copy attachments across workspaces");
 
         byte[] generalWorkbook=await Export(client,"general","company","",general);
+        var legacyGeneral=RewriteSheet(generalWorkbook,1);
+        var legacyGeneralSkip=await Import(client,"general","company","",
+            "skip",legacyGeneral);
+        Check(legacyGeneralSkip.GetProperty("skipped").GetInt32()==1,
+            "historical 1-column general XLSX remains importable");
         var copied=await Import(client,"general","personal","","create",generalWorkbook);
         Check(copied.GetProperty("created").GetInt32()==1,
             "native general fixed XLSX import");
+        var copiedGeneral=await client.GetFromJsonAsync<JsonElement>(
+            "/api/v2/folders/personal/general");
+        Check(copiedGeneral.EnumerateArray().Any(x=>
+            x.GetProperty("businessData").GetProperty("remarks").GetString()==
+            mark+"综合备注"),
+            "general XLSX preserves remarks in another workspace");
         byte[] businessWorkbook=await Export(client,"archive","company","achievement",business);
         var businessSkip=await Import(client,"archive","company","achievement",
             "skip",businessWorkbook);
         Check(businessSkip.GetProperty("skipped").GetInt32()==1,
-            "business category deduplication respects root");
+            "business directory-aware deduplication respects root");
+        var yearAndFolder=RewriteSheet(businessWorkbook,99,"E2","2027");
+        yearAndFolder=RewriteSheet(yearAndFolder,99,"B2","独立业务类别");
+        var changed=await Import(client,"archive","company","achievement",
+            "update",yearAndFolder);
+        Check(changed.GetProperty("updated").GetInt32()==1 &&
+              changed.GetProperty("created").GetInt32()==0,
+            "editing category updates existing record matched by directory");
+        var changedBusiness=await client.GetFromJsonAsync<JsonElement>(
+            $"{ca}/{business}?section=achievement");
+        Check(changedBusiness.GetProperty("businessData").GetProperty("year")
+                .GetString()=="2027" &&
+              changedBusiness.GetProperty("businessData").GetProperty("category")
+                .GetString()=="独立业务类别" &&
+              changedBusiness.GetProperty("folder").GetProperty("parent")
+                .GetProperty("id").GetInt64()==root,
+            "year/category change does not move archive out of its parent");
+        var wrongFolder=RewriteSheet(businessWorkbook,99,"F2","不存在的目录");
+        var rejected=await Import(client,"archive","company","achievement",
+            "update",wrongFolder);
+        Check(rejected.GetProperty("failed").GetInt32()==1 &&
+              rejected.GetProperty("created").GetInt32()==0,
+            "nonexistent directory cannot silently change parent or create record");
         using(var invalid=await client.PostAsync(
             "/api/v2/excel/company/archive/import?section=certificate&policy=create",
             new ByteArrayContent(new byte[]{1,2,3,4})))

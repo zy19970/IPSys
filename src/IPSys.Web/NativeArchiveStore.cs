@@ -71,7 +71,8 @@ static class NativeArchiveStore
                 if(GeneralRules.Validate(input.General) is string bad)
                     throw new ArgumentException(bad);
                 string title=input.General.Title!.Trim();
-                return (title,JsonSerializer.Serialize(new TitleInput(title)),null,scope);
+                return (title,JsonSerializer.Serialize(
+                    new TitleInput(title,input.General.Remarks)),null,scope);
             default:
                 throw new ArgumentException("文件夹类型和业务属性不匹配。");
         }

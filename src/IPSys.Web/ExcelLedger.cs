@@ -31,12 +31,19 @@ static partial class ExcelLedger
         new("firstPublishedDate","首次发表日期"),new("registrationDate","登记／注册日期"),
         new("category","辅助分类"),new("remarks","备注"),new("tags","标签")
     ];
-    private static readonly Column[] ArchiveColumns=
+    private static readonly Column[] ArchiveLegacyColumns=
     [
         new("name","资料名称"),new("category","类别"),
         new("remarks","备注"),new("tags","标签")
     ];
-    private static readonly Column[] GeneralColumns=[new("title","资料名称")];
+    private static readonly Column[] ArchiveColumns=
+    [
+        ..ArchiveLegacyColumns,new("year","年度"),
+        new("directory","所属目录")
+    ];
+    private static readonly Column[] GeneralLegacyColumns=[new("title","资料名称")];
+    private static readonly Column[] GeneralColumns=
+        [new("title","资料名称"),new("remarks","备注")];
 
     // "更新已有": 空 Excel 单元格 = 不修改该属性；需要清空请通过属性表单操作。
     // 新建和跳过不经此合并，防止变更其他入口的既有语义。
@@ -81,7 +88,7 @@ static partial class ExcelLedger
         Category=KeepExcel(next.Category,old.Category),
         Remarks=KeepExcel(next.Remarks,old.Remarks),
         Tags=KeepExcel(next.Tags,old.Tags),
-        Year=old.Year,
+        Year=KeepExcel(next.Year,old.Year),
         FolderId=old.FolderId
     };
 
@@ -281,7 +288,27 @@ static partial class ExcelLedger
         }
         return output;
     }
-    private static ArchiveInput Archive(string[] v)=>new(v[0],v[1],v[2],v[3]);
+    private static ArchiveInput Archive(string[] v)=>new(v[0],v[1],v[2],v[3],v[4]); 
+    private static (bool Legacy,List<(int Number,string[] Values)> Rows)
+        ReadCompatibleArchive(byte[] bytes)
+    {
+        try{return (false,ReadSheet(bytes,ArchiveColumns));}
+        catch(InvalidDataException ex) when(ex.Message.StartsWith("表头不匹配",StringComparison.Ordinal))
+        {
+            return (true,ReadSheet(bytes,ArchiveLegacyColumns)
+                .Select(r=>(r.Number,r.Values.Concat(["",""]).ToArray())).ToList());
+        }
+    }
+    private static (bool Legacy,List<(int Number,string[] Values)> Rows)
+        ReadCompatibleGeneral(byte[] bytes)
+    {
+        try{return (false,ReadSheet(bytes,GeneralColumns));}
+        catch(InvalidDataException ex) when(ex.Message.StartsWith("表头不匹配",StringComparison.Ordinal))
+        {
+            return (true,ReadSheet(bytes,GeneralLegacyColumns)
+                .Select(r=>(r.Number,r.Values.Concat([""]).ToArray())).ToList());
+        }
+    }
     private static string? ValidateGeneral(string? title)=>
         string.IsNullOrWhiteSpace(title)||title.Trim().Length>300
         ?"资料名称必填，最多 300 字。":null;

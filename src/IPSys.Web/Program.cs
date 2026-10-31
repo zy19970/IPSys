@@ -193,7 +193,7 @@ record CompanyCertificateOrderInput(long[]? Ids);
 record CompanyCertificateBatchDeleteInput(long[]? Ids);
 record OpenInput(string? Path, string? Password, bool Create);
 record ResumeInput(string? Password);
-record TitleInput(string? Title);
+record TitleInput(string? Title,string? Remarks=null);
 record FileView(long Id, string Name, long Size, string Sha256,int Version=1,string GroupId="");
 record RecordView(long Id, string Title, List<FileView> Files);
 

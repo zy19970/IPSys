@@ -100,14 +100,16 @@ static partial class McpLocal
         Tool("list_general","列出当前工作区 V2 综合资料 FolderId。",new(){
             ["workspace"]=Field("string","工作区",Workspaces)
         },["workspace"]),
-        Tool("create_general","新增 V2 综合资料文件夹，仅名称必填。",new(){
+        Tool("create_general","新增 V2 综合资料文件夹，仅名称必填；备注可选。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
-            ["title"]=Field("string","资料名称")
+            ["title"]=Field("string","资料名称"),
+            ["remarks"]=Field("string","备注，可选")
         },["workspace","title"]),
-        Tool("update_general","按 FolderId 修改综合资料名称，保留全部附件版本。",new(){
+        Tool("update_general","按 FolderId 修改综合资料名称及备注，保留附件版本。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
             ["general_id"]=Field("integer","综合资料 FolderId"),
-            ["title"]=Field("string","新名称")
+            ["title"]=Field("string","新名称"),
+            ["remarks"]=Field("string","备注，未传则保留原值")
         },["workspace","general_id","title"]),
         Tool("delete_general","按 FolderId 将综合资料移入回收站。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
@@ -218,16 +220,24 @@ static partial class McpLocal
             case "list_general":
                 return await RequestAsync(client,HttpMethod.Get,V2Url(workspace,"general"));
             case "create_general":
+            {
+                var fields=new JsonObject{["title"]=ReadString(args,"title")};
+                if(args.TryGetProperty("remarks",out _))
+                    fields["remarks"]=ReadString(args,"remarks");
                 return await RequestAsync(client,HttpMethod.Post,V2Url(workspace,"general"),
-                    new JsonObject{["general"]=new JsonObject{
-                        ["title"]=ReadString(args,"title")}});
+                    new JsonObject{["general"]=fields});
+            }
             case "update_general":
             {
                 long id=ReadId(args,"general_id");
+                var current=await RequestAsync(client,HttpMethod.Get,V2Url(workspace,"general",id));
+                string? remarks=current["businessData"]?["remarks"]?.GetValue<string>();
+                if(args.TryGetProperty("remarks",out _))
+                    remarks=ReadString(args,"remarks");
                 return await RequestAsync(client,HttpMethod.Put,
                     V2Url(workspace,"general",id),
                     new JsonObject{["general"]=new JsonObject{
-                        ["title"]=ReadString(args,"title")}});
+                        ["title"]=ReadString(args,"title"),["remarks"]=remarks}});
             }
             case "delete_general":
                 return await RequestAsync(client,HttpMethod.Delete,

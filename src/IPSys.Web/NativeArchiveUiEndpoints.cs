@@ -61,7 +61,9 @@ static class NativeArchiveUiEndpoints
                                 v2=true
                             });
                     }
-                    general.Add(new{id,title=snapshot.Folder.Name,files});
+                    var metadata=(TitleInput)snapshot.BusinessData;
+                    general.Add(new{id,title=snapshot.Folder.Name,
+                        remarks=metadata.Remarks??"",files});
                 }
                 if(workspace=="company")
                 {

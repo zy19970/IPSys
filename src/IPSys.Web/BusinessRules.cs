@@ -180,6 +180,7 @@ static class GeneralRules
     {
         if (string.IsNullOrWhiteSpace(input.Title)) return "名称不能为空。";
         if (input.Title.Length > 300) return "名称不能超过 300 字。";
+        if ((input.Remarks?.Length??0)>4000) return "备注不能超过 4000 字。";
         return null;
     }
 }

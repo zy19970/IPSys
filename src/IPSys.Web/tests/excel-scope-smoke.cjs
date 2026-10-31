@@ -48,6 +48,25 @@ assert.equal(sample.statusSel.value,"已授权","Compatible status must survive 
 const blank=openIpStatus("软件著作权","");
 assert.equal(blank.statusSel.value,"","New/blank IP status stays optional");
 const ledger=read("ExcelLedger.cs");
+const shellApp=read("wwwroot/js/app.js");
+const shellStore=read("wwwroot/js/store.js");
+const generalForm=read("wwwroot/js/forms.js");
+const archiveLedger=read("NativeArchiveGeneralExcelLedger.cs");
+assert.match(shellApp,/b\.kind === "ip" \? "当前权利人"/,
+  "IP details label must match current right-holder ledger heading");
+assert.match(shellStore,/remarks: g\.remarks \|\| ""/,
+  "General remarks must be mapped from database, not hardcoded empty");
+assert.match(generalForm,/remarks: d\.remarks/,
+  "General edit/create form must persist remarks");
+assert.match(archiveLedger,/DirectoryPath\(db,item\.Folder\.Parent\?\.Id\)/,
+  "Archive Excel exports the actual folder ancestry separately from category");
+assert.match(archiveLedger,/ReadCompatibleArchive\(bytes\)/,
+  "Archive Excel must retain old four-column import compatibility");
+const archiveColumns=ledger.match(/private static readonly Column\[\] ArchiveColumns=\s*\[([\s\S]*?)\];/)[1];
+assert.match(archiveColumns,/new\("year","年度"\)/);
+assert.match(archiveColumns,/new\("directory","所属目录"\)/);
+assert.match(ledger,/new\("remarks","备注"\)/,
+  "General remarks must be available in Excel metadata");
 const filter=read("NativeExcelExportFilter.cs");
 const endpoints=["NativeProjectExcelEndpoints.cs","NativeIpExcelEndpoints.cs",
   "NativeArchiveGeneralExcelEndpoints.cs"].map(read);

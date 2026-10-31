@@ -539,7 +539,7 @@ const VaultStore = {
             status: "",
             code: "",
             owner: "",
-            remarks: "",
+            remarks: g.remarks || "",
             tags: "",
             raw: g,
             id: g.id,
