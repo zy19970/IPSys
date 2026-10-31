@@ -134,6 +134,30 @@ static class NativeIpExcelHttpSmoke
                    .GetString()=="更新后说明",
                   "V2 IP updated in-place, keeps its FolderId");
 
+            // An Excel workbook with blank optional cells must not erase
+            // existing IP status/applicant/right-holder metadata.
+            using(var enrich=await client.PutAsJsonAsync(
+                "/api/v2/folders/company/ip/"+nativeId,
+                new FolderMutationInput(Ip:Ip("Excel新名称"+code,appNo,"更新后说明")
+                    with{RightHolders="原有权利人"})))
+                enrich.EnsureSuccessStatusCode();
+            using(var sparseSource=await client.PutAsJsonAsync(
+                "/api/v2/folders/personal/ip/"+fixtureId,
+                new FolderMutationInput(Ip:Ip("Excel新名称"+code,appNo,"只更新备注")
+                    with{Status="",Applicants="",RightHolders=""})))
+                sparseSource.EnsureSuccessStatusCode();
+            var sparse=await Export(client,personal+"/export","filtered",[fixtureId]);
+            var sparseUpdate=await Import(client,company+"/import","update",sparse);
+            Check(sparseUpdate.GetProperty("updated").GetInt32()==1 &&
+                  sparseUpdate.GetProperty("failed").GetInt32()==0,
+                "sparse IP Excel row is matched and updated");
+            var afterSparse=await GetNativeIp(client,"company",nativeId);
+            var ipData=afterSparse.GetProperty("businessData");
+            Check(ipData.GetProperty("status").GetString()=="已申请" &&
+                  ipData.GetProperty("applicants").GetString()=="测试申请人" &&
+                  ipData.GetProperty("rightHolders").GetString()=="原有权利人" &&
+                  ipData.GetProperty("remarks").GetString()=="只更新备注",
+                "blank optional Excel cells retain IP metadata while nonblank fields update");
             var files=await client.GetFromJsonAsync<JsonElement>(
                 $"/api/v2/ip/company/{nativeId}/files");
             Check(files.GetArrayLength()==1 &&

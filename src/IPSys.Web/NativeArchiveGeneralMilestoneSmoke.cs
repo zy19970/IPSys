@@ -38,6 +38,15 @@ static class NativeArchiveGeneralMilestoneSmoke
     }
     public static async Task VerifyAsync(HttpClient client)
     {
+        var savedArchive=new ArchiveInput("原资质","企业资质","原备注","原标签",
+            "2026",42);
+        var sparseArchive=new ArchiveInput("原资质","企业资质","","新标签");
+        var mergedArchive=ExcelLedger.MergeExcelUpdate(sparseArchive,savedArchive);
+        Check(mergedArchive.Remarks=="原备注" &&
+              mergedArchive.Tags=="新标签" &&
+              mergedArchive.Year=="2026" &&
+              mergedArchive.FolderId==42,
+            "archive Excel blank cells retain metadata and folder/year identity");
         string mark="AG204-"+Guid.NewGuid().ToString("N")[..8];
         const string ca="/api/v2/folders/company/archive";
         const string cg="/api/v2/folders/company/general";

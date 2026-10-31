@@ -29,6 +29,22 @@ static class NativeProjectMilestoneSmoke
     }
     public static async Task VerifyAsync(HttpClient client,Vault vault)
     {
+        // Merge checks all optional project metadata while preserving identity.
+        var savedProject=new ProjectInput("原项目","科研项目","PN-001","原负责人",
+            "原单位","2026-01-01","2026-12-31","已完成","原分类","旧备注","原标签");
+        var patchProject=new ProjectInput("原项目","科研项目","PN-001",null,
+            "",null,null,"","", "新备注","");
+        var mergedProject=ExcelLedger.MergeExcelUpdate(patchProject,savedProject);
+        Check(mergedProject.Leader=="原负责人" &&
+              mergedProject.UndertakingOrg=="原单位" &&
+              mergedProject.StartDate=="2026-01-01" &&
+              mergedProject.EndDate=="2026-12-31" &&
+              mergedProject.ProjectStatus=="已完成" &&
+              mergedProject.Category=="原分类" &&
+              mergedProject.Tags=="原标签" &&
+              mergedProject.Remarks=="新备注" &&
+              ProjectRules.Check(mergedProject)==null,
+            "sparse project Excel update merges before validating and writing");
         string marker="N204-"+Guid.NewGuid().ToString("N")[..8];
         long project=(await Read(await client.PostAsJsonAsync(
             "/api/v2/folders/company/project",new{project=new{

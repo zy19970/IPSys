@@ -92,15 +92,18 @@ const RecordForms = {
     const typeSel = mask.querySelector('[data-key="ipType"]');
     const statusSel = mask.querySelector('[data-key="status"]');
     if (typeSel && statusSel) {
-      const sync = () => {
+      const sync = (preferred) => {
         const list = IP_TYPES[typeSel.value] || [];
-        const cur = statusSel.value;
+        // On first open the status select has no options yet: use saved data.
+        // On type changes keep the current value only if legal for the new type.
+        const cur = preferred === undefined ? statusSel.value : preferred;
         statusSel.innerHTML =
           `<option value="">请选择</option>` +
           list.map((s) => `<option value="${s}" ${s === cur ? "selected" : ""}>${s}</option>`).join("");
+        statusSel.value = list.includes(cur) ? cur : "";
       };
-      typeSel.addEventListener("change", sync);
-      sync();
+      typeSel.addEventListener("change", () => sync());
+      sync(String(values.status ?? ""));
     }
 
     const err = mask.querySelector("[data-err]");

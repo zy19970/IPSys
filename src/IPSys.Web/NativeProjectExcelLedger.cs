@@ -38,8 +38,6 @@ static partial class ExcelLedger
             try
             {
                 var input=Project(fields);
-                if(ProjectRules.Check(input) is string err)
-                    throw new InvalidDataException(err);
                 var current=NativeFolderStore.List(db,w,FolderKinds.Project);
                 var existing=current.FirstOrDefault(x=>{
                     var p=(ProjectInput)x.BusinessData;
@@ -49,17 +47,23 @@ static partial class ExcelLedger
                          Same(p.ProjectType??"",input.ProjectType??"");
                 });
                 if(existing!=null&&policy=="skip"){skipped++;continue;}
-                var payload=new FolderMutationInput(Project:input);
                 if(existing!=null&&policy=="update")
                 {
+                    var merged=MergeExcelUpdate(input,(ProjectInput)existing.BusinessData);
+                    if(ProjectRules.Check(merged) is string err)
+                        throw new InvalidDataException(err);
                     if(!NativeFolderStore.Update(db,
                         ResourceRef.Create(w,FolderKinds.Project,existing.Folder.Ref.Id),
-                        payload))throw new IOException("项目状态已变化。");
+                        new FolderMutationInput(Project:merged)))
+                        throw new IOException("项目状态已变化。");
                     updated++;
                 }
                 else
                 {
-                    NativeFolderStore.Create(db,w,FolderKinds.Project,payload);
+                    if(ProjectRules.Check(input) is string err)
+                        throw new InvalidDataException(err);
+                    NativeFolderStore.Create(db,w,FolderKinds.Project,
+                        new FolderMutationInput(Project:input));
                     created++;
                 }
             }

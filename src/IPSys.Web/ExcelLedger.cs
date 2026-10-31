@@ -37,6 +37,54 @@ static partial class ExcelLedger
         new("remarks","备注"),new("tags","标签")
     ];
     private static readonly Column[] GeneralColumns=[new("title","资料名称")];
+
+    // "更新已有": 空 Excel 单元格 = 不修改该属性；需要清空请通过属性表单操作。
+    // 新建和跳过不经此合并，防止变更其他入口的既有语义。
+    private static string? KeepExcel(string? next,string? existing)=>
+        string.IsNullOrWhiteSpace(next)?existing:next;
+    internal static ProjectInput MergeExcelUpdate(ProjectInput next,ProjectInput old)=>next with {
+        Name=KeepExcel(next.Name,old.Name),
+        ProjectType=KeepExcel(next.ProjectType,old.ProjectType),
+        ProjectNo=KeepExcel(next.ProjectNo,old.ProjectNo),
+        Leader=KeepExcel(next.Leader,old.Leader),
+        UndertakingOrg=KeepExcel(next.UndertakingOrg,old.UndertakingOrg),
+        StartDate=KeepExcel(next.StartDate,old.StartDate),
+        EndDate=KeepExcel(next.EndDate,old.EndDate),
+        ProjectStatus=KeepExcel(next.ProjectStatus,old.ProjectStatus),
+        Category=KeepExcel(next.Category,old.Category),
+        Remarks=KeepExcel(next.Remarks,old.Remarks),
+        Tags=KeepExcel(next.Tags,old.Tags)
+    };
+    internal static IpInput MergeExcelUpdate(IpInput next,IpInput old)=>next with {
+        Name=KeepExcel(next.Name,old.Name),
+        IpType=KeepExcel(next.IpType,old.IpType),
+        Status=KeepExcel(next.Status,old.Status),
+        Applicants=KeepExcel(next.Applicants,old.Applicants),
+        RightHolders=KeepExcel(next.RightHolders,old.RightHolders),
+        Creators=KeepExcel(next.Creators,old.Creators),
+        Number=KeepExcel(next.Number,old.Number),
+        ApplicationDate=KeepExcel(next.ApplicationDate,old.ApplicationDate),
+        PublicationNo=KeepExcel(next.PublicationNo,old.PublicationNo),
+        PublicationDate=KeepExcel(next.PublicationDate,old.PublicationDate),
+        GrantNoticeNo=KeepExcel(next.GrantNoticeNo,old.GrantNoticeNo),
+        GrantNoticeDate=KeepExcel(next.GrantNoticeDate,old.GrantNoticeDate),
+        PublicationInfo=KeepExcel(next.PublicationInfo,old.PublicationInfo),
+        GrantDate=KeepExcel(next.GrantDate,old.GrantDate),
+        FirstPublishedDate=KeepExcel(next.FirstPublishedDate,old.FirstPublishedDate),
+        RegistrationDate=KeepExcel(next.RegistrationDate,old.RegistrationDate),
+        Category=KeepExcel(next.Category,old.Category),
+        Remarks=KeepExcel(next.Remarks,old.Remarks),
+        Tags=KeepExcel(next.Tags,old.Tags)
+    };
+    internal static ArchiveInput MergeExcelUpdate(ArchiveInput next,ArchiveInput old)=>next with {
+        Name=KeepExcel(next.Name,old.Name),
+        Category=KeepExcel(next.Category,old.Category),
+        Remarks=KeepExcel(next.Remarks,old.Remarks),
+        Tags=KeepExcel(next.Tags,old.Tags),
+        Year=old.Year,
+        FolderId=old.FolderId
+    };
+
     internal static bool ValidKind(string kind)=>kind is "project" or "ip" or "archive" or "general";
     internal static bool SupportsImport(string kind)=>kind is "project" or "ip" or "archive" or "general";
     internal static bool ValidScope(string workspace,string kind,string? section)=>

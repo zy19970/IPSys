@@ -82,8 +82,10 @@ static partial class ExcelLedger
                     {
                         // Preserve the owning folder, FileId and all FileVersions.
                         var old=(ArchiveInput)existing.BusinessData;
-                        var update=new FolderMutationInput(Archive:input with {
-                            FolderId=old.FolderId,Year=old.Year},Section:section);
+                        var merged=MergeExcelUpdate(input,old);
+                        if(ArchiveRules.Validate(merged) is string invalid)
+                            throw new InvalidDataException(invalid);
+                        var update=new FolderMutationInput(Archive:merged,Section:section);
                         if(!NativeArchiveStore.Update(db,existing.Folder.Ref,update))
                             throw new IOException("资料记录已发生变化。");
                         updated++;

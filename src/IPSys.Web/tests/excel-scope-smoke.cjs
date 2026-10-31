@@ -4,6 +4,49 @@ const path=require("node:path"),vm=require("node:vm");
 const base=path.join(__dirname,"..");
 const read=file=>fs.readFileSync(path.join(base,file),"utf8");
 const excel=read("wwwroot/js/excel.js");
+const forms=read("wwwroot/js/forms.js");
+// Exercise the real IP dependent-select initialization against a minimal DOM
+// model: the first status select has no options on open.
+const ipTypesSource=forms.slice(forms.indexOf("const IP_TYPES ="),
+  forms.indexOf("const RecordForms ="));
+const syncStart=forms.indexOf('    const typeSel = mask.querySelector');
+const syncEnd=forms.indexOf('    const err = mask.querySelector',syncStart);
+assert.ok(syncStart>0 && syncEnd>syncStart,"IP form dynamic select hook exists");
+const statusSync=forms.slice(syncStart,syncEnd);
+function openIpStatus(type,saved) {
+  const listeners={};
+  const typeSel={value:type,addEventListener:(name,fn)=>listeners[name]=fn};
+  const statusSel={value:"",
+    set innerHTML(html) {
+      this.html=html;
+      this.value=(html.match(/<option value="([^"]*)" selected>/)||[])[1]||"";
+    }
+  };
+  const mask={querySelector:key=>key.includes("ipType")?typeSel:statusSel};
+  const context=vm.createContext({mask,values:{status:saved}});
+  vm.runInContext(ipTypesSource+statusSync,context);
+  return{typeSel,statusSel,change:listeners.change};
+}
+const typesContext=vm.createContext({});
+vm.runInContext(ipTypesSource,typesContext);
+for(const [type,statuses] of Object.entries(vm.runInContext("IP_TYPES",typesContext))) {
+  const saved=statuses.at(-1);
+  const ui=openIpStatus(type,saved);
+  assert.equal(ui.statusSel.value,saved,"IP status must preselect saved value: "+type);
+  assert.ok(ui.statusSel.html.includes('value="'+saved+'" selected'),
+    "Saved status must be selected in actual option HTML: "+type);
+}
+const sample=openIpStatus("软件著作权","已登记");
+assert.equal(sample.statusSel.value,"已登记");
+sample.typeSel.value="发明专利";
+sample.change();
+assert.equal(sample.statusSel.value,"","Invalid status must clear after switching IP type");
+sample.statusSel.value="已授权";
+sample.typeSel.value="实用新型专利";
+sample.change();
+assert.equal(sample.statusSel.value,"已授权","Compatible status must survive IP type change");
+const blank=openIpStatus("软件著作权","");
+assert.equal(blank.statusSel.value,"","New/blank IP status stays optional");
 const ledger=read("ExcelLedger.cs");
 const filter=read("NativeExcelExportFilter.cs");
 const endpoints=["NativeProjectExcelEndpoints.cs","NativeIpExcelEndpoints.cs",
@@ -55,6 +98,7 @@ async function call(category,mode){
   assert.equal(requests.length,count,"Cancel must not export");
   assert.equal(names.length,count);
   assert.match(excel,/data-excel-mode="filtered"/);
+  assert.match(excel,/留空保留原有属性/,"Excel update blank-cell semantics must be visible");
   assert.match(excel,/data-excel-mode="all"/);
-  console.log("EXCEL SCOPE SMOKE PASS: full-scope/filter/all/cancel/19 columns/no contract");
+  console.log("EXCEL SCOPE SMOKE PASS: scopes, IP status prefill, type changes, and blank Excel semantics");
 })().catch(e=>{console.error(e);process.exitCode=1;});

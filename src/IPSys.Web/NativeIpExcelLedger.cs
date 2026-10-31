@@ -65,25 +65,29 @@ static partial class ExcelLedger
             try
             {
                 var input=Ip(fields);
-                if(IpRules.Validate(input) is string validation)
-                    throw new InvalidDataException(validation);
                 var existing=NativeMatch(input,ips);
                 if(existing is not null && policy=="skip")
                 {
                     skipped++;
                     continue;
                 }
-                var payload=new FolderMutationInput(Ip:input);
                 if(existing is not null && policy=="update")
                 {
+                    var merged=MergeExcelUpdate(input,existing.Value.Data);
+                    if(IpRules.Validate(merged) is string invalid)
+                        throw new InvalidDataException(invalid);
                     if(!NativeFolderStore.Update(db,
-                        ResourceRef.Create(workspace,FolderKinds.Ip,existing.Value.Id),payload))
+                        ResourceRef.Create(workspace,FolderKinds.Ip,existing.Value.Id),
+                        new FolderMutationInput(Ip:merged)))
                         throw new IOException("已有知识产权已发生变化。");
                     updated++;
                 }
                 else
                 {
-                    NativeFolderStore.Create(db,workspace,FolderKinds.Ip,payload);
+                    if(IpRules.Validate(input) is string invalid)
+                        throw new InvalidDataException(invalid);
+                    NativeFolderStore.Create(db,workspace,FolderKinds.Ip,
+                        new FolderMutationInput(Ip:input));
                     created++;
                 }
                 // Refresh V2 folder identities for later rows; no legacy IpStore writes.
