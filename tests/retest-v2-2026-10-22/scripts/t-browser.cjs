@@ -187,6 +187,66 @@ async function main() {
     throw new Error(e.message + " :: " + JSON.stringify(dbg));
   }
 
+  /* ---------- T-UI-SELECT-ALL: trusted Edge mouse events ----------
+     Clicking the header must not start blank-space marquee selection:
+     its mouseup used to repaint the header SVG before the click event. */
+  await (async function T_UI_SELECT_ALL() {
+    const testViews = [
+      ["项目台账","k:project"],
+      ["知识产权台账","k:ip"],
+      ["项目附件","p:" + fx.company.projectA],
+    ];
+    const findings = [];
+    async function clickHeaderWithMouse() {
+      const hit=await evalJs(`(() => {
+        const b=document.querySelector("#selectAll");
+        if (!b) return null;
+        const r=b.getBoundingClientRect();
+        const x=r.left+r.width/2,y=r.top+r.height/2;
+        return {x,y,hit:document.elementFromPoint(x,y)?.closest("#selectAll")===b};
+      })()`);
+      if (!hit?.hit) throw new Error("全选框被其他元素遮挡: "+JSON.stringify(hit));
+      await send("Input.dispatchMouseEvent",{type:"mouseMoved",x:hit.x,y:hit.y});
+      await send("Input.dispatchMouseEvent",{type:"mousePressed",x:hit.x,y:hit.y,button:"left",clickCount:1});
+      await send("Input.dispatchMouseEvent",{type:"mouseReleased",x:hit.x,y:hit.y,button:"left",clickCount:1});
+      await sleep(100);
+      return evalJs(`(() => {
+        const rows=[...document.querySelectorAll("#viewRoot .row")];
+        return {total:rows.length,selected:rows.filter(x=>x.classList.contains("is-selected")).length,
+          selectedIds:Drive.state.selection.size,
+          checked:document.querySelector("#selectAll")?.getAttribute("aria-checked"),
+          bar:document.querySelector("#selbar")?.classList.contains("show")};
+      })()`);
+    }
+    for (const [label,folder] of testViews) {
+      await evalJs("Drive.openFolder("+JSON.stringify(folder)+")");
+      await waitFor("document.querySelectorAll('#viewRoot .row').length>0",10000,label+" rows");
+      await evalJs("Drive.clearSelection()");
+      const all=await clickHeaderWithMouse();
+      if(all.selected!==all.total || all.selectedIds!==all.total ||
+          all.checked!=="true" || !all.bar)
+        throw new Error(label+" 点击表头未全选: "+JSON.stringify(all));
+      if(folder==="k:project") await shot("T-UI-SELECT-ALL-project");
+      const none=await clickHeaderWithMouse();
+      if(none.selected!==0 || none.selectedIds!==0 || none.checked!=="false")
+        throw new Error(label+" 再次点击未取消全选: "+JSON.stringify(none));
+      findings.push(label+":"+all.total+" 条，全选/取消通过");
+    }
+    await evalJs("Drive.openFolder('k:ip')");
+    await waitFor("document.querySelectorAll('#viewRoot .row').length>1");
+    await evalJs("Drive.select(Drive.sortedItems[0].id,'toggle')");
+    const mixed=await evalJs("document.querySelector('#selectAll').getAttribute('aria-checked')");
+    if(mixed!=="mixed") throw new Error("部分选择未显示表头半选状态");
+    const filled=await clickHeaderWithMouse();
+    if(filled.selected!==filled.total || filled.checked!=="true")
+      throw new Error("部分选择时点击表头未补全: "+JSON.stringify(filled));
+    await clickHeaderWithMouse(); // Leave later scenarios unselected.
+    rec("T-UI-SELECT-ALL","DYNAMIC-BROWSER","PASS",
+      findings.join("；")+"；半选补全通过",
+      "点击表头全选、再次取消、部分选中后补全，全部使用真实 Edge 鼠标事件");
+    ev("T-UI-SELECT-ALL",findings.join("\n")+"\n半选补全通过");
+  })();
+
   /* ---------- T-P0-01 UI 三级目录 ---------- */
   await (async function T_P0_01() {
     await evalJs(`Drive.openFolder('k:achievement')`);

@@ -727,6 +727,9 @@ svg { display: block; flex: none; }
   align-items: center;
   justify-content: center;
   color: transparent;
+  /* Keep the checkbox above the first grid cell and its sort button. */
+  z-index: 2;
+  cursor: pointer;
 }
 .head-check:hover { border-color: var(--brand); }
 .head-check.all, .head-check.some { background: var(--brand); border-color: var(--brand); color: #fff; }

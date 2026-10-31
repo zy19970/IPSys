@@ -26,7 +26,11 @@ IPSys 是 Windows WinForms 启动器 + 本地 Web Explorer 界面 + SQLCipher/SQ
 
 **Windows CI 警告收敛（2026-10-31）**：用户截图显示 Actions #436 注解 23 条 warning（C# 多配置重复 + Node20 Action 平台告警），要求尽可能消除，任何影响稳定功能或编译的变更宁可不做。静态定位 C# 6 处：`NativeMcpSmoke.cs` 1003/1017 可空 JsonNode 数组元素读取，`McpLocal.cs` 392 反射值显式非空转换，`McpPipeSecurity.cs` 60/62 管道 owner 可空及 ACL 判断，`NativeFolderEndpoints.cs` 238 未使用 ex；修为可空安全读取、owner null 必须拒绝、去未用捕获变量。主 Windows workflow 的 checkout/setup-dotnet/setup-node/setup-python/upload-artifact 更新为 Node24 支持的官方 Action 大版本，同时保持 setup-node node-version=22 且关闭新增缓存；手动 Release workflow 不变以避免未验证发布链路的风险。目标是减少可用版本中的告警而不是禁用分析，产品代码提交 50d603d7ef1261d2882a3fd15c91fd4f0a8c7c34，Windows Actions #437（run 41209119948）完成且 success，SHA 与代码一致，零 GitHub warning annotations，C# Debug 为 0 Warning(s)，MCP、Explorer/Edge、SQLCipher/HTTP、双单 EXE 与 artifacts 均成功；日志仍有 setup-node Node22 的两行 punycode DeprecationWarning（非 CI 注解），保留以免为消除外部警告影响稳定性。手动 Release workflow 未改。
 
+**表头全选修复（2026-10-31）**：用户截图指出公司项目台账的“年份”左侧全选框点击后不全选。已核查共用表头的 click 委托与 toggleSelectAll 本身存在且可计算当前展示行，但父级 #content mousedown 处理将 #listHead 当成可框选空白区域，mouseup 无拖动时执行 Drive.clearSelection 并重绘表头 SVG，可能在浏览器派发 click 前改变目标节点，致使点击未生效；首列 grid/排序元素也有层级遮挡风险。拟在 interactions.js 排除表头及交互控件开始框选，head-check CSS 明确堆叠到排序单元上并给 button 语义，新增真实 Edge CDP 物理鼠标回归：公司项目、知识产权、项目附件、全选/取消/半选补全。仅影响 UI 选择，业务删除等仍须用户明确执行；CI 以真实运行结果为准。
+
 ## 最近会话
+
+- 本轮：2026-10-31 用户截图指出公司项目表头全选按钮点击无效；处理共用鼠标事件冲突并增加 Edge 真实点击回归，详见当前会话记录。
 
 - 2026-10-31 用户查看 #436 注解 23 条警告，要求低风险优先清理，保留高风险项；本轮延续同会话归档。
 - 第三批同一会话续记：2026-10-31 用户“进行第三批”；本轮调整 UI 显示及属性填写一致性并核对 Windows CI。

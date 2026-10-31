@@ -236,7 +236,7 @@ const Drive = {
 
   headHtml(cols) {
     if (!cols) {
-      return `<button class="head-check" id="selectAll" title="全选"></button>
+      return `<button type="button" class="head-check" id="selectAll" role="checkbox" aria-label="全选当前列表" aria-checked="false" title="全选"></button>
         <div class="col-name"><button class="th-sort" data-sort="name">名称<span class="caret">▾</span></button></div>
         <div class="col-date"><button class="th-sort" data-sort="mtime">修改日期<span class="caret">▾</span></button></div>
         <div class="col-size"><button class="th-sort" data-sort="size">大小<span class="caret">▾</span></button></div>
@@ -258,7 +258,7 @@ const Drive = {
         return `<div class="${cls}"><button class="th-sort" data-sort="${key}">${esc(c.t)}<span class="caret">▾</span></button></div>`;
       })
       .join("");
-    return `<button class="head-check" id="selectAll" title="全选"></button>${cells}<div class="col-gap"></div>`;
+    return `<button type="button" class="head-check" id="selectAll" role="checkbox" aria-label="全选当前列表" aria-checked="false" title="全选"></button>${cells}<div class="col-gap"></div>`;
   },
 
   /* 知识产权年份唯一来源为申请日期,不按授权日、登记日或创建时间兜底。

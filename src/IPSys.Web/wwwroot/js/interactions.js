@@ -1548,7 +1548,9 @@ function bindContent() {
 
   content.addEventListener("mousedown", (e) => {
     if (e.button !== 0) return;
-    if (e.target.closest(".row, .tile, .icon-btn, .dash")) return;
+    // The header checkbox is a real control, not blank canvas. Repainting
+    // its icon on mouseup can suppress the subsequent native click event.
+    if (e.target.closest("#listHead, .row, .tile, .icon-btn, .dash, button, input, select, textarea, a")) return;
     startMarquee(e);
   });
 
