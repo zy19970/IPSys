@@ -168,6 +168,12 @@ static class NativeArchiveGeneralMilestoneSmoke
         var files=await client.GetFromJsonAsync<JsonElement>(
             $"/api/v2/files/company/folders/{certificate}/links");
         long link=files[0].GetProperty("id").GetInt64();
+        var display=await client.GetFromJsonAsync<JsonElement>(
+            "/api/v2/ui/archive/company");
+        Check(display.GetProperty("files").EnumerateArray().Any(x=>
+            x.GetProperty("linkId").GetInt64()==link &&
+            x.GetProperty("displayName").GetString()==mark+"资质.pdf"),
+            "archive snapshot exposes per-link display name, not version filename");
         byte[] workbook=await Export(client,"archive","company","certificate",certificate);
         Check(workbook.Length>750,"archive fixed XLSX export");
         var legacyArchive=RewriteSheet(workbook,4);

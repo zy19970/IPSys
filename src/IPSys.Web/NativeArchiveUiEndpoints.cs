@@ -56,6 +56,7 @@ static class NativeArchiveUiEndpoints
                                 linkId=link.Id,fileId=link.FileId,
                                 kind="general",ownerId=id,
                                 name=version.OriginalName,
+                                displayName=link.DisplayName??link.FileName,
                                 size=version.Size,sha256=version.Sha256,
                                 version=version.Version,groupId="v2-file-"+link.Id,
                                 v2=true
@@ -119,6 +120,7 @@ static class NativeArchiveUiEndpoints
                     ownerId=folderId,kind,section,
                     groupId="v2-file-"+link.Id,v2=true,
                     version=version.Version,name=version.OriginalName,
+                    displayName=link.DisplayName??link.FileName,
                     category=link.MaterialCategory??"",
                     size=version.Size,sha256=version.Sha256
                 });

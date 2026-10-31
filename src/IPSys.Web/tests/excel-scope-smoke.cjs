@@ -82,6 +82,44 @@ for(const col of ['new("number","编号")','new("publicationNo","公开号")',
   assert.ok(cols.includes(col),"IP workbook: "+col);
 assert.ok(!cols.includes('registrationNo'),"No duplicate primary number column");
 
+// Third-batch source-to-view contracts: every Excel IP field must be visible
+// and round-trip in the edit dialog instead of silently surviving in ...r.
+const ipForm=forms.slice(forms.indexOf("  ip(node) {"),
+  forms.indexOf("  /* ---------------- 综合资料"));
+const workbookKeys=[...cols.matchAll(/new\("([^"]+)","[^"]+"\)/g)].map(x=>x[1]);
+for(const field of workbookKeys) {
+  assert.match(ipForm,new RegExp('key: "'+field+'"'),
+    "IP form must expose workbook field "+field);
+  assert.match(ipForm,new RegExp(field+': d\\.'+field+'(?:,|\\n)'),
+    "IP form must save workbook field "+field);
+}
+assert.match(forms,/十种类型/,"IP comment must match current types");
+assert.match(forms,/: \{ projectStatus: "筹备中" \}/,
+  "New project status must match backend default before save");
+assert.match(shellStore,/node\.dateLabel = p\.startDate \|\| p\.endDate \|\| ""/,
+  "Project visible date should align with ledger year source");
+assert.match(shellStore,/year: String\(p\.startDate \|\| p\.endDate \|\| ""\)/,
+  "Project detail year must match list year");
+assert.match(forms,/文件本体名称/);
+assert.match(forms,/当前位置显示名/,"File property explains LinkId display alias");
+const archiveUi=read("NativeArchiveUiEndpoints.cs");
+assert.equal((archiveUi.match(/displayName=link\.DisplayName\?\?link\.FileName/g)||[]).length,2,
+  "General and archive file snapshots include per-location display aliases");
+assert.match(shellApp,/line\("当前位置显示名", it\.name\)/);
+assert.match(shellApp,/line\("当前版本原件名", meta\.name\)/);
+const toneSource=shellApp.slice(shellApp.indexOf("function statusTone(v) {"),
+  shellApp.indexOf("/* 金额千分位"));
+const toneScope=vm.createContext({});
+vm.runInContext(toneSource,toneScope);
+const tone=x=>vm.runInContext("statusTone("+JSON.stringify(x)+")",toneScope);
+for(const st of ["已登记","已注册","已发布","已公开","已授权","已完成"])
+  assert.equal(tone(st),"green","Completed IP status should use success tone: "+st);
+for(const st of ["准备中","制定中","登记中","申请中","实质审查中","进行中"])
+  assert.equal(tone(st),"blue","In-progress status should use ongoing tone: "+st);
+for(const st of ["已失效","已废止","已终止"])
+  assert.equal(tone(st),"red","Invalid status should use negative tone: "+st);
+assert.equal(tone("未定义状态"),"gray","Unknown status remains neutral");
+
 const requests=[],names=[];
 const state={folderId:"k:project",view:"files",ready:true,query:"能源",statusFilter:"进行中"};
 const ctx=vm.createContext({Drive:{state},VaultStore:{ws:"company"},
@@ -119,5 +157,5 @@ async function call(category,mode){
   assert.match(excel,/data-excel-mode="filtered"/);
   assert.match(excel,/留空保留原有属性/,"Excel update blank-cell semantics must be visible");
   assert.match(excel,/data-excel-mode="all"/);
-  console.log("EXCEL SCOPE SMOKE PASS: scopes, IP status prefill, type changes, and blank Excel semantics");
+  console.log("EXCEL SCOPE SMOKE PASS: scopes, 19 IP form fields, status tones, project years, aliases, Excel semantics");
 })().catch(e=>{console.error(e);process.exitCode=1;});

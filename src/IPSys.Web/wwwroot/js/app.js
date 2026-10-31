@@ -103,8 +103,8 @@ const LEDGER_COLS = {
 function statusTone(v) {
   const s = String(v || "");
   if (/终止|驳回|撤销|失效|逾期|超期|废止|解除|退款|作废/.test(s)) return "red";
-  if (/完成|结题|已结|归档|通过|授权|有效|已签|在用|结项/.test(s)) return "green";
-  if (/进行|在研|执行|审查|受理|申请|公示|待|草稿|拟|立项/.test(s)) return "blue";
+  if (/完成|结题|已结|归档|通过|授权|有效|已签|在用|结项|已登记|已注册|已发布|已公开/.test(s)) return "green";
+  if (/进行|在研|执行|审查|受理|申请|公示|待|草稿|拟|立项|登记中|制定中|准备中/.test(s)) return "blue";
   return "gray";
 }
 
@@ -269,6 +269,8 @@ const Drive = {
       const applied = String(b.start || "").match(/^\d{4}/);
       return applied ? applied[0] : "";
     }
+    // Project year and its general-list date label both use the start date
+    // where present; the separate timestamp may still sort by the later end.
     const y = String(b.year || "").match(/\d{4}/);
     if (y) return y[0];
     const d = String(b.start || b.end || "").match(/\d{4}/);
@@ -1277,6 +1279,9 @@ const Drive = {
       line("大小", fmtSize(it.size));
       const meta = VaultStore.metaOf(it.id);
       if (meta) {
+        line("当前位置显示名", it.name);
+        if (meta.name && meta.name !== it.name)
+          line("当前版本原件名", meta.name);
         line("版本", meta.version > 1 ? `第 ${meta.version} 版` : "初版");
         line("摘要", meta.sha256 ? meta.sha256.slice(0, 16) + "…" : "");
       }

@@ -3,7 +3,7 @@
    --------------------------------------------------------------------------
    字段与后端 BusinessRules 的校验规则严格对齐:
      项目:名称必填、类型/状态白名单、日期 yyyy-MM-dd
-     知产:名称必填、七种类型、状态随类型联动
+     知产:名称必填、十种类型、状态随类型联动
      档案:名称必填、年度四位
    分类的中文名一律走 store.js 的 catLabel(section),按工作区取 ——
    个人工作区的 certificate 叫「身份与资质」,不是「企业资质」。
@@ -176,7 +176,7 @@ const RecordForms = {
             tags: r.tags || "",
             remarks: r.remarks || "",
           }
-        : {},
+        : { projectStatus: "筹备中" },
       fields: [
         { key: "name", label: "项目名称", span: 2, required: true },
         { key: "projectType", label: "项目类型", type: "select", options: ["科研项目", "横向项目", "其他项目"], required: true },
@@ -301,6 +301,11 @@ const RecordForms = {
             number: r.number || "",
             publicationNo: r.publicationNo || "",
             grantNoticeNo: r.grantNoticeNo || "",
+            publicationDate: r.publicationDate || "",
+            grantNoticeDate: r.grantNoticeDate || "",
+            publicationInfo: r.publicationInfo || "",
+            firstPublishedDate: r.firstPublishedDate || "",
+            registrationDate: r.registrationDate || "",
             applicationDate: r.applicationDate || "",
             applicants: r.applicants || "",
             rightHolders: r.rightHolders || "",
@@ -319,7 +324,12 @@ const RecordForms = {
         { key: "publicationNo", label: "公开号", hint: "仅专利有此编号时填写，其余类型留空" },
         { key: "grantNoticeNo", label: "授权公告号", hint: "仅专利有此编号时填写，其余类型留空" },
         { key: "applicationDate", label: "申请日", type: "date" },
+        { key: "publicationDate", label: "公开日", type: "date" },
+        { key: "grantNoticeDate", label: "授权公告日", type: "date" },
         { key: "grantDate", label: "授权日", type: "date" },
+        { key: "firstPublishedDate", label: "首次发表日期", type: "date" },
+        { key: "registrationDate", label: "登记／注册日期", type: "date" },
+        { key: "publicationInfo", label: "公开／授权公告信息", span: 2 },
         { key: "category", label: "类别" },
         { key: "applicants", label: "申请人" },
         { key: "rightHolders", label: "权利人" },
@@ -330,8 +340,8 @@ const RecordForms = {
       onSubmit: async (d) => {
         const payload = {
           ip: {
-            // Keep optional metadata not displayed in the compact form,
-            // such as notice/registration dates and publication information.
+            // Preserve any future-compatible metadata not yet exposed by
+            // this form, while explicitly saving all 19 current Excel fields.
             ...r,
             name: d.name,
             ipType: d.ipType,
@@ -342,6 +352,11 @@ const RecordForms = {
             number: d.number,
             publicationNo: d.publicationNo,
             grantNoticeNo: d.grantNoticeNo,
+            publicationDate: d.publicationDate,
+            grantNoticeDate: d.grantNoticeDate,
+            publicationInfo: d.publicationInfo,
+            firstPublishedDate: d.firstPublishedDate,
+            registrationDate: d.registrationDate,
             applicationDate: d.applicationDate,
             grantDate: d.grantDate,
             category: d.category,
@@ -484,7 +499,11 @@ const RecordForms = {
           fileDate: current.fileDate || "",
         },
         fields: [
-          { key: "name", label: "文件名称", span: 2, required: true },
+          { key: "name", label: "文件本体名称", span: 2, required: true,
+            hint: node.name !== current.name
+              ? "当前位置显示名：" + node.name +
+                "。此名称来自文件关联(LinkId)，与文件本体名可不同；保存本体名称不会更改此位置别名。"
+              : "此项属于共享的文件本体(FileId)，如同一文件已关联其他位置，修改本体名称会影响这些位置对本体的引用；独立的位置显示名由关联(LinkId)决定。" },
           { key: "description", label: "文件说明", type: "textarea", span: 2 },
           { key: "tags", label: "标签", span: 2, hint: "多个标签用中文或英文分号分隔，保存时自动去重" },
           { key: "fileNumber", label: "文件编号" },

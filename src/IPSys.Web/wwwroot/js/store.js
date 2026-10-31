@@ -471,10 +471,13 @@ const VaultStore = {
       project: () =>
         (projects || []).map((p) => {
           const node = F(p.name || `项目 ${p.id}`, { id: `p:${p.id}` });
+          // Display the project start-date context consistently with the
+          // ledger year, without changing existing time-based sort behavior.
           node.mtime = toTs(p.endDate || p.startDate);
-          node.dateLabel = p.endDate || p.startDate || "";
+          node.dateLabel = p.startDate || p.endDate || "";
           node.biz = {
             kind: "project",
+            year: String(p.startDate || p.endDate || "").match(/^\d{4}/)?.[0] || "",
             typeName: p.projectType || "项目",
             status: p.projectStatus || "",
             code: p.projectNo || "",
