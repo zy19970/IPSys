@@ -57,9 +57,9 @@ static class McpPipeSecurity
     {
         // Unlike PipeOptions.CurrentUserOnly, this compares the pipe's owner
         // with TokenUser, not the caller's elevation-dependent TokenOwner.
-        var owner=(SecurityIdentifier)PipesAclExtensions.GetAccessControl(client)
-            .GetOwner(typeof(SecurityIdentifier));
-        if(!owner.Equals(CurrentUserSid))
+        var owner=PipesAclExtensions.GetAccessControl(client)
+            .GetOwner(typeof(SecurityIdentifier)) as SecurityIdentifier;
+        if(owner is null || !owner.Equals(CurrentUserSid))
             throw new UnauthorizedAccessException(
                 "MCP 管道所属用户与当前 Windows 用户不一致，已拒绝连接。");
     }

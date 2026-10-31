@@ -389,7 +389,7 @@ static partial class McpLocal
         if(!root.TryGetProperty("params",out var args)||
            !args.TryGetProperty("name",out var n))return Error(id,-32602,"Missing tool name");
         string name=n.GetString()??"";
-        if(!Tools().Any(x=>string.Equals((string)x.GetType().GetProperty("name")!.GetValue(x),name,
+        if(!Tools().Any(x=>string.Equals(x.GetType().GetProperty("name")!.GetValue(x) as string,name,
             StringComparison.Ordinal)))return Error(id,-32602,"Unsupported tool: "+name);
         JsonElement fields=args.TryGetProperty("arguments",out var a)&&a.ValueKind==JsonValueKind.Object?a:default;
         try

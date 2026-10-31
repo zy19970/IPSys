@@ -235,7 +235,7 @@ static class NativeFolderEndpoints
                 catch(ArgumentException ex){return Bad(ex.Message);}
                 catch(KeyNotFoundException){return Results.NotFound();}
                 catch(InvalidOperationException ex){return Bad(ex.Message,409);}
-                catch(Microsoft.Data.Sqlite.SqliteException ex)
+                catch(Microsoft.Data.Sqlite.SqliteException)
                     {return Bad("目录层级不合法、目标不可用或发生名称冲突，请重新检查目标目录。",409);}
             }
             finally{v.Gate.Release();}

@@ -24,8 +24,11 @@ IPSys 是 Windows WinForms 启动器 + 本地 Web Explorer 界面 + SQLCipher/SQ
 
 **第三批实施（2026-10-31）**：用户要求“进行第三批”；将知识产权状态已登记/已注册/已发布/已公开的正向色、登记中/制定中/准备中的进行色统一到共享 statusTone，负向优先级保留；项目新增表单默认“筹备中”、项目年份与通用日期展示以开始日期优先（排序时间仍按结束日期），详情年份与台账年份相同；知识产权属性表单补齐 Excel 19 字段中的五个隐含字段；同 FileId 多 LinkId 的位置显示名、共享文件本体名、版本原件名分别解释，archive/general V2 UI 返回 per-LinkId displayName；原数据库、FileId/LinkId/FileVersion 保持不变。增加前端字段契约、状态色、年份、附件别名与档案 SQLCipher/HTTP 冒烟，产品提交 0f5e5e341a10c1e40b197a5faad9d98daea96304，Windows Actions #436（41207670538）已 completed/success，运行 SHA 与代码提交一致。Debug、Release、Node/UI、MCP、Explorer/Edge、SQLCipher/HTTP、双单 EXE 和图标检查通过；可选 4GiB ZIP64 实体生成跳过。第三批之外的全局并发覆盖保护属于独立架构风险，未擅自重构。
 
+**Windows CI 警告收敛（2026-10-31）**：用户截图显示 Actions #436 注解 23 条 warning（C# 多配置重复 + Node20 Action 平台告警），要求尽可能消除，任何影响稳定功能或编译的变更宁可不做。静态定位 C# 6 处：`NativeMcpSmoke.cs` 1003/1017 可空 JsonNode 数组元素读取，`McpLocal.cs` 392 反射值显式非空转换，`McpPipeSecurity.cs` 60/62 管道 owner 可空及 ACL 判断，`NativeFolderEndpoints.cs` 238 未使用 ex；修为可空安全读取、owner null 必须拒绝、去未用捕获变量。主 Windows workflow 的 checkout/setup-dotnet/setup-node/setup-python/upload-artifact 更新为 Node24 支持的官方 Action 大版本，同时保持 setup-node node-version=22 且关闭新增缓存；手动 Release workflow 不变以避免未验证发布链路的风险。目标是减少可用版本中的告警而不是禁用分析，CI 实测待确认。
+
 ## 最近会话
 
+- 2026-10-31 用户查看 #436 注解 23 条警告，要求低风险优先清理，保留高风险项；本轮延续同会话归档。
 - 第三批同一会话续记：2026-10-31 用户“进行第三批”；本轮调整 UI 显示及属性填写一致性并核对 Windows CI。
 
 - 同一会话的第二轮：2026-10-31 用户要求“先解决第一批问题”；与截图静态审查记录归并归档，源代码修复正在提交，CI 状态待确认。

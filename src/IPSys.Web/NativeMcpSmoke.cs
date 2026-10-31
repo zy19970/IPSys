@@ -1000,7 +1000,7 @@ static class NativeMcpSmoke
             var relinked=(await Original("list_contract_files",new{
                 workspace="company",contract_id=originalContractId
             })).AsArray();
-            long renewed=relinked.Single()["id"]?.GetValue<long>()??0;
+            long renewed=relinked.Single()?["id"]?.GetValue<long>()??0;
             Check(renewed>0,"contract re-association creates a new link");
             var pageOne=await Original("list_files_page",new{
                 workspace="company",offset=0,limit=1
@@ -1014,7 +1014,7 @@ static class NativeMcpSmoke
                 workspace="company",offset=1,limit=1
             });
             Check(pageTwo["items"] is JsonArray secondRows && secondRows.Count==1 &&
-                pageRows[0]?["id"]?.GetValue<long>()!=
+                pageRows?[0]?["id"]?.GetValue<long>()!=
                     secondRows[0]?["id"]?.GetValue<long>(),
                 "file page offset advances to another link");
             var projectPage=await Original("list_files_page",new{
