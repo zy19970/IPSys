@@ -69,7 +69,7 @@ const nodes=Array.from({length:403},(_,i)=>({biz:{raw:{kind:"v2_file",id:i+1,sec
   edit:node=>{edit=node;},
   open:args=>{modal=args;}
  },
- VaultStore:{api:async(url,req)=>{put={url,req};}},
+ VaultStore:{ws:"company",api:async(url,req)=>{put={url,req};}},
  toast:()=>{},
  refreshCurrent:async()=>{}
  });
@@ -86,6 +86,17 @@ const nodes=Array.from({length:403},(_,i)=>({biz:{raw:{kind:"v2_file",id:i+1,sec
  assert.equal(put.req.method,"PUT");
  assert.deepEqual(JSON.parse(JSON.stringify(put.req.json)),
   {archiveFolder:{name:"新目录",parentId:1}});
+ // New directory modules require the target workspace and section in the route.
+ const personalFolder={id:"af:9",name:"学术目录",type:"folder",
+  biz:{kind:"archive_folder",id:9,section:"academic",parentId:2,isSystem:false}};
+ vm.runInContext('VaultStore.ws="personal"',ux);
+ vm.runInContext("renameNode",ux)(personalFolder);
+ await modal.onSubmit({name:"新学术目录"});
+ assert.equal(put.url,"/api/v2/folders/personal/archive_folder/9?section=academic");
+ assert.equal(put.req.method,"PUT");
+ assert.deepEqual(JSON.parse(JSON.stringify(put.req.json)),
+  {archiveFolder:{name:"新学术目录",parentId:2}});
+
 
  const pick=between(inter,"function canUploadFiles(node) {","function uploadFiles(files, node)");
  let creates=0,clicks=0,lastMsg="";
