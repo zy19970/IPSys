@@ -60,3 +60,5 @@ IPSys 是 Windows WinForms 启动器 + 本地 Web Explorer 界面 + SQLCipher/SQ
 最近会话：`memory/sessions/2026-11-01-操作逻辑精修阶段仓库梳理.md`，第三轮。
 
 **详细信息默认展开 CI 首次回归及测试修复（2026-11-01）**：产品提交 `f67fc8181afc5857e04fb322f952f8c2e2b69e79` 触发 Windows CI `41274179983`，Debug 编译和前序回归成功，但 `Verify UI and capability smoke tests` 步骤失败。日志显示新加测试在 `part(app,"const Prefs = {", ...)` 中使用包含 LF 的固定结束标记，Windows checkout 的 CRLF 导致找不到区域，属于**测试代码的换行符兼容缺陷**，不是已证明的产品 UI 失败。改用无换行依赖的分隔符匹配，提交后按后续 CI 结果单独验证。不得将失败 run 记为 PASS。
+
+**详细信息默认展开最终 CI 验收（2026-11-01）**：产品源码修改提交 `f67fc8181afc5857e04fb322f952f8c2e2b69e79`，修复测试 Windows CRLF 匹配后提交 `1192d11b5e95a3fc8ce33fb500fc4d4990ff728f`。最终 Windows Actions `41274418407` 已核对 `head_sha=1192d11...`、completed/success，26 成功、0 失败（默认未启用可选 ZIP64 大文件实体生成），包含新增侧栏默认值与跨目录回归、Explorer Edge、SQLCipher/HTTP、Debug/Release、两种单 EXE 启动与构建产物上传。用户本机旧 EXE 必须重新编译或更新才能看到改动。已归档首次失败 CI `41274179983` 的真实测试行尾错误，不将其错误记为成功；未操作用户正式资料库。
