@@ -84,3 +84,7 @@ IPSys 是 Windows WinForms 启动器 + 本地 Web Explorer 界面 + SQLCipher/SQ
 ## 2026-11-01：七模块目录统一开发重新启动（待 CI 验证）
 
 用户“继续吧”，明确继续上轮获确认的一次性实现。遵照 AIGT-templates 基础规则及项目旧 Memory；本轮重新开始通知：office-renderer/wechat-webhook#1939。新库不做旧测试数据库迁移。已编制 SQLCipher schema、NativeFolder/Archive/Order/Ui、Explorer（store/app/interactions/forms）、Excel 目录导入导出、MCP 创建/移动操作、Node 树和右键、C# HTTP 新作用域回归的完整修改候选文件；**尚未取得 CI 结果**，不能声称已完成产品发布或本机测试。之前中断原因是前端长脚本调用被平台检查阻断，本轮改为按可审核文件分段准备修改，未覆盖历史记录。
+
+## 2026-11-01：修复七模块目录 CI 阻断，EXE 下载恢复
+
+用户本轮明确“那你把这个错误取消掉，有个错误没办法下载生成的exe”，目标是完整 Windows CI 成功并有可下载 EXE。分析失败 run `41280193769`，发现 `explorer-p2-interactions-smoke.cjs` 的 VM 测试桩缺失 `VaultStore.ws`，实际断言 URL 变成 `/api/v2/folders/undefined/archive_folder/8?section=undefined`。修复提交 `1faac4d022e013821ec62dc4f08b56e687718eda`：给 VM 指定公司工作区，新增个人 academic 模块的目录重命名测试。第一次复测 run `41281011339` 前端已通过 Explorer P2，但 Excel 静态断言仍匹配目录改造前的 `DirectoryPath(db,parentId)`；第二次修复 `040a2c272a91fc1e1422b808741d1c099ff6cb79`，改为验证 `DirectoryPath(db,workspace,kind==general?general:section,parentId)`，同时确认 FolderMap 的工作区与模块作用域校验不被弱化。最终 Windows Actions `41281238523` 与产品 SHA 对应，`completed/success`，26 个成功步骤、0 失败。已通过 Explorer P2、全部 Node/UI、Edge/HTTP、SQLCipher、Windows Debug/Release、双单 EXE 启动及图标，并实际上传 3 个产物：`IPSys-Web-win-x64`（framework-dependent）、`IPSys-Web-win-x64-self-contained`（推荐）、`IPSys-Explorer-V2-Retest-41281238523-1`（验收证据），均已核实 `expired=false`。下载入口：`https://github.com/zy19970/IPSys/actions/runs/41281238523` 的 Artifacts。未手动发布 GitHub Release；资料库未更改，源码本轮仅修复测试一致性。最近会话记录新增第十轮。
