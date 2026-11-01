@@ -80,7 +80,7 @@ IPSys 只提供工作区内结构化关键词检索及原件版本下载，不�
 
 ## 新增 `purge_trash` 与最终安全边界
 
-`purge_trash(workspace,kind,id,section?,confirm=true,request_id?)` 只能操作经 `list_trash` 确认的已删除资料，目前允许的 kind 为 `project/contract/ip/v2_general/v2_archive/v2_file/v2_ip_file`；必须明确 `confirm=true`。原件关联永久清理仅对所选 LinkId 生效，文件/版本/对象受其它引用保护；不会递归删除业务目录。若目录内仍有软删除资料导致不能删除，应先清理可安全清理的资料并再删除空目录；无法清理的关联需另行核对，不能跳过引用保护。
+`purge_trash(workspace,kind,id,section?,confirm=true,request_id?)` 只能操作经 `list_trash` 确认的已删除资料，目前允许的 kind 为 `project/contract/ip/v2_general/v2_archive/v2_archive_folder/v2_file/v2_ip_file`；必须明确 `confirm=true`。原件关联永久清理仅对所选 LinkId 生效，文件/版本/对象受其它引用保护；选择 `v2_archive_folder` 时会递归清理整个目录子树（包括其资料记录和附件 LinkId），其他共享位置及文件版本在仍有引用时保留。
 
 上传源路径与下载输出路径须是 IPSys 宿主机器的本地盘符绝对路径，UNC/网络共享路径不允许。取消上传时仍保留在途 HTTP 结果未知的 `uncertain`，按 `cancelReason`（`user_cancel/authorization_revoked/host_stopping`）判断触发原因，不能仅凭取消指令断言未入库。协议 `tools/call` 的失败响应现在是结构化 JSON 文本，客户端解析 `ok/code/message/retryable` 以及可选的 `httpStatus`；真实业务失败仍应通过 `get_operation_result` 查询幂等日志。不允许直接复用失败参数的新编号或自动重传不确定结果。
 
@@ -256,7 +256,7 @@ stdio 初始化只声明真正支持的 `2025-06-18` 协议版本；空行静默
 
 现行综合资料 MCP create_general/update_general 增加可选 remarks；update_general 未传 remarks 时会先读取已有资料并保留原备注。业务档案 category 是业务分类属性，folder_id 才是实际所属目录；修改 category 不移动文件夹。业务档案 Excel 以独立“年度”和“所属目录”列保留跨库元数据及公司业务档案层级。
 
-新增 `list_archives/create_archive/update_archive/delete_archive`：通过指定 `section` 与 `archive_id` 操作 V2 资料，创建公司业务档案 achievement 时还需指定有效 `folder_id`（所属业务目录），修改属性不移动目录；`list_archive_folders` 默认列出公司业务档案当前顶层目录，可传 `parent_id` 逐级查询子目录，`create_archive_folder/update_archive_folder/delete_archive_folder` 创建、修改和删除空目录（包含首次建库生成的七个普通初始目录），含历史子资料目录仍受非空删除保护。综合资料使用 `list_general/create_general/update_general/delete_general`，仅需名称 `title` 和修改/删除时的 `general_id`。文件统一通过 `upload_files`、`list_files` 和 `delete_file`，不要求手动生成内部文件 ID。所有写操作以当前解锁工作区的真实 V2 身份校验；禁止越区、错分类或无关联 FileId 追加历史版本。
+新增 `list_archives/create_archive/update_archive/delete_archive`：通过指定 `section` 与 `archive_id` 操作 V2 资料，创建公司业务档案 achievement 时还需指定有效 `folder_id`（所属业务目录），修改属性不移动目录；`list_archive_folders` 默认列出公司业务档案当前顶层目录，可传 `parent_id` 逐级查询子目录，`create_archive_folder/update_archive_folder/delete_archive_folder` 创建和修改目录，以及将包含下级目录与资料的整个目录移入回收站（包含首次建库生成的七个普通初始目录），回收站中可还原或永久清理。综合资料使用 `list_general/create_general/update_general/delete_general`，仅需名称 `title` 和修改/删除时的 `general_id`。文件统一通过 `upload_files`、`list_files` 和 `delete_file`，不要求手动生成内部文件 ID。所有写操作以当前解锁工作区的真实 V2 身份校验；禁止越区、错分类或无关联 FileId 追加历史版本。
 
 ## 现行 MCP 安全操作示例
 

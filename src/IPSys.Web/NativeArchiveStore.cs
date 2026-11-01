@@ -86,7 +86,8 @@ static class NativeArchiveStore
         cmd.Parameters.AddWithValue("$id",id);
         cmd.Parameters.AddWithValue("$w",workspace);
         cmd.Parameters.AddWithValue("$scope",scope);
-        return (long)cmd.ExecuteScalar()! ==1;
+        return (long)cmd.ExecuteScalar()! ==1 &&
+            NativeFileStore.FolderActive(db,workspace,id);
     }
 
     private static long? Parent(SqliteConnection db,ResourceRef r,bool includeDeleted=false)
@@ -185,18 +186,21 @@ static class NativeArchiveStore
             throw new ArgumentException("资料引用无效。");
         if(r.Kind==FolderKinds.ArchiveFolder)
         {
-            if(!deleted)throw new ArgumentException("目录直接删除，不支持回收站恢复。");
+            // Tombstone the directory root only. Descendants and their LinkIds
+            // remain intact, so restore is lossless. Physical unlinking belongs
+            // exclusively to recycle purge in one rollback-safe transaction.
             using var cmd=db.CreateCommand();
             cmd.CommandText="""
-                DELETE FROM folders WHERE id=$id AND workspace=$w
-                AND kind='archive_folder' AND section=$section
-                AND NOT EXISTS(SELECT 1 FROM folders c WHERE c.parent_id=folders.id)
-                AND NOT EXISTS(SELECT 1 FROM folder_file_links l WHERE l.folder_id=folders.id);
+                UPDATE folders SET deleted=$next WHERE id=$id AND workspace=$w
+                  AND kind='archive_folder' AND section=$section AND deleted=$old
+                  AND (parent_id IS NULL OR EXISTS(
+                    SELECT 1 FROM folders p WHERE p.id=folders.parent_id
+                    AND p.workspace=folders.workspace AND p.deleted=0));
                 """;
             Bind(cmd,r);
-            if(cmd.ExecuteNonQuery()==1)return true;
-            if(Get(db,r) is null)return false;
-            throw new InvalidOperationException("目录内有下级资料或附件，不能删除非空目录。");
+            cmd.Parameters.AddWithValue("$next",deleted?1:0);
+            cmd.Parameters.AddWithValue("$old",deleted?0:1);
+            return cmd.ExecuteNonQuery()==1;
         }
         using var update=db.CreateCommand();
         update.CommandText="""
@@ -225,8 +229,12 @@ static class NativeArchiveStore
                 AND p.workspace=f.workspace AND p.deleted=0));
             """;
         Bind(cmd,r);
-        using var rd=cmd.ExecuteReader();
-        return rd.Read()?Read(rd):null;
+        FolderSnapshot? found;
+        using(var rd=cmd.ExecuteReader())
+            found=rd.Read()?Read(rd):null;
+        return found is not null &&
+            NativeFileStore.FolderActive(db,r.Workspace,found.Folder.Ref.Id)
+                ?found:null;
     }
 
     private static FolderSnapshot Read(SqliteDataReader rd)
@@ -277,8 +285,9 @@ static class NativeArchiveStore
         cmd.Parameters.AddWithValue("$section",scope);
         cmd.Parameters.AddWithValue("$parent",(object?)parentId??DBNull.Value);
         var rows=new List<FolderSnapshot>();
-        using var rd=cmd.ExecuteReader();
-        while(rd.Read())rows.Add(Read(rd));
-        return rows;
+        using(var rd=cmd.ExecuteReader())
+            while(rd.Read())rows.Add(Read(rd));
+        return rows.Where(x=>NativeFileStore.FolderActive(db,workspace,x.Folder.Ref.Id))
+            .ToArray();
     }
 }

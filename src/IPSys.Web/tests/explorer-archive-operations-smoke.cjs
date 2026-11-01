@@ -164,23 +164,28 @@ const fn=name=>vm.runInContext(name,context);
 
  const last=calls.length;
  await fn("deleteArchiveFolder")(parent);
- assert.equal(calls.length,last,"Nonempty initial folder cannot be removed");
+ assert.equal(calls.length,last+1,
+  "Nonempty folder is moved to the recycle bin");
+ assert.equal(calls.at(-1).url,
+  "/api/v2/folders/company/archive_folder/70?section=achievement");
+ assert.equal(calls.at(-1).opts.method,"DELETE");
  await fn("deleteArchiveFolder")(child);
  assert.equal(calls.at(-1).url,
-  "/api/v2/folders/company/archive_folder/71");
+  "/api/v2/folders/company/archive_folder/71?section=achievement");
  assert.equal(calls.at(-1).opts.method,"DELETE");
  assert.ok(refreshCount>0&&clearCount>0);
  const occupied=folder(81,"非空目录",[record(99,81)],70);
  await fn("deleteArchiveFolder")(occupied);
- assert.equal(calls.length,last+1,"Non-empty folder is protected");
+ assert.equal(calls.length,last+3,
+  "Nested folders containing records must be recyclable");
  allowDelete=false;
  await fn("deleteArchiveFolder")(other);
- assert.equal(calls.length,last+1,"Cancelled delete does not submit");
+ assert.equal(calls.length,last+3,"Cancelled delete does not submit");
  allowDelete=true;
  const initialEmpty=folder(75,"初始空目录",[],null,true);
  await fn("deleteArchiveFolder")(initialEmpty);
- assert.equal(calls.at(-1).url,"/api/v2/folders/company/archive_folder/75",
-  "An empty initial directory is deleted through the normal endpoint");
+ assert.equal(calls.at(-1).url,"/api/v2/folders/company/archive_folder/75?section=achievement",
+  "Empty initial directories are recyclable via the same endpoint");
  assert.equal(calls.at(-1).opts.method,"DELETE");
 
  vm.runInContext(extract("function renameNode(node) {","function showItemMenu(id, x, y) {"),context);

@@ -258,6 +258,86 @@ static class RecyclePurgeSmoke
                       Scalar(db,
                         "SELECT COUNT(*) FROM folder_file_links WHERE id=$id;",archiveLink)==0,
                     "archived folder and inherited attachment removed");
+
+                // A multi-level ordinary directory has one recyclable root.
+                // Its descendants and LinkIds remain unchanged until purge,
+                // and independent shared locations keep every file version.
+                long top=NativeArchiveStore.Create(db,"company",FolderKinds.ArchiveFolder,
+                    new FolderMutationInput(ArchiveFolder:
+                        new ArchiveFolderInput("待删综合目录",null),Section:"general"));
+                long middle=NativeArchiveStore.Create(db,"company",FolderKinds.ArchiveFolder,
+                    new FolderMutationInput(ArchiveFolder:
+                        new ArchiveFolderInput("二级",top),Section:"general"));
+                long leaf=NativeArchiveStore.Create(db,"company",FolderKinds.ArchiveFolder,
+                    new FolderMutationInput(ArchiveFolder:
+                        new ArchiveFolderInput("三级",middle),Section:"general"));
+                long record=NativeArchiveStore.Create(db,"company",FolderKinds.General,
+                    new FolderMutationInput(General:new TitleInput("存档资料"),
+                        ParentId:leaf));
+                long independent=Folder(db,"company","外部共享目录");
+                var treeFile=NativeFileStore.UploadAsync(db,"company",record,null,
+                    new NativeFileMetadataInput("树内原件.bin"),null,payload.Length,
+                    new MemoryStream(payload),CancellationToken.None)
+                    .GetAwaiter().GetResult();
+                long treeLink=Link(db,treeFile.FileId,record);
+                long outsideLink=NativeFileLinkStore.Add(db,"company",treeFile.FileId,
+                    new NativeFileLinkInput(independent));
+                var directoryRef=ResourceRef.Create("company",
+                    FolderKinds.ArchiveFolder,top,"general");
+                Check(NativeArchiveStore.SetDeleted(db,directoryRef,true),
+                    "nonempty directory soft delete must succeed");
+                Check(RecycleStore.List(db,"company").Any(x=>
+                    x.Kind=="v2_archive_folder" && x.Id==top && x.Section=="general"),
+                    "tombstoned root visible in recycle");
+                Check(NativeArchiveStore.Get(db,ResourceRef.Create("company",
+                    FolderKinds.ArchiveFolder,middle,"general")) is null,
+                    "deleted ancestor hides active descendants");
+                Check(Scalar(db,"SELECT deleted FROM folder_file_links WHERE id=$id;",
+                    treeLink)==0,"recycle leaves LinkId intact");
+                Check(RecycleStore.Change(db,"company",
+                    [new RecycleKey("v2_archive_folder",top,"general")],false),
+                    "restore complete nested directory");
+                Check(NativeArchiveStore.Get(db,ResourceRef.Create("company",
+                    FolderKinds.ArchiveFolder,leaf,"general")) is not null,
+                    "restored directory must expose original descendants");
+                Check(NativeFileStore.DownloadInfo(db,"company",treeFile.FileId,1)!=null,
+                    "restored file is readable");
+                Check(NativeArchiveStore.SetDeleted(db,directoryRef,true),
+                    "delete root a second time");
+                using(var canceled=new CancellationTokenSource())
+                {
+                    canceled.Cancel();
+                    bool stopped=false;
+                    try
+                    {
+                        RecycleStore.Change(db,"company",
+                            [new RecycleKey("v2_archive_folder",top,"general")],true,
+                            null,canceled.Token);
+                    }
+                    catch(OperationCanceledException){stopped=true;}
+                    Check(stopped && Scalar(db,
+                        "SELECT deleted FROM folders WHERE id=$id;",top)==1,
+                        "canceled recursive purge must not commit");
+                }
+                Check(RecycleStore.Change(db,"company",
+                    [new RecycleKey("v2_archive_folder",top,"general")],true),
+                    "purge nested directory atomically");
+                foreach(long folderId in new[]{top,middle,leaf,record})
+                    Check(Scalar(db,
+                        "SELECT COUNT(*) FROM folders WHERE id=$id;",folderId)==0,
+                        "all nested folder identities must be purged");
+                Check(Scalar(db,
+                    "SELECT COUNT(*) FROM folder_file_links WHERE id=$id;",treeLink)==0,
+                    "purged directory LinkId must be detached");
+                Check(Scalar(db,
+                    "SELECT COUNT(*) FROM folder_file_links WHERE id=$id;",outsideLink)==1,
+                    "shared LinkId outside purged tree must survive");
+                Check(NativeFileStore.DownloadInfo(db,"company",treeFile.FileId,1)!=null,
+                    "other folder retains original shared file and version");
+                Remove(db,"company",treeFile.FileId,outsideLink);
+                Check(Scalar(db,
+                    "SELECT COUNT(*) FROM files WHERE id=$id;",treeFile.FileId)==0,
+                    "last reference purge must reclaim file metadata");
             }
             // Existing V2 vaults originally shipped a trigger that rejects even
             // orphan-ready chunk deletion. Validation upgrades only that trigger.

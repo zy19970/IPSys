@@ -73,6 +73,8 @@ static class NativeArchiveUiEndpoints
                     :new[]{"certificate","achievement","academic","general"})
                 {
                     var parentIds=new List<long>{0};
+                    var directoryRows=new List<(long Id,long? Parent,string Name,
+                        int Position,bool IsSystem)>();
                     using(var cmd=v.Db.CreateCommand())
                     {
                         cmd.CommandText="""
@@ -88,13 +90,22 @@ static class NativeArchiveUiEndpoints
                         {
                             long id=rd.GetInt64(0);
                             long? parent=rd.IsDBNull(1)?null:rd.GetInt64(1);
-                            folders.Add(new{
-                                id,section=scope,parentId=parent,
-                                name=rd.GetString(2),
-                                position=rd.GetInt32(3),isSystem=rd.GetInt64(4)!=0
-                            });
-                            parentIds.Add(id);
+                            directoryRows.Add((id,parent,rd.GetString(2),
+                                rd.GetInt32(3),rd.GetInt64(4)!=0));
                         }
+                    }
+                    foreach(var row in directoryRows)
+                    {
+                        // A tombstoned ancestor hides every nested directory;
+                        // a child whose immediate parent is still active must
+                        // not reappear as an orphan at the category root.
+                        if(!NativeFileStore.FolderActive(v.Db,workspace,row.Id))
+                            continue;
+                        folders.Add(new{
+                            id=row.Id,section=scope,parentId=row.Parent,
+                            name=row.Name,position=row.Position,isSystem=row.IsSystem
+                        });
+                        parentIds.Add(row.Id);
                     }
                     foreach(long parentId in parentIds)
                     {

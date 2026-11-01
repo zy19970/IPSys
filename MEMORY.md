@@ -101,3 +101,7 @@ IPSys 是 Windows WinForms 启动器 + 本地 Web Explorer 界面 + SQLCipher/SQ
 ## 2026-11-01：用户补充不同名目录同样无法删除（确认通用非空目录删除限制）
 
 用户追加原话：“不是同名也会出现这种情况”。据此纠正本轮最初把同名目录作为主要异常线索的解释：**与同名无关，源码已明确对所有非空普通目录一律拒绝删除**。`src/IPSys.Web/wwwroot/js/interactions.js` 的 `deleteArchiveFolder(node)` 判断 `(node.children||[]).length` 非零即 toast“目录内仍有下级资料或目录，请先整理内容”并返回，后端 `NativeArchiveStore.SetDeleted` 也通过 NOT EXISTS 子目录及 file links 防止删除非空目录；列表“1 项”和详情“包含1项”都是同一前端目录树的 children。无论不同名二级目录、同名二级目录还是业务资料记录，只要有子项就会提示。现在不是证明数据库自循环的证据，截图所示是旧的“空目录才允许删除”策略在新七模块多级结构里暴露出易用性缺陷。建议后续将七个资料模块改为用户熟悉的整棵目录删除，但正式实施前需明确软删除/回收站恢复语义、子记录与附件及文件共享引用、版本保护、取消/进度与事务一致性；不能只移除前端判断或者对非空目录直接执行物理 DELETE。用户本轮是在澄清原因，尚未明确授权执行递归删除功能改造；无业务源码修改或 CI。已向用户修正解释，最近会话更新到第十三轮的补充。
+
+## 2026-11-01：七模块目录整树回收与共享关联永久解绑（待 CI）
+
+用户明确此功能必须加上，确认普通删除先进入回收站、永久删除才彻底清理，建议共享文件采用“断开共享”的方式。核对现有 V2 FileId/LinkId/FileVersion/FileObject：普通删除只标记 archive_folder 根目录 deleted=1；所有下级目录、资料及附件链接不改变，以保证回收站恢复时保留层级。整树永久删除时先递归找齐后代及所有 LinkId，复用 RecycleStore.PurgeFileLink 按工作区与 LinkId 解绑；只有 FileId 不再拥有任何有效或可恢复的 LinkId 时才清理版本，底层物理内容对象只有无人引用才回收。修改范围为 NativeArchiveStore、NativeArchiveUiEndpoints、RecycleStore、Explorer 删除与回收站、MCP 回收接口、使用手册和 SQLCipher/HTTP/Node 定向测试；所有数据库修改都在用户本机资料库之外的临时测试库验证。已发 [notify] 开始 https://github.com/office-renderer/wechat-webhook/issues/1955。此前“空目录只能直接永久删除”的规则由本次新实现替代；测试阶段不要求旧库迁移。本段在 CI 前起草，不宣称本轮产品已通过 Windows 构建、上传新的 EXE 或执行本机删除；测试结论与提交哈希以 GitHub 后续核验为准。

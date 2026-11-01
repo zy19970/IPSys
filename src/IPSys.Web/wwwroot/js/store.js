@@ -310,6 +310,7 @@ const VaultStore = {
       project: { typeName: "项目", folder: true },
       ip: { typeName: "知识产权", folder: true },
       v2_archive: { typeName: "档案记录", folder: true },
+      v2_archive_folder: { typeName: "目录", folder: true },
       v2_general: { typeName: "综合资料", folder: true },
       v2_ip_file: { typeName: "知识产权附件", folder: false },
       v2_file: { typeName: "项目附件", folder: false },

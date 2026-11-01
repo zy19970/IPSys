@@ -1301,27 +1301,23 @@ function createArchiveFolder(parentId = archiveParentId()) {
 
 async function deleteArchiveFolder(node) {
   if (node?.biz?.kind !== "archive_folder") return;
-  if ((node.children || []).length)
-    return toast("目录内仍有下级资料或目录，请先整理内容", {tone:"error"});
-  const approved = await askConfirm({
-    title:"删除空目录",
-    text:"确定永久删除空目录「" + node.name + "」吗？目录不会进入回收站。",
-    okText:"删除目录",danger:true,
+  const approved=await askConfirm({
+    title:"删除文件夹",
+    text:"将「"+node.name+"」及其全部下级目录、资料和附件移到回收站？恢复文件夹即可完整还原。",
+    okText:"移到回收站",danger:true,
   });
-  if (!approved) return;
+  if(!approved)return;
   try {
-    await VaultStore.api("/api/v2/folders/" + VaultStore.ws + "/archive_folder/" +
-      node.biz.id +
-      (VaultStore.ws==="company" && (!node.biz.section || node.biz.section==="achievement")
-        ? "" : "?section="+encodeURIComponent(node.biz.section)), {
-      method:"DELETE",
-    });
+    await VaultStore.api("/api/v2/folders/"+VaultStore.ws+"/archive_folder/"+
+      node.biz.id+"?section="+encodeURIComponent(node.biz.section||"achievement"),{
+        method:"DELETE",
+      });
     Drive.clearSelection();
     await refreshCurrent();
-    toast("空目录已删除");
-  } catch (e) {
-    toast("删除目录失败：" + e.message,{tone:"error",ms:6000});
-    await refreshCurrent().catch(() => {});
+    toast("文件夹及其内容已移到回收站");
+  } catch(e) {
+    toast("删除文件夹失败："+e.message,{tone:"error",ms:6000});
+    await refreshCurrent().catch(()=>{});
   }
 }
 
@@ -1762,7 +1758,7 @@ function showItemMenu(id, x, y) {
       (b.kind === "general" && catIsDir("general",VaultStore.ws))
       ? MI("move-archive", "move", "移动至其他目录") : "",
     b.kind === "archive_folder"
-      ? MI("delete-folder","trash","删除空目录","",true)
+      ? MI("delete-folder","trash","删除文件夹","",true)
       : MI("delete", "trash", "删除", "Del", true),
   ]
     .filter(Boolean)
@@ -2058,15 +2054,6 @@ function bindOverlays() {
    ========================================================================== */
 
 async function deleteNodes(nodes) {
-  const dirs = nodes.filter(n => n.biz?.kind === "archive_folder");
-  if (dirs.length === 1 && dirs.length === nodes.length) {
-    await deleteArchiveFolder(dirs[0]);
-    return;
-  }
-  if (dirs.length) {
-    nodes = nodes.filter(n => n.biz?.kind !== "archive_folder");
-    toast("批量删除只处理业务资料；空目录请逐个删除");
-  }
   if (!nodes.length) return;
 
   /* 相同 LinkId 的多个历史版本只有一次解绑操作。
@@ -2087,7 +2074,10 @@ async function deleteNodes(nodes) {
 
   const ok = await askConfirm({
     title: "删除",
-    text: "将 " + targets.length + " 项移到回收站？可以稍后还原。",
+    text: "将 " + targets.length + " 项移到回收站？" +
+      (targets.some(t=>t.kind==="archive_folder")
+        ? "所选目录下的所有资料、下级目录和附件也会一并隐藏，恢复目录即可完整还原。"
+        : "可以稍后还原。"),
     okText: "删除",
     danger: true,
   });
@@ -2104,7 +2094,8 @@ async function deleteNodes(nodes) {
       } else {
         const biz = node.biz || {};
         if (!kind || !biz.id) throw new Error("找不到业务记录标识");
-        const qs = kind === "archive" ? "?section=" + encodeURIComponent(biz.section || "") : "";
+        const qs = kind === "archive" || kind === "archive_folder"
+          ? "?section=" + encodeURIComponent(biz.section || "achievement") : "";
         await VaultStore.api("/api/v2/folders/" + VaultStore.ws + "/" + kind + "/" +
           biz.id + qs, { method: "DELETE" });
       }

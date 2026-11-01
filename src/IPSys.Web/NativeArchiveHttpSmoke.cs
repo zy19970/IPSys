@@ -246,9 +246,27 @@ static class NativeArchiveHttpSmoke
                 dir+"/"+first+"/move"+key,new NativeFolderMoveInput(third)))
                 Check(cycle.StatusCode==HttpStatusCode.Conflict,
                     "folder cycle rejected "+ws+"/"+section);
-            using(var nonempty=await client.DeleteAsync(dir+"/"+first+key))
-                Check(nonempty.StatusCode==HttpStatusCode.Conflict,
-                    "nonempty folder protected "+ws+"/"+section);
+            // Soft deletion must hide a nonempty subtree without unlinking
+            // any attachment, and restore must recover its original nesting.
+            using(var removed=await client.DeleteAsync(dir+"/"+first+key))
+                removed.EnsureSuccessStatusCode();
+            using(var hidden=await client.GetAsync(dir+"/"+second+key))
+                Check(hidden.StatusCode==HttpStatusCode.NotFound,
+                    "deleted ancestor hides descendant "+ws+"/"+section);
+            var trash=await Read(client,"/api/trash/"+ws);
+            Check(trash.EnumerateArray().Any(x=>
+                x.GetProperty("kind").GetString()=="v2_archive_folder" &&
+                x.GetProperty("id").GetInt64()==first &&
+                x.GetProperty("section").GetString()==section),
+                "directory root appears in recycle "+ws+"/"+section);
+            using(var restored=await client.PostAsJsonAsync(
+                "/api/trash/"+ws+"/restore",
+                new RecycleRequest([new RecycleKey("v2_archive_folder",first,section)])))
+                restored.EnsureSuccessStatusCode();
+            var recovered=await Read(client,dir+"/"+second+key);
+            Check(recovered.GetProperty("folder").GetProperty("ref")
+                .GetProperty("id").GetInt64()==second,
+                "directory restore preserves nesting "+ws+"/"+section);
         }
         Console.WriteLine("N2 ARCHIVE SQLCIPHER HTTP SMOKE PASS");
     }

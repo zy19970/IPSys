@@ -37,6 +37,11 @@ static class RecycleStore
             WHERE workspace=$w AND kind='ip' AND deleted=1 ORDER BY id DESC;
             ""","ip"));
         rows.AddRange(Simple(db,workspace,"""
+            SELECT id,name,section FROM folders
+            WHERE workspace=$w AND kind='archive_folder' AND deleted=1
+            ORDER BY id DESC;
+            ""","v2_archive_folder"));
+        rows.AddRange(Simple(db,workspace,"""
             SELECT a.id,a.name,a.section FROM folders a
             WHERE a.workspace=$w AND a.kind='archive' AND a.deleted=1
               AND (a.parent_id IS NULL OR EXISTS(
@@ -71,12 +76,43 @@ static class RecycleStore
                   AND parent.workspace=p.workspace AND parent.deleted=0))
             ORDER BY l.id DESC;
             ""","v2_file"));
-        return rows;
+        return rows.Where(x=>x.Kind switch
+        {
+            "v2_archive_folder" or "v2_archive" or "v2_general" =>
+                ParentChainActive(db,workspace,x.Id),
+            "v2_file" or "v2_ip_file" => LinkParentActive(db,workspace,x.Id),
+            _ => true
+        }).ToList();
     }
+    private static bool ParentChainActive(SqliteConnection db,string workspace,long folderId)
+    {
+        using var cmd=db.CreateCommand();
+        cmd.CommandText="SELECT parent_id FROM folders WHERE id=$id AND workspace=$w;";
+        cmd.Parameters.AddWithValue("$id",folderId);
+        cmd.Parameters.AddWithValue("$w",workspace);
+        var parent=cmd.ExecuteScalar();
+        if(parent is null)return false;
+        return parent is DBNull || NativeFileStore.FolderActive(db,workspace,
+            Convert.ToInt64(parent));
+    }
+
+    private static bool LinkParentActive(SqliteConnection db,string workspace,long linkId)
+    {
+        using var cmd=db.CreateCommand();
+        cmd.CommandText="SELECT folder_id FROM folder_file_links WHERE id=$id AND workspace=$w;";
+        cmd.Parameters.AddWithValue("$id",linkId);
+        cmd.Parameters.AddWithValue("$w",workspace);
+        var folder=cmd.ExecuteScalar();
+        return folder is long id && NativeFileStore.FolderActive(db,workspace,id);
+    }
+
     private static bool Deleted(SqliteConnection db,string workspace,RecycleKey item)
     {
         if(item.Id<=0)return false;
-        if(item.Kind!="v2_archive" && item.Section.Length!=0)return false;
+        if(item.Kind is not ("v2_archive" or "v2_archive_folder") && item.Section.Length!=0)
+            return false;
+        if(item.Kind is "v2_archive_folder" or "v2_archive" or "v2_general")
+            if(!ParentChainActive(db,workspace,item.Id))return false;
         using var cmd=db.CreateCommand();
         cmd.Parameters.AddWithValue("$id",item.Id);
         cmd.Parameters.AddWithValue("$w",workspace);
@@ -95,6 +131,12 @@ static class RecycleStore
                     AND p.workspace=c.workspace WHERE c.id=$id AND c.workspace=$w
                     AND c.kind='contract' AND c.deleted=1
                     AND p.kind='project' AND p.deleted=0;
+                    """;
+                break;
+            case "v2_archive_folder":
+                cmd.CommandText="""
+                    SELECT COUNT(*) FROM folders WHERE id=$id AND workspace=$w
+                      AND kind='archive_folder' AND section=$section AND deleted=1;
                     """;
                 break;
             case "v2_archive":
@@ -137,7 +179,7 @@ static class RecycleStore
         cmd.Parameters.AddWithValue("$section",item.Section);
         string sql= item.Kind switch
         {
-            "project" or "contract" or "ip" or "v2_general" or "v2_archive" =>
+            "project" or "contract" or "ip" or "v2_general" or "v2_archive" or "v2_archive_folder" =>
                 purge
                 ? "DELETE FROM folders WHERE id=$id AND workspace=$w AND deleted=1;"
                 : "UPDATE folders SET deleted=0 WHERE id=$id AND workspace=$w AND deleted=1;",
@@ -325,43 +367,63 @@ static class RecycleStore
             }
         }
     }
-    // Resolve owned descendants before deleting a tombstoned folder. A project
-    // soft delete hides its contracts and links without tombstoning them, so
-    // relying on visible trash rows or deleting just its FolderId violates FK
-    // constraints. Only descendants of explicitly selected folders are included.
-    private static (List<(long ContractId,long ProjectId)> Contracts,HashSet<long> Links)
-        ExpandFolderPurge(SqliteConnection db,string workspace,
-            IReadOnlyList<RecycleKey> items)
+    // Build the complete owned folder subtree while the vault Gate is held.
+    // A soft-deleted directory hides its descendants without tombstoning their
+    // individual rows. Permanent deletion removes their LinkIds first and only
+    // then deletes folders leaf-to-root, without touching links outside the tree.
+    private static (List<(long Id,string Kind,long Parent,int Depth)> Folders,
+        HashSet<long> Links) ExpandFolderPurge(SqliteConnection db,string workspace,
+        IReadOnlyList<RecycleKey> items)
     {
-        var folders=new HashSet<long>();
-        var contracts=new List<(long ContractId,long ProjectId)>();
+        var selected=new HashSet<long>();
+        var descendants=new Dictionary<long,(string Kind,long Parent,int Depth)>();
+        var allFolders=new HashSet<long>();
         foreach(var item in items.Where(x=>x.Kind is "project" or "contract" or
-            "ip" or "v2_general" or "v2_archive"))
+            "ip" or "v2_general" or "v2_archive" or "v2_archive_folder"))
         {
-            folders.Add(item.Id);
-            using var children=db.CreateCommand();
-            children.CommandText="""
-                SELECT id,kind FROM folders
-                WHERE workspace=$w AND parent_id=$id;
-                """;
-            children.Parameters.AddWithValue("$w",workspace);
-            children.Parameters.AddWithValue("$id",item.Id);
-            using var reader=children.ExecuteReader();
-            while(reader.Read())
+            selected.Add(item.Id);
+            allFolders.Add(item.Id);
+            // We reject unexpected owned descendants on non-directory records
+            // instead of relying on SQL FK deletion to fail late.
+            var pending=new Stack<(long Id,int Depth)>();
+            pending.Push((item.Id,0));
+            while(pending.Count>0)
             {
-                long childId=reader.GetInt64(0);
-                string kind=reader.GetString(1);
-                if(item.Kind=="project" && kind=="contract")
+                var (parent,depth)=pending.Pop();
+                using var cmd=db.CreateCommand();
+                cmd.CommandText="""
+                    SELECT id,kind,section FROM folders
+                    WHERE workspace=$w AND parent_id=$parent ORDER BY id;
+                    """;
+                cmd.Parameters.AddWithValue("$w",workspace);
+                cmd.Parameters.AddWithValue("$parent",parent);
+                var children=new List<(long Id,string Kind,string Section)>();
+                using(var rd=cmd.ExecuteReader())
+                    while(rd.Read())
+                        children.Add((rd.GetInt64(0),rd.GetString(1),rd.GetString(2)));
+                foreach(var child in children)
                 {
-                    contracts.Add((childId,item.Id));
-                    folders.Add(childId);
+                    bool contract=item.Kind=="project" && depth==0 &&
+                        child.Kind=="contract";
+                    bool directory=item.Kind=="v2_archive_folder" &&
+                        (child.Kind=="archive_folder" && child.Section==item.Section ||
+                         child.Kind=="archive" && child.Section==item.Section ||
+                         child.Kind=="general" && item.Section=="general");
+                    if(!contract && !directory)
+                        throw new InvalidOperationException(
+                            "待删除目录包含不属于本目录的子项，永久删除已取消。");
+                    if(selected.Contains(child.Id) || descendants.ContainsKey(child.Id))
+                        throw new InvalidOperationException(
+                            "待删除的目录集合存在重叠，永久删除已取消。");
+                    descendants.Add(child.Id,(child.Kind,parent,depth+1));
+                    allFolders.Add(child.Id);
+                    if(directory && child.Kind=="archive_folder")
+                        pending.Push((child.Id,depth+1));
                 }
-                else throw new InvalidOperationException(
-                    "记录仍有不能级联清理的下级目录，已取消永久删除。");
             }
         }
         var links=new HashSet<long>();
-        foreach(long id in folders)
+        foreach(long folderId in allFolders)
         {
             using var cmd=db.CreateCommand();
             cmd.CommandText="""
@@ -369,11 +431,12 @@ static class RecycleStore
                 WHERE workspace=$w AND folder_id=$folder;
                 """;
             cmd.Parameters.AddWithValue("$w",workspace);
-            cmd.Parameters.AddWithValue("$folder",id);
-            using var reader=cmd.ExecuteReader();
-            while(reader.Read())links.Add(reader.GetInt64(0));
+            cmd.Parameters.AddWithValue("$folder",folderId);
+            using var rd=cmd.ExecuteReader();
+            while(rd.Read())links.Add(rd.GetInt64(0));
         }
-        return (contracts,links);
+        return (descendants.Select(x=>(x.Key,x.Value.Kind,x.Value.Parent,
+            x.Value.Depth)).OrderByDescending(x=>x.Depth).ToList(),links);
     }
 
     public static bool Change(SqliteConnection db,string workspace,
@@ -383,7 +446,7 @@ static class RecycleStore
         if(items.Count is <1 or >200 || items.Distinct().Count()!=items.Count)return false;
         if(items.Any(x=>!Deleted(db,workspace,x)))return false;
         var descendants=purge?ExpandFolderPurge(db,workspace,items)
-            :(new List<(long ContractId,long ProjectId)>(),new HashSet<long>());
+            :(new List<(long Id,string Kind,long Parent,int Depth)>(),new HashSet<long>());
         var fileItems=items.Where(x=>x.Kind is "v2_file" or "v2_ip_file").ToList();
         var knownLinks=fileItems.Select(x=>x.Id).ToHashSet();
         foreach(long id in descendants.Item2)
@@ -400,18 +463,18 @@ static class RecycleStore
             foreach(var item in fileItems)
                 PurgeFileLink(db,tx,workspace,item,total,ref removed,report,cancellation,
                     descendants.Item2.Contains(item.Id));
-            // Child contracts must go before their project because parent_id
-            // is ON DELETE RESTRICT. The descendants are exclusively derived
-            // from the selected project and stay in the same rollback boundary.
-            foreach(var (childId,projectId) in descendants.Item1)
+            // Delete every owned child bottom-up; a shared FileId remains
+            // until its last LinkId anywhere in this workspace is gone.
+            foreach(var (childId,kind,parentId,_) in descendants.Item1)
             {
                 using var child=InTransaction(db,tx,workspace,"""
                     DELETE FROM folders WHERE id=$id AND workspace=$w
-                      AND kind='contract' AND parent_id=$project;
+                      AND kind=$kind AND parent_id=$parent;
                     """,childId);
-                child.Parameters.AddWithValue("$project",projectId);
+                child.Parameters.AddWithValue("$kind",kind);
+                child.Parameters.AddWithValue("$parent",parentId);
                 if(child.ExecuteNonQuery()!=1)
-                    throw new InvalidOperationException("所属合同状态已变化，已取消永久删除。");
+                    throw new InvalidOperationException("子目录或资料状态已变化，永久删除已取消。");
             }
             foreach(var item in items.Where(x=>x.Kind is not ("v2_file" or "v2_ip_file")))
                 Apply(db,tx,workspace,item,true);

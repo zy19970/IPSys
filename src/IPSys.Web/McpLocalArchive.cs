@@ -105,7 +105,7 @@ static partial class McpLocal
             ["folder_id"]=Field("integer","目录 FolderId"),
             ["name"]=Field("string","新目录名称")
         },["workspace","folder_id","name"]),
-        Tool("delete_archive_folder","删除指定模块的空目录；非空目录不可删除。",new(){
+        Tool("delete_archive_folder","将指定模块的普通目录及全部下级资料、附件关联移入回收站，支持完整恢复；永久删除在回收站另行确认。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
             ["section"]=Field("string","目录作用域；公司缺省 achievement"),
             ["folder_id"]=Field("integer","目录 FolderId")
