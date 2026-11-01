@@ -94,11 +94,17 @@ static class NativeArchiveHttpSmoke
             new FolderMutationInput(ArchiveFolder:
                 new ArchiveFolderInput("其他业务资料",null))))
             renamedBack.EnsureSuccessStatusCode();
-        using(var forbidden=await client.DeleteAsync(dirs+"/"+systemRoot))
-            Check(forbidden.StatusCode==HttpStatusCode.Conflict,
-                "nonempty initial folder follows ordinary delete protection");
-        using(var forbidden=await client.DeleteAsync(dirs+"/"+a))
-            Check(forbidden.StatusCode==HttpStatusCode.Conflict,"nonempty directory protected");
+        // Previously nonempty initial/user folders could not be deleted.
+        // Both are now recyclable as complete subtrees and restorable.
+        foreach(long folderId in new[]{systemRoot,a})
+        {
+            using(var removed=await client.DeleteAsync(dirs+"/"+folderId))
+                removed.EnsureSuccessStatusCode();
+            using(var restored=await client.PostAsJsonAsync("/api/trash/company/restore",
+                new RecycleRequest([new RecycleKey(
+                    "v2_archive_folder",folderId,"achievement")])))
+                restored.EnsureSuccessStatusCode();
+        }
         using(var cycle=await client.PostAsJsonAsync(dirs+$"/{a}/move",
             new NativeFolderMoveInput(b)))
             Check(cycle.StatusCode==HttpStatusCode.Conflict,"directory cycle rejected");
