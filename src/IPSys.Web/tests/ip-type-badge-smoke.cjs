@@ -71,17 +71,17 @@ types.forEach(type => {
   assert.ok(html.includes(type) && html.includes('title="' + type + '"'));
 });
 assert.match(call("科研项目", "tag"), /class="pill tag"/, "Project badges stay neutral");
-const statusRule = css.match(/\\.pill\\.status\\s*\\{([^}]+)\\}/);
+const statusRule = css.match(/\.pill\.status\s*\{([^}]+)\}/);
 assert.ok(statusRule, "Status badges need dedicated readable typography");
 assert.equal(font(statusRule[1]), font(nameRule[1]), "Status font must match both folder name and IP type");
 assert.equal(font(statusRule[1]), font(badgeRule[1]), "All IP table badge text should have the same size");
-assert.match(statusRule[1], /height:\\s*24px/, "Status badge should fit the larger font");
+assert.match(statusRule[1], /height:\s*24px/, "Status badge should fit the larger font");
 assert.match(call("已登记", "pill"), /class="pill status green"/, "Registered status stays green");
 assert.match(call("准备中", "pill"), /class="pill status blue"/, "In-progress status stays blue");
 assert.match(call("已失效", "pill"), /class="pill status red"/, "Invalid status stays red");
 assert.match(call("未知状态", "pill"), /class="pill status gray"/, "Unknown status stays gray");
 assert.match(call("<state>", "pill"), /&lt;state&gt;/, "Status text remains escaped");
-assert.doesNotMatch(css.match(/\\.pill\\.tag\\s*\\{([^}]+)\\}/)?.[1] || "", /font-size:\\s*13\\.5px/,
+assert.doesNotMatch(css.match(/\.pill\.tag\s*\{([^}]+)\}/)?.[1] || "", /font-size:\s*13\.5px/,
   "Project type label styling must not be broadened by accident");
 assert.match(call("<sample>", "ip-type"), /&lt;sample&gt;/, "Untrusted type values remain escaped");
 assert.doesNotMatch(call("<sample>", "ip-type"), /<sample>/);

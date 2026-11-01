@@ -154,3 +154,5 @@ IPSys 是 Windows WinForms 启动器 + 本地 Web Explorer 界面 + SQLCipher/SQ
 按用户纠正定向实施：给使用 case pill 的语义状态标签增加 status 类，新增 .pill.status 13.5px、24px 高、12px 圆角及8px左右间距；保留原有 statusTone 红绿蓝灰业务语义，项目类型 .pill.tag 不变。增强 ip-type-badge-smoke.cjs 回归，验证十类原有色系及状态字号与 .row-title 同样为 13.5px，绿色已登记、蓝色准备中、红色已失效、灰色未知，以及 HTML 转义；同步 USER_GUIDE.md。开始通知 office-renderer/wechat-webhook#1985。
 
 本轮修正先前“状态标签维持原样”的错误理解，无数据库、MCP、正式 Release 变动。产品 SHA、CI、新版 EXE 必须按随后真实运行结果核对，不能提前宣称通过。最近会话仍为 memory/sessions/2026-11-01-开发收尾审查.md（第七轮）。
+
+**状态标签首次 Windows CI 失败及定向修复（2026-11-01）**：第一次修复提交 818186e727c6054442a194ab597af6fbe85fef96 触发 Windows CI run 41312767460，结果 completed/failure；精确失败步骤为 Verify UI and capability smoke tests，job 124866433373 日志断言 ip-type-badge-smoke.cjs:75 “Status badges need dedicated readable typography”，并非生产 CSS 不含 .pill.status。诊断发现先前新增测试的状态/高度/项目标签三处 JS 正则表达式被双重转义成 /\\.pill.../，不能匹配 CSS 的实际选择器；按正确 JS regex 单斜杠形式纠正。Debug/Release 编译及此前已执行步骤通过，但首轮没有完整可用 Windows EXE 构建结论。通知失败 office-renderer/wechat-webhook#1986、重新开始 #1987。业务 CSS/JS 原改动无需撤回；新的测试修复提交后应重新执行并核验全部 CI/产物，不能引用首轮失败作为软件成功证据。
