@@ -13,7 +13,7 @@ function extract(start,end){
  return code.slice(a,b);
 }
 const guard=extract("function canCreateHere() {","function safeRefresh() {");
-const part=extract("function archiveScope() {","/* ---------------- 内容区 ---------------- */");
+const part=extract("function archiveScopeSection() {","/* ---------------- 内容区 ---------------- */");
 function folder(id,name,children,parentId,isSystem){
  return {id:"af:"+id,name,type:"folder",
   biz:{kind:"archive_folder",id,parentId,isSystem:!!isSystem},children:children||[]};
@@ -48,7 +48,7 @@ const VaultStore={ws:"company",async api(url,opts){
 }};
 const RecordForms={open(form){modals.push(form);},
  archive(...args){menus.push({archive:args});},
- project(){},contract(){},ip(){},general(){}};
+ project(){},contract(){},ip(){},general(...args){menus.push({general:args});}};
 const context=vm.createContext({
  Drive,VaultStore,RecordForms,
  findById:id=>nodes.get(id)||null,pathTo,
@@ -59,6 +59,9 @@ const context=vm.createContext({
  nodeTag:id=>String(id).split(":")[0],
  catsOf:()=>[{id:"achievement",label:"业务档案"}],
  catLabel:id=>id,
+ catIsDir:(id,ws)=>ws==="company"
+  ?["achievement","party","general"].includes(id)
+  :["certificate","achievement","academic","general"].includes(id),
 });
 vm.runInContext(guard,context,{filename:"interactions-create-guard.js"});
 vm.runInContext(part,context,{filename:"interactions-archive.js"});
@@ -84,6 +87,28 @@ const fn=name=>vm.runInContext(name,context);
  handlers["new-folder"]();
  await modals.at(-1).onSubmit({name:"新二级目录"});
  assert.equal(calls.at(-1).opts.json.archiveFolder.parentId,70);
+
+ Drive.state.folderId="k:general";
+ fn("openNewMenu")(anchor);
+ assert.match(menus.at(-1).html,/new-folder/);
+ assert.match(menus.at(-1).html,/new-record/);
+ const generalMenu=menus.at(-1);
+ generalMenu.handlers["new-folder"]();
+ await modals.at(-1).onSubmit({name:"综合资料一级目录"});
+ assert.equal(calls.at(-1).url,"/api/v2/folders/company/archive_folder");
+ assert.equal(calls.at(-1).opts.json.section,"general");
+ generalMenu.handlers["new-record"]();
+ assert.deepEqual(menus.at(-1).general,[null,null]);
+
+ VaultStore.ws="personal";
+ Drive.state.folderId="k:academic";
+ fn("openNewMenu")(anchor);
+ menus.at(-1).handlers["new-folder"]();
+ await modals.at(-1).onSubmit({name:"学术一级目录"});
+ assert.equal(calls.at(-1).url,"/api/v2/folders/personal/archive_folder");
+ assert.equal(calls.at(-1).opts.json.section,"academic");
+ VaultStore.ws="company";
+ Drive.state.folderId="af:70";
 
  await fn("reorderArchiveEntry")(child,-1);
  assert.equal(calls.at(-1).url,

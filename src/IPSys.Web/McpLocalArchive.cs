@@ -17,6 +17,14 @@ static partial class McpLocal
             throw new McpKnownRejectionException("section 与当前工作区不匹配。");
         return section;
     }
+    private static string DirectoryScope(string workspace,JsonElement args)
+    {
+        string section=ReadString(args,"section");
+        if(string.IsNullOrEmpty(section) && workspace=="company")section="achievement";
+        if(!ArchiveDirectoryScopes.Allowed(workspace,section))
+            throw new McpKnownRejectionException("目录作用域与工作区不匹配。");
+        return section;
+    }
     private static string ArchiveUrl(string workspace,string section,long? id=null)=>
         V2Url(workspace,"archive",id)+"?section="+Uri.EscapeDataString(section);
     private static JsonObject ArchivePayload(JsonObject fields,string section)=>
@@ -36,7 +44,7 @@ static partial class McpLocal
             ["remarks"]=Field("string","可选备注"),
             ["tags"]=Field("string","可选标签；多个标签以中文或英文分号分隔，服务端自动去重和规范化"),
             ["year"]=Field("string","可选年度"),
-            ["folder_id"]=Field("integer","公司业务档案的父目录 FolderId")
+            ["folder_id"]=Field("integer","可选父目录 FolderId；公司业务档案 achievement 必填")
         },["workspace","section","name"]),
         Tool("update_archive","按 V2 FolderId 修改档案属性，保留原目录及附件。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
@@ -64,7 +72,8 @@ static partial class McpLocal
             ["category"]=Field("string","可选类别"),
             ["remarks"]=Field("string","可选备注"),
             ["tags"]=Field("string","可选标签；多个标签以中文或英文分号分隔，服务端自动去重和规范化"),
-            ["year"]=Field("string","可选年度")
+            ["year"]=Field("string","可选年度"),
+            ["folder_id"]=Field("integer","可选父目录 FolderId")
         },["workspace","name"]),
         Tool("update_party_archive","按 FolderId 更新公司“党团建设”档案，未传字段保留原值。",new(){
             ["workspace"]=Field("string","仅公司工作区",["company"]),
@@ -79,31 +88,43 @@ static partial class McpLocal
             ["workspace"]=Field("string","仅公司工作区",["company"]),
             ["archive_id"]=Field("integer","档案 FolderId")
         },["workspace","archive_id"]),
-        Tool("list_archive_folders","列出公司业务档案 V2 根目录或指定 parent_id 下的直接子目录。",new(){
-            ["workspace"]=Field("string","仅公司工作区",["company"]),
+        Tool("list_archive_folders","列出指定模块的顶层目录或指定父目录下的子目录。",new(){
+            ["workspace"]=Field("string","工作区",Workspaces),
+            ["section"]=Field("string","目录模块；company 缺省 achievement"),
             ["parent_id"]=Field("integer","可选父目录 FolderId；省略则列出当前顶层目录")
         },["workspace"]),
-        Tool("create_archive_folder","在有效父目录中新建公司业务档案下级目录。",new(){
-            ["workspace"]=Field("string","仅公司工作区",["company"]),
-            ["parent_id"]=Field("integer","有效父目录 FolderId"),
+        Tool("create_archive_folder","在指定模块的顶层或下级目录新建普通目录。",new(){
+            ["workspace"]=Field("string","工作区",Workspaces),
+            ["section"]=Field("string","模块作用域；公司缺省 achievement"),
+            ["parent_id"]=Field("integer","可选父目录，省略为顶层"),
             ["name"]=Field("string","目录名称")
-        },["workspace","parent_id","name"]),
-        Tool("update_archive_folder","更改 V2 业务档案目录名称，不移动原父级。",new(){
-            ["workspace"]=Field("string","仅公司工作区",["company"]),
+        },["workspace","name"]),
+        Tool("update_archive_folder","更改普通目录名称，保留原父级。",new(){
+            ["workspace"]=Field("string","工作区",Workspaces),
+            ["section"]=Field("string","目录作用域；公司缺省 achievement"),
             ["folder_id"]=Field("integer","目录 FolderId"),
             ["name"]=Field("string","新目录名称")
         },["workspace","folder_id","name"]),
-        Tool("delete_archive_folder","删除空业务档案目录（包括初始目录）；非空目录不可删除。",new(){
-            ["workspace"]=Field("string","仅公司工作区",["company"]),
+        Tool("delete_archive_folder","删除指定模块的空目录；非空目录不可删除。",new(){
+            ["workspace"]=Field("string","工作区",Workspaces),
+            ["section"]=Field("string","目录作用域；公司缺省 achievement"),
             ["folder_id"]=Field("integer","目录 FolderId")
         },["workspace","folder_id"]),
+        Tool("move_archive_entry","移动指定模块的目录或资料记录，不允许跨模块或形成循环。",new(){
+            ["workspace"]=Field("string","工作区",Workspaces),
+            ["section"]=Field("string","目录模块；公司缺省 achievement"),
+            ["kind"]=Field("string","archive_folder、archive 或 general"),
+            ["entry_id"]=Field("integer","目标资料或目录 FolderId"),
+            ["parent_id"]=Field("integer","可选父目录，省略则移动至模块顶层")
+        },["workspace","kind","entry_id"]),
         Tool("list_general","列出当前工作区 V2 综合资料 FolderId。",new(){
             ["workspace"]=Field("string","工作区",Workspaces)
         },["workspace"]),
         Tool("create_general","新增 V2 综合资料文件夹，仅名称必填；备注可选。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
             ["title"]=Field("string","资料名称"),
-            ["remarks"]=Field("string","备注，可选")
+            ["remarks"]=Field("string","备注，可选"),
+            ["parent_id"]=Field("integer","可选的所属目录 FolderId")
         },["workspace","title"]),
         Tool("update_general","按 FolderId 修改综合资料名称及备注，保留附件版本。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
@@ -153,7 +174,7 @@ static partial class McpLocal
                     data["folderId"]=ReadId(args,"folder_id");
                 else if(args.TryGetProperty("folder_id",out var supplied)&&
                     supplied.ValueKind!=JsonValueKind.Null)
-                    throw new McpKnownRejectionException("该档案分类不使用父目录 ID。");
+                    data["folderId"]=ReadId(args,"folder_id");
                 return await RequestAsync(client,HttpMethod.Post,
                     V2Url(workspace,"archive"),ArchivePayload(data,section));
             }
@@ -175,48 +196,60 @@ static partial class McpLocal
                         ReadId(args,"archive_id")));
             case "list_archive_folders":
             {
-                RequireCompany(workspace);
+                string section=DirectoryScope(workspace,args);
                 string query=args.TryGetProperty("parent_id",out var parent)&&
                     parent.ValueKind!=JsonValueKind.Null?
                     "?parentId="+ReadId(args,"parent_id"):"";
+                query+=(query.Length>0?"&":"?")+"section="+Uri.EscapeDataString(section);
                 return await RequestAsync(client,HttpMethod.Get,
                     V2Url(workspace,"archive_folder")+query);
             }
             case "create_archive_folder":
             {
-                RequireCompany(workspace);
-                // A nonpositive parent is rejected before any HTTP dispatch:
-                // this is a known bad argument, never an uncertain write.
-                if(!args.TryGetProperty("parent_id",out var parent) ||
-                   parent.ValueKind!=JsonValueKind.Number ||
-                   !parent.TryGetInt64(out long parentId) || parentId<=0)
-                    throw new McpKnownRejectionException(
-                        "parent_id 必须是有效正整数；请先查询 list_archive_folders 获取父目录 ID。");
+                string section=DirectoryScope(workspace,args);
+                long? parentId=args.TryGetProperty("parent_id",out var parent) &&
+                    parent.ValueKind!=JsonValueKind.Null?ReadId(args,"parent_id"):null;
                 var fields=new JsonObject{
-                    ["name"]=ReadString(args,"name"),
-                    ["parentId"]=parentId
+                    ["name"]=ReadString(args,"name"),["parentId"]=parentId is long pid?JsonValue.Create(pid):null
                 };
                 return await RequestAsync(client,HttpMethod.Post,
                     V2Url(workspace,"archive_folder"),
-                    new JsonObject{["archiveFolder"]=fields,["section"]="achievement"});
+                    new JsonObject{["archiveFolder"]=fields,["section"]=section});
             }
             case "update_archive_folder":
             {
-                RequireCompany(workspace);
+                string section=DirectoryScope(workspace,args);
                 long id=ReadId(args,"folder_id");
                 var current=await RequestAsync(client,HttpMethod.Get,
-                    V2Url(workspace,"archive_folder",id));
-                long parent=current["folder"]?["parent"]?["id"]?.GetValue<long>()
-                    ??throw new McpKnownRejectionException("系统根目录不可修改。");
+                    V2Url(workspace,"archive_folder",id)+"?section="+Uri.EscapeDataString(section));
+                long? parent=current["folder"]?["parent"]?["id"]?.GetValue<long>();
                 return await RequestAsync(client,HttpMethod.Put,
-                    V2Url(workspace,"archive_folder",id),
+                    V2Url(workspace,"archive_folder",id)+"?section="+Uri.EscapeDataString(section),
                     new JsonObject{["archiveFolder"]=new JsonObject{
-                        ["name"]=ReadString(args,"name"),["parentId"]=parent}});
+                        ["name"]=ReadString(args,"name"),
+                        ["parentId"]=parent is long p?JsonValue.Create(p):null}});
             }
             case "delete_archive_folder":
-                RequireCompany(workspace);
                 return await RequestAsync(client,HttpMethod.Delete,
-                    V2Url(workspace,"archive_folder",ReadId(args,"folder_id")));
+                    V2Url(workspace,"archive_folder",ReadId(args,"folder_id"))+
+                      "?section="+Uri.EscapeDataString(DirectoryScope(workspace,args)));
+            case "move_archive_entry":
+            {
+                string scope=DirectoryScope(workspace,args);
+                string kind=ReadString(args,"kind");
+                if(kind is not ("archive_folder" or "archive" or "general") ||
+                   kind=="general"&&scope!="general" ||
+                   kind=="archive"&&scope=="general")
+                    throw new McpKnownRejectionException("目录类别与记录类型不匹配。");
+                var body=new JsonObject {
+                    ["parentId"]=args.TryGetProperty("parent_id",out var p)&&
+                        p.ValueKind!=JsonValueKind.Null?
+                        JsonValue.Create(ReadId(args,"parent_id")):null
+                };
+                return await RequestAsync(client,HttpMethod.Post,
+                    V2Url(workspace,kind,ReadId(args,"entry_id"))+
+                    "/move?section="+Uri.EscapeDataString(scope),body);
+            }
             case "list_general":
                 return await RequestAsync(client,HttpMethod.Get,V2Url(workspace,"general"));
             case "create_general":
@@ -225,7 +258,9 @@ static partial class McpLocal
                 if(args.TryGetProperty("remarks",out _))
                     fields["remarks"]=ReadString(args,"remarks");
                 return await RequestAsync(client,HttpMethod.Post,V2Url(workspace,"general"),
-                    new JsonObject{["general"]=fields});
+                    new JsonObject{["general"]=fields,
+                        ["parentId"]=args.TryGetProperty("parent_id",out var parent)&&
+                        parent.ValueKind!=JsonValueKind.Null?JsonValue.Create(ReadId(args,"parent_id")):null});
             }
             case "update_general":
             {

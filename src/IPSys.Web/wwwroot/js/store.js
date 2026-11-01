@@ -54,7 +54,12 @@ const catLabel = (id, ws) => (catsOf(ws || VaultStore.ws).find((c) => c.id === i
 
 /* 公司「业务档案」的一级是普通目录(新库默认建七个),不是同类记录 ——
    这一层不能出台账列,进了目录才出。 */
-const catIsDir = (id, ws) => id === "achievement" && (ws || VaultStore.ws) === "company";
+const catIsDir = (id, ws) => {
+  const w = ws || VaultStore.ws;
+  return w === "company"
+    ? ["achievement","party","general"].includes(id)
+    : ["certificate","achievement","academic","general"].includes(id);
+};
 
 const VaultStore = {
   ws: "personal",
@@ -544,9 +549,11 @@ const VaultStore = {
             owner: "",
             remarks: g.remarks || "",
             tags: "",
+            folderId: g.folderId ?? null,
             raw: g,
             id: g.id,
           };
+          node.order = g.position == null ? null : Number(g.position);
           this.biz.set(node.id, node.biz);
           const kids = latestLinks(g.files).map((f) => attachmentNode(f, "general"));
           kids.sort((a, b) => cmpName(a, b));
@@ -559,13 +566,14 @@ const VaultStore = {
     /* 公司业务档案以普通目录构成目录树，新库初始建立七个目录。
        目录可以重命名、移动或删除；记录按 folderId 挂入目录。 */
 
-    const buildArchiveDirs = (records) => {
-      const folders = archive?.folders || [];
+    const buildArchiveDirs = (records, section) => {
+      const folders = (archive?.folders || []).filter(f =>
+        (f.section || (ws === "company" ? "achievement" : "")) === section);
       const dirs = folders.map((f) => {
         const d = F(f.name || "未命名目录", { id: "af:" + f.id });
         d.biz = {
           kind: "archive_folder", typeName: "目录", id: f.id,
-          parentId: f.parentId ?? null,
+          section, parentId: f.parentId ?? null,
         };
         d.order = f.position == null ? null : Number(f.position);
         d.children = [];
@@ -589,9 +597,12 @@ const VaultStore = {
 
       /* 服务端 orders 已混排目录与记录：统一按这一顺序处理每层兄弟节点。 */
       const sortPeers = (nodes, parentId) => {
-        const entries = archive?.orders?.[String(parentId ?? 0)] || [];
+        const entries = archive?.orders?.[section + ":" + String(parentId ?? 0)]
+          || (ws === "company" && section === "achievement"
+            ? archive?.orders?.[String(parentId ?? 0)] : null) || [];
         const positions = new Map(entries.map((item, i) => [
-          item.kind === "folder" ? "af:" + item.id : "a:achievement:" + item.id, i,
+          item.kind === "folder" ? "af:" + item.id :
+            section === "general" ? "g:" + item.id : "a:" + section + ":" + item.id, i,
         ]));
         for (const item of nodes) {
           const index = positions.get(item.id);
@@ -625,7 +636,7 @@ const VaultStore = {
       k.order = i;
       const records = builders[id] ? builders[id]() : [];
 
-      if (catIsDir(id, ws)) k.children = buildArchiveDirs(records);
+      if (catIsDir(id, ws)) k.children = buildArchiveDirs(records, id);
       else k.children = records.sort((a, b) => cmpName(a, b));
 
       /* 根节点时间 = 最新子项时间，用于排序稳定 */

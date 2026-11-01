@@ -80,3 +80,7 @@ IPSys 是 Windows WinForms 启动器 + 本地 Web Explorer 界面 + SQLCipher/SQ
 ## 2026-11-01：七模块目录一次性开发获确认，但本轮执行受阻
 
 用户明确认可公司三模块与个人四模块一次性实现共享的无限级目录，并指出仍处测试阶段，不要求旧数据库兼容迁移。已按 AIGT 规则复核 `main=54651bd0` 和当前实施方案；新库需要同步调整 SQLCipher V2 父级 CHECK/触发器、FolderModel、NativeArchiveStore、NativeArchiveOrder、Folder HTTP API、Explorer 树、表单与菜单、ZIP/Excel/MCP 以及回归。准备了六个后端文件的临时 Git Blob 草案，但**没有创建 Git Tree、Commit 或更新 main**。构造四个前端文件修改时，开发工具安全检查阻止写入，停止后续写操作，不规避限制，不提交无法集成验证的后端半成品。已核实 main 仍是 `54651bd0b53c76e9b1dfdd7fcce83c66e5ca26c7`，没有源码变更、没有新 CI，也没有处理用户测试数据库。后续要完整实现需在可授权执行与本地编译/测试的开发环境开展整套集成，不应把此轮描述为已经实现。最近会话已记录本轮为第八轮。
+
+## 2026-11-01：七模块目录统一开发重新启动（待 CI 验证）
+
+用户“继续吧”，明确继续上轮获确认的一次性实现。遵照 AIGT-templates 基础规则及项目旧 Memory；本轮重新开始通知：office-renderer/wechat-webhook#1939。新库不做旧测试数据库迁移。已编制 SQLCipher schema、NativeFolder/Archive/Order/Ui、Explorer（store/app/interactions/forms）、Excel 目录导入导出、MCP 创建/移动操作、Node 树和右键、C# HTTP 新作用域回归的完整修改候选文件；**尚未取得 CI 结果**，不能声称已完成产品发布或本机测试。之前中断原因是前端长脚本调用被平台检查阻断，本轮改为按可审核文件分段准备修改，未覆盖历史记录。

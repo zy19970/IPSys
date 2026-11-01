@@ -12,9 +12,11 @@ static class NativeArchiveStore
         if(!Vault.WorkspaceValid(workspace))throw new ArgumentException("无效的工作区。");
         if(kind==FolderKinds.ArchiveFolder)
         {
-            if(workspace!="company" || section is not (null or "" or "achievement"))
-                throw new ArgumentException("业务档案目录仅属于公司业务档案。");
-            return "achievement";
+            string scope=string.IsNullOrEmpty(section)&&workspace=="company"
+                ?"achievement":section??"";
+            if(!ArchiveDirectoryScopes.Allowed(workspace,scope))
+                throw new ArgumentException("目录与工作区或模块不匹配。");
+            return scope;
         }
         if(kind==FolderKinds.General)
         {
@@ -30,7 +32,7 @@ static class NativeArchiveStore
         string workspace,string kind,FolderMutationInput input,bool creating,string? section)
     {
         if(input.Project is not null || input.Contract is not null || input.Ip is not null ||
-           input.ParentId is not null)
+           input.ParentId is not null && kind!=FolderKinds.General)
             throw new ArgumentException("资料的业务类型或父级参数不匹配。");
         string scope=Section(workspace,kind,creating?input.Section:section);
         if(!creating && input.Section is not null && input.Section!=scope)
@@ -54,13 +56,8 @@ static class NativeArchiveStore
                 var archive=input.Archive;
                 if(ArchiveRules.Validate(archive) is string error)
                     throw new ArgumentException(error);
-                if(scope=="achievement" && workspace=="company")
-                {
-                    if(archive.FolderId is not >0)
-                        throw new ArgumentException("公司业务档案资料必须指定有效目录。");
-                }
-                else if(archive.FolderId is not null)
-                    throw new ArgumentException("该资料类型不能指定业务档案目录。");
+                if(scope=="achievement" && workspace=="company" && archive.FolderId is not >0)
+                    throw new ArgumentException("公司业务档案资料必须指定有效目录。");
                 archive=archive with {Name=archive.Name!.Trim(),
                     Tags=TagRules.Normalize(archive.Tags)};
                 return (archive.Name!,JsonSerializer.Serialize(archive),
@@ -72,21 +69,23 @@ static class NativeArchiveStore
                     throw new ArgumentException(bad);
                 string title=input.General.Title!.Trim();
                 return (title,JsonSerializer.Serialize(
-                    new TitleInput(title,input.General.Remarks)),null,scope);
+                    new TitleInput(title,input.General.Remarks)),input.ParentId,scope);
             default:
                 throw new ArgumentException("文件夹类型和业务属性不匹配。");
         }
     }
 
-    private static bool ActiveDirectory(SqliteConnection db,long id)
+    private static bool ActiveDirectory(SqliteConnection db,string workspace,string scope,long id)
     {
         using var cmd=db.CreateCommand();
         cmd.CommandText="""
             SELECT count(*) FROM folders
-            WHERE id=$id AND workspace='company' AND kind='archive_folder'
-              AND section='achievement' AND deleted=0;
+            WHERE id=$id AND workspace=$w AND kind='archive_folder'
+              AND section=$scope AND deleted=0;
             """;
         cmd.Parameters.AddWithValue("$id",id);
+        cmd.Parameters.AddWithValue("$w",workspace);
+        cmd.Parameters.AddWithValue("$scope",scope);
         return (long)cmd.ExecuteScalar()! ==1;
     }
 
@@ -117,22 +116,25 @@ static class NativeArchiveStore
     {
         if(!Handles(kind))throw new ArgumentException("不支持的资料类型。");
         var data=Prepare(workspace,kind,input,true,null);
-        if(data.Parent is long parent && !ActiveDirectory(db,parent))
-            throw new KeyNotFoundException("上级业务档案目录不存在。");
+        if(data.Parent is long parent && !ActiveDirectory(db,workspace,
+            ArchiveDirectoryScopes.ForRecord(kind,data.Section),parent))
+            throw new KeyNotFoundException("上级目录不存在或不属于当前模块。");
         using var cmd=db.CreateCommand();
         cmd.CommandText="""
             INSERT INTO folders(workspace,kind,section,parent_id,name,attributes_json,position)
             VALUES($w,$kind,$section,$parent,$name,$json,
              (SELECT COALESCE(MAX(position),-1)+1 FROM folders
-              WHERE workspace=$w AND section=$section AND deleted=0
+              WHERE workspace=$w AND deleted=0
                 AND COALESCE(parent_id,0)=COALESCE($parent,0)
-                AND (kind=$kind OR ($section='achievement' AND $w='company'
-                    AND kind IN ('archive','archive_folder')))));
+                AND ((kind='archive_folder' AND section=$scope)
+                    OR (kind='archive' AND section=$scope)
+                    OR (kind='general' AND $scope='general'))));
             SELECT last_insert_rowid();
             """;
         cmd.Parameters.AddWithValue("$w",workspace);
         cmd.Parameters.AddWithValue("$kind",kind);
         cmd.Parameters.AddWithValue("$section",data.Section);
+        cmd.Parameters.AddWithValue("$scope",ArchiveDirectoryScopes.ForRecord(kind,data.Section));
         cmd.Parameters.AddWithValue("$parent",(object?)data.Parent??DBNull.Value);
         cmd.Parameters.AddWithValue("$name",data.Name);
         cmd.Parameters.AddWithValue("$json",data.Json);
@@ -154,6 +156,8 @@ static class NativeArchiveStore
                 Year=archive.Year??existing?.Year
             }};
         }
+        if(r.Kind==FolderKinds.General)
+            input=input with {ParentId=input.ParentId??current};
         var data=Prepare(r.Workspace,r.Kind,input,false,r.Section);
         if(data.Parent.HasValue && data.Parent!=current)
             throw new ArgumentException("更换父级必须使用单独的移动操作。");
@@ -185,7 +189,7 @@ static class NativeArchiveStore
             using var cmd=db.CreateCommand();
             cmd.CommandText="""
                 DELETE FROM folders WHERE id=$id AND workspace=$w
-                AND kind='archive_folder' AND section='achievement'
+                AND kind='archive_folder' AND section=$section
                 AND NOT EXISTS(SELECT 1 FROM folders c WHERE c.parent_id=folders.id)
                 AND NOT EXISTS(SELECT 1 FROM folder_file_links l WHERE l.folder_id=folders.id);
                 """;
@@ -242,7 +246,8 @@ static class NativeArchiveStore
         };
         return new FolderSnapshot(new FolderDescriptor(
             ResourceRef.Create(w,kind,id,section),name,
-            parent is long p ? ResourceRef.Create(w,FolderKinds.ArchiveFolder,p,"achievement"):null,
+            parent is long p ? ResourceRef.Create(w,FolderKinds.ArchiveFolder,p,
+                ArchiveDirectoryScopes.ForRecord(kind,section)):null,
             rd.GetInt32(6)),metadata);
     }
 
@@ -252,19 +257,16 @@ static class NativeArchiveStore
         if(!Handles(kind))throw new ArgumentException("不支持的资料类型。");
         string scope=Section(workspace,kind,section);
         if(parentId is <=0)throw new ArgumentException("无效上级目录。");
-        if(parentId.HasValue && (kind==FolderKinds.General ||
-           (kind==FolderKinds.Archive && (workspace!="company"||scope!="achievement"))))
-            throw new ArgumentException("该资料类别不支持下级分类。");
-        if(parentId is long parent && !ActiveDirectory(db,parent))
-            throw new KeyNotFoundException("上级业务档案目录不存在。");
+        if(parentId is long parent && !ActiveDirectory(db,workspace,
+            ArchiveDirectoryScopes.ForRecord(kind,scope),parent))
+            throw new KeyNotFoundException("上级目录不存在或不属于当前模块。");
         using var cmd=db.CreateCommand();
         cmd.CommandText="""
             SELECT id,workspace,kind,section,name,parent_id,position,attributes_json
             FROM folders WHERE workspace=$w AND kind=$kind AND section=$section
               AND deleted=0 AND (
                  ($kind='archive_folder' AND COALESCE(parent_id,0)=COALESCE($parent,0))
-                 OR ($kind='archive' AND ($parent IS NULL OR parent_id=$parent))
-                 OR ($kind='general' AND parent_id IS NULL))
+                 OR ($kind IN ('archive','general') AND ($parent IS NULL OR parent_id=$parent)))
               AND (parent_id IS NULL OR EXISTS(
                 SELECT 1 FROM folders p WHERE p.id=folders.parent_id
                 AND p.workspace=folders.workspace AND p.deleted=0))

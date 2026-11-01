@@ -846,7 +846,7 @@ static partial class McpLocal
            "update_party_archive" or "delete_party_archive" or
            "list_archives" or "create_archive" or "update_archive" or
            "delete_archive" or "list_archive_folders" or "create_archive_folder" or
-           "update_archive_folder" or "delete_archive_folder" or "list_general" or
+           "update_archive_folder" or "delete_archive_folder" or "move_archive_entry" or "list_general" or
            "create_general" or "update_general" or "delete_general")
             return await ExecuteArchiveAsync(client,workspace,name,args);
         if(name=="list_projects")

@@ -43,7 +43,14 @@ static class FolderModelSmoke
         Reject("company",FolderKinds.Project,0,"","nonpositive id");
         Reject("company",FolderKinds.Contract,1,"achievement","contract section");
         Reject("company",FolderKinds.Archive,1,"academic","company academic scope");
-        Reject("personal",FolderKinds.ArchiveFolder,1,"achievement","personal archive-folder scope");
+        var personalDir=ResourceRef.Create("personal",FolderKinds.ArchiveFolder,1,"achievement");
+        var personalGeneralDir=ResourceRef.Create("personal",FolderKinds.ArchiveFolder,2,"general");
+        Check(personalDir.IsValid && personalGeneralDir.IsValid,"personal recursive directory scopes");
+        Check(!FolderTypePolicy.MandatoryParentRulesSatisfied(personalDir,category),
+            "cross-workspace archive folder rejected");
+        Check(!FolderTypePolicy.MandatoryParentRulesSatisfied(personalDir,personalGeneralDir),
+            "cross-section archive folder rejected");
+        Reject("company",FolderKinds.ArchiveFolder,1,"academic","company academic folder invalid");
         Console.WriteLine("FOLDER MODEL SMOKE PASS: identity, scope, contract parent and archive types");
     }
 }

@@ -32,12 +32,12 @@ static class ResourceSchemaV2
               CHECK(kind!='contract' OR parent_id IS NOT NULL),
               CHECK(kind NOT IN ('project','contract','ip','general') OR section=''),
               CHECK(kind!='archive_folder' OR
-                (workspace='company' AND section='achievement')),
+                (workspace='company' AND section IN ('achievement','party','general') OR
+                 workspace='personal' AND section IN ('certificate','achievement','academic','general'))),
               CHECK(kind!='archive' OR
                 (workspace='company' AND section IN ('certificate','achievement','party') OR
                  workspace='personal' AND section IN ('certificate','achievement','academic'))),
-              CHECK(parent_id IS NULL OR kind IN ('contract','archive_folder','archive')),
-              CHECK(kind!='archive' OR section='achievement' OR parent_id IS NULL),
+              CHECK(parent_id IS NULL OR kind IN ('contract','archive_folder','archive','general')),
               CHECK(is_system=0 OR
                 (kind='archive_folder' AND parent_id IS NULL AND workspace='company')));
             CREATE INDEX idx_folder_children ON folders(workspace,parent_id,position,id)
@@ -54,10 +54,11 @@ static class ResourceSchemaV2
                 WHERE p.id=NEW.parent_id AND p.workspace=NEW.workspace AND p.deleted=0
                   AND ((NEW.kind='contract' AND p.kind='project')
                     OR (NEW.kind='archive_folder' AND p.kind='archive_folder'
-                        AND p.section='achievement')
-                    OR (NEW.kind='archive' AND NEW.section='achievement'
-                        AND NEW.workspace='company' AND p.kind='archive_folder'
-                        AND p.section='achievement')));
+                        AND p.section=NEW.section)
+                    OR (NEW.kind='archive' AND p.kind='archive_folder'
+                        AND p.section=NEW.section)
+                    OR (NEW.kind='general' AND p.kind='archive_folder'
+                        AND p.section='general')));
             END;
             CREATE TRIGGER folder_parent_update BEFORE UPDATE OF parent_id ON folders
             WHEN NEW.parent_id IS NOT NULL BEGIN
@@ -66,10 +67,11 @@ static class ResourceSchemaV2
                 WHERE p.id=NEW.parent_id AND p.workspace=NEW.workspace AND p.deleted=0
                   AND ((NEW.kind='contract' AND p.kind='project')
                     OR (NEW.kind='archive_folder' AND p.kind='archive_folder'
-                        AND p.section='achievement')
-                    OR (NEW.kind='archive' AND NEW.section='achievement'
-                        AND NEW.workspace='company' AND p.kind='archive_folder'
-                        AND p.section='achievement')));
+                        AND p.section=NEW.section)
+                    OR (NEW.kind='archive' AND p.kind='archive_folder'
+                        AND p.section=NEW.section)
+                    OR (NEW.kind='general' AND p.kind='archive_folder'
+                        AND p.section='general')));
               SELECT RAISE(ABORT,'folder cycle') WHERE NEW.parent_id=NEW.id
                 OR EXISTS(WITH RECURSIVE ancestors(id,parent_id) AS (
                   SELECT id,parent_id FROM folders WHERE id=NEW.parent_id

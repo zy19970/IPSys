@@ -199,6 +199,57 @@ static class NativeArchiveHttpSmoke
         using(var cross=await client.GetAsync(
             $"/api/v2/folders/company/general/{general}"))
             Check(cross.StatusCode==HttpStatusCode.NotFound,"general workspace isolation");
+
+        // All seven ordinary directory scopes share one recursive structure.
+        foreach(var (ws,section) in new[]{
+            ("company","party"),("company","general"),
+            ("personal","certificate"),("personal","achievement"),
+            ("personal","academic"),("personal","general")})
+        {
+            string baseUrl="/api/v2/folders/"+ws+"/";
+            string dir=baseUrl+"archive_folder";
+            string key="?section="+section;
+            long first=await Add(await client.PostAsJsonAsync(dir,
+                new FolderMutationInput(ArchiveFolder:
+                    new ArchiveFolderInput("一级"+suffix,null),Section:section)));
+            long second=await Add(await client.PostAsJsonAsync(dir,
+                new FolderMutationInput(ArchiveFolder:
+                    new ArchiveFolderInput("二级"+suffix,first),Section:section)));
+            long third=await Add(await client.PostAsJsonAsync(dir,
+                new FolderMutationInput(ArchiveFolder:
+                    new ArchiveFolderInput("三级"+suffix,second),Section:section)));
+            var direct=await Read(client,dir+key+"&parentId="+second);
+            Check(direct.EnumerateArray().Any(x=>x.GetProperty("folder")
+                .GetProperty("ref").GetProperty("id").GetInt64()==third),
+                "nested folder list "+ws+"/"+section);
+            long entry=section=="general"
+                ?await Add(await client.PostAsJsonAsync(baseUrl+"general",
+                    new FolderMutationInput(General:new TitleInput("文档"+suffix),
+                        ParentId:third)))
+                :await Add(await client.PostAsJsonAsync(baseUrl+"archive",
+                    new FolderMutationInput(Archive:new ArchiveInput("文档"+suffix,
+                        null,null,null,FolderId:third),Section:section)));
+            string kind=section=="general"?"general":"archive";
+            string infoUrl=baseUrl+kind+"/"+entry+
+                (kind=="archive"?key:"");
+            var detail=await Read(client,infoUrl);
+            Check(detail.GetProperty("folder").GetProperty("parent")
+                .GetProperty("id").GetInt64()==third,
+                "nested record parent "+ws+"/"+section);
+            var mixed=await Read(client,baseUrl+"entries?section="+section+
+                "&parentId="+third);
+            Check(mixed.GetArrayLength()==1,"recursive direct record entries");
+            using(var correct=await client.PostAsJsonAsync(
+                baseUrl+kind+"/"+entry+"/move"+key,new NativeFolderMoveInput(second)))
+                correct.EnsureSuccessStatusCode();
+            using(var cycle=await client.PostAsJsonAsync(
+                dir+"/"+first+"/move"+key,new NativeFolderMoveInput(third)))
+                Check(cycle.StatusCode==HttpStatusCode.Conflict,
+                    "folder cycle rejected "+ws+"/"+section);
+            using(var nonempty=await client.DeleteAsync(dir+"/"+first+key))
+                Check(nonempty.StatusCode==HttpStatusCode.Conflict,
+                    "nonempty folder protected "+ws+"/"+section);
+        }
         Console.WriteLine("N2 ARCHIVE SQLCIPHER HTTP SMOKE PASS");
     }
 }

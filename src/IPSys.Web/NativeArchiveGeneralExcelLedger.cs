@@ -30,8 +30,8 @@ static partial class ExcelLedger
             if(chosen is not null && !chosen.Contains(item.Folder.Ref.Id))continue;
             var value=JsonOf(item.BusinessData);
             var cells=cols.Select(c=>Text(value,c.Property)).ToArray();
-            if(kind=="archive" && workspace=="company" && section=="achievement")
-                cells[^1]=DirectoryPath(db,item.Folder.Parent?.Id);
+            cells[^1]=DirectoryPath(db,workspace,
+                kind=="general"?"general":section,item.Folder.Parent?.Id);
             data.Add(cells);
             if(data.Count>20000)
                 throw new InvalidDataException("单次最多导出 20000 条记录。");
@@ -42,24 +42,28 @@ static partial class ExcelLedger
 
     // Business category is editable metadata; the actual hierarchy is the
     // folder's parent identity. Export/import directory paths independently.
-    private static Dictionary<long,(long? Parent,string Name)> FolderMap(SqliteConnection db)
+    private static Dictionary<long,(long? Parent,string Name)> FolderMap(
+        SqliteConnection db,string workspace,string section)
     {
         var map=new Dictionary<long,(long?,string)>();
         using var cmd=db.CreateCommand();
         cmd.CommandText="""
             SELECT id,parent_id,name FROM folders
-            WHERE workspace='company' AND kind='archive_folder'
-              AND section='achievement' AND deleted=0;
+            WHERE workspace=$w AND kind='archive_folder'
+              AND section=$section AND deleted=0;
             """;
+        cmd.Parameters.AddWithValue("$w",workspace);
+        cmd.Parameters.AddWithValue("$section",section);
         using var rd=cmd.ExecuteReader();
         while(rd.Read())map[rd.GetInt64(0)]=(
             rd.IsDBNull(1)?null:rd.GetInt64(1),rd.GetString(2));
         return map;
     }
-    private static string DirectoryPath(SqliteConnection db,long? id)
+    private static string DirectoryPath(SqliteConnection db,
+        string workspace,string section,long? id)
     {
         if(id is null)return "";
-        var map=FolderMap(db);
+        var map=FolderMap(db,workspace,section);
         var path=new List<string>();
         var seen=new HashSet<long>();
         while(id is long n)
@@ -77,17 +81,17 @@ static partial class ExcelLedger
     private static long? ArchiveParent(SqliteConnection db,string workspace,
         string section,string? category,string? directory,bool legacy)
     {
-        if(workspace!="company" || section!="achievement")
-        {
-            if(!string.IsNullOrWhiteSpace(directory))
-                throw new InvalidDataException("该资料分类不支持所属目录。");
-            return null;
-        }
-        var map=FolderMap(db);
-        if(!legacy)
+        if(!ArchiveDirectoryScopes.Allowed(workspace,section))
+            throw new InvalidDataException("当前类别不支持所属目录。");
+        var map=FolderMap(db,workspace,section);
+        if(!legacy || workspace!="company" || section!="achievement")
         {
             if(string.IsNullOrWhiteSpace(directory))
-                throw new InvalidDataException("公司业务档案需要填写“所属目录”，以防误放。");
+            {
+                if(workspace=="company" && section=="achievement")
+                    throw new InvalidDataException("公司业务档案需要填写“所属目录”。");
+                return null;
+            }
             long? parent=null;
             foreach(var segment in directory.Split(" / ",StringSplitOptions.TrimEntries))
             {
@@ -136,13 +140,13 @@ static partial class ExcelLedger
                     var input=Archive(fields);
                     if(ArchiveRules.Validate(input) is string error)
                         throw new InvalidDataException(error);
-                    long? selectedParent=workspace=="company" && section=="achievement"
-                        ?(legacy ? null : ArchiveParent(db,workspace,section,
-                            input.Category,fields[5],false)):null;
+                    long? selectedParent=legacy ? null :
+                        ArchiveParent(db,workspace,section,
+                            input.Category,fields[5],false);
                     var matches=NativeArchives(db,workspace,section).Where(x=>{
                         var a=(ArchiveInput)x.BusinessData;
                         if(!Same(a.Name??"",input.Name??""))return false;
-                        if(workspace=="company" && section=="achievement" && !legacy)
+                        if(!legacy)
                             return x.Folder.Parent?.Id==selectedParent;
                         return Same(a.Category??"",input.Category??"");
                     }).ToArray();
@@ -179,9 +183,12 @@ static partial class ExcelLedger
                     var title=new TitleInput(fields[0],fields[1]);
                     if(GeneralRules.Validate(title) is string error)
                         throw new InvalidDataException(error);
+                    long? parent=ArchiveParent(db,workspace,"general",null,
+                        fields.Length>2?fields[2]:null,false);
                     var existing=NativeArchiveStore.List(db,workspace,
                         FolderKinds.General,null).FirstOrDefault(x=>
-                            Same(x.Folder.Name,title.Title??""));
+                            Same(x.Folder.Name,title.Title??"") &&
+                            x.Folder.Parent?.Id==parent);
                     if(existing is not null && policy=="skip"){skipped++;continue;}
                     if(existing is not null && policy=="update")
                     {
@@ -196,7 +203,7 @@ static partial class ExcelLedger
                     else
                     {
                         NativeArchiveStore.Create(db,workspace,FolderKinds.General,
-                            new FolderMutationInput(General:title));
+                            new FolderMutationInput(General:title,ParentId:parent));
                         created++;
                     }
                 }

@@ -8,7 +8,9 @@ record NativeFolderMoveInput(long? ParentId);
 static class NativeFolderEndpoints
 {
     private static ResourceRef Ref(string w,string kind,long id,string? section) =>
-        new(w,kind,id,kind==FolderKinds.ArchiveFolder?"achievement":section??"");
+        new(w,kind,id,kind==FolderKinds.ArchiveFolder?
+            (string.IsNullOrEmpty(section)&&w=="company"?"achievement":section??""):
+            kind==FolderKinds.General?"":section??"");
 
     private static string FolderConstraintMessage(
         Microsoft.Data.Sqlite.SqliteException ex,string kind)
@@ -92,7 +94,8 @@ static class NativeFolderEndpoints
                         ?NativeArchiveStore.Create(v.Db,workspace,kind,input)
                         :NativeFolderStore.Create(v.Db,workspace,kind,input);
                     return Results.Json(new{id,reference=ResourceRef.Create(workspace,kind,id,
-                        kind==FolderKinds.ArchiveFolder?"achievement":input.Section??"")});
+                        kind==FolderKinds.ArchiveFolder?
+                            (string.IsNullOrEmpty(input.Section)&&workspace=="company"?"achievement":input.Section??""):input.Section??"")});
                 }
                 catch(ArgumentException ex){return Bad(ex.Message);}
                 catch(InvalidOperationException ex){return Bad(ex.Message,409);}

@@ -221,11 +221,12 @@ const Drive = {
     if (s.view !== "files" || s.query.trim()) return null;
     const id = String(s.folderId || "");
     /* 业务档案的目录里装的仍然是同类记录,照样出台账 */
-    if (id.startsWith("af:")) return ARCHIVE_COLS;
+    if (id.startsWith("af:"))
+      return LEDGER_COLS[this.currentFolder?.biz?.section || "achievement"] || ARCHIVE_COLS;
     if (!id.startsWith("k:")) return null;
     const sec = id.slice(2);
     /* 公司业务档案入口展示普通目录树，所有目录操作规则一致 → 通用三列 */
-    if (catIsDir(sec)) return null;
+    if (catIsDir(sec, VaultStore.ws)) return null;
     return LEDGER_COLS[sec] || null;
   },
 
@@ -349,8 +350,10 @@ const Drive = {
   /* 公司业务档案内层允许目录与资料混排，按服务端持久顺序默认展示。 */
   isArchiveOrderScope() {
     const s = this.state;
-    return s.view === "files" && !s.query.trim() && VaultStore.ws === "company" &&
-      (s.folderId === "k:achievement" || String(s.folderId).startsWith("af:"));
+    return s.view === "files" && !s.query.trim() &&
+      (String(s.folderId).startsWith("af:") ||
+       (String(s.folderId).startsWith("k:") &&
+        catIsDir(String(s.folderId).slice(2),VaultStore.ws)));
   },
 
   /* ---------- 搜索 ---------- */

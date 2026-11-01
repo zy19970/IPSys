@@ -16,7 +16,7 @@ readonly record struct ResourceRef(string Workspace,string Kind,long Id,string S
     {
         FolderKinds.Project or FolderKinds.Contract or FolderKinds.Ip or FolderKinds.General => Section == "",
         FolderKinds.Archive => ArchiveRules.Module(Workspace,Section) != null,
-        FolderKinds.ArchiveFolder => Workspace == "company" && Section == "achievement",
+        FolderKinds.ArchiveFolder => ArchiveDirectoryScopes.Allowed(Workspace,Section),
         _ => false
     });
 
@@ -45,9 +45,23 @@ static class FolderTypePolicy
         if(child.Kind == FolderKinds.Contract)
             return parent is ResourceRef project && project.Kind == FolderKinds.Project;
         if(child.Kind == FolderKinds.ArchiveFolder)
-            return parent is null || parent is ResourceRef folder && folder.Kind == FolderKinds.ArchiveFolder;
-        if(child.Kind == FolderKinds.Archive && child.Workspace == "company" && child.Section == "achievement")
-            return parent is null || parent is ResourceRef folder && folder.Kind == FolderKinds.ArchiveFolder;
+            return parent is null || parent is ResourceRef folder &&
+                folder.Kind == FolderKinds.ArchiveFolder && folder.Section == child.Section;
+        if(child.Kind is FolderKinds.Archive or FolderKinds.General)
+            return parent is null || parent is ResourceRef folder &&
+                folder.Kind == FolderKinds.ArchiveFolder &&
+                folder.Section == (child.Kind==FolderKinds.General?"general":child.Section);
         return true;
     }
+}
+
+static class ArchiveDirectoryScopes
+{
+    public static bool Allowed(string workspace,string section) =>
+        workspace=="company" && section is ("achievement" or "party" or "general") ||
+        workspace=="personal" && section is ("certificate" or "achievement" or "academic" or "general");
+    public static string ForRecord(string kind,string section) =>
+        kind==FolderKinds.General?"general":section;
+    public static string RecordKind(string section) =>
+        section=="general"?FolderKinds.General:FolderKinds.Archive;
 }

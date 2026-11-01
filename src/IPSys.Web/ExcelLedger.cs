@@ -42,8 +42,10 @@ static partial class ExcelLedger
         new("directory","所属目录")
     ];
     private static readonly Column[] GeneralLegacyColumns=[new("title","资料名称")];
-    private static readonly Column[] GeneralColumns=
+    private static readonly Column[] GeneralPreviousColumns=
         [new("title","资料名称"),new("remarks","备注")];
+    private static readonly Column[] GeneralColumns=
+        [new("title","资料名称"),new("remarks","备注"),new("directory","所属目录")];
 
     // "更新已有": 空 Excel 单元格 = 不修改该属性；需要清空请通过属性表单操作。
     // 新建和跳过不经此合并，防止变更其他入口的既有语义。
@@ -305,8 +307,13 @@ static partial class ExcelLedger
         try{return (false,ReadSheet(bytes,GeneralColumns));}
         catch(InvalidDataException ex) when(ex.Message.StartsWith("表头不匹配",StringComparison.Ordinal))
         {
-            return (true,ReadSheet(bytes,GeneralLegacyColumns)
-                .Select(r=>(r.Number,r.Values.Concat([""]).ToArray())).ToList());
+            try{return (true,ReadSheet(bytes,GeneralPreviousColumns)
+                .Select(r=>(r.Number,r.Values.Concat([""]).ToArray())).ToList());}
+            catch(InvalidDataException old) when(old.Message.StartsWith("表头不匹配",StringComparison.Ordinal))
+            {
+                return (true,ReadSheet(bytes,GeneralLegacyColumns)
+                    .Select(r=>(r.Number,r.Values.Concat(["",""]).ToArray())).ToList());
+            }
         }
     }
     private static string? ValidateGeneral(string? title)=>

@@ -377,7 +377,7 @@ const RecordForms = {
 
   /* ---------------- 综合资料 ---------------- */
 
-  general(node) {
+  general(node, parentId = null) {
     const isEdit = !!node;
     const b = node?.biz || {};
     const r = b.raw || {};
@@ -399,7 +399,7 @@ const RecordForms = {
         } else {
           await VaultStore.api(`/api/v2/folders/${VaultStore.ws}/general`, {
             method: "POST",
-            json: { general: { title: d.title, remarks: d.remarks } },
+            json: { general: { title: d.title, remarks: d.remarks }, parentId },
           });
         }
         toast(isEdit ? "已保存" : "已创建");

@@ -64,26 +64,33 @@ static class NativeArchiveUiEndpoints
                     }
                     var metadata=(TitleInput)snapshot.BusinessData;
                     general.Add(new{id,title=snapshot.Folder.Name,
+                        folderId=snapshot.Folder.Parent?.Id,
+                        position=snapshot.Folder.Position,
                         remarks=metadata.Remarks??"",files});
                 }
-                if(workspace=="company")
+                foreach(string scope in workspace=="company"
+                    ?new[]{"achievement","party","general"}
+                    :new[]{"certificate","achievement","academic","general"})
                 {
                     var parentIds=new List<long>{0};
                     using(var cmd=v.Db.CreateCommand())
                     {
                         cmd.CommandText="""
                             SELECT id,parent_id,name,position,is_system FROM folders
-                            WHERE workspace='company' AND kind='archive_folder'
-                              AND section='achievement' AND deleted=0
+                            WHERE workspace=$w AND kind='archive_folder'
+                              AND section=$section AND deleted=0
                             ORDER BY position,id;
                             """;
+                        cmd.Parameters.AddWithValue("$w",workspace);
+                        cmd.Parameters.AddWithValue("$section",scope);
                         using var rd=cmd.ExecuteReader();
                         while(rd.Read())
                         {
                             long id=rd.GetInt64(0);
                             long? parent=rd.IsDBNull(1)?null:rd.GetInt64(1);
-                            folders.Add(new {
-                                id,parentId=parent,name=rd.GetString(2),
+                            folders.Add(new{
+                                id,section=scope,parentId=parent,
+                                name=rd.GetString(2),
                                 position=rd.GetInt32(3),isSystem=rd.GetInt64(4)!=0
                             });
                             parentIds.Add(id);
@@ -92,12 +99,14 @@ static class NativeArchiveUiEndpoints
                     foreach(long parentId in parentIds)
                     {
                         var peers=NativeArchiveOrder.Entries(v.Db,workspace,
-                            "achievement",parentId==0?null:parentId);
-                        orders[parentId.ToString()]=peers.Select(x=>new {
-                            kind=x.Folder.Ref.Kind==FolderKinds.ArchiveFolder?
-                                "folder":"record",
+                            scope,parentId==0?null:parentId);
+                        var order=peers.Select(x=>new{
+                            kind=x.Folder.Ref.Kind==FolderKinds.ArchiveFolder?"folder":"record",
                             id=x.Folder.Ref.Id
                         }).ToArray();
+                        orders[scope+":"+parentId]=order;
+                        if(scope=="achievement"&&workspace=="company")
+                            orders[parentId.ToString()]=order;
                     }
                 }
                 return Results.Json(new{archives,general,folders,orders,files=fileRows});

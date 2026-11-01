@@ -9,10 +9,11 @@ static class NativeArchiveOrder
     {
         CheckScope(db,workspace,section,parentId);
         var folders=NativeArchiveStore.List(db,workspace,FolderKinds.ArchiveFolder,
-            "achievement",parentId);
+            section,parentId);
+        string kind=ArchiveDirectoryScopes.RecordKind(section);
         // Only direct records belong in each folder's mixed children table.
-        var records=NativeArchiveStore.List(db,workspace,FolderKinds.Archive,
-            "achievement",parentId)
+        var records=NativeArchiveStore.List(db,workspace,kind,
+            kind==FolderKinds.General?null:section,parentId)
             .Where(x=>x.Folder.Parent?.Id==parentId);
         return folders.Concat(records)
             .OrderBy(x=>x.Folder.Position).ThenBy(x=>x.Folder.Ref.Id)
@@ -22,12 +23,12 @@ static class NativeArchiveOrder
     private static void CheckScope(SqliteConnection db,string workspace,
         string section,long? parent)
     {
-        if(workspace!="company"||section!="achievement")
-            throw new ArgumentException("混排操作仅限公司业务档案。");
+        if(!ArchiveDirectoryScopes.Allowed(workspace,section))
+            throw new ArgumentException("当前模块不支持目录混排。");
         if(parent is <=0)throw new ArgumentException("无效的目录。");
         if(parent is long id)
         {
-            var r=ResourceRef.Create("company",FolderKinds.ArchiveFolder,id,"achievement");
+            var r=ResourceRef.Create(workspace,FolderKinds.ArchiveFolder,id,section);
             if(NativeArchiveStore.Get(db,r) is null)
                 throw new KeyNotFoundException("目录不存在。");
         }
@@ -52,18 +53,22 @@ static class NativeArchiveOrder
         cmd.Transaction=tx;
         cmd.CommandText="""
             UPDATE folders SET position=$position
-            WHERE id=$id AND workspace='company' AND section='achievement'
+            WHERE id=$id AND workspace=$w AND section=$section
               AND kind=$kind AND COALESCE(parent_id,0)=$parent AND deleted=0;
             """;
         cmd.Parameters.AddWithValue("$parent",request.ParentId);
+        cmd.Parameters.AddWithValue("$w",workspace);
         var idParam=cmd.Parameters.Add("$id",SqliteType.Integer);
         var kindParam=cmd.Parameters.Add("$kind",SqliteType.Text);
+        var sectionParam=cmd.Parameters.Add("$section",SqliteType.Text);
         var posParam=cmd.Parameters.Add("$position",SqliteType.Integer);
         for(int i=0;i<proposed.Length;i++)
         {
             idParam.Value=proposed[i].Id;
             kindParam.Value=proposed[i].Kind=="folder"?
-                FolderKinds.ArchiveFolder:FolderKinds.Archive;
+                FolderKinds.ArchiveFolder:ArchiveDirectoryScopes.RecordKind(section);
+            sectionParam.Value=proposed[i].Kind=="folder"?section:
+                section=="general"?"":section;
             posParam.Value=i;
             if(cmd.ExecuteNonQuery()!=1)
                 throw new InvalidOperationException("目录内容发生变化，请刷新后排序。");
@@ -74,24 +79,28 @@ static class NativeArchiveOrder
 
     public static bool Move(SqliteConnection db,ResourceRef r,long? targetParent)
     {
-        if(!r.IsValid || r.Workspace!="company" || r.Section!="achievement" ||
-            r.Kind is not (FolderKinds.ArchiveFolder or FolderKinds.Archive))
-            throw new ArgumentException("移动只适用于公司业务档案目录与资料。");
-        if(r.Kind==FolderKinds.Archive && targetParent is null)
+        string scope=ArchiveDirectoryScopes.ForRecord(r.Kind,r.Section);
+        if(!r.IsValid || !ArchiveDirectoryScopes.Allowed(r.Workspace,scope) ||
+            r.Kind is not (FolderKinds.ArchiveFolder or FolderKinds.Archive or FolderKinds.General))
+            throw new ArgumentException("该资料类型不支持目录移动。");
+        if(r.Kind==FolderKinds.Archive && r.Workspace=="company" &&
+            r.Section=="achievement" && targetParent is null)
             throw new ArgumentException("公司业务档案资料必须归属具体目录。");
         if(targetParent is <=0)throw new ArgumentException("无效的目标目录。");
         if(targetParent is long p && NativeArchiveStore.Get(db,
-            ResourceRef.Create("company",FolderKinds.ArchiveFolder,p,"achievement")) is null)
+            ResourceRef.Create(r.Workspace,FolderKinds.ArchiveFolder,p,scope)) is null)
             throw new KeyNotFoundException("目标目录不存在。");
         using var tx=db.BeginTransaction();
         using var select=db.CreateCommand();
         select.Transaction=tx;
         select.CommandText="""
             SELECT name,attributes_json,parent_id FROM folders
-            WHERE id=$id AND workspace='company' AND kind=$kind
-              AND section='achievement' AND deleted=0;
+            WHERE id=$id AND workspace=$w AND kind=$kind
+              AND section=$section AND deleted=0;
             """;
         select.Parameters.AddWithValue("$id",r.Id);
+        select.Parameters.AddWithValue("$w",r.Workspace);
+        select.Parameters.AddWithValue("$section",r.Section);
         select.Parameters.AddWithValue("$kind",r.Kind);
         string name,json;long? oldParent;
         using(var rd=select.ExecuteReader())
@@ -105,24 +114,30 @@ static class NativeArchiveOrder
         string updatedJson;
         if(r.Kind==FolderKinds.ArchiveFolder)
             updatedJson=JsonSerializer.Serialize(new ArchiveFolderInput(name,targetParent));
-        else
+        else if(r.Kind==FolderKinds.Archive)
         {
             var data=JsonSerializer.Deserialize<ArchiveInput>(json)
                 ?? throw new InvalidDataException("资料属性无效。");
             updatedJson=JsonSerializer.Serialize(data with {FolderId=targetParent});
         }
+        else updatedJson=json;
         using var cmd=db.CreateCommand();
         cmd.Transaction=tx;
         cmd.CommandText="""
             UPDATE folders SET parent_id=$parent,attributes_json=$json,
               position=(SELECT COALESCE(MAX(position),-1)+1 FROM folders
-                WHERE workspace='company' AND section='achievement'
-                 AND kind IN ('archive','archive_folder')
-                 AND COALESCE(parent_id,0)=COALESCE($parent,0) AND deleted=0)
-            WHERE id=$id AND workspace='company' AND kind=$kind
-              AND section='achievement' AND deleted=0;
+                WHERE workspace=$w AND COALESCE(parent_id,0)=COALESCE($parent,0)
+                  AND deleted=0 AND
+                 ((kind='archive_folder' AND section=$scope)
+                  OR (kind='archive' AND section=$scope)
+                  OR (kind='general' AND $scope='general')))
+            WHERE id=$id AND workspace=$w AND kind=$kind
+              AND section=$section AND deleted=0;
             """;
         cmd.Parameters.AddWithValue("$parent",(object?)targetParent??DBNull.Value);
+        cmd.Parameters.AddWithValue("$w",r.Workspace);
+        cmd.Parameters.AddWithValue("$scope",scope);
+        cmd.Parameters.AddWithValue("$section",r.Section);
         cmd.Parameters.AddWithValue("$json",updatedJson);
         cmd.Parameters.AddWithValue("$id",r.Id);
         cmd.Parameters.AddWithValue("$kind",r.Kind);

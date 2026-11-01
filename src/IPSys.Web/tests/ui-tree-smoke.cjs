@@ -183,4 +183,38 @@ assert.equal(run("findById('i:602').dateLabel"),'');
 assert.equal(run("findById('i:602').mtime"),null);
 assert.equal(run("findById('i:603').biz.year"),'2024');
 
+
+/* Seven shared directory scopes; nested folder IDs must never attach to another category. */
+for (const ws of ['company','personal']) {
+ const scopes=ws==='company'?['achievement','party','general']:
+  ['certificate','achievement','academic','general'];
+ const folders=[],archives=[],general=[];
+ scopes.forEach((section,index)=>{
+  const base=400+index*10+(ws==='personal'?100:0);
+  folders.push(
+   {id:base,name:'一级'+section,section,parentId:null,position:0},
+   {id:base+1,name:'二级'+section,section,parentId:base,position:0},
+   {id:base+2,name:'三级'+section,section,parentId:base+1,position:0}
+  );
+  if(section==='general')general.push({
+   id:base+3,title:'资料'+section,folderId:base+2,position:0,files:[]
+  });
+  else archives.push({
+   id:base+3,name:'资料'+section,section,folderId:base+2,position:0
+  });
+ });
+ run('ROOT=VaultStore.buildTree('+JSON.stringify({
+  ws,projects:[],contracts:[],projectFiles:[],ip:{},
+  archive:{folders,archives,general,files:[],orders:{}}
+ })+')');
+ for(const section of scopes) {
+  const base=400+scopes.indexOf(section)*10+(ws==='personal'?100:0);
+  const leaf=section==='general'?'g:'+(base+3):
+   'a:'+section+':'+(base+3);
+  assert.deepEqual(Array.from(run('pathTo('+JSON.stringify(leaf)+')'),n=>n.id),
+   ['root','k:'+section,'af:'+base,'af:'+(base+1),
+    'af:'+(base+2),leaf],ws+'/'+section+' 3-level directory path');
+  assert.equal(run("findById('af:"+base+"').biz.section"),section);
+ }
+}
 console.log('DRIVE TREE SMOKE PASS: project / contract / original nesting, rollups, identity, IP application year');

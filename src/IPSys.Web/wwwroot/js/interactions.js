@@ -1258,11 +1258,21 @@ function filterExt(exts) {
   Drive.renderChrome();
 }
 
-/* 公司业务档案：Folder 目录与 Archive 记录采用相同的父级和排序规则。 */
+/* Seven record categories share a recursive directory implementation. */
+function archiveScopeSection() {
+  const id=String(Drive.state.folderId||"");
+  if(id.startsWith("k:")) {
+    const section=id.slice(2);
+    return catIsDir(section,VaultStore.ws)?section:null;
+  }
+  if(id.startsWith("af:"))
+    return findById(id)?.biz?.section ||
+      (VaultStore.ws==="company"?"achievement":null);
+  return null;
+}
 function archiveScope() {
-  const id = String(Drive.state.folderId || "");
-  return VaultStore.ws === "company" && Drive.state.view === "files" &&
-    !Drive.state.query.trim() && (id === "k:achievement" || id.startsWith("af:"));
+  return Drive.state.view==="files" && !Drive.state.query.trim() &&
+    !!archiveScopeSection();
 }
 
 function archiveParentId() {
@@ -1271,14 +1281,17 @@ function archiveParentId() {
 }
 
 function createArchiveFolder(parentId = archiveParentId()) {
-  if (VaultStore.ws !== "company" || !Number.isFinite(parentId ?? 0)) return;
+  const section=archiveScopeSection();
+  if (!section || !Number.isFinite(parentId ?? 0)) return;
   RecordForms.open({
     title: "新建下级目录",
     submitText: "创建",
     fields: [{key:"name",label:"目录名称",required:true}],
     onSubmit: async data => {
-      await VaultStore.api("/api/v2/folders/company/archive_folder", {
-        method:"POST", json:{archiveFolder:{name:data.name,parentId}},
+      const json={archiveFolder:{name:data.name,parentId}};
+      if (section!=="achievement" || VaultStore.ws!=="company") json.section=section;
+      await VaultStore.api("/api/v2/folders/" + VaultStore.ws + "/archive_folder", {
+        method:"POST", json,
       });
       await refreshCurrent();
       toast("目录已创建");
@@ -1297,7 +1310,10 @@ async function deleteArchiveFolder(node) {
   });
   if (!approved) return;
   try {
-    await VaultStore.api("/api/v2/folders/company/archive_folder/" + node.biz.id, {
+    await VaultStore.api("/api/v2/folders/" + VaultStore.ws + "/archive_folder/" +
+      node.biz.id +
+      (VaultStore.ws==="company" && (!node.biz.section || node.biz.section==="achievement")
+        ? "" : "?section="+encodeURIComponent(node.biz.section)), {
       method:"DELETE",
     });
     Drive.clearSelection();
@@ -1315,7 +1331,8 @@ function archiveSortAllowed(node) {
     Drive.state.sortDir === "asc" &&
     (Drive.currentFolder.children || []).some(n => n.id === node?.id) &&
     (node.biz?.kind === "archive_folder" ||
-      (node.biz?.kind === "archive" && node.biz?.section === "achievement"));
+      (node.biz?.kind === "archive" && node.biz?.section === archiveScopeSection()) ||
+      (node.biz?.kind === "general" && archiveScopeSection() === "general"));
 }
 
 async function reorderArchiveEntry(node, direction) {
@@ -1329,13 +1346,15 @@ async function reorderArchiveEntry(node, direction) {
   const next = index + direction;
   if (next < 0 || next >= peers.length) return;
   [peers[index], peers[next]] = [peers[next], peers[index]];
-  const parentId = parent.id === "k:achievement" ? 0 : Number(parent.biz?.id);
+  const section=archiveScopeSection();
+  const parentId = parent.id === "k:" + section ? 0 : Number(parent.biz?.id);
   const items = peers.map(n => ({
     kind: n.biz?.kind === "archive_folder" ? "folder" : "record",
     id: Number(n.biz?.id),
   }));
   try {
-    await VaultStore.api("/api/v2/folders/company/entries/reorder?section=achievement", {
+    await VaultStore.api("/api/v2/folders/" + VaultStore.ws +
+      "/entries/reorder?section=" + encodeURIComponent(section), {
       method:"POST",json:{parentId,items},
     });
     await refreshCurrent();
@@ -1349,9 +1368,11 @@ async function reorderArchiveEntry(node, direction) {
 function moveArchiveEntry(node) {
   const biz = node?.biz || {};
   const folder = biz.kind === "archive_folder";
-  if (VaultStore.ws !== "company" ||
-    !(folder || (biz.kind === "archive" && biz.section === "achievement"))) return;
-  const archiveRoot = findById("k:achievement");
+  const section=folder ? (biz.section || "achievement")
+    : biz.kind === "general" ? "general" : biz.section;
+  if (!section || !catIsDir(section,VaultStore.ws) ||
+    !(folder || biz.kind === "archive" || biz.kind === "general")) return;
+  const archiveRoot = findById("k:" + section);
   const dirs = [];
   const visit = n => {
     if (n?.biz?.kind === "archive_folder") {
@@ -1365,14 +1386,15 @@ function moveArchiveEntry(node) {
   };
   visit(archiveRoot);
   const choices = [
-    ...(folder ? [{value:"0",label:"业务档案（顶层）"}] : []),
+    ...((folder || !(VaultStore.ws === "company" && section === "achievement"))
+      ? [{value:"0",label:catLabel(section) + "（顶层）"}] : []),
     ...dirs.map(n => ({
       value:String(n.biz.id),
       label:(pathTo(n.id)||[]).filter(p => p.id.startsWith("af:"))
         .map(p => p.name).join(" › "),
     })),
   ];
-  const oldParent = biz.parentId ?? (biz.kind === "archive" ? biz.folderId : null);
+  const oldParent = biz.parentId ?? biz.folderId ?? null;
   const targetChoices = choices.filter(x => Number(x.value) !== (oldParent ?? 0));
   if (!targetChoices.length) return toast("没有其它可以移动到的目录");
   RecordForms.open({
@@ -1382,10 +1404,12 @@ function moveArchiveEntry(node) {
     onSubmit:async data => {
       const target = Number(data.target);
       if (!Number.isSafeInteger(target) || target < 0 ||
-          (!folder && target === 0)) throw new Error("请选择有效目标目录");
-      await VaultStore.api("/api/v2/folders/company/" +
-        (folder ? "archive_folder" : "archive") + "/" + biz.id +
-        "/move?section=achievement", {
+          (!folder && target === 0 &&
+            VaultStore.ws === "company" && section === "achievement"))
+        throw new Error("请选择有效目标目录");
+      await VaultStore.api("/api/v2/folders/" + VaultStore.ws + "/" +
+        (folder ? "archive_folder" : biz.kind) + "/" + biz.id +
+        "/move?section=" + encodeURIComponent(section), {
           method:"POST",json:{parentId:target || null},
         });
       await refreshCurrent();
@@ -1406,21 +1430,26 @@ function openNewMenu(anchor) {
   const onHome = s.view === "home" && !s.query.trim();
   const tag = nodeTag(s.folderId);
   const cur = tag === "k" ? s.folderId.slice(2) : "";
-  /* 公司「业务档案」的目录节点:在这里新建 = 建到该目录下 */
-  const inDir = tag === "af" ? "achievement" : "";
+  /* An ordinary directory uses its own module scope. */
+  const inDir = tag === "af" ? archiveScopeSection() : "";
   const parentId = tag === "af" ? s.folderId.slice(3) : null;
   const here = inDir || cur;
 
   /* 分类根目录只能新建目录；在具体目录中可新建下级目录或资料。
      不把业务档案资料创建到无真实 FolderId 的虚拟根。 */
   if (archiveScope()) {
+    const section=archiveScopeSection(), parentId=archiveParentId();
     const handlers = {
-      "new-folder": () => createArchiveFolder(archiveParentId()),
-      "new-record": () => RecordForms.archive("achievement", null, archiveParentId()),
+      "new-folder": () => createArchiveFolder(parentId),
+      "new-record": () => section === "general"
+        ? RecordForms.general(null,parentId)
+        : RecordForms.archive(section,null,parentId),
     };
+    const allowRecord=tag === "af" ||
+      !(VaultStore.ws==="company" && section==="achievement");
     showCtx(r.left,r.bottom+6,
       MI("new-folder","folder","新建下级目录") +
-      (tag === "af" ? MI("new-record","file","新建资料") : ""),
+      (allowRecord ? MI("new-record","file","新建资料") : ""),
       handlers);
     return;
   }
@@ -1677,7 +1706,10 @@ function renameNode(node) {
     fields: [{ key: "name", label: "目录名称", required: true }],
     values: { name: node.name },
     onSubmit: async (data) => {
-      await VaultStore.api("/api/v2/folders/company/archive_folder/" + b.id, {
+      await VaultStore.api("/api/v2/folders/" + VaultStore.ws + "/archive_folder/" +
+        b.id +
+        (VaultStore.ws==="company" && (!b.section || b.section==="achievement")
+          ? "" : "?section="+encodeURIComponent(b.section)), {
         method: "PUT",
         json: { archiveFolder: { name: data.name, parentId: b.parentId } },
       });
@@ -1726,7 +1758,8 @@ function showItemMenu(id, x, y) {
     archiveSortAllowed(item) ? MI("sort-up", "arrow-up", "上移") : "",
     archiveSortAllowed(item) ? MI("sort-down", "arrow-down", "下移") : "",
     b.kind === "archive_folder" ||
-      (b.kind === "archive" && b.section === "achievement")
+      (b.kind === "archive" && catIsDir(b.section,VaultStore.ws)) ||
+      (b.kind === "general" && catIsDir("general",VaultStore.ws))
       ? MI("move-archive", "move", "移动至其他目录") : "",
     b.kind === "archive_folder"
       ? MI("delete-folder","trash","删除空目录","",true)

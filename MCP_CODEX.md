@@ -303,3 +303,9 @@ Codex 通过 stdio 使用同一个 EXE 的 `--mcp` 模式，子进程仅通过�
 ## 项目/合同 N2-03-07-02 首批 MCP（历史记录，2026-10-16）
 
 **历史阶段说明**：此处所述项目/合同 MCP 原名与 V2 的切换，以及当时尚需开发的 Excel、搜索、回收站和跨区复制均已在后续 N2-04 与第三批 MCP 完成。现行 `list_files` 已改为一次 SQL 查询；`delete_file` 须同时核对 owner_id=FolderId、file_id=FileId、link_id=LinkId。当前操作规则和最新验收以本手册前文为准。
+
+## 七模块共享多级资料目录（2026-11-01）
+
+支持目录作用域：`company/achievement`、`company/party`、`company/general`、`personal/certificate`、`personal/achievement`、`personal/academic`、`personal/general`。上述模块共用 `archive_folder` 目录，`section` 为目录的模块；company 的旧 `achievement` 调用可省略 section。MCP `list_archive_folders`、`create_archive_folder`、`update_archive_folder`、`delete_archive_folder` 新增可选 section，`create_archive_folder` 的 parent_id 可省略以创建模块顶层目录。目录移动、资料移动使用新增 `move_archive_entry`，指定 workspace、section、kind、entry_id 和可选 parent_id。档案创建 `create_archive`、党团建设 `create_party_archive` 可以带 folder_id，综合资料 `create_general` 可以带 parent_id；不带父级的其他模块资料默认在对应模块根层。资料内容和附件仍由原有工具管理。移动的工作区、模块和循环校验在服务端执行。
+
+**测试阶段说明：** 采用新建数据库 schema，旧测试库不执行兼容迁移，需新建隔离测试库进行验证。
