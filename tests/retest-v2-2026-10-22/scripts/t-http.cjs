@@ -193,31 +193,46 @@ async function must(label, p, body) {
       "复制/转移有 UI 入口；后端可用不能当 UI 通过");
   }
 
-  /* ---------------- T-P1-04 目录 CRUD 后端 ---------------- */
+  /* ---------------- T-P1-04 目录 CRUD：可恢复整树删除 ---------------- */
   {
-    const rn = await L.call("PUT", `/api/v2/folders/company/archive_folder/${fx.archive.lvl2}`, {
-      json: { ArchiveFolder: { Name: "二级-A-改名", ParentId: fx.archive.system[0].id }, Section: "achievement" },
+    const sec = "achievement";
+    const pathOf = id => `/api/v2/folders/company/archive_folder/${id}?section=${sec}`;
+    const restore = id => L.post("/api/trash/company/restore", {
+      items: [{kind:"v2_archive_folder",id,section:sec}],
     });
-    const empty = await must("create 空目录", "/api/v2/folders/company/archive_folder", { ArchiveFolder: { Name: "待删空目录", ParentId: fx.archive.system[1].id }, Section: "achievement" });
-    const delEmpty = await L.del(`/api/v2/folders/company/archive_folder/${empty.id}?section=achievement`);
-    const delSys = await L.del(`/api/v2/folders/company/archive_folder/${fx.archive.system[0].id}?section=achievement`);
-    const delNonEmpty = await L.del(`/api/v2/folders/company/archive_folder/${fx.archive.lvl2}?section=achievement`);
-    const rnBack = await L.call("PUT", `/api/v2/folders/company/archive_folder/${fx.archive.lvl2}`, {
-      json: { ArchiveFolder: { Name: "二级-A", ParentId: fx.archive.system[0].id }, Section: "achievement" },
+    const rn = await L.call("PUT", pathOf(fx.archive.lvl2), {
+      json: { ArchiveFolder: { Name: "二级-A-改名", ParentId: fx.archive.system[0].id }, Section: sec },
     });
+    const empty = await must("create 空目录", "/api/v2/folders/company/archive_folder",
+      { ArchiveFolder: { Name: "待删空目录", ParentId: fx.archive.system[1].id }, Section: sec });
+    const delEmpty = await L.del(pathOf(empty.id));
+    const trashEmpty = (await L.get("/api/trash/company")).data;
+    const hasEmpty = Array.isArray(trashEmpty) && trashEmpty.some(x =>
+      x.kind === "v2_archive_folder" && x.id === empty.id && x.section === sec);
+    const restoreEmpty = await restore(empty.id);
+    const delSys = await L.del(pathOf(fx.archive.system[0].id));
+    const hiddenChild = await L.get(pathOf(fx.archive.lvl2));
+    const restoreSys = await restore(fx.archive.system[0].id);
+    const recoveredChild = await L.get(pathOf(fx.archive.lvl2));
+    const delNonEmpty = await L.del(pathOf(fx.archive.lvl2));
+    const restoreNonEmpty = await restore(fx.archive.lvl2);
+    const rnBack = await L.call("PUT", pathOf(fx.archive.lvl2), {
+      json: { ArchiveFolder: { Name: "二级-A", ParentId: fx.archive.system[0].id }, Section: sec },
+    });
+    const alive = await L.get(pathOf(fx.archive.lvl2));
+    const ok = rn.ok && rnBack.ok && delEmpty.ok && hasEmpty && restoreEmpty.ok &&
+      delSys.ok && hiddenChild.status === 404 && restoreSys.ok &&
+      recoveredChild.ok && delNonEmpty.ok && restoreNonEmpty.ok && alive.ok;
     evFile("T-P1-04", [
-      `PUT 改名 -> ${rn.status} ${J(rn.data)}；改回 -> ${rnBack.status}`,
-      `新建空目录 -> id=${empty.id}`,
-      `删空目录 -> ${delEmpty.status}`,
-      `删系统目录(id=${fx.archive.system[0].id}) -> ${delSys.status} ${J(delSys.data)}`,
-      `删非空目录(二级-A，含三级与档案) -> ${delNonEmpty.status} ${J(delNonEmpty.data)}`,
-      "",
-      "结论：后端对自建目录支持 新建/改名/移动/删除，且系统目录受保护、非空目录拒删。",
-      "前端无『新建下级分类』入口、右键对 archive_folder 无改名/删除（见 T-P1-04#ui）。",
+      `PUT 改名 -> ${rn.status}；恢复原名 -> ${rnBack.status}`,
+      `空目录 -> 删除 ${delEmpty.status}；回收站可见 ${hasEmpty}；恢复 ${restoreEmpty.status}`,
+      `系统目录整树 -> 删除 ${delSys.status}；后代隐藏 ${hiddenChild.status}；恢复 ${restoreSys.status}；后代重新可见 ${recoveredChild.status}`,
+      `非空二级目录 -> 删除 ${delNonEmpty.status}；恢复 ${restoreNonEmpty.status}；可访问 ${alive.status}`,
+      "回收仅标记目录根，子目录及资料原样保留，永久删除另行由 RecycleStore 逐条解绑。",
     ].join("\n"));
-    rec("T-P1-04", "MIXED", rn.ok && delEmpty.ok && !delSys.ok && !delNonEmpty.ok ? "IMPLEMENTATION_GAP" : "FAIL",
-      `后端改名 ${rn.status}、删空目录 ${delEmpty.status}、删系统目录 ${delSys.status}、删非空目录 ${delNonEmpty.status}；前端无入口`,
-      "自建目录有完整 CRUD，系统目录受保护；UI 提供同等入口");
+    rec("T-P1-04", "DYNAMIC-HTTP", ok ? "PASS" : "FAIL",
+      `空目录/系统目录/非空目录均可回收并恢复；历史子目录隐藏与还原正常=${ok}`,
+      "目录删除进入回收站且保留原有内容和层级；后续排序继续有效");
   }
 
   /* ---------------- T-P1-05 持久排序（混排 + ids 全量校验） ---------------- */
