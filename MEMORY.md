@@ -135,3 +135,6 @@ IPSys 是 Windows WinForms 启动器 + 本地 Web Explorer 界面 + SQLCipher/SQ
 ## 2026-11-01：Wiki 首页表格链接渲染问题
 
 用户截图指出 Wiki 首页“从这里开始”的阅读指南列出现 `[[快速开始` 等原样文字，未显示为链接。核查 `docs/wiki` 全部 21 页发现仅首页 9 行表格里的 10 个 `[[标签|页面]]` 链接发生竖线与 Markdown 表格列分隔冲突。此次更正 `docs/wiki/Home.md` 九行十处为 `[标签](https://github.com/zy19970/IPSys/wiki/页面名)`，并增强 `.github/workflows/publish-wiki.yml` 的静态校验：拒绝表格行内 `[[...|...]]`，核实标准 Markdown 指向本 Wiki 的页面目标存在。其他 20 页未改，业务源码、数据库和 Release 不受影响。编辑会话继续记录于 `memory/sessions/2026-11-01-开发收尾审查.md`（第五轮）。第一次提交编排工具调用被环境拦截，远端 main 未变化，已通知失败和重新开始；最终推送状态和 Wiki 发布成功必须按之后的实际 Git SHA、Actions 结果补记。
+
+
+**Wiki 首页表格链接修复实际发布成功补记（2026-11-01）**：修复代码与归档提交 `8afac9562acc525a004d94fdc773e3be37846b6e`（仅 `docs/wiki/Home.md`、`.github/workflows/publish-wiki.yml`、`MEMORY.md`、本会话档案）触发 GitHub Actions `41307232737`，`completed/success`。日志核实 `Verified 21 wiki markdown pages and internal links`，GitHub Wiki 独立仓库 commit `5e72597`，普通非强制推送 `7c01d91..5e72597 HEAD -> master` 到 `https://github.com/zy19970/IPSys.wiki.git`。因此网站源内容已更新，仍未进行用户浏览器逐页视觉截图复验。提交失败通知 #1980、重新开始 #1981，最终成功后按通知协议发送完成通知。本次不涉及程序构建、数据库或正式 Release。
