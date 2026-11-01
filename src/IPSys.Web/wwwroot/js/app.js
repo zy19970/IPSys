@@ -130,6 +130,7 @@ const Drive = {
     history: [],
     extFilter: null,
     statusFilter: null,
+    ipTypeFilter: null,
     lastSelectedIds: [],
     ready: false,
     loadError: null,
@@ -196,8 +197,10 @@ const Drive = {
       }
     }
 
-    /* 两套筛选各管一段:台账里按记录状态筛,通用视图里按扩展名筛文件。
-       台账里也曾能点扩展名筛选,但那一屏全是文件夹,点了只会把列表清空 —— 已掐断。 */
+    /* 知识产权台账按业务类型筛，其他台账按状态筛，通用文件按扩展名筛。 */
+    if (s.ipTypeFilter) {
+      out = out.filter((i) => i.biz?.kind === "ip" && i.biz.typeName === s.ipTypeFilter);
+    }
     if (s.statusFilter) {
       out = out.filter((i) => (i.biz || {}).status === s.statusFilter);
     }
@@ -328,6 +331,7 @@ const Drive = {
     if (this.columns()) this.state.detailOpen = false;
     /* 筛选是跟着分类列的,换目录一定得清,否则进另一个分类会莫名其妙少一半行 */
     this.state.statusFilter = null;
+    this.state.ipTypeFilter = null;
     this.state.extFilter = null;
   },
 
@@ -679,7 +683,7 @@ const Drive = {
     const refreshButton = $("#btnRefresh");
     if (refreshButton) refreshButton.disabled = !s.ready;
 
-    $("#btnFilter")?.classList.toggle("is-active", !!(s.extFilter || s.statusFilter));
+    $("#btnFilter")?.classList.toggle("is-active", !!(s.extFilter || s.statusFilter || s.ipTypeFilter));
     const et = $("#btnEmptyTrash");
     if (et) {
       et.classList.toggle("hidden", s.view !== "recycle");
@@ -1119,8 +1123,9 @@ const Drive = {
       return `<div class="empty">${icon("trash", 44)}<h3>回收站是空的</h3><p>删除的记录会在这里保留 30 天。</p></div>`;
     }
     /* 筛选造成的空,和"这个分类本来就没东西"要分开说,否则用户会以为数据丢了 */
-    if (s.statusFilter || s.extFilter) {
-      const what = s.statusFilter ? `状态为「${esc(s.statusFilter)}」的记录` : "符合条件的文件";
+    if (s.statusFilter || s.ipTypeFilter || s.extFilter) {
+      const what = s.ipTypeFilter ? `类型为「${esc(s.ipTypeFilter)}」的知识产权`
+        : s.statusFilter ? `状态为「${esc(s.statusFilter)}」的记录` : "符合条件的文件";
       return `<div class="empty">${icon("filter", 44)}<h3>没有${what}</h3>
         <p>再点一次顶部的「筛选」,选「全部」即可清除条件。</p></div>`;
     }

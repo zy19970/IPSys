@@ -120,8 +120,55 @@ for(const st of ["已失效","已废止","已终止"])
   assert.equal(tone(st),"red","Invalid status should use negative tone: "+st);
 assert.equal(tone("未定义状态"),"gray","Unknown status remains neutral");
 
+// Dynamic filter menu and rows regression, using the same source as Explorer.
+const interactions=read("wwwroot/js/interactions.js");
+const menuStart=interactions.indexOf('  $("#btnFilter").addEventListener("click"');
+const menuEnd=interactions.indexOf('  $("#btnViewToggle").addEventListener("click"',menuStart);
+assert.ok(menuStart>=0 && menuEnd>menuStart,"Filter callback found");
+const ipRows=[
+  {id:"i:1",type:"folder",biz:{kind:"ip",typeName:"软件著作权",status:"已登记"}},
+  {id:"i:2",type:"folder",biz:{kind:"ip",typeName:"发明专利",status:"已授权"}},
+  {id:"i:3",type:"folder",biz:{kind:"ip",typeName:"国家标准",status:"已发布"}}
+];
+const filterState={view:"files",folderId:"k:ip",query:"",ipTypeFilter:null,statusFilter:null,extFilter:null};
+let filterClick,menu,updates=0;
+const filterDrive={
+  state:filterState,currentFolder:{children:ipRows},columns:()=>[{k:"typeName"}],
+  renderContent:()=>{updates++;},renderChrome:()=>{updates++;}
+};
+const menuCtx=vm.createContext({
+  IP_TYPES:vm.runInContext("IP_TYPES",typesContext),Drive:filterDrive,
+  $:()=>({addEventListener:(ev,fn)=>{if(ev==="click")filterClick=fn;}}),
+  MI:(id,_icon,label)=>'<button data-id="'+id+'">'+label+'</button>',
+  showCtx:(_x,_y,html,handlers)=>{menu={html,handlers};},toast:()=>{}
+});
+vm.runInContext(interactions.slice(menuStart,menuEnd),menuCtx);
+const openFilter=()=>filterClick({currentTarget:{getBoundingClientRect:()=>({left:10,bottom:20})}});
+openFilter();assert.match(menu.html,/全部类型/);
+for(const type of Object.keys(vm.runInContext("IP_TYPES",typesContext)))
+  assert.ok(menu.html.includes(type),"IP filter must show "+type);
+assert.ok(!menu.html.includes("已登记"),"IP filter must not present statuses");
+menu.handlers["v-3"]();
+assert.equal(filterState.ipTypeFilter,"软件著作权");
+assert.equal(filterState.statusFilter,null);
+const getterStart=shellApp.indexOf("  get sourceItems() {");
+const getterEnd=shellApp.indexOf("  /* ---------- 台账列集",getterStart);
+assert.ok(getterStart>0 && getterEnd>getterStart);
+const sourceModel=vm.runInNewContext("({"+shellApp.slice(getterStart,getterEnd)+"})",
+  {ROOT:{},RECYCLE:[],extOf:()=>""});
+sourceModel.state=filterState;sourceModel.currentFolder=filterDrive.currentFolder;
+assert.deepEqual(Array.from(sourceModel.sourceItems,x=>x.id),["i:1"]);
+openFilter();menu.handlers["vf-all"]();
+assert.equal(filterState.ipTypeFilter,null);
+assert.equal(sourceModel.sourceItems.length,3,"All types restores all records");
+filterState.folderId="k:project";filterDrive.currentFolder={
+  children:[{biz:{status:"筹备中"}},{biz:{status:"已完成"}}]};
+openFilter();assert.match(menu.html,/全部状态/);
+menu.handlers["v-0"]();assert.equal(filterState.statusFilter,"筹备中");
+assert.ok(updates>=4,"Filter changes must redraw content and chrome");
+
 const requests=[],names=[];
-const state={folderId:"k:project",view:"files",ready:true,query:"能源",statusFilter:"进行中"};
+const state={folderId:"k:project",view:"files",ready:true,query:"能源",statusFilter:"进行中",ipTypeFilter:null};
 const ctx=vm.createContext({Drive:{state},VaultStore:{ws:"company"},
   api:async(url,opts)=>{requests.push({url,body:opts.json});return {blob:async()=>({})};},
   toast(){},notice(){},document:{},URL:{},setTimeout(){},$(){return {classList:{toggle(){}}};}});
@@ -143,9 +190,14 @@ async function call(category,mode){
   assert.equal(requests.at(-1).body.query,null);
   assert.equal(requests.at(-1).body.status,null);
   ctx.VaultStore.ws="personal";state.folderId="k:ip";state.query="专利";state.statusFilter="";
+  state.ipTypeFilter="软件著作权";
   await call("ip","filtered");
   assert.equal(requests.at(-1).url,"/api/v2/excel/personal/ip/export");
   assert.equal(requests.at(-1).body.query,"专利");
+  assert.equal(requests.at(-1).body.ipType,"软件著作权");
+  assert.equal(requests.at(-1).body.status,null);
+  await call("ip","all");
+  assert.equal(requests.at(-1).body.ipType,null);
   ctx.VaultStore.ws="company";state.folderId="k:party";state.query="";
   await call("party","filtered");
   assert.equal(requests.at(-1).url,"/api/v2/excel/company/archive/export?section=party");
@@ -157,5 +209,5 @@ async function call(category,mode){
   assert.match(excel,/data-excel-mode="filtered"/);
   assert.match(excel,/留空保留原有属性/,"Excel update blank-cell semantics must be visible");
   assert.match(excel,/data-excel-mode="all"/);
-  console.log("EXCEL SCOPE SMOKE PASS: scopes, 19 IP form fields, status tones, project years, aliases, Excel semantics");
+  console.log("EXCEL SCOPE SMOKE PASS: IP type menu/rows/export, project status filter, 19 IP fields, Excel");
 })().catch(e=>{console.error(e);process.exitCode=1;});

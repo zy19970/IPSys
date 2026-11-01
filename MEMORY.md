@@ -44,3 +44,9 @@ IPSys 是 Windows WinForms 启动器 + 本地 Web Explorer 界面 + SQLCipher/SQ
 用户明确当前只需梳理全仓库和提交记录，后续着重解决日常使用中的小型操作逻辑问题，不开展新一轮整体架构改造。本轮审查实际核对 main 的 666 条提交（2026-10-13—10-31）、784 个文件树条目、2026-10-31 产品代码 375ed0e 和 Windows CI #438 成功。历史第一、第二、第三批字段一致性和表头全选修复均已进入代码并通过各自 CI；不应重新列为未完成的确定缺陷。优先复用 app.js、interactions.js、forms.js、store.js、app.css 的共享逻辑，真实交互反馈驱动最小修复，按影响范围补 Node/Edge/HTTP 测试并核对 Windows CI。当前未修改业务源码也未做新编译。README/DEVELOPMENT_PLAN/UI_BASELINE/TESTING 部分开头仍引用 10-25 旧产品 SHA，属于文档基线滞后，未来有明确文档任务时定向同步；不可当成新产品缺陷。
 
 最近会话：`memory/sessions/2026-11-01-操作逻辑精修阶段仓库梳理.md`；已归档轮次：第一轮。
+
+## 2026-11-01：知识产权按类型筛选（已提交代码，CI 待确认）
+
+用户截图显示知识产权台账“筛选”按“已登记、已发布、已授权”等状态列项，明确要求改为专利、软件著作权、企业/行业/国家标准等**知识产权业务类型**。根因在 `interactions.js` 对台账通用使用 biz.status，而 IP 业务类型已存在 `store.js` 的 biz.typeName 且 `forms.js` IP_TYPES 定义十种类型。本轮针对 k:ip 采用十种类型和“全部类型”筛选，独立 ipTypeFilter 只作用 IP 页面，其他台账状态筛选继续保留。Excel filtered 导出增加可选 IpType 字段，由后端对完整工作区 IP 记录按 IpInput.IpType 精确匹配，mode=all 与旧显式 ID 导出维持原状；补 Node 交互测试、SQLCipher/HTTP 导出类型测试及用户指南。并未更改资料库结构、文件或版本。CI 结果须单独按实际 Actions 核验。
+
+最新会话文件：`memory/sessions/2026-11-01-操作逻辑精修阶段仓库梳理.md`，本轮第二轮已归档。

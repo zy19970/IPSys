@@ -41,10 +41,10 @@ static class NativeIpExcelHttpSmoke
         }
     }
     static async Task<byte[]> Export(HttpClient client,string path,string mode,
-        long[]? ids=null,string? query=null,string? status=null)
+        long[]? ids=null,string? query=null,string? status=null,string? ipType=null)
     {
         using var r=await client.PostAsJsonAsync(path,
-            new ExcelExportInput(mode,ids,query,status));
+            new ExcelExportInput(mode,ids,query,status,ipType));
         r.EnsureSuccessStatusCode();
         return await r.Content.ReadAsByteArrayAsync();
     }
@@ -201,6 +201,17 @@ static class NativeIpExcelHttpSmoke
             new FolderMutationInput(Ip:Ip("Excel国家标准"+code,stdNo,"标准说明")
                 with {IpType="国家标准",Status="已发布"})));
         long sourceStandardId=sourceStandard.GetProperty("id").GetInt64();
+        var typeOnly=await Export(client,personal+"/export","filtered",ipType:"国家标准");
+        Check(WorkbookRows(typeOnly)>=1,"type-only filtering returns standards");
+        var correctType=await Export(client,personal+"/export","filtered",
+            query:"Excel国家标准"+code,ipType:"国家标准");
+        Check(WorkbookRows(correctType)==1,"keyword plus IP type returns matching standard");
+        var wrongType=await Export(client,personal+"/export","filtered",
+            query:"Excel国家标准"+code,ipType:"发明专利");
+        Check(WorkbookRows(wrongType)==0,"keyword plus nonmatching type excludes standard");
+        var allTypes=await Export(client,personal+"/export","all",ipType:"国家标准");
+        Check(WorkbookRows(allTypes)>WorkbookRows(correctType),
+            "all mode ignores IP type filter");
         var stdWorkbook=await Export(client,personal+"/export","filtered",[sourceStandardId]);
         var stdImport=await Import(client,company+"/import","create",stdWorkbook);
         Check(stdImport.GetProperty("created").GetInt32()==1 &&

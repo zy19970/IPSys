@@ -188,7 +188,7 @@ static IResult Fail(string message, int status = 400) =>
     Results.Json(new { error = message }, statusCode: status);
 
 record McpAccessInput(bool Enabled);
-record ExcelExportInput(string Mode,long[]? Ids,string? Query=null,string? Status=null);
+record ExcelExportInput(string Mode,long[]? Ids,string? Query=null,string? Status=null,string? IpType=null);
 record CompanyCertificateOrderInput(long[]? Ids);
 record CompanyCertificateBatchDeleteInput(long[]? Ids);
 record OpenInput(string? Path, string? Password, bool Create);

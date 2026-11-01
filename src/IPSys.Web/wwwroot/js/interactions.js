@@ -1180,26 +1180,29 @@ function bindCmdbar() {
     const r = e.currentTarget.getBoundingClientRect();
     const s = Drive.state;
 
-    /* 台账里筛的是「状态」,通用视图里筛的是扩展名。
-       台账那一屏全是文件夹,按扩展名筛等于把列表清空,所以两条路分开走。 */
+    /* 知识产权台账按十种业务类型筛选，其他台账继续按状态筛选。 */
     if (Drive.columns()) {
-      const pool = [...new Set((Drive.currentFolder.children || []).map((n) => n.biz?.status).filter(Boolean))];
+      const byIpType = s.folderId === "k:ip";
+      const pool = byIpType ? Object.keys(IP_TYPES)
+        : [...new Set((Drive.currentFolder.children || []).map((n) => n.biz?.status).filter(Boolean))];
       if (!pool.length) {
         toast("这个分类的记录还没有状态字段");
         return;
       }
+      const selected = byIpType ? s.ipTypeFilter : s.statusFilter;
       const opts = pool.map((v, i) => ({ id: `v-${i}`, label: v }));
       const apply = (v) => {
-        s.statusFilter = v;
+        if (byIpType) s.ipTypeFilter = v;
+        else s.statusFilter = v;
         Drive.renderContent();
         Drive.renderChrome();
       };
       showCtx(
         r.left,
         r.bottom + 6,
-        MI("vf-all", s.statusFilter ? "" : "check", "全部状态") +
+        MI("vf-all", selected ? "" : "check", byIpType ? "全部类型" : "全部状态") +
           '<div class="ctx-sep"></div>' +
-          opts.map((o) => MI(o.id, s.statusFilter === o.label ? "check" : "", o.label)).join(""),
+          opts.map((o) => MI(o.id, selected === o.label ? "check" : "", o.label)).join(""),
         {
           "vf-all": () => apply(null),
           ...Object.fromEntries(opts.map((o) => [o.id, () => apply(o.label)])),

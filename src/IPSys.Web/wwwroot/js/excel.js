@@ -81,12 +81,13 @@ async function exportLedger(categoryId) {
 
   const ws = VaultStore.ws;
   const query = mode === "filtered" ? Drive.state.query.trim() : null;
-  const status = mode === "filtered" ? (Drive.state.statusFilter || "") : null;
+  const status = mode === "filtered" && target.kind !== "ip" ? (Drive.state.statusFilter || "") : null;
+  const ipType = mode === "filtered" && target.kind === "ip" ? (Drive.state.ipTypeFilter || "") : null;
   // 服务端针对完整工作区数据匹配,不能把有数量上限的搜索结果当成导出范围。
   try {
     const res = await api(`/api/v2/excel/${ws}/${target.kind}/export${excelQueryOf(target)}`, {
       method: "POST",
-      json: { mode, ids: null, query, status },
+      json: { mode, ids: null, query, status, ipType },
     });
     downloadBlob(await res.blob(), `${target.label}-${ws}.xlsx`);
     toast("Excel 已导出");
