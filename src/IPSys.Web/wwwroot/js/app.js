@@ -79,7 +79,7 @@ const LEDGER_COLS = {
   ],
   ip: [
     YEAR,
-    { k: "typeName", t: "类型", w: "92px", f: "tag" },
+    { k: "typeName", t: "类型", w: "148px", f: "ip-type" },
     NAME("名称"),
     { k: "code", t: "编号", w: "132px", f: "mono" },
     { k: "owner", t: "当前权利人", w: "176px" },
@@ -97,6 +97,23 @@ const LEDGER_COLS = {
     { k: "_bytes", t: "大小", w: "88px", f: "size", r: 1 },
   ],
 };
+
+/* 知识产权类型固定配色，与状态、项目类型标签相互独立。 */
+const IP_TYPE_TONES = Object.freeze({
+  "发明专利": "invention",
+  "实用新型专利": "utility",
+  "外观设计专利": "design",
+  "软件著作权": "software",
+  "其他著作权": "copyright",
+  "商标": "trademark",
+  "集成电路布图设计": "layout",
+  "国家标准": "national",
+  "行业标准": "industry",
+  "企业标准": "enterprise",
+});
+function ipTypeTone(v) {
+  return IP_TYPE_TONES[String(v || "")] || "neutral";
+}
 
 /* 状态 → 颜色。先判负向,再判正向,最后判进行中;都不中就是中性灰。
    顺序不能反:"已完成"含"完成","已终止"里没有正向词,先判红才不会误判。 */
@@ -301,6 +318,9 @@ const Drive = {
         break;
       case "tag":
         inner = `<span class="pill tag">${esc(v)}</span>`;
+        break;
+      case "ip-type":
+        inner = `<span class="pill ip-type ${ipTypeTone(v)}" title="${esc(v)}">${esc(v)}</span>`;
         break;
       case "mono":
         inner = `<span class="mono" title="${esc(v)}">${esc(v)}</span>`;

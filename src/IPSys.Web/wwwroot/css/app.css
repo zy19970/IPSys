@@ -693,7 +693,7 @@ svg { display: block; flex: none; }
   letter-spacing: -.1px;
 }
 
-/* 状态用语义色胶囊;类型用中性标签,不跟状态抢颜色 */
+/* 状态用语义色;项目类型维持中性标签,知识产权业务类型按类别配色 */
 .pill {
   display: inline-block;
   max-width: 100%;
@@ -713,6 +713,27 @@ svg { display: block; flex: none; }
 .pill.red { background: #fdecec; color: #a32d2d; }
 .pill.gray { background: var(--surface-subtle); color: var(--text-2); }
 .pill.tag { background: var(--surface-subtle); color: var(--text-2); font-weight: 400; }
+/* 知识产权业务类型标签与文件夹名称等大,按业务类型用浅底深字。 */
+.pill.ip-type {
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  line-height: 24px;
+  font-weight: 400;
+}
+.pill.ip-type.invention { background: #eee8fa; color: #63388e; }
+.pill.ip-type.utility { background: #e7efff; color: #2457ac; }
+.pill.ip-type.design { background: #fff0e2; color: #94501d; }
+.pill.ip-type.software { background: #e4f4fc; color: #176e91; }
+.pill.ip-type.copyright { background: #eeedff; color: #534ca2; }
+.pill.ip-type.trademark { background: #fcebef; color: #a03b58; }
+.pill.ip-type.layout { background: #e2f5f1; color: #18756a; }
+.pill.ip-type.national { background: #e4f1ed; color: #27695f; }
+.pill.ip-type.industry { background: #eaf4e5; color: #396c32; }
+.pill.ip-type.enterprise { background: #fff3dc; color: #91621a; }
+.pill.ip-type.neutral { background: var(--surface-subtle); color: var(--text-2); }
+
 
 .head-check {
   position: absolute;

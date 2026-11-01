@@ -138,3 +138,8 @@ IPSys 是 Windows WinForms 启动器 + 本地 Web Explorer 界面 + SQLCipher/SQ
 
 
 **Wiki 首页表格链接修复实际发布成功补记（2026-11-01）**：修复代码与归档提交 `8afac9562acc525a004d94fdc773e3be37846b6e`（仅 `docs/wiki/Home.md`、`.github/workflows/publish-wiki.yml`、`MEMORY.md`、本会话档案）触发 GitHub Actions `41307232737`，`completed/success`。日志核实 `Verified 21 wiki markdown pages and internal links`，GitHub Wiki 独立仓库 commit `5e72597`，普通非强制推送 `7c01d91..5e72597 HEAD -> master` 到 `https://github.com/zy19970/IPSys.wiki.git`。因此网站源内容已更新，仍未进行用户浏览器逐页视觉截图复验。提交失败通知 #1980、重新开始 #1981，最终成功后按通知协议发送完成通知。本次不涉及程序构建、数据库或正式 Release。
+
+
+## 2026-11-01：知识产权类型标签字体统一与十色区分（UI 收尾）
+
+用户提供公司工作区知识产权台账截图，红框同时标出“类型”和“状态”列；明确要求“标签这种字和正文一样大，和文件夹那个字一样大；不同类型标签用不同颜色”。上轮助手已明确提议**仅针对知识产权“类型标签”实施**、不改状态标签，用户此轮回复“行，你按照这个思路，直接修改仓库就可以”，故以此确认的范围推进。现行 Explorer `app.js` 的 IP 台账原为 `typeName`、`f=tag`、列宽 92px，共用 `.pill.tag` 和 `.pill` 11.5px；文件夹名称为 `.row-title` 13.5px。实施：IP 类型列独立改成 `f=ip-type`、148px；在 `app.js` 定义十种类型到固定 CSS token 的白名单映射，未知类型回退 neutral，名称 HTML 转义不变；在 `app.css` 定义 `.pill.ip-type` 13.5px、24px 高、十套柔和背景/深文字，项目类型继续中性、状态继续按语义色。增加 `ip-type-badge-smoke.cjs` 验证十类齐全、颜色互异、字号一致、HTML 安全、项目类型与状态不变，接入 Windows CI `web-windows.yml`；同步 `USER_GUIDE.md`。本轮仅 UI/CSS、前端测试、工作流 Node 测试入口和文档，不触及数据库或本机真实资料。正式 Git SHA、CI 运行结论和 EXE 产物须在提交后核验，禁止将未完成验收提前记为成功。最近会话档案延续 `memory/sessions/2026-11-01-开发收尾审查.md`（第六轮，连同截图说明与本次用户授权）。
