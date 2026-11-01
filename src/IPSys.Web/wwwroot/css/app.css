@@ -722,6 +722,15 @@ svg { display: block; flex: none; }
   line-height: 24px;
   font-weight: 400;
 }
+/* 状态列同样与文件夹正文等大,颜色仍由 blue/green/red/gray 表示状态语义。 */
+.pill.status {
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  line-height: 24px;
+  font-weight: 500;
+}
 .pill.ip-type.invention { background: #eee8fa; color: #63388e; }
 .pill.ip-type.utility { background: #e7efff; color: #2457ac; }
 .pill.ip-type.design { background: #fff0e2; color: #94501d; }

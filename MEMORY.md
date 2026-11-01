@@ -146,3 +146,11 @@ IPSys 是 Windows WinForms 启动器 + 本地 Web Explorer 界面 + SQLCipher/SQ
 
 
 **知识产权类型标签修复验收成功补记（2026-11-01）**：主仓库最终产品提交 `d94d05463250e885151b21bc84662fd8b8a85632`，变更仅 app.js、app.css、独立 Node 测试、web-windows CI 测试映射、USER_GUIDE 与 Memory 两文件。自动触发 GitHub Windows Actions run `41308547599`，精确 head_sha 对应本提交，`completed/success`，26 个 success 步骤、0 failure，两个可选 >4GiB ZIP64 实体生成及证据上传步骤 skipped；通过 Debug/Release、包含新增 `ip-type-badge-smoke.cjs` 的 Node/UI、Edge/HTTP、SQLCipher、MCP、两类单 EXE 实际启动和 artifact 上传。三个 artifact 均 `expired=false`：自包含版 `IPSys-Web-win-x64-self-contained` ID `13083509821`、依赖运行时版 `IPSys-Web-win-x64` ID `13084591521`、Explorer retest 证据 ID `13084447005`。下载入口 https://github.com/zy19970/IPSys/actions/runs/41308547599 。未发新版 Release，未改用户本机数据库；网页侧最终视觉效果仍由用户实际运行此次 EXE 核对。本段为独立记忆补记，不需要重新触发产品 Windows CI。
+
+## 2026-11-01：纠正知识产权“状态”标签字号遗漏（会话第七轮）
+
+用户问“为什么状态那个你没有变？”，指出此前知识产权截图中红框标出的状态列也在字号统一需求范围内。助手承认先前错误将任务缩小为仅调整“类型”，没有改状态。现行 app.css 基础 .pill 仍为 11.5px、20px 高，而 .pill.ip-type 为 13.5px、24px；app.js 的 cellHtml case pill 未额外标记状态，因此状态标签偏小。
+
+按用户纠正定向实施：给使用 case pill 的语义状态标签增加 status 类，新增 .pill.status 13.5px、24px 高、12px 圆角及8px左右间距；保留原有 statusTone 红绿蓝灰业务语义，项目类型 .pill.tag 不变。增强 ip-type-badge-smoke.cjs 回归，验证十类原有色系及状态字号与 .row-title 同样为 13.5px，绿色已登记、蓝色准备中、红色已失效、灰色未知，以及 HTML 转义；同步 USER_GUIDE.md。开始通知 office-renderer/wechat-webhook#1985。
+
+本轮修正先前“状态标签维持原样”的错误理解，无数据库、MCP、正式 Release 变动。产品 SHA、CI、新版 EXE 必须按随后真实运行结果核对，不能提前宣称通过。最近会话仍为 memory/sessions/2026-11-01-开发收尾审查.md（第七轮）。

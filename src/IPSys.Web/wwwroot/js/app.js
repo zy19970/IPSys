@@ -314,7 +314,7 @@ const Drive = {
     let inner;
     switch (c.f) {
       case "pill":
-        inner = `<span class="pill ${statusTone(v)}">${esc(v)}</span>`;
+        inner = `<span class="pill status ${statusTone(v)}">${esc(v)}</span>`;
         break;
       case "tag":
         inner = `<span class="pill tag">${esc(v)}</span>`;
