@@ -72,3 +72,7 @@ IPSys 是 Windows WinForms 启动器 + 本地 Web Explorer 界面 + SQLCipher/SQ
 ## 2026-11-01：公司综合资料与党团建设扩展多级目录（方案待实施）
 
 用户要求“业务档案、综合资料，党团建设这些呀，应该都和这个业务档案一样。它能文件夹下套文件夹，文件夹下套文件夹，而不是文件夹下套一个文件夹。接着就是只能上传资料”。核对实际 main `5e633737`：业务档案实体目录 `archive_folder/achievement` 已可递归；公司党团建设目前是 `archive/party` 顶级记录、综合资料是 `general` 平铺记录，SQLite V2 CHECK 和 parent triggers 也禁止这些记录挂到多级目录。因此不是仅放开 UI 按钮即可修复，不能擅自触碰用户已存数据库。形成完整实施方案 `docs/COMPANY_MULTILEVEL_ARCHIVES_PLAN_20261101.md`：同一实体目录机制扩展 company/party、company/general，任意目录可新建下级目录/资料，资料记录内上传附件，保留既有记录和文件历史；协调 SQLCipher 安全结构更新、文件夹 API、前端树/表单/菜单/重排、导出/Excel/MCP与多层级测试。本轮**没有修改业务源码、没有运行 CI**，属于结构性变更，需要按整套方案施工与验证。最近会话第六轮。
+
+## 2026-11-01：多级目录范围扩展至个人工作区（方案更新，待实施）
+
+用户新提出：个人工作区除“知识产权与著作”“科研与合作项目”等专用模块外，其余资料类模块也采用公司业务档案式的无限级文件夹。已核对当前 `store.js` 个人六大模块：`certificate` 身份与资质、`ip` 知识产权与著作、`project` 科研与合作项目、`achievement` 成果与奖励、`academic` 学术与社会活动、`general` 其他资料。建议纳入四个资料模块，保留 IP 和项目专用逻辑。旧 `archive_folder` 限 company/achievement，不能仅改前端，需要统一按 workspace+scope 扩展 SQLCipher 目录检查与触发器、NativeArchiveStore、UI 树、导出与 Excel/MCP，保留两工作区现有平铺记录、原件及 ID。既有 `docs/COMPANY_MULTILEVEL_ARCHIVES_PLAN_20261101.md` 已扩展为公司+个人统一实施方案并保留文件路径；没有修改业务源码或运行 CI。此轮具体范围为建议，待执行前与用户最终确认，不自动将“等等”推断为更多模块。最近会话本轮追加第七轮。

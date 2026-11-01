@@ -1,33 +1,36 @@
-# IPSys 公司资料模块多级目录统一实施方案（2026-11-01）
+# IPSys 公司与个人工作区多级资料目录统一实施方案（2026-11-01）
+
+> 本文件由原“公司资料模块多级目录”方案扩展为两个工作区统一方案，保留原文件路径以维护既有仓库引用。当前为设计与验收计划，尚未实施产品源码变更。
 
 ## 一、需求与边界
 
-用户要求公司“业务档案、综合资料、党团建设”采用一致的文件夹管理逻辑：在任意普通目录下面仍可创建下级目录，不因进入第二层而只剩下“新建资料/上传资料”；层数不设业务硬上限。以当前公司业务档案的“普通目录（可无限嵌套）→资料记录→附件原件/文件版本”模型为基线。普通目录不是业务资料记录，没有文件版本；在普通目录中继续新建下级目录，或新建资料记录；进入具体资料记录后上传原件。目录和记录的区别须保持清晰。
+用户要求公司“业务档案、综合资料、党团建设”，以及个人工作区除“知识产权与著作”“科研与合作项目”之外的资料归档类模块，采用一致的文件夹管理逻辑：在任意普通目录下面仍可创建下级目录，不因进入第二层而只剩下“新建资料/上传资料”；层数不设业务硬上限。以当前公司业务档案的“普通目录（可无限嵌套）→资料记录→附件原件/文件版本”模型为基线。普通目录不是业务资料记录，没有文件版本；在普通目录中继续新建下级目录，或新建资料记录；进入具体资料记录后上传原件。目录和记录的区别须保持清晰。
 
-本轮仅明确公司这三个模块；不修改公司项目、知识产权、企业资质、个人工作区的类别结构。已有企业工作区记录和原件必须完整保留，不以开发阶段为由清空当前资料库。
+实施范围：公司工作区的业务档案、综合资料、党团建设；个人工作区的身份与资质、成果与奖励、学术与社会活动、其他资料。保留公司企业资质、公司项目、知识产权，以及个人“知识产权与著作”“科研与合作项目”的现有业务管理方式。已有两个工作区的资料记录和原件完整保留，不因新目录规则而重建或清空数据库。
 
 ## 二、当前实际代码与差异（以 main 的 5e633737 为准）
 
 1. 公司业务档案在 `NativeArchiveStore` 和 `store.js` 中使用 `archive_folder/achievement` 实体目录，支持父级目录指向另一实体目录；界面 `archiveScope/createArchiveFolder/buildArchiveDirs` 支持递归。目录内可继续建目录，资料在末端的 Archive 记录内上传附件。
 2. 党团建设实际是 `archive` 记录的 `section=party`，目前没有目录树；`ResourceSchemaV2` 只允许 `archive` 在 `company/achievement` 拥有父级，`NativeArchiveStore.Prepare` 对 party 的 FolderId 明确拒绝。
 3. 综合资料是 `general` 业务记录，`folders` 表明确不允许它有父级，`NativeArchiveStore.Prepare` 创建时总写 `parent_id=NULL`；`store.js` 当前直接平铺这些记录。
-4. `archive_folder` 的 CHECK 只接受 `company/achievement`；`folder_parent_insert/update` 触发器校验亦写死 achievement；`ResourceRef.IsValid`、Folder API 的引用生成、目录重命名/移动/混排排序、MCP 和 Excel 都存在对应限定。因此单纯放开“新建”按钮会在数据库层失败。
+4. 个人工作区当前共有六个模块：`certificate`（身份与资质）、`ip`（知识产权与著作）、`project`（科研与合作项目）、`achievement`（成果与奖励）、`academic`（学术与社会活动）、`general`（其他资料）；个人档案类记录以 `archive` 的 `certificate/achievement/academic` 分段保存，“其他资料”同样使用 `general` 类型，现均按平铺记录展示，不具备普通子目录。`store.js` 的 `catIsDir` 目前仅开放公司 `achievement`。
+5. `archive_folder` 的 CHECK 只接受 `company/achievement`；`folder_parent_insert/update` 触发器校验亦写死 achievement；`ResourceRef.IsValid`、Folder API 的引用生成、目录重命名/移动/混排排序、MCP 和 Excel 都存在对应限定。因此单纯放开“新建”按钮会在数据库层失败。
 
 ## 三、统一数据语义
 
-使用已有 `folders` 表和 `archive_folder` 实体目录，扩展 `archive_folder.section` 的合法业务域到 `company/achievement`、`company/party`、`company/general`。注意这里 `company/general` 是目录作用域，原 `general` 资料记录仍保持 `section=''`，其业务 kind 和 API 不变。
+使用已有 `folders` 表和 `archive_folder` 实体目录，以“workspace + 目录作用域”作为目录身份，扩展 `archive_folder` 到 `company/achievement`、`company/party`、`company/general`、`personal/certificate`、`personal/achievement`、`personal/academic`、`personal/general` 七个范围。注意 `company/general` 和 `personal/general` 是普通目录的作用域，原有 `general` 资料记录仍保持 `kind=general, section=''`；后端以工作区和父级目录的 scope 确认合法归属，不混淆两种身份。
 
-目录只可挂同工作区、同模块作用域的目录；资料记录只可挂与其业务模块匹配的目录。普通目录本身没有附件版本、业务记录字段；任何层级目录均可新增目录和资料记录。原有未归入任何目录的 party/general 记录继续可见、可查、可导出，不因新规则自动移动或丢失。新建的记录由所在实体目录传入 FolderId，编辑已有记录时留空不应清空原父级。
+目录只可挂同工作区、同模块作用域的目录；资料记录只可挂与其业务模块匹配的目录。普通目录本身没有附件版本、业务记录字段；任何层级目录均可新增目录和资料记录。原有未归入任何目录的公司 party/general 和个人 certificate/achievement/academic/general 记录继续可见、可查、可导出，不自动挪入临时目录或丢失；允许后续手动整理到新建目录。新建的记录由所在实体目录传入 FolderId，编辑已有记录时留空不应清空原父级。
 
 ## 四、实施顺序
 
 ### 1. 数据库与接口
 
-同步修正新库 `ResourceSchemaV2` CHECK、父级触发器、目录唯一性约束与循环检测。针对已有 V2 资料库采用可幂等、事务内的结构升级，保留 FolderId/FileId/LinkId/FileVersion、附件对象与密文字节；禁止无保护地重建或清空数据库。升级执行前后做外键、记录数和原件摘要一致性验证，故障回滚。扩展 `FolderModel` 的目录引用作用域、`NativeArchiveStore` 的目录和资料父级校验、`NativeFolderEndpoints` 的 section 传递。general 资料新增可选目录引用，需保证旧 API/旧记录兼容。
+同步修正新库 `ResourceSchemaV2` CHECK、父级触发器、目录唯一性约束与循环检测。针对已有 V2 资料库采用可幂等、事务内的结构升级，保留 FolderId/FileId/LinkId/FileVersion、附件对象与密文字节；禁止无保护地重建或清空数据库。升级执行前后做外键、记录数和原件摘要一致性验证，故障回滚。扩展 `FolderModel` 的目录引用作用域、`NativeArchiveStore` 的目录与归档资料父级校验、`NativeFolderEndpoints` 的 workspace/section 传递和目录创建、移动校验；校验必须同时比较 workspace 和目录作用域。general 资料新增可选目录引用，需保证旧 API/旧记录兼容。
 
 ### 2. UI 树与操作
 
-扩展 `NativeArchiveUiEndpoints` 统一返回目录的 section、parentId 与记录的 folderId。将 `store.js` 的公司业务档案目录构树函数按 section 复用到 party/general，目录递归创建、同级目录与资料混排、按子孙附件汇总数量与大小。扩展 `interactions.js` 的新建、重命名、空目录删除、移动与排序入口，`forms.js` 的新建资料传递当前父目录。公司三模块根目录“新建文件夹”；任意目录内“新建下级目录”和“新建资料”；具体业务记录内“上传文件”。不得把虚拟分类根当真实 FolderId，避免新建记录无法关联到树。
+扩展 `NativeArchiveUiEndpoints` 统一返回目录的 section、parentId 与记录的 folderId。将 `store.js` 的公司业务档案目录构树函数按 workspace + section 复用于公司 party/general 及个人 certificate/achievement/academic/general，目录递归创建、同级目录与资料混排、按子孙附件汇总数量与大小。扩展 `interactions.js` 的新建、重命名、空目录删除、移动与排序入口，`forms.js` 的新建资料传递当前父目录。两个工作区纳入范围的模块根目录“新建文件夹”（历史顶层平铺记录仍显示）；任意目录内“新建下级目录”和“新建资料”；具体业务记录内“上传文件”。不得把虚拟分类根当真实 FolderId，避免新建记录无法关联到树。
 
 ### 3. 导出、搜索、Excel 与 MCP
 
@@ -39,8 +42,34 @@
 2. 同名目录在不同父级允许，当前同级重名拒绝；禁止将目录移入自身或后代，禁止跨模块/工作区非法父级；非空目录删除必须拒绝。
 3. 下载第一级目录包含所有后代记录及原件；多选、右键、详情与导出文件路径一致；空目录、同名附件、ZIP64 不产生破坏性副作用。
 4. SQLCipher HTTP、Node 菜单、真实 Edge 交互、MCP、Excel import/export、旧数据库升级/回滚均有可复核测试。CI 编译通过后再进行用户本机真实数据人工验证。
-5. 不改动企业资质、公司项目、知识产权、个人工作区原有业务规则。
+5. 验证 personal/certificate、personal/achievement、personal/academic、personal/general 的三层及以上目录，个人 IP/项目与公司企业资质/项目/IP 仍沿用既有业务规则。
+6. 两个工作区各模块同名目录可以并存；同一业务作用域的同级重名拒绝；跨工作区或跨模块移动/创建父级拒绝，不允许将 personal/general 的资料挂到 company/general 下。
 
-## 六、本轮决定与状态
+## 六、个人工作区扩展的具体约束
 
-用户提出目录能力统一的方向，本轮已确认现有数据库存在硬约束，属于跨 DB/后端/UI/导出的结构性扩展，而非单点 UI 细修。本文件是经实际代码审查形成的实施方案，**不是已完成源码修改或测试的声明**；尚未执行结构升级、业务源码改动或 CI。执行阶段必须先确认数据库备份与完整性验证，再以原子提交及 Windows CI 确认结果。
+### 1. 纳入与保留
+
+| 工作区 | 模块 | 目录规则 |
+|---|---|---|
+| 公司 | 业务档案、综合资料、党团建设 | 采用统一递归目录；业务档案已具备主干能力 |
+| 个人 | 身份与资质、成果与奖励、学术与社会活动、其他资料 | 新增统一递归目录 |
+| 公司 | 企业资质、公司项目、知识产权 | 保持原专用业务模型 |
+| 个人 | 知识产权与著作、科研与合作项目 | 保持原专用业务模型 |
+
+个人四个模块现有的表单字段和记录属性不因转为目录展示而消失；新建资料进入业务记录后继续支持附件版本。同一层可以混排普通目录和已有资料记录，普通目录不需要业务记录字段。
+
+### 2. 功能语义
+
+1. 各资料模块的虚拟根用于导航，不得作为真实 FolderId；根层可建普通目录。迁移前平铺的现有业务记录仍以根层条目可见，并支持整理入目录，不能隐藏而使用户误以为资料丢失。
+2. 创建时根据当前工作区、当前模块与当前物理目录确定 parentId，不允许跨工作区串目录，也不允许个人知识产权/项目误用普通目录 API。
+3. `archive` 的 `section` 沿用 certificate/achievement/academic 等业务含义；`general` 记录继续使用 `section=''`。目录本身使用 scope 标识模块，前端树构造与导出路径据此归组。
+4. 根目录和各层普通目录采用同一套“新建目录/新建资料/混排排序/移动/空目录删除/右键打包”；记录详情继续提供属性、附件和版本；保留资料记录原有导入导出结构及类型。
+5. 合并公司、个人目录升级开发为一个共享层级方案与一次集成验收，而不是分别复制两套前端/后端分支逻辑。
+
+### 3. 风险与执行前置条件
+
+当前 SQLite 的 CHECK、父级触发器和服务端参数校验只承认公司业务档案的普通目录。扩展到个人四模块需要真实的结构约束升级，不能仅修改 `catIsDir`。已有 V2 资料库应进行结构变更前完整备份、事务约束更新、外键与附件身份一致性检验；旧记录保持原始 ID 和附件版本。测试优先使用隔离的临时 SQLCipher 数据库，确认无损后再让用户本机更新新 EXE。
+
+## 七、本轮决定与状态
+
+用户先提出公司三个模块的递归目录一致性，随后进一步提出将个人工作区中的非知识产权、非科研项目模块纳入同一套目录结构。本轮已确认两个工作区的限制涉及 DB/后端/UI/导出的结构性扩展，不是单点 UI 细修。本文件是经实际代码审查扩展的实施方案，**不是已完成源码修改或测试的声明**；尚未执行结构升级、业务源码改动或 CI。执行阶段必须先确认数据库备份与完整性验证，再以原子提交及 Windows CI 确认结果。
