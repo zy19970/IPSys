@@ -23,11 +23,13 @@ const panel={hidden:true,querySelector(sel){
  if(!elements.has(sel))elements.set(sel,{hidden:false,textContent:"",removeAttribute(){},value:0});
  return elements.get(sel);
 }};
-let successes=0,idleCalls=0,refreshes=0,selectedClears=0;
+let successes=0,idleCalls=0,refreshes=0,selectedClears=0,hideSchedules=0,hideCancels=0;
 const engine=vm.createContext({
  console,Set,Map,Error,Promise,
  purgeBatchActive:false,purgeTaskActive:false,
  purgePanel:()=>panel,
+ cancelPurgeAutoHide:()=>{hideCancels++;},
+ schedulePurgeAutoHide:()=>{hideSchedules++;},
  VaultStore:{
   ws:"company",
   api:async(url,req)=>{
@@ -55,12 +57,16 @@ const nodes=Array.from({length:403},(_,i)=>({biz:{raw:{kind:"v2_file",id:i+1,sec
  assert.equal(refreshes,1,"Refresh once after all batches complete");
  assert.equal(selectedClears,1);
  assert.match(messages.at(-1),/已彻底删除 403 条/);
+ assert.equal(hideCancels,1,'starting a purge invalidates any prior success timer');
+ assert.equal(hideSchedules,1,'403-record job auto-hides only after all three batches commit');
  posts.length=0;messages.length=0;idleCalls=0;refreshes=0;successes=0;
  failSecond=true;
  await vm.runInContext("purgeTrash",engine)(nodes);
  assert.deepEqual(posts.map(x=>x.length),[200,200],"Failure stops the third batch");
  assert.equal(refreshes,1,"Refresh the authoritative recycle list after partial failure");
  assert.match(messages.at(-1),/已确认删除 200 \/ 403/);
+ assert.equal(hideCancels,2,'a newer job must invalidate the earlier success timeout');
+ assert.equal(hideSchedules,1,'partially failed purge must preserve the progress panel');
 
  const rename=between(inter,"function renameNode(node) {","function showItemMenu");
  let edit=null,modal=null,put=null;
