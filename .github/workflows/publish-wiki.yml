@@ -1,0 +1,84 @@
+name: Publish IPSys Wiki
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/wiki/**"
+      - ".github/workflows/publish-wiki.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ipsys-wiki-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout wiki source
+        uses: actions/checkout@v5
+
+      - name: Validate internal page links
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          root = Path("docs/wiki")
+          pages = {p.stem for p in root.glob("*.md")}
+          assert "Home" in pages and "_Sidebar" in pages and "_Footer" in pages
+          broken = []
+          for page in root.glob("*.md"):
+              text = page.read_text(encoding="utf-8")
+              if not text.strip():
+                  broken.append(f"{page}: empty")
+              for target in re.findall(r"\[\[[^\]|]+\|([^\]]+)\]\]", text):
+                  if target not in pages:
+                      broken.append(f"{page}: missing {target}")
+          if broken:
+              raise SystemExit("\n".join(broken))
+          print(f"Verified {len(pages)} wiki markdown pages and internal links")
+          PY
+
+      - name: Publish pages to GitHub Wiki without force push
+        shell: bash
+        env:
+          WIKI_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # The same-repository Wiki is a separate Git repository.
+          # Supply the scoped Actions token only through temporary Git environment variables.
+          export GIT_CONFIG_COUNT=1
+          export GIT_CONFIG_KEY_0="http.https://github.com/.extraheader"
+          export GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$WIKI_TOKEN" | base64 -w0)"
+
+          wiki_dir="${RUNNER_TEMP}/IPSys.wiki"
+          git clone --quiet --single-branch "https://github.com/${GITHUB_REPOSITORY}.wiki.git" "$wiki_dir"
+
+          # Preserve the owner's original Home page on the first publication.
+          if [[ -s "$wiki_dir/Home.md" ]] &&
+             ! cmp -s "$wiki_dir/Home.md" "docs/wiki/Home.md" &&
+             [[ ! -e "$wiki_dir/Home-original-before-IPSys-sync.md" ]]; then
+            cp "$wiki_dir/Home.md" "$wiki_dir/Home-original-before-IPSys-sync.md"
+          fi
+
+          for src in docs/wiki/*.md; do
+            cp "$src" "$wiki_dir/$(basename "$src")"
+          done
+          git -C "$wiki_dir" add -A
+          if git -C "$wiki_dir" diff --cached --quiet; then
+            echo "Wiki is already up to date."
+            exit 0
+          fi
+
+          git -C "$wiki_dir" config user.name "IPSys Wiki Publisher"
+          git -C "$wiki_dir" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "$wiki_dir" commit -m "docs(wiki): 同步 IPSys 正式使用文档与导航" \
+            -m "当前进行的操作：更新本仓库 Wiki。\n用户发出的指令：完善 IPSys Wiki。\n修改了什么：同步 docs/wiki 文档并保留首次覆盖的原始 Home 页面。\n操作过程中遇到了什么问题：无。\n在完成用户命令的操作的时候有哪些问题后续需要避免：未删除其他 Wiki 页面，不强制更新 Git 历史。\n最终操作结果：以本次 GitHub Actions 实际推送结果为准。"
+          wiki_branch="$(git -C "$wiki_dir" branch --show-current)"
+          test -n "$wiki_branch"
+          git -C "$wiki_dir" push origin "HEAD:$wiki_branch"

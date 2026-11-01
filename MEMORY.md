@@ -122,3 +122,8 @@ IPSys 是 Windows WinForms 启动器 + 本地 Web Explorer 界面 + SQLCipher/SQ
 ## 2026-11-01：开发收尾审查（新会话第一轮）
 
 用户要求先梳理当前提交与仓库文件，为最后的小功能调整和结束开发做准备，未要求本轮改产品代码。实际检查 main 起始 64b92cd999d154dce5f4c910e42a56bec1cc0f56、787 项完整文件树和最近 45 条提交；直接核查关键 UI、目录软删、共享文件永久解绑、MCP 和进度提示源码。最新 Windows CI 41298466274 对产品 9af263d8745b90056acf1588fbd996c6117f54a3 completed/success，双单 EXE 和 Explorer retest 产物均未过期；本次未运行额外 CI/本机 GUI，也未发布新版 Release（最新 Release 仍为 2026-10-23 v0.9.1-rc1）。十月三批字段一致性、表头全选、知产类型筛选、详情侧栏默认展开、多选右键下载、七模块递归目录、整树回收/共享解绑、4 秒自动隐藏等已进入现行源码，不得重复判作未完成。最后建议按用户实机反馈对共享交互做最小修改，在独立新 SQLCipher 测试库对目录/共享文件/回收站做破坏性测试，再统一更新明显滞后的 DEVELOPMENT_PLAN/TESTING/DESIGN/UI_BASELINE/测试索引及多级目录计划，最终按通过的 SHA 手动发布新版 Release。跨界面并发覆盖是架构风险，非已复现问题。最近会话：`memory/sessions/2026-11-01-开发收尾审查.md`；已归档轮次：第一轮；本轮仅 Memory 记录，无产品源码改动。
+
+
+## 2026-11-01：IPSys Wiki 全站内容完善（本会话后续轮次）
+
+用户明确表示已创建 `https://github.com/zy19970/IPSys/wiki` 首页，要求依据现行仓库文件与此前已确认的业务方案完整完善 Wiki。已核实 AIGT 基础三规则，并取当前代码、README/USER_GUIDE/DESIGN/MCP/REQUIREMENTS 与 2026-11-01 最近成功 CI 为实际依据。GitHub 连接器不直接提供 Wiki Git 仓库写接口，容器无法解析 GitHub 域名，故改由主仓库 `docs/wiki` 持久化 **21 个 Markdown 页面**（包括 Home、_Sidebar、_Footer 和 18 个主题页面），增加非强制推送至同仓库 Wiki 的 GitHub Actions `.github/workflows/publish-wiki.yml`，以及 `docs/WIKI_PUBLISHING.md`。发布工作流保留原 Home 备份，不删除 Wiki 的非同步页面，使用工作流临时令牌；实际 Wiki 发布状态需要核对对应 Actions 与 Wiki，不能以文件进入 main 直接宣布站点更新。已通过创建的 Git Blob 核对 21 个页面均非空、内部 Wiki 双链目标均存在。此轮未改动 SQLCipher、MCP 或其他业务源码，未生成新 EXE，未触发 Release。最近会话仍使用 `memory/sessions/2026-11-01-开发收尾审查.md`，本次归档轮次延续本会话的 Wiki 讨论。
