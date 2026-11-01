@@ -1713,7 +1713,7 @@ function showItemMenu(id, x, y) {
        项目再点工具栏少一步。 */
     b.kind === "project" ? MI("newcontract", "folder", "新建合同") : "",
     (isFolder && b.kind !== "archive_folder") || !isFolder ? MI("props", "info", "属性") : "",
-    MI("download", "download", isFolder ? "打包下载" : "下载"),
+    MI("download", "download", actionItems.length > 1 || isFolder ? "打包下载" : "下载"),
     !isFolder ? MI("newver", "upload", "上传新版本") : "",
     !isFolder ? MI("assoc", "copy", "共享原件到其它记录") : "",
     !isFolder ? MI("assoc-move", "move", "移动附件到其它记录") : "",
@@ -1739,7 +1739,7 @@ function showItemMenu(id, x, y) {
     open: () => (isFolder ? Drive.openFolder(id) : previewFile(id)),
     newcontract: () => RecordForms.contract(null, b.id),
     props: () => RecordForms.edit(item),
-    download: () => downloadNodes([item]),
+    download: () => downloadNodes(actionItems),
     newver: () => uploadNewVersion(item),
     assoc: () => associateOriginal(item, false),
     "assoc-move": () => associateOriginal(item, true),
