@@ -453,9 +453,30 @@ async function exportNodes(nodes) {
 
 const PURGE_POLL_MS = 550;
 const PURGE_DONE = new Set(["succeeded", "failed", "canceled"]);
+const PURGE_AUTO_HIDE_MS = 4000;
 
 let purgeTracking = false;
 let purgeBatchActive = false;
+let purgeAutoHideTimer = null;
+
+function cancelPurgeAutoHide() {
+  if (purgeAutoHideTimer !== null) {
+    clearTimeout(purgeAutoHideTimer);
+    purgeAutoHideTimer = null;
+  }
+}
+
+function schedulePurgeAutoHide() {
+  // Re-rendering the completed job must not extend its visible lifetime.
+  if (purgeAutoHideTimer !== null) return;
+  purgeAutoHideTimer = setTimeout(() => {
+    purgeAutoHideTimer = null;
+    // A newer task must never be hidden by an older task's success timeout.
+    if (purgeTaskActive || purgeBatchActive || purgeTracking) return;
+    const panel = $("#trashPurgeProgress");
+    if (panel) panel.hidden = true;
+  }, PURGE_AUTO_HIDE_MS);
+}
 
 function purgePanel() {
   let p = $("#trashPurgeProgress");
@@ -479,7 +500,10 @@ function purgePanel() {
   p.hidden = true;
   document.body.append(p);
   p.querySelector("#trashPurgeClose").addEventListener("click", () => {
-    if (!purgeTaskActive) p.hidden = true;
+    if (!purgeTaskActive) {
+      cancelPurgeAutoHide();
+      p.hidden = true;
+    }
   });
   return p;
 }
@@ -564,6 +588,8 @@ async function trackPurge(taskId, workspace, silent = false) {
       }
 
       if (PURGE_DONE.has(state.state)) {
+        if (!silent && state.state === "succeeded" && !purgeBatchActive)
+          schedulePurgeAutoHide();
         if (!silent) {
           if (state.state === "succeeded") {
             try {
@@ -614,6 +640,7 @@ async function purgeTrash(nodes) {
   const workspace = VaultStore.ws;
   const batches = [];
   for (let i = 0; i < items.length; i += 200) batches.push(items.slice(i, i + 200));
+  cancelPurgeAutoHide();
   const panel = purgePanel();
   panel.hidden = false;
   panel.querySelector("#trashPurgeClose").hidden = true;
@@ -623,6 +650,7 @@ async function purgeTrash(nodes) {
   purgeBatchActive = true;
   purgeTaskActive = true;
   let confirmed = 0;
+  let fullyCommitted = false;
 
   try {
     for (let i = 0; i < batches.length; i++) {
@@ -641,6 +669,7 @@ async function purgeTrash(nodes) {
       }
       confirmed += batches[i].length;
     }
+    fullyCommitted = true;
     try {
       await refreshCurrent();
       Drive.clearSelection();
@@ -660,6 +689,7 @@ async function purgeTrash(nodes) {
     purgeBatchActive = false;
     purgeTaskActive = false;
     panel.querySelector("#trashPurgeClose").hidden = false;
+    if (fullyCommitted) schedulePurgeAutoHide();
   }
 }
 
@@ -675,7 +705,11 @@ async function resumePurge() {
   }
   if (!state) return false;
   renderPurge(state);
-  if (PURGE_DONE.has(state.state)) return false;
+  if (PURGE_DONE.has(state.state)) {
+    if (state.state === "succeeded") schedulePurgeAutoHide();
+    return false;
+  }
+  cancelPurgeAutoHide();
   void trackPurge(state.taskId, state.workspace);
   return true;
 }

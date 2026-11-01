@@ -260,6 +260,7 @@ jobs:
             'explorer-capabilities-smoke.cjs'  = 'Streaming download / server search / purge progress failed'
             'excel-scope-smoke.cjs'           = 'Excel all/filtered export choice, workspace and contract summary regression failed'
             'upload-progress-smoke.cjs'        = 'Real upload progress/multiphase state smoke failed'
+            'purge-progress-smoke.cjs'         = 'Permanent delete success auto-hide and failure visibility smoke failed'
             'upload-unique-autosave-smoke.cjs' = 'Unique original auto-save and duplicate confirmation smoke failed'
             'export-smoke.cjs'                 = 'Directory/ZIP export smoke failed'
             'zip64-smoke.cjs'                  = 'ZIP64 large-offset header smoke failed'
