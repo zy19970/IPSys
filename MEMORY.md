@@ -50,3 +50,5 @@ IPSys 是 Windows WinForms 启动器 + 本地 Web Explorer 界面 + SQLCipher/SQ
 用户截图显示知识产权台账“筛选”按“已登记、已发布、已授权”等状态列项，明确要求改为专利、软件著作权、企业/行业/国家标准等**知识产权业务类型**。根因在 `interactions.js` 对台账通用使用 biz.status，而 IP 业务类型已存在 `store.js` 的 biz.typeName 且 `forms.js` IP_TYPES 定义十种类型。本轮针对 k:ip 采用十种类型和“全部类型”筛选，独立 ipTypeFilter 只作用 IP 页面，其他台账状态筛选继续保留。Excel filtered 导出增加可选 IpType 字段，由后端对完整工作区 IP 记录按 IpInput.IpType 精确匹配，mode=all 与旧显式 ID 导出维持原状；补 Node 交互测试、SQLCipher/HTTP 导出类型测试及用户指南。并未更改资料库结构、文件或版本。CI 结果须单独按实际 Actions 核验。
 
 最新会话文件：`memory/sessions/2026-11-01-操作逻辑精修阶段仓库梳理.md`，本轮第二轮已归档。
+
+**知识产权类型筛选最终验证补记（2026-11-01）**：产品提交 `68997736664a1e42346f1d0f31d52d1c12d5aa91`，Windows Actions #439（run `41273470858`）已 completed/success，run HEAD 与代码提交一致。26 个成功步骤，包括 Node 真实菜单/列表及 Excel 参数动态回归、Debug/Release、Edge、SQLCipher/HTTP Excel 按类型筛选、新旧单 EXE 启动及上传 artifacts；0 个失败步骤（另有可选 ZIP64 路径按工作流配置跳过）。本轮仅自动回归通过，用户本地旧 EXE 需更新后才能看到新筛选。
