@@ -117,3 +117,8 @@ IPSys 是 Windows WinForms 启动器 + 本地 Web Explorer 界面 + SQLCipher/SQ
 ## 2026-11-01：彻底删除完成进度窗自动隐藏，CI 最终成功
 
 在用户截图要求下，已将回收站永久删除成功面板设置为**全部批次实际成功后 4 秒自动隐藏**，失败、取消、未确认保留显示；新批次取消旧倒计时、恢复已完成任务快照也可自动隐藏。首次产品提交 `4ad03e70be62932675a8048a252df45bb679f0d4` 修改 `bridge.js`、`purge-progress-smoke.cjs`、Windows smoke 映射、USER_GUIDE及记忆；首次 CI `41298161678` 在旧 Explorer P2 VM 局部抽取桥接函数时因未提供新增 `cancelPurgeAutoHide` 测试桩而失败，生产代码本身未因此报错；补充旧测试环境并增加 403 条三批全成功只隐藏一次、部分失败不隐藏的断言，产品及测试最终提交 `9af263d8745b90056acf1588fbd996c6117f54a3`。第二轮 Windows CI `41298466274` 对该 SHA **completed/success，26 success、0 failure**，包括 Debug、Node、Explorer Edge/HTTP、SQLCipher、双 EXE 实际启动与上传。已经真实核实三个 artifacts 均未过期：`IPSys-Web-win-x64-self-contained` id 13080980260（推荐）、`IPSys-Web-win-x64` id 13080711763、`IPSys-Explorer-V2-Retest-41298466274-1` id 13080547252。下载入口：https://github.com/zy19970/IPSys/actions/runs/41298466274 。未触发 GitHub Release，也未触及任何本地数据库；通知开始 #1969、失败 #1970、重新开始 #1971，完成通知按实际发送。最后会话档案更新为第十六轮。
+
+
+## 2026-11-01：开发收尾审查（新会话第一轮）
+
+用户要求先梳理当前提交与仓库文件，为最后的小功能调整和结束开发做准备，未要求本轮改产品代码。实际检查 main 起始 64b92cd999d154dce5f4c910e42a56bec1cc0f56、787 项完整文件树和最近 45 条提交；直接核查关键 UI、目录软删、共享文件永久解绑、MCP 和进度提示源码。最新 Windows CI 41298466274 对产品 9af263d8745b90056acf1588fbd996c6117f54a3 completed/success，双单 EXE 和 Explorer retest 产物均未过期；本次未运行额外 CI/本机 GUI，也未发布新版 Release（最新 Release 仍为 2026-10-23 v0.9.1-rc1）。十月三批字段一致性、表头全选、知产类型筛选、详情侧栏默认展开、多选右键下载、七模块递归目录、整树回收/共享解绑、4 秒自动隐藏等已进入现行源码，不得重复判作未完成。最后建议按用户实机反馈对共享交互做最小修改，在独立新 SQLCipher 测试库对目录/共享文件/回收站做破坏性测试，再统一更新明显滞后的 DEVELOPMENT_PLAN/TESTING/DESIGN/UI_BASELINE/测试索引及多级目录计划，最终按通过的 SHA 手动发布新版 Release。跨界面并发覆盖是架构风险，非已复现问题。最近会话：`memory/sessions/2026-11-01-开发收尾审查.md`；已归档轮次：第一轮；本轮仅 Memory 记录，无产品源码改动。
