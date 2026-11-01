@@ -256,9 +256,9 @@ static class NativeMcpArchiveSmoke
             .EnumerateArray().First(x=>x.GetProperty("name").GetString()=="create_party_archive")
             .GetProperty("inputSchema").GetProperty("properties");
         Check(!partySchema.TryGetProperty("section",out _) &&
-            !partySchema.TryGetProperty("folder_id",out _) &&
+            partySchema.TryGetProperty("folder_id",out _) &&
             partySchema.GetProperty("workspace").GetProperty("enum")[0].GetString()=="company",
-            "party MCP schema is discoverable, company-only and needs no parent directory");
+            "party MCP schema is company-only with optional parent directory");
         var partyProtocol=await McpLocal.RunSmokeProtocolToolAsync("list_party_archives",
             Args(new{workspace="company"}));
         Check(partyProtocol["result"]?["isError"]?.GetValue<bool>()==false &&

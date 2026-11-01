@@ -71,7 +71,8 @@ static class NativeMcpSmoke
             "second batch of V2 MCP endpoint adapters registered");
         Check(new[]{"start_upload_task","get_task_status","cancel_task","purge_trash"}
             .All(names.Contains) && names.Distinct().Count()==names.Length &&
-            names.Length==64 && names.Contains("get_agent_guidance") &&
+            names.Length>=65 && names.Contains("get_agent_guidance") &&
+            names.Contains("move_archive_entry") &&
             new[]{"list_party_archives","create_party_archive",
                 "update_party_archive","delete_party_archive"}.All(names.Contains),
             "MCP registry keeps all prior tools and adds explicit trash purge");
