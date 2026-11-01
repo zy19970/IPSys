@@ -493,13 +493,22 @@ static class NativeMcpArchiveSmoke
         await Run("delete_general",new{workspace="company",general_id=general});
         Check(!Has(await Run("list_general",new{workspace="company"}),general),
             "soft-deleted general excluded from active MCP list");
-        // A directory with deleted archive history still has child references
-        // and must not be physically removed without deleting that history.
-        bool childProtected=false;
-        try{await Run("delete_archive_folder",new{
+        // Even a directory with deleted archive history is recyclable.
+        // Deleting the root hides its descendants without unlinking anything;
+        // restoring the root recovers the exact directory tree.
+        await Run("delete_archive_folder",new{
             workspace="company",folder_id=folder
-        });}catch(IOException){childProtected=true;}
-        Check(childProtected,"archive directory with historical children must be protected");
+        });
+        var deletedDirs=(await Run("list_trash",new{workspace="company"})).AsArray();
+        Check(deletedDirs.Any(x=>x?["kind"]?.GetValue<string>()=="v2_archive_folder" &&
+            x?["id"]?.GetValue<long>()==folder),
+            "deleted archive directory is visible in recycle");
+        await Run("restore_trash",new{
+            workspace="company",kind="v2_archive_folder",id=folder,section="achievement"
+        });
+        Check(Has(await Run("list_archive_folders",new{
+            workspace="company"
+        }),folder),"restored directory visible through MCP");
         // Company-only archive folder tools must never access a personal root.
         bool personalDenied=false;
         try{await Run("list_archive_folders",new{workspace="personal"});}
