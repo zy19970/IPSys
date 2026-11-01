@@ -127,3 +127,6 @@ IPSys 是 Windows WinForms 启动器 + 本地 Web Explorer 界面 + SQLCipher/SQ
 ## 2026-11-01：IPSys Wiki 全站内容完善（本会话后续轮次）
 
 用户明确表示已创建 `https://github.com/zy19970/IPSys/wiki` 首页，要求依据现行仓库文件与此前已确认的业务方案完整完善 Wiki。已核实 AIGT 基础三规则，并取当前代码、README/USER_GUIDE/DESIGN/MCP/REQUIREMENTS 与 2026-11-01 最近成功 CI 为实际依据。GitHub 连接器不直接提供 Wiki Git 仓库写接口，容器无法解析 GitHub 域名，故改由主仓库 `docs/wiki` 持久化 **21 个 Markdown 页面**（包括 Home、_Sidebar、_Footer 和 18 个主题页面），增加非强制推送至同仓库 Wiki 的 GitHub Actions `.github/workflows/publish-wiki.yml`，以及 `docs/WIKI_PUBLISHING.md`。发布工作流保留原 Home 备份，不删除 Wiki 的非同步页面，使用工作流临时令牌；实际 Wiki 发布状态需要核对对应 Actions 与 Wiki，不能以文件进入 main 直接宣布站点更新。已通过创建的 Git Blob 核对 21 个页面均非空、内部 Wiki 双链目标均存在。此轮未改动 SQLCipher、MCP 或其他业务源码，未生成新 EXE，未触发 Release。最近会话仍使用 `memory/sessions/2026-11-01-开发收尾审查.md`，本次归档轮次延续本会话的 Wiki 讨论。
+
+
+**Wiki 实际发布核验补记（2026-11-01）**：主仓库提交 `707fa10da4ba18020f34fe6b52f003c838b0a62b` 触发 `Publish IPSys Wiki` Actions run `41306575033`；已核实其 head SHA 精确匹配、completed/success、页面链接校验和 Git Push 步骤全部 success。实际日志有 `Verified 21 wiki markdown pages and internal links`、Wiki commit `7c01d91`、`To https://github.com/zy19970/IPSys.wiki.git` 和 `76b51ee..7c01d91 HEAD -> master`；原 Home 创建了 `Home-original-before-IPSys-sync.md` 备份。故本轮已真实将 Wiki 页面发布到该独立 Git 仓库，不只是把 docs/wiki 文件放进主仓库。当前结论不涉及用户本机浏览器渲染截图，也未发布新版软件 EXE 或 Release。Wiki 后续维护沿用 `docs/wiki` → 自动 GitHub Actions 非强制同步；用户直接在 Wiki 在线编辑与主仓库自动发布并行时应注意非强制 Git 同步的差异。
