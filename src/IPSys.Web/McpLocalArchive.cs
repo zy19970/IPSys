@@ -207,8 +207,16 @@ static partial class McpLocal
             case "create_archive_folder":
             {
                 string section=DirectoryScope(workspace,args);
-                long? parentId=args.TryGetProperty("parent_id",out var parent) &&
-                    parent.ValueKind!=JsonValueKind.Null?ReadId(args,"parent_id"):null;
+                long? parentId=null;
+                if(args.TryGetProperty("parent_id",out var parent) &&
+                   parent.ValueKind!=JsonValueKind.Null)
+                {
+                    if(parent.ValueKind!=JsonValueKind.Number ||
+                       !parent.TryGetInt64(out long value) || value<=0)
+                        throw new McpKnownRejectionException(
+                            "parent_id 必须是有效正整数；如需创建模块顶层目录请省略该字段。");
+                    parentId=value;
+                }
                 var fields=new JsonObject{
                     ["name"]=ReadString(args,"name"),["parentId"]=parentId is long pid?JsonValue.Create(pid):null
                 };
