@@ -157,9 +157,10 @@ static class NativeArchiveHttpSmoke
             recover.EnsureSuccessStatusCode();
         using(var remove=await client.DeleteAsync(dirs+"/"+empty))
             remove.EnsureSuccessStatusCode();
-        using(var noRestore=await client.PostAsync(dirs+$"/{empty}/restore",null))
-            Check(noRestore.StatusCode==HttpStatusCode.BadRequest,
-                "empty directory deletion is permanent");
+        using(var restoredEmpty=await client.PostAsync(dirs+$"/{empty}/restore",null))
+            restoredEmpty.EnsureSuccessStatusCode();
+        using(var visibleEmpty=await client.GetAsync(dirs+"/"+empty))
+            visibleEmpty.EnsureSuccessStatusCode();
         using(var duplicate=await client.PostAsJsonAsync(dirs,
             new FolderMutationInput(ArchiveFolder:
                 new ArchiveFolderInput("已改名目录"+suffix,a))))
