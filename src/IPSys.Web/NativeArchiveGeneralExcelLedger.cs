@@ -82,7 +82,11 @@ static partial class ExcelLedger
         string section,string? category,string? directory,bool legacy)
     {
         if(!ArchiveDirectoryScopes.Allowed(workspace,section))
-            throw new InvalidDataException("当前类别不支持所属目录。");
+        {
+            if(!string.IsNullOrWhiteSpace(directory))
+                throw new InvalidDataException("当前类别不支持所属目录。");
+            return null;
+        }
         var map=FolderMap(db,workspace,section);
         if(!legacy || workspace!="company" || section!="achievement")
         {
