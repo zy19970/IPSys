@@ -68,3 +68,7 @@ IPSys 是 Windows WinForms 启动器 + 本地 Web Explorer 界面 + SQLCipher/SQ
 用户截图中知识产权页选中两项，右侧“详细信息”下载可以打包两项，但右键“打包下载”只导出右键所在的一项。已在当前 main 静态代码确认：`src/IPSys.Web/wwwroot/js/interactions.js` 的 `bindDetail` 和底部多选工具栏使用 `downloadNodes(Drive.selectedItems)`，而 `showItemMenu` 已建立 `actionItems = Drive.selectedItems.filter(n => isTrashNode(n.id) === trash)` 并用于批量删除，却将右键下载单独写成 `downloadNodes([item])`；导致已多选时只打包本项。服务层 `downloadNodes` 已支持单附件直接下、目录与多条记录 ZIP，`bridge.js` 的 `exportNodes` 也接收多节点，此问题为参数范围不一致，暂无证据表明 ZIP 引擎故障。
 
 已提出最小修改方案但**未执行产品代码修改**：将右键下载参数改为 `actionItems`，并根据选中数量与节点类型调整显示“下载/打包下载”；右键点击已选中项保留多选，右键点击未选中项使用现有单选规则；单文件下载、单文件夹 ZIP、多选文件夹 ZIP、混合选择，以及底部与详情按钮一致性增加 Node/Edge 回归。经用户确认或明确要求实施后再修改，本轮仅分析与 Memory 归档。最近会话：`memory/sessions/2026-11-01-操作逻辑精修阶段仓库梳理.md`；已归档至第四轮。
+
+## 2026-11-01：公司综合资料与党团建设扩展多级目录（方案待实施）
+
+用户要求“业务档案、综合资料，党团建设这些呀，应该都和这个业务档案一样。它能文件夹下套文件夹，文件夹下套文件夹，而不是文件夹下套一个文件夹。接着就是只能上传资料”。核对实际 main `5e633737`：业务档案实体目录 `archive_folder/achievement` 已可递归；公司党团建设目前是 `archive/party` 顶级记录、综合资料是 `general` 平铺记录，SQLite V2 CHECK 和 parent triggers 也禁止这些记录挂到多级目录。因此不是仅放开 UI 按钮即可修复，不能擅自触碰用户已存数据库。形成完整实施方案 `docs/COMPANY_MULTILEVEL_ARCHIVES_PLAN_20261101.md`：同一实体目录机制扩展 company/party、company/general，任意目录可新建下级目录/资料，资料记录内上传附件，保留既有记录和文件历史；协调 SQLCipher 安全结构更新、文件夹 API、前端树/表单/菜单/重排、导出/Excel/MCP与多层级测试。本轮**没有修改业务源码、没有运行 CI**，属于结构性变更，需要按整套方案施工与验证。最近会话第六轮。
