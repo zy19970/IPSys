@@ -507,8 +507,8 @@ static class NativeMcpArchiveSmoke
             workspace="company",kind="v2_archive_folder",id=folder,section="achievement"
         });
         Check(Has(await Run("list_archive_folders",new{
-            workspace="company"
-        }),folder),"restored directory visible through MCP");
+            workspace="company",parent_id=root
+        }),folder),"restored directory visible under its original parent through MCP");
         // Company-only archive folder tools must never access a personal root.
         bool personalDenied=false;
         try{await Run("list_archive_folders",new{workspace="personal"});}
