@@ -58,8 +58,10 @@ assert.match(shellStore,/remarks: g\.remarks \|\| ""/,
   "General remarks must be mapped from database, not hardcoded empty");
 assert.match(generalForm,/remarks: d\.remarks/,
   "General edit/create form must persist remarks");
-assert.match(archiveLedger,/DirectoryPath\(db,item\.Folder\.Parent\?\.Id\)/,
-  "Archive Excel exports the actual folder ancestry separately from category");
+assert.match(archiveLedger,/DirectoryPath\(db,workspace,\s*kind=="general"\?"general":section,item\.Folder\.Parent\?\.Id\)/,
+  "Excel exports folder ancestry with the actual workspace and module scope");
+assert.match(archiveLedger,/FolderMap\(db,workspace,section\)/,
+  "Directory paths must be looked up within the correct workspace and module");
 assert.match(archiveLedger,/ReadCompatibleArchive\(bytes\)/,
   "Archive Excel must retain old four-column import compatibility");
 const archiveColumns=ledger.match(/private static readonly Column\[\] ArchiveColumns=\s*\[([\s\S]*?)\];/)[1];
