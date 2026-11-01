@@ -93,3 +93,7 @@ IPSys 是 Windows WinForms 启动器 + 本地 Web Explorer 界面 + SQLCipher/SQ
 ## 2026-11-01：综合资料新建下级目录报资料结构约束（疑为旧测试数据库）
 
 用户本轮附截图（企业工作区“综合资料”，输入目录名称 `123456`）并问“这是为什么？”，报错是“资料结构约束不允许此操作，请检查名称、父级目录和文件关联”，左下角显示总/已用约 184.6 MB，说明正在使用已有内容的资料库。实际对比 GitHub 当前 `src/IPSys.Web/ResourceSchemaV2.cs` 与七模块修改前提交 `742abf35`：旧 schema 的 `folders` 表 `CHECK(kind!='archive_folder' OR (workspace='company' AND section='achievement'))`，新 schema 已允许 company/general、party 和 personal 四 scope；`NativeArchiveStore.Create` 根据新版 `section` 将新目录写入 `folders`，旧数据库的建表 CHECK 不会因更换 EXE 自动改变。API `NativeFolderEndpoints.FolderConstraintMessage` 确实将非同名唯一约束的 SQLite 约束错误映射为截图所示中文。当前 `Vault.ValidateSchema` 只要求 V2 版本与关键表（并运行此前 party 兼容逻辑），未全面升级此次七模块旧 CHECK；此次用户先前明确“测试阶段，不需要考虑旧数据库兼容迁移”。CI `41281238523` 在**新建临时 SQLCipher 数据库**通过公司 general 三层创建和 26 项全流程，不代表老测试库的结构已兼容。诊断结论：**旧数据库约束是最可能原因，尚未取得用户本机数据库文件或 sqlite_master 原始 SQL 来做绝对确认**。建议：先关闭应用并备份原加密库；另建新测试库执行相同操作验证；如果必须保留当前 184.6 MB、111 条 IP 等资料，则需明确选择独立的原库结构升级或完整无损迁移，不可直接删除或覆盖已有库。用户本轮仅询问原因，未授权调整源码、迁移或删除数据库，故未更改产品代码或新建构建。最近会话更新至第十一轮。
+
+## 2026-11-01：用户确认更换新测试数据库
+
+继“综合资料新建下级目录报数据库结构约束”诊断后，用户回复“明白了，我用的就数据库，我换成新的吧”。结合前文明确为旧数据库，用户决定直接使用新版 EXE 创建独立新测试数据库，不要求继续为旧库编写结构兼容迁移。建议保留并备份约 184.6 MB 的已有测试资料库，不直接覆盖/删除，在全新路径建库验证公司综合资料三级目录、党团建设和个人模块。尚未实际操作用户本机数据库，故未宣称验证通过。本轮仅记录用户决策。
