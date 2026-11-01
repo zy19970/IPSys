@@ -10,15 +10,15 @@ IPSys 是面向个人和公司资料的 Windows 本地管理软件。它使用�
 
 | 我想做什么 | 阅读指南 |
 | --- | --- |
-| 第一次下载、启动与建库 | [[快速开始|Getting-Started]] |
-| 理解日常操作与菜单 | [[日常使用|Daily-Workflow]] |
-| 看看公司和个人分别有什么栏目 | [[工作区与业务模块|Workspaces-and-Modules]] |
-| 建文件夹、归档业务记录 | [[目录与资料记录|Folders-and-Records]] |
-| 上传、预览、下载附件 | [[附件管理|File-Management]] |
-| 了解共享、查重与文件版本 | [[文件共享与版本|File-Sharing-and-Versions]] |
-| 备份、删除和恢复资料 | [[回收站与彻底删除|Recycle-Bin]]、[[备份与数据安全|Backup-and-Security]] |
-| 搜索与 Excel 台账 | [[搜索与 Excel|Search-and-Excel]] |
-| 用 Agent/Codex 管理本机资料 | [[MCP 接入|MCP-and-Agent]] |
+| 第一次下载、启动与建库 | [快速开始](https://github.com/zy19970/IPSys/wiki/Getting-Started) |
+| 理解日常操作与菜单 | [日常使用](https://github.com/zy19970/IPSys/wiki/Daily-Workflow) |
+| 看看公司和个人分别有什么栏目 | [工作区与业务模块](https://github.com/zy19970/IPSys/wiki/Workspaces-and-Modules) |
+| 建文件夹、归档业务记录 | [目录与资料记录](https://github.com/zy19970/IPSys/wiki/Folders-and-Records) |
+| 上传、预览、下载附件 | [附件管理](https://github.com/zy19970/IPSys/wiki/File-Management) |
+| 了解共享、查重与文件版本 | [文件共享与版本](https://github.com/zy19970/IPSys/wiki/File-Sharing-and-Versions) |
+| 备份、删除和恢复资料 | [回收站与彻底删除](https://github.com/zy19970/IPSys/wiki/Recycle-Bin)、[备份与数据安全](https://github.com/zy19970/IPSys/wiki/Backup-and-Security) |
+| 搜索与 Excel 台账 | [搜索与 Excel](https://github.com/zy19970/IPSys/wiki/Search-and-Excel) |
+| 用 Agent/Codex 管理本机资料 | [MCP 接入](https://github.com/zy19970/IPSys/wiki/MCP-and-Agent) |
 
 ## 你需要了解的三个对象
 

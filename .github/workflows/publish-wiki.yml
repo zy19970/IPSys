@@ -36,9 +36,15 @@ jobs:
               text = page.read_text(encoding="utf-8")
               if not text.strip():
                   broken.append(f"{page}: empty")
+              for line_number, line in enumerate(text.splitlines(), 1):
+                  if line.lstrip().startswith("|") and re.search(r"\[\[[^\]]+\|[^\]]+\]\]", line):
+                      broken.append(f"{page}:{line_number}: wiki-style pipe link breaks Markdown table; use [label](url)")
               for target in re.findall(r"\[\[[^\]|]+\|([^\]]+)\]\]", text):
                   if target not in pages:
                       broken.append(f"{page}: missing {target}")
+              for target in re.findall(r"\]\(https://github\.com/zy19970/IPSys/wiki/([A-Za-z0-9-]+)\)", text):
+                  if target not in pages:
+                      broken.append(f"{page}: missing Markdown wiki link target {target}")
           if broken:
               raise SystemExit("\n".join(broken))
           print(f"Verified {len(pages)} wiki markdown pages and internal links")

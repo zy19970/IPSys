@@ -130,3 +130,8 @@ IPSys 是 Windows WinForms 启动器 + 本地 Web Explorer 界面 + SQLCipher/SQ
 
 
 **Wiki 实际发布核验补记（2026-11-01）**：主仓库提交 `707fa10da4ba18020f34fe6b52f003c838b0a62b` 触发 `Publish IPSys Wiki` Actions run `41306575033`；已核实其 head SHA 精确匹配、completed/success、页面链接校验和 Git Push 步骤全部 success。实际日志有 `Verified 21 wiki markdown pages and internal links`、Wiki commit `7c01d91`、`To https://github.com/zy19970/IPSys.wiki.git` 和 `76b51ee..7c01d91 HEAD -> master`；原 Home 创建了 `Home-original-before-IPSys-sync.md` 备份。故本轮已真实将 Wiki 页面发布到该独立 Git 仓库，不只是把 docs/wiki 文件放进主仓库。当前结论不涉及用户本机浏览器渲染截图，也未发布新版软件 EXE 或 Release。Wiki 后续维护沿用 `docs/wiki` → 自动 GitHub Actions 非强制同步；用户直接在 Wiki 在线编辑与主仓库自动发布并行时应注意非强制 Git 同步的差异。
+
+
+## 2026-11-01：Wiki 首页表格链接渲染问题
+
+用户截图指出 Wiki 首页“从这里开始”的阅读指南列出现 `[[快速开始` 等原样文字，未显示为链接。核查 `docs/wiki` 全部 21 页发现仅首页 9 行表格里的 10 个 `[[标签|页面]]` 链接发生竖线与 Markdown 表格列分隔冲突。此次更正 `docs/wiki/Home.md` 九行十处为 `[标签](https://github.com/zy19970/IPSys/wiki/页面名)`，并增强 `.github/workflows/publish-wiki.yml` 的静态校验：拒绝表格行内 `[[...|...]]`，核实标准 Markdown 指向本 Wiki 的页面目标存在。其他 20 页未改，业务源码、数据库和 Release 不受影响。编辑会话继续记录于 `memory/sessions/2026-11-01-开发收尾审查.md`（第五轮）。第一次提交编排工具调用被环境拦截，远端 main 未变化，已通知失败和重新开始；最终推送状态和 Wiki 发布成功必须按之后的实际 Git SHA、Actions 结果补记。
