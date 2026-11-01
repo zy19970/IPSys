@@ -52,3 +52,9 @@ IPSys 是 Windows WinForms 启动器 + 本地 Web Explorer 界面 + SQLCipher/SQ
 最新会话文件：`memory/sessions/2026-11-01-操作逻辑精修阶段仓库梳理.md`，本轮第二轮已归档。
 
 **知识产权类型筛选最终验证补记（2026-11-01）**：产品提交 `68997736664a1e42346f1d0f31d52d1c12d5aa91`，Windows Actions #439（run `41273470858`）已 completed/success，run HEAD 与代码提交一致。26 个成功步骤，包括 Node 真实菜单/列表及 Excel 参数动态回归、Debug/Release、Edge、SQLCipher/HTTP Excel 按类型筛选、新旧单 EXE 启动及上传 artifacts；0 个失败步骤（另有可选 ZIP64 路径按工作流配置跳过）。本轮仅自动回归通过，用户本地旧 EXE 需更新后才能看到新筛选。
+
+## 2026-11-01：详细信息侧栏默认展开（本轮修改）
+
+用户截图要求右侧“详细信息”默认打开。原代码 `app.js` 根据 `window.innerWidth > 1200` 决定初始开关，而且 `enterContext()` 进入任意台账时强制折叠。本轮将无保存偏好时的默认值改为展开，并去掉导航到业务台账时自动关闭；用户已在设置中明确保存 `ipsys.detail=0` 的关闭偏好继续优先，手动开关仍有效，首页独立概况区不重复显示侧栏。新增 Node 动态测试验证窄/宽屏默认值、显式关闭偏好、导航保持用户选择并照常清除旧筛选，不涉及数据库和文件版本。CI 及产品 SHA 以后续实际 Actions 核对。
+
+最近会话：`memory/sessions/2026-11-01-操作逻辑精修阶段仓库梳理.md`，第三轮。

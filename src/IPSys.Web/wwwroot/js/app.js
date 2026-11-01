@@ -125,7 +125,8 @@ const Drive = {
     selection: new Set(),
     anchorId: null,
     query: "",
-    detailOpen: Prefs.get("detail", window.innerWidth > 1200 ? "1" : "0") === "1",
+    /* 未设偏好时默认展开；用户在设置中明确关闭仍以保存值为准。 */
+    detailOpen: Prefs.get("detail", "1") === "1",
     navCollapsed: false,
     history: [],
     extFilter: null,
@@ -321,14 +322,9 @@ const Drive = {
     return `<div class="${cls}">${inner}</div>`;
   },
 
-  /* 导航到新上下文后的统一收尾:
-     1) 旧排序键在新列集里可能不存在(在项目台账按「项目编号」排,再进根目录)
-        → 退回按名称;
-     2) 进分类 = 进台账,列多,右侧详情面板会把名称列压到 180px 左右 → 自动收起。
-        用户仍可手动打开,那是他自己选的窄。 */
+  /* 导航只重置失效排序与筛选；右侧详细信息保留用户当前的展开/收起状态。 */
   enterContext() {
     this.resetSort();
-    if (this.columns()) this.state.detailOpen = false;
     /* 筛选是跟着分类列的,换目录一定得清,否则进另一个分类会莫名其妙少一半行 */
     this.state.statusFilter = null;
     this.state.ipTypeFilter = null;

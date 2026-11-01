@@ -160,7 +160,39 @@ const act=cmd=>vm.runInContext(cmd,sandbox);
  assert.match(key,/confirmMask/);
  assert.match(key,/preview-mask\.show/);
  assert.ok(key.indexOf('$("#formMask")')<key.indexOf('if (e.key === "Delete")'));
+ // Detail sidebar defaults open for every viewport unless explicitly disabled.
+ const prefsSource=part(app,"const Prefs = {","/* ==========================================================================\n   台账列集");
+ const init=app.match(/^\s*detailOpen:\s*(.*),\s*$/m);
+ assert.ok(init,"Detail default state expression exists");
+ const initialDetail=(width,stored)=>vm.runInNewContext(
+  prefsSource+"\n"+init[1],{
+   window:{innerWidth:width},
+   localStorage:{getItem:key=>{assert.equal(key,"ipsys.detail");return stored;}},
+  });
+ for(const width of [800,1024,1920])
+  assert.equal(initialDetail(width,null),true,
+   "Detail defaults open even on narrow screens: "+width);
+ assert.equal(initialDetail(1920,"0"),false,
+  "An explicitly saved closed preference is respected");
+ assert.equal(initialDetail(800,"1"),true,
+  "An explicitly saved open preference is respected");
+ const enterMethod=part(app,"  enterContext() {","  resetSort() {");
+ const nav=vm.runInNewContext("({"+enterMethod+"})");
+ for(const currentlyOpen of [true,false]){
+  const state={detailOpen:currentlyOpen,statusFilter:"已授权",
+   ipTypeFilter:"发明专利",extFilter:["pdf"]};
+  let sortCalls=0;
+  nav.enterContext.call({state,resetSort(){sortCalls++;}});
+  assert.equal(state.detailOpen,currentlyOpen,
+   "Entering a ledger must preserve the user-chosen detail state");
+  assert.equal(state.statusFilter,null);
+  assert.equal(state.ipTypeFilter,null);
+  assert.equal(state.extFilter,null);
+  assert.equal(sortCalls,1);
+ }
+ assert.match(app,/detailOpen && this.state.view !== "home"/,
+  "Homepage continues to use its dedicated dashboard layout");
  // Recycle details must not advertise preview/open while soft-deleted.
  assert.match(app,/locked \? "" : isFolder/);
- console.log("EXPLORER F2-06 PASS: row/menu selection, folder exportedCalls, virtual scope, chrome, modal guards and refresh state");
+ console.log("EXPLORER F2-06 PASS: detail default/navigation, row/menu selection, folder exportedCalls, virtual scope, chrome, modal guards and refresh state");
 })().catch(err=>{console.error(err);process.exitCode=1;});
