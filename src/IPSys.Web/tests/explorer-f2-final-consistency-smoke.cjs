@@ -161,7 +161,8 @@ const act=cmd=>vm.runInContext(cmd,sandbox);
  assert.match(key,/preview-mask\.show/);
  assert.ok(key.indexOf('$("#formMask")')<key.indexOf('if (e.key === "Delete")'));
  // Detail sidebar defaults open for every viewport unless explicitly disabled.
- const prefsSource=part(app,"const Prefs = {","/* ==========================================================================\n   台账列集");
+ // Match the section delimiter, not a newline (Windows checkout uses CRLF).
+ const prefsSource=part(app,"const Prefs = {","/* ==========================================================================");
  const init=app.match(/^\s*detailOpen:\s*(.*),\s*$/m);
  assert.ok(init,"Detail default state expression exists");
  const initialDetail=(width,stored)=>vm.runInNewContext(

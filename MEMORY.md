@@ -58,3 +58,5 @@ IPSys 是 Windows WinForms 启动器 + 本地 Web Explorer 界面 + SQLCipher/SQ
 用户截图要求右侧“详细信息”默认打开。原代码 `app.js` 根据 `window.innerWidth > 1200` 决定初始开关，而且 `enterContext()` 进入任意台账时强制折叠。本轮将无保存偏好时的默认值改为展开，并去掉导航到业务台账时自动关闭；用户已在设置中明确保存 `ipsys.detail=0` 的关闭偏好继续优先，手动开关仍有效，首页独立概况区不重复显示侧栏。新增 Node 动态测试验证窄/宽屏默认值、显式关闭偏好、导航保持用户选择并照常清除旧筛选，不涉及数据库和文件版本。CI 及产品 SHA 以后续实际 Actions 核对。
 
 最近会话：`memory/sessions/2026-11-01-操作逻辑精修阶段仓库梳理.md`，第三轮。
+
+**详细信息默认展开 CI 首次回归及测试修复（2026-11-01）**：产品提交 `f67fc8181afc5857e04fb322f952f8c2e2b69e79` 触发 Windows CI `41274179983`，Debug 编译和前序回归成功，但 `Verify UI and capability smoke tests` 步骤失败。日志显示新加测试在 `part(app,"const Prefs = {", ...)` 中使用包含 LF 的固定结束标记，Windows checkout 的 CRLF 导致找不到区域，属于**测试代码的换行符兼容缺陷**，不是已证明的产品 UI 失败。改用无换行依赖的分隔符匹配，提交后按后续 CI 结果单独验证。不得将失败 run 记为 PASS。
