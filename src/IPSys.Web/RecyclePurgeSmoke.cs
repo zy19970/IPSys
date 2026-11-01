@@ -274,14 +274,14 @@ static class RecyclePurgeSmoke
                 long record=NativeArchiveStore.Create(db,"company",FolderKinds.General,
                     new FolderMutationInput(General:new TitleInput("存档资料"),
                         ParentId:leaf));
-                long independent=Folder(db,"company","外部共享目录");
+                long outsideFolder=Folder(db,"company","外部共享目录");
                 var treeFile=NativeFileStore.UploadAsync(db,"company",record,null,
                     new NativeFileMetadataInput("树内原件.bin"),null,payload.Length,
                     new MemoryStream(payload),CancellationToken.None)
                     .GetAwaiter().GetResult();
                 long treeLink=Link(db,treeFile.FileId,record);
                 long outsideLink=NativeFileLinkStore.Add(db,"company",treeFile.FileId,
-                    new NativeFileLinkInput(independent));
+                    new NativeFileLinkInput(outsideFolder));
                 var directoryRef=ResourceRef.Create("company",
                     FolderKinds.ArchiveFolder,top,"general");
                 Check(NativeArchiveStore.SetDeleted(db,directoryRef,true),
