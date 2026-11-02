@@ -21,7 +21,7 @@ const guard=extract("function canCreateHere() {","function safeRefresh() {");
 const part=extract("function archiveScopeSection() {","/* ---------------- 内容区 ---------------- */");
 function folder(id,name,children,parentId,isSystem){
  return {id:"af:"+id,name,type:"folder",
-  biz:{kind:"archive_folder",id,parentId,isSystem:!!isSystem},children:children||[]};
+  biz:{kind:"archive_folder",id,section:"achievement",parentId,isSystem:!!isSystem},children:children||[]};
 }
 function record(id,parentId){
  return {id:"a:achievement:"+id,name:"资料"+id,type:"folder",

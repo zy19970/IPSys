@@ -215,3 +215,6 @@ IPSys 是 Windows WinForms 启动器 + 本地 Web Explorer 界面 + SQLCipher/SQ
 
 
 **第十九轮第三次 CI/测试误判（2026-11-02）**：第二轮测试与用户反馈归档提交 5a35c48453ee1363b908eb0430584e73226784de，Windows CI run 41405843895 completed/failure；P2、建库、会话恢复均已通过，失败位置 explorer-archive-operations-smoke.cjs:99，新建企业资质文件夹处理函数在 Node vm 另一上下文被主上下文的 `instanceof Function` 判定 false；这不是生产 handler 不存在。改用 `typeof handler === "function"`，修复 Blob c8f11760e85dd86c96e7b1fe30f1c09e21de5079；失败通知 office-renderer/wechat-webhook#2008，重新开始 #2009。应继续以新 CI 结果为准。用户可见阶段性说明已如实披露上轮 CI 仍失败及本次断言错误。
+
+
+**第十九轮补充：测试目录 fixture 缺 section 字段（2026-11-02）**：在 main 135e7514 的 Windows CI run 41406572739 尚在执行时进一步核查 explorer-archive-operations-smoke.cjs，发现 helper folder() 构造的 archive_folder biz 没有 section，而生产 store.js 实际每个普通目录均有 section。随后 F2 重命名断言预期调用 archiveFolder("achievement",parent,null,true)，没有 section 会传 undefined 导致后续断言错误。已预先将测试 helper 的 section 设置为 achievement（该脚本测试节点属于 achievement 分段），Blob c007b0ed76016142795d7fd5a5dc471ebf4b7897；不改产品业务代码。注意前一个 CI 在此提交前触发，需区别两个 SHA 的结果并以最新提交的 Windows CI 为最终验收证据。
