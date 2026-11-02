@@ -316,3 +316,5 @@ P3-1 last_insert_rowid 两次、脆弱可简化但当下正确；P3-2 ExcelLedge
 建议策略（本轮为助手建议，尚非用户新批准或已执行方案）：用户此前明确处于测试阶段且没有需承担生产兼容责任，因此新版本以archive_folder为唯一普通资料业务对象，新建**干净测试数据库**验证新 schema 和所有API/UI/Excel/MCP/回收站，不投入成本维持 archive/general 长期业务路径，也不自动修改或清空现有文件。旧测试数据库原件作为只读备份留存以供核查。若用户确有需要保留的记录，只提供另行受控一次性转换选项，必须完整备份、验证同级重名/超长名称/年度字段和 JSON 映射、保留 FolderId/LinkId/FileId/版本与共享关系，基于新结构重建或受控重写而不是 UPDATE kind，隔离库事务验收后再决定是否使用。不能声称已迁移、已备份或已删除。
 
 当前实施决策是去除 archive/general 独立身份，让普通资料按 section 模块分区全部归 archive_folder；Excel台账只负责文件夹属性和位置，不传附件内容；企业资质/业务档案/个人等统一视图；项目/知识产权的专用记录依旧保留。已经确认的用户要求仍是无需考虑旧测试库迁移，避免把新建议写成用户已明确确认。任务开始通知 office-renderer/wechat-webhook#2052。本轮仅方案讨论，未改业务代码、真实DB或正式 Release；会话路径 memory/sessions/2026-11-02-操作细节精修仓库梳理.md，第十二轮。
+
+补充：本轮审查进行中 main 又新增提交22e2f849a249e25b4a4d95cb40638ede07ec3ea6，修复首页点击“新建”仍按上次项目ID新建合同的问题，app.js navigate(home) 归位root、interactions.js 首页inProject条件改为!onHome，并加explorer-home-create-context-smoke；源码修复方向正确。该提交Windows CI run41477357400在最后查询时仍in_progress，不能套用213aa的success。由于新提交不涉及本轮指出的MCP/Excel/旧库问题，原审核结论仍适用。
