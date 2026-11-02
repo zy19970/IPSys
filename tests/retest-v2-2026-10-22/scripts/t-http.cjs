@@ -40,19 +40,20 @@ async function must(label, p, body) {
     const lvl1 = chain.find((f) => f.id === fx.archive.system[0].id);
     const lvl2 = chain.find((f) => f.id === fx.archive.lvl2);
     const lvl3 = chain.find((f) => f.id === fx.archive.lvl3);
-    const deep = ar.archives.find((a) => a.id === fx.archive.records[0]);
-    const ok = lvl2 && lvl2.parentId === lvl1.id && lvl3 && lvl3.parentId === lvl2.id && deep && deep.folderId === lvl3.id;
+    /* A02/N2：普通资料就是文件夹，记录同样出现在 folders 集合里。 */
+    const deep = ar.folders.find((f) => f.id === fx.archive.records[0]);
+    const ok = lvl2 && lvl2.parentId === lvl1.id && lvl3 && lvl3.parentId === lvl2.id && deep && deep.parentId === lvl3.id;
     evFile("T-P0-01", [
       "GET /api/v2/ui/archive/company 的 folders 链：",
       J(chain.filter((f) => f.id >= 1 && f.id <= 9), null, 1),
       "",
       "三级目录 parentId 关系：" + J({ lvl1: lvl1.id, lvl2: lvl2 && lvl2.parentId, lvl3: lvl3 && lvl3.parentId }),
-      "最深处档案 folderId=" + (deep && deep.folderId) + "（期望 " + fx.archive.lvl3 + "）",
+      "最深处档案 parentId=" + (deep && deep.parentId) + "（期望 " + fx.archive.lvl3 + "）",
       "",
       "结论：后端层级完整。前端是否忠实渲染见 T-P0-01 的浏览器证据。",
     ].join("\n"));
     rec("T-P0-01#backend", "DYNAMIC-HTTP", ok ? "PASS" : "FAIL",
-      `folders=${chain.length}, 二级 parent=${lvl2 && lvl2.parentId}, 三级 parent=${lvl3 && lvl3.parentId}, 记录 folderId=${deep && deep.folderId}`,
+      `folders=${chain.length}, 二级 parent=${lvl2 && lvl2.parentId}, 三级 parent=${lvl3 && lvl3.parentId}, 记录 parentId=${deep && deep.parentId}`,
       "后端返回完整 parentId 链且记录归属最深目录");
   }
 
@@ -177,19 +178,19 @@ async function must(label, p, body) {
   {
     const mv = await L.post(`/api/v2/folders/company/archive/${fx.archive.records[1]}/move?section=achievement`, { ParentId: fx.archive.lvl2 });
     const ar = (await L.get("/api/v2/ui/archive/company")).data;
-    const moved = ar.archives.find((a) => a.id === fx.archive.records[1]);
+    const moved = ar.folders.find((f) => f.id === fx.archive.records[1]);
     const back = await L.post(`/api/v2/folders/company/archive/${fx.archive.records[1]}/move?section=achievement`, { ParentId: fx.archive.system[0].id });
     const xfer = await L.post(`/api/v2/ui/archive/company/achievement/${fx.archive.records[2]}/transfer`, { TargetWorkspace: "personal", TargetSection: "achievement", Move: false });
     evFile("T-P1-03", [
       `POST /folders/company/archive/${fx.archive.records[1]}/move {ParentId:${fx.archive.lvl2}} -> ${mv.status} ${J(mv.data)}`,
-      `回读 folderId=${moved && moved.folderId}（期望 ${fx.archive.lvl2}）`,
+      `回读 parentId=${moved && moved.parentId}（期望 ${fx.archive.lvl2}）`,
       `再移回 -> ${back.status}`,
       `POST /ui/archive/company/achievement/${fx.archive.records[2]}/transfer {TargetWorkspace:personal,Move:false} -> ${xfer.status} ${J(xfer.data)}`,
       "",
       "结论：后端具备记录移动与跨工作区转移能力；前端无任何复制/转移入口（grep transfer 零命中）。",
     ].join("\n"));
-    rec("T-P1-03", "MIXED", mv.ok && moved && moved.folderId === fx.archive.lvl2 ? "IMPLEMENTATION_GAP" : "FAIL",
-      `后端 move -> ${mv.status}，folderId 变为 ${moved && moved.folderId}；transfer -> ${xfer.status}；前端零入口`,
+    rec("T-P1-03", "MIXED", mv.ok && moved && moved.parentId === fx.archive.lvl2 ? "IMPLEMENTATION_GAP" : "FAIL",
+      `后端 move -> ${mv.status}，parentId 变为 ${moved && moved.parentId}；transfer -> ${xfer.status}；前端零入口`,
       "复制/转移有 UI 入口；后端可用不能当 UI 通过");
   }
 

@@ -74,6 +74,23 @@ static class RecyclePurgeSmoke
                 Check(Scalar(db,"SELECT COUNT(*) FROM folder_file_links "+
                     "WHERE id=$id AND deleted=0;",directLink)==1,
                     "archive_folder direct attachment link is active again");
+                /* 闭环的另一半：再次解除关联后永久删除，必须连已无任何引用的
+                   文件元数据一起回收，不能只删掉那一行关联。 */
+                Check(NativeFileLinkStore.Unlink(db,"company",direct.FileId,directLink),
+                    "archive_folder direct attachment unlinked a second time");
+                Check(RecycleStore.Change(db,"company",
+                    [new RecycleKey("v2_file",directLink,"")],true),
+                    "archive_folder direct attachment permanently deleted");
+                Check(Scalar(db,"SELECT COUNT(*) FROM folder_file_links WHERE id=$id;",
+                    directLink)==0 &&
+                    Scalar(db,"SELECT COUNT(*) FROM files WHERE id=$id;",direct.FileId)==0,
+                    "purged direct attachment releases its last file reference");
+                /* 误报成功防护：已物理回收的键不能被再次"恢复"或"删除"。 */
+                Check(!RecycleStore.Change(db,"company",
+                        [new RecycleKey("v2_file",directLink,"")],false) &&
+                    !RecycleStore.Change(db,"company",
+                        [new RecycleKey("v2_file",directLink,"")],true),
+                    "recycled key must report failure instead of false success");
                 var first=NativeFileStore.UploadAsync(db,"company",a,null,
                     new NativeFileMetadataInput("共享文件.bin"),null,payload.Length,
                     new MemoryStream(payload),CancellationToken.None)
@@ -310,6 +327,13 @@ static class RecyclePurgeSmoke
                 long treeLink=Link(db,treeFile.FileId,record);
                 long outsideLink=NativeFileLinkStore.Add(db,"company",treeFile.FileId,
                     new NativeFileLinkInput(outsideFolder));
+                /* 整树恢复必须保住附件版本历史，而不是只恢复最新一版。 */
+                byte[] treeRevision={9,8,7};
+                var treeNext=NativeFileStore.UploadAsync(db,"company",null,treeFile.FileId,
+                    new NativeFileMetadataInput("树内原件-v2.bin"),"第二版",
+                    treeRevision.Length,new MemoryStream(treeRevision),CancellationToken.None)
+                    .GetAwaiter().GetResult();
+                Check(treeNext.Version==2,"tree attachment gains a second version");
                 var directoryRef=ResourceRef.Create("company",
                     FolderKinds.ArchiveFolder,top,"general");
                 Check(NativeArchiveStore.SetDeleted(db,directoryRef,true),
@@ -330,6 +354,10 @@ static class RecyclePurgeSmoke
                     "restored directory must expose original descendants");
                 Check(NativeFileStore.DownloadInfo(db,"company",treeFile.FileId,1)!=null,
                     "restored file is readable");
+                Check(NativeFileStore.DownloadInfo(db,"company",treeFile.FileId,2)!=null &&
+                    Scalar(db,"SELECT COUNT(*) FROM file_versions WHERE file_id=$id;",
+                        treeFile.FileId)==2,
+                    "tree restore keeps every attachment version");
                 Check(NativeArchiveStore.SetDeleted(db,directoryRef,true),
                     "delete root a second time");
                 using(var canceled=new CancellationTokenSource())

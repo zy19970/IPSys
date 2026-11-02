@@ -254,16 +254,17 @@ async function main() {
     const ids = await evalJs(`(() => { const out=[]; walkNodes(n=>out.push(n.id)); return out; })()`);
     const hasLvl2 = ids.includes("af:" + fx.archive.lvl2);
     const hasLvl3 = ids.includes("af:" + fx.archive.lvl3);
-    const hasDeepRecord = ids.includes(`a:achievement:${fx.archive.records[0]}`);
+    /* A02/N2：资料已是普通文件夹节点，节点前缀由 a:<section>: 改为 af:。 */
+    const hasDeepRecord = ids.includes(`af:${fx.archive.records[0]}`);
     const rootRows = await evalJs(`[...document.querySelectorAll('#viewRoot .row')].map(r=>r.dataset.id)`);
     await shot("T-P0-01-archive-root");
     ev("T-P0-01", [
       "进入 业务档案(k:achievement) 后遍历整棵树：",
-      "af:8 存在 = " + hasLvl2 + "；af:9 存在 = " + hasLvl3 + "；最深记录 a:achievement:10 存在 = " + hasDeepRecord,
+      "第二级目录存在 = " + hasLvl2 + "；第三级目录存在 = " + hasLvl3 + "；最深记录 af:" + fx.archive.records[0] + " 存在 = " + hasDeepRecord,
       "当前列表可见行：" + JSON.stringify(rootRows),
       "",
-      "后端 /api/v2/ui/archive/company 已返回 folders 的 parentId 链 1→8→9（见 T-P0-01.txt 的 HTTP 段），",
-      "前端树里却找不到 af:8 / af:9 —— buildTree 只做了平面映射，把二级目录丢掉了。",
+      "后端 /api/v2/ui/archive/company 已返回 folders 的 parentId 链（见 HTTP 段的 T-P0-01#backend），",
+      "此处核对前端 buildTree 是否忠实还原每一级目录，以及最深记录是否挂在第三级目录下。",
     ].join("\n"));
     rec("T-P0-01", "DYNAMIC-BROWSER", (hasLvl2 && hasLvl3 && hasDeepRecord) ? "PASS" : "CONFIRMED_BUG",
       `树中 af:8=${hasLvl2}, af:9=${hasLvl3}, 最深记录=${hasDeepRecord}；分类根直接列出 ${rootRows.length} 行`,
@@ -480,7 +481,7 @@ async function main() {
       await sleep(2500);
       return await evalJs("[...document.querySelectorAll('#viewRoot .row')].map(r=>r.dataset.id)");
     }
-    const expectedArchiveId="a:achievement:" + fx.archive.records[0];
+    const expectedArchiveId="af:" + fx.archive.records[0];
     const archiveRows=await search("档案-01");
     const archiveFound=archiveRows.includes(expectedArchiveId);
     if(archiveFound) {
@@ -496,7 +497,7 @@ async function main() {
     const fileRows=await search("综合资料附件.txt");
     const fileFound=fileRows.includes(expectedFileId);
     const fileMeta=fileFound?await evalJs("(() => { const n=findById(" + JSON.stringify(expectedFileId) + "); const p=findParent(" + JSON.stringify(expectedFileId) + "); const m=VaultStore.metaOf(" + JSON.stringify(expectedFileId) + "); return {nodeId:n?.id||null,parentId:p?.id||null,fileId:m?.fileId??null,linkId:m?.linkId??null,version:m?.version??null}; })()"):null;
-    const fileMapped=!!fileMeta && fileMeta.parentId==="g:" + fx.company.general &&
+    const fileMapped=!!fileMeta && fileMeta.parentId==="af:" + fx.company.general &&
       Number(fileMeta.fileId)===Number(fx.files.general.fileId) && Number(fileMeta.linkId)===Number(fx.files.general.linkId);
     await shot("T-P2-07-search");
     ev("T-P2-07", [
