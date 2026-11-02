@@ -212,3 +212,6 @@ IPSys 是 Windows WinForms 启动器 + 本地 Web Explorer 界面 + SQLCipher/SQ
 用户原话：“为什么卡住不动了”。已重新读取 AIGT 三规范及项目 MEMORY/本会话。核实上轮 e3f3eb12 的 Windows CI run 41404619393 completed/failure，UI 资源、目录树、Explorer P0/P1 已通过；实际失败是 explorer-p2-interactions-smoke.cjs:88 测试模拟没有新的 RecordForms.archiveFolder 方法，虽然生产 forms.js 已提供该方法；因此要更新旧测试与新接口，而非宣称生产代码已完成验收。失败通知 office-renderer/wechat-webhook#2004，重新开始通知 #2005。
 
 本轮修复：Explorer P2 smoke 改为加载真实 forms.js，检查公司 achievement/个人 academic 目录 F2 重命名的 section-aware PUT、可选属性与数据；同步修复首页无效上传位置、内部拖拽无效目标提示测试，生产 interactions.js 的提示语统一为“请将文件拖入可上传的文件夹”。相关 Blob：explorer-p2-interactions-smoke.cjs e1a7d7022c4475766f9defe0e0ff066e983d3500；interactions.js 7805ee7206cfab6ce91c299195021266dccd7629；explorer-internal-dragdrop-smoke.cjs 5a2daeaa87a7f614d50ff2569f26e3546962dc28。最终提交和新 CI 尚待实际核验。本会话仍存 memory/sessions/2026-11-01-开发收尾审查.md。用户明确无需旧数据库迁移，不创建 Release。
+
+
+**第十九轮第三次 CI/测试误判（2026-11-02）**：第二轮测试与用户反馈归档提交 5a35c48453ee1363b908eb0430584e73226784de，Windows CI run 41405843895 completed/failure；P2、建库、会话恢复均已通过，失败位置 explorer-archive-operations-smoke.cjs:99，新建企业资质文件夹处理函数在 Node vm 另一上下文被主上下文的 `instanceof Function` 判定 false；这不是生产 handler 不存在。改用 `typeof handler === "function"`，修复 Blob c8f11760e85dd86c96e7b1fe30f1c09e21de5079；失败通知 office-renderer/wechat-webhook#2008，重新开始 #2009。应继续以新 CI 结果为准。用户可见阶段性说明已如实披露上轮 CI 仍失败及本次断言错误。

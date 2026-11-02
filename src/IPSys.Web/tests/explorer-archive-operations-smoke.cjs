@@ -96,7 +96,7 @@ const fn=name=>vm.runInContext(name,context);
 
  Drive.state.folderId="k:certificate";
  fn("openNewMenu")(anchor);
- assert.deepEqual(menus.at(-1).handlers["new-folder"] instanceof Function,true);
+ assert.equal(typeof menus.at(-1).handlers["new-folder"],"function");
  menus.at(-1).handlers["new-folder"]();
  assert.deepEqual(menus.at(-1).archiveFolder,["certificate",null,null]);
 
