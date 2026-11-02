@@ -270,3 +270,8 @@ IPSys 是 Windows WinForms 启动器 + 本地 Web Explorer 界面 + SQLCipher/SQ
 用户原话：“CI失败了”。核实提交 7c51024f56a5f53e13c572baaabca794c04da72f 对应 Windows run 41428371446 completed/failure：第13步 UI regression 失败，Debug/Release/MCP/JS 语法均成功。ip-type-badge-smoke.cjs 第65行通过 app.js 的旧导航注释定位 cellHtml 方法结束，但排序变更改变该注释，导致 cellEnd=-1、断言失败。此前 ui-assets 测试通过；之后 Explorer/SQLCipher/EXE 等因前置失败跳过，不可视为完整验收。
 
 定向修复仅调整 ip-type-badge-smoke.cjs 提取 cellHtml 方法的结束锚点，改用方法本身的换行双空格右花括号逗号，避免绑定其它函数注释。使用当前 app.js 实际源码动态构造 cellHtml 并检查 IP 类型/状态及 HTML 转义结果，均符合预期；不修改排序产品代码。开始/失败/重新开始通知为 office-renderer/wechat-webhook#2036/#2037/#2038。新提交和新 CI 需再次按实际结果核验，未操作用户真实数据库或正式 Release。最近会话路径 memory/sessions/2026-11-02-操作细节精修仓库梳理.md，归档轮次第五轮。
+
+
+## 2026-11-02：个人资料模块“人力资源”显示名称（第六轮）
+
+用户提供个人工作区“身份与资质”快捷访问截图，原话：“把这个换成人力资源”。核查当前 main 394993a40e37972bdaff82792c42936edcbb9e85；对应排序修复的 Windows CI 41429761398 已 completed/success。检查发现显示名称唯一权威来自 src/IPSys.Web/wwwroot/js/store.js 的 WS_CATS.personal 中 certificate.label；工作区侧栏、文件夹 root、面包屑与详情由动态分类树/标签驱动。修改为“人力资源”，保持公司 certificate.label “企业资质”，保持 section/certificate/API/DB/已有附件归属不变。同步 forms.js 注释、docs/wiki/Workspaces-and-Modules.md、UI_BASELINE.md、M0_DATA_DICTIONARY.md，并在 ui-tree-smoke.cjs 新增个人/公司名称与稳定 ID 验证。对修改后的真实 store.js/data.js 执行独立 JS 动态加载，验证 personal=人力资源、company=企业资质、分类根节点正确、内部 ID 未变，结果均通过；没有用户原始数据库操作或新版 Release 发布。任务通知 #2040。正式 Windows CI 需以提交后 Actions 实际结果为准。最近会话：memory/sessions/2026-11-02-操作细节精修仓库梳理.md；归档第六轮。

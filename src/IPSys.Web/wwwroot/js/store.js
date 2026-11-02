@@ -43,7 +43,7 @@ const WS_CATS = {
     { id: "party", label: "党团建设" },
   ],
   personal: [
-    { id: "certificate", label: "身份与资质" },
+    { id: "certificate", label: "人力资源" },
     { id: "ip", label: "知识产权与著作" },
     { id: "project", label: "科研与合作项目" },
     { id: "achievement", label: "成果与奖励" },

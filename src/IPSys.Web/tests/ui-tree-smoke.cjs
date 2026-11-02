@@ -28,6 +28,14 @@ for(const file of ['js/data.js','js/store.js'])
 
 const run=code=>vm.runInContext(code,ctx);
 
+/* The personal certificate category is labelled 人力资源 in every shared UI.
+   Its stable certificate key and the company label must not change. */
+assert.equal(run("catLabel('certificate','personal')"),'人力资源');
+assert.equal(run("catLabel('certificate','company')"),'企业资质');
+const personalRoot=run("VaultStore.buildTree({ws:'personal',projects:[],contracts:[],archive:{},ip:{},projectFiles:[]})");
+assert.equal(personalRoot.children.find(node=>node.id==='k:certificate')?.name,'人力资源');
+assert.equal(run("catsOf('personal').find(x=>x.id==='certificate').id"),'certificate');
+
 const projects=[
  {id:1,name:'研发项目',projectType:'纵向项目'},
  {id:2,name:'横向项目',projectType:'横向项目'},
