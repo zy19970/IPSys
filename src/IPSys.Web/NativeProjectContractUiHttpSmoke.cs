@@ -137,6 +137,8 @@ static class NativeProjectContractUiHttpSmoke
               visibleProject.GetProperty("projectType").GetString()=="科研项目" &&
               visibleProject.GetProperty("projectNo").GetString()=="N207-"+suffix,
               "native project is same V2 FolderId and business fields");
+        Check(!string.IsNullOrWhiteSpace(visibleProject.GetProperty("modifiedAt").GetString()),
+            "project includes persisted modification timestamp");
         var contracts=await client.GetFromJsonAsync<JsonElement>(
             "/api/v2/ui/contracts/company");
         var visibleContract=contracts.EnumerateArray().FirstOrDefault(x=>
@@ -146,6 +148,9 @@ static class NativeProjectContractUiHttpSmoke
               visibleContract.GetProperty("projectName").GetString()==name &&
               visibleContract.GetProperty("amount").GetString()=="2100.50",
               "contract is children-only and uses real V2 parent FolderId");
+
+        Check(!string.IsNullOrWhiteSpace(visibleContract.GetProperty("modifiedAt").GetString()),
+            "contract includes persisted modification timestamp");
 
         byte[] source=RandomNumberGenerator.GetBytes(4083);
         byte[] revised=RandomNumberGenerator.GetBytes(153);
@@ -170,6 +175,10 @@ static class NativeProjectContractUiHttpSmoke
               fContract.All(x=>x.GetProperty("kind").GetString()=="contract" &&
                   x.GetProperty("folderId").GetInt64()==contractId),
               "native project and contract attachments own their actual FolderId/versions");
+        Check(!string.IsNullOrWhiteSpace(fProject.GetProperty("modifiedAt").GetString()) &&
+              fContract.All(x=>!string.IsNullOrWhiteSpace(
+                  x.GetProperty("modifiedAt").GetString())),
+            "project and contract file versions expose write timestamps");
         Check((await client.GetByteArrayAsync(
             $"/api/v2/files/company/{contractFile}/versions/1/download"))
              .SequenceEqual(source) &&

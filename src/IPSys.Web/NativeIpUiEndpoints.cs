@@ -51,7 +51,8 @@ static class NativeIpUiEndpoints
                 var folders=NativeFolderStore.List(v.Db,workspace,FolderKinds.Ip);
                 var rows=folders.Select(x=>new
                 {
-                    id=x.Folder.Ref.Id,workspace,data=x.BusinessData
+                    id=x.Folder.Ref.Id,workspace,data=x.BusinessData,
+                    modifiedAt=x.Folder.ModifiedAt
                 }).ToArray();
                 var files=new List<object>();
                 foreach(var f in folders)
@@ -68,6 +69,7 @@ static class NativeIpUiEndpoints
                                 name=version.OriginalName,
                                 category=link.MaterialCategory??"",
                                 size=version.Size,sha256=version.Sha256,
+                                modifiedAt=version.CreatedAt,
                                 displayName=link.DisplayName??link.FileName
                             });
                     }

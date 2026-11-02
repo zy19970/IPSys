@@ -44,7 +44,7 @@ const Prefs = {
    只看 state.folderId,不需要读 biz.kind,也不需要判断这批节点是否同构。
 
    反过来说,下面这些界面没有单一分类,天然没有列集,统一退回
-   「名称 / 修改日期 / 大小」——这不是缺陷,是定义:
+   「名称 / 更新时间 / 大小」——这不是缺陷,是定义:
      根目录     六类并列
      搜索结果   跨类混排(还可能命中附件)
      回收站     各类混在一起
@@ -260,7 +260,7 @@ const Drive = {
     if (!cols) {
       return `<button type="button" class="head-check" id="selectAll" role="checkbox" aria-label="全选当前列表" aria-checked="false" title="全选"></button>
         <div class="col-name"><button class="th-sort" data-sort="name">名称<span class="caret">▾</span></button></div>
-        <div class="col-date"><button class="th-sort" data-sort="mtime">修改日期<span class="caret">▾</span></button></div>
+        <div class="col-date"><button class="th-sort" data-sort="mtime">更新时间<span class="caret">▾</span></button></div>
         <div class="col-size"><button class="th-sort" data-sort="size">大小<span class="caret">▾</span></button></div>
         <div class="col-gap"></div>`;
     }
@@ -1056,7 +1056,7 @@ const Drive = {
             ${it.starred ? `<span style="color:#c19c00;display:flex">${icon("star", 12)}</span>` : ""}
             ${sub}
           </div>
-          <div class="col-date">${isFolder && it.dateLabel ? esc(it.dateLabel) : fmtDate(it.mtime)}</div>
+          <div class="col-date">${fmtDate(it.mtime)}</div>
           <div class="col-size">${isFolder ? (it.children?.length ? `${it.children.length} 项` : "—") : fmtSize(it.size)}</div>
           <div class="col-gap"></div>
           <div class="row-actions">

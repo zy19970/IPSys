@@ -253,6 +253,8 @@ sealed class Vault : IDisposable
         ResourceSchemaV2.EnsurePartyArchiveSection(db);
         // Normalize the seven legacy protected starter folders on existing V2 vaults.
         ResourceSchemaV2.EnsureEditableArchiveSeeds(db);
+        // Retain existing V2 data and enable real update timestamps in-place.
+        ResourceSchemaV2.EnsureFolderModifiedTimes(db);
         // An existing V2 database may have the original immutable-byte trigger.
         // Update only that guard, atomically, without changing FileId/Version/LinkId.
         ResourceSchemaV2.EnsureOrphanPurgeTrigger(db);

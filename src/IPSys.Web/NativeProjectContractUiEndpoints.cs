@@ -130,6 +130,7 @@ static class NativeProjectContractUiEndpoints
                 NativeFolderStore.List(db,workspace,FolderKinds.Project)
                 .Select(x=>new {
                     id=x.Folder.Ref.Id,workspace,
+                    modifiedAt=x.Folder.ModifiedAt,
                     name=((ProjectInput)x.BusinessData).Name,
                     projectType=((ProjectInput)x.BusinessData).ProjectType,
                     projectNo=((ProjectInput)x.BusinessData).ProjectNo,
@@ -155,6 +156,7 @@ static class NativeProjectContractUiEndpoints
                         names.ContainsKey(p.Id))
                     .Select(x=>new {
                         id=x.Folder.Ref.Id,
+                        modifiedAt=x.Folder.ModifiedAt,
                         projectId=x.Folder.Parent!.Value.Id,workspace,
                         projectName=names[x.Folder.Parent.Value.Id],
                         name=((ContractInput)x.BusinessData).Name,
@@ -189,7 +191,8 @@ static class NativeProjectContractUiEndpoints
                                 name=version.OriginalName,
                                 displayName=link.DisplayName??link.FileName,
                                 category=link.MaterialCategory??"",
-                                size=version.Size,sha256=version.Sha256
+                                size=version.Size,sha256=version.Sha256,
+                                modifiedAt=version.CreatedAt
                             });
                     }
                 }

@@ -163,3 +163,12 @@ IPSys 是 Windows WinForms 启动器 + 本地 Web Explorer 界面 + SQLCipher/SQ
 ## 2026-11-02：综合资料附件“修改日期”显示“—”的源码逻辑审查（本会话第八轮）
 
 用户提供公司工作区“综合资料 / 企业标准模板”附件列表截图，红框圈出修改日期列，两份 PDF、DOCX 附件均显示“—”，问“这个显示是以什么样的逻辑？”。本轮仅要求分析解释，**未授权修改功能**。查阅 2026-11-02 当前 main `4e44ef62c4592146245070062f5a8bff83742e56` 的实际源码：`src/IPSys.Web/wwwroot/js/app.js` `renderList` 非台账列始终“名称/修改日期/大小”，时间计算 `isFolder && it.dateLabel ? dateLabel : fmtDate(it.mtime)`；`data.js` `D(name,size,opts)` 默认 `mtime: opts.mtime ?? null`，`fmtDate(!ts)` 显示“—”；`store.js` `attachmentNode` 未向 `D` 传 `mtime`，所以全模块常规附件列表的该列没有日期，绝非 PDF/DOCX 本身无法读取，也非这两份附件异常。普通业务 Folder 日期不是实际修改时间，依模块采用业务日期如资质年度、专利申请日、项目结束或开始日期；综合资料记录本身也未设置 mtime。后端 `ResourceSchemaV2.cs` `file_versions.created_at` 已默认存储 `CURRENT_TIMESTAMP`，`NativeFileStore.Get` 的 `NativeFileVersion.CreatedAt` 可以取出版本创建时间，但 `NativeArchiveUiEndpoints`（含 general）、`NativeIpUiEndpoints`、`NativeProjectContractUiEndpoints` 列表响应均未输出 `version.CreatedAt`，前端无法据此显示。存储的可选 `files.file_date` 是业务日期而非电脑原始文件最后修改时间，也未见上传时保存 `File.lastModified` 的专用字段。建议未来若要补齐该列，优先将已有最新文件版本 `CreatedAt` 在 API 与前端贯通，并把“修改日期”明确为“更新时间/版本更新时间”，无需为这一路径迁移数据库；如要真实原文件修改时间，则需新增上传采集与储存，该值不能事后从已存在版本创建时间反推。当前仅分析、不提交产品源码、不运行 CI/正式 Release。本会话归档路径不变：`memory/sessions/2026-11-01-开发收尾审查.md`，已记录第八轮。开始通知 `office-renderer/wechat-webhook#1989`。
+
+
+## 2026-11-02：统一普通文件列表真实更新时间（第九轮）
+
+用户认可上一轮对“修改日期”全为“—”的诊断与建议，明确指示“你这个思路是正确的，按照你这个思路修改一下仓库”。目标：普通列表中的附件显示**最新文件版本的入库时间**；目录和业务记录采用真实更新时间；专利申请日期、项目起止日期、资料年份、文件业务日期保留原有业务语义。用户当前有实际 V2 加密库和资料，改造必须避免要求重新建库，不伪造历史修改时间。
+
+本轮基于最新 main `4f90c95d0c0bf2aad265e20b6f5f4f942ebfe08a`、现行代码和 AIGT 三规范推进。拟提交的实现：`ResourceSchemaV2.cs` 在新库 folders 中加入 `modified_at` 默认创建时间，并在现有 V2 库通过幂等 `ALTER TABLE ... ADD COLUMN modified_at TEXT` 增量加列，历史未知值保持 NULL；增加文件夹创建、业务名称/属性/父级修改、文件关联增删恢复、新增文件版本等修改时间触发器。`Vault.ValidateSchema` 在现有结构和党团目录的兼容处理完成后安装相关增量字段与触发器。`FolderDescriptor`、`NativeFolderStore`、`NativeArchiveStore` 和三种业务列表接口（项目/合同、知识产权、档案/综合资料/目录）贯通 modifiedAt；所有附件列表接口都把版本 `CreatedAt` 返回为 modifiedAt。`store.js` 使用真实记录 modifiedAt 与最新子附件版本时间的最大值作为普通目录/记录 mtime，递归目录考虑后代；不再把项目起止日期、专利申请日、档案年度放进 mtime，业务专用字段不变；`app.js` 将“修改日期”列更名为“更新时间”并统一从 mtime 渲染。时间解析显式把 SQLite 未标时区的 UTC 文本解释为 UTC。
+
+验证计划：`ResourceSchemaV2Smoke` 模拟旧 V2 无 modified_at 列的就地增量升级，检查历史旧时间不被伪造，新创建/改名可产生真实时间；三类 HTTP smoke 检查返回的记录/附件 modifiedAt；新增 Node `modification-time-smoke.cjs` 校验字段映射与时间显示、业务日期隔离，并接入 Windows CI；更新 USER_GUIDE.md。开始通知 office-renderer/wechat-webhook#1991。**注意本段为提交前的事实与实施计划，不能在 CI/commit 实际核验前标记完成；并未更改旧库的 FileId、LinkId、FileVersion 或加密原件。** 当前会话延续 `memory/sessions/2026-11-01-开发收尾审查.md`，第九轮。

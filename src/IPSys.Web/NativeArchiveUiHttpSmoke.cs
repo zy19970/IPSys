@@ -88,6 +88,16 @@ static class NativeArchiveUiHttpSmoke
         Assert(v.GetProperty("files").EnumerateArray().Count(x=>
             x.GetProperty("ownerId").GetInt64()==record)==2,
             "both FileVersions displayed with one stable FolderId and FileId");
+        Assert(v.GetProperty("archives").EnumerateArray().Any(x=>
+            x.GetProperty("id").GetInt64()==record &&
+            !string.IsNullOrWhiteSpace(x.GetProperty("modifiedAt").GetString())) &&
+            v.GetProperty("folders").EnumerateArray().Any(x=>
+            x.GetProperty("id").GetInt64()==child &&
+            !string.IsNullOrWhiteSpace(x.GetProperty("modifiedAt").GetString())) &&
+            v.GetProperty("files").EnumerateArray().Where(x=>
+            x.GetProperty("ownerId").GetInt64()==record).All(x=>
+            !string.IsNullOrWhiteSpace(x.GetProperty("modifiedAt").GetString())),
+            "archive record, directory and file versions expose real update timestamps");
         var parentOrder=v.GetProperty("orders").GetProperty(root.ToString());
         Assert(parentOrder.EnumerateArray().Any(x=>
             x.GetProperty("kind").GetString()=="folder"&&
@@ -152,6 +162,12 @@ static class NativeArchiveUiHttpSmoke
             x.GetProperty("fileId").GetInt64()==generalFile&&
             x.GetProperty("kind").GetString()=="general"),
             "general detail links use native FileId/LinkId");
+
+        Assert(!string.IsNullOrWhiteSpace(row.GetProperty("modifiedAt").GetString()) &&
+            row.GetProperty("files").EnumerateArray().Where(x=>
+                x.GetProperty("fileId").GetInt64()==generalFile).All(x=>
+                !string.IsNullOrWhiteSpace(x.GetProperty("modifiedAt").GetString())),
+            "general record and versioned attachments expose update timestamps");
 
         // A duplicate in the same workspace gets a separate FileId and retains
         // both versions. Cross-workspace move copies independent physical bytes.

@@ -34,7 +34,22 @@ static class ResourceSchemaV2Smoke
             using(var db=Vault.Connect(path,"v2-temporary-key",create:true))
             {
                 Vault.CreateSchema(db);
+                // Simulate a V2 vault predating modification timestamps.
+                using(var legacyTime=db.CreateCommand())
+                {
+                    legacyTime.CommandText="ALTER TABLE folders DROP COLUMN modified_at;";
+                    legacyTime.ExecuteNonQuery();
+                }
                 Vault.ValidateSchema(db);
+                using(var upgradedTime=db.CreateCommand())
+                {
+                    upgradedTime.CommandText="SELECT count(*) FROM pragma_table_info('folders') WHERE name='modified_at';";
+                    Check((long)upgradedTime.ExecuteScalar()! == 1,
+                        "old V2 folder timestamp column upgraded in-place");
+                    upgradedTime.CommandText="SELECT count(*) FROM folders WHERE modified_at IS NOT NULL;";
+                    Check((long)upgradedTime.ExecuteScalar()! == 0,
+                        "unknown historical modification times remain unknown");
+                }
                 using(var legacy=db.CreateCommand())
                 {
                     legacy.CommandText="SELECT count(*) FROM sqlite_master WHERE type='table' AND name IN ('records','attachments','chunks','business_projects','business_contracts','business_ips','business_archives','business_file_links','business_file_objects','business_file_chunks','archive_folders');";
@@ -92,6 +107,9 @@ static class ResourceSchemaV2Smoke
                         "historical child relationships remain intact");
                     normalized.CommandText=$"UPDATE folders SET name='更名后的初始文件夹' WHERE id={legacyFolder};";
                     Check(normalized.ExecuteNonQuery()==1,"initial folder can be renamed");
+                    normalized.CommandText=$"SELECT modified_at FROM folders WHERE id={legacyFolder};";
+                    Check(!string.IsNullOrWhiteSpace(normalized.ExecuteScalar() as string),
+                        "editing an old V2 folder starts a real timestamp");
                     normalized.CommandText=$"UPDATE folders SET parent_id=(SELECT id FROM folders WHERE name='其他业务资料') WHERE id={legacyFolder};";
                     Check(normalized.ExecuteNonQuery()==1,"initial folder can move with existing children");
                     normalized.CommandText=$"UPDATE folders SET parent_id=NULL WHERE id={legacyFolder};";
@@ -109,6 +127,12 @@ static class ResourceSchemaV2Smoke
                 var contract=ExecuteId(db,
                     $"INSERT INTO folders(workspace,kind,name,parent_id) VALUES('company','contract','合同',{folderId})");
                 Check(contract>0,"project-contract parent");
+                using(var newTime=db.CreateCommand())
+                {
+                    newTime.CommandText=$"SELECT modified_at FROM folders WHERE id={contract};";
+                    Check(!string.IsNullOrWhiteSpace(newTime.ExecuteScalar() as string),
+                        "new business folders carry an actual timestamp");
+                }
                 Reject(db,"INSERT INTO folders(workspace,kind,name) VALUES('company','contract','孤立合同')",
                     "orphan contract");
                 Reject(db,$"INSERT INTO folders(workspace,kind,name,parent_id) VALUES('personal','contract','跨区合同',{folderId})",

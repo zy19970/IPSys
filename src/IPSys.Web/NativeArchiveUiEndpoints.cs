@@ -37,7 +37,8 @@ static class NativeArchiveUiEndpoints
                         category=data.Category??"",remarks=data.Remarks??"",
                         tags=data.Tags??"",year=data.Year??"",
                         folderId=snapshot.Folder.Parent?.Id,
-                        position=snapshot.Folder.Position
+                        position=snapshot.Folder.Position,
+                        modifiedAt=snapshot.Folder.ModifiedAt
                     });
                     AddFiles(v.Db,workspace,id,"archive",section,fileRows);
                 }
@@ -59,14 +60,14 @@ static class NativeArchiveUiEndpoints
                                 displayName=link.DisplayName??link.FileName,
                                 size=version.Size,sha256=version.Sha256,
                                 version=version.Version,groupId="v2-file-"+link.Id,
-                                v2=true
+                                modifiedAt=version.CreatedAt,v2=true
                             });
                     }
                     var metadata=(TitleInput)snapshot.BusinessData;
                     general.Add(new{id,title=snapshot.Folder.Name,
                         folderId=snapshot.Folder.Parent?.Id,
                         position=snapshot.Folder.Position,
-                        remarks=metadata.Remarks??"",files});
+                        remarks=metadata.Remarks??"",modifiedAt=snapshot.Folder.ModifiedAt,files});
                 }
                 foreach(string scope in workspace=="company"
                     ?new[]{"achievement","party","general"}
@@ -74,11 +75,11 @@ static class NativeArchiveUiEndpoints
                 {
                     var parentIds=new List<long>{0};
                     var directoryRows=new List<(long Id,long? Parent,string Name,
-                        int Position,bool IsSystem)>();
+                        int Position,bool IsSystem,string? ModifiedAt)>();
                     using(var cmd=v.Db.CreateCommand())
                     {
                         cmd.CommandText="""
-                            SELECT id,parent_id,name,position,is_system FROM folders
+                            SELECT id,parent_id,name,position,is_system,modified_at FROM folders
                             WHERE workspace=$w AND kind='archive_folder'
                               AND section=$section AND deleted=0
                             ORDER BY position,id;
@@ -91,7 +92,8 @@ static class NativeArchiveUiEndpoints
                             long id=rd.GetInt64(0);
                             long? parent=rd.IsDBNull(1)?null:rd.GetInt64(1);
                             directoryRows.Add((id,parent,rd.GetString(2),
-                                rd.GetInt32(3),rd.GetInt64(4)!=0));
+                                rd.GetInt32(3),rd.GetInt64(4)!=0,
+                                rd.IsDBNull(5)?null:rd.GetString(5)));
                         }
                     }
                     foreach(var row in directoryRows)
@@ -103,7 +105,8 @@ static class NativeArchiveUiEndpoints
                             continue;
                         folders.Add(new{
                             id=row.Id,section=scope,parentId=row.Parent,
-                            name=row.Name,position=row.Position,isSystem=row.IsSystem
+                            name=row.Name,position=row.Position,isSystem=row.IsSystem,
+                            modifiedAt=row.ModifiedAt
                         });
                         parentIds.Add(row.Id);
                     }
@@ -142,7 +145,8 @@ static class NativeArchiveUiEndpoints
                     version=version.Version,name=version.OriginalName,
                     displayName=link.DisplayName??link.FileName,
                     category=link.MaterialCategory??"",
-                    size=version.Size,sha256=version.Sha256
+                    size=version.Size,sha256=version.Sha256,
+                    modifiedAt=version.CreatedAt
                 });
         }
     }

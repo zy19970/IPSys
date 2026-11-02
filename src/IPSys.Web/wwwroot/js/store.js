@@ -13,12 +13,15 @@
    业务字段完整保留在 node.biz 里,由右侧详细信息面板与表单消费。
    ========================================================================== */
 
-/* 业务记录本身没有"修改时间",用业务上的关键日期作为时间轴。
-   这是真实字段,不是补造数据;没有日期就留空,界面显示为「—」。 */
+/* 普通列表用真实记录变更时间和文件最新版本时间；业务日期不代替修改时间。
+   对旧 V2 资料库无法追溯的时间保留空值，界面显示为「—」。 */
 const toTs = (s) => {
   if (!s) return null;
   const str = String(s).trim();
-  const d = new Date(str.length === 4 ? str + "-01-01" : str);
+  // SQLite timestamps without timezone are UTC; business dates stay date-only.
+  const normalized = /^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/.test(str)
+    ? str.replace(" ", "T") + "Z" : str;
+  const d = new Date(normalized.length === 4 ? normalized + "-01-01" : normalized);
   return isNaN(d) ? null : d.getTime();
 };
 
@@ -370,6 +373,7 @@ const VaultStore = {
     const attachmentNode = (f, ownerKind, extra = {}) => {
       const node = D(f.displayName || f.name || "附件", f.size, {
         id: "f:" + f.linkId + ":" + f.version,
+        mtime: toTs(f.modifiedAt),
       });
       node.biz = { kind: "file", ownerKind, ...extra };
       this.fileMeta.set(node.id, {
@@ -402,6 +406,8 @@ const VaultStore = {
       node.children = kids;
       const bytes = kids.reduce((s, k) => s + (k.size || 0), 0);
       node.size = bytes;
+      const times = [node.mtime,...kids.map(k => k.mtime)].filter(Number.isFinite);
+      node.mtime = times.length ? Math.max(...times) : null;
       return node;
     };
 
@@ -413,8 +419,7 @@ const VaultStore = {
     const contractsByProject = new Map();
     for (const c of contracts || []) {
       const node = F(c.name || `合同 ${c.id}`, { id: `c:${c.id}` });
-      node.mtime = toTs(c.signDate);
-      node.dateLabel = c.signDate || "";
+      node.mtime = toTs(c.modifiedAt);
       node.biz = {
         kind: "contract",
         typeName: "合同",
@@ -446,8 +451,7 @@ const VaultStore = {
         .filter((a) => a.section === section)
         .map((a) => {
           const node = F(a.name || `记录 ${a.id}`, { id: `a:${section}:${a.id}` });
-          node.mtime = toTs(a.year);
-          node.dateLabel = a.year ? `${a.year} 年` : "";
+          node.mtime = toTs(a.modifiedAt);
           node.order = a.position == null ? null : Number(a.position);
           node.biz = {
             kind: "archive",
@@ -479,8 +483,7 @@ const VaultStore = {
           const node = F(p.name || `项目 ${p.id}`, { id: `p:${p.id}` });
           // Display the project start-date context consistently with the
           // ledger year, without changing existing time-based sort behavior.
-          node.mtime = toTs(p.endDate || p.startDate);
-          node.dateLabel = p.startDate || p.endDate || "";
+          node.mtime = toTs(p.modifiedAt);
           node.biz = {
             kind: "project",
             year: String(p.startDate || p.endDate || "").match(/^\d{4}/)?.[0] || "",
@@ -505,6 +508,8 @@ const VaultStore = {
           if (subs?.length) {
             node.children = [...own.children, ...subs].sort((a, b) => cmpName(a, b));
             node.size = node.children.reduce((s, k) => s + (k.size || 0), 0);
+            const times = [node.mtime,...node.children.map(x => x.mtime)].filter(Number.isFinite);
+            node.mtime = times.length ? Math.max(...times) : null;
           }
           return node;
         }),
@@ -516,8 +521,7 @@ const VaultStore = {
           // 知识产权的业务年份只取申请日,没有申请日就不显示授权年份。
           const applicationDate = d.applicationDate || d.ApplicationDate || "";
           const year = String(applicationDate).match(/^\d{4}/)?.[0] || "";
-          node.mtime = toTs(applicationDate);
-          node.dateLabel = applicationDate;
+          node.mtime = toTs(row.modifiedAt);
           node.biz = {
             kind: "ip",
             typeName: d.ipType || d.IpType || "知识产权",
@@ -541,7 +545,7 @@ const VaultStore = {
 
       general: () =>
         (archive?.general || []).map((g) => {
-          const node = F(g.title || `资料 ${g.id}`, { id: `g:${g.id}` });
+          const node = F(g.title || `资料 ${g.id}`, { id: `g:${g.id}`, mtime: toTs(g.modifiedAt) });
           node.biz = {
             kind: "general",
             typeName: "综合资料",
@@ -560,6 +564,8 @@ const VaultStore = {
           kids.sort((a, b) => cmpName(a, b));
           node.children = kids;
           node.size = kids.reduce((s, k) => s + (k.size || 0), 0);
+          const times = [node.mtime,...kids.map(x => x.mtime)].filter(Number.isFinite);
+          node.mtime = times.length ? Math.max(...times) : null;
           return node;
         }),
     };
@@ -571,7 +577,7 @@ const VaultStore = {
       const folders = (archive?.folders || []).filter(f =>
         (f.section || (ws === "company" ? "achievement" : "")) === section);
       const dirs = folders.map((f) => {
-        const d = F(f.name || "未命名目录", { id: "af:" + f.id });
+        const d = F(f.name || "未命名目录", { id: "af:" + f.id, mtime: toTs(f.modifiedAt) });
         d.biz = {
           kind: "archive_folder", typeName: "目录", id: f.id,
           section, parentId: f.parentId ?? null,
@@ -621,7 +627,7 @@ const VaultStore = {
           if (child.biz?.kind === "archive_folder") finalize(child);
         }
         sortPeers(dir.children, dir.biz.id);
-        const times = dir.children.map((x) => x.mtime).filter(Boolean);
+        const times = [dir.mtime,...dir.children.map(x => x.mtime)].filter(Number.isFinite);
         dir.mtime = times.length ? Math.max(...times) : null;
         dir.size = dir.children.reduce((n, x) => n + (x.size || 0), 0);
       };

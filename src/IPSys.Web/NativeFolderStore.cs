@@ -190,7 +190,7 @@ static class NativeFolderStore
         return new FolderSnapshot(new FolderDescriptor(
             ResourceRef.Create(w,kind,id),rd.GetString(3),
             parent is long p?ResourceRef.Create(w,FolderKinds.Project,p):null,
-            rd.GetInt32(5)),data);
+            rd.GetInt32(5),ModifiedAt:rd.IsDBNull(7)?null:rd.GetString(7)),data);
     }
 
     public static FolderSnapshot? Get(SqliteConnection db,ResourceRef r)
@@ -198,7 +198,7 @@ static class NativeFolderStore
         Reference(r);
         using var cmd=db.CreateCommand();
         cmd.CommandText="""
-            SELECT id,workspace,kind,name,parent_id,position,attributes_json
+            SELECT id,workspace,kind,name,parent_id,position,attributes_json,modified_at
             FROM folders f WHERE workspace=$w AND kind=$kind AND id=$id
             AND deleted=0 AND (kind!='contract' OR EXISTS(
               SELECT 1 FROM folders p WHERE p.id=f.parent_id
@@ -219,7 +219,7 @@ static class NativeFolderStore
             throw new KeyNotFoundException("项目不存在。");
         using var cmd=db.CreateCommand();
         cmd.CommandText="""
-            SELECT id,workspace,kind,name,parent_id,position,attributes_json
+            SELECT id,workspace,kind,name,parent_id,position,attributes_json,modified_at
             FROM folders f WHERE workspace=$w AND kind=$kind AND deleted=0
               AND ($parent IS NULL OR parent_id=$parent)
               AND (kind!='contract' OR EXISTS(

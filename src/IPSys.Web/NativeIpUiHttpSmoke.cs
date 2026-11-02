@@ -67,6 +67,9 @@ static class NativeIpUiHttpSmoke
               file.GetProperty("sha256").GetString()==
                 Convert.ToHexString(SHA256.HashData(bytes)),
             "native UI data carries distinct link/FileId/version and category");
+        Check(!string.IsNullOrWhiteSpace(row.GetProperty("modifiedAt").GetString()) &&
+              !string.IsNullOrWhiteSpace(file.GetProperty("modifiedAt").GetString()),
+            "IP record and file version include true modified timestamps");
         long fileId=file.GetProperty("fileId").GetInt64();
         using(var response=await client.GetAsync(
             $"/api/v2/ip/company/{ipId}/files/{fileId}/versions/1/download"))

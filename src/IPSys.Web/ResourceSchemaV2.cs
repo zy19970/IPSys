@@ -27,6 +27,7 @@ static class ResourceSchemaV2
               position INTEGER NOT NULL DEFAULT 0,
               is_system INTEGER NOT NULL DEFAULT 0 CHECK(is_system IN (0,1)),
               deleted INTEGER NOT NULL DEFAULT 0 CHECK(deleted IN (0,1)),
+              modified_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
               UNIQUE(id,workspace),
               FOREIGN KEY(parent_id,workspace) REFERENCES folders(id,workspace) ON DELETE RESTRICT,
               CHECK(kind!='contract' OR parent_id IS NOT NULL),
@@ -267,6 +268,69 @@ static class ResourceSchemaV2
             pragma.CommandText="PRAGMA foreign_keys=ON;";
             pragma.ExecuteNonQuery();
         }
+    }
+
+    // An additive, in-place V2 upgrade: preserve every FolderId, LinkId,
+    // version and encrypted file object. Unknown pre-upgrade edit times stay NULL.
+    // Newly created folders have a real write timestamp; later mutations update it.
+    public static void EnsureFolderModifiedTimes(SqliteConnection db)
+    {
+        bool exists=false;
+        using(var inspect=db.CreateCommand())
+        {
+            inspect.CommandText="PRAGMA table_info(folders);";
+            using var reader=inspect.ExecuteReader();
+            while(reader.Read())
+                if(reader.GetString(1)=="modified_at")exists=true;
+        }
+        using var tx=db.BeginTransaction();
+        using var cmd=db.CreateCommand();
+        cmd.Transaction=tx;
+        if(!exists)
+        {
+            // SQLite forbids ADD COLUMN with non-constant CURRENT_TIMESTAMP.
+            // Do not fabricate historical timestamps on existing V2 folders.
+            cmd.CommandText="ALTER TABLE folders ADD COLUMN modified_at TEXT;";
+            cmd.ExecuteNonQuery();
+        }
+        cmd.CommandText="""
+            CREATE TRIGGER IF NOT EXISTS folder_modified_insert
+            AFTER INSERT ON folders BEGIN
+              UPDATE folders SET modified_at=strftime('%Y-%m-%dT%H:%M:%SZ','now')
+              WHERE id=NEW.id;
+            END;
+            CREATE TRIGGER IF NOT EXISTS folder_modified_business
+            AFTER UPDATE OF name,attributes_json,parent_id ON folders
+            WHEN NEW.name IS NOT OLD.name OR NEW.attributes_json IS NOT OLD.attributes_json
+              OR NEW.parent_id IS NOT OLD.parent_id
+            BEGIN
+              UPDATE folders SET modified_at=strftime('%Y-%m-%dT%H:%M:%SZ','now')
+              WHERE id=NEW.id;
+            END;
+            CREATE TRIGGER IF NOT EXISTS folder_modified_link_insert
+            AFTER INSERT ON folder_file_links BEGIN
+              UPDATE folders SET modified_at=strftime('%Y-%m-%dT%H:%M:%SZ','now')
+              WHERE id=NEW.folder_id;
+            END;
+            CREATE TRIGGER IF NOT EXISTS folder_modified_link_update
+            AFTER UPDATE OF deleted,folder_id,file_id ON folder_file_links
+            WHEN NEW.deleted IS NOT OLD.deleted OR NEW.folder_id IS NOT OLD.folder_id
+              OR NEW.file_id IS NOT OLD.file_id
+            BEGIN
+              UPDATE folders SET modified_at=strftime('%Y-%m-%dT%H:%M:%SZ','now')
+              WHERE id=OLD.folder_id;
+              UPDATE folders SET modified_at=strftime('%Y-%m-%dT%H:%M:%SZ','now')
+              WHERE id=NEW.folder_id;
+            END;
+            CREATE TRIGGER IF NOT EXISTS folder_modified_version_insert
+            AFTER INSERT ON file_versions BEGIN
+              UPDATE folders SET modified_at=strftime('%Y-%m-%dT%H:%M:%SZ','now')
+              WHERE id IN (SELECT folder_id FROM folder_file_links
+                  WHERE workspace=NEW.workspace AND file_id=NEW.file_id AND deleted=0);
+            END;
+            """;
+        cmd.ExecuteNonQuery();
+        tx.Commit();
     }
 
     // Older V2 vaults created seven protected folders with is_system=1.
