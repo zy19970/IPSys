@@ -14,6 +14,30 @@ const assoc=bridge.slice(from,to);
 assert.match(interactions,/MI\("assoc",\s*"copy",\s*"共享原件到其它记录"\)/);
 assert.match(interactions,/MI\("assoc-move",\s*"move",\s*"移动附件到其它记录"\)/);
 assert.match(interactions,/"assoc-move": \(\) => associateOriginal\(item, true\)/);
+// Verify the real shared icon and context-menu renderer, not just the "move" key.
+const icons=fs.readFileSync(path.join(explorer,"js/icons.js"),"utf8");
+const iconEnd=icons.indexOf("/* ---------- OneDrive brand mark");
+const menuStart=interactions.indexOf("const MI = (");
+const menuEnd=interactions.indexOf("function showCtx(",menuStart);
+assert.ok(iconEnd>0 && menuStart>=0 && menuEnd>menuStart,"Shared icon and menu renderers exist");
+const iconVm=vm.createContext({});
+vm.runInContext(icons.slice(0,iconEnd),iconVm,{filename:"icons.js"});
+vm.runInContext(interactions.slice(menuStart,menuEnd),iconVm,{filename:"menu.js"});
+const moveActions=[
+ ["assoc-move","移动附件到其它记录"],
+ ["transfer-record","移动或跨区转移"],
+ ["move-archive","移动至其他目录"],
+];
+for(const [act,label] of moveActions){
+ assert.match(interactions,new RegExp('MI\\("'+act+'"\\s*,\\s*"move"\\s*,\\s*"'+label+'"\\)'),
+  "Existing move action must use the shared move icon: "+act);
+ const html=vm.runInContext("MI("+JSON.stringify(act)+',"move",'+JSON.stringify(label)+")",iconVm);
+ assert.match(html,/<svg[^>]*width="18" height="18"[^>]*>[\s\S]*<\/svg>/,
+  "Move menu must render a complete 18px SVG: "+act);
+ assert.ok(html.includes('data-act="'+act+'"'),"Move action remains wired: "+act);
+ assert.ok(html.includes("<span>"+label+"</span>"),"Move label remains unchanged: "+act);
+}
+
 
 const attachment={id:"f:201:2",type:"file",name:"申请书.pdf",biz:{kind:"file",ownerKind:"ip"}};
 const ip={id:"i:11",name:"原知识产权",type:"folder",biz:{id:11,kind:"ip"},children:[attachment]};

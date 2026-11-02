@@ -27,6 +27,7 @@ const ICON_PATHS = {
   more: '<circle cx="6.2" cy="12" r="1.25" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/><circle cx="17.8" cy="12" r="1.25" fill="currentColor" stroke="none"/>',
   rename: '<path d="M14.8 5.6l3.6 3.6"/><path d="M4.8 19.2l.9-4.4L15.9 4.6a1.6 1.6 0 0 1 2.3 0l1.2 1.2a1.6 1.6 0 0 1 0 2.3L9.2 18.3z"/>',
   copy: '<rect x="8.6" y="8.6" width="10.6" height="10.6" rx="1.8"/><path d="M15.4 5.4H6.2a1.8 1.8 0 0 0-1.8 1.8v9.2"/>',
+  move: '<path d="M4.5 8.5V6.4a1.6 1.6 0 0 1 1.6-1.6h3.2l1.9 2h6.7a1.6 1.6 0 0 1 1.6 1.6v9a1.6 1.6 0 0 1-1.6 1.6H6.1a1.6 1.6 0 0 1-1.6-1.6v-2.1"/><path d="M3.6 12h11.8M12 8.6l3.4 3.4-3.4 3.4"/>',
   info: '<circle cx="12" cy="12" r="8.6"/><path d="M12 11v5.4"/><circle cx="12" cy="7.9" r=".95" fill="currentColor" stroke="none"/>',
   close: '<path d="M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4"/>',
   check: '<path d="M4.8 12.6l4.6 4.6L19.2 7.6"/>',

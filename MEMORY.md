@@ -221,3 +221,9 @@ IPSys 是 Windows WinForms 启动器 + 本地 Web Explorer 界面 + SQLCipher/SQ
 
 
 **统一文件夹改造最终 Windows 验收（2026-11-02，第十九轮结论）**：本轮历经测试模拟契约与隔离修正，最终 main 产品与测试提交 c1a99d839d9fb90dd177d88051702d035dc2fcb9。Windows Actions run 41406914227 completed/success，head_sha 精确匹配，26 个成功步骤、0 失败；用户授权的资料型模块统一“新建文件夹”，资料文件夹可嵌套和直接拥有附件、可选业务属性、共用 FileId/LinkId、版本和 ZIP 归档的 Node/HTTP/SQLCipher/Edge 回归以及两种单文件 EXE 验证通过。产物未过期：IPSys-Web-win-x64-self-contained ID 13123868805（约81MB，首选）、IPSys-Web-win-x64 ID 13124146910、IPSys-Explorer-V2-Retest-41406914227-1 ID 13124311354。链接 https://github.com/zy19970/IPSys/actions/runs/41406914227。此前 run 41406572739 确实失败于 Explorer F2-02 的测试目录模拟缺 section，已由 c1a99d8 修复；失败与重新开始通知分别为 #2015/#2016。Wiki 同步 run 41403965981 对业务提交 baefcfdb 成功。可选超 4GiB ZIP64 任务（如跳过）不列作本次新验证结论，亦未在用户本机运行 GUI 目视复查。尚未创建正式 Release 或进行任何旧数据库迁移。最终完成通知待发。本轮最终答复已向用户阶段性说明全部 26 项成功与新 EXE 已生成。
+
+## 2026-11-02：附件“移动到其它记录”右键菜单图标缺失（会话第二十轮）
+
+用户上传文件管理器截图：路径“我的文件 / 综合资料 / 123456 / 123456”，附件右键菜单“移动附件到其它记录”图标位置空白，提问“这个的图标怎么没有？”。按 AIGT-templates 三项必读规范及 IPSys MEMORY/会话恢复；main 基线 d36927feebf6f7c78a00f48753bbd82c04413e50。当前 src/IPSys.Web/wwwroot/js/interactions.js 的 assoc-move、transfer-record、move-archive 三个右键操作都传 `icon('move',18)`；src/IPSys.Web/wwwroot/js/icons.js 的 ICON_PATHS 却没有 move 项，icon() 对未知名称直接返回空字符串。与此前“新建资料”采用不存在的 file icon key 为同类问题。
+
+解决范围仅补全共享 icons.js 中 `move` 的 Fluent 线性文件夹+右移箭头 SVG，与现有 24×24、1.6px 描边一致。无需改动菜单业务逻辑、文字或 CSS，三个移动操作因此都能正确显示图标。于 `src/IPSys.Web/tests/explorer-file-associate-smoke.cjs` 增补基于真实 icons.js 和 interactions.js 的 MI() HTML 渲染回归，逐项检查三个移动菜单生成 18px SVG、保留 data-act 和原中文标签，沿用原关联/移动行为测试。起始通知 issue office-renderer/wechat-webhook#2021。此次新建产品/测试 Blob 分别为 f0fbc1cd6b3a3d7d915a5eede487d02c898cada5（icons.js）与 60af4d5585c28c454a46718e6f1c8e61420d315c（回归）。无数据库或 Release 改动。最终提交和 Windows CI 状态必须在实证核验后补充，不能提前宣称新 EXE 可用；最近会话仍为 memory/sessions/2026-11-01-开发收尾审查.md。
