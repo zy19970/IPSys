@@ -288,3 +288,8 @@ P2-1 Excel 每行重查业务表、性能风险成立但复杂度是近似 O(n²
 P3-1 last_insert_rowid 两次、脆弱可简化但当下正确；P3-2 ExcelLedger.cs InsertGeneral/UpdateGeneral 使用不存在 records 表且未调用，旧死代码不属于在途功能；P3-3 ProjectTransfer position 缺 parent_id 成立但当前 position 只用于同父级排序，无已证实错误；P3-4 RecycleStore.Change false 返回404成立，但 InvalidOperation/SqliteException 会返回409并提供原因，非“一律404”；P3-5 Vault 的 _retiredMcpTokens 随过程累积但 Vault.Dispose 逐个 Dispose，报告“从不清理/每个必含 ManualResetEvent”不准确。
 
 报告10项肯定点：部分索引、XLSX 行数和读取安全上限、跨工作区 FileChoice 限制、AgentGuidance 原子替换、SearchStore seen/分页、EnsurePartyArchiveSection finally 恢复FK 均与源码吻合；“全部安全验证完毕”“转移所有路径完整正确”“实测 JsonSerializer”等超出其纯静态评估方法，需留条件。重点推荐首先修回收站直接附件白名单，并在统一目录+Excel/MCP 文件夹语义核实后确定 Excel 重复策略；第二梯队为搜索刷新、批量删除切区、转移默认目录名、Excel 歧义匹配。用户未授权修代码，本轮提供逐条判断，不当作已确认业务改动。此结论只是静态源码核实，未运行 Windows GUI、真实 DB/压测或渗透测试。任务开始通知 office-renderer/wechat-webhook#2042。最近会话 memory/sessions/2026-11-02-操作细节精修仓库梳理.md，第七轮。
+
+
+## 2026-11-02：外部评估人员可交付 MD 复核意见（本会话第八轮）
+
+用户本轮原话：“你生成一个md文件，我好给他看”。基于上一轮已审查的《管理系统-代码评估报告.md》及 IPSys 现行业务代码基线 `f7839639f6e884019b6731339abdfaad3bec1488`，本轮在当前会话生成独立可下载文件 `IPSys_代码评估报告_复核意见_2026-11-02.md`，约 19 KB、145 行，包含原报告 P0/P1/P2/P3 共17项问题的“代码事实/错误描述/业务冲突/建议验证”逐项表，10项正面判断的证据边界，以及统一 archive_folder、旧 archive/general Excel、公司项目匹配、七种初始普通目录、SQLCipher 加密、大文件安全退出等已确认业务约束；要求评估方提供准确基线 SHA、动态复现证据和修订稿，且不得把静态分析称作完整安全/性能验收。用户可直接使用本轮 sandbox 文件下载并发给对方；**该交付 MD 文件仅在当前会话产出，不作为业务代码或仓库正文提交**。已经检查所列17个编号和10项正面结论均完整，文件已在 /mnt/data 实际创建；任务通知 #2044。根据 Memory 协议，只有本轮记忆与会话档案拟提交 GitHub；原上传评估报告、本仓业务源码、Release、SQLCipher 用户数据库均未修改。本会话最近档案 `memory/sessions/2026-11-02-操作细节精修仓库梳理.md`，已归档至第八轮。
