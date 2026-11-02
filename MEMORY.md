@@ -275,3 +275,16 @@ IPSys 是 Windows WinForms 启动器 + 本地 Web Explorer 界面 + SQLCipher/SQ
 ## 2026-11-02：个人资料模块“人力资源”显示名称（第六轮）
 
 用户提供个人工作区“身份与资质”快捷访问截图，原话：“把这个换成人力资源”。核查当前 main 394993a40e37972bdaff82792c42936edcbb9e85；对应排序修复的 Windows CI 41429761398 已 completed/success。检查发现显示名称唯一权威来自 src/IPSys.Web/wwwroot/js/store.js 的 WS_CATS.personal 中 certificate.label；工作区侧栏、文件夹 root、面包屑与详情由动态分类树/标签驱动。修改为“人力资源”，保持公司 certificate.label “企业资质”，保持 section/certificate/API/DB/已有附件归属不变。同步 forms.js 注释、docs/wiki/Workspaces-and-Modules.md、UI_BASELINE.md、M0_DATA_DICTIONARY.md，并在 ui-tree-smoke.cjs 新增个人/公司名称与稳定 ID 验证。对修改后的真实 store.js/data.js 执行独立 JS 动态加载，验证 personal=人力资源、company=企业资质、分类根节点正确、内部 ID 未变，结果均通过；没有用户原始数据库操作或新版 Release 发布。任务通知 #2040。正式 Windows CI 需以提交后 Actions 实际结果为准。最近会话：memory/sessions/2026-11-02-操作细节精修仓库梳理.md；归档第六轮。
+
+
+## 2026-11-02：外部代码评估报告逐项业务复核（本会话第七轮）
+
+用户上传《管理系统-代码评估报告.md》并要求：“这个报告有错误，同时也有一些不了解我们中的业务，只是从代码层面进行了分析，你先看看他那些是对的，那些是错的”。本轮经 AIGT 规则、MEMORY 和会话记录恢复，实际审查基线 main f7839639f6e884019b6731339abdfaad3bec1488，对报告 P0-1、P1-1～4、P2-1～7、P3-1～5 共17项以及作者主张“已核实正确”的10项，与当前 C#/前端源码核对。**仅评估，不修改业务代码、报告原文或真实数据库**，不自动采纳外部修复建议。报告作者明示未编译未运行，无真实压力实验，其声称“实测”和漏洞排除的强断言不能采信为动态证据。
+
+代码事实：P0-1 RecycleStore.List/Deleted 中 v2_file 的 parent whitelist 漏 archive_folder，直接附件软删除后不能从常规回收站显示/恢复/清理，仍非物理丢失，MCP 有按 FolderId/FileId/LinkId 校验后的 restore_file_link。P1-1 ArchiveGeneralExcelLedger 的 matches.Length>1 在 policy 分支前，逻辑问题真实，但报告称“同目录两行 create 都 failed”不正确：从空表开始两行仍能创建，发生大于一匹配（如已有两条或前两次创建后第三行）才报错；Excel 旧 archive/general 身份和新 UI archive_folder 模型的业务一致性需优先单独审查。P1-2 项目以 FirstOrDefault 匹配编号/名称+类型，重复编号会歧义更新；不能未经业务确认就强加全局唯一索引。P1-3 跨区 archive transfer 用“其他业务资料”普通目录名字硬编码 First，若重命名会失败；不能恢复这些七个目录的系统保护地位，应让用户明确选目标/中文错误。P1-4 大文件上传/下载流式 IO 持 Gate 成立，建议落普通明文临时文件不符合本项目单加密库、数据保护目标，且已有任务互斥和超大文件真实测试；改善性能需要保留加密、共享版本及原子性。
+
+P2-1 Excel 每行重查业务表、性能风险成立但复杂度是近似 O(n²) 非“指数级”，单次导入最多5000行；P2-2 wait exit 无时限成立，但简单30秒强制取消违背用户选择“完成后退出”与8GiB 文件场景；P2-3 trackPurge catch 中已显式 await sleep(1200)，报告“跳过sleep/死循环快速请求”是事实错误，然而 token 改变后没有跳出仍可能无限1.2s重试；P2-4 deleteNodes 每次重读 VaultStore.ws 且切工作区仅挡 fileTaskBusy，批量删除期间 workspace 变化可能部分失败；P2-5 refreshCurrent resetSearch 不清 query，导致服务端命中回退局部 localSearch 且 searchNote 因 query 不匹配不显示提示，成立；P2-6 marquee 不改 anchorId 成立，但 Shift 后锚点语义需按用户交互定义决定；P2-7 status 未鉴权暴露库绝对路径属隐私最小化点，但报告“任意跨站网页能绕过CORS读取路径”违反浏览器同源读取限制；本机同用户进程可直接访问是不同威胁边界。
+
+P3-1 last_insert_rowid 两次、脆弱可简化但当下正确；P3-2 ExcelLedger.cs InsertGeneral/UpdateGeneral 使用不存在 records 表且未调用，旧死代码不属于在途功能；P3-3 ProjectTransfer position 缺 parent_id 成立但当前 position 只用于同父级排序，无已证实错误；P3-4 RecycleStore.Change false 返回404成立，但 InvalidOperation/SqliteException 会返回409并提供原因，非“一律404”；P3-5 Vault 的 _retiredMcpTokens 随过程累积但 Vault.Dispose 逐个 Dispose，报告“从不清理/每个必含 ManualResetEvent”不准确。
+
+报告10项肯定点：部分索引、XLSX 行数和读取安全上限、跨工作区 FileChoice 限制、AgentGuidance 原子替换、SearchStore seen/分页、EnsurePartyArchiveSection finally 恢复FK 均与源码吻合；“全部安全验证完毕”“转移所有路径完整正确”“实测 JsonSerializer”等超出其纯静态评估方法，需留条件。重点推荐首先修回收站直接附件白名单，并在统一目录+Excel/MCP 文件夹语义核实后确定 Excel 重复策略；第二梯队为搜索刷新、批量删除切区、转移默认目录名、Excel 歧义匹配。用户未授权修代码，本轮提供逐条判断，不当作已确认业务改动。此结论只是静态源码核实，未运行 Windows GUI、真实 DB/压测或渗透测试。任务开始通知 office-renderer/wechat-webhook#2042。最近会话 memory/sessions/2026-11-02-操作细节精修仓库梳理.md，第七轮。
