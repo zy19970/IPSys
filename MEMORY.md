@@ -218,3 +218,6 @@ IPSys 是 Windows WinForms 启动器 + 本地 Web Explorer 界面 + SQLCipher/SQ
 
 
 **第十九轮补充：测试目录 fixture 缺 section 字段（2026-11-02）**：在 main 135e7514 的 Windows CI run 41406572739 尚在执行时进一步核查 explorer-archive-operations-smoke.cjs，发现 helper folder() 构造的 archive_folder biz 没有 section，而生产 store.js 实际每个普通目录均有 section。随后 F2 重命名断言预期调用 archiveFolder("achievement",parent,null,true)，没有 section 会传 undefined 导致后续断言错误。已预先将测试 helper 的 section 设置为 achievement（该脚本测试节点属于 achievement 分段），Blob c007b0ed76016142795d7fd5a5dc471ebf4b7897；不改产品业务代码。注意前一个 CI 在此提交前触发，需区别两个 SHA 的结果并以最新提交的 Windows CI 为最终验收证据。
+
+
+**统一文件夹改造最终 Windows 验收（2026-11-02，第十九轮结论）**：本轮历经测试模拟契约与隔离修正，最终 main 产品与测试提交 c1a99d839d9fb90dd177d88051702d035dc2fcb9。Windows Actions run 41406914227 completed/success，head_sha 精确匹配，26 个成功步骤、0 失败；用户授权的资料型模块统一“新建文件夹”，资料文件夹可嵌套和直接拥有附件、可选业务属性、共用 FileId/LinkId、版本和 ZIP 归档的 Node/HTTP/SQLCipher/Edge 回归以及两种单文件 EXE 验证通过。产物未过期：IPSys-Web-win-x64-self-contained ID 13123868805（约81MB，首选）、IPSys-Web-win-x64 ID 13124146910、IPSys-Explorer-V2-Retest-41406914227-1 ID 13124311354。链接 https://github.com/zy19970/IPSys/actions/runs/41406914227。此前 run 41406572739 确实失败于 Explorer F2-02 的测试目录模拟缺 section，已由 c1a99d8 修复；失败与重新开始通知分别为 #2015/#2016。Wiki 同步 run 41403965981 对业务提交 baefcfdb 成功。可选超 4GiB ZIP64 任务（如跳过）不列作本次新验证结论，亦未在用户本机运行 GUI 目视复查。尚未创建正式 Release 或进行任何旧数据库迁移。最终完成通知待发。本轮最终答复已向用户阶段性说明全部 26 项成功与新 EXE 已生成。
