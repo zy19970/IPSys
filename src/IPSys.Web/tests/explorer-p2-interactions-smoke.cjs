@@ -7,6 +7,7 @@ const vm=require("node:vm");
 const root=path.resolve(__dirname,"../wwwroot");
 const read=p=>fs.readFileSync(path.join(root,p),"utf8");
 const bridge=read("js/bridge.js"),inter=read("js/interactions.js"),app=read("js/app.js");
+const forms=read("js/forms.js");
 const html=read("index.html");
 assert.ok(!html.includes('id="btnPinFolder"'),"Do not advertise nonfunctional pin button");
 assert.ok(!app.includes('data-page-act="upload"'),"Home cannot import files without a record");
@@ -70,28 +71,32 @@ const nodes=Array.from({length:403},(_,i)=>({biz:{raw:{kind:"v2_file",id:i+1,sec
 
  const rename=between(inter,"function renameNode(node) {","function showItemMenu");
  let edit=null,modal=null,put=null;
+ // Exercise the real form contract: F2 routes through archiveFolder rather
+ // than an obsolete rename-only modal assembled in interactions.js.
+ const vault={ws:"company",api:async(url,req)=>{put={url,req};}};
+ const formEnv=vm.createContext({
+  VaultStore:vault,catLabel:id=>id,toast:()=>{},refreshCurrent:async()=>{}
+ });
+ vm.runInContext(forms,formEnv);
+ const formApi=vm.runInContext("RecordForms",formEnv);
+ formApi.edit=node=>{edit=node;};
+ formApi.open=args=>{modal=args;};
  const ux=vm.createContext({
- RecordForms:{
-  edit:node=>{edit=node;},
-  open:args=>{modal=args;}
- },
- VaultStore:{ws:"company",api:async(url,req)=>{put={url,req};}},
- toast:()=>{},
- refreshCurrent:async()=>{}
+  RecordForms:formApi,VaultStore:vault,toast:()=>{},refreshCurrent:async()=>{}
  });
  vm.runInContext(rename,ux);
  const record={id:"p:7",name:"旧项目",type:"folder",biz:{kind:"project",id:7}};
  vm.runInContext("renameNode",ux)(record);
  assert.equal(edit,record,"Business F2 must open actual edit form");
  const folder={id:"af:8",name:"旧目录",type:"folder",
-  biz:{kind:"archive_folder",id:8,parentId:1,isSystem:false}};
+  biz:{kind:"archive_folder",id:8,section:"achievement",parentId:1,isSystem:false}};
  vm.runInContext("renameNode",ux)(folder);
- assert.equal(modal.title,"重命名目录");
+ assert.equal(modal.title,"重命名文件夹");
  await modal.onSubmit({name:"新目录"});
- assert.equal(put.url,"/api/v2/folders/company/archive_folder/8");
+ assert.equal(put.url,"/api/v2/folders/company/archive_folder/8?section=achievement");
  assert.equal(put.req.method,"PUT");
  assert.deepEqual(JSON.parse(JSON.stringify(put.req.json)),
-  {archiveFolder:{name:"新目录",parentId:1}});
+  {archiveFolder:{name:"新目录",parentId:1,category:"",year:"",tags:"",remarks:""}});
  // New directory modules require the target workspace and section in the route.
  const personalFolder={id:"af:9",name:"学术目录",type:"folder",
   biz:{kind:"archive_folder",id:9,section:"academic",parentId:2,isSystem:false}};
@@ -101,7 +106,7 @@ const nodes=Array.from({length:403},(_,i)=>({biz:{raw:{kind:"v2_file",id:i+1,sec
  assert.equal(put.url,"/api/v2/folders/personal/archive_folder/9?section=academic");
  assert.equal(put.req.method,"PUT");
  assert.deepEqual(JSON.parse(JSON.stringify(put.req.json)),
-  {archiveFolder:{name:"新学术目录",parentId:2}});
+  {archiveFolder:{name:"新学术目录",parentId:2,category:"",year:"",tags:"",remarks:""}});
 
 
  const pick=between(inter,"function canUploadFiles(node) {","function uploadFiles(files, node)");
@@ -119,7 +124,7 @@ const nodes=Array.from({length:403},(_,i)=>({biz:{raw:{kind:"v2_file",id:i+1,sec
  vm.runInContext(pick,upload);
  await vm.runInContext("pickFiles()",upload);
  assert.equal(creates,0,"Root must not open file picker");
- assert.match(lastMsg,/具体业务记录/);
+ assert.match(lastMsg,/进入文件夹/);
  vm.runInContext('Drive.state.folderId="p:7";pickFiles()',upload);
  assert.equal(clicks,1,"A real business record can open the picker");
  console.log("EXPLORER P2 PASS: 403 serial purge, failed-batch stop, F2 rename, safe upload target, no false pin");

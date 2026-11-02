@@ -145,7 +145,7 @@ function transfer(files=[],types=[]) {
  await invalidDrop.p;
  assert.equal(uploads.length,1,"External file cannot upload to virtual archive directory");
  assert.equal(invalidDrop.stopped(),true,"Invalid row consumes the event instead of uploading elsewhere");
- assert.match(tips.at(-1),/请将文件拖入具体业务记录/);
+ assert.match(tips.at(-1),/可上传的文件夹/);
 
  dt=transfer([realFile],["Files"]);
  const pageOnly={dataTransfer:dt,defaultPrevented:true,preventDefault(){this.defaultPrevented=true;}};
@@ -159,7 +159,7 @@ function transfer(files=[],types=[]) {
  docHandlers.get("drop")(invalidPage);
  assert.equal(uploads.length,2,"Home/category background must not upload");
  assert.equal(tips.length,tipsBefore+1,"Invalid page emits one explanatory toast");
- assert.match(tips.at(-1),/请先进入具体业务记录/);
+ assert.match(tips.at(-1),/进入文件夹/);
 
  sandbox.Drive.state.folderId=source.id;
  busy=true;

@@ -1610,7 +1610,7 @@ function bindContent() {
         e.preventDefault();
         e.stopPropagation();
         if (!canUploadFiles(target))
-          return toast("请将文件拖入具体业务记录");
+          return toast("请将文件拖入可上传的文件夹");
         if (fileTaskBusy()) return toast("已有文件任务，请完成后再上传");
         return uploadFiles(e.dataTransfer.files, target);
       }

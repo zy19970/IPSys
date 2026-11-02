@@ -206,3 +206,9 @@ IPSys 是 Windows WinForms 启动器 + 本地 Web Explorer 界面 + SQLCipher/SQ
 
 
 **统一文件夹首轮 CI 失败与隔离修复（2026-11-02）**：功能提交 baefcfdb90a600dff6612311ba4abce3351ba86b 已进入 main，并触发 Wiki 发布 run 41403965981 completed/success。Windows run 41403965921 则 completed/failure，精确失败步骤 Verify UI and capability smoke tests。日志定位 ui-tree-smoke.cjs 新增“普通文件夹直接存附件/嵌套”测试后将全局 ROOT 指向另一个 fixture，没有恢复旧 multilevel fixture，使随后旧 BUG-002 断言 findById('a:achievement:91') 为空；此为测试隔离失误，尚不足以证明生产代码正确或错误。已在新增测试后恢复原 ROOT，等待重新执行 CI 核验。失败通知 office-renderer/wechat-webhook#2002、重新开始 #2003。不能将首轮 Windows 失败误报成新 EXE 可用。
+
+## 2026-11-02：用户催促统一文件夹验收、第二轮 CI 旧重命名测试失败（第十九轮）
+
+用户原话：“为什么卡住不动了”。已重新读取 AIGT 三规范及项目 MEMORY/本会话。核实上轮 e3f3eb12 的 Windows CI run 41404619393 completed/failure，UI 资源、目录树、Explorer P0/P1 已通过；实际失败是 explorer-p2-interactions-smoke.cjs:88 测试模拟没有新的 RecordForms.archiveFolder 方法，虽然生产 forms.js 已提供该方法；因此要更新旧测试与新接口，而非宣称生产代码已完成验收。失败通知 office-renderer/wechat-webhook#2004，重新开始通知 #2005。
+
+本轮修复：Explorer P2 smoke 改为加载真实 forms.js，检查公司 achievement/个人 academic 目录 F2 重命名的 section-aware PUT、可选属性与数据；同步修复首页无效上传位置、内部拖拽无效目标提示测试，生产 interactions.js 的提示语统一为“请将文件拖入可上传的文件夹”。相关 Blob：explorer-p2-interactions-smoke.cjs e1a7d7022c4475766f9defe0e0ff066e983d3500；interactions.js 7805ee7206cfab6ce91c299195021266dccd7629；explorer-internal-dragdrop-smoke.cjs 5a2daeaa87a7f614d50ff2569f26e3546962dc28。最终提交和新 CI 尚待实际核验。本会话仍存 memory/sessions/2026-11-01-开发收尾审查.md。用户明确无需旧数据库迁移，不创建 Release。
