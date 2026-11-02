@@ -68,23 +68,55 @@ assert.deepEqual(
 );
 
 run("Drive.state.view='files';Drive.state.folderId='af:70';Drive.enterContext();");
-assert.equal(run("Drive.state.sortBy"), "position");
+assert.equal(run("Drive.state.sortBy"), "ctime");
+assert.equal(run("Drive.state.sortDir"), "desc");
+assert.deepEqual(
+  Array.from(run("Drive.sortedItems"), x => x.id),
+  ["a:achievement:91", "a:achievement:90", "af:71"],
+  "Legacy folders without creation times use descending FolderId",
+);
+run("Drive.state.sortBy='position';Drive.state.sortDir='asc';");
 assert.deepEqual(
   Array.from(run("Drive.sortedItems"), x => x.id),
   ["a:achievement:91", "af:71", "a:achievement:90"],
-  "The view must not put folders first or override stored position",
+  "Explicit persistent custom order remains available",
 );
-run("Drive.state.sortBy='_name';");
-assert.equal(run("Drive.sortedItems.length"), 3,
-  "Explicit column sorting must keep all three mixed entries");
 run("Drive.state.folderId='k:project';Drive.enterContext();");
-assert.notEqual(run("Drive.state.sortBy"), "position",
-  "Manual archive sort must not leak into other modules");
-assert.equal(run("Drive.state.sortBy"), "_name",
-  "Valid project-name column sort can remain active across navigation");
+assert.equal(run("Drive.state.sortBy"), "_year");
+assert.equal(run("Drive.state.sortDir"), "desc");
 run("Drive.state.folderId='af:70';Drive.enterContext();");
-assert.equal(run("Drive.state.sortBy"), "position",
-  "Reopening archive must restore persistent order");
+assert.equal(run("Drive.state.sortBy"), "ctime",
+  "Returning to an ordinary folder restores newest-created-first");
+
+/* Creation timestamp must be independent of modification; years are business dates. */
+const newestFirst = {
+  ...payload,
+  projects: [
+    {id:10,name:"旧项目",startDate:"2021-02-01"},
+    {id:11,name:"新项目",startDate:"2026-03-01"},
+    {id:12,name:"无日期项目",startDate:""},
+  ],
+  ip: {rows:[
+    {id:1,data:{name:"旧申请",applicationDate:"2021-05-01",grantDate:"2026-07-01"}},
+    {id:2,data:{name:"新申请",applicationDate:"2026-02-01"}},
+    {id:3,data:{name:"无申请日",grantDate:"2027-01-01"}},
+  ],files:[]},
+  archive: {...payload.archive,folders:[
+    {id:60,section:"achievement",name:"后来改过的旧目录",createdAt:"2020-01-02T00:00:00Z",modifiedAt:"2026-10-31T12:00:00Z"},
+    {id:61,section:"achievement",name:"最近创建的目录",createdAt:"2026-10-01T00:00:00Z",modifiedAt:"2026-10-01T00:00:00Z"},
+  ],archives:[],orders:{}},
+};
+run("ROOT=VaultStore.buildTree("+JSON.stringify(newestFirst)+")");
+run("Drive.state.folderId='k:project';Drive.enterContext();");
+assert.deepEqual(Array.from(run("Drive.sortedItems"),x=>x.id),["p:11","p:10","p:12"],
+  "Projects sort by year descending with missing dates last");
+run("Drive.state.folderId='k:ip';Drive.enterContext();");
+assert.deepEqual(Array.from(run("Drive.sortedItems"),x=>x.id),["i:2","i:1","i:3"],
+  "IP uses application year, not the later grant year");
+run("Drive.state.folderId='k:achievement';Drive.enterContext();");
+assert.deepEqual(Array.from(run("Drive.sortedItems"),x=>x.id),["af:61","af:60"],
+  "Folder creation timestamp wins over newer modifiedAt");
+run("ROOT=VaultStore.buildTree("+JSON.stringify(payload)+")");
 
 /* 知识产权的年份仅取申请日期;授权日期不可作为隐含年份。 */
 assert.equal(run("Drive.yearOf({biz:{kind:'ip',start:'2023-06-15',end:'2026-09-20',year:'2026'}})"),"2023");

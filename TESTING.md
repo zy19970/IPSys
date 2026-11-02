@@ -26,6 +26,10 @@
 
 普通 `archive_folder` 必须同时支持子目录和直接附件、可选属性、F2、版本、共享、移动和整树回收。单一“新建”动作直接打开表单，右键打包遵循选中范围；成功的永久删除进度面板约 4 秒自动隐藏。普通列表显示数据库实际更新时间，不以申请/签约日期代替。[统一文件夹 CI](https://github.com/zy19970/IPSys/actions/runs/41406914227) 与 [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 已通过，用户本机视觉和完整 GUI 操作另验。
 
+## 默认排序回归
+
+分别检查知识产权申请年与授权年的冲突、项目起止年度、缺失年份沉底、同年份稳定次序，以及普通资料目录的真实创建时间与随后修改时间分离。旧 V2 文件夹缺失创建时间时不能凭空写入历史日期；可按 FolderId 次序近似排序。必须验证进入不同分类后的默认排序和手动切换“自定义顺序”后仍可查看持久化位置。有关 Node 回归见 `src/IPSys.Web/tests/explorer-p1-regression-smoke.cjs`，创建时间建库/升级验证见 `ResourceSchemaV2Smoke.cs`。
+
 ## 大文件与 ZIP64 专项
 
 单 File 最大 8 GiB，传输/下载须流式进行，核查大小、SHA-256、数据库完整性和实际任务终态。工作流 `workflow_dispatch` 的 `large_file_smoke=true` 会运行超过 2 GiB 的 SQLCipher/HTTP 上传下载及大库 VACUUM；[专项 #39943364663](https://github.com/zy19970/IPSys/actions/runs/39943364663) 已通过 22/22 步，包括成功压缩与 `integrity_check`。不能通过延迟失败检查或跳过压缩制造成功。

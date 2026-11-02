@@ -30,6 +30,7 @@ const F = (name, opts = {}) => ({
   name,
   type: "folder",
   mtime: opts.mtime ?? null,
+  ctime: opts.ctime ?? null,
   children: opts.children ?? [],
   biz: opts.biz ?? null,
   synthetic: opts.synthetic ?? false,
@@ -41,6 +42,7 @@ const D = (name, size, opts = {}) => ({
   type: "file",
   size: size ?? 0,
   mtime: opts.mtime ?? null,
+  ctime: opts.ctime ?? null,
   starred: opts.starred ?? false,
   biz: opts.biz ?? null,
 });

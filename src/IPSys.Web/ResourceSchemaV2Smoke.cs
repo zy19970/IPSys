@@ -37,7 +37,7 @@ static class ResourceSchemaV2Smoke
                 // Simulate a V2 vault predating modification timestamps.
                 using(var legacyTime=db.CreateCommand())
                 {
-                    legacyTime.CommandText="ALTER TABLE folders DROP COLUMN modified_at;";
+                    legacyTime.CommandText="ALTER TABLE folders DROP COLUMN modified_at; ALTER TABLE folders DROP COLUMN created_at;";
                     legacyTime.ExecuteNonQuery();
                 }
                 Vault.ValidateSchema(db);
@@ -49,6 +49,12 @@ static class ResourceSchemaV2Smoke
                     upgradedTime.CommandText="SELECT count(*) FROM folders WHERE modified_at IS NOT NULL;";
                     Check((long)upgradedTime.ExecuteScalar()! == 0,
                         "unknown historical modification times remain unknown");
+                    upgradedTime.CommandText="SELECT count(*) FROM pragma_table_info('folders') WHERE name='created_at';";
+                    Check((long)upgradedTime.ExecuteScalar()! == 1,
+                        "old V2 folder creation column upgraded in-place");
+                    upgradedTime.CommandText="SELECT count(*) FROM folders WHERE created_at IS NOT NULL;";
+                    Check((long)upgradedTime.ExecuteScalar()! == 0,
+                        "unknown historical creation times remain NULL, not overwritten by modified_at");
                 }
                 using(var legacy=db.CreateCommand())
                 {
@@ -91,6 +97,18 @@ static class ResourceSchemaV2Smoke
                 }
                 long legacyChild=ExecuteId(db,
                     $"INSERT INTO folders(workspace,kind,section,parent_id,name) VALUES('company','archive_folder','achievement',{legacyFolder},'历史子目录')");
+                using(var creation=db.CreateCommand())
+                {
+                    creation.CommandText=$"SELECT created_at FROM folders WHERE id={legacyChild};";
+                    var initial=creation.ExecuteScalar() as string;
+                    Check(!string.IsNullOrWhiteSpace(initial),
+                        "new folder has a real creation timestamp after V2 upgrade");
+                    creation.CommandText=$"UPDATE folders SET name='重命名子目录' WHERE id={legacyChild};";
+                    creation.ExecuteNonQuery();
+                    creation.CommandText=$"SELECT created_at FROM folders WHERE id={legacyChild};";
+                    Check(initial==creation.ExecuteScalar() as string,
+                        "rename cannot change the original creation timestamp");
+                }
                 Reject(db,$"UPDATE folders SET name='曾受保护' WHERE id={legacyFolder}",
                     "legacy protected initial folder rejects rename");
                 Vault.ValidateSchema(db);

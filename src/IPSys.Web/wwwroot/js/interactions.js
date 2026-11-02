@@ -1152,7 +1152,7 @@ function bindCmdbar() {
     const cols = Drive.columns();
     const items = cols
       ? cols.map((c) => [c.k === "_name" ? "name" : c.k, c.t])
-      : [["name", "名称"], ["mtime", "修改日期"], ["size", "大小"]];
+      : [["ctime", "创建时间"], ["name", "名称"], ["mtime", "修改日期"], ["size", "大小"]];
     if (Drive.isArchiveOrderScope()) items.unshift(["position","自定义顺序"]);
     showCtx(
       r.left,
@@ -1247,7 +1247,7 @@ function sortBy(key) {
   if (s.sortBy === key) s.sortDir = s.sortDir === "asc" ? "desc" : "asc";
   else {
     s.sortBy = key;
-    s.sortDir = "asc";
+    s.sortDir = key === "_year" || key === "ctime" ? "desc" : "asc";
   }
   Drive.render();
 }

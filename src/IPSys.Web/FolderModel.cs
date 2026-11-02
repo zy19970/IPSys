@@ -30,7 +30,7 @@ readonly record struct ResourceRef(string Workspace,string Kind,long Id,string S
 
 // Stable shared DTO: specific project, contract, IP and archive properties stay with the provider.
 // The position and deletion marker belong to the folder, never to file versions.
-record FolderDescriptor(ResourceRef Ref,string Name,ResourceRef? Parent,int Position,bool Deleted = false,string? ModifiedAt = null);
+record FolderDescriptor(ResourceRef Ref,string Name,ResourceRef? Parent,int Position,bool Deleted = false,string? ModifiedAt = null,string? CreatedAt = null);
 
 record FolderSnapshot(FolderDescriptor Folder,object BusinessData);
 

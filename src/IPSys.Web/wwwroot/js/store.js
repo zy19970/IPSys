@@ -374,6 +374,7 @@ const VaultStore = {
       const node = D(f.displayName || f.name || "附件", f.size, {
         id: "f:" + f.linkId + ":" + f.version,
         mtime: toTs(f.modifiedAt),
+        ctime: toTs(f.modifiedAt), // timestamp of latest FileVersion creation
       });
       node.biz = { kind: "file", ownerKind, ...extra };
       this.fileMeta.set(node.id, {
@@ -452,6 +453,7 @@ const VaultStore = {
         .map((a) => {
           const node = F(a.name || `记录 ${a.id}`, { id: `a:${section}:${a.id}` });
           node.mtime = toTs(a.modifiedAt);
+          node.ctime = toTs(a.createdAt);
           node.order = a.position == null ? null : Number(a.position);
           node.biz = {
             kind: "archive",
@@ -545,7 +547,9 @@ const VaultStore = {
 
       general: () =>
         (archive?.general || []).map((g) => {
-          const node = F(g.title || `资料 ${g.id}`, { id: `g:${g.id}`, mtime: toTs(g.modifiedAt) });
+          const node = F(g.title || `资料 ${g.id}`, {
+            id: `g:${g.id}`, mtime: toTs(g.modifiedAt), ctime: toTs(g.createdAt),
+          });
           node.biz = {
             kind: "general",
             typeName: "综合资料",
@@ -577,7 +581,9 @@ const VaultStore = {
       const folders = (archive?.folders || []).filter(f =>
         (f.section || (ws === "company" ? "achievement" : "")) === section);
       const dirs = folders.map((f) => {
-        const d = F(f.name || "未命名目录", { id: "af:" + f.id, mtime: toTs(f.modifiedAt) });
+        const d = F(f.name || "未命名目录", {
+          id: "af:" + f.id, mtime: toTs(f.modifiedAt), ctime: toTs(f.createdAt),
+        });
         d.biz = {
           kind: "archive_folder", typeName: catLabel(section,ws), id: f.id,
           section, parentId: f.parentId ?? null,

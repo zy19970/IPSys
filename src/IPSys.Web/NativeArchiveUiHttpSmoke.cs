@@ -135,10 +135,12 @@ static class NativeArchiveUiHttpSmoke
             "both FileVersions displayed with one stable FolderId and FileId");
         Assert(v.GetProperty("archives").EnumerateArray().Any(x=>
             x.GetProperty("id").GetInt64()==record &&
-            !string.IsNullOrWhiteSpace(x.GetProperty("modifiedAt").GetString())) &&
+            !string.IsNullOrWhiteSpace(x.GetProperty("modifiedAt").GetString()) &&
+            !string.IsNullOrWhiteSpace(x.GetProperty("createdAt").GetString())) &&
             v.GetProperty("folders").EnumerateArray().Any(x=>
             x.GetProperty("id").GetInt64()==child &&
-            !string.IsNullOrWhiteSpace(x.GetProperty("modifiedAt").GetString())) &&
+            !string.IsNullOrWhiteSpace(x.GetProperty("modifiedAt").GetString()) &&
+            !string.IsNullOrWhiteSpace(x.GetProperty("createdAt").GetString())) &&
             v.GetProperty("files").EnumerateArray().Where(x=>
             x.GetProperty("ownerId").GetInt64()==record).All(x=>
             !string.IsNullOrWhiteSpace(x.GetProperty("modifiedAt").GetString())),

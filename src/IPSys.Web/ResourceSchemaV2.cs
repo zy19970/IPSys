@@ -27,6 +27,7 @@ static class ResourceSchemaV2
               position INTEGER NOT NULL DEFAULT 0,
               is_system INTEGER NOT NULL DEFAULT 0 CHECK(is_system IN (0,1)),
               deleted INTEGER NOT NULL DEFAULT 0 CHECK(deleted IN (0,1)),
+              created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
               modified_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
               UNIQUE(id,workspace),
               FOREIGN KEY(parent_id,workspace) REFERENCES folders(id,workspace) ON DELETE RESTRICT,
@@ -275,13 +276,16 @@ static class ResourceSchemaV2
     // Newly created folders have a real write timestamp; later mutations update it.
     public static void EnsureFolderModifiedTimes(SqliteConnection db)
     {
-        bool exists=false;
+        bool exists=false,hasCreatedAt=false;
         using(var inspect=db.CreateCommand())
         {
             inspect.CommandText="PRAGMA table_info(folders);";
             using var reader=inspect.ExecuteReader();
             while(reader.Read())
+            {
                 if(reader.GetString(1)=="modified_at")exists=true;
+                if(reader.GetString(1)=="created_at")hasCreatedAt=true;
+            }
         }
         using var tx=db.BeginTransaction();
         using var cmd=db.CreateCommand();
@@ -293,7 +297,19 @@ static class ResourceSchemaV2
             cmd.CommandText="ALTER TABLE folders ADD COLUMN modified_at TEXT;";
             cmd.ExecuteNonQuery();
         }
+        if(!hasCreatedAt)
+        {
+            // The actual creation date of existing rows is not recoverable.
+            // Leave old rows NULL; never substitute their latest edit timestamp.
+            cmd.CommandText="ALTER TABLE folders ADD COLUMN created_at TEXT;";
+            cmd.ExecuteNonQuery();
+        }
         cmd.CommandText="""
+            CREATE TRIGGER IF NOT EXISTS folder_created_insert
+            AFTER INSERT ON folders WHEN NEW.created_at IS NULL BEGIN
+              UPDATE folders SET created_at=strftime('%Y-%m-%dT%H:%M:%SZ','now')
+              WHERE id=NEW.id;
+            END;
             CREATE TRIGGER IF NOT EXISTS folder_modified_insert
             AFTER INSERT ON folders BEGIN
               UPDATE folders SET modified_at=strftime('%Y-%m-%dT%H:%M:%SZ','now')

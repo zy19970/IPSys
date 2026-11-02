@@ -230,7 +230,7 @@ static class NativeArchiveStore
             throw new ArgumentException("资料引用无效。");
         using var cmd=db.CreateCommand();
         cmd.CommandText="""
-            SELECT id,workspace,kind,section,name,parent_id,position,attributes_json,modified_at
+            SELECT id,workspace,kind,section,name,parent_id,position,attributes_json,modified_at,created_at
             FROM folders f WHERE id=$id AND workspace=$w AND kind=$kind
               AND section=$section AND deleted=0 AND (parent_id IS NULL OR EXISTS(
                 SELECT 1 FROM folders p WHERE p.id=f.parent_id
@@ -265,7 +265,8 @@ static class NativeArchiveStore
             ResourceRef.Create(w,kind,id,section),name,
             parent is long p ? ResourceRef.Create(w,FolderKinds.ArchiveFolder,p,
                 ArchiveDirectoryScopes.ForRecord(kind,section)):null,
-            rd.GetInt32(6),ModifiedAt:rd.IsDBNull(8)?null:rd.GetString(8)),metadata);
+            rd.GetInt32(6),ModifiedAt:rd.IsDBNull(8)?null:rd.GetString(8),
+            CreatedAt:rd.IsDBNull(9)?null:rd.GetString(9)),metadata);
     }
 
     public static IReadOnlyList<FolderSnapshot> List(SqliteConnection db,
@@ -279,7 +280,7 @@ static class NativeArchiveStore
             throw new KeyNotFoundException("上级目录不存在或不属于当前模块。");
         using var cmd=db.CreateCommand();
         cmd.CommandText="""
-            SELECT id,workspace,kind,section,name,parent_id,position,attributes_json,modified_at
+            SELECT id,workspace,kind,section,name,parent_id,position,attributes_json,modified_at,created_at
             FROM folders WHERE workspace=$w AND kind=$kind AND section=$section
               AND deleted=0 AND (
                  ($kind='archive_folder' AND COALESCE(parent_id,0)=COALESCE($parent,0))

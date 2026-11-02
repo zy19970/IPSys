@@ -136,8 +136,8 @@ const Drive = {
   state: {
     view: "home",
     folderId: "root",
-    sortBy: "name",
-    sortDir: "asc",
+    sortBy: "ctime",
+    sortDir: "desc",
     viewMode: Prefs.get("view", "list") === "grid" ? "grid" : "list",
     selection: new Set(),
     anchorId: null,
@@ -343,7 +343,7 @@ const Drive = {
     return `<div class="${cls}">${inner}</div>`;
   },
 
-  /* 导航只重置失效排序与筛选；右侧详细信息保留用户当前的展开/收起状态。 */
+  /* 进入新分类采用专属默认排序；右侧详细信息保留用户展开偏好。 */
   enterContext() {
     this.resetSort();
     /* 筛选是跟着分类列的,换目录一定得清,否则进另一个分类会莫名其妙少一半行 */
@@ -354,20 +354,15 @@ const Drive = {
 
   resetSort() {
     const s = this.state;
-    if (this.isArchiveOrderScope()) {
-      s.sortBy = "position";
-      s.sortDir = "asc";
-      return;
-    }
-    const cols = this.columns();
-    const keys = cols ? ["name", ...cols.map((c) => c.k)] : ["name", "mtime", "size"];
-    if (!keys.includes(s.sortBy)) {
-      s.sortBy = "name";
-      s.sortDir = "asc";
-    }
+    /* 项目按业务年度、知识产权只按申请日年份降序；
+       其他目录按创建时间降序。手动排序操作仍可覆盖当前视图。 */
+    const yearLedger = s.view === "files" && !s.query.trim() &&
+      (s.folderId === "k:project" || s.folderId === "k:ip");
+    s.sortBy = yearLedger ? "_year" : "ctime";
+    s.sortDir = "desc";
   },
 
-  /* 公司业务档案内层允许目录与资料混排，按服务端持久顺序默认展示。 */
+  /* 文件夹还可以手动选择“自定义顺序”，按服务端 position 混排。 */
   isArchiveOrderScope() {
     const s = this.state;
     return s.view === "files" && !s.query.trim() &&
@@ -447,6 +442,19 @@ const Drive = {
     return `<div class="search-note">${icon("info", 15)}<span>${bits.join(" · ")}</span></div>`;
   },
 
+  /* 旧 V2 若缺失真正创建时刻，不拿会变化的修改时间充数。
+     相同 SQLite Folder 表的资源按递增 ID 退化排序；新条目按真实时间。 */
+  compareCreated(a, b) {
+    const at = a.ctime ?? (a.type === "file" ? a.mtime : null);
+    const bt = b.ctime ?? (b.type === "file" ? b.mtime : null);
+    if (at != null && bt != null && at !== bt) return bt - at;
+    const aid = Number(a.biz?.id), bid = Number(b.biz?.id);
+    if (aid > 0 && bid > 0 && aid !== bid) return bid - aid;
+    if (at != null && bt == null) return -1;
+    if (at == null && bt != null) return 1;
+    return cmpName(a, b);
+  },
+
   get sortedItems() {
     const { sortBy, sortDir } = this.state;
     const dir = sortDir === "asc" ? 1 : -1;
@@ -460,6 +468,7 @@ const Drive = {
         const bo = Number.isFinite(b.order) ? b.order : Infinity;
         return ao - bo || cmpName(a, b);
       }
+      if (sortBy === "ctime") return this.compareCreated(a, b) * (sortDir === "desc" ? 1 : -1);
       if (!archiveOrderScope && a.type !== b.type) return a.type === "folder" ? -1 : 1;
       if (col) {
         /* 名称列走拼音序,和通用列表的「名称」保持一致 */
@@ -471,7 +480,8 @@ const Drive = {
         /* 空值恒定沉底,不跟着升降序翻转 —— 否则降序时空行会全冒到顶上 */
         if (xe || ye) return xe === ye ? 0 : xe ? 1 : -1;
         if (col.f === "money" || col.f === "num" || col.f === "size") {
-          return ((Number(x) || 0) - (Number(y) || 0)) * dir;
+          const diff = ((Number(x) || 0) - (Number(y) || 0)) * dir;
+          return diff || (col.k === "_year" ? this.compareCreated(a, b) : 0);
         }
         return String(x).localeCompare(String(y), "zh-CN") * dir;
       }
