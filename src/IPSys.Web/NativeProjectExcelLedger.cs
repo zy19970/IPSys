@@ -39,13 +39,20 @@ static partial class ExcelLedger
             {
                 var input=Project(fields);
                 var current=NativeFolderStore.List(db,w,FolderKinds.Project);
-                var existing=current.FirstOrDefault(x=>{
+                var matches=current.Where(x=>{
                     var p=(ProjectInput)x.BusinessData;
                     return !string.IsNullOrWhiteSpace(input.ProjectNo)
                         ?Same(p.ProjectNo??"",input.ProjectNo!)
                         :Same(p.Name??"",input.Name??"")&&
                          Same(p.ProjectType??"",input.ProjectType??"");
-                });
+                }).ToList();
+                var existing=matches.FirstOrDefault();
+                /* 项目编号不保证唯一:多匹配时 update 必须拒绝,不能静默改第一条。 */
+                if(matches.Count>1&&policy=="update")
+                    throw new InvalidDataException("匹配到 "+matches.Count+
+                        " 条同编号/同名称项目（ID "+string.Join("、",
+                            matches.Take(5).Select(x=>x.Folder.Ref.Id))+
+                        "），无法确定更新目标，请先消除重复。");
                 if(existing!=null&&policy=="skip"){skipped++;continue;}
                 if(existing!=null&&policy=="update")
                 {

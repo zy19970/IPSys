@@ -46,6 +46,34 @@ static class RecyclePurgeSmoke
                 long a=Folder(db,"company","共享甲"),b=Folder(db,"company","共享乙");
                 long personal=Folder(db,"personal","个人项目");
                 byte[] payload={1,3,5,7,9,11};
+                /* 普通文件夹(archive_folder)直挂附件单独解除关联后,必须能在
+                   回收站看到并可还原 —— 回归 P0-1 的父级 kind 白名单。 */
+                long directFolder;
+                using(var cmd=db.CreateCommand())
+                {
+                    cmd.CommandText="""
+                        INSERT INTO folders(workspace,kind,section,name)
+                        VALUES('company','archive_folder','achievement','直挂附件目录');
+                        SELECT last_insert_rowid();
+                        """;
+                    directFolder=(long)cmd.ExecuteScalar()!;
+                }
+                var direct=NativeFileStore.UploadAsync(db,"company",directFolder,null,
+                    new NativeFileMetadataInput("直挂附件.bin"),null,payload.Length,
+                    new MemoryStream(payload),CancellationToken.None)
+                    .GetAwaiter().GetResult();
+                long directLink=Link(db,direct.FileId,directFolder);
+                Check(NativeFileLinkStore.Unlink(db,"company",direct.FileId,directLink),
+                    "archive_folder direct attachment soft unlink");
+                Check(RecycleStore.List(db,"company").Any(x=>
+                    x.Kind=="v2_file"&&x.Id==directLink),
+                    "archive_folder direct attachment listed in recycle bin");
+                Check(RecycleStore.Change(db,"company",
+                    [new RecycleKey("v2_file",directLink,"")],false),
+                    "archive_folder direct attachment restored from recycle bin");
+                Check(Scalar(db,"SELECT COUNT(*) FROM folder_file_links "+
+                    "WHERE id=$id AND deleted=0;",directLink)==1,
+                    "archive_folder direct attachment link is active again");
                 var first=NativeFileStore.UploadAsync(db,"company",a,null,
                     new NativeFileMetadataInput("共享文件.bin"),null,payload.Length,
                     new MemoryStream(payload),CancellationToken.None)

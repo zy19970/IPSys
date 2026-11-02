@@ -154,9 +154,13 @@ static partial class ExcelLedger
                             return x.Folder.Parent?.Id==selectedParent;
                         return Same(a.Category??"",input.Category??"");
                     }).ToArray();
-                    if(matches.Length>1)
-                        throw new InvalidDataException("同名同目录资料不唯一，不能自动匹配更新。");
                     var existing=matches.FirstOrDefault();
+                    /* 歧义只对 update 有意义：create 允许同名新建，skip 本就该跳过，
+                       若在此处无差别抛错会让已有重复的数据永久无法再导入。 */
+                    if(matches.Length>1&&policy=="update")
+                        throw new InvalidDataException("同名同目录资料有 "+matches.Length+
+                            " 条（ID "+string.Join("、",matches.Take(5).Select(x=>x.Folder.Ref.Id))+
+                            "），无法确定更新目标，请先消除重复。");
                     if(existing is not null && policy=="skip"){skipped++;continue;}
                     if(existing is not null && policy=="update")
                     {
@@ -189,10 +193,15 @@ static partial class ExcelLedger
                         throw new InvalidDataException(error);
                     long? parent=ArchiveParent(db,workspace,"general",null,
                         fields.Length>2?fields[2]:null,false);
-                    var existing=NativeArchiveStore.List(db,workspace,
-                        FolderKinds.General,null).FirstOrDefault(x=>
+                    var matches=NativeArchiveStore.List(db,workspace,
+                        FolderKinds.General,null).Where(x=>
                             Same(x.Folder.Name,title.Title??"") &&
-                            x.Folder.Parent?.Id==parent);
+                            x.Folder.Parent?.Id==parent).ToArray();
+                    var existing=matches.FirstOrDefault();
+                    if(matches.Length>1&&policy=="update")
+                        throw new InvalidDataException("同目录同名综合资料有 "+matches.Length+
+                            " 条（ID "+string.Join("、",matches.Take(5).Select(x=>x.Folder.Ref.Id))+
+                            "），无法确定更新目标，请先消除重复。");
                     if(existing is not null && policy=="skip"){skipped++;continue;}
                     if(existing is not null && policy=="update")
                     {

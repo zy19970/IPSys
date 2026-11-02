@@ -115,11 +115,19 @@ static class NativeArchiveActionsEndpoints
                             var roots=NativeArchiveStore.List(v.Db,"company",
                                 FolderKinds.ArchiveFolder,"achievement")
                                 .Where(x=>x.Folder.Parent is null).ToArray();
-                            parent=(roots.FirstOrDefault(x=>
-                                string.Equals(x.Folder.Name,archive.Category,
-                                    StringComparison.OrdinalIgnoreCase))
-                                ??roots.First(x=>x.Folder.Name=="其他业务资料"))
-                                .Folder.Ref.Id;
+                            /* 初始七个目录只是普通文件夹，允许改名或删除，因此这里
+                               只能"尽量挑一个默认落点"，找不到时必须给出可读原因，
+                               不能依赖 First 抛 LINQ 英文异常。 */
+                            var root=roots.FirstOrDefault(x=>
+                                    string.Equals(x.Folder.Name,archive.Category,
+                                        StringComparison.OrdinalIgnoreCase))
+                                ??roots.FirstOrDefault(x=>
+                                    string.Equals(x.Folder.Name,"其他业务资料",
+                                        StringComparison.Ordinal));
+                            if(root is null)
+                                return fail("目标业务档案下没有可用的分类目录，"+
+                                    "请先新建一个分类目录后再转移。",409);
+                            parent=root.Folder.Ref.Id;
                         }
                         if(parent is null)
                             return fail("目标业务档案没有可用分类。",409);

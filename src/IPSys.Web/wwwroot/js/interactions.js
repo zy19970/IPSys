@@ -2041,20 +2041,23 @@ async function deleteNodes(nodes) {
   });
   if (!ok) return;
 
+  /* 整批固定发起时的工作区:循环里重读 VaultStore.ws 会把后半段请求
+     打到切换后的工作区,造成"成功 N 失败 M"的假象。 */
+  const ws = VaultStore.ws;
   let succeeded = 0;
   const failures = [];
   for (const { node, meta, kind } of targets) {
     try {
       if (node.type === "file") {
         if (!meta?.fileId || !meta?.linkId) throw new Error("找不到有效附件引用");
-        await VaultStore.api("/api/v2/files/" + VaultStore.ws + "/" + meta.fileId +
+        await VaultStore.api("/api/v2/files/" + ws + "/" + meta.fileId +
           "/links/" + meta.linkId, { method: "DELETE" });
       } else {
         const biz = node.biz || {};
         if (!kind || !biz.id) throw new Error("找不到业务记录标识");
         const qs = kind === "archive" || kind === "archive_folder"
           ? "?section=" + encodeURIComponent(biz.section || "achievement") : "";
-        await VaultStore.api("/api/v2/folders/" + VaultStore.ws + "/" + kind + "/" +
+        await VaultStore.api("/api/v2/folders/" + ws + "/" + kind + "/" +
           biz.id + qs, { method: "DELETE" });
       }
       succeeded++;
@@ -2124,6 +2127,9 @@ async function emptyRecycle() {
 async function refreshCurrent() {
   const keep = Drive.state.folderId;
   const view = Drive.state.view;
+  /* 刷新前记下搜索词:重建树会作废旧命中,若只清命中不重查,列表会
+     静默退回本地匹配,用户会以为跨目录命中的资料消失了。 */
+  const query = Drive.state.query.trim();
   await VaultStore.loadAll(VaultStore.ws);
   /* 树重建了,旧的搜索命中项指向已经不在树里的节点,全部作废 */
   Drive.resetSearch();
@@ -2145,6 +2151,9 @@ async function refreshCurrent() {
   }
   Drive.render();
   void VaultStore.refreshStorage();
+  /* 仍在搜索态就重新走一次服务端检索;失败时 searchNote 会显式说明
+     当前是本地结果,不再静默缩小范围。 */
+  if (query) void Drive.runSearch(query);
 }
 
 /* ---------------- 文件下载 / 预览 ---------------- */

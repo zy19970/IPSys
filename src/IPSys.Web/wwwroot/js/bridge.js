@@ -568,8 +568,11 @@ async function trackPurge(taskId, workspace, silent = false) {
   if (purgeTracking) return null;
   purgeTracking = true;
   purgeTaskActive = true;
+  /* 轮询只属于发起它的那个会话:锁库/换库后 token 会变,继续用新 token
+     查旧 taskId 永远对不上,面板会卡在"正在重试"无限循环。 */
+  const sessionToken = VaultStore.token;
   try {
-    while (VaultStore.token) {
+    while (VaultStore.token === sessionToken) {
       let state;
       try {
         state = await purgeSnapshot();
@@ -607,6 +610,13 @@ async function trackPurge(taskId, workspace, silent = false) {
         return state;
       }
       await new Promise((r) => setTimeout(r, PURGE_POLL_MS));
+    }
+    /* 走出循环说明会话已变更,不能替用户断言成功或失败 */
+    if (VaultStore.token !== sessionToken) {
+      const panel = purgePanel();
+      panel.hidden = false;
+      panel.querySelector("#trashPurgeStage").textContent =
+        "会话已变更,删除结果尚未确认。请重新进入回收站查看实际状态。";
     }
     return null;
   } finally {

@@ -69,7 +69,7 @@ static class RecycleStore
               AND p.workspace=l.workspace
             JOIN files f ON f.id=l.file_id AND f.workspace=l.workspace
             WHERE l.workspace=$w AND l.deleted=1
-              AND p.kind IN ('project','contract','archive','general')
+              AND p.kind IN ('project','contract','archive','archive_folder','general')
               AND p.deleted=0 AND f.deleted=0
               AND (p.parent_id IS NULL OR EXISTS(
                 SELECT 1 FROM folders parent WHERE parent.id=p.parent_id
@@ -157,7 +157,7 @@ static class RecycleStore
                     WHERE l.id=$id AND l.workspace=$w AND l.deleted=1
                       AND p.deleted=0 AND f.deleted=0
                       AND ((p.kind='ip' AND $kind='v2_ip_file')
-                        OR (p.kind IN ('project','contract','archive','general')
+                        OR (p.kind IN ('project','contract','archive','archive_folder','general')
                             AND $kind='v2_file'))
                       AND (p.parent_id IS NULL OR EXISTS(
                         SELECT 1 FROM folders parent WHERE parent.id=p.parent_id

@@ -111,6 +111,7 @@ static class NativeFileCopyStore
                 throw new IOException("源文件版本存在未完成的物理对象，已拒绝复制。");
         }
 
+        long fileId;
         using(var cmd=Command(db,tx,"""
             INSERT INTO files(workspace,name,description,tags,file_number,file_date)
             VALUES($targetWorkspace,$name,$desc,$tags,$number,$date);
@@ -123,12 +124,11 @@ static class NativeFileCopyStore
             cmd.Parameters.AddWithValue("$tags",(object?)tags??DBNull.Value);
             cmd.Parameters.AddWithValue("$number",(object?)number??DBNull.Value);
             cmd.Parameters.AddWithValue("$date",(object?)date??DBNull.Value);
-            // Executed below after initialization
-            _ = cmd.ExecuteScalar();
+            // Take the rowid from this very command: a later SELECT
+            // last_insert_rowid() would silently follow any statement
+            // inserted in between.
+            fileId=Convert.ToInt64(cmd.ExecuteScalar());
         }
-        long fileId;
-        using(var id=Command(db,tx,"SELECT last_insert_rowid();"))
-            fileId=(long)id.ExecuteScalar()!;
 
         var objectMap=new Dictionary<long,long>();
         int created=0;

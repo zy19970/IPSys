@@ -1,7 +1,10 @@
 using System.Xml;
 
 // N2-04: reuse the fixed-layout XLSX contract against V2 archive/general
-// Folder identities. Old Excel endpoints remain only for legacy smoke fixtures.
+// Folder identities. These routes are the CURRENT UI Excel channel, not legacy
+// fixtures: wwwroot/js/excel.js maps certificate/achievement/academic/party to
+// kind=archive (with section) and general to kind=general. Do not delete them
+// merely because this file predates the archive_folder work.
 static class NativeArchiveGeneralExcelEndpoints
 {
     public static void Map(WebApplication app,Func<string,int,IResult> fail)
