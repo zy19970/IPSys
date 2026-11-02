@@ -1430,8 +1430,9 @@ function openNewMenu(anchor) {
   });
 
   /* 合同不是顶层分类,它只能挂在项目下,所以不进分类表 —— 只有站在项目里
-     才出现,而且带着这个项目的 id 走。 */
-  const inProject = tag === "p" ? s.folderId.slice(2) : "";
+     才出现,而且带着这个项目的 id 走。首页不算"站在项目里":即便 folderId
+     还留着上一次的 p:<id>(例如刚返回首页),也不能把新建绑到那个目录上。 */
+  const inProject = !onHome && tag === "p" ? s.folderId.slice(2) : "";
   if (inProject) rows.push({ id: "contract", label: "新建合同", can: true, dir: false });
 
   const handlers = {

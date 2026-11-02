@@ -260,6 +260,7 @@ jobs:
             'explorer-pending-upload-smoke.cjs' = 'Explorer D-05 pending-original recovery regression failed'
             'explorer-f2-final-consistency-smoke.cjs' = 'Explorer F2-06 menu/toolbar/detail/selection and state consistency regression failed'
             'explorer-search-refresh-smoke.cjs' = 'Search refresh query retention, stale response and failure surfacing regression failed'
+            'explorer-home-create-context-smoke.cjs' = 'Home create-context reset (stale folderId leaking into the new menu) regression failed'
             'explorer-capabilities-smoke.cjs'  = 'Streaming download / server search / purge progress failed'
             'excel-scope-smoke.cjs'           = 'Excel all/filtered export choice, workspace and contract summary regression failed'
             'upload-progress-smoke.cjs'        = 'Real upload progress/multiphase state smoke failed'

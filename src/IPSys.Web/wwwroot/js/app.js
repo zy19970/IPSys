@@ -511,7 +511,10 @@ const Drive = {
     this.state.history.push({ view: this.state.view, folderId: this.state.folderId });
     this.state.view = view;
     if (folderId) this.state.folderId = folderId;
-    else if (view === "files") this.state.folderId = "root";
+    /* 首页不代表任何目录:不清掉 folderId,之后点「新建」会按旧前缀认成
+       "还在项目里",把合同直接建进看不见的那个项目。refreshAll 的 home
+       分支一直是这么重置的,这里原先漏了。 */
+    else if (view === "files" || view === "home") this.state.folderId = "root";
     this.state.selection.clear();
     this.state.anchorId = null;
     this.state.query = "";
