@@ -98,8 +98,10 @@ for(const field of workbookKeys) {
 assert.match(forms,/十种类型/,"IP comment must match current types");
 assert.match(forms,/: \{ projectStatus: "筹备中" \}/,
   "New project status must match backend default before save");
-assert.match(shellStore,/node\.dateLabel = p\.startDate \|\| p\.endDate \|\| ""/,
-  "Project visible date should align with ledger year source");
+assert.match(shellStore,/node\.mtime = toTs\(p\.modifiedAt\)/,
+  "Project update timestamp must come from persisted modification time");
+assert.doesNotMatch(shellStore,/node\.dateLabel = p\.startDate/,
+  "Project start date must not masquerade as the ordinary file-list modification time");
 assert.match(shellStore,/year: String\(p\.startDate \|\| p\.endDate \|\| ""\)/,
   "Project detail year must match list year");
 assert.match(forms,/文件本体名称/);
