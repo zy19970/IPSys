@@ -1,6 +1,6 @@
 # IPSys 测试资料与执行入口
 
-> **统一测试资料目录**。本目录集中存放历次 Explorer/Agent/MCP 测试方案、结果、截图、JSON、CSV、脚本及复核说明。当前业务进度（2026-10-25：功能细节优化）以 [开发计划](../DEVELOPMENT_PLAN.md) 为准，具体的测试通过状态以 [测试证据索引](./TEST_EVIDENCE_INDEX.md) 为准。历史文件原样迁移，内部记录的旧 SHA、路径和失败状态属于当时证据，不因搬迁而改写。
+> **统一测试资料目录（状态更新至 2026-11-02）**：本目录保存 Explorer/Agent/MCP 的原始方案、报告、证据和回归脚本，当前阶段主要处理操作细节。产品/测试提交 `4567ae96b7` 的 [Windows CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 成功，26 项通过、0 失败，2 项可选 ZIP64 步骤跳过。历史结果不得倒写；现行执行状态见 [开发计划](../DEVELOPMENT_PLAN.md) 和 [测试证据索引](./TEST_EVIDENCE_INDEX.md)。
 
 ## 测试资料怎么找
 
@@ -26,7 +26,7 @@
 
 `.github/workflows/web-windows.yml` 调用 `tests/retest-v2-2026-10-22/scripts/` 的 Edge/HTTP 复测脚本。移动后已经同步路径；原来 `src/IPSys.Web/tests/` 的相对读取逻辑不变。[tests/tools/Verify-ExplorerExports.ps1](./tools/Verify-ExplorerExports.ps1) 是真实保存核验工具，已集中并同步 Windows CI。
 
-现行产品代码基线 `8c1ca9a` 对应 [Windows CI #40162144248](https://github.com/zy19970/IPSys/actions/runs/40162144248) 成功，其中包括知识产权 19 列、Excel 全量筛选、禁止独立合同 Excel、63 个 MCP 工具、Edge/HTTP 与 SQLCipher/HTTP 验证；历史文件中的“待执行/未合并/59 工具”不能覆盖现行结论。
+现行已验证产品/测试基线 `4567ae96b7` 对应 [Windows CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 全部必运行步骤成功，覆盖当前 64 项 MCP 工具、统一文件夹、新建直达、Node/Explorer、Edge/HTTP、SQLCipher/HTTP 及两种单文件 EXE；旧测试中的“待执行/未合并”是历史日期快照。
 
 ## 使用约定
 

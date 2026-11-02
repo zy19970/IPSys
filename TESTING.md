@@ -1,26 +1,30 @@
 # IPSys 现行测试与验收规则
 
-> 适用于 2026-10-25 `main` 的功能细节优化阶段：最近产品代码 `8c1ca9a` 对应 [Windows CI #40162144248](https://github.com/zy19970/IPSys/actions/runs/40162144248) 成功。本文件汇总历史 `WEB_TESTING.md`、`LARGE_FILE_TESTING.md`、`RESOURCE_REFACTOR_TEST_MATRIX.md` 的仍有效测试原则，原报告和过程证据仍需按 [证据索引](./tests/TEST_EVIDENCE_INDEX.md) 追溯。
+> **更新至 2026-11-02**：已核验产品/测试提交 `4567ae96b7` 的 Windows [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 为 completed/success（26 步成功、0 失败，两项可选 ZIP64 步骤跳过）。目前正式 Release 仍为 `v0.9.1-rc1`；自动 CI 不等于全部本地 GUI/第三方 Agent 验收。 原始测试报告与此前 FAIL/BLOCKED 事实保留原文，后续修复另列证据。
 
 ## 测试结果必须分层
 
 将“源码已实现”“自动 Windows CI 通过”“本地 Agent 实际执行”“用户人工反馈通过”“未执行/阻塞/失败”分别标记，并给出对应 SHA。任何一次旧报告中的 FAIL/BLOCKED 都是当时的真实记录，后续修复不得改写其原文；旧版本失败也不等于当前产品未修复。人工验证无截图、SHA 或独立解包日志的，不虚构证据。
 
-## Agent 分层规范第三阶段自动回归（执行状态待取证）
+## Agent 分层规范第三阶段自动回归（CI 已通过，真实 Agent 另验）
 
 宿主 --smoke 对 AgentGuidanceStore 使用独立临时配置文件，不修改当前用户正式 LocalAppData 配置；执行 AgentGuidanceStoreSmoke 覆盖默认、覆盖持久化、导入导出、版本冲突、根规则不可编辑、共享文件阅读规则保持等。WebSmoke 中的 AgentGuidanceHttpSmoke 验证浏览器会话鉴权、HTTP 编辑/恢复/导入与 MCP/Prompts 实时同源、并行读取一致性；Node agent-guidance-ui-smoke 检查设置控件和真实 JS 交互。NativeMcpFileQuerySmoke 追加 350 条缺项元数据并报告按 FileId 去重和分页查询耗时。
 
-需以当前源码 SHA 的 Windows CI / SQLCipher、MCP stdio、Node/Explorer、Release 编译及真实 Codex 实机报告分别确认通过。测试文件存在不等于运行通过；本地实测不得操作用户真实资料库。
+自动测试已纳入 [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 并随完整工作流成功；第三方真实 Codex 的智能上传和元数据补录仍需独立本机报告，不操作用户唯一资料库。
 
 ## 主分支 Windows CI
 
-主工作流 `.github/workflows/web-windows.yml`，产品源码、Explorer 前端及关联脚本改动触发 Windows 托管 runner。包括 Debug 编译和嵌入前端检查、Release 单 EXE、.NET 8 运行时前提、MCP stdio（现行源码 64 工具；最后一次成功 CI 属旧 63 工具基线）、Node/Explorer 交互回归、Edge/HTTP 真实浏览器回归、SQLCipher/HTTP 及业务事务检查。最近业务提交 `8c1ca9a` 对应 [Windows CI #40162144248](https://github.com/zy19970/IPSys/actions/runs/40162144248) 全部必运行步骤通过；合并点 `8227d2c` 的 [历史主分支 CI #39947975625](https://github.com/zy19970/IPSys/actions/runs/39947975625) 也已通过。
+主工作流 `.github/workflows/web-windows.yml` 由 Windows runner 执行 Debug/Release、内嵌 Web、现行 **64 项 MCP**、Node/Explorer、真实 Edge/HTTP、SQLCipher/HTTP 与两种单文件 EXE 启动。[CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 为 26 success、0 failure、2 项可选 ZIP64 skipped；旧合并 CI 只作历史记录。
 
 `tests/retest-v2-2026-10-22/scripts/` 和相应 fixture **仍被 CI 调用**，即使路径包含历史日期，也不是可随意删除的废弃文件。测试实际入口以工作流和 `src/IPSys.Web/tests/` 中的现行引用为准。
 
 ## Excel 和知识产权现行回归
 
-当前固定 XLSX：项目 11 列、知识产权 19 列（三编号相关列唯一）、档案/资质/公司党团 4 列、综合资料 1 列；合同**不设独立 Excel 导入或导出**。 `src/IPSys.Web/tests/excel-scope-smoke.cjs` 检查筛选/全量/取消、项目/知识产权/档案端点与工作区范围；`NativeIpExcelHttpSmoke.cs` 验证真实 XLSX 19 列、三编号及筛选 HTTP 往返。服务端筛选导出不得直接复用每组 60 条上限的交互搜索命中列表。最新 [Windows CI #40162144248](https://github.com/zy19970/IPSys/actions/runs/40162144248) 已完成 Windows/Node/SQLCipher/Edge/HTTP 相关回归；本机人工操作外观与大批量实际台账仍可进一步专项复核。
+当前固定 XLSX：项目 **11 列**、知识产权 **19 列**、资料档案/资质/党团 **6 列**、综合资料 **3 列**；旧 4 列档案与 1/2 列综合资料属于历史兼容输入。合同无独立 Excel。`excel-scope-smoke.cjs` 与 `NativeIpExcelHttpSmoke.cs` 检查完整服务端筛选、三编号和工作区，不能沿用交互搜索 60 条上限。最新 [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 已通过相关自动回归。
+
+## 普通文件夹和操作细节专项
+
+普通 `archive_folder` 必须同时支持子目录和直接附件、可选属性、F2、版本、共享、移动和整树回收。单一“新建”动作直接打开表单，右键打包遵循选中范围；成功的永久删除进度面板约 4 秒自动隐藏。普通列表显示数据库实际更新时间，不以申请/签约日期代替。[统一文件夹 CI](https://github.com/zy19970/IPSys/actions/runs/41406914227) 与 [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 已通过，用户本机视觉和完整 GUI 操作另验。
 
 ## 大文件与 ZIP64 专项
 

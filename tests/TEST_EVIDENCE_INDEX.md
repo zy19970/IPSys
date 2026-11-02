@@ -1,15 +1,18 @@
-# IPSys 测试证据索引（更新至 2026-10-25）
+# IPSys 测试证据索引（更新至 2026-11-02）
 
-> 本索引区分**最新产品代码自动化结果**、历史阶段 CI、原始 Agent 实测与用户人工反馈，**不改写**任何原始报告。Explorer 历史合并点为 `8227d2c`；目前仓库仅剩 `main` 分支，最近产品代码 `8c1ca9a` 的 [Windows CI #40162144248](https://github.com/zy19970/IPSys/actions/runs/40162144248) 已成功。后续仍以 GitHub 实时 HEAD 为准。
+> 本索引区分最新产品自动化、历史运行、原始 Agent 报告与人工反馈，不改写旧报告原始失败或阻塞。最近产品代码 `4567ae96b7` 对应 [Windows CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) completed/success，文档更新后的主分支 SHA 不应冒充产品已重新验证。
 
-## 最新功能细节优化证据（2026-10-25）
+## 最新操作细节收敛证据（2026-11-02）
 
-| 内容 | 最新结论及证据 |
+| 内容 | 核验状态与证据 |
 | --- | --- |
-| 当前主分支构建和业务回归 | `8c1ca9a` 对应 [Windows CI #40162144248](https://github.com/zy19970/IPSys/actions/runs/40162144248) **completed/success**；Debug/Release、Node/Explorer、Edge/HTTP、SQLCipher/HTTP、MCP stdio 与两种单 EXE 均通过 |
-| Excel Q162 范围与知识产权 | 同上：`excel-scope-smoke.cjs` 检验完整服务端筛选/全量/取消和无独立合同 Excel；`NativeIpExcelHttpSmoke.cs` 验证知识产权固定 **19 列**及三个编号、标准的空值规则；自动化通过不替代未来人工交互复核 |
-| MCP 工具总数 | 同上：`tools/list` 验收 **63 个**无 `v2_*` 别名的工具，含公司党团建设 4 个专用工具；早期 59、69、70 工具报告是历史快照 |
-| 功能开发阶段 | Explorer 已合并；现为功能细节优化，正式 GA 稳定版尚未发布；当前已有 `v0.9.0-rc` 与 `v0.9.1-rc1` 预发布版 |
+| Windows 最新完整构建 | `4567ae96b7` 对应 [Windows CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499)，26 success、0 failure、2 个可选超 4 GiB ZIP64 步骤 skipped；自包含 EXE artifact 13127470070、依赖版 13126672442、Explorer 复测 13126004336 核验时未过期 |
+| 统一普通资料文件夹 | [CI #470](https://github.com/zy19970/IPSys/actions/runs/41406914227) 成功：普通文件夹可以同时有附件与下级，属性选填 |
+| 单一新建、菜单与日期 | [Windows CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 验证单动作直达；[移动图标 CI](https://github.com/zy19970/IPSys/actions/runs/41409289266) 和 [更新时间 CI](https://github.com/zy19970/IPSys/actions/runs/41380005969) 成功 |
+| 目录回收和共享 | [整树回收 CI](https://github.com/zy19970/IPSys/actions/runs/41296113671) 与 [成功进度面板 CI](https://github.com/zy19970/IPSys/actions/runs/41298466274) 成功 |
+| Excel/知识产权 | 模板 11/19/6/3；十种知识产权类型、三编号，合同无独立 Excel；旧档案 4 列、综合资料 1/2 列为历史导入兼容 |
+| MCP/Agent | 当前 64 项工具和相关标准 Windows 回归已验证；第三方真实 Agent 的自主任务仍需独立实机报告 |
+| Release | 最新正式预发布 v0.9.1-rc1（2026-10-23）；新的 Actions artifacts 不自动进入 Release |
 
 ## 合并时的历史门禁
 
@@ -30,7 +33,7 @@
 | Phase2 132 项 | [任务书](./IPSys_Explorer_Phase2_Agent_Complete_Retest.md)、[CSV](./IPSys_Explorer_Phase2_Agent_Test_Cases.csv)、[报告](./agent-validation/phase2-final-20261023-0112-f5d206a/AGENT_TEST_REPORT.md) | 126 PASS / 1 BUG / 3 BLOCKED / 2 GAP（当时 401 P0 后续修复） |
 | Phase2 16 项补测 | [任务书](./IPSys_Explorer_Phase2_Supplement_Agent_Test_Plan.md)、[CSV](./IPSys_Explorer_Phase2_Supplement_Test_Cases.csv)、[报告](./agent-validation/phase2-supplement-20261023-1115-178cf558/SUPPLEMENT_TEST_REPORT.md) | 9 PASS / 3 BLOCKED / 1 GAP / 3 BUG（当时状态）；后续 D-01、D-02、D-05 已修复并复验 |
 | 第三批原生保存与跨区物理隔离 | [任务书](./IPSys_Explorer_Phase3_Real_Windows_Agent_2026-10-23.md)、[报告](./agent-validation/phase3-real-save-20261023-a18b47b/PHASE3_REPORT.md)、[证据](./agent-validation/phase3-real-save-20261023-a18b47b/EVIDENCE_INDEX.md) | 小 ZIP 真实落盘 SHA 核验、物理隔离 SQL 违规 0；Agent 无法完全操作 Windows 保存框，后由专项 CI 与用户人工反馈分别补充 |
-| MCP 旧 70 工具黑盒 | [旧报告](./mcp-results/2026-10-17/MCP_TEST_REPORT.md)、[索引](./mcp-results/2026-10-17/MCP_EVIDENCE_INDEX.md) | 37 项中 28 PASS / 0 FAIL / 9 BLOCKED；不等于当前 63 工具的独立 Windows 权限实测 |
+| MCP 旧 70 工具黑盒 | [旧报告](./mcp-results/2026-10-17/MCP_TEST_REPORT.md)、[索引](./mcp-results/2026-10-17/MCP_EVIDENCE_INDEX.md) | 37 项中 28 PASS / 0 FAIL / 9 BLOCKED；不等于当前 64 工具在独立 Windows 环境下的实机验收 |
 
 旧 V2 的 `T-P2-02` 程序化 drop 未经过真实 dragstart，不能单独证明用户鼠标拖放失败。大库 VACUUM 的旧超时已经通过修改测试等待预算并实际完成压缩收敛；ZIP64 初稿 TextEncoder 导入失败已修复。所有历史原始状态仍保留。
 

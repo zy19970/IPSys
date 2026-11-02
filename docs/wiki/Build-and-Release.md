@@ -17,7 +17,7 @@ dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-conta
 
 Windows CI 工作流是 [IPSys Windows build and smoke](https://github.com/zy19970/IPSys/actions/workflows/web-windows.yml)。其范围包括 Debug/Release、内嵌前端、Node 交互、浏览器/HTTP、SQLCipher/HTTP、MCP stdio 和单文件 EXE 启动等。
 
-**2026-11-01 的已核验节点**：源码提交 [9af263d](https://github.com/zy19970/IPSys/commit/9af263d8745b90056acf1588fbd996c6117f54a3) 对应 [Actions 41298466274](https://github.com/zy19970/IPSys/actions/runs/41298466274)，状态为 completed/success，相关 EXE 工件已上传。该次可选的 4 GiB ZIP64 实体生成步骤被跳过；历史专项曾单独验证过超过 4 GiB 的生成，不应混为这一次运行结果。
+**2026-11-02 最新核验节点**：产品/测试提交 [`4567ae96b7`](https://github.com/zy19970/IPSys/commit/4567ae96b7f5b55bfa486f51352baae311f17b1c) 对应 [Windows CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499)，`completed/success`（26 项成功、0 项失败，两项可选 ZIP64 步骤跳过）。自包含 EXE、依赖型 EXE、Explorer 复测证据已上传；此前 4 GiB ZIP64 物理生成属于独立专项。
 
 ## 发布 GitHub Release
 
@@ -25,7 +25,7 @@ Windows CI 工作流是 [IPSys Windows build and smoke](https://github.com/zy199
 
 [Releases](https://github.com/zy19970/IPSys/releases) 展示已发布版本；[Actions](https://github.com/zy19970/IPSys/actions) 展示 CI 测试和临时工件。**一次 CI 成功不自动等于创建了新的 Release**。
 
-截至 2026-11-01 核对，已存在 `v0.9.0-rc` 和 `v0.9.1-rc1` 两个预发布；新的源码更改如果还没发布 Release，用户应下载对应成功 CI 工件或等待下一次正式发布。
+截至 2026-11-02 核对，已存在 `v0.9.0-rc` 和 `v0.9.1-rc1` 两个预发布；新的源码更改如果还没发布 Release，用户应下载对应成功 CI 工件或等待下一次正式发布。
 
 ## 验收层次
 

@@ -1,6 +1,6 @@
 # IPSys 历史文档归档索引
 
-本目录保存已完成阶段的技术决策、测试过程与旧界面/接口方案。**截至 2026-10-25，项目处于功能细节优化阶段**，本目录文档的旧技术路线、日期、分支、合同 Excel 导出、知识产权旧字段与 MCP 旧工具数量均按原样保留，仅作为历史证据，**不作为当前施工指令**。现行权威入口：仓库根目录 [README](../../README.md)、[REQUIREMENTS](../../REQUIREMENTS.md)、[DESIGN](../../DESIGN.md)、[DEVELOPMENT_PLAN](../../DEVELOPMENT_PLAN.md)、[TESTING](../../TESTING.md)。
+本目录保存已完成阶段的技术决策、测试过程与旧界面/接口方案。**截至 2026-11-02，项目处于操作细节与使用体验精修阶段**，本目录文档的旧技术路线、日期、分支、合同 Excel 导出、知识产权旧字段与 MCP 旧工具数量均按原样保留，仅作为历史证据，**不作为当前施工指令**。现行权威入口：仓库根目录 [README](../../README.md)、[REQUIREMENTS](../../REQUIREMENTS.md)、[DESIGN](../../DESIGN.md)、[DEVELOPMENT_PLAN](../../DEVELOPMENT_PLAN.md)、[TESTING](../../TESTING.md)。
 
 | 归档文件 | 历史作用 / 当前替代 |
 | --- | --- |

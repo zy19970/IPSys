@@ -1,6 +1,6 @@
 # IPSys Explorer 第二阶段：功能完整性收敛实施计划
 
-> **历史计划，已完成（状态更新 2026-10-25）**：本文件正文保留 2026-10-22 当时的执行顺序和分支状态，不再是现行任务清单。F2-01～F2-06 已实现并入 `main`，132 项 Agent 测试、补测和后续三批收敛已有独立历史结果；旧“系统目录受保护”已改为七个普通初始目录。现行开发按 [DEVELOPMENT_PLAN](../DEVELOPMENT_PLAN.md)、[UI_BASELINE](../UI_BASELINE.md)、[TEST_EVIDENCE_INDEX](../tests/TEST_EVIDENCE_INDEX.md) 执行。最新产品代码 `8c1ca9a` 的 [Windows CI #40162144248](https://github.com/zy19970/IPSys/actions/runs/40162144248) 已通过。
+> **历史计划，已完成（状态核对至 2026-11-02）**：本文保留 2026-10-22 原开发分支、实施顺序与当时状态作为历史记录，不再是当前任务清单。Explorer 已合入 `main`，最新功能、测试与操作逻辑以 [现行开发计划](../DEVELOPMENT_PLAN.md) 和 [Windows CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 为准。
 
 > 适用开发分支：`work/onedrive-file-manager`。本文件为持续执行基线，实际完成状态应以提交、自动回归和最新源码为依据。2026-10-22 用户确认：**先完成第二阶段全部核心功能，再集中由本地 Agent 进行完整稳定性验收**。
 >

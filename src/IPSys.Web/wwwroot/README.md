@@ -39,11 +39,11 @@ node src/IPSys.Web/wwwroot/tools/bundle.cjs
 
 `dist/` 不提交仓库，不直接编辑。修改源码后要重新构建 EXE；缺少 Node 且没有现成构建产物时 MSBuild 会给出错误。本地默认 Release 生成依赖 .NET 8 Windows Desktop / ASP.NET Core Runtime 的单 EXE；手动 GitHub Release 另提供携带运行时的自包含单 EXE。
 
-## 当前 Explorer 功能契约（2026-10-25）
+## 当前 Explorer 功能契约（2026-11-02）
 
-`js/excel.js` 的“导出 Excel”提供 `filtered`（当前筛选结果）与 `all`（本模块全部记录）两种选择，传入业务 `query/status`；服务端 `NativeExcelExportFilter.cs` 负责完整数据范围筛选，不使用普通搜索的 60 条界面上限。项目 11 列、知识产权 19 列、资质/档案/党团 4 列、综合资料 1 列。**合同没有独立 Excel 导入或导出入口**，合同仍在项目下进行业务维护及原件管理。知识产权使用十种类型与统一编号、公开号、授权公告号三字段。新增或修改 Excel 导出时应同时验证模块路由、Excel 固定模板和 `src/IPSys.Web/tests/excel-scope-smoke.cjs`。
+`js/excel.js` 的导出 Excel 使用 `filtered`（服务端完整筛选）和 `all`（当前模块全部记录），知识产权还支持十种业务类型筛选。项目 11 列、知识产权 19 列、档案/资质/党团 6 列、综合资料 3 列；合同无独立 Excel。固定表头见 [字段字典](../../../M0_DATA_DICTIONARY.md)。
 
-PDF 预览支持页面连续纵向滚动、视口附近按需渲染与缩放。Windows 启动器含资料库原生路径选择、托盘恢复/显式退出及本进程/整机 CPU 监控。以上功能以 `8c1ca9a` 的 [Windows CI #40162144248](https://github.com/zy19970/IPSys/actions/runs/40162144248) 成功为最近产品代码验证基线。
+PDF 预览支持连续滚动、按需渲染与缩放；启动器支持原生路径选择和托盘安全退出。资料 `archive_folder` 可同时拥有子文件夹和直接附件，`RecordForms.archiveFolder` 统一表单，`openNewMenu` 在只有一种创建动作时直接打开表单，列表“更新时间”取数据库有效修改时间。对应 [Windows CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 已成功。
 
 ## 维护约束
 

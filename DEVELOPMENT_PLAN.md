@@ -1,38 +1,31 @@
 # IPSys 开发计划与当前执行状态
 
-> **更新至 2026-10-25 功能细节优化阶段**。仓库当前仅有 `main` 分支；Explorer 合并属于已完成历史。最新产品代码为 `8c1ca9a`，对应 [Windows CI #40162144248](https://github.com/zy19970/IPSys/actions/runs/40162144248) 成功。继续实施前仍以实时 HEAD、功能源码和最新验证结果为准，文档更新不会改变产品功能，但触及受监控路径的 Markdown 也可能触发 Windows CI；不能预先断言是否运行，以 Actions 的实际 SHA 和结果为准。
+> **2026-11-02 状态**：已核验产品/测试提交 `4567ae96b7` 的 Windows [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 为 completed/success（26 步成功、0 失败，两项可选 ZIP64 步骤跳过）。目前正式 Release 仍为 `v0.9.1-rc1`；自动 CI 不等于全部本地 GUI/第三方 Agent 验收。 项目现阶段以真实使用反馈驱动操作细节和一致性精修，不重复已经完成的 Explorer 合并与 N1～N4 重构。
 
-## 1. 目标与已确认边界
+## 1. 当前范围与数据边界
 
-IPSys 为 Windows 本地资料管理器：WinForms 启动器、浏览器 Explorer 前端、SQLCipher V2 单加密库和个人/公司隔离工作区。所有业务记录均为 Folder、附件为 File；文件版本归属 File，合同依附项目，同工作区支持显式共享/复用，跨工作区物理对象独立复制。项目、合同、知识产权、资质、业务档案、个人分类、综合资料、Excel、搜索、导出、回收站和本机 MCP 都围绕统一数据模型实现。实际产品范围见 [REQUIREMENTS.md](./REQUIREMENTS.md)。
+IPSys 是 WinForms 启动器、仅本机访问的 Web Explorer、单 SQLCipher V2 加密库和 MCP 的一体化程序。一个数据库包含个人/公司隔离工作区。业务文件夹、项目、合同和知识产权使用 Folder 身份，**Folder 无版本，附件 File 才有版本**。同工作区可显式共享 FileId 或复用物理 FileObject，跨工作区不共享物理原件。
 
-## 2. 完成的里程碑
+资料类模块统一“新建文件夹”，文件夹既可直接上传附件又可无限级嵌套；名称必填，类别、年度、标签和备注选填。项目、知识产权、合同保留专用业务表单与关系约束。
 
-| 阶段 | 当前状态 | 证据 |
-| --- | --- | --- |
-| M0 需求、字段字典与 WinForms 初始验证 | 已完成，字段逻辑持续有效 | [M0_DATA_DICTIONARY.md](./M0_DATA_DICTIONARY.md) |
-| N1～N4 SQLCipher V2 资源内核、原生业务接口和旧物理模型清理 | 已进入现行代码，历史专项 CI 已通过 | [DESIGN.md](./DESIGN.md)；Git 历史 |
-| MCP 安全、业务工具与原 **63 工具**接口收敛（后续新增第 64 项只读规范工具） | 代码及标准 CI 已通过；旧 70 工具 Agent 报告属历史 | [MCP_CODEX.md](./MCP_CODEX.md)、[MCP_TEST_RESULTS](./tests/mcp-results/README.md) |
-| Explorer 重构 F2-01～F2-06 | 功能完成：建库/会话、档案目录混排、文件关联、整记录复制转移、拖放和统一动作入口 | [阶段计划历史](./docs/EXPLORER_PHASE2_FUNCTIONAL_COMPLETENESS_2026-10-22.md) |
-| 三批实机反馈与缺陷收敛 | 运行期 401、外部拖放、待确认原件；跨区物理隔离专项证据完成 | [TEST_EVIDENCE_INDEX](./tests/TEST_EVIDENCE_INDEX.md) |
-| 大文件与 ZIP64 | >2 GiB SQLCipher/HTTP 与 VACUUM CI 通过；实际 >4 GiB ZIP64 生成通过；用户确认本机人工环节已验证 | [#39943364663](https://github.com/zy19970/IPSys/actions/runs/39943364663)、[#39944440866](https://github.com/zy19970/IPSys/actions/runs/39944440866) |
-| 安全合并 `main` | **历史已完成**：非强制快进；当前仓库仅保留 `main`，不再把已结束的分支当持续维护目标 | [合并时 CI #39947975625](https://github.com/zy19970/IPSys/actions/runs/39947975625) |
-| 10 月 25 日功能细节收敛 | **已提交并通过 CI**：知识产权十类型/统一三编号与 19 列 XLSX、Excel 当前筛选/全部、取消合同独立 Excel、PDF 连续滚动、启动器托盘与双 CPU、七个普通预置目录、党团建设及 63 MCP 工具 | [Windows CI #40162144248](https://github.com/zy19970/IPSys/actions/runs/40162144248) |
+## 2. 已实现与自动验收证据
 
-早期 132 项 Agent 报告的 126 PASS / 1 BUG / 3 BLOCKED / 2 GAP 是当时实测快照；后续补测、修复及专项 CI 不能倒写成原始报告 PASS。用户对真实 Windows 大文件保存和 ZIP64 使用环节确认人工通过，但没有向仓库上传对应逐文件哈希/第三方解包日志，不能以自动化结论替代。
+| 阶段 | 状态/证据 |
+| --- | --- |
+| M0、N1～N4、Explorer F2-01～F2-06 | 已合并 `main`；[历史合并 CI](https://github.com/zy19970/IPSys/actions/runs/39947975625) 成功 |
+| MCP 和分层 Agent 规范 | 当前 64 工具、Prompts、缺项筛选及设置规范覆盖已实现并纳入 Windows 自动回归；第三方真实 Agent 智能任务另验 |
+| Excel 与知识产权 | 项目 11 列、知识产权 19 列、资料档案/党团/资质 6 列、综合资料 3 列；合同无独立 Excel；十类型三编号及空 Excel 单元格保留已有值规则生效 |
+| 普通文件夹统一与回收站 | [统一文件夹 CI](https://github.com/zy19970/IPSys/actions/runs/41406914227) 成功，支持目录与附件共存、可选属性、整树回收及共享引用安全清理 |
+| 操作细节 | 右键批量下载、侧栏默认展开、表头全选、真实更新时间、菜单图标、成功删除面板 4 秒隐藏、单一“新建”直达；最新 [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 成功 |
+| 大文件与 ZIP64 | [大库及 VACUUM](https://github.com/zy19970/IPSys/actions/runs/39943364663) 通过；[4 GiB+ ZIP64 生成](https://github.com/zy19970/IPSys/actions/runs/39944440866) 通过，但只是生成验证 |
 
-## 3. 下一阶段工作方式
+## 3. 下一阶段工作方法
 
-当前主要工作是**在稳定合并基线上按真实使用反馈进行功能细节优化与一致性收敛**，而不是重做旧 N2/N4、重新实施 React 试验线或重复执行旧 132 项全量 Agent 用例。新需求先对照现行源码、业务需求和 UI 规则；需要功能修改时按影响范围新增最小动态回归并通过 Windows CI。
+1. 以真实使用截图、操作复现为入口，优先修改共用组件而非单个页面补丁；新建/上传/下载/移动/删除应检查顶部、侧栏、右键和详情之间的一致性。
+2. 横向复核统一普通文件夹与遗留 `archive/general` Excel/MCP 接口、搜索、ZIP、回收站和共享文件之间的语义；保留旧接口不等于用户实际工作流全通过。
+3. 按风险范围运行 Node、Edge/HTTP、SQLCipher 和必要的实际 Windows GUI 用例，区别测试 mock 与真正产品缺陷，使用隔离数据库。
+4. 按当前源码同步 README、设计、需求、用户指南、Wiki 和证据索引，保留历史测试失败的原始时间与结论。
 
-如进入正式产品发布，应单独检查目标 Windows 运行时依赖、可恢复性、备份与异常退出、外置磁盘及磁盘不足、安全恢复和 T01～T09 尚未被本次合并涵盖的完整边界。不得把“完成主分支合并”写成“所有发布条件完成”。
+## 4. 最终交付条件
 
-## 3.1 分层 Agent 工作规范服务：三阶段源码已提交，动态验收待完成
-
-新增需求的唯一实施基线为 [《IPSys 本地 Agent 分层提示词服务实施方案（2026-10-25）》](./docs/IPSys_Agent_分层提示词服务_实施方案_20261025.md)。核心原则：轻量总规范通过 MCP 初始化告知目录和读取办法，search/upload/metadata 专项按需获取；Agent 可自主读取、先看目录选择，也可由用户手动指定只读查看。该功能目前**第一阶段源码已实施、CI 与真机 Agent 实测待核验**：内嵌 index/search/upload/metadata 规范、短 initialize.instructions、只读 get_agent_guidance 及 MCP 动态回归已提交。第二阶段标准 Prompts 和 SQLCipher 通用缺项筛选的源码及自动测试已提交、CI/实机待验；第二阶段真实智能入库/补录端到端 Agent 验收尚未完成，第三阶段软件级设置管理、配置导入导出及对应自动回归的源码已提交，仍待 Windows CI 与真实 Agent 完整验收；后续跨会话继续前必须先阅读方案并核对实时 main。
-
-## 4. 开发与协作
-
-代码和现行文档统一维护在 `main`；`work/onedrive-file-manager` 的历史可通过原提交与合并记录追溯，但该远程分支现已不存在。用户提供的真实资料库不得作为破坏性测试对象；测试创建独立 SQLCipher QA 库。按 AIGT-templates 的 `AGENTS.md` 与 `AI_RULES/GIT_OPERATIONS.md` 执行 Git、构建与验收，文档与测试证据分开管理。
-
-技术架构查 [DESIGN.md](./DESIGN.md)，操作说明查 [USER_GUIDE.md](./USER_GUIDE.md)，测试门禁查 [TESTING.md](./TESTING.md)，历史 Agent 报告查 [docs/TEST_EVIDENCE_INDEX.md](./tests/TEST_EVIDENCE_INDEX.md)。
+正式 Release 需手动触发 [发布工作流](https://github.com/zy19970/IPSys/actions/workflows/publish-release.yml)。进入 GA 之前对备份恢复、外置盘/断电、空间不足、任务并发及 T01～T09 进行适用的安全复核；不能将日常 CI 等同完整故障注入或用户人工验收。详见 [TESTING.md](./TESTING.md)。

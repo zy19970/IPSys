@@ -1,6 +1,6 @@
 # IPSys 本机 Codex MCP
 
-## 第三阶段：设置中的 Agent 规范管理（源码已实现，CI/真机待验）
+## 第三阶段：设置中的 Agent 规范管理（自动 CI 已通过，第三方实机另验）
 
 在 IPSys 的「设置 → Agent 工作规范」中可按 index、search、upload、metadata 浏览。index 是不可编辑的轻量目录；其余三篇允许编辑内容、预览当前有效文本、单篇恢复内置默认、导出或导入用户覆盖配置。默认规范与 upload/metadata 共用的文件读取和权限安全规则仍随 EXE 内嵌且不能被覆盖。
 
@@ -10,9 +10,9 @@
 
 默认完整导出格式为 schemaVersion=1、exportMode="effective"、index（只读目录）及 topics 映射：每篇包含 source、content（可恢复的可编辑正文）、effectiveContent（实际运行正文，含不可修改的安全附录）和 version。即使 Windows 用户从未保存覆盖，也有三篇正文。导入全量格式时，只恢复 topics 中允许编辑的 content，不把 effectiveContent 的内置共用规则重复写入；相同 EXE 内置内容保留 source=builtin，换版本后内置正文不同则使用用户覆盖保留备份的内容快照。旧格式仍为 schemaVersion=1 和 overrides（仅用户自定义正文），由 ?mode=overrides 导出，导入时整体替换用户覆盖。index 与内置共享安全附录无法导入覆盖。正在运行的 MCP tools/call、prompts/get 每次读取当前有效内容并返回内容派生版本；initialize.instructions 保持短内置总入口，已有 Agent 若持有旧正文，需要重新调用或重连。
 
-本阶段已提交自动化测试：独立用户配置持久化/版本冲突/坏文件拒绝、授权 HTTP 管理 API、MCP 与 Prompts 同源读取、并发一致性、浏览器交互，以及扩展 SQLCipher 缺项筛选压力样本。**Windows CI 和真实 Codex/Windows 浏览器交互尚须以对应提交的执行证据验收，不把自动测试源码视为已通过。**
+本阶段已提交自动化测试：独立用户配置持久化/版本冲突/坏文件拒绝、授权 HTTP 管理 API、MCP 与 Prompts 同源读取、并发一致性、浏览器交互，以及扩展 SQLCipher 缺项筛选压力样本。**相关自动回归已在 [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 通过；第三方真实 Codex 与 Windows 用户工作流须另行实测。**
 
-## Agent 分层规范读取（2026-10-25，第二阶段源码已实施，CI/本机 Agent 待核验）
+## Agent 分层规范读取（第二阶段源码和 Windows CI 已通过，第三方实机另验）
 
 **标准 MCP Prompts：** 在协议 `2025-06-18` 的 initialize.capabilities 声明 `prompts: { listChanged: false }`；`prompts/list` 列出内置 `index/search/upload/metadata` 四个名称和简短摘要，不含全文。客户端 `prompts/get(name="search")` 等按需获得一条 role=user / type=text 的规范消息；正文与 `get_agent_guidance` 共用内置资源。目录 metadata 可在未授权时列出，但 prompts/get 的正文必须通过同用户命名管道、已解锁数据库和手动启用的 MCP 授权。Prompts 是可选择的模板，不能保证每款 Agent 自动加载。
 
@@ -24,7 +24,7 @@
 
 现行 tools/list 在此前 63 项业务工具之外增加 **get_agent_guidance** 只读工具，合计 **64 项**；原有 63 项接口不改名、不改变参数语义。调用 `get_agent_guidance()` 或 `get_agent_guidance(topic="index")` 只返回 search/upload/metadata 专项的 ID、标题、摘要、版本；分别调用 `topic="search"`、`topic="upload"`、`topic="metadata"` 才返回单篇正文。未知 topic 明确拒绝。用户仅要求读取规范时不会上传、下载原件、修改属性或删除资料。
 
-MCP initialize.instructions 只输出来自内嵌 index.md 的短入口，必须先在资料库中人工开启 MCP 授权；规范读取通过现行受限命名管道及宿主授权门禁，不依赖外网或额外本地服务。内嵌规范文件统一位于 src/IPSys.Web/AgentGuidance/，由 AgentGuidance.cs 注册并读取，upload/metadata 共享 file-reading.md 内容。用户换 Agent 或刷新工具清单时需重启或重新连接客户端。当前第二阶段源码已提供标准 MCP Prompts、通用缺失属性筛选；**真实智能入库和补录仍需本地 Agent 实测**，设置编辑/覆盖界面属于第三阶段。最新源码必须先经 Windows CI 和真机客户端分别验收，不得把此前 63 工具的 CI 结果记为新增工具通过。
+MCP initialize.instructions 只输出来自内嵌 index.md 的短入口，必须先在资料库中人工开启 MCP 授权；规范读取通过现行受限命名管道及宿主授权门禁，不依赖外网或额外本地服务。内嵌规范文件统一位于 src/IPSys.Web/AgentGuidance/，由 AgentGuidance.cs 注册并读取，upload/metadata 共享 file-reading.md 内容。用户换 Agent 或刷新工具清单时需重启或重新连接客户端。当前第二阶段源码已提供标准 MCP Prompts、通用缺失属性筛选；**真实智能入库和补录仍需本地 Agent 实测**，设置编辑/覆盖界面属于第三阶段。新增规范工具后的 [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 已成功；早期 63 工具 CI 仍只是历史证据，第三方 Agent 自动读取和批量补录继续独立验收。
 
 
 ## Agent 轻量搜索（2026-10-25）

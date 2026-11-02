@@ -253,3 +253,9 @@ IPSys 是 Windows WinForms 启动器 + 本地 Web Explorer 界面 + SQLCipher/SQ
 收敛建议：先核对 run 41413434499 最终结论与产物；随后定向检查统一“新建/上传/移动/下载/删除”跨入口行为及图标 key 完整性，核对 Excel/MCP 与统一文件夹模型、跨工作区和共享引用；用新测试 SQLCipher 库做实际 Edge/GUI 小矩阵，避免触碰用户旧数据；将 README、DESIGN、DEVELOPMENT_PLAN、TESTING、UI_BASELINE 中滞后的 10-25 基线同步；正式 Release 需用户明确发起。本轮未运行本机 GUI、未修改业务源代码或测试、未创建 Release，按记忆协议仅新增本轮档案及本节 Memory。最近会话：`memory/sessions/2026-11-02-操作细节精修仓库梳理.md`；已归档轮次：第一轮。
 
 **本轮补充：最后一次“新建直达”Windows CI 已成功（2026-11-02）**：用户请求审查时正在运行的 Actions `41413434499`（Windows build and smoke #473）随后 completed/success，head_sha 与仅修复 smoke 模拟依赖的 `4567ae96b7f5b55bfa486f51352baae311f17b1c` 精确匹配；job 26 success、0 failure、可选超过 4 GiB 的 ZIP64 真实物理生成/证据上传 2 项 skipped。自包含 `IPSys-Web-win-x64-self-contained` artifact 13127470070（81,356,379 B）、依赖型 `IPSys-Web-win-x64` 13126672442、`IPSys-Explorer-V2-Retest-41413434499-1` 13126004336 均 `expired=false`。下载见 https://github.com/zy19970/IPSys/actions/runs/41413434499 。因此最新“新建”按钮改为直接打开表单的代码已经通过 Windows 全套自动验收，但还未在用户本机新 EXE 做人工界面验证；正式 Release 仍是 v0.9.1-rc1。本次文本补记不修改产品文件。
+
+## 2026-11-02：全仓文档过时口径清理及连接中断后继续（会话第二、三轮）
+
+用户先要求“你梳理一下整个仓库中的文档，把过时的和错误的修改一下”，随后追问“为什么连接中断了，继续推进”。已按 AIGT 三项规范核查现行 root 文档、docs/wiki、旧实施计划、测试证据入口与产品源码。确认 ExcelLedger 当前固定模板为项目 11、知识产权 19、档案/资质/党团 6、综合资料 3 列；旧档案 4 列、综合资料 1/2 列只用作兼容导入。普通 archive_folder 已可直接存附件及嵌套目录，只有一个新建动作时直接打开表单；普通删除整树进入回收站，永久删除按共享引用清理。现行 MCP 64 工具，产品/测试提交 4567ae96b7 对应 Windows CI 41413434499 completed/success（26 success/0 failed/2 optional skipped），正式 Release 仍是 v0.9.1-rc1。
+
+本轮只修文档，不改产品代码/数据库/原始历史测试记录。纠正旧 CI 基线、“待实施”的过时状态、资料新建双类型、非空目录禁止删除、Excel 4/1 列、MCP 63 工具等错误；同步用户 Wiki 部分页面与测试入口，历史报告按时间快照保留。首次批量创建 Git 对象超出单次调用数量限制，后续大批次工具被安全检查阻止；中断时 main 未移动，准备好的 blob/tree 不构成提交，继续采用小批生成与 Git Data CAS 原子提交。已通过通知 #2028（开始）、#2030（失败）、#2031/#2032（重启/继续）。完成后必须核对 main、提交文件列表和实际 Wiki 发布状态；不能将 Actions 工件等同正式 Release。最近会话：memory/sessions/2026-11-02-操作细节精修仓库梳理.md；已归档至第三轮。

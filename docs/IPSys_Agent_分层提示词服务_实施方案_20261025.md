@@ -1,6 +1,6 @@
 # IPSys 本地 Agent 分层提示词服务实施方案
 
-> 文档状态：需求与路线已确认。**三阶段的计划内源码已提交：第一阶段按需读取、第二阶段标准 Prompts/通用缺项查询、第三阶段软件级覆盖及设置管理。Windows CI、真实 Codex 与桌面交互验收仍待与最终 SHA 对应的证据；不得把源码存在视作功能已通过实测。**
+> **状态更新（2026-11-02）**：第一阶段规范按需读取、第二阶段 Prompts/通用文件缺项筛选、第三阶段设置规范管理的源码均已加入产品；相关 Windows 标准自动回归已随 [Windows CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 通过。仍需第三方真实 Codex/Windows 多用户实际使用证据，不得用 CI 冒充完整智能入库/批量补录实测。本文中 10 月 25 日“待 CI”属历史阶段快照。
 >
 > 形成日期：2026-10-25。后续每次实施、审查、跨会话续接本任务，必须先读取本文，再核对仓库 main 最新代码与 MCP 协议。本文不是已经生效的 Agent 系统指令。
 >
@@ -273,7 +273,7 @@ search_records、get_file_details、update_file_metadata、upload_files、start_
 
 1. 先读 AIGT-templates 的 AGENTS.md、AI_RULES/GIT_OPERATIONS.md，再读本文。
 2. 读取 IPSys main 最新 HEAD、完整提交历史及提交说明，核对 McpLocal.cs / McpLocalExtras.cs / NativeMcpSmoke.cs、MCP_CODEX.md 与最新 CI。
-3. 明确区分“本方案已制定”和“功能已实施”。原始方案提交时仅形成设计；当前已实现第一阶段 get_agent_guidance 和短初始化入口，第二阶段 Prompts 和 list_files_page 缺项筛选已加入源码，第三阶段设置管理及软件级用户覆盖也已加入源码；Windows CI 与 Agent 真实业务、跨会话、双用户验收仍需结果证据。
+3. 明确区分“本方案已制定”和“功能已实施”。原始方案提交时仅形成设计；当前已实现第一阶段 get_agent_guidance 和短初始化入口，第二阶段 Prompts 和 list_files_page 缺项筛选已加入源码，第三阶段设置管理及软件级用户覆盖也已加入源码；Windows CI 已通过；Agent 真实业务、跨会话、双用户实机验收仍需结果证据。
 4. 从本文第六章**最早尚未验收的阶段**开始执行；优先完成该阶段代码、独立测试和提交，不擅自改变需求或合并后续阶段。**不得遗漏两个独立闭环：新文件上传默认阅读并提取属性，以及存量文件先由 MCP 通用缺项查询（无需逐个详情）再下载阅读、批量补录。**
 5. 用户后续要求更改方案时先同步修改本文，再根据修订后的目标实施；每一阶段完成后回写状态、SHA 与证据链接。
 

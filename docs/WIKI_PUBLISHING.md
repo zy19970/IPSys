@@ -42,4 +42,4 @@ git -C .wiki-local push
 
 ## 本次 Wiki 基线
 
-2026-11-01 内容取材于 IPSys `main` 实际源码、`README.md`、`USER_GUIDE.md`、`DESIGN.md`、`MCP_CODEX.md`、`REQUIREMENTS.md` 和近期提交；最近核验的产品构建为 `9af263d` 对应 Windows CI `41298466274` completed/success。此次 Wiki 文档提交不修改数据库、业务操作逻辑或正式产品 Release。
+截至 2026-11-02，Wiki 源文件随当前源码与根目录文档维护；早前已有 [实际成功 Wiki 同步记录](https://github.com/zy19970/IPSys/actions/runs/41306575033)，最近产品回归为 [Windows CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 成功。此次 `docs/wiki` 更新仍须单独核对 Publish Wiki 工作流完成并实际展示，不将主仓库内容变更等同于 Wiki 已发布。
