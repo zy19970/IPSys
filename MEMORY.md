@@ -263,3 +263,10 @@ IPSys 是 Windows WinForms 启动器 + 本地 Web Explorer 界面 + SQLCipher/SQ
 ## 2026-11-02：默认排序按业务年份／真实创建时间（第四轮）
 
 用户上传知识产权台账截图（2021 年项显示在 2026 年项之前），明确要求：“知识产权和项目要按照年份降序，其他的文件夹按照建立的时间的长短降序排序”。实现口径：公司/个人知识产权和项目模块进入台账时默认按业务年份降序；知识产权仍严格取申请日年份，项目仍起始日优先、无起始日才取结束日期，空年份沉底，同年份以创建先后稳定排序。其余普通文件夹和附件视图默认新创建在前；用户显式选择列/方向排序或目录“自定义顺序”时仍可切换，目录内持久 order 不被实际重排/修改。新建 V2 folders 增独立 created_at；现有 V2 增量增加 nullable created_at 并通过插入触发器仅对新行设置，不伪造历史创建时间，也不拿 modified_at 充数；缺失时间的旧目录仅以同表 FolderId 降序做近似。archive/general UI 输出 createdAt，前端统一 ctime；附件使用当前版本创建时间。修改 ResourceSchemaV2、FolderModel、NativeArchiveStore、NativeArchiveUiEndpoints、正式前端 data/store/app/interactions、schema/HTTP/Node 测试及用户/测试文档。Windows CI 最终验收以新 SHA 与 Actions run 状态为准，提交前不宣称通过；未修改本地用户数据库或正式 Release。开始通知 office-renderer/wechat-webhook#2034。最近会话仍为 `memory/sessions/2026-11-02-操作细节精修仓库梳理.md`，已归档至第四轮。
+
+
+## 2026-11-02：默认排序提交 CI 失败修复（第五轮）
+
+用户原话：“CI失败了”。核实提交 7c51024f56a5f53e13c572baaabca794c04da72f 对应 Windows run 41428371446 completed/failure：第13步 UI regression 失败，Debug/Release/MCP/JS 语法均成功。ip-type-badge-smoke.cjs 第65行通过 app.js 的旧导航注释定位 cellHtml 方法结束，但排序变更改变该注释，导致 cellEnd=-1、断言失败。此前 ui-assets 测试通过；之后 Explorer/SQLCipher/EXE 等因前置失败跳过，不可视为完整验收。
+
+定向修复仅调整 ip-type-badge-smoke.cjs 提取 cellHtml 方法的结束锚点，改用方法本身的换行双空格右花括号逗号，避免绑定其它函数注释。使用当前 app.js 实际源码动态构造 cellHtml 并检查 IP 类型/状态及 HTML 转义结果，均符合预期；不修改排序产品代码。开始/失败/重新开始通知为 office-renderer/wechat-webhook#2036/#2037/#2038。新提交和新 CI 需再次按实际结果核验，未操作用户真实数据库或正式 Release。最近会话路径 memory/sessions/2026-11-02-操作细节精修仓库梳理.md，归档轮次第五轮。

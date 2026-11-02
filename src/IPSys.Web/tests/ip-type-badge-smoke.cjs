@@ -61,9 +61,10 @@ assert.equal(new Set(swatches).size, 10, "Palette colors cannot all be the same"
 assert.match(css, /\.pill\.ip-type\.neutral\s*\{/);
 
 const cellStart = app.indexOf("  cellHtml(it, c, first) {");
-const cellEnd = app.indexOf("  /* 导航只重置", cellStart);
-assert.ok(cellStart >= 0 && cellEnd > cellStart);
-const fn = vm.runInContext("({" + app.slice(cellStart, cellEnd) + "}).cellHtml", context);
+// Extract the actual method boundary; surrounding navigation comments may change.
+const cellEnd = app.indexOf("\n  },", cellStart);
+assert.ok(cellStart >= 0 && cellEnd > cellStart, "cellHtml method boundary must exist");
+const fn = vm.runInContext("({" + app.slice(cellStart, cellEnd + 5) + "}).cellHtml", context);
 const call = (v, f) => fn.call({cellValue: () => v}, {name: v}, {k:"typeName",f}, false);
 types.forEach(type => {
   const html = call(type, "ip-type");
