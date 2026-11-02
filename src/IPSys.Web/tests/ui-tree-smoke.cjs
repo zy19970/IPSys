@@ -177,6 +177,8 @@ assert.equal(run("findById('af:800').biz.year"),'2026');
 assert.equal(run("findParent('f:86:2').id"),'af:800');
 assert.equal(run("findById('f:86:2').biz.ownerKind"),'archive_folder');
 
+run('ROOT=VaultStore.buildTree('+JSON.stringify(multilevel)+')'); // restore original fixture
+
 /* BUG-002：所有业务模块只按 LinkId 展示最新版，不能按 FileId 合并共享引用。 */
 const childIds=id=>Array.from(run("findById("+JSON.stringify(id)+").children"),x=>x.id);
 assert.deepEqual(childIds('a:achievement:91'),['f:10:2']);
