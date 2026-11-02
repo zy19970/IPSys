@@ -1405,6 +1405,8 @@ function moveArchiveEntry(node) {
 
 function openNewMenu(anchor) {
   if (!canCreateHere()) return toast("请先进入可新建资料的分类或项目");
+  /* A single create action should open the form immediately from every entry. */
+  if (archiveScope()) return createArchiveFolder();
   const r = anchor.getBoundingClientRect();
   const s = Drive.state;
 
@@ -1417,16 +1419,6 @@ function openNewMenu(anchor) {
   const inDir = tag === "af" ? archiveScopeSection() : "";
   const parentId = tag === "af" ? s.folderId.slice(3) : null;
   const here = inDir || cur;
-
-  /* 分类根目录只能新建目录；在具体目录中可新建下级目录或资料。
-     不把业务档案资料创建到无真实 FolderId 的虚拟根。 */
-  if (archiveScope()) {
-    const parentId=archiveParentId();
-    showCtx(r.left,r.bottom+6,MI("new-folder","folder","新建文件夹"),{
-      "new-folder": () => createArchiveFolder(parentId),
-    });
-    return;
-  }
 
   /* 菜单项直接由当前工作区的分类表生成 —— 有几个模块就几项,
      顺序也和左侧导航一致,不另写一份清单。 */

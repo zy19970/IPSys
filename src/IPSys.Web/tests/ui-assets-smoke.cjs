@@ -108,8 +108,8 @@ assert.match(bridge,/UPLOADABLE_KINDS\s*=\s*\[[^\]]*"contract"/,'Contracts must 
  assert.ok(bridge.includes('"archive_folder"'), 'Folder kind must be available to the capability bridge');
  assert.match(bridge,/UPLOADABLE_KINDS[^\n]*archive_folder/,'Folders must accept direct attachments');
  assert.match(bridge,/EXPORTABLE_KINDS[^\n]*archive_folder/,'Folder attachments must be downloadable');
- assert.ok(read('js/interactions.js').includes('MI("new-folder","folder","新建文件夹")'),
-  'The archive menu must expose one unified folder command');
+ assert.ok(read('js/interactions.js').includes('if (archiveScope()) return createArchiveFolder();'),
+  'Single-action archive creation must bypass the one-item dropdown');
  assert.ok(read('js/forms.js').includes('archiveFolder(section, node = null'),
   'An ordinary folder needs a unified property editor');
 assert.match(read('js/forms.js'),/if \(kind === "contract"\) return this\.contract\(node\)/,

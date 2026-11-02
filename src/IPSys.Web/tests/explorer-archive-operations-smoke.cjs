@@ -8,8 +8,8 @@ const root=path.resolve(__dirname,"../wwwroot");
 const code=fs.readFileSync(path.join(root,"js/interactions.js"),"utf8");
 const forms=fs.readFileSync(path.join(root,"js/forms.js"),"utf8");
 
-/* Archive and general scopes expose one ordinary folder creation command. */
-assert.match(code,/MI\("new-folder","folder","新建文件夹"\)/);
+/* The one ordinary-folder action opens the form directly, not an extra one-item menu. */
+assert.match(code,/if \(archiveScope\(\)\) return createArchiveFolder\(\);/);
 assert.doesNotMatch(code,/MI\("new-record","doc","新建资料"\)/);
 assert.match(forms,/archiveFolder\(section, node = null, parentId = null/);
 function extract(start,end){
@@ -74,38 +74,46 @@ vm.runInContext(part,context,{filename:"interactions-archive.js"});
 const fn=name=>vm.runInContext(name,context);
 (async()=>{
  const anchor={getBoundingClientRect:()=>({left:0,bottom:32})};
- Drive.state.folderId="k:achievement";
- fn("openNewMenu")(anchor);
- assert.match(menus.at(-1).html,/new-folder/);
- assert.doesNotMatch(menus.at(-1).html,/new-record/);
- menus.at(-1).handlers["new-folder"]();
- assert.deepEqual(menus.at(-1).archiveFolder,["achievement",null,null]);
+ for(const [ws,id,section,parentId] of [
+  ["company","k:achievement","achievement",null],
+  ["company","af:70","achievement",70],
+  ["company","k:general","general",null],
+  ["company","k:certificate","certificate",null],
+  ["personal","k:academic","academic",null],
+ ]) {
+  VaultStore.ws=ws;
+  Drive.state.folderId=id;
+  const count=menus.length;
+  fn("openNewMenu")(anchor);
+  assert.equal(menus.length,count+1,"New must invoke the folder form immediately");
+  assert.deepEqual(menus.at(-1).archiveFolder,[section,null,parentId]);
+  assert.equal(menus.at(-1).html,undefined,"No second-level one-item menu");
+ }
+ VaultStore.ws="company";
  Drive.state.folderId="af:70";
- fn("openNewMenu")(anchor);
- assert.match(menus.at(-1).html,/new-folder/);
- assert.doesNotMatch(menus.at(-1).html,/new-record/);
- menus.at(-1).handlers["new-folder"]();
+
+ /* Right-click's initial New/Upload/Refresh menu stays; choosing New
+    invokes the folder form without opening yet another sub-menu. */
+ context.canUploadFiles=()=>false;
+ context.$=sel=>sel==="#btnNew"?anchor:null;
+ vm.runInContext(extract("function showBlankMenu(x, y) {","/* ---------------- 框选"),context);
+ fn("showBlankMenu")(20,30);
+ const blankMenu=menus.at(-1);
+ assert.match(blankMenu.html,/data-act="new"/);
+ const beforeDirect=menus.length;
+ blankMenu.handlers.new();
+ assert.equal(menus.length,beforeDirect+1,"Right-click New opens one form, not another menu");
  assert.deepEqual(menus.at(-1).archiveFolder,["achievement",null,70]);
 
- Drive.state.folderId="k:general";
+ /* Other modes retain their multi-option menu behavior. */
+ Drive.state.view="home";
+ Drive.state.folderId="root";
+ const beforeHome=menus.length;
  fn("openNewMenu")(anchor);
- assert.match(menus.at(-1).html,/new-folder/);
- assert.doesNotMatch(menus.at(-1).html,/new-record/);
- menus.at(-1).handlers["new-folder"]();
- assert.deepEqual(menus.at(-1).archiveFolder,["general",null,null]);
-
- Drive.state.folderId="k:certificate";
- fn("openNewMenu")(anchor);
- assert.equal(typeof menus.at(-1).handlers["new-folder"],"function");
- menus.at(-1).handlers["new-folder"]();
- assert.deepEqual(menus.at(-1).archiveFolder,["certificate",null,null]);
-
- VaultStore.ws="personal";
- Drive.state.folderId="k:academic";
- fn("openNewMenu")(anchor);
- menus.at(-1).handlers["new-folder"]();
- assert.deepEqual(menus.at(-1).archiveFolder,["academic",null,null]);
- VaultStore.ws="company";
+ assert.equal(menus.length,beforeHome+1);
+ assert.match(menus.at(-1).html,/data-act="new-achievement"/);
+ assert.ok(menus.at(-1).handlers["new-achievement"]);
+ Drive.state.view="files";
  Drive.state.folderId="af:70";
 
  await fn("reorderArchiveEntry")(child,-1);
