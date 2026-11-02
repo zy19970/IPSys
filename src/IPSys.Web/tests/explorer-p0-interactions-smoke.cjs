@@ -67,6 +67,31 @@ const locking=extract('async function lockVault() {','function bindSettings()');
  assert.equal(requested.length,0,'Canceled deletion must not send requests');
  assert.equal(refreshes,1,'Canceled deletion must not refresh');
 
+ /* B03: 批处理执行中切换工作区，后续请求不得改投到新工作区。
+    否则会出现"成功 N 失败 M"的假象，甚至把公司对象当成个人对象删除。 */
+ allow=true;
+ const switched=[];
+ let left=2;
+ context.VaultStore.ws='company';
+ context.VaultStore.api=async(url,opts)=>{
+  assert.equal(opts.method,'DELETE');
+  switched.push(url);
+  if(--left===0) context.VaultStore.ws='personal';
+ };
+ messages.length=0;
+ await context.deleteNodes([
+  {id:'af:1',type:'folder',name:'目录甲',
+   biz:{kind:'archive_folder',id:1,section:'general'}},
+  {id:'af:2',type:'folder',name:'目录乙',
+   biz:{kind:'archive_folder',id:2,section:'general'}},
+ ]);
+ assert.equal(switched.length,2,'Both selected folders are submitted');
+ assert.ok(switched.every(url=>url.startsWith('/api/v2/folders/company/')),
+  'Every request keeps the workspace captured when the batch started');
+ assert.equal(context.VaultStore.ws,'personal','The simulated switch did happen');
+ assert.ok(messages.some(x=>x.message.includes('已删除 2 项')),
+  'Reported counts must describe the real outcome');
+
  /* A refused POST /api/lock (409) must neither drop tokens nor reload UI.
     On success the server has locked, so clearing only own session keys is OK. */
  let rejectLock=true, confirmLock=true, closes=0, reloads=0;

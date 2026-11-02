@@ -27,14 +27,16 @@ const document={
   body:{append(node){panel=node;}},
 };
 const timers=new Map();let timerId=0;
+/* 记录每次 setTimeout 的间隔：自动收起是 4000，异常重试是 1200，
+   两者混用会把"重试"错当成"成功"。 */
+const timerDelays=[];
 const setTimeoutFake=(fn,ms)=>{
-  assert.equal(ms,4000,'successful purge must close after four seconds');
-  const id=++timerId;timers.set(id,fn);return id;
+  const id=++timerId;timers.set(id,{fn,ms});timerDelays.push(ms);return id;
 };
 const clearTimeoutFake=id=>timers.delete(id);
 const runTimer=()=>{
   const callbacks=[...timers.values()];timers.clear();
-  callbacks.forEach(fn=>fn());
+  callbacks.forEach(item=>item.fn());
 };
 let mode='succeeded',currentTask='',taskNum=0,apiCalls=0,refreshes=0,selectedClears=0;
 let toastMessages=[];
@@ -134,6 +136,34 @@ const run=js=>vm.runInContext(js,sandbox);
   assert.equal(await run('resumePurge()'),false);
   assert.equal(panel.hidden,false);
   assert.equal(timers.size,0);
+
+  /* B04: 轮询中会话变更 —— 停止跟踪、提示核对，绝不替用户宣告成功或失败。 */
+  mode='running';toastMessages=[];timerDelays.length=0;panel.hidden=true;
+  VaultStore.token='session-A';
+  const tracking=run('trackPurge('+JSON.stringify(currentTask)+',"company",false)');
+  await new Promise(r=>setImmediate(r));
+  assert.ok(timerDelays.includes(550),'running task polls at the normal interval');
+  assert.equal(panel.hidden,false,'progress panel stays open while running');
+  VaultStore.token='session-B';
+  runTimer();
+  const stopped=await tracking;
+  assert.equal(stopped,null,'session change must end tracking without a verdict');
+  assert.match(panel.querySelector('#trashPurgeStage').textContent,/会话已变更/);
+  assert.equal(toastMessages.length,0,'session change must not claim success or failure');
+  assert.equal(timers.size,0,'an unconfirmed result must not schedule auto-hide');
+
+  /* 任务身份对不上（服务端另开了新任务）时按 1.2 秒重试，而不是采纳别人的进度。 */
+  mode='running';toastMessages=[];timerDelays.length=0;panel.hidden=true;
+  VaultStore.token='session-C';
+  const foreign=run('trackPurge("task-of-another-client","company",true)');
+  await new Promise(r=>setImmediate(r));
+  assert.ok(timerDelays.includes(1200),'identity mismatch retries after 1.2 seconds');
+  assert.match(panel.querySelector('#trashPurgeStage').textContent,
+    /暂时无法获取删除进度/);
+  VaultStore.token='session-D';
+  runTimer();
+  assert.equal(await foreign,null,'a foreign task id must never be reported as ours');
+  assert.equal(toastMessages.length,0,'silent tracking never toasts');
 
   assert.ok(refreshes>0&&selectedClears>0);
   console.log('PURGE PROGRESS SMOKE PASS: auto-close on committed success, batch gating, failure/cancel visibility, stale timer and resume');
