@@ -40,8 +40,11 @@ static class NativeMcpFileQuery
         LEFT JOIN file_objects obj ON obj.id=version.object_id
           AND obj.workspace=version.workspace AND obj.state='ready'
         WHERE l.workspace=$w AND l.deleted=0
-          AND folder.kind IN ('project','contract','ip','archive','general')
-          AND ($kind='' OR folder.kind=$kind)
+          AND folder.kind IN ('project','contract','ip','archive_folder')
+          AND ($kind='' OR folder.kind=CASE WHEN $kind IN ('archive','general')
+                THEN 'archive_folder' ELSE $kind END)
+          AND ($kind<>'general' OR folder.section='general')
+          AND ($kind<>'archive' OR folder.section<>'general')
           AND ($owner=0 OR l.folder_id=$owner)
           AND ($name='' OR instr(lower(COALESCE(l.display_name,file.name)),lower($name))>0)
         ORDER BY l.id
@@ -144,8 +147,15 @@ static class NativeMcpFileQuery
                             missing.Add(FileFields[i]);
                     gaps=missing;
                 }
+                // A02/N2: one storage kind, two business module names. Agent-facing
+                // rows keep the module name they have always reported so existing
+                // MCP consumers keep filtering on "archive" / "general".
+                string stored=rd.GetString(3),section=rd.GetString(4);
+                string ownerKind=stored==FolderKinds.ArchiveFolder
+                    ?(section=="general"?FolderKinds.General:FolderKinds.Archive)
+                    :stored;
                 rows.Add(new McpFileRow(rd.GetInt64(0),rd.GetInt64(1),rd.GetInt64(2),
-                    rd.GetString(3),rd.GetString(4),rd.GetString(5),
+                    ownerKind,section,rd.GetString(5),
                     rd.IsDBNull(6)?null:rd.GetInt32(6),
                     rd.IsDBNull(7)?null:rd.GetInt64(7),
                     rd.IsDBNull(8)?null:rd.GetString(8),gaps));

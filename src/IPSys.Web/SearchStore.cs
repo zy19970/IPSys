@@ -35,6 +35,17 @@ static class SearchStore
                 : Has(f.Text,query))
             .Select(f=>f.Key).Distinct(StringComparer.Ordinal).ToArray();
     private static string Label(string? name)=>string.IsNullOrWhiteSpace(name)?"未命名":name;
+    // Module label for a material section. Matches the navigation and page
+    // titles so a search path reads the same way as the browser.
+    private static string SectionLabel(string workspace,string section)=>
+        section switch
+        {
+            "academic"=>"学术与社会活动",
+            "achievement"=>workspace=="company"?"业务档案":"成果与奖励",
+            "party"=>"党团建设",
+            "general"=>workspace=="company"?"综合资料":"其他资料",
+            _=>"资质与证件"
+        };
     private static string Summary(params string?[] fields)=>string.Join(" · ",
         fields.Where(x=>!string.IsNullOrWhiteSpace(x)).Select(x=>x!.Trim()));
     public static SearchResponse Find(SqliteConnection db,string workspace,string? text,
@@ -68,33 +79,25 @@ static class SearchStore
         var contracts=NativeFolderStore.List(db,workspace,FolderKinds.Contract);
         var projectTitles=projects.ToDictionary(x=>x.Folder.Ref.Id,x=>x.Folder.Name);
         var ips=NativeFolderStore.List(db,workspace,FolderKinds.Ip);
-        var archiveSections=workspace=="company"?new[]{"certificate","achievement","party"}:
-            new[]{"certificate","achievement","academic"};
-        var archive=archiveSections.SelectMany(section=>
-            NativeArchiveStore.List(db,workspace,FolderKinds.Archive,section)).ToArray();
-        var general=NativeArchiveStore.List(db,workspace,FolderKinds.General,null);
-        // Read only valid V2 ancestor folders; a child record inherits their
-        // names for search without copying duplicate metadata into its attributes.
-        var archiveParents=new Dictionary<long,(long? Parent,string Name)>();
-        if(workspace=="company")
-        {
-            using var ancestors=db.CreateCommand();
-            ancestors.CommandText="""
-                SELECT id,parent_id,name FROM folders
-                WHERE workspace='company' AND kind='archive_folder'
-                  AND section='achievement' AND deleted=0;
-                """;
-            using var rd=ancestors.ExecuteReader();
-            while(rd.Read())
-                archiveParents[rd.GetInt64(0)]=(
-                    rd.IsDBNull(1)?null:rd.GetInt64(1),rd.GetString(2));
-        }
+        // A02/N2: ordinary materials are archive_folder inside a module scope.
+        // This is the only readable shape; the retired archive/general kinds are
+        // no longer created and intentionally not searched.
+        var materialScopes=workspace=="company"
+            ?new[]{"certificate","achievement","party","general"}
+            :new[]{"certificate","achievement","academic","general"};
+        var materials=materialScopes.SelectMany(section=>
+            NativeArchiveStore.ListAll(db,workspace,section)).ToArray();
+        // A material inherits its ancestor folder names for search without
+        // copying duplicate metadata into its own attributes.
+        var materialParents=materials.ToDictionary(
+            x=>x.Folder.Ref.Id,
+            x=>(Parent:x.Folder.Parent?.Id,Name:x.Folder.Name));
         string Ancestors(long? id)
         {
             var names=new List<string>();
             var seen=new HashSet<long>();
             while(id is long parent && seen.Add(parent) &&
-                archiveParents.TryGetValue(parent,out var entry))
+                materialParents.TryGetValue(parent,out var entry))
             {
                 names.Add(entry.Name);
                 id=entry.Parent;
@@ -147,51 +150,22 @@ static class SearchStore
                 MatchedFields=m,FolderId=ip.Folder.Ref.Id,Tags=d.Tags,Status=d.Status
             });
         }
-        foreach(var row in archive)
+        foreach(var row in materials)
         {
-            var a=(ArchiveInput)row.BusinessData;
+            var f=(ArchiveFolderInput)row.BusinessData;
             string section=row.Folder.Ref.Section;
             string ancestry=Ancestors(row.Folder.Parent?.Id);
-            var m=Matched(query,("name",a.Name),("category",a.Category),
-                ("remarks",a.Remarks),("tags",a.Tags),("year",a.Year),
+            var m=Matched(query,("name",row.Folder.Name),("category",f.Category),
+                ("remarks",f.Remarks),("tags",f.Tags),("year",f.Year),
                 ("parent",ancestry));
             if(m.Length==0)continue;
-            string sectionName=section=="academic"?"学术与社会活动":
-                section=="achievement"?(workspace=="company"?"业务档案":"成果与奖励"):
-                section=="party"?"党团建设":"资质与证件";
-            Add(new SearchHit("archive",row.Folder.Ref.Id,section,
-                row.Folder.Name,Summary(ancestry,a.Category,sectionName)){
+            string sectionName=SectionLabel(workspace,section);
+            Add(new SearchHit("archive_folder",row.Folder.Ref.Id,section,
+                row.Folder.Name,Summary(ancestry,f.Category,sectionName)){
                 Path=root+" / "+sectionName+" / "+
                     (ancestry.Length>0?ancestry+" / ":"")+row.Folder.Name,
-                MatchedFields=m,FolderId=row.Folder.Ref.Id,Tags=a.Tags
+                MatchedFields=m,FolderId=row.Folder.Ref.Id,Tags=f.Tags
             });
-        }
-        // Business-archive folders are real editable folders, not business records.
-        // Return their own IDs so an Agent can enter a matched directory.
-        if(workspace=="company")
-        foreach(var folder in archiveParents)
-        {
-            var m=Matched(query,("name",folder.Value.Name),
-                ("parent",Ancestors(folder.Value.Parent)));
-            if(m.Length==0)continue;
-            string ancestry=Ancestors(folder.Value.Parent);
-            Add(new SearchHit("archive_folder",folder.Key,"achievement",
-                folder.Value.Name,"业务档案目录"){
-                Path=root+" / 业务档案 / "+(ancestry.Length>0?ancestry+" / ":"")+
-                    folder.Value.Name,MatchedFields=m,FolderId=folder.Key
-            });
-        }
-        foreach(var r in general)
-        {
-            var info=(TitleInput)r.BusinessData;
-            var m=Matched(query,("name",r.Folder.Name),("remarks",info.Remarks));
-            if(m.Length>0)
-                Add(new SearchHit("general",r.Folder.Ref.Id,"",
-                    r.Folder.Name,info.Remarks??""){
-                    Path=root+" / "+(workspace=="company"?"综合资料":"其他资料")+
-                         " / "+r.Folder.Name,
-                    MatchedFields=m,FolderId=r.Folder.Ref.Id
-                });
         }
 
         // Search only active V2 FolderFileLinks; legacy business_file_links
@@ -202,7 +176,7 @@ static class SearchStore
         // All business records, including archives and general folders, use
         // the same FileId and FileVersion search contract.
         foreach(var item in projects.Concat(activeContracts).Concat(ips)
-            .Concat(archive).Concat(general))
+            .Concat(materials))
         {
             long owner=item.Folder.Ref.Id;
             string kind=item.Folder.Ref.Kind;
@@ -215,8 +189,8 @@ static class SearchStore
                 var latest=details.Versions[0];
                 string location=link.DisplayName??link.FileName;
                 string parentTitle=item.Folder.Name;
-                string ancestry=kind==FolderKinds.Archive?
-                    Ancestors(item.Folder.Parent?.Id):"";
+                string ancestry=item.Folder.Parent is ResourceRef ancestor?
+                    Ancestors(ancestor.Id):"";
                 string? status=kind switch {
                     FolderKinds.Project=>((ProjectInput)item.BusinessData).ProjectStatus,
                     FolderKinds.Ip=>((IpInput)item.BusinessData).Status,
@@ -229,14 +203,10 @@ static class SearchStore
                          projectTitles.TryGetValue(cp.Id,out string? pn)?pn:"")+
                         " / "+parentTitle,
                     FolderKinds.Ip=>root+" / 知识产权 / "+parentTitle,
-                    FolderKinds.Archive=>root+" / "+
-                        (item.Folder.Ref.Section=="achievement"?
-                            (workspace=="company"?"业务档案":"成果与奖励"):
-                         item.Folder.Ref.Section=="academic"?"学术与社会活动":
-                         item.Folder.Ref.Section=="party"?"党团建设":"资质与证件")+
-                        " / "+(ancestry.Length>0?ancestry+" / ":"")+parentTitle,
-                    _=>root+" / "+(workspace=="company"?"综合资料":"其他资料")+
-                       " / "+parentTitle
+                    _=>root+" / "+SectionLabel(workspace,
+                        item.Folder.Ref.Kind==FolderKinds.General?"general":
+                        item.Folder.Ref.Section)+" / "+
+                        (ancestry.Length>0?ancestry+" / ":"")+parentTitle
                 };
                 var m=Matched(query,("name",location),("fileName",link.FileName),
                     ("originalName",latest.OriginalName),
@@ -246,7 +216,7 @@ static class SearchStore
                     ("parent",parentTitle),("ancestry",ancestry));
                 if(m.Length==0)continue;
                 Add(new SearchHit("file",link.FileId,
-                    kind==FolderKinds.Archive?item.Folder.Ref.Section:"",location,
+                    kind==FolderKinds.General?"":item.Folder.Ref.Section,location,
                     details.Description??"",kind,owner){
                     OwnerLabel=Summary(ancestry,parentTitle,link.MaterialCategory,
                         latest.OriginalName),

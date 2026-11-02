@@ -681,11 +681,12 @@ static class NativeMcpSmoke
         });
         var trash=await Original("list_trash",new{workspace="personal"});
         Check(trash is JsonArray waste && waste.Any(x=>
-            x?["kind"]?.GetValue<string>()=="v2_general" &&
+            x?["kind"]?.GetValue<string>()=="v2_archive_folder" &&
             x?["id"]?.GetValue<long>()==Id(firstWrite)),
-            "MCP trash list contains the soft-deleted general record");
+            "MCP trash list contains the soft-deleted general folder");
         await Original("restore_trash",new{
-            workspace="personal",kind="v2_general",id=Id(firstWrite)
+            workspace="personal",kind="v2_archive_folder",id=Id(firstWrite),
+            section="general"
         });
         Check(Find(await Original("list_general",new{workspace="personal"}),
             Id(firstWrite))!=null,"MCP restore_trash recovers a V2 folder");

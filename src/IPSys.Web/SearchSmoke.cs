@@ -42,8 +42,8 @@ static class SearchSmoke
         contract.EnsureSuccessStatusCode();
         long contractId=(await contract.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
             .GetProperty("id").GetInt64();
-        using var archive=await client.PostAsJsonAsync("/api/v2/folders/company/archive",new {
-            section="certificate",archive=new {
+        using var archive=await client.PostAsJsonAsync("/api/v2/folders/company/archive_folder",new {
+            section="certificate",archiveFolder=new {
               name=marker+"-企业资质",category="企业资质",remarks="统一检索"}
         });
         archive.EnsureSuccessStatusCode();
@@ -55,40 +55,41 @@ static class SearchSmoke
             x.GetProperty("folder").GetProperty("name").GetString()=="申报与认定")
             .GetProperty("folder").GetProperty("ref").GetProperty("id").GetInt64();
         using var companyBusiness=await client.PostAsJsonAsync(
-            "/api/v2/folders/company/archive",new {
-                section="achievement",archive=new{
+            "/api/v2/folders/company/archive_folder",new {
+                section="achievement",archiveFolder=new{
                   name=marker+"-首台套申报",category="",remarks="业务归档",
-                  folderId=rootId}
+                  parentId=rootId}
             });
         companyBusiness.EnsureSuccessStatusCode();
         long businessId=(await companyBusiness.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
             .GetProperty("id").GetInt64();
         using var academic=await client.PostAsJsonAsync(
-            "/api/v2/folders/personal/archive",new {
-                section="academic",archive=new{
+            "/api/v2/folders/personal/archive_folder",new {
+                section="academic",archiveFolder=new{
                   name=marker+"-学术兼职",category="学术兼职"}
             });
         academic.EnsureSuccessStatusCode();
         long academicId=(await academic.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
             .GetProperty("id").GetInt64();
         using var general=await client.PostAsJsonAsync(
-            "/api/v2/folders/company/general",new {general=new{title=marker+"-综合资料"}});
+            "/api/v2/folders/company/archive_folder",
+            new {section="general",archiveFolder=new{name=marker+"-综合资料"}});
         general.EnsureSuccessStatusCode();
         long generalId=(await general.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
             .GetProperty("id").GetInt64();
 
         var company=await Find(client,"company",marker);
-        foreach(var type in new[]{"project","ip","contract","archive","general"})
+        foreach(var type in new[]{"project","ip","contract","archive_folder"})
             if(!company.Results.Any(h=>h.Kind==type))
                 throw new IOException("搜索缺失真实业务模块："+type);
         if(company.Results.Any(h=>h.Title.Contains("个人项目")||h.Title.Contains("学术兼职")))
             throw new IOException("公司搜索不应泄漏个人工作区记录。");
-        if(!company.Results.Any(h=>h.Kind=="archive"&&h.Section=="achievement"&&
+        if(!company.Results.Any(h=>h.Kind=="archive_folder"&&h.Section=="achievement"&&
             h.Id==businessId&&h.Description.Contains("业务档案")))
             throw new IOException("公司业务档案搜索命中应标记为业务档案。");
         var personal=await Find(client,"personal",marker);
         if(!personal.Results.Any(h=>h.Kind=="project"&&h.Id==personalId)||
-           !personal.Results.Any(h=>h.Kind=="archive"&&h.Id==academicId&&h.Section=="academic"))
+           !personal.Results.Any(h=>h.Kind=="archive_folder"&&h.Id==academicId&&h.Section=="academic"))
             throw new IOException("个人项目和学术兼职搜索缺失。");
         if(personal.Results.Any(h=>h.Id==ipId&&h.Kind=="ip")||
            personal.Results.Any(h=>h.Title.Contains("公司项目")))
@@ -201,12 +202,12 @@ static class SearchSmoke
         if((await Find(client,"company",filename)).Results.Count!=0)
             throw new IOException("已移入回收站的项目附件不得出现搜索结果。");
         using(var deleted=await client.DeleteAsync(
-            $"/api/v2/folders/company/archive/{archiveId}?section=certificate"))
+            $"/api/v2/folders/company/archive_folder/{archiveId}?section=certificate"))
             deleted.EnsureSuccessStatusCode();
         if((await Find(client,"company",marker+"-企业资质")).Results.Count!=0)
             throw new IOException("删除的资质资料不得仍被检索。");
         var nativeResult=await Find(client,"company",marker+"-企业资质");
-        if(nativeResult.Results.Any(h=>h.Kind=="archive"&&h.Id==archiveId))
+        if(nativeResult.Results.Any(h=>h.Kind=="archive_folder"&&h.Id==archiveId))
             throw new IOException("V2 原生检索必须隐藏前面已软删除的 FolderId。");
         Console.WriteLine("SEARCH SMOKE PASS: modules, fields, filenames, isolation, auth, soft delete");
     }

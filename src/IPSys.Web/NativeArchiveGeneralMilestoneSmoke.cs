@@ -85,43 +85,49 @@ static class NativeArchiveGeneralMilestoneSmoke
               mergedArchive.FolderId==42,
             "archive Excel blank cells retain metadata and folder/year identity");
         string mark="AG204-"+Guid.NewGuid().ToString("N")[..8];
-        const string ca="/api/v2/folders/company/archive";
-        const string cg="/api/v2/folders/company/general";
+        // A02/N2: ordinary materials are archive_folder; the Excel module name
+        // ("archive"/"general") survives only in the workbook routes below.
+        const string ca="/api/v2/folders/company/archive_folder";
+        const string cg="/api/v2/folders/company/archive_folder";
         long certificate=(await Read(await client.PostAsJsonAsync(ca,new{
-            section="certificate",archive=new{
+            section="certificate",archiveFolder=new{
                 name=mark+"企业资质",category="企业资质",
                 remarks="可检索备注",tags="专属标签"}}))).GetProperty("id").GetInt64();
         long general=(await Read(await client.PostAsJsonAsync(cg,new{
-            general=new{title=mark+"综合资料",remarks=mark+"综合备注"}}))).GetProperty("id").GetInt64();
-        var generalRecord=await client.GetFromJsonAsync<JsonElement>($"{cg}/{general}");
+            section="general",archiveFolder=new{
+                name=mark+"综合资料",remarks=mark+"综合备注"}}))).GetProperty("id").GetInt64();
+        var generalRecord=await client.GetFromJsonAsync<JsonElement>(
+            $"{cg}/{general}?section=general");
         Check(generalRecord.GetProperty("businessData").GetProperty("remarks")
                 .GetString()==mark+"综合备注","general remarks round-trip through SQLCipher");
         var generalSearch=await client.GetFromJsonAsync<SearchResponse>(
             "/api/v2/search/company?q="+Uri.EscapeDataString(mark+"综合备注"));
-        Check(generalSearch?.Results.Any(x=>x.Kind=="general"&&
-              x.Id==general&&x.MatchedFields.Contains("remarks"))==true,
+        Check(generalSearch?.Results.Any(x=>x.Kind=="archive_folder"&&
+              x.Section=="general"&&x.Id==general&&
+              x.MatchedFields.Contains("remarks"))==true,
             "general remarks participate in unified search");
         var roots=await client.GetFromJsonAsync<JsonElement>(
-            "/api/v2/folders/company/archive_folder");
+            "/api/v2/folders/company/archive_folder?section=achievement");
         long root=roots.EnumerateArray().First(x=>x.GetProperty("folder")
             .GetProperty("name").GetString()=="申报与认定")
             .GetProperty("folder").GetProperty("ref").GetProperty("id").GetInt64();
         long business=(await Read(await client.PostAsJsonAsync(ca,new{
-            section="achievement",archive=new{
-                name=mark+"项目申报",category="申报与认定",folderId=root,
+            section="achievement",archiveFolder=new{
+                name=mark+"项目申报",category="申报与认定",parentId=root,
                 year="2026"}}))).GetProperty("id").GetInt64();
         var search=await client.GetFromJsonAsync<SearchResponse>(
             "/api/v2/search/company?q="+Uri.EscapeDataString(mark));
         Check(search is not null &&
-            search.Results.Any(x=>x.Kind=="archive"&&x.Section=="certificate"&&
+            search.Results.Any(x=>x.Kind=="archive_folder"&&x.Section=="certificate"&&
                 x.Id==certificate) &&
-            search.Results.Any(x=>x.Kind=="archive"&&x.Section=="achievement"&&
+            search.Results.Any(x=>x.Kind=="archive_folder"&&x.Section=="achievement"&&
                 x.Id==business) &&
-            search.Results.Any(x=>x.Kind=="general"&&x.Id==general),
-            "all archive/general hits use native FolderId");
+            search.Results.Any(x=>x.Kind=="archive_folder"&&x.Section=="general"&&
+                x.Id==general),
+            "all ordinary material hits use native FolderId");
         var ancestor=await client.GetFromJsonAsync<SearchResponse>(
             "/api/v2/search/company?q="+Uri.EscapeDataString("申报与认定"));
-        Check(ancestor is not null && ancestor.Results.Any(x=>x.Kind=="archive"&&
+        Check(ancestor is not null && ancestor.Results.Any(x=>x.Kind=="archive_folder"&&
             x.Id==business),"ancestor folder names searchable");
 
         // Nested directories are independent from editable business categories.
@@ -130,9 +136,9 @@ static class NativeArchiveGeneralMilestoneSmoke
             new{archiveFolder=new{name=mark+"二级目录",parentId=root},
                 section="achievement"}))).GetProperty("id").GetInt64();
         long nestedRecord=(await Read(await client.PostAsJsonAsync(ca,new{
-            section="achievement",archive=new{
+            section="achievement",archiveFolder=new{
                 name=mark+"深层资料",category="自定义业务标签",
-                folderId=nested,year="2024"}}))).GetProperty("id").GetInt64();
+                parentId=nested,year="2024"}}))).GetProperty("id").GetInt64();
         var nestedSheet=await Export(client,"archive","company","achievement",nestedRecord);
         var nestedImport=await Import(client,"archive","company","achievement",
             "update",nestedSheet);
@@ -199,7 +205,7 @@ static class NativeArchiveGeneralMilestoneSmoke
         Check(personal.GetProperty("created").GetInt32()==1,
             "personal archive import independent");
         var personalRows=await client.GetFromJsonAsync<JsonElement>(
-            "/api/v2/folders/personal/archive?section=certificate");
+            "/api/v2/folders/personal/archive_folder?section=certificate");
         var matched=personalRows.EnumerateArray().First(x=>
             x.GetProperty("folder").GetProperty("name").GetString()==mark+"企业资质");
         long personalId=matched.GetProperty("folder").GetProperty("ref")
@@ -213,12 +219,13 @@ static class NativeArchiveGeneralMilestoneSmoke
         var legacyGeneralSkip=await Import(client,"general","company","",
             "skip",legacyGeneral);
         Check(legacyGeneralSkip.GetProperty("skipped").GetInt32()==1,
-            "historical 1-column general XLSX remains importable");
+            "historical 1-column general XLSX remains importable: "+
+            legacyGeneralSkip.GetRawText());
         var copied=await Import(client,"general","personal","","create",generalWorkbook);
         Check(copied.GetProperty("created").GetInt32()==1,
             "native general fixed XLSX import");
         var copiedGeneral=await client.GetFromJsonAsync<JsonElement>(
-            "/api/v2/folders/personal/general");
+            "/api/v2/folders/personal/archive_folder?section=general");
         Check(copiedGeneral.EnumerateArray().Any(x=>
             x.GetProperty("businessData").GetProperty("remarks").GetString()==
             mark+"综合备注"),
@@ -264,13 +271,13 @@ static class NativeArchiveGeneralMilestoneSmoke
             $"{ca}/{certificate}?section=certificate"))
             removed.EnsureSuccessStatusCode();
         var trash=await client.GetFromJsonAsync<List<RecycleItem>>("/api/trash/company");
-        Check(trash is not null && trash.Any(x=>x.Kind=="v2_archive"&&
-            x.Id==certificate&&x.Section=="certificate"),"V2 archive recycle identity");
+        Check(trash is not null && trash.Any(x=>x.Kind=="v2_archive_folder"&&
+            x.Id==certificate&&x.Section=="certificate"),"V2 material recycle identity");
         // The attachment route is intentionally hidden while its owner is in
         // trash; the restore below validates that both versions remain intact.
         using(var restored=await client.PostAsJsonAsync(
             "/api/trash/company/restore",
-            new RecycleRequest([new RecycleKey("v2_archive",certificate,"certificate")])))
+            new RecycleRequest([new RecycleKey("v2_archive_folder",certificate,"certificate")])))
             restored.EnsureSuccessStatusCode();
         Check((await client.GetByteArrayAsync(
             $"/api/v2/files/company/{file}/versions/2/download")).SequenceEqual(revised),
@@ -285,14 +292,14 @@ static class NativeArchiveGeneralMilestoneSmoke
             "/api/trash/company/restore",
             new RecycleRequest([new RecycleKey("v2_file",link,"")])))
             relink.EnsureSuccessStatusCode();
-        using(var gone=await client.DeleteAsync($"{cg}/{general}"))
+        using(var gone=await client.DeleteAsync($"{cg}/{general}?section=general"))
             gone.EnsureSuccessStatusCode();
         trash=await client.GetFromJsonAsync<List<RecycleItem>>("/api/trash/company");
-        Check(trash is not null && trash.Any(x=>x.Kind=="v2_general"&&x.Id==general),
-            "general FolderId in recycle");
+        Check(trash is not null && trash.Any(x=>x.Kind=="v2_archive_folder"&&
+            x.Id==general&&x.Section=="general"),"general material FolderId in recycle");
         using(var restored=await client.PostAsJsonAsync(
             "/api/trash/company/restore",
-            new RecycleRequest([new RecycleKey("v2_general",general,"")])))
+            new RecycleRequest([new RecycleKey("v2_archive_folder",general,"general")])))
             restored.EnsureSuccessStatusCode();
         // A second deletion is deliberately permanent. The archive's own
         // active LinkId and all of its history must be cleaned first, in one
@@ -302,12 +309,12 @@ static class NativeArchiveGeneralMilestoneSmoke
             removedAgain.EnsureSuccessStatusCode();
         using(var purged=await client.PostAsJsonAsync(
             "/api/trash/company/purge",
-            new RecycleRequest([new RecycleKey("v2_archive",certificate,"certificate")])))
+            new RecycleRequest([new RecycleKey("v2_archive_folder",certificate,"certificate")])))
             purged.EnsureSuccessStatusCode();
         using(var missing=await client.GetAsync(
             $"/api/v2/files/company/{file}/versions/2/download"))
             Check(missing.StatusCode==HttpStatusCode.NotFound,
-                "permanent archive purge removes its orphan file history");
+                "permanent material purge removes its orphan file history");
         Console.WriteLine("N2-04 NATIVE ARCHIVE/GENERAL EXCEL SEARCH RECYCLE SMOKE PASS");
     }
 }

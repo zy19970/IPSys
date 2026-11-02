@@ -1,12 +1,19 @@
 using Microsoft.Data.Sqlite;
 
-// Native N2-04 fixed-format Excel ledgers for archive/general Folder resources.
+// Native N2-04 fixed-format Excel ledgers for ordinary materials.
+//
+// A02/N2: ordinary materials are ONE object type — archive_folder. The
+// "archive"/"general" module names survive only as the public Excel module
+// identifiers (URL segment, workbook layout, template name). Storage is
+// always an archive_folder inside the matching section scope, so a workbook
+// written by the UI, an agent or the importer lands on the same object.
 // No duplicate writes to legacy business_archives or records.
 static partial class ExcelLedger
 {
-    private static IReadOnlyList<FolderSnapshot> NativeArchives(SqliteConnection db,
-        string workspace,string section)=>
-        NativeArchiveStore.List(db,workspace,FolderKinds.Archive,section);
+    // "archive" keeps its own section; "general" is the general scope of the
+    // same folder family.
+    private static string MaterialScope(string kind,string section)=>
+        kind=="general"?"general":section;
 
     internal static byte[] NativeArchiveGeneralExport(SqliteConnection db,
         string workspace,string kind,string section,string mode,long[]? ids)
@@ -19,19 +26,16 @@ static partial class ExcelLedger
         if(kind=="archive"&&ArchiveRules.Module(workspace,section)==null ||
            kind=="general"&&section.Length!=0)
             throw new InvalidDataException("资料分类与工作区不匹配。");
+        string scope=MaterialScope(kind,section);
         HashSet<long>? chosen=mode=="filtered"?new(ids??[]):null;
         var cols=kind=="archive"?ArchiveColumns:GeneralColumns;
-        var snapshots=kind=="archive"
-            ?NativeArchives(db,workspace,section)
-            :NativeArchiveStore.List(db,workspace,FolderKinds.General,null);
         var data=new List<string[]>();
-        foreach(var item in snapshots)
+        foreach(var item in NativeArchiveStore.ListAll(db,workspace,scope))
         {
             if(chosen is not null && !chosen.Contains(item.Folder.Ref.Id))continue;
             var value=JsonOf(item.BusinessData);
             var cells=cols.Select(c=>Text(value,c.Property)).ToArray();
-            cells[^1]=DirectoryPath(db,workspace,
-                kind=="general"?"general":section,item.Folder.Parent?.Id);
+            cells[^1]=DirectoryPath(db,workspace,scope,item.Folder.Parent?.Id);
             data.Add(cells);
             if(data.Count>20000)
                 throw new InvalidDataException("单次最多导出 20000 条记录。");
@@ -119,6 +123,11 @@ static partial class ExcelLedger
         return roots[0].Key;
     }
 
+    // The general workbook only carries name + remarks, so its missing columns
+    // must never blank out category/year/tags that the same folder already has.
+    private static string? KeepColumn(string kind,string? next,string? existing)=>
+        kind=="general"?existing:KeepExcel(next,existing);
+
     internal static object NativeArchiveGeneralImport(SqliteConnection db,
         string workspace,string kind,string section,string policy,byte[] bytes)
     {
@@ -129,6 +138,7 @@ static partial class ExcelLedger
             throw new InvalidDataException("Excel 工作区或资料分类无效。");
         if(policy is not ("skip" or "update" or "create"))
             throw new InvalidDataException("重复记录策略应为 skip、update 或 create。");
+        string scope=MaterialScope(kind,section);
         var parsed=kind=="archive"
             ?ReadCompatibleArchive(bytes):ReadCompatibleGeneral(bytes);
         var rows=parsed.Rows;
@@ -139,86 +149,76 @@ static partial class ExcelLedger
         {
             try
             {
+                string name;string? category,remarks,tags,year;long? parent;
                 if(kind=="archive")
                 {
                     var input=Archive(fields);
                     if(ArchiveRules.Validate(input) is string error)
                         throw new InvalidDataException(error);
-                    long? selectedParent=legacy ? null :
-                        ArchiveParent(db,workspace,section,
-                            input.Category,fields[5],false);
-                    var matches=NativeArchives(db,workspace,section).Where(x=>{
-                        var a=(ArchiveInput)x.BusinessData;
-                        if(!Same(a.Name??"",input.Name??""))return false;
-                        if(!legacy)
-                            return x.Folder.Parent?.Id==selectedParent;
-                        return Same(a.Category??"",input.Category??"");
-                    }).ToArray();
-                    var existing=matches.FirstOrDefault();
-                    /* 歧义只对 update 有意义：create 允许同名新建，skip 本就该跳过，
-                       若在此处无差别抛错会让已有重复的数据永久无法再导入。 */
-                    if(matches.Length>1&&policy=="update")
-                        throw new InvalidDataException("同名同目录资料有 "+matches.Length+
-                            " 条（ID "+string.Join("、",matches.Take(5).Select(x=>x.Folder.Ref.Id))+
-                            "），无法确定更新目标，请先消除重复。");
-                    if(existing is not null && policy=="skip"){skipped++;continue;}
-                    if(existing is not null && policy=="update")
-                    {
-                        // Preserve the owning folder, FileId and all FileVersions.
-                        var old=(ArchiveInput)existing.BusinessData;
-                        var merged=MergeExcelUpdate(input,old);
-                        if(ArchiveRules.Validate(merged) is string invalid)
-                            throw new InvalidDataException(invalid);
-                        var update=new FolderMutationInput(Archive:merged,Section:section);
-                        if(!NativeArchiveStore.Update(db,existing.Folder.Ref,update))
-                            throw new IOException("资料记录已发生变化。");
-                        updated++;
-                    }
-                    else
-                    {
-                        // Only new company-business rows need a selected root;
-                        // updating an existing nested archive never moves its parent.
-                        var parent=ArchiveParent(db,workspace,section,
-                            input.Category,fields[5],legacy);
-                        NativeArchiveStore.Create(db,workspace,FolderKinds.Archive,
-                            new FolderMutationInput(Archive:input with {FolderId=parent},
-                                Section:section));
-                        created++;
-                    }
+                    name=input.Name!.Trim();
+                    category=input.Category;
+                    remarks=input.Remarks;
+                    tags=TagRules.Normalize(input.Tags);
+                    year=input.Year;
+                    parent=ArchiveParent(db,workspace,section,
+                        input.Category,fields[5],legacy);
                 }
                 else
                 {
                     var title=new TitleInput(fields[0],fields[1]);
                     if(GeneralRules.Validate(title) is string error)
                         throw new InvalidDataException(error);
-                    long? parent=ArchiveParent(db,workspace,"general",null,
+                    name=title.Title!.Trim();
+                    category=null;
+                    remarks=title.Remarks;
+                    tags=null;
+                    year=null;
+                    parent=ArchiveParent(db,workspace,"general",null,
                         fields.Length>2?fields[2]:null,false);
-                    var matches=NativeArchiveStore.List(db,workspace,
-                        FolderKinds.General,null).Where(x=>
-                            Same(x.Folder.Name,title.Title??"") &&
-                            x.Folder.Parent?.Id==parent).ToArray();
-                    var existing=matches.FirstOrDefault();
-                    if(matches.Length>1&&policy=="update")
-                        throw new InvalidDataException("同目录同名综合资料有 "+matches.Length+
-                            " 条（ID "+string.Join("、",matches.Take(5).Select(x=>x.Folder.Ref.Id))+
-                            "），无法确定更新目标，请先消除重复。");
-                    if(existing is not null && policy=="skip"){skipped++;continue;}
-                    if(existing is not null && policy=="update")
-                    {
-                        var old=(TitleInput)existing.BusinessData;
-                        var merged=new TitleInput(title.Title,
-                            string.IsNullOrWhiteSpace(title.Remarks)?old.Remarks:title.Remarks);
-                        if(!NativeArchiveStore.Update(db,existing.Folder.Ref,
-                            new FolderMutationInput(General:merged)))
-                            throw new IOException("综合资料记录已发生变化。");
-                        updated++;
-                    }
-                    else
-                    {
-                        NativeArchiveStore.Create(db,workspace,FolderKinds.General,
-                            new FolderMutationInput(General:title,ParentId:parent));
-                        created++;
-                    }
+                }
+
+                var matches=NativeArchiveStore.ListAll(db,workspace,scope).Where(x=>{
+                    if(!Same(x.Folder.Name,name))return false;
+                    if(!legacy||kind=="general")
+                        return x.Folder.Parent?.Id==parent;
+                    var m=(ArchiveFolderInput)x.BusinessData;
+                    return Same(m.Category??"",category??"");
+                }).ToArray();
+                var existing=matches.FirstOrDefault();
+                /* 歧义只对 update 有意义：create 允许同名新建，skip 本就该跳过，
+                   若在此处无差别抛错会让已有重复的数据永久无法再导入。 */
+                if(matches.Length>1&&policy=="update")
+                    throw new InvalidDataException("同名同目录资料有 "+matches.Length+
+                        " 条（ID "+string.Join("、",matches.Take(5).Select(x=>x.Folder.Ref.Id))+
+                        "），无法确定更新目标，请先消除重复。");
+                if(existing is not null && policy=="skip"){skipped++;continue;}
+                if(existing is not null && policy=="update")
+                {
+                    // Preserve the owning folder, FileId and all FileVersions.
+                    var old=(ArchiveFolderInput)existing.BusinessData;
+                    var merged=old with {
+                        // Name is mandatory in both workbooks, so it never falls
+                        // back; the other columns follow the "blank keeps old" rule.
+                        Name=name,
+                        Category=KeepColumn(kind,category,old.Category),
+                        Year=KeepColumn(kind,year,old.Year),
+                        Tags=KeepColumn(kind,tags,old.Tags),
+                        Remarks=KeepExcel(remarks,old.Remarks),
+                        ParentId=existing.Folder.Parent?.Id
+                    };
+                    if(!NativeArchiveStore.Update(db,existing.Folder.Ref,
+                        new FolderMutationInput(ArchiveFolder:merged,Section:scope)))
+                        throw new IOException("资料记录已发生变化。");
+                    updated++;
+                }
+                else
+                {
+                    NativeArchiveStore.Create(db,workspace,FolderKinds.ArchiveFolder,
+                        new FolderMutationInput(
+                            ArchiveFolder:new ArchiveFolderInput(
+                                name,parent,category,year,tags,remarks),
+                            Section:scope));
+                    created++;
                 }
             }
             catch(Exception ex)

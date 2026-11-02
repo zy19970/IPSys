@@ -118,17 +118,21 @@ static class NativeArchiveHttpSmoke
             Check(invalid.StatusCode==HttpStatusCode.BadRequest,
                 "archive edit cannot silently move parent");
 
-        using(var rootRejected=await client.PostAsJsonAsync(
+        // A02/N2: a material IS a folder, so the module root is no longer a
+        // forbidden parent; it is an ordinary folder move in both directions.
+        using(var toRoot=await client.PostAsJsonAsync(
             archive+$"/{doc}/move?section=achievement",new NativeFolderMoveInput(null)))
-            Check(rootRejected.StatusCode==HttpStatusCode.BadRequest,
-                "company archive cannot be moved outside all categories");
+            toRoot.EnsureSuccessStatusCode();
+        using(var fromRoot=await client.PostAsJsonAsync(
+            archive+$"/{doc}/move?section=achievement",new NativeFolderMoveInput(a)))
+            fromRoot.EnsureSuccessStatusCode();
         using(var move=await client.PostAsJsonAsync(
             archive+$"/{doc}/move?section=achievement",new NativeFolderMoveInput(b)))
             move.EnsureSuccessStatusCode();
         var moved=await Read(client,archive+$"/{doc}?section=achievement");
         Check(moved.GetProperty("folder").GetProperty("parent").GetProperty("id")
                 .GetInt64()==b &&
-              moved.GetProperty("businessData").GetProperty("folderId").GetInt64()==b,
+              moved.GetProperty("businessData").GetProperty("parentId").GetInt64()==b,
             "move updates relationship and business payload");
         using(var restoreMove=await client.PostAsJsonAsync(
             archive+$"/{doc}/move?section=achievement",new NativeFolderMoveInput(a)))
@@ -141,7 +145,7 @@ static class NativeArchiveHttpSmoke
         var updated=await Read(client,archive+$"/{doc}?section=achievement");
         Check(updated.GetProperty("businessData").GetProperty("remarks")
                 .GetString()=="新备注" &&
-              updated.GetProperty("businessData").GetProperty("folderId")
+              updated.GetProperty("businessData").GetProperty("parentId")
                 .GetInt64()==a &&
               updated.GetProperty("businessData").GetProperty("year")
                 .GetString()=="2026","edit preserves optional parent and year");
@@ -193,6 +197,13 @@ static class NativeArchiveHttpSmoke
         long general=await Add(await client.PostAsJsonAsync(
             "/api/v2/folders/personal/general",
             new FolderMutationInput(General:new TitleInput("原生综合资料"+suffix))));
+        // The module list keeps its own route but must return the unified rows.
+        var generalList=await Read(client,"/api/v2/folders/personal/general");
+        Check(generalList.EnumerateArray().Any(x=>x.GetProperty("folder")
+                .GetProperty("ref").GetProperty("id").GetInt64()==general &&
+              x.GetProperty("folder").GetProperty("ref").GetProperty("kind")
+                .GetString()=="archive_folder"),
+            "general module list returns ordinary folders");
         using(var changed=await client.PutAsJsonAsync(
             $"/api/v2/folders/personal/general/{general}",
             new FolderMutationInput(General:new TitleInput("综合资料修改"+suffix))))

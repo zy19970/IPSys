@@ -149,12 +149,12 @@ static class NativeMcpArchiveSmoke
         });
         bool explicitConfirmRequired=false;
         try{await Run("purge_trash",new{
-            workspace="company",kind="v2_archive",section="achievement",
+            workspace="company",kind="v2_archive_folder",section="achievement",
             id=purgeRecord,confirm=false
         });}catch(IOException){explicitConfirmRequired=true;}
         Check(explicitConfirmRequired,"permanent deletion requires explicit confirmation");
         var purged=await Run("purge_trash",new{
-            workspace="company",kind="v2_archive",section="achievement",
+            workspace="company",kind="v2_archive_folder",section="achievement",
             id=purgeRecord,confirm=true,request_id=Guid.NewGuid().ToString("N")
         });
         Check(purged["ok"]?.GetValue<bool>()==true,
@@ -182,7 +182,7 @@ static class NativeMcpArchiveSmoke
             before.Count==2,"list_folder_entries returns mixed direct children");
         await Run("reorder_entries",new{
             workspace="company",parent_id=folder,
-            items=new object[]{new {kind="record",id=archive},
+            items=new object[]{new {kind="folder",id=archive},
                 new {kind="folder",id=peer}},
             request_id=Guid.NewGuid().ToString("N")
         });
@@ -196,7 +196,7 @@ static class NativeMcpArchiveSmoke
         bool staleRejected=false;
         try{await Run("reorder_entries",new{
             workspace="company",parent_id=folder,
-            items=new object[]{new {kind="record",id=archive}}
+            items=new object[]{new {kind="folder",id=archive}}
         });}catch(IOException ex)when(ex.Message.Contains("409")){
             staleRejected=true;
         }
@@ -208,14 +208,14 @@ static class NativeMcpArchiveSmoke
         });}catch(IOException){cycleRejected=true;}
         Check(cycleRejected,"move_folder rejects descendant cycles");
         await Run("move_folder",new{
-            workspace="company",kind="archive",entry_id=archive,parent_id=peer
+            workspace="company",kind="archive_folder",entry_id=archive,parent_id=peer
         });
         var movedArchive=await client.GetFromJsonAsync<JsonElement>(
-            $"/api/v2/folders/company/archive/{archive}?section=achievement");
-        Check(movedArchive.GetProperty("businessData").GetProperty("folderId").GetInt64()==peer,
+            $"/api/v2/folders/company/archive_folder/{archive}?section=achievement");
+        Check(movedArchive.GetProperty("businessData").GetProperty("parentId").GetInt64()==peer,
             "move_folder updates archive's persisted business parent");
         await Run("move_folder",new{
-            workspace="company",kind="archive",entry_id=archive,parent_id=folder
+            workspace="company",kind="archive_folder",entry_id=archive,parent_id=folder
         });
         await Run("delete_archive_folder",new{
             workspace="company",folder_id=peer
@@ -225,7 +225,7 @@ static class NativeMcpArchiveSmoke
             remarks="已更新",year=(string?)null
         });
         var edited=await client.GetFromJsonAsync<JsonElement>(
-            $"/api/v2/folders/company/archive/{archive}?section=achievement");
+            $"/api/v2/folders/company/archive_folder/{archive}?section=achievement");
         Check(edited.GetProperty("businessData").GetProperty("remarks")
             .GetString()=="已更新" &&
             edited.GetProperty("businessData").GetProperty("year").GetString()=="2026" &&
@@ -283,7 +283,7 @@ static class NativeMcpArchiveSmoke
             workspace="company",archive_id=party,remarks="更新后的活动资料"
         });
         var partyEdited=await client.GetFromJsonAsync<JsonElement>(
-            $"/api/v2/folders/company/archive/{party}?section=party");
+            $"/api/v2/folders/company/archive_folder/{party}?section=party");
         Check(partyEdited.GetProperty("businessData").GetProperty("remarks")
             .GetString()=="更新后的活动资料" &&
             partyEdited.GetProperty("businessData").GetProperty("year").GetString()=="2026",
@@ -313,12 +313,12 @@ static class NativeMcpArchiveSmoke
             "party deletion soft-deletes copied record");
         var partyTrash=await Run("list_trash",new{workspace="company"});
         Check(partyTrash is JsonArray trash && trash.Any(x=>
-                x?["kind"]?.GetValue<string>()=="v2_archive" &&
+                x?["kind"]?.GetValue<string>()=="v2_archive_folder" &&
                 x?["id"]?.GetValue<long>()==copiedPartyId &&
                 x?["section"]?.GetValue<string>()=="party"),
             "party trash exposes exact section for restore_trash");
         await Run("restore_trash",new{
-            workspace="company",kind="v2_archive",id=copiedPartyId,section="party"
+            workspace="company",kind="v2_archive_folder",id=copiedPartyId,section="party"
         });
         Check(Has(await Run("list_party_archives",new{workspace="company"}),copiedPartyId),
             "restored party record returns to its original category");

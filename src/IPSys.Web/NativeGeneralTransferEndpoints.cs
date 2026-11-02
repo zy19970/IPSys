@@ -32,9 +32,20 @@ static class NativeGeneralTransferEndpoints
                 try
                 {
                     if(!v.Allowed(ctx))return Results.Unauthorized();
-                    var source=NativeArchiveStore.Get(v.Db,
-                        ResourceRef.Create(workspace,FolderKinds.General,id));
+                    var source=NativeArchiveStore.Get(v.Db,ResourceRef.Create(
+                        workspace,FolderKinds.ArchiveFolder,id,"general"));
                     if(source is null)return Results.NotFound();
+                    using(var children=v.Db.CreateCommand())
+                    {
+                        children.CommandText="""
+                            SELECT count(*) FROM folders WHERE workspace=$w
+                              AND kind='archive_folder' AND parent_id=$id AND deleted=0;
+                            """;
+                        children.Parameters.AddWithValue("$w",workspace);
+                        children.Parameters.AddWithValue("$id",id);
+                        if((long)children.ExecuteScalar()!>0)return fail(
+                            "该资料下还有子文件夹，请先把子文件夹移出后再转移。",409);
+                    }
                     var links=NativeFileLinkStore.ListFolder(v.Db,workspace,id,false)!;
                     try
                     {
@@ -61,15 +72,21 @@ static class NativeGeneralTransferEndpoints
                             folder.CommandText="""
                                 INSERT INTO folders(workspace,kind,name,
                                     section,attributes_json,position)
-                                VALUES($w,'general',$name,'',$json,
+                                VALUES($w,'archive_folder',$name,'general',$json,
                                     (SELECT COALESCE(MAX(position),-1)+1 FROM folders
-                                    WHERE workspace=$w AND kind='general' AND deleted=0));
+                                    WHERE workspace=$w AND kind='archive_folder'
+                                      AND section='general' AND deleted=0
+                                      AND parent_id IS NULL));
                                 SELECT last_insert_rowid();
                                 """;
                             folder.Parameters.AddWithValue("$w",input.TargetWorkspace);
-                            folder.Parameters.AddWithValue("$name",source.Folder.Name);
+                            folder.Parameters.AddWithValue("$name",
+                                NativeArchiveStore.UniqueName(v.Db,tx,
+                                    input.TargetWorkspace,"general",null,
+                                    source.Folder.Name));
                             folder.Parameters.AddWithValue("$json",JsonSerializer.Serialize(
-                                (TitleInput)source.BusinessData));
+                                ((ArchiveFolderInput)source.BusinessData)
+                                    with {Name=source.Folder.Name,ParentId=null}));
                             target=(long)folder.ExecuteScalar()!;
                         }
                         int versions=0,newObjects=0;
@@ -109,8 +126,8 @@ static class NativeGeneralTransferEndpoints
                             deletion.Transaction=tx;
                             deletion.CommandText="""
                                 UPDATE folders SET deleted=1
-                                WHERE id=$id AND workspace=$w AND kind='general'
-                                  AND deleted=0;
+                                WHERE id=$id AND workspace=$w AND kind='archive_folder'
+                                  AND section='general' AND deleted=0;
                                 """;
                             deletion.Parameters.AddWithValue("$id",id);
                             deletion.Parameters.AddWithValue("$w",workspace);

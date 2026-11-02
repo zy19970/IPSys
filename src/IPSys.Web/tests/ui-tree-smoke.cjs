@@ -116,25 +116,25 @@ assert.ok(run(`typeof VaultStore.loadRecycle==='function'`));
 
 
 /* BUG-001：扁平 parentId 接口必须构造完整三级目录；记录不能被提升到分类根。 */
+/* A02/N2：资料与目录是同一种行，所以示例里不再有 archives / general 两个数组。 */
 const multilevel={
  ws:'company',
  projects:[{id:1,name:'项目甲'}],
  contracts:[{id:11,name:'合同甲',projectId:1,projectName:'项目甲'}],
  archive:{
   folders:[
-   {id:70,name:'系统目录',parentId:null,position:0,isSystem:true},
-   {id:71,name:'二级目录',parentId:70,position:0},
-   {id:72,name:'三级目录',parentId:71,position:0},
+   {id:70,name:'系统目录',section:'achievement',parentId:null,position:0,isSystem:true},
+   {id:71,name:'二级目录',section:'achievement',parentId:70,position:0},
+   {id:72,name:'三级目录',section:'achievement',parentId:71,position:0},
+   {id:91,name:'三级归档',section:'achievement',parentId:72,position:0},
+   {id:92,name:'综合资料',section:'general',parentId:null,position:0},
   ],
-  archives:[{id:91,name:'三级归档',section:'achievement',folderId:72}],
   files:[
-   {linkId:10,fileId:510,version:1,ownerId:91,kind:'archive',name:'档案旧版',size:10},
-   {linkId:10,fileId:510,version:2,ownerId:91,kind:'archive',name:'档案新版',size:20},
+   {linkId:10,fileId:510,version:1,ownerId:91,kind:'archive_folder',name:'档案旧版',size:10},
+   {linkId:10,fileId:510,version:2,ownerId:91,kind:'archive_folder',name:'档案新版',size:20},
+   {linkId:11,fileId:511,version:1,ownerId:92,kind:'archive_folder',name:'综合旧版',size:1},
+   {linkId:11,fileId:511,version:2,ownerId:92,kind:'archive_folder',name:'综合新版',size:2},
   ],
-  general:[{id:92,title:'综合资料',files:[
-   {linkId:11,fileId:511,version:1,name:'综合旧版',size:1},
-   {linkId:11,fileId:511,version:2,name:'综合新版',size:2},
-  ]}],
  },
  ip:{
   rows:[{id:93,data:{name:'知识产权'}}],
@@ -152,8 +152,8 @@ const multilevel={
  ],
 };
 run('ROOT=VaultStore.buildTree('+JSON.stringify(multilevel)+')');
-const archivePath=Array.from(run("pathTo('a:achievement:91')"),x=>x.id);
-assert.deepEqual(archivePath,['root','k:achievement','af:70','af:71','af:72','a:achievement:91'],
+const archivePath=Array.from(run("pathTo('af:91')"),x=>x.id);
+assert.deepEqual(archivePath,['root','k:achievement','af:70','af:71','af:72','af:91'],
  'A record must stay under its full three-level archive directory path');
 assert.equal(run("findParent('af:72').id"),'af:71');
 assert.equal(run("findParent('af:71').id"),'af:70');
@@ -189,8 +189,8 @@ run('ROOT=VaultStore.buildTree('+JSON.stringify(multilevel)+')'); // restore ori
 
 /* BUG-002：所有业务模块只按 LinkId 展示最新版，不能按 FileId 合并共享引用。 */
 const childIds=id=>Array.from(run("findById("+JSON.stringify(id)+").children"),x=>x.id);
-assert.deepEqual(childIds('a:achievement:91'),['f:10:2']);
-assert.deepEqual(childIds('g:92'),['f:11:2']);
+assert.deepEqual(childIds('af:91'),['f:10:2']);
+assert.deepEqual(childIds('af:92'),['f:11:2']);
 assert.deepEqual(childIds('i:93').sort(),['f:12:2','f:13:2']);
 assert.deepEqual(childIds('c:11'),['f:15:2']);
 assert.deepEqual(childIds('p:1').sort(),['c:11','f:14:2']);
@@ -224,29 +224,23 @@ assert.equal(run("findById('i:603').biz.year"),'2024');
 for (const ws of ['company','personal']) {
  const scopes=ws==='company'?['certificate','achievement','party','general']:
   ['certificate','achievement','academic','general'];
- const folders=[],archives=[],general=[];
+ const folders=[];
  scopes.forEach((section,index)=>{
   const base=400+index*10+(ws==='personal'?100:0);
   folders.push(
    {id:base,name:'一级'+section,section,parentId:null,position:0},
    {id:base+1,name:'二级'+section,section,parentId:base,position:0},
-   {id:base+2,name:'三级'+section,section,parentId:base+1,position:0}
+   {id:base+2,name:'三级'+section,section,parentId:base+1,position:0},
+   {id:base+3,name:'资料'+section,section,parentId:base+2,position:0}
   );
-  if(section==='general')general.push({
-   id:base+3,title:'资料'+section,folderId:base+2,position:0,files:[]
-  });
-  else archives.push({
-   id:base+3,name:'资料'+section,section,folderId:base+2,position:0
-  });
  });
  run('ROOT=VaultStore.buildTree('+JSON.stringify({
   ws,projects:[],contracts:[],projectFiles:[],ip:{},
-  archive:{folders,archives,general,files:[],orders:{}}
+  archive:{folders,files:[],orders:{}}
  })+')');
  for(const section of scopes) {
   const base=400+scopes.indexOf(section)*10+(ws==='personal'?100:0);
-  const leaf=section==='general'?'g:'+(base+3):
-   'a:'+section+':'+(base+3);
+  const leaf='af:'+(base+3);
   assert.deepEqual(Array.from(run('pathTo('+JSON.stringify(leaf)+')'),n=>n.id),
    ['root','k:'+section,'af:'+base,'af:'+(base+1),
     'af:'+(base+2),leaf],ws+'/'+section+' 3-level directory path');

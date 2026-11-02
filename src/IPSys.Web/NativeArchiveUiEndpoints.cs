@@ -6,10 +6,6 @@ using System.Text.Json;
 // business_archives, records, attachments or business_file_links.
 static class NativeArchiveUiEndpoints
 {
-    private static string[] Sections(string w)=>w=="company"?
-        ["certificate","achievement","party"]:
-        ["certificate","achievement","academic"];
-
     public static void Map(WebApplication app,Func<string,int,IResult> fail)
     {
         app.MapGet("/api/v2/ui/archive/{workspace}",async(
@@ -22,56 +18,12 @@ static class NativeArchiveUiEndpoints
             try
             {
                 if(!v.Allowed(ctx))return Results.Unauthorized();
-                var archives=new List<object>();
-                var general=new List<object>();
                 var fileRows=new List<object>();
                 var folders=new List<object>();
                 var orders=new Dictionary<string,object>();
-                foreach(string section in Sections(workspace))
-                foreach(var snapshot in NativeArchiveStore.List(v.Db,workspace,
-                    FolderKinds.Archive,section))
-                {
-                    var data=(ArchiveInput)snapshot.BusinessData;
-                    long id=snapshot.Folder.Ref.Id;
-                    archives.Add(new {
-                        id,workspace,section,name=snapshot.Folder.Name,
-                        category=data.Category??"",remarks=data.Remarks??"",
-                        tags=data.Tags??"",year=data.Year??"",
-                        folderId=snapshot.Folder.Parent?.Id,
-                        position=snapshot.Folder.Position,
-                        modifiedAt=snapshot.Folder.ModifiedAt,
-                        createdAt=snapshot.Folder.CreatedAt
-                    });
-                    AddFiles(v.Db,workspace,id,"archive",section,fileRows);
-                }
-                foreach(var snapshot in NativeArchiveStore.List(v.Db,workspace,
-                    FolderKinds.General,null))
-                {
-                    long id=snapshot.Folder.Ref.Id;
-                    var files=new List<object>();
-                    foreach(var link in NativeFileLinkStore.ListFolder(v.Db,workspace,id,false)??[])
-                    {
-                        var file=NativeFileStore.Get(v.Db,workspace,link.FileId);
-                        if(file is null)continue;
-                        foreach(var version in file.Versions)
-                            files.Add(new {
-                                id=-(link.Id*100000+version.Version),
-                                linkId=link.Id,fileId=link.FileId,
-                                kind="general",ownerId=id,
-                                name=version.OriginalName,
-                                displayName=link.DisplayName??link.FileName,
-                                size=version.Size,sha256=version.Sha256,
-                                version=version.Version,groupId="v2-file-"+link.Id,
-                                modifiedAt=version.CreatedAt,v2=true
-                            });
-                    }
-                    var metadata=(TitleInput)snapshot.BusinessData;
-                    general.Add(new{id,title=snapshot.Folder.Name,
-                        folderId=snapshot.Folder.Parent?.Id,
-                        position=snapshot.Folder.Position,
-                        remarks=metadata.Remarks??"",modifiedAt=snapshot.Folder.ModifiedAt,
-                        createdAt=snapshot.Folder.CreatedAt,files});
-                }
+                /* A02/N2: every ordinary material IS a folder, so one loop over the
+                   directory table already returns the whole module - there is no
+                   second "record" collection to merge any more. */
                 foreach(string scope in workspace=="company"
                     ?new[]{"certificate","achievement","party","general"}
                     :new[]{"certificate","achievement","academic","general"})
@@ -133,7 +85,7 @@ static class NativeArchiveUiEndpoints
                             orders[parentId.ToString()]=order;
                     }
                 }
-                return Results.Json(new{archives,general,folders,orders,files=fileRows});
+                return Results.Json(new{folders,orders,files=fileRows});
             }
             finally{v.Gate.Release();}
         });

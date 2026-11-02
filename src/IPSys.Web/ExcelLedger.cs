@@ -41,11 +41,13 @@ static partial class ExcelLedger
         ..ArchiveLegacyColumns,new("year","年度"),
         new("directory","所属目录")
     ];
-    private static readonly Column[] GeneralLegacyColumns=[new("title","资料名称")];
+    /* A02/N2: the general workbook keeps its own headings, but the value now
+       comes from the unified folder attribute `name` (was `title`). */
+    private static readonly Column[] GeneralLegacyColumns=[new("name","资料名称")];
     private static readonly Column[] GeneralPreviousColumns=
-        [new("title","资料名称"),new("remarks","备注")];
+        [new("name","资料名称"),new("remarks","备注")];
     private static readonly Column[] GeneralColumns=
-        [new("title","资料名称"),new("remarks","备注"),new("directory","所属目录")];
+        [new("name","资料名称"),new("remarks","备注"),new("directory","所属目录")];
 
     // "更新已有": 空 Excel 单元格 = 不修改该属性；需要清空请通过属性表单操作。
     // 新建和跳过不经此合并，防止变更其他入口的既有语义。

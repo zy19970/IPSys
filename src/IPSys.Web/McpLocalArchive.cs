@@ -25,10 +25,19 @@ static partial class McpLocal
             throw new McpKnownRejectionException("目录作用域与工作区不匹配。");
         return section;
     }
-    private static string ArchiveUrl(string workspace,string section,long? id=null)=>
-        V2Url(workspace,"archive",id)+"?section="+Uri.EscapeDataString(section);
-    private static JsonObject ArchivePayload(JsonObject fields,string section)=>
-        new(){["archive"]=fields,["section"]=section};
+    // A02/N2: every ordinary material is an archive_folder. "archive" and
+    // "general" survive only as tool-facing module names; the identity handed
+    // to the HTTP layer is always archive_folder plus a section scope. Tools,
+    // arguments and result shapes stay unchanged for existing agents.
+    private static string MaterialScope(string kind,string section)=>
+        kind=="general"?"general":section;
+    // Listing must return the whole module subtree (the old record tools did);
+    // single-item reads and writes stay on the plain route.
+    private static string MaterialUrl(string workspace,string scope,long? id=null)=>
+        V2Url(workspace,"archive_folder",id)+"?section="+Uri.EscapeDataString(scope)+
+        (id.HasValue?"":"&flat=true");
+    private static JsonObject MaterialPayload(JsonObject fields,string scope)=>
+        new(){["archiveFolder"]=fields,["section"]=scope};
 
     private static object[] ArchiveTools() =>
     [
@@ -163,7 +172,7 @@ static partial class McpLocal
         {
             case "list_archives":
                 return await RequestAsync(client,HttpMethod.Get,
-                    ArchiveUrl(workspace,ArchiveSection(workspace,args)));
+                    MaterialUrl(workspace,ArchiveSection(workspace,args)));
             case "create_archive":
             {
                 string section=ArchiveSection(workspace,args);
@@ -171,12 +180,12 @@ static partial class McpLocal
                     throw new McpKnownRejectionException("档案名称不能为空。");
                 var data=Patch(new JsonObject(),args,ArchiveFields);
                 if(section=="achievement"&&workspace=="company")
-                    data["folderId"]=ReadId(args,"folder_id");
+                    data["parentId"]=ReadId(args,"folder_id");
                 else if(args.TryGetProperty("folder_id",out var supplied)&&
                     supplied.ValueKind!=JsonValueKind.Null)
-                    data["folderId"]=ReadId(args,"folder_id");
+                    data["parentId"]=ReadId(args,"folder_id");
                 return await RequestAsync(client,HttpMethod.Post,
-                    V2Url(workspace,"archive"),ArchivePayload(data,section));
+                    V2Url(workspace,"archive_folder"),MaterialPayload(data,section));
             }
             case "update_archive":
             {
@@ -184,15 +193,17 @@ static partial class McpLocal
                 if(args.TryGetProperty("folder_id",out _))
                     throw new McpKnownRejectionException("更新档案属性不能改变归属目录，请在页面中执行转移。");
                 long id=ReadId(args,"archive_id");
-                var current=await RequestAsync(client,HttpMethod.Get,ArchiveUrl(workspace,section,id));
+                var current=await RequestAsync(client,HttpMethod.Get,
+                    MaterialUrl(workspace,section,id));
                 if(current["businessData"] is not JsonObject data)
                     throw new McpKnownRejectionException("档案业务数据无效。");
-                return await RequestAsync(client,HttpMethod.Put,ArchiveUrl(workspace,section,id),
-                    ArchivePayload(Patch((JsonObject)data.DeepClone(),args,ArchiveFields),section));
+                return await RequestAsync(client,HttpMethod.Put,
+                    MaterialUrl(workspace,section,id),
+                    MaterialPayload(Patch((JsonObject)data.DeepClone(),args,ArchiveFields),section));
             }
             case "delete_archive":
                 return await RequestAsync(client,HttpMethod.Delete,
-                    ArchiveUrl(workspace,ArchiveSection(workspace,args),
+                    MaterialUrl(workspace,ArchiveSection(workspace,args),
                         ReadId(args,"archive_id")));
             case "list_archive_folders":
             {
@@ -245,46 +256,57 @@ static partial class McpLocal
             {
                 string scope=DirectoryScope(workspace,args);
                 string kind=ReadString(args,"kind");
-                if(kind is not ("archive_folder" or "archive" or "general") ||
-                   kind=="general"&&scope!="general" ||
+                if(kind is not ("archive_folder" or "archive" or "general"))
+                    throw new McpKnownRejectionException(
+                        "kind 应为 archive_folder；archive/general 仍被接受并映射为文件夹。");
+                // Old callers pass the record kind; after A02/N2 every ordinary
+                // material is a folder. Still reject combinations that would
+                // silently move the entry into the wrong module scope.
+                if(kind=="general"&&scope!="general" ||
                    kind=="archive"&&scope=="general")
-                    throw new McpKnownRejectionException("目录类别与记录类型不匹配。");
+                    throw new McpKnownRejectionException("目录类别与资料分类不匹配。");
                 var body=new JsonObject {
                     ["parentId"]=args.TryGetProperty("parent_id",out var p)&&
                         p.ValueKind!=JsonValueKind.Null?
                         JsonValue.Create(ReadId(args,"parent_id")):null
                 };
                 return await RequestAsync(client,HttpMethod.Post,
-                    V2Url(workspace,kind,ReadId(args,"entry_id"))+
+                    V2Url(workspace,"archive_folder",ReadId(args,"entry_id"))+
                     "/move?section="+Uri.EscapeDataString(scope),body);
             }
             case "list_general":
-                return await RequestAsync(client,HttpMethod.Get,V2Url(workspace,"general"));
+                return await RequestAsync(client,HttpMethod.Get,
+                    MaterialUrl(workspace,"general"));
             case "create_general":
             {
-                var fields=new JsonObject{["title"]=ReadString(args,"title")};
+                var fields=new JsonObject{["name"]=ReadString(args,"title")};
                 if(args.TryGetProperty("remarks",out _))
                     fields["remarks"]=ReadString(args,"remarks");
-                return await RequestAsync(client,HttpMethod.Post,V2Url(workspace,"general"),
-                    new JsonObject{["general"]=fields,
-                        ["parentId"]=args.TryGetProperty("parent_id",out var parent)&&
-                        parent.ValueKind!=JsonValueKind.Null?JsonValue.Create(ReadId(args,"parent_id")):null});
+                fields["parentId"]=args.TryGetProperty("parent_id",out var parent)&&
+                    parent.ValueKind!=JsonValueKind.Null?
+                    JsonValue.Create(ReadId(args,"parent_id")):null;
+                return await RequestAsync(client,HttpMethod.Post,
+                    V2Url(workspace,"archive_folder"),
+                    MaterialPayload(fields,"general"));
             }
             case "update_general":
             {
                 long id=ReadId(args,"general_id");
-                var current=await RequestAsync(client,HttpMethod.Get,V2Url(workspace,"general",id));
-                string? remarks=current["businessData"]?["remarks"]?.GetValue<string>();
+                var current=await RequestAsync(client,HttpMethod.Get,
+                    MaterialUrl(workspace,"general",id));
+                if(current["businessData"] is not JsonObject data)
+                    throw new McpKnownRejectionException("综合资料业务数据无效。");
+                var next=(JsonObject)data.DeepClone();
+                next["name"]=ReadString(args,"title");
                 if(args.TryGetProperty("remarks",out _))
-                    remarks=ReadString(args,"remarks");
+                    next["remarks"]=ReadString(args,"remarks");
                 return await RequestAsync(client,HttpMethod.Put,
-                    V2Url(workspace,"general",id),
-                    new JsonObject{["general"]=new JsonObject{
-                        ["title"]=ReadString(args,"title"),["remarks"]=remarks}});
+                    MaterialUrl(workspace,"general",id),
+                    MaterialPayload(next,"general"));
             }
             case "delete_general":
                 return await RequestAsync(client,HttpMethod.Delete,
-                    V2Url(workspace,"general",ReadId(args,"general_id")));
+                    MaterialUrl(workspace,"general",ReadId(args,"general_id")));
             default:throw new IOException("未实现的档案 MCP 操作："+name);
         }
     }

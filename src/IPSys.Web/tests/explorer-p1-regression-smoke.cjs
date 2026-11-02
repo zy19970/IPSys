@@ -35,13 +35,12 @@ const payload = {
       { id: 70, name: "一级系统目录", parentId: null, position: 0, isSystem: true },
       { id: 71, name: "二级目录", parentId: 70, position: 5 },
       { id: 72, name: "三级目录", parentId: 71, position: 0 },
+      /* A02/N2：资料就是普通文件夹，同一张表同一层排序。 */
+      { id: 90, name: "第一资料", section: "achievement", parentId: 70, position: 1 },
+      { id: 91, name: "第二资料", section: "achievement", parentId: 70, position: 2 },
+      { id: 92, name: "三级资料", section: "achievement", parentId: 72, position: 0 },
     ],
-    archives: [
-      { id: 90, name: "第一资料", section: "achievement", folderId: 70, position: 1 },
-      { id: 91, name: "第二资料", section: "achievement", folderId: 70, position: 2 },
-      { id: 92, name: "三级资料", section: "achievement", folderId: 72, position: 0 },
-    ],
-    general: [], files: [],
+    files: [],
     orders: {
       "0": [{ kind: "folder", id: 70 }],
       "70": [
@@ -57,13 +56,13 @@ const payload = {
 };
 run("VaultStore.ws='company';ROOT=VaultStore.buildTree(" + JSON.stringify(payload) + ");");
 assert.deepEqual(
-  Array.from(run("pathTo('a:achievement:92')"), x => x.id),
-  ["root", "k:achievement", "af:70", "af:71", "af:72", "a:achievement:92"],
+  Array.from(run("pathTo('af:92')"), x => x.id),
+  ["root", "k:achievement", "af:70", "af:71", "af:72", "af:92"],
   "An archive record must remain inside its complete directory path",
 );
 assert.deepEqual(
   Array.from(run("findById('af:70').children"), x => x.id),
-  ["a:achievement:91", "af:71", "a:achievement:90"],
+  ["af:91", "af:71", "af:90"],
   "Folder and record siblings must retain the authoritative mixed order",
 );
 
@@ -72,13 +71,13 @@ assert.equal(run("Drive.state.sortBy"), "ctime");
 assert.equal(run("Drive.state.sortDir"), "desc");
 assert.deepEqual(
   Array.from(run("Drive.sortedItems"), x => x.id),
-  ["a:achievement:91", "a:achievement:90", "af:71"],
+  ["af:91", "af:90", "af:71"],
   "Legacy folders without creation times use descending FolderId",
 );
 run("Drive.state.sortBy='position';Drive.state.sortDir='asc';");
 assert.deepEqual(
   Array.from(run("Drive.sortedItems"), x => x.id),
-  ["a:achievement:91", "af:71", "a:achievement:90"],
+  ["af:91", "af:71", "af:90"],
   "Explicit persistent custom order remains available",
 );
 run("Drive.state.folderId='k:project';Drive.enterContext();");
@@ -141,7 +140,7 @@ assert.equal(run("Drive.yearOf({biz:{kind:'project',start:'',end:'2022-12-31'}})
   assert.equal(vault.loading, false);
   assert.equal(run("ROOT"), oldRoot,
     "One failed endpoint cannot replace existing data with empty records");
-  assert.ok(run("findById('a:achievement:92')"),
+  assert.ok(run("findById('af:92')"),
     "The old record remains intact on load failure");
 
   run("Drive.state.ready=false;Drive.state.view='home';Drive.state.loadError=VaultStore.error;");
@@ -170,6 +169,6 @@ assert.equal(run("Drive.yearOf({biz:{kind:'project',start:'',end:'2022-12-31'}})
   await vault.loadAll("company");
   assert.equal(vault.loading, false);
   assert.equal(vault.error, null);
-  assert.ok(run("findById('a:achievement:92')"));
+  assert.ok(run("findById('af:92')"));
   console.log("EXPLORER P1 PASS: mixed archive order, module 500 error, trash 503 error, retry success");
 })().catch(e => { console.error(e); process.exitCode = 1; });

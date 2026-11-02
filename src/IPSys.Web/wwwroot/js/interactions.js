@@ -1312,9 +1312,7 @@ function archiveSortAllowed(node) {
     !Drive.state.extFilter && Drive.state.sortBy === "position" &&
     Drive.state.sortDir === "asc" &&
     (Drive.currentFolder.children || []).some(n => n.id === node?.id) &&
-    (node.biz?.kind === "archive_folder" ||
-      (node.biz?.kind === "archive" && node.biz?.section === archiveScopeSection()) ||
-      (node.biz?.kind === "general" && archiveScopeSection() === "general"));
+    node.biz?.kind === "archive_folder";
 }
 
 async function reorderArchiveEntry(node, direction) {
@@ -1324,7 +1322,7 @@ async function reorderArchiveEntry(node, direction) {
   }
   const parent = Drive.currentFolder;
   const peers = (parent.children || []).filter(n =>
-    ["archive_folder","archive","general"].includes(n.biz?.kind));
+    n.biz?.kind === "archive_folder");
   const index = peers.findIndex(n => n.id === node.id);
   const next = index + direction;
   if (next < 0 || next >= peers.length) return;
@@ -1332,7 +1330,8 @@ async function reorderArchiveEntry(node, direction) {
   const section=archiveScopeSection();
   const parentId = parent.id === "k:" + section ? 0 : Number(parent.biz?.id);
   const items = peers.map(n => ({
-    kind: n.biz?.kind === "archive_folder" ? "folder" : "record",
+    /* 同层兄弟现在全是普通文件夹；后端仍接受 record 作为旧写法。 */
+    kind: "folder",
     id: Number(n.biz?.id),
   }));
   try {
@@ -1350,11 +1349,10 @@ async function reorderArchiveEntry(node, direction) {
 
 function moveArchiveEntry(node) {
   const biz = node?.biz || {};
+  /* A02/N2：普通资料就是文件夹，移动走同一条文件夹移动通道。 */
   const folder = biz.kind === "archive_folder";
-  const section=folder ? (biz.section || "achievement")
-    : biz.kind === "general" ? "general" : biz.section;
-  if (!section || !catIsDir(section,VaultStore.ws) ||
-    !(folder || biz.kind === "archive" || biz.kind === "general")) return;
+  const section = biz.section || "achievement";
+  if (!folder || !section || !catIsDir(section, VaultStore.ws)) return;
   const archiveRoot = findById("k:" + section);
   const dirs = [];
   const visit = n => {
@@ -1368,30 +1366,28 @@ function moveArchiveEntry(node) {
       if (child.biz?.kind === "archive_folder") visit(child);
   };
   visit(archiveRoot);
+  /* 顶层就是分类层本身；既然资料也是文件夹，任何节点都能回到顶层。 */
   const choices = [
-    ...((folder || !(VaultStore.ws === "company" && section === "achievement"))
-      ? [{value:"0",label:catLabel(section) + "（顶层）"}] : []),
+    {value:"0",label:catLabel(section) + "（顶层）"},
     ...dirs.map(n => ({
       value:String(n.biz.id),
       label:(pathTo(n.id)||[]).filter(p => p.id.startsWith("af:"))
         .map(p => p.name).join(" › "),
     })),
   ];
-  const oldParent = biz.parentId ?? biz.folderId ?? null;
+  const oldParent = biz.parentId ?? null;
   const targetChoices = choices.filter(x => Number(x.value) !== (oldParent ?? 0));
   if (!targetChoices.length) return toast("没有其它可以移动到的目录");
   RecordForms.open({
-    title:folder ? "移动目录" : "移动资料",
+    title:"移动目录",
     submitText:"移动",
     fields:[{key:"target",label:"目标目录",type:"select",required:true,options:targetChoices}],
     onSubmit:async data => {
       const target = Number(data.target);
-      if (!Number.isSafeInteger(target) || target < 0 ||
-          (!folder && target === 0 &&
-            VaultStore.ws === "company" && section === "achievement"))
+      if (!Number.isSafeInteger(target) || target < 0)
         throw new Error("请选择有效目标目录");
-      await VaultStore.api("/api/v2/folders/" + VaultStore.ws + "/" +
-        (folder ? "archive_folder" : biz.kind) + "/" + biz.id +
+      await VaultStore.api("/api/v2/folders/" + VaultStore.ws +
+        "/archive_folder/" + biz.id +
         "/move?section=" + encodeURIComponent(section), {
           method:"POST",json:{parentId:target || null},
         });
@@ -1417,36 +1413,40 @@ function openNewMenu(anchor) {
   const cur = tag === "k" ? s.folderId.slice(2) : "";
   /* An ordinary directory uses its own module scope. */
   const inDir = tag === "af" ? archiveScopeSection() : "";
-  const parentId = tag === "af" ? s.folderId.slice(3) : null;
+  /* 目录 id 是 "af:<id>" 字形串，表单直接当 JSON 数字发送，所以这里必须转成
+     Number；原先只有 archive() 内部做转换，统一走 archiveFolder() 后不能再依赖它。 */
+  const parentId = tag === "af" ? Number(s.folderId.slice(3)) : null;
   const here = inDir || cur;
 
-  /* 菜单项直接由当前工作区的分类表生成 —— 有几个模块就几项,
-     顺序也和左侧导航一致,不另写一份清单。 */
+  /* 每个分类只产生一种对象:目录型分类下都是普通资料文件夹,其余分类保留
+     各自的业务表单。菜单只回答"在哪个模块新建",不再暗示有两种资料对象。 */
   const rows = catsOf(VaultStore.ws).map((c) => {
-    const label =
-      c.id === "project" ? "新建项目" : c.id === "ip" ? "新建知识产权" : c.id === "general" ? "新建资料" : `新建${c.label}`;
-    return { id: c.id, label, can: onHome || c.id === here };
+    const dir = catIsDir(c.id, VaultStore.ws);
+    const label = dir ? `新建${c.label}`
+      : c.id === "project" ? "新建项目"
+      : c.id === "ip" ? "新建知识产权"
+      : `新建${c.label}`;
+    return { id: c.id, label, can: onHome || c.id === here, dir };
   });
 
   /* 合同不是顶层分类,它只能挂在项目下,所以不进分类表 —— 只有站在项目里
      才出现,而且带着这个项目的 id 走。 */
   const inProject = tag === "p" ? s.folderId.slice(2) : "";
-  if (inProject) rows.push({ id: "contract", label: "新建合同", can: true });
+  if (inProject) rows.push({ id: "contract", label: "新建合同", can: true, dir: false });
 
   const handlers = {
     upload: () => pickFiles(),
   };
   for (const m of rows) {
-    handlers[`new-${m.id}`] =
-      m.id === "project"
-        ? () => RecordForms.project()
-        : m.id === "contract"
-        ? () => RecordForms.contract(null, Number(inProject))
-        : m.id === "ip"
-        ? () => RecordForms.ip()
-        : m.id === "general"
-        ? () => RecordForms.general()
-        : () => RecordForms.archive(m.id, null, m.id === "achievement" ? parentId : null);
+    handlers[`new-${m.id}`] = m.dir
+      ? () => RecordForms.archiveFolder(m.id, null, parentId)
+      : m.id === "project"
+      ? () => RecordForms.project()
+      : m.id === "contract"
+      ? () => RecordForms.contract(null, Number(inProject))
+      : m.id === "ip"
+      ? () => RecordForms.ip()
+      : () => RecordForms.archiveFolder(m.id, null, parentId);
   }
 
   /* 站在分类里,分类已经决定了子项类型,只留这一项 —— 不让用户再选一次。
@@ -1691,6 +1691,9 @@ function showItemMenu(id, x, y) {
     return;
   }
 
+  /* A02/N2：普通资料是文件夹，模块名仍按 section 折算，复制/转移照旧可用。 */
+  const recordKind = b.kind === "archive_folder"
+    ? (b.section === "general" ? "general" : "archive") : b.kind;
   const html = [
     isFolder ? MI("open", "folder", "打开") : MI("open", "eye", "预览"),
     /* 合同挂在项目下,所以在项目节点上直接给一个建合同的入口 —— 比先打开
@@ -1701,17 +1704,15 @@ function showItemMenu(id, x, y) {
     !isFolder ? MI("newver", "upload", "上传新版本") : "",
     !isFolder ? MI("assoc", "copy", "共享原件到其它记录") : "",
     !isFolder ? MI("assoc-move", "move", "移动附件到其它记录") : "",
-    isFolder && ["project","contract","ip","archive","general"].includes(b.kind)
+    isFolder && ["project","contract","ip","archive","general"].includes(recordKind)
       ? MI("copy-record","copy","复制整条记录") : "",
-    isFolder && ["project","contract","ip","archive","general"].includes(b.kind)
+    isFolder && ["project","contract","ip","archive","general"].includes(recordKind)
       ? MI("transfer-record","move","移动或跨区转移") : "",
     '<div class="ctx-sep"></div>',
     isFolder ? MI("rename", "rename", "重命名", "F2") : "",
     archiveSortAllowed(item) ? MI("sort-up", "arrow-up", "上移") : "",
     archiveSortAllowed(item) ? MI("sort-down", "arrow-down", "下移") : "",
-    b.kind === "archive_folder" ||
-      (b.kind === "archive" && catIsDir(b.section,VaultStore.ws)) ||
-      (b.kind === "general" && catIsDir("general",VaultStore.ws))
+    b.kind === "archive_folder"
       ? MI("move-archive", "move", "移动至其他目录") : "",
     b.kind === "archive_folder"
       ? MI("delete-folder","trash","删除文件夹","",true)

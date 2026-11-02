@@ -54,11 +54,17 @@ const generalForm=read("wwwroot/js/forms.js");
 const archiveLedger=read("NativeArchiveGeneralExcelLedger.cs");
 assert.match(shellApp,/b\.kind === "ip" \? "当前权利人"/,
   "IP details label must match current right-holder ledger heading");
-assert.match(shellStore,/remarks: g\.remarks \|\| ""/,
+/* A02/N2：综合资料走同一套普通文件夹装配，备注来自行里的 remarks。 */
+assert.match(shellStore,/remarks: f\.remarks \|\| ""/,
   "General remarks must be mapped from database, not hardcoded empty");
 assert.match(generalForm,/remarks: d\.remarks/,
   "General edit/create form must persist remarks");
-assert.match(archiveLedger,/DirectoryPath\(db,workspace,\s*kind=="general"\?"general":section,item\.Folder\.Parent\?\.Id\)/,
+// A02/N2: one storage scope per module, computed once from the request kind, so
+// the same scope drives listing, export ancestry and import placement.
+assert.match(archiveLedger,/string scope=MaterialScope\(kind,section\);/,
+  "Excel resolves one module scope for both reading and writing");
+assert.match(archiveLedger,
+  /cells\[\^1\]=DirectoryPath\(db,workspace,scope,item\.Folder\.Parent\?\.Id\)/,
   "Excel exports folder ancestry with the actual workspace and module scope");
 assert.match(archiveLedger,/FolderMap\(db,workspace,section\)/,
   "Directory paths must be looked up within the correct workspace and module");
@@ -107,7 +113,8 @@ assert.match(shellStore,/year: String\(p\.startDate \|\| p\.endDate \|\| ""\)/,
 assert.match(forms,/文件本体名称/);
 assert.match(forms,/当前位置显示名/,"File property explains LinkId display alias");
 const archiveUi=read("NativeArchiveUiEndpoints.cs");
-assert.equal((archiveUi.match(/displayName=link\.DisplayName\?\?link\.FileName/g)||[]).length,2,
+// A02/N2: one snapshot collection, so the alias is emitted from exactly one place.
+assert.equal((archiveUi.match(/displayName=link\.DisplayName\?\?link\.FileName/g)||[]).length,1,
   "General and archive file snapshots include per-location display aliases");
 assert.match(shellApp,/line\("当前位置显示名", it\.name\)/);
 assert.match(shellApp,/line\("当前版本原件名", meta\.name\)/);

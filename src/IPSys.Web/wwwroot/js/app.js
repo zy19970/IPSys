@@ -869,8 +869,8 @@ const Drive = {
     const b = node.biz || {};
     if (b.kind === "project") return "project";
     if (b.kind === "ip") return "ip";
-    if (b.kind === "archive") return b.section || "";
-    if (b.kind === "general") return "general";
+    /* 普通资料就是文件夹：模块由 section 回答，综合资料单列。 */
+    if (b.kind === "archive_folder") return b.section || "";
     return "";
   },
 
@@ -882,12 +882,12 @@ const Drive = {
     return folderIcon(size);
   },
 
-  /* 一个节点下有多少条业务记录。公司业务档案的目录不是记录,不能算进去。 */
+  /* 一个节点下有多少个业务对象。A02/N2 之后普通资料就是文件夹,
+     所以这里数所有非合成节点;分类本身(synthetic)不计数。 */
   recordCount(node) {
-    const kinds = new Set(["project", "archive", "ip", "general"]);
     let n = 0;
     walk(node, (x) => {
-      if (x !== node && x.type === "folder" && kinds.has((x.biz || {}).kind)) n++;
+      if (x !== node && x.type === "folder" && !x.synthetic && (x.biz || {}).kind) n++;
     });
     return n;
   },
@@ -918,11 +918,11 @@ const Drive = {
     const files = allFiles(ROOT);
     const bytes = files.reduce((a, b) => a + (b.size || 0), 0);
 
-    /* 记录 = 挂在分类下的文件夹。分类本身是 synthetic 节点,没有 biz;
-       业务档案的目录也不是记录(它只是分组的壳)。 */
+    /* 最近更新 = 任何带业务身份的文件夹。A02/N2 之后普通资料就是文件夹,
+       不能再按 kind 把 archive_folder 排除在外。 */
     const records = [];
     walk(ROOT, (n) => {
-      if (n.type === "folder" && n.biz && n.biz.kind !== "archive_folder") records.push(n);
+      if (n.type === "folder" && n.biz && n.biz.kind) records.push(n);
     });
 
     /* 最近更新按业务日期倒序。未来计划日不算「最近」,所以优先只取今天及以前;
@@ -1258,10 +1258,11 @@ const Drive = {
     const path = parent ? (pathTo(parent.id) || [ROOT]).map((n) => n.name).join(" / ") : "回收站";
     const isFolder = it.type === "folder";
 
-    /* 「修改」入口:只有挂在分类下、带业务字段的记录才给。
-       固定分类(没有记录可改)、附件、回收站里的删除项都不出现这个按钮。 */
+    /* 「修改」入口:挂在分类下、带业务字段的文件夹都可以改。
+       普通资料文件夹与目录是同一种对象,所以这里不再按 kind 排除它。
+       固定分类(没有记录可改)、附件、回收站里的删除项不出现这个按钮。 */
     const canEdit = !locked && (isFolder
-      ? !it.synthetic && !!b.kind && b.kind !== "trash" && b.kind !== "archive_folder" && !!b.id
+      ? !it.synthetic && !!b.kind && b.kind !== "trash" && !!b.id
       : !!VaultStore.metaOf(it.id)?.fileId);
     const editAct = canEdit
       ? `<button class="sec-act" data-detail-act="edit" title="修改这条记录的属性">${icon("rename", 13)}<span>修改</span></button>`

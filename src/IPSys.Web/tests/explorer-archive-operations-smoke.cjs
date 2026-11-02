@@ -23,9 +23,10 @@ function folder(id,name,children,parentId,isSystem){
  return {id:"af:"+id,name,type:"folder",
   biz:{kind:"archive_folder",id,section:"achievement",parentId,isSystem:!!isSystem},children:children||[]};
 }
+/* A02/N2：资料与目录是同一种节点，只保留名字上的差别，用来验证同层混排。 */
 function record(id,parentId){
- return {id:"a:achievement:"+id,name:"资料"+id,type:"folder",
-  biz:{kind:"archive",section:"achievement",id,folderId:parentId},children:[]};
+ return {id:"af:"+id,name:"资料"+id,type:"folder",
+  biz:{kind:"archive_folder",section:"achievement",id,parentId},children:[]};
 }
 const rec1=record(91,70),rec2=record(90,70);
 const child=folder(71,"下级目录",[],70);
@@ -121,8 +122,8 @@ const fn=name=>vm.runInContext(name,context);
  assert.equal(calls.at(-1).url,
   "/api/v2/folders/company/entries/reorder?section=achievement");
  assert.deepEqual(JSON.parse(JSON.stringify(calls.at(-1).opts.json)),{
-  parentId:70,items:[{kind:"folder",id:71},{kind:"record",id:91},
-   {kind:"record",id:90}]
+  parentId:70,items:[{kind:"folder",id:71},{kind:"folder",id:91},
+   {kind:"folder",id:90}]
  });
  const count=calls.length;
  Drive.state.query="search";
@@ -134,14 +135,16 @@ const fn=name=>vm.runInContext(name,context);
  assert.equal(calls.length,count,"Filtered/manual sort must not reorder hidden siblings");
 
  fn("moveArchiveEntry")(rec1);
- assert.equal(modals.at(-1).title,"移动资料");
+ /* A02/N2：只有一种对象，标题不再分「资料 / 目录」。 */
+ assert.equal(modals.at(-1).title,"移动目录");
  const choices=modals.at(-1).fields[0].options;
  assert.ok(choices.some(x=>x.value==="71"));
- assert.ok(!choices.some(x=>x.value==="0"));
+ /* 顶层=分类层；资料也是文件夹，所以回到顶层同样可选。 */
+ assert.ok(choices.some(x=>x.value==="0"));
  assert.ok(!choices.some(x=>x.value==="70"));
  await modals.at(-1).onSubmit({target:"71"});
  assert.equal(calls.at(-1).url,
-  "/api/v2/folders/company/archive/91/move?section=achievement");
+  "/api/v2/folders/company/archive_folder/91/move?section=achievement");
  assert.equal(calls.at(-1).opts.json.parentId,71);
 
  const descendant=folder(73,"下级子目录",[],72);

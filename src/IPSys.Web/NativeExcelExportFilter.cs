@@ -13,25 +13,31 @@ static partial class ExcelLedger
             return input.Ids;
         string query=(input.Query??"").Trim();
         HashSet<long>? matches=null;
+        // A02/N2: storage kind is archive_folder, while the Excel module name is
+        // still "archive"/"general". Derive the module from the section so the
+        // filtered-export contract does not change for callers.
+        string ModuleOf(string storageKind,string hitSection)=>
+            storageKind=="archive_folder"
+                ?(hitSection=="general"?"general":"archive"):storageKind;
         if(query.Length>0)
         {
             var results=SearchStore.Find(db,workspace,query,int.MaxValue).Results;
             matches=new HashSet<long>();
             foreach(var hit in results)
             {
-                if(hit.Kind==kind && (kind!="archive"||hit.Section==section))
-                    matches.Add(hit.Id);
-                else if(hit.Kind=="file" && hit.OwnerKind==kind &&
-                        (kind!="archive"||hit.Section==section))
-                    matches.Add(hit.OwnerId);
+                if(ModuleOf(hit.Kind,hit.Section)!=kind ||
+                   kind=="archive"&&hit.Section!=section)
+                    continue;
+                if(hit.Kind=="file")matches.Add(hit.OwnerId);
+                else matches.Add(hit.Id);
             }
         }
         var rows=kind switch
         {
             "project"=>NativeFolderStore.List(db,workspace,FolderKinds.Project),
             "ip"=>NativeFolderStore.List(db,workspace,FolderKinds.Ip),
-            "archive"=>NativeArchiveStore.List(db,workspace,FolderKinds.Archive,section),
-            "general"=>NativeArchiveStore.List(db,workspace,FolderKinds.General,null),
+            "archive"=>NativeArchiveStore.ListAll(db,workspace,section),
+            "general"=>NativeArchiveStore.ListAll(db,workspace,"general"),
             _=>throw new InvalidDataException("Excel 导出模块无效。")
         };
         string status=(input.Status??"").Trim();

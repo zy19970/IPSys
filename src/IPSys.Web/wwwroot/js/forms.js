@@ -223,6 +223,8 @@ const RecordForms = {
     const old = b.raw || {};
     const scope = section || b.section;
     const name = node?.name || "";
+    /* 只有一种对象，标题就不再区分"资料"和"文件夹"；所属模块由菜单和
+       面包屑回答，表单标题保持同一句话。 */
     this.open({
       title: node ? (renameOnly ? "重命名文件夹" : "文件夹属性") : "新建文件夹",
       submitText: node ? "保存" : "创建",
@@ -257,72 +259,6 @@ const RecordForms = {
         await refreshCurrent();
         toast(node ? "文件夹已保存" : "文件夹已创建");
       }
-    });
-  },
-
-  /* ---------------- 档案（资质 / 成果 / 学术） ---------------- */
-
-  archive(section, node, parentId = null) {
-    const isEdit = !!node;
-    const b = node?.biz || {};
-    const r = b.raw || {};
-    const sec = section || b.section || "certificate";
-    const label = catLabel(sec);
-
-    this.open({
-      title: isEdit ? `${label}属性` : `新建${label}`,
-      submitText: isEdit ? "保存" : "创建",
-      values: isEdit
-        ? {
-            name: r.name || "",
-            category: r.category || "",
-            year: r.year || "",
-            tags: r.tags || "",
-            remarks: r.remarks || "",
-          }
-        : {},
-      fields: [
-        { key: "name", label: "名称", span: 2, required: true },
-        { key: "category", label: "类别",
-          hint: sec === "achievement" && VaultStore.ws === "company"
-            ? "仅修改资料属性；所属目录由独立的移动操作维护。" : "" },
-        { key: "year", label: "年度", placeholder: "如 2026" },
-        { key: "tags", label: "标签", span: 2 },
-        {
-          key: "remarks",
-          label: "备注",
-          type: "textarea",
-          span: 2,
-          hint: sec === "certificate" ? "备注里可写明有效期(如 2027-06-30),方便到期前查找" : "",
-        },
-      ],
-      onSubmit: async (d) => {
-        const payload = {
-          archive: {
-            name: d.name,
-            category: d.category,
-            year: d.year,
-            remarks: d.remarks,
-            tags: d.tags,
-          },
-          section: sec,
-        };
-        if (isEdit) {
-          await VaultStore.api(`/api/v2/folders/${VaultStore.ws}/archive/${b.id}?section=${encodeURIComponent(sec)}`, {
-            method: "PUT",
-            json: payload,
-          });
-        } else {
-          /* 站在业务档案的目录里新建 → 记到该目录下(parentId) */
-          if (parentId != null) payload.archive.folderId = Number(parentId);
-          await VaultStore.api(`/api/v2/folders/${VaultStore.ws}/archive?section=${encodeURIComponent(sec)}`, {
-            method: "POST",
-            json: payload,
-          });
-        }
-        toast(isEdit ? "已保存" : "已创建");
-        await refreshCurrent();
-      },
     });
   },
 
@@ -411,39 +347,6 @@ const RecordForms = {
           await VaultStore.api(`/api/v2/folders/${VaultStore.ws}/ip/${b.id}`, { method: "PUT", json: payload });
         } else {
           await VaultStore.api(`/api/v2/folders/${VaultStore.ws}/ip`, { method: "POST", json: payload });
-        }
-        toast(isEdit ? "已保存" : "已创建");
-        await refreshCurrent();
-      },
-    });
-  },
-
-  /* ---------------- 综合资料 ---------------- */
-
-  general(node, parentId = null) {
-    const isEdit = !!node;
-    const b = node?.biz || {};
-    const r = b.raw || {};
-
-    this.open({
-      title: isEdit ? "资料属性" : "新建资料",
-      submitText: isEdit ? "保存" : "创建",
-      values: isEdit ? { title: r.title || node.name || "", remarks: r.remarks || "" } : {},
-      fields: [
-        { key: "title", label: "资料名称", span: 2, required: true },
-        { key: "remarks", label: "备注", type: "textarea", span: 2 },
-      ],
-      onSubmit: async (d) => {
-        if (isEdit) {
-          await VaultStore.api(`/api/v2/folders/${VaultStore.ws}/general/${b.id}`, {
-            method: "PUT",
-            json: { general: { title: d.title, remarks: d.remarks } },
-          });
-        } else {
-          await VaultStore.api(`/api/v2/folders/${VaultStore.ws}/general`, {
-            method: "POST",
-            json: { general: { title: d.title, remarks: d.remarks }, parentId },
-          });
         }
         toast(isEdit ? "已保存" : "已创建");
         await refreshCurrent();
@@ -573,9 +476,8 @@ const RecordForms = {
     const kind = node?.biz?.kind;
     if (kind === "project") return this.project(node);
     if (kind === "contract") return this.contract(node);
-    if (kind === "archive") return this.archive(node.biz.section, node);
+    if (kind === "archive_folder") return this.archiveFolder(node.biz.section, node);
     if (kind === "ip") return this.ip(node);
-    if (kind === "general") return this.general(node);
     if (kind === "file") return this.file(node);
     toast("这条记录没有可编辑的业务字段");
   },

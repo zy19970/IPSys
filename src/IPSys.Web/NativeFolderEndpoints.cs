@@ -29,7 +29,8 @@ static class NativeFolderEndpoints
         IResult Bad(string text,int status=400)=>fail(text,status);
 
         app.MapGet("/api/v2/folders/{workspace}/{kind}",async (
-            HttpContext ctx,Vault v,string workspace,string kind,long? projectId,long? parentId,string? section)=>
+            HttpContext ctx,Vault v,string workspace,string kind,long? projectId,long? parentId,
+            string? section,bool? flat)=>
         {
             if(!v.Allowed(ctx))return (IResult)Results.Unauthorized();
             await v.Gate.WaitAsync(ctx.RequestAborted);
@@ -41,6 +42,17 @@ static class NativeFolderEndpoints
                     if(NativeArchiveStore.Handles(kind))
                     {
                         if(projectId.HasValue) return Bad("该资料类别不使用 projectId。");
+                        // A02/N2: callers that used to read every archive record in
+                        // one call (MCP list_archives/list_general, Excel) need the
+                        // whole subtree, while the browser asks one level at a time.
+                        if(flat==true)
+                        {
+                            if(kind!=FolderKinds.ArchiveFolder)
+                                return Bad("只有普通资料目录支持平铺列出。");
+                            string scope=string.IsNullOrEmpty(section)&&workspace=="company"
+                                ?"achievement":section??"";
+                            return Results.Json(NativeArchiveStore.ListAll(v.Db,workspace,scope));
+                        }
                         return Results.Json(NativeArchiveStore.List(v.Db,workspace,kind,section,parentId));
                     }
                     if(parentId.HasValue || !string.IsNullOrEmpty(section))

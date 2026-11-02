@@ -26,7 +26,10 @@ record IpInput(
 
 record ArchiveInput(string? Name, string? Category, string? Remarks, string? Tags, string? Year = null,long? FolderId = null);
 
-record ArchiveTransfer(string TargetWorkspace,string TargetSection,bool Move);
+// TargetFolderId lets a caller name the destination outright instead of letting
+// the server guess a directory by matching the category text.
+record ArchiveTransfer(string TargetWorkspace,string TargetSection,bool Move,
+    long? TargetFolderId=null);
 record ArchiveFolderInput(string Name,long? ParentId,
     string? Category=null,string? Year=null,string? Tags=null,string? Remarks=null);
 record ArchiveEntryOrderItem(string Kind,long Id);

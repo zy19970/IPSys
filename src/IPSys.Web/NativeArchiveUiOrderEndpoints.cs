@@ -19,7 +19,7 @@ static class NativeArchiveUiOrderEndpoints
                 if(!v.Allowed(ctx))return Results.Unauthorized();
                 if(v.FileTaskActive||v.ExitRequested)return fail("文件任务正在执行。",409);
                 var original=NativeArchiveStore.List(v.Db,workspace,
-                    FolderKinds.Archive,section).Select(x=>x.Folder.Ref.Id).ToArray();
+                    FolderKinds.ArchiveFolder,section).Select(x=>x.Folder.Ref.Id).ToArray();
                 var proposed=input.Ids??[];
                 if(proposed.Length!=original.Length ||
                    proposed.Distinct().Count()!=original.Length ||
@@ -30,7 +30,7 @@ static class NativeArchiveUiOrderEndpoints
                 cmd.Transaction=tx;
                 cmd.CommandText="""
                     UPDATE folders SET position=$position
-                    WHERE id=$id AND workspace=$w AND kind='archive'
+                    WHERE id=$id AND workspace=$w AND kind='archive_folder'
                       AND section=$section AND deleted=0;
                     """;
                 cmd.Parameters.AddWithValue("$w",workspace);

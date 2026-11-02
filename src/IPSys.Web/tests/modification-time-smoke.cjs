@@ -37,7 +37,8 @@ assert.ok(!app.includes("isFolder && it.dateLabel"),
   "business date must not override the actual update timestamp");
 assert.match(store,/mtime:\s*toTs\(f\.modifiedAt\)/,
   "file nodes should take per-version backend time");
-for(const symbol of ["c","a","p","row","g","f"]){
+/* A02/N2：资料/综合资料已是普通文件夹，只保留真实存在的映射来源。 */
+for(const symbol of ["c","p","row","f"]){
   assert.ok(store.includes("toTs("+symbol+".modifiedAt)"),
     "missing folder/record timestamp mapping "+symbol);
 }
@@ -66,7 +67,9 @@ assert.ok(apis.every(s=>s.includes("modifiedAt=version.CreatedAt")),
 assert.ok(apis.every(s=>s.includes("modifiedAt=")),
   "all business view APIs must expose record timestamps");
 const archive=apis[0];
-assert.ok(archive.includes("modifiedAt=snapshot.Folder.ModifiedAt") &&
-          archive.includes("modifiedAt=row.ModifiedAt"),
+// A02/N2: records and directories are one table, so one timestamp source covers
+// the whole module. The requirement is that both times are really exposed.
+assert.ok(archive.includes("modifiedAt=row.ModifiedAt") &&
+          archive.includes("createdAt=row.CreatedAt"),
   "archive/general records and recursive directories require timestamps");
 console.log("MODIFICATION TIME SMOKE PASS: V2 additive schema, latest version timestamps, UTC, all business views");

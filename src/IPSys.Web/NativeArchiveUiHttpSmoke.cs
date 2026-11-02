@@ -48,12 +48,17 @@ static class NativeArchiveUiHttpSmoke
             new {general=new{title=marker+"综合资料"}});
         var baseSnapshot=await client.GetFromJsonAsync<JsonElement>(
             "/api/v2/ui/archive/company");
-        Assert(baseSnapshot.GetProperty("archives").EnumerateArray().Any(x=>
-                x.GetProperty("id").GetInt64()==certificate) &&
-               baseSnapshot.GetProperty("general").EnumerateArray().Any(x=>
-                x.GetProperty("id").GetInt64()==general),
+        /* A02/N2: the browser snapshot has exactly one collection. A material and
+           a folder are the same row, so both the former "record" and the former
+           "general record" must arrive through folders[]. */
+        Assert(baseSnapshot.GetProperty("folders").EnumerateArray().Any(x=>
+                x.GetProperty("id").GetInt64()==certificate &&
+                x.GetProperty("section").GetString()=="certificate") &&
+               baseSnapshot.GetProperty("folders").EnumerateArray().Any(x=>
+                x.GetProperty("id").GetInt64()==general &&
+                x.GetProperty("section").GetString()=="general"),
                "current archive/general browser reads same native FolderId as CRUD");
-        Assert(baseSnapshot.GetProperty("archives").EnumerateArray().Any(x=>
+        Assert(baseSnapshot.GetProperty("folders").EnumerateArray().Any(x=>
                 x.GetProperty("id").GetInt64()==party &&
                 x.GetProperty("section").GetString()=="party") &&
                baseSnapshot.GetProperty("files").EnumerateArray().Any(x=>
@@ -133,8 +138,9 @@ static class NativeArchiveUiHttpSmoke
         Assert(v.GetProperty("files").EnumerateArray().Count(x=>
             x.GetProperty("ownerId").GetInt64()==record)==2,
             "both FileVersions displayed with one stable FolderId and FileId");
-        Assert(v.GetProperty("archives").EnumerateArray().Any(x=>
+        Assert(v.GetProperty("folders").EnumerateArray().Any(x=>
             x.GetProperty("id").GetInt64()==record &&
+            x.GetProperty("parentId").GetInt64()==child &&
             !string.IsNullOrWhiteSpace(x.GetProperty("modifiedAt").GetString()) &&
             !string.IsNullOrWhiteSpace(x.GetProperty("createdAt").GetString())) &&
             v.GetProperty("folders").EnumerateArray().Any(x=>
@@ -151,20 +157,11 @@ static class NativeArchiveUiHttpSmoke
             x.GetProperty("id").GetInt64()==child),
             "mixed-order navigation includes nested folder");
 
-        long expanded=(await Json(await client.PostAsync(
-            $"/api/v2/ui/archive/company/achievement/{record}/expand",null)))
-            .GetProperty("id").GetInt64();
-        var expandedUi=await client.GetFromJsonAsync<JsonElement>(
-            "/api/v2/ui/archive/company");
-        Assert(expandedUi.GetProperty("folders").EnumerateArray().Any(x=>
-                x.GetProperty("id").GetInt64()==expanded)&&
-               expandedUi.GetProperty("archives").EnumerateArray().Any(x=>
-                x.GetProperty("id").GetInt64()==record&&
-                x.GetProperty("folderId").GetInt64()==expanded),
-            "expanding archive preserves the record inside new child directory");
+        // A02/N2 retired the "convert a record into a folder" step: a material is
+        // already a folder, so it only has to keep its own version history.
         Assert((await client.GetByteArrayAsync(
             $"/api/v2/files/company/{file}/versions/2/download"))
-            .SequenceEqual(historyB),"expansion preserves historical attachment bytes");
+            .SequenceEqual(historyB),"unified folder preserves historical attachment bytes");
 
         var transferred=await Json(await client.PostAsJsonAsync(
             $"/api/v2/ui/archive/company/achievement/{record}/transfer",
@@ -174,8 +171,9 @@ static class NativeArchiveUiHttpSmoke
             "whole archive copy includes historical versions");
         var personalUi=await client.GetFromJsonAsync<JsonElement>(
             "/api/v2/ui/archive/personal");
-        Assert(personalUi.GetProperty("archives").EnumerateArray().Any(x=>
-            x.GetProperty("id").GetInt64()==targetId),
+        Assert(personalUi.GetProperty("folders").EnumerateArray().Any(x=>
+            x.GetProperty("id").GetInt64()==targetId &&
+            x.GetProperty("section").GetString()=="achievement"),
             "personal archive visible after cross-workspace copy");
         var personalLinks=await client.GetFromJsonAsync<JsonElement>(
             $"/api/v2/files/personal/folders/{targetId}/links");
@@ -203,16 +201,17 @@ static class NativeArchiveUiHttpSmoke
             await Json(await client.SendAsync(revision));
         }
         v=await client.GetFromJsonAsync<JsonElement>("/api/v2/ui/archive/company");
-        var row=v.GetProperty("general").EnumerateArray().First(x=>
+        var row=v.GetProperty("folders").EnumerateArray().First(x=>
             x.GetProperty("id").GetInt64()==general);
-        Assert(row.GetProperty("files").EnumerateArray().Any(x=>
-            x.GetProperty("fileId").GetInt64()==generalFile&&
-            x.GetProperty("kind").GetString()=="general"),
+        var generalFiles=v.GetProperty("files").EnumerateArray().Where(x=>
+            x.GetProperty("fileId").GetInt64()==generalFile).ToArray();
+        Assert(generalFiles.Any(x=>
+            x.GetProperty("ownerId").GetInt64()==general&&
+            x.GetProperty("kind").GetString()=="archive_folder"),
             "general detail links use native FileId/LinkId");
 
         Assert(!string.IsNullOrWhiteSpace(row.GetProperty("modifiedAt").GetString()) &&
-            row.GetProperty("files").EnumerateArray().Where(x=>
-                x.GetProperty("fileId").GetInt64()==generalFile).All(x=>
+            generalFiles.All(x=>
                 !string.IsNullOrWhiteSpace(x.GetProperty("modifiedAt").GetString())),
             "general record and versioned attachments expose update timestamps");
 
@@ -256,8 +255,9 @@ static class NativeArchiveUiHttpSmoke
                 .SequenceEqual(generalRevision),
             "general cross-workspace copy is isolated and preserves full history");
 
-        var certificateIds=v.GetProperty("archives").EnumerateArray()
-            .Where(x=>x.GetProperty("section").GetString()=="certificate")
+        var certificateIds=v.GetProperty("folders").EnumerateArray()
+            .Where(x=>x.GetProperty("section").GetString()=="certificate" &&
+                x.GetProperty("parentId").ValueKind==JsonValueKind.Null)
             .Select(x=>x.GetProperty("id").GetInt64()).Reverse().ToArray();
         using(var order=await client.PostAsJsonAsync(
             "/api/v2/ui/archive/company/certificate/order",

@@ -129,8 +129,15 @@ static partial class McpLocal
             ReadString(args,"section","");
         if(kind!="archive"&&section!="")
             throw new McpKnownRejectionException("非归档文件类型不能指定 section。");
+        // A02/N2: "archive" and "general" are module names, not storage kinds.
+        // The owner of an attachment is always an archive_folder.
+        string ownerKind=kind is "archive" or "general"?
+            FolderKinds.ArchiveFolder:kind;
+        string ownerSection=kind=="general"?"general":section;
         await RequestAsync(client,HttpMethod.Get,
-            V2Url(workspace,kind,folder)+(kind=="archive"?"?section="+section:""));
+            V2Url(workspace,ownerKind,folder)+
+            (ownerKind==FolderKinds.ArchiveFolder?
+                "?section="+Uri.EscapeDataString(ownerSection):""));
         string mode=ReadString(args,"on_conflict","new");
         string choice=ReadString(args,"duplicate_mode","");
         string category=ReadString(args,"material_category",kind=="ip"?"其他材料":"");

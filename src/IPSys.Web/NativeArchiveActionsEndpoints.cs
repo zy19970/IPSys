@@ -2,71 +2,14 @@ using System.Text.Json;
 using Microsoft.Data.Sqlite;
 
 // Native archive operations needed by the frozen card/table UI.
-// Folder conversion and whole-file-history copy are always transactional.
+// Whole-file-history copy is always transactional.
 static class NativeArchiveActionsEndpoints
 {
-    private static ResourceRef Archive(string w,string section,long id)=>
-        ResourceRef.Create(w,FolderKinds.Archive,id,section);
+    private static ResourceRef Folder(string w,string section,long id)=>
+        ResourceRef.Create(w,FolderKinds.ArchiveFolder,id,section);
 
     public static void Map(WebApplication app,Func<string,int,IResult> fail)
     {
-        app.MapPost("/api/v2/ui/archive/company/achievement/{id:long}/expand",async(
-            HttpContext ctx,Vault v,long id)=>
-        {
-            if(!v.Allowed(ctx))return (IResult)Results.Unauthorized();
-            if(v.FileTaskActive||v.ExitRequested)return fail("文件任务正在执行。",409);
-            await v.Gate.WaitAsync(ctx.RequestAborted);
-            try
-            {
-                if(!v.Allowed(ctx))return Results.Unauthorized();
-                var source=NativeArchiveStore.Get(v.Db,Archive("company","achievement",id));
-                if(source is null)return Results.NotFound();
-                long? parent=source.Folder.Parent?.Id;
-                if(parent is null)return fail("资料须先归入具体业务档案目录。",400);
-                using var tx=v.Db.BeginTransaction();
-                long folder;
-                using(var cmd=v.Db.CreateCommand())
-                {
-                    cmd.Transaction=tx;
-                    cmd.CommandText="""
-                        INSERT INTO folders(workspace,kind,section,parent_id,name,
-                            attributes_json,position)
-                        VALUES('company','archive_folder','achievement',$parent,$name,
-                            $json,(SELECT COALESCE(MAX(position),-1)+1 FROM folders
-                              WHERE workspace='company' AND section='achievement'
-                                AND COALESCE(parent_id,0)=$parent AND deleted=0));
-                        SELECT last_insert_rowid();
-                        """;
-                    cmd.Parameters.AddWithValue("$parent",parent.Value);
-                    cmd.Parameters.AddWithValue("$name",source.Folder.Name);
-                    cmd.Parameters.AddWithValue("$json",JsonSerializer.Serialize(
-                        new ArchiveFolderInput(source.Folder.Name,parent)));
-                    folder=(long)cmd.ExecuteScalar()!;
-                }
-                using(var cmd=v.Db.CreateCommand())
-                {
-                    cmd.Transaction=tx;
-                    cmd.CommandText="""
-                        UPDATE folders SET parent_id=$parent,attributes_json=$json,
-                            position=0 WHERE workspace='company' AND id=$id
-                            AND kind='archive' AND section='achievement' AND deleted=0
-                            AND parent_id=$old;
-                        """;
-                    cmd.Parameters.AddWithValue("$id",id);
-                    cmd.Parameters.AddWithValue("$parent",folder);
-                    cmd.Parameters.AddWithValue("$old",parent.Value);
-                    cmd.Parameters.AddWithValue("$json",JsonSerializer.Serialize(
-                        ((ArchiveInput)source.BusinessData) with {FolderId=folder}));
-                    if(cmd.ExecuteNonQuery()!=1)
-                        throw new IOException("归档记录状态已变化，已回滚。");
-                }
-                tx.Commit();
-                return Results.Json(new{id=folder});
-            }
-            catch(SqliteException){return fail("目录名称冲突或资料状态已变化。",409);}
-            finally{v.Gate.Release();}
-        });
-
         app.MapPost("/api/v2/ui/archive/{workspace}/{section}/{id:long}/transfer",async(
             HttpContext ctx,Vault v,string workspace,string section,long id,
             ArchiveTransfer input)=>
@@ -90,8 +33,20 @@ static class NativeArchiveActionsEndpoints
                 try
                 {
                     if(!v.Allowed(ctx))return Results.Unauthorized();
-                    var source=NativeArchiveStore.Get(v.Db,Archive(workspace,section,id));
+                    var source=NativeArchiveStore.Get(v.Db,Folder(workspace,section,id));
                     if(source is null)return Results.NotFound();
+                    var material=(ArchiveFolderInput)source.BusinessData;
+                    using(var children=v.Db.CreateCommand())
+                    {
+                        children.CommandText="""
+                            SELECT count(*) FROM folders WHERE workspace=$w
+                              AND kind='archive_folder' AND parent_id=$id AND deleted=0;
+                            """;
+                        children.Parameters.AddWithValue("$w",workspace);
+                        children.Parameters.AddWithValue("$id",id);
+                        if((long)children.ExecuteScalar()!>0)return fail(
+                            "该资料下还有子文件夹，请先把子文件夹移出后再转移。",409);
+                    }
                     var links=NativeFileLinkStore.ListFolder(v.Db,workspace,id,false)!;
                     long needed=0;
                     if(workspace!=input.TargetWorkspace)
@@ -104,9 +59,18 @@ static class NativeArchiveActionsEndpoints
                         if(free<checked(needed+Math.Max(128L*1024*1024,needed/3)))
                             return fail("目标工作区所在磁盘空间不足。",507);
                     }
-                    var archive=(ArchiveInput)source.BusinessData;
                     long? parent=null;
-                    if(input.TargetWorkspace=="company"&&input.TargetSection=="achievement")
+                    if(input.TargetFolderId is long explicitTarget)
+                    {
+                        /* B02: the caller may name the destination folder outright.
+                           That is the only branch that needs no name matching. */
+                        if(NativeArchiveStore.Get(v.Db,Folder(input.TargetWorkspace,
+                            input.TargetSection,explicitTarget)) is null)
+                            return fail("目标目录不存在或不属于目标类别。",404);
+                        parent=explicitTarget;
+                    }
+                    else if(input.TargetWorkspace=="company"&&
+                        input.TargetSection=="achievement")
                     {
                         if(workspace=="company"&&section=="achievement")
                             parent=source.Folder.Parent?.Id;
@@ -119,7 +83,7 @@ static class NativeArchiveActionsEndpoints
                                只能"尽量挑一个默认落点"，找不到时必须给出可读原因，
                                不能依赖 First 抛 LINQ 英文异常。 */
                             var root=roots.FirstOrDefault(x=>
-                                    string.Equals(x.Folder.Name,archive.Category,
+                                    string.Equals(x.Folder.Name,material.Category,
                                         StringComparison.OrdinalIgnoreCase))
                                 ??roots.FirstOrDefault(x=>
                                     string.Equals(x.Folder.Name,"其他业务资料",
@@ -141,18 +105,21 @@ static class NativeArchiveActionsEndpoints
                         cmd.CommandText="""
                             INSERT INTO folders(workspace,kind,section,parent_id,name,
                                 attributes_json,position)
-                            VALUES($w,'archive',$section,$parent,$name,$json,
+                            VALUES($w,'archive_folder',$section,$parent,$name,$json,
                                 (SELECT COALESCE(MAX(position),-1)+1 FROM folders
-                                WHERE workspace=$w AND kind='archive'
-                                  AND section=$section AND deleted=0));
+                                WHERE workspace=$w AND kind='archive_folder'
+                                  AND section=$section AND deleted=0
+                                  AND COALESCE(parent_id,0)=COALESCE($parent,0)));
                             SELECT last_insert_rowid();
                             """;
                         cmd.Parameters.AddWithValue("$w",input.TargetWorkspace);
                         cmd.Parameters.AddWithValue("$section",input.TargetSection);
                         cmd.Parameters.AddWithValue("$parent",(object?)parent??DBNull.Value);
-                        cmd.Parameters.AddWithValue("$name",source.Folder.Name);
+                        cmd.Parameters.AddWithValue("$name",NativeArchiveStore.UniqueName(v.Db,tx,
+                            input.TargetWorkspace,input.TargetSection,parent,
+                            source.Folder.Name));
                         cmd.Parameters.AddWithValue("$json",JsonSerializer.Serialize(
-                            archive with {FolderId=parent}));
+                            material with {Name=source.Folder.Name,ParentId=parent}));
                         copied=(long)cmd.ExecuteScalar()!;
                     }
                     int versions=0;
@@ -189,7 +156,7 @@ static class NativeArchiveActionsEndpoints
                         cmd.Transaction=tx;
                         cmd.CommandText="""
                             UPDATE folders SET deleted=1
-                            WHERE id=$id AND workspace=$w AND kind='archive'
+                            WHERE id=$id AND workspace=$w AND kind='archive_folder'
                               AND section=$section AND deleted=0;
                             """;
                         cmd.Parameters.AddWithValue("$id",id);

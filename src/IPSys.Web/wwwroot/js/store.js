@@ -278,10 +278,6 @@ const VaultStore = {
         ? `c:${id}`
         : hit.kind === "ip"
         ? `i:${id}`
-        : hit.kind === "archive"
-        ? `a:${hit.section}:${id}`
-        : hit.kind === "general"
-        ? `g:${id}`
         : hit.kind === "archive_folder"
         ? `af:${id}`
         : "";
@@ -299,10 +295,8 @@ const VaultStore = {
         return `c:${id}`;
       case "ip":
         return `i:${id}`;
-      case "archive":
-        return `a:${hit.section}:${id}`;
-      case "general":
-        return `g:${id}`;
+      case "archive_folder":
+        return `af:${id}`;
       default:
         return "";
     }
@@ -443,43 +437,12 @@ const VaultStore = {
       contractsByProject.get(c.projectId).push(node);
     }
 
-    /* ---- 各分类的记录 ----
-       分类的顺序、名称、有无全部由 WS_CATS 决定,这里只负责把数据装进去。 */
-
-    /* 档案类(资质 / 成果 / 学术)字段完全一致,共用一套构造 */
-    const archiveRecordsOf = (section) =>
-      (archive?.archives || [])
-        .filter((a) => a.section === section)
-        .map((a) => {
-          const node = F(a.name || `记录 ${a.id}`, { id: `a:${section}:${a.id}` });
-          node.mtime = toTs(a.modifiedAt);
-          node.ctime = toTs(a.createdAt);
-          node.order = a.position == null ? null : Number(a.position);
-          node.biz = {
-            kind: "archive",
-            section,
-            typeName: catLabel(section, ws),
-            status: "",
-            code: "",
-            owner: "",
-            year: a.year || "",
-            category: a.category || "",
-            remarks: a.remarks || "",
-            tags: a.tags || "",
-            folderId: a.folderId ?? null,
-            raw: a,
-            id: a.id,
-          };
-          this.biz.set(node.id, node.biz);
-          return attach(node, a.id);
-        });
+    /* ---- 各分类的对象 ----
+       分类的顺序、名称、有无全部由 WS_CATS 决定,这里只负责把数据装进去。
+       普通资料（资质 / 业务档案 / 党团 / 学术 / 综合资料）不再是单独的记录
+       类型：它们就是 folders 里的普通文件夹，由 buildArchiveDirs 统一装配。 */
 
     const builders = {
-      certificate: () => archiveRecordsOf("certificate"),
-      achievement: () => archiveRecordsOf("achievement"),
-      academic: () => archiveRecordsOf("academic"),
-      party: () => archiveRecordsOf("party"),
-
       project: () =>
         (projects || []).map((p) => {
           const node = F(p.name || `项目 ${p.id}`, { id: `p:${p.id}` });
@@ -544,40 +507,12 @@ const VaultStore = {
           this.biz.set(node.id, node.biz);
           return attach(node, row.id);
         }),
-
-      general: () =>
-        (archive?.general || []).map((g) => {
-          const node = F(g.title || `资料 ${g.id}`, {
-            id: `g:${g.id}`, mtime: toTs(g.modifiedAt), ctime: toTs(g.createdAt),
-          });
-          node.biz = {
-            kind: "general",
-            typeName: "综合资料",
-            status: "",
-            code: "",
-            owner: "",
-            remarks: g.remarks || "",
-            tags: "",
-            folderId: g.folderId ?? null,
-            raw: g,
-            id: g.id,
-          };
-          node.order = g.position == null ? null : Number(g.position);
-          this.biz.set(node.id, node.biz);
-          const kids = latestLinks(g.files).map((f) => attachmentNode(f, "general"));
-          kids.sort((a, b) => cmpName(a, b));
-          node.children = kids;
-          node.size = kids.reduce((s, k) => s + (k.size || 0), 0);
-          const times = [node.mtime,...kids.map(x => x.mtime)].filter(Number.isFinite);
-          node.mtime = times.length ? Math.max(...times) : null;
-          return node;
-        }),
     };
 
     /* 公司业务档案以普通目录构成目录树，新库初始建立七个目录。
        目录可以重命名、移动或删除；记录按 folderId 挂入目录。 */
 
-    const buildArchiveDirs = (records, section) => {
+    const buildArchiveDirs = (section) => {
       const folders = (archive?.folders || []).filter(f =>
         (f.section || (ws === "company" ? "achievement" : "")) === section);
       const dirs = folders.map((f) => {
@@ -605,22 +540,12 @@ const VaultStore = {
         else roots.push(dir);
       }
 
-      const loose = [];
-      for (const r of records) {
-        const dir = r.biz.folderId != null ? byId.get(String(r.biz.folderId)) : null;
-        if (dir) dir.children.push(r);
-        else loose.push(r);
-      }
-
-      /* 服务端 orders 已混排目录与记录：统一按这一顺序处理每层兄弟节点。 */
+      /* 服务端 orders 已给出同层顺序：统一按这一顺序处理每层兄弟节点。 */
       const sortPeers = (nodes, parentId) => {
         const entries = archive?.orders?.[section + ":" + String(parentId ?? 0)]
           || (ws === "company" && section === "achievement"
             ? archive?.orders?.[String(parentId ?? 0)] : null) || [];
-        const positions = new Map(entries.map((item, i) => [
-          item.kind === "folder" ? "af:" + item.id :
-            section === "general" ? "g:" + item.id : "a:" + section + ":" + item.id, i,
-        ]));
+        const positions = new Map(entries.map((item, i) => ["af:" + item.id, i]));
         for (const item of nodes) {
           const index = positions.get(item.id);
           if (index !== undefined) item.order = index;
@@ -642,7 +567,7 @@ const VaultStore = {
         dir.size = dir.children.reduce((n, x) => n + (x.size || 0), 0);
       };
       for (const dir of roots) finalize(dir);
-      const rootItems = [...roots, ...loose];
+      const rootItems = [...roots];
       sortPeers(rootItems, null);
       return rootItems;
     };
@@ -653,7 +578,7 @@ const VaultStore = {
       k.order = i;
       const records = builders[id] ? builders[id]() : [];
 
-      if (catIsDir(id, ws)) k.children = buildArchiveDirs(records, id);
+      if (catIsDir(id, ws)) k.children = buildArchiveDirs(id);
       else k.children = records.sort((a, b) => cmpName(a, b));
 
       /* 根节点时间 = 最新子项时间，用于排序稳定 */
@@ -676,16 +601,15 @@ const VaultStore = {
   },
 
   /* 分类汇总，首页与导航用。
-     条数按「业务记录」递归数,不能拿 children.length ——
-     公司业务档案的一级是 7 个目录,那些不是记录。 */
+     A02/N2 之后普通资料与目录是同一种对象，所以数所有非合成节点，
+     不能再只数历史上的 project/archive/ip/general 四类。 */
   summary() {
-    const RECORD_KINDS = new Set(["project", "archive", "ip", "general"]);
     const out = [];
     for (const c of ROOT.children || []) {
       const st = folderStats(c);
       let count = 0;
       walk(c, (n) => {
-        if (n !== c && n.type === "folder" && RECORD_KINDS.has((n.biz || {}).kind)) count++;
+        if (n !== c && n.type === "folder" && !n.synthetic && (n.biz || {}).kind) count++;
       });
       out.push({
         id: c.id,

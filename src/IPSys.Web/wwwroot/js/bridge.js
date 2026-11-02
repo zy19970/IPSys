@@ -237,7 +237,8 @@ async function associateOriginal(node, move = false, directTarget = null) {
    Whole-record copies duplicate logical FileIds and all versions; the backend
    refuses cross-workspace physical FileObject sharing. */
 function recordTransferOptions(node, move) {
-  const kind=node?.biz?.kind;
+  const kind=node?.biz?.kind==="archive_folder"
+    ?(node.biz.section==="general"?"general":"archive"):node?.biz?.kind;
   const ws=VaultStore.ws;
   if(!["project","contract","ip","archive","general"].includes(kind)) return [];
   if(kind==="archive") {
@@ -264,7 +265,9 @@ function recordTransferOptions(node, move) {
 }
 
 function transferBusinessRecord(node, move=false) {
-  const kind=node?.biz?.kind, id=Number(node?.biz?.id);
+  const kind=node?.biz?.kind==="archive_folder"
+    ?(node.biz.section==="general"?"general":"archive"):node?.biz?.kind;
+  const id=Number(node?.biz?.id);
   if(node?.type!=="folder" || !Number.isSafeInteger(id) || id<=0) return;
   if(fileTaskBusy()) return toast("当前有文件任务，请完成后再操作");
   const sourceWorkspace=VaultStore.ws;
