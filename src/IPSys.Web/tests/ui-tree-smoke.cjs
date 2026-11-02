@@ -66,7 +66,8 @@ assert.equal(c11.biz.id,11);
 assert.equal(c11.biz.code,'HT-01','Ledger fields stay on the node for the detail panel');
 assert.equal(c11.biz.projectId,1,'Export needs projectId to nest the contract under its project');
 assert.equal(c11.biz.projectName,'研发项目');
-assert.equal(c11.dateLabel,'2026-03-01','The signing date drives the list date column');
+assert.equal(c11.biz.start,'2026-03-01','Contract signing date stays a business field');
+assert.equal(c11.mtime,null,'Without a known modification timestamp, signing date must not be substituted');
 
 /* Attachment identity is what the exporter and the uploader branch on, so the
    owning kind has to survive even though the contract itself is a folder. */
@@ -175,11 +176,11 @@ const ipYearData = {
 };
 run('ROOT=VaultStore.buildTree('+JSON.stringify(ipYearData)+')');
 assert.equal(run("findById('i:601').biz.year"),'2022');
-assert.equal(run("findById('i:601').dateLabel"),'2022-05-16');
+assert.equal(run("findById('i:601').mtime"),null,'Application date is not a modification timestamp');
 assert.equal(run("findById('i:601').biz.start"),'2022-05-16');
 assert.equal(run("findById('i:601').biz.end"),'2026-10-01');
 assert.equal(run("findById('i:602').biz.year"),'');
-assert.equal(run("findById('i:602').dateLabel"),'');
+assert.equal(run("findById('i:602').biz.start"),'','Missing application date stays empty in business data');
 assert.equal(run("findById('i:602').mtime"),null);
 assert.equal(run("findById('i:603').biz.year"),'2024');
 
