@@ -95,6 +95,7 @@ const fn=name=>vm.runInContext(name,context);
  /* Right-click's initial New/Upload/Refresh menu stays; choosing New
     invokes the folder form without opening yet another sub-menu. */
  context.canUploadFiles=()=>false;
+ context.safeRefresh=()=>{}; // blank-menu Refresh is not exercised here
  context.$=sel=>sel==="#btnNew"?anchor:null;
  vm.runInContext(extract("function showBlankMenu(x, y) {","/* ---------------- 框选"),context);
  fn("showBlankMenu")(20,30);
