@@ -20,6 +20,13 @@ const projects={
  company:[{id:8,name:"目标公司项目"},{id:15,name:"其它公司项目"}],
  personal:[{id:70,name:"个人科研项目"}]
 };
+/* B02：资料转移必须落到用户指定的目录，转移前会读目标工作区的目录快照。 */
+const archiveFolders={
+ company:[{id:70,name:"申报与认定",parentId:null,section:"achievement"},
+          {id:71,name:"其他业务资料",parentId:null,section:"achievement"}],
+ personal:[{id:80,name:"个人成果",parentId:null,section:"achievement"},
+           {id:81,name:"个人学术",parentId:null,section:"academic"}]
+};
 const vault={
  ws:"company",
  async api(url,opts){
@@ -29,6 +36,8 @@ const vault={
  },
  async getJson(url){
   const ws=url.split("/").at(-1);
+  if(url.includes("/api/v2/ui/archive/"))
+   return {folders:archiveFolders[ws]||[],orders:{},files:[]};
   assert.ok(url.includes("/api/v2/ui/projects/"));
   return projects[ws];
  }
@@ -38,6 +47,8 @@ const context=vm.createContext({
  RecordForms:{open:form=>dialogs.push(form)},
  Drive:{clearSelection:()=>clear.push(true)},
  toast:m=>msgs.push(m),
+ /* 打包后 catLabel 是全局函数，这里按同一口径提供类别名。 */
+ catLabel:id=>({achievement:"成果资料",academic:"学术资料"})[id]||id,
  fileTaskBusy:()=>busy,
  refreshCurrent:async()=>{refresh++;},
 });
@@ -75,15 +86,30 @@ const node=(kind,id,extra={})=>({id:kind+":"+id,type:"folder",name:kind+id,biz:{
   ["personal/achievement","personal/academic"]);
  invoke(archive,false);
  await dialogs.at(-1).onSubmit({target:"personal/academic"});
+ /* 只有选定目录后才提交：顶层是 0，具体目录是它的 FolderId。 */
+ let archiveDialog=dialogs.at(-1);
+ assert.equal(archiveDialog.title,"选择目标分类目录");
+ assert.deepEqual(Array.from(archiveDialog.fields[0].options,x=>x.value),["0","81"]);
+ await archiveDialog.onSubmit({folderId:"81"});
  assert.equal(calls.at(-1).url,"/api/v2/ui/archive/company/achievement/6/transfer");
  assert.deepEqual(JSON.parse(JSON.stringify(calls.at(-1).opts.json)),
-  {targetWorkspace:"personal",move:false,targetSection:"academic"});
+  {targetWorkspace:"personal",move:false,targetSection:"academic",targetFolderId:81});
+
+ /* 目标是公司业务档案时不提供"顶层"：资料必须落在具体分类目录里。 */
+ invoke(archive,false);
+ await dialogs.at(-1).onSubmit({target:"company/achievement"});
+ archiveDialog=dialogs.at(-1);
+ assert.deepEqual(Array.from(archiveDialog.fields[0].options,x=>x.value),["70","71"]);
+ await archiveDialog.onSubmit({folderId:"71"});
+ assert.deepEqual(JSON.parse(JSON.stringify(calls.at(-1).opts.json)),
+  {targetWorkspace:"company",move:false,targetSection:"achievement",targetFolderId:71});
  const certificate=node("archive",10,{section:"certificate"});
  assert.equal(opt(certificate,true).length,0,
   "Certificate transfer cannot bypass module compatibility constraints");
+ const beforeDialogs=dialogs.length;
  invoke(certificate,true);
- assert.equal(dialogs.at(-1).title,"复制资料档案");
- // No modal opened for unsupported target (existing previous dialog remains).
+ // No new modal for an unsupported target; the caller only sees a toast.
+ assert.equal(dialogs.length,beforeDialogs);
  assert.match(msgs.at(-1),/没有受支持的目标/);
 
  const contract=node("contract",30,{projectId:8});

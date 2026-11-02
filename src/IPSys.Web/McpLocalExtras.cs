@@ -97,12 +97,13 @@ static partial class McpLocal
             ["target_workspace"]=Field("string","目标工作区",Workspaces),
             ["move"]=new Dictionary<string,object>{{"type","boolean"},{"description","true 移动，false 复制"}}
         },["workspace","ip_id","target_workspace"]),
-        Tool("transfer_archive","在语义兼容类别间复制/移动档案与版本。company/achievement 与 personal/achievement 或 personal/academic 对应科研成果；证书 certificate 仅在相同工作区类别内使用；党团建设 party 仅支持 company/party 内复制，不跨区。实际接受范围以 ArchiveRules.Module 校验为准。move=true 返回目标新 ID，来源软删除入原工作区回收站；恢复来源会形成并存副本。",new(){
+        Tool("transfer_archive","在语义兼容类别间复制/移动档案与版本。company/achievement 与 personal/achievement 或 personal/academic 对应科研成果；证书 certificate 仅在相同工作区类别内使用；党团建设 party 仅支持 company/party 内复制，不跨区。实际接受范围以 ArchiveRules.Module 校验为准。目标是 company/achievement 时必须给出 target_folder_id（业务档案资料必须归属具体分类目录）；不再按目录名称猜目标。move=true 返回目标新 ID，来源软删除入原工作区回收站；恢复来源会形成并存副本。",new(){
             ["workspace"]=Field("string","来源工作区",Workspaces),
             ["section"]=Field("string","来源资料类别"),
             ["archive_id"]=Field("integer","档案 FolderId"),
             ["target_workspace"]=Field("string","目标工作区",Workspaces),
             ["target_section"]=Field("string","目标类别：achievement ↔ academic（科研成果）；certificate 不跨区；party 只可 company/party"),
+            ["target_folder_id"]=Field("integer","目标分类目录 FolderId；目标为 company/achievement 时必填，其它类别省略表示顶层"),
             ["move"]=new Dictionary<string,object>{{"type","boolean"},{"description","true 移动，false 复制"}}
         },["workspace","section","archive_id","target_workspace","target_section"]),
         Tool("transfer_general","复制/移动综合资料及历史文件。move=true 返回目标新 ID，来源软删除入原工作区回收站；恢复来源会形成并存副本。",new(){
@@ -235,13 +236,21 @@ static partial class McpLocal
         string workspace,string name,JsonElement args,CancellationToken stop)
     {
         string Files(long fileId)=>$"/api/v2/files/{workspace}/{fileId}";
-        JsonObject TransferBody(bool withSection=false)
+        JsonObject TransferBody(bool withSection=false,bool withFolder=false)
         {
             var body=new JsonObject{
                 ["targetWorkspace"]=RequiredText(args,"target_workspace"),
                 ["move"]=Bool(args,"move")
             };
             if(withSection)body["targetSection"]=RequiredText(args,"target_section");
+            /* B02: destination is an id, never a directory name. Omitted or 0
+               means "top level", which only non-archive modules may use. */
+            if(withFolder && args.TryGetProperty("target_folder_id",out var folder) &&
+               folder.ValueKind!=JsonValueKind.Null)
+            {
+                long id=Nonnegative(args,"target_folder_id");
+                if(id>0)body["targetFolderId"]=id;
+            }
             return body;
         }
         switch(name)
@@ -362,7 +371,7 @@ static partial class McpLocal
                 return await RequestAsync(client,HttpMethod.Post,
                     $"/api/v2/ui/archive/{workspace}/"+
                     Uri.EscapeDataString(ArchiveSection(workspace,args))+
-                    $"/{Positive(args,"archive_id")}/transfer",TransferBody(true));
+                    $"/{Positive(args,"archive_id")}/transfer",TransferBody(true,true));
             case "transfer_general":
                 return await RequestAsync(client,HttpMethod.Post,
                     $"/api/v2/ui/general/{workspace}/{Positive(args,"general_id")}/transfer",

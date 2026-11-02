@@ -8,6 +8,29 @@ static class NativeArchiveActionsEndpoints
     private static ResourceRef Folder(string w,string section,long id)=>
         ResourceRef.Create(w,FolderKinds.ArchiveFolder,id,section);
 
+    // B02: the destination folder is named by id only. Directory names are
+    // user-editable, so no lookup may depend on a Chinese default name.
+    // Each rejection states the real reason so callers can correct the input.
+    private static (int Status,string Message) TargetFolderError(SqliteConnection db,
+        string workspace,string section,long id)
+    {
+        using var cmd=db.CreateCommand();
+        cmd.CommandText="SELECT workspace,kind,section,deleted FROM folders WHERE id=$id;";
+        cmd.Parameters.AddWithValue("$id",id);
+        using var reader=cmd.ExecuteReader();
+        if(!reader.Read())return (404,"目标目录不存在。");
+        string actualWorkspace=reader.GetString(0),kind=reader.GetString(1);
+        string actualSection=reader.IsDBNull(2)?"":reader.GetString(2);
+        bool deleted=reader.GetInt64(3)==1;
+        if(kind!=FolderKinds.ArchiveFolder)return (400,"目标不是普通资料文件夹。");
+        if(actualWorkspace!=workspace)
+            return (400,"目标目录不属于目标工作区（实际属于 "+actualWorkspace+"）。");
+        if(actualSection!=section)
+            return (400,"目标目录不属于目标资料类别（实际为 "+actualSection+"）。");
+        if(deleted)return (409,"目标目录已在回收站，请先恢复后再转移。");
+        return (0,"");
+    }
+
     public static void Map(WebApplication app,Func<string,int,IResult> fail)
     {
         app.MapPost("/api/v2/ui/archive/{workspace}/{section}/{id:long}/transfer",async(
@@ -62,40 +85,19 @@ static class NativeArchiveActionsEndpoints
                     long? parent=null;
                     if(input.TargetFolderId is long explicitTarget)
                     {
-                        /* B02: the caller may name the destination folder outright.
-                           That is the only branch that needs no name matching. */
-                        if(NativeArchiveStore.Get(v.Db,Folder(input.TargetWorkspace,
-                            input.TargetSection,explicitTarget)) is null)
-                            return fail("目标目录不存在或不属于目标类别。",404);
+                        if(explicitTarget<=0)return fail("目标目录编号无效。",400);
+                        if(explicitTarget==id&&workspace==input.TargetWorkspace)
+                            return fail("不能把资料转移到它自己。",400);
+                        var (status,message)=TargetFolderError(v.Db,input.TargetWorkspace,
+                            input.TargetSection,explicitTarget);
+                        if(status!=0)return fail(message,status);
                         parent=explicitTarget;
                     }
                     else if(input.TargetWorkspace=="company"&&
                         input.TargetSection=="achievement")
-                    {
-                        if(workspace=="company"&&section=="achievement")
-                            parent=source.Folder.Parent?.Id;
-                        else
-                        {
-                            var roots=NativeArchiveStore.List(v.Db,"company",
-                                FolderKinds.ArchiveFolder,"achievement")
-                                .Where(x=>x.Folder.Parent is null).ToArray();
-                            /* 初始七个目录只是普通文件夹，允许改名或删除，因此这里
-                               只能"尽量挑一个默认落点"，找不到时必须给出可读原因，
-                               不能依赖 First 抛 LINQ 英文异常。 */
-                            var root=roots.FirstOrDefault(x=>
-                                    string.Equals(x.Folder.Name,material.Category,
-                                        StringComparison.OrdinalIgnoreCase))
-                                ??roots.FirstOrDefault(x=>
-                                    string.Equals(x.Folder.Name,"其他业务资料",
-                                        StringComparison.Ordinal));
-                            if(root is null)
-                                return fail("目标业务档案下没有可用的分类目录，"+
-                                    "请先新建一个分类目录后再转移。",409);
-                            parent=root.Folder.Ref.Id;
-                        }
-                        if(parent is null)
-                            return fail("目标业务档案没有可用分类。",409);
-                    }
+                        /* 业务档案资料必须归属具体分类目录；没有显式目标就拒绝，
+                           绝不再按名称猜测"其他业务资料"。 */
+                        return fail("公司业务档案必须明确指定目标分类目录 targetFolderId。",400);
                     linked.Token.ThrowIfCancellationRequested();
                     using var tx=v.Db.BeginTransaction();
                     long copied;

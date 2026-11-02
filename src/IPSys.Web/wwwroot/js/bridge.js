@@ -312,6 +312,47 @@ function transferBusinessRecord(node, move=false) {
             {tone:"error",ms:6000});
         }
       };
+      /* B02: 目标目录只能由用户明确指定。业务档案资料必须落在具体分类目录
+         下，所以那里不提供"顶层"；其余类别允许回到分类层。 */
+      if(kind==="archive"){
+        const required=targetWorkspace==="company"&&targetSection==="achievement";
+        const snapshot=await VaultStore.getJson("/api/v2/ui/archive/"+targetWorkspace);
+        const rows=(snapshot?.folders||[]).filter(x=>x.section===targetSection);
+        const byId=new Map(rows.map(x=>[String(x.id),x]));
+        const pathOf=row=>{
+          const parts=[];
+          let cur=row, guard=0;
+          while(cur && guard++<50){
+            parts.unshift(cur.name||("目录 "+cur.id));
+            cur=cur.parentId==null?null:byId.get(String(cur.parentId));
+          }
+          return parts.join(" › ");
+        };
+        const options=rows
+          .filter(x=>!(sourceWorkspace===targetWorkspace && Number(x.id)===id))
+          .map(x=>({value:String(x.id),label:pathOf(x)}));
+        if(!options.length && required)
+          throw new Error("目标业务档案下还没有可用的分类目录，请先在目标工作区新建分类目录");
+        if(!required) options.unshift({value:"0",label:catLabel(targetSection)+"（顶层）"});
+        if(!options.length) throw new Error("目标位置没有可用的目录");
+        RecordForms.open({
+          title:"选择目标分类目录",submitText:move?"确认转移":"确认复制",
+          fields:[{key:"folderId",type:"select",label:"目标目录",required:true,
+            options,hint:required
+              ?"业务档案资料必须归属具体分类目录。"
+              :"选择「顶层」表示直接放在该类别下。"}],
+          onSubmit:async next=>{
+            if(VaultStore.ws!==sourceWorkspace)
+              throw new Error("工作区已经切换，请重新选择");
+            if(!options.some(x=>x.value===next.folderId))
+              throw new Error("目标目录无效，请重新选择");
+            const folderId=Number(next.folderId);
+            if(folderId>0) payload.targetFolderId=folderId;
+            await finish();
+          },
+        });
+        return;
+      }
       if(kind!=="contract") return finish();
 
       // Contracts are never free-standing. Resolve an active project in the
