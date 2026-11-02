@@ -7,6 +7,29 @@ const vm=require("node:vm");
 const root=path.resolve(__dirname,"../wwwroot");
 const code=fs.readFileSync(path.join(root,"js/interactions.js"),"utf8");
 const forms=fs.readFileSync(path.join(root,"js/forms.js"),"utf8");
+
+/* The archive create menu must use real ICON_PATHS keys, not a blank glyph.
+   Render both items through the actual shared icon() and MI() helpers. */
+const iconSource=fs.readFileSync(path.join(root,"js/icons.js"),"utf8");
+const iconContext=vm.createContext({});
+const iconEnd=iconSource.indexOf("/* ---------- OneDrive brand mark");
+const miStart=code.indexOf("const MI = (");
+const miEnd=code.indexOf("function showCtx(",miStart);
+assert.ok(iconEnd>0 && miStart>=0 && miEnd>miStart,"shared icon/menu helpers exist");
+vm.runInContext(iconSource.slice(0,iconEnd),iconContext,{filename:"icons.js"});
+vm.runInContext(code.slice(miStart,miEnd),iconContext,{filename:"menu-helper.js"});
+assert.match(code,/MI\("new-record","doc","新建资料"\)/,
+  "New record menu must request the supported document glyph");
+const folderMenu=vm.runInContext('MI("new-folder","folder","新建下级目录")',iconContext);
+const recordMenu=vm.runInContext('MI("new-record","doc","新建资料")',iconContext);
+for(const html of [folderMenu,recordMenu]){
+  assert.match(html,/<svg[^>]*width="18" height="18"/,
+    "Both creation choices must render 18px icons on the same baseline");
+  assert.match(html,/class="ctx-item /,"Both menu items use identical layout");
+}
+assert.match(folderMenu,/data-act="new-folder"/);
+assert.match(recordMenu,/data-act="new-record"/);
+assert.match(recordMenu,/<span>新建资料<\/span>/);
 function extract(start,end){
  const a=code.indexOf(start),b=code.indexOf(end,a+start.length);
  assert.ok(a>=0&&b>a,"source anchor "+start);

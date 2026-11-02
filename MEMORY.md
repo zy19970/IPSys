@@ -183,3 +183,9 @@ IPSys 是 Windows WinForms 启动器 + 本地 Web Explorer 界面 + SQLCipher/SQ
 
 
 **更新时间统一改造最终验收成功（2026-11-02，第十二轮）**：首次功能改造提交 ba928cb3bf5e7c18b75c5c7cbb669bc7e087bca7，包括 ResourceSchemaV2 folders.modified_at、现有 V2 库非破坏性加列（历史未知不填）、触发器记录业务更改/附件链接/文件版本操作、各项目/合同/IP/业务档案/综合资料列表 API 的 modifiedAt、前端普通视图“更新时间”使用真实 mtime，不再用申请/签约/项目起止等业务日期代替；新增 C# 与 Node 回归。首次 Windows run 41378250696 因 ui-tree-smoke.cjs 旧日期断言失败，修补提交 90483d6a8b4a81ff3de039a4d020d60da5ac2ad2；第二次 run 41379537798 因 excel-scope-smoke.cjs 同类旧断言失败，修补提交 f03df086e598b76e477a7a931b3917e1e897f829。经全仓搜索同类 dateLabel 测试后，最终 GitHub Actions run 41380005969 精确对应 f03df086，completed/success，26 success、0 failure，2 个大于 4GiB 的 ZIP64 可选步骤 skipped。三份 artifacts 均未过期：IPSys-Web-win-x64-self-contained ID 13112663652（推荐）、IPSys-Web-win-x64 ID 13113531165、IPSys-Explorer-V2-Retest-41380005969-1 ID 13112818280。下载 https://github.com/zy19970/IPSys/actions/runs/41380005969 。无正式 Release，本次并未打开用户本机实际 DB；用户真实界面视觉效果需使用此 SHA 对应的新 EXE 实测。通知执行起点 #1991、首轮失败 #1992、重新开始 #1993、二轮失败 #1994、重新开始 #1995；最终完成通知将单独发送。本次 Memory 补记不会触发新的产品 CI。
+
+## 2026-11-02：新建资料菜单图标缺失修复（第十三至十六轮）
+
+用户截图显示资料目录内“新建”菜单：“新建下级目录”左侧有文件夹小图标，但“新建资料”没有图标。用户要求“新建资料你也加一个小图标，太突兀”；之后两次催促“怎么又没反应？”、“卡住了？”，前述交接流程没有返回真正执行结果；本轮明确要求“继续推进”，使用 GitHub 连接器直接定位修改提交。当前基线 main 77e2dc3e216c8bdbf2ad5f4caa5071f0dcecd52d，重新读取 AIGT 三规范与 IPSys Memory / 最近会话。
+
+根因：src/IPSys.Web/wwwroot/js/interactions.js 的“新建资料”菜单写成 MI("new-record","file","新建资料")，而 src/IPSys.Web/wwwroot/js/icons.js ICON_PATHS 仅有 folder 和 doc，没有 file；icon(name) 找不到键时返回空字符串。仅更正该处图标键 file 为已有 doc，不改 SVG 库、CSS、菜单尺寸、点击行为和业务数据库。扩展 src/IPSys.Web/tests/explorer-archive-operations-smoke.cjs，借助实际 icons.js 和 MI helper 验证两项菜单都呈现 18px SVG，菜单样式与 data-act 正确；旧业务点击测试保持。目标为现有 Windows CI 回归，不创建 Release。通知开始 office-renderer/wechat-webhook#1997；最终 SHA、CI、工件状态需提交后实证核验。本会话路径仍为 memory/sessions/2026-11-01-开发收尾审查.md。

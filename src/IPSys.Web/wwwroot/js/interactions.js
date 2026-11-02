@@ -1445,7 +1445,7 @@ function openNewMenu(anchor) {
       !(VaultStore.ws==="company" && section==="achievement");
     showCtx(r.left,r.bottom+6,
       MI("new-folder","folder","新建下级目录") +
-      (allowRecord ? MI("new-record","file","新建资料") : ""),
+      (allowRecord ? MI("new-record","doc","新建资料") : ""),
       handlers);
     return;
   }
