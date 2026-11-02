@@ -308,3 +308,11 @@ P3-1 last_insert_rowid 两次、脆弱可简化但当下正确；P3-2 ExcelLedge
 结论：此轮是真实有效的局部修复，但第一批不能称完全到位。P0-1回收站的archive_folder父级白名单已补两处并新增4个SQLCipher smoke断言，单附件删除/列表/恢复得到覆盖，永久清理、同FileId共享末引用、整树恢复未新增该场景专门验收。A03/P1-2与B01/P1-1代码拒绝update多候选、容许create/skip，保留不强制项目编号唯一正确；T-3至T-6的多匹配Excel导入仍未实际新增自动化用例。A04/P2-5刷新后重做服务端搜索，但快照查询词、await loadAll、resetSearch并重查旧词的并发次序未验证：如果用户在加载期更改查询，旧查询可能抢先清掉新查询序号。B03/P2-4批量删除固定工作区URL正确，但切换工作区仍允许发生，客户端/界面业务整体并未冻结；B04/P2-3绑定sessionToken改善循环和终态提示，purge-progress-smoke未覆盖会话实际切换；B02/P1-3仅把目录找不到时的异常改为409中文提示，仍以可变Category与“其他业务资料”硬编码选择落点，未实现显式FolderId；A05/N-1注释更正到位；D03/P3-1一次ExecuteScalar获取rowid已改好。最重要N-2/A02仍未实施，新建archive_folder与Excel archive/general不一致，不是待用户重新冻结的业务问题。
 
 建议状态：A01、A03、B01、A04、B03、B04“已实现关键部分，专项/竞态测试待补”；B02“仅提示兜底、功能未完成”；A05与D03“代码完成”；A02/N-2“未实施，仍第一优先级”。下一步先统一普通资料、首页、Excel、MCP调用矩阵，补齐T-1至T-6、T-10至T-12和T-15至T-17。CI success不等于18项专项测试成功。任务开始通知#2051；本轮未修改产品代码、用户数据库、Release或原实施记录，只做审查与记忆归档。最近会话路径memory/sessions/2026-11-02-操作细节精修仓库梳理.md；第十一轮。
+
+## 2026-11-02：N-2 统一后旧 archive/general 记录处置方案（第十二轮）
+
+用户原话：“统一后，库里现有的 archive / general 记录你觉得怎么处置？”本轮按 AIGT 规则与最新 IPSys main、MEMORY 和近期会话，核对 ResourceSchemaV2、NativeArchiveStore、BusinessRules、FolderModel、NativeArchiveGeneralExcelLedger 的真实对象字段。已证实 archive、general 与 archive_folder 共同存储在 folders 表，但 kind、section 和 attributes_json 结构不同：archive使用 ArchiveInput，general使用TitleInput，archive_folder使用ArchiveFolderInput；后者名称最多120字、Year限定4位数字、有同级唯一名称索引；schema 中 folder_immutable_scope 明确禁止直接 UPDATE kind/section 等身份字段。file links 依赖folder_id，简单删旧建新若不维护ID会损害附件共享/版本链接。
+
+建议策略（本轮为助手建议，尚非用户新批准或已执行方案）：用户此前明确处于测试阶段且没有需承担生产兼容责任，因此新版本以archive_folder为唯一普通资料业务对象，新建**干净测试数据库**验证新 schema 和所有API/UI/Excel/MCP/回收站，不投入成本维持 archive/general 长期业务路径，也不自动修改或清空现有文件。旧测试数据库原件作为只读备份留存以供核查。若用户确有需要保留的记录，只提供另行受控一次性转换选项，必须完整备份、验证同级重名/超长名称/年度字段和 JSON 映射、保留 FolderId/LinkId/FileId/版本与共享关系，基于新结构重建或受控重写而不是 UPDATE kind，隔离库事务验收后再决定是否使用。不能声称已迁移、已备份或已删除。
+
+当前实施决策是去除 archive/general 独立身份，让普通资料按 section 模块分区全部归 archive_folder；Excel台账只负责文件夹属性和位置，不传附件内容；企业资质/业务档案/个人等统一视图；项目/知识产权的专用记录依旧保留。已经确认的用户要求仍是无需考虑旧测试库迁移，避免把新建议写成用户已明确确认。任务开始通知 office-renderer/wechat-webhook#2052。本轮仅方案讨论，未改业务代码、真实DB或正式 Release；会话路径 memory/sessions/2026-11-02-操作细节精修仓库梳理.md，第十二轮。
