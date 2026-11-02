@@ -60,7 +60,7 @@ const catLabel = (id, ws) => (catsOf(ws || VaultStore.ws).find((c) => c.id === i
 const catIsDir = (id, ws) => {
   const w = ws || VaultStore.ws;
   return w === "company"
-    ? ["achievement","party","general"].includes(id)
+    ? ["certificate","achievement","party","general"].includes(id)
     : ["certificate","achievement","academic","general"].includes(id);
 };
 
@@ -579,11 +579,15 @@ const VaultStore = {
       const dirs = folders.map((f) => {
         const d = F(f.name || "未命名目录", { id: "af:" + f.id, mtime: toTs(f.modifiedAt) });
         d.biz = {
-          kind: "archive_folder", typeName: "目录", id: f.id,
+          kind: "archive_folder", typeName: catLabel(section,ws), id: f.id,
           section, parentId: f.parentId ?? null,
+          category: f.category || "",year: f.year || "",
+          tags: f.tags || "",remarks: f.remarks || "",raw: f,
         };
         d.order = f.position == null ? null : Number(f.position);
-        d.children = [];
+        d.children = latestLinks((archive?.files || []).filter(x =>
+          x.kind === "archive_folder" && Number(x.ownerId) === Number(f.id)))
+          .map(x => attachmentNode(x,"archive_folder"));
         return d;
       });
       const byId = new Map(dirs.map((d) => [String(d.biz.id), d]));

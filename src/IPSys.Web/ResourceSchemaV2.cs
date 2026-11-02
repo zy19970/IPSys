@@ -33,7 +33,7 @@ static class ResourceSchemaV2
               CHECK(kind!='contract' OR parent_id IS NOT NULL),
               CHECK(kind NOT IN ('project','contract','ip','general') OR section=''),
               CHECK(kind!='archive_folder' OR
-                (workspace='company' AND section IN ('achievement','party','general') OR
+                (workspace='company' AND section IN ('certificate','achievement','party','general') OR
                  workspace='personal' AND section IN ('certificate','achievement','academic','general'))),
               CHECK(kind!='archive' OR
                 (workspace='company' AND section IN ('certificate','achievement','party') OR

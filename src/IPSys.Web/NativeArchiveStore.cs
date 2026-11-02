@@ -48,8 +48,16 @@ static class NativeArchiveStore
                     throw new ArgumentException("目录名称必填，最多120字。");
                 if(folder.ParentId is <=0)
                     throw new ArgumentException("无效的上级目录。");
-                return (folderName,JsonSerializer.Serialize(new ArchiveFolderInput(
-                    folderName,folder.ParentId)),folder.ParentId,scope);
+                string? year=string.IsNullOrWhiteSpace(folder.Year)?null:folder.Year.Trim();
+                if(year is not null && (year.Length!=4 || !year.All(char.IsDigit)))
+                    throw new ArgumentException("年度须为四位数字。");
+                var normalized=folder with {
+                    Name=folderName,Year=year,
+                    Category=folder.Category?.Trim(),
+                    Tags=TagRules.Normalize(folder.Tags),
+                    Remarks=folder.Remarks?.Trim()
+                };
+                return (folderName,JsonSerializer.Serialize(normalized),folder.ParentId,scope);
 
             case FolderKinds.Archive when input.Archive is not null &&
                 input.ArchiveFolder is null && input.General is null:
@@ -245,7 +253,8 @@ static class NativeArchiveStore
         string name=rd.GetString(4);
         object metadata=kind switch
         {
-            FolderKinds.ArchiveFolder => new ArchiveFolderInput(name,parent),
+            FolderKinds.ArchiveFolder => (JsonSerializer.Deserialize<ArchiveFolderInput>(rd.GetString(7))
+                ?? new ArchiveFolderInput(name,parent)) with {Name=name,ParentId=parent},
             FolderKinds.Archive => JsonSerializer.Deserialize<ArchiveInput>(rd.GetString(7))
                 ?? throw new InvalidDataException("档案资料属性无效。"),
             FolderKinds.General => JsonSerializer.Deserialize<TitleInput>(rd.GetString(7))

@@ -8,28 +8,10 @@ const root=path.resolve(__dirname,"../wwwroot");
 const code=fs.readFileSync(path.join(root,"js/interactions.js"),"utf8");
 const forms=fs.readFileSync(path.join(root,"js/forms.js"),"utf8");
 
-/* The archive create menu must use real ICON_PATHS keys, not a blank glyph.
-   Render both items through the actual shared icon() and MI() helpers. */
-const iconSource=fs.readFileSync(path.join(root,"js/icons.js"),"utf8");
-const iconContext=vm.createContext({});
-const iconEnd=iconSource.indexOf("/* ---------- OneDrive brand mark");
-const miStart=code.indexOf("const MI = (");
-const miEnd=code.indexOf("function showCtx(",miStart);
-assert.ok(iconEnd>0 && miStart>=0 && miEnd>miStart,"shared icon/menu helpers exist");
-vm.runInContext(iconSource.slice(0,iconEnd),iconContext,{filename:"icons.js"});
-vm.runInContext(code.slice(miStart,miEnd),iconContext,{filename:"menu-helper.js"});
-assert.match(code,/MI\("new-record","doc","新建资料"\)/,
-  "New record menu must request the supported document glyph");
-const folderMenu=vm.runInContext('MI("new-folder","folder","新建下级目录")',iconContext);
-const recordMenu=vm.runInContext('MI("new-record","doc","新建资料")',iconContext);
-for(const html of [folderMenu,recordMenu]){
-  assert.match(html,/<svg[^>]*width="18" height="18"/,
-    "Both creation choices must render 18px icons on the same baseline");
-  assert.match(html,/class="ctx-item /,"Both menu items use identical layout");
-}
-assert.match(folderMenu,/data-act="new-folder"/);
-assert.match(recordMenu,/data-act="new-record"/);
-assert.match(recordMenu,/<span>新建资料<\/span>/);
+/* Archive and general scopes expose one ordinary folder creation command. */
+assert.match(code,/MI\("new-folder","folder","新建文件夹"\)/);
+assert.doesNotMatch(code,/MI\("new-record","doc","新建资料"\)/);
+assert.match(forms,/archiveFolder\(section, node = null, parentId = null/);
 function extract(start,end){
  const a=code.indexOf(start),b=code.indexOf(end,a+start.length);
  assert.ok(a>=0&&b>a,"source anchor "+start);
@@ -71,6 +53,7 @@ const VaultStore={ws:"company",async api(url,opts){
 }};
 const RecordForms={open(form){modals.push(form);},
  archive(...args){menus.push({archive:args});},
+ archiveFolder(...args){menus.push({archiveFolder:args});},
  project(){},contract(){},ip(){},general(...args){menus.push({general:args});}};
 const context=vm.createContext({
  Drive,VaultStore,RecordForms,
@@ -83,7 +66,7 @@ const context=vm.createContext({
  catsOf:()=>[{id:"achievement",label:"业务档案"}],
  catLabel:id=>id,
  catIsDir:(id,ws)=>ws==="company"
-  ?["achievement","party","general"].includes(id)
+  ?["certificate","achievement","party","general"].includes(id)
   :["certificate","achievement","academic","general"].includes(id),
 });
 vm.runInContext(guard,context,{filename:"interactions-create-guard.js"});
@@ -96,40 +79,32 @@ const fn=name=>vm.runInContext(name,context);
  assert.match(menus.at(-1).html,/new-folder/);
  assert.doesNotMatch(menus.at(-1).html,/new-record/);
  menus.at(-1).handlers["new-folder"]();
- await modals.at(-1).onSubmit({name:"新一级目录"});
- assert.equal(calls.at(-1).url,"/api/v2/folders/company/archive_folder");
- assert.deepEqual(JSON.parse(JSON.stringify(calls.at(-1).opts.json)),
-  {archiveFolder:{name:"新一级目录",parentId:null}});
+ assert.deepEqual(menus.at(-1).archiveFolder,["achievement",null,null]);
  Drive.state.folderId="af:70";
  fn("openNewMenu")(anchor);
  assert.match(menus.at(-1).html,/new-folder/);
- assert.match(menus.at(-1).html,/new-record/);
- const handlers=menus.at(-1).handlers;
- handlers["new-record"]();
- assert.deepEqual(menus.at(-1).archive,["achievement",null,70]);
- handlers["new-folder"]();
- await modals.at(-1).onSubmit({name:"新二级目录"});
- assert.equal(calls.at(-1).opts.json.archiveFolder.parentId,70);
+ assert.doesNotMatch(menus.at(-1).html,/new-record/);
+ menus.at(-1).handlers["new-folder"]();
+ assert.deepEqual(menus.at(-1).archiveFolder,["achievement",null,70]);
 
  Drive.state.folderId="k:general";
  fn("openNewMenu")(anchor);
  assert.match(menus.at(-1).html,/new-folder/);
- assert.match(menus.at(-1).html,/new-record/);
- const generalMenu=menus.at(-1);
- generalMenu.handlers["new-folder"]();
- await modals.at(-1).onSubmit({name:"综合资料一级目录"});
- assert.equal(calls.at(-1).url,"/api/v2/folders/company/archive_folder");
- assert.equal(calls.at(-1).opts.json.section,"general");
- generalMenu.handlers["new-record"]();
- assert.deepEqual(menus.at(-1).general,[null,null]);
+ assert.doesNotMatch(menus.at(-1).html,/new-record/);
+ menus.at(-1).handlers["new-folder"]();
+ assert.deepEqual(menus.at(-1).archiveFolder,["general",null,null]);
+
+ Drive.state.folderId="k:certificate";
+ fn("openNewMenu")(anchor);
+ assert.deepEqual(menus.at(-1).handlers["new-folder"] instanceof Function,true);
+ menus.at(-1).handlers["new-folder"]();
+ assert.deepEqual(menus.at(-1).archiveFolder,["certificate",null,null]);
 
  VaultStore.ws="personal";
  Drive.state.folderId="k:academic";
  fn("openNewMenu")(anchor);
  menus.at(-1).handlers["new-folder"]();
- await modals.at(-1).onSubmit({name:"学术一级目录"});
- assert.equal(calls.at(-1).url,"/api/v2/folders/personal/archive_folder");
- assert.equal(calls.at(-1).opts.json.section,"academic");
+ assert.deepEqual(menus.at(-1).archiveFolder,["academic",null,null]);
  VaultStore.ws="company";
  Drive.state.folderId="af:70";
 
@@ -213,11 +188,8 @@ const fn=name=>vm.runInContext(name,context);
 
  vm.runInContext(extract("function renameNode(node) {","function showItemMenu(id, x, y) {"),context);
  fn("renameNode")(parent);
- assert.equal(modals.at(-1).title,"重命名目录",
-  "Initially seeded folders must permit F2 rename");
- await modals.at(-1).onSubmit({name:"已改名初始目录"});
- assert.equal(calls.at(-1).opts.method,"PUT");
- assert.equal(calls.at(-1).url,"/api/v2/folders/company/archive_folder/70");
+ assert.deepEqual(menus.at(-1).archiveFolder,["achievement",parent,null,true],
+  "The existing directory must use the common folder editor for F2 rename");
 
  const formContext=vm.createContext({
  catLabel:id=>id,VaultStore,toast:()=>{},refreshCurrent:async()=>{}
@@ -226,11 +198,22 @@ const fn=name=>vm.runInContext(name,context);
  const real=vm.runInContext("RecordForms",formContext);
  let dialog=null;
  real.open=opts=>{dialog=opts;};
- real.archive("achievement",null,71);
- await dialog.onSubmit({name:"目录资料",category:"",year:"",tags:"",remarks:""});
- assert.equal(calls.at(-1).url,
-  "/api/v2/folders/company/archive?section=achievement");
- assert.equal(calls.at(-1).opts.json.archive.folderId,71);
- assert.ok(!("parentId" in calls.at(-1).opts.json));
+ real.archiveFolder("achievement",null,71);
+ assert.equal(dialog.title,"新建文件夹");
+ await dialog.onSubmit({name:"新文件夹",category:"证书",year:"2026",tags:"标签",remarks:"说明"});
+ assert.equal(calls.at(-1).url,"/api/v2/folders/company/archive_folder");
+ assert.deepEqual(JSON.parse(JSON.stringify(calls.at(-1).opts.json)),{
+  section:"achievement",
+  archiveFolder:{name:"新文件夹",parentId:71,category:"证书",year:"2026",tags:"标签",remarks:"说明"}
+ });
+ const edit=folder(81,"原有目录",[],70);
+ edit.biz.section="general";
+ edit.biz.raw={category:"类别",year:"2025",tags:"旧标签",remarks:"原备注"};
+ real.archiveFolder("general",edit,70,true);
+ assert.equal(dialog.title,"重命名文件夹");
+ await dialog.onSubmit({name:"新的名称"});
+ assert.equal(calls.at(-1).url,"/api/v2/folders/company/archive_folder/81?section=general");
+ assert.equal(calls.at(-1).opts.json.archiveFolder.category,"类别");
+ assert.equal(calls.at(-1).opts.json.archiveFolder.year,"2025");
  console.log("EXPLORER ARCHIVE F2-02 PASS: create, true parentId, mixed position, safe moves, deletion");
 })().catch(err=>{console.error(err);process.exitCode=1;});

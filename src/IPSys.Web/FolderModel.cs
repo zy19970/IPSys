@@ -58,7 +58,7 @@ static class FolderTypePolicy
 static class ArchiveDirectoryScopes
 {
     public static bool Allowed(string workspace,string section) =>
-        workspace=="company" && section is ("achievement" or "party" or "general") ||
+        workspace=="company" && section is ("certificate" or "achievement" or "party" or "general") ||
         workspace=="personal" && section is ("certificate" or "achievement" or "academic" or "general");
     public static string ForRecord(string kind,string section) =>
         kind==FolderKinds.General?"general":section;

@@ -56,6 +56,12 @@ const IPSysExport=(()=>{
      parts.push(group.get(childKey));
      directoryKey=childKey;
     }
+    // Attachments stored directly in a directory do not need a synthetic record.
+    if(file.kind==='archive_folder'){
+     if(!fileNames.has(directoryKey))fileNames.set(directoryKey,new Set());
+     parts.push(distinctName(cleanName(file.name,true),fileNames.get(directoryKey)));
+     return {...file,parts,path:parts.join('/')};
+    }
     const recordKey='archive-record:'+file.ownerId+':'+file.section;
     if(!children.has(directoryKey))children.set(directoryKey,new Map());
     const records=children.get(directoryKey);

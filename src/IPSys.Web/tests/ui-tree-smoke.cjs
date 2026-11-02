@@ -152,6 +152,31 @@ assert.equal(run("findParent('af:71').id"),'af:70');
 assert.equal(run("findById('af:70').size"),20,
  'Parent folder bytes must include nested record only once, at the latest version');
 
+/* Ordinary folders are both nestable and directly uploadable; latest LinkId wins. */
+const unifiedFolder={
+ ws:'company',projects:[],contracts:[],projectFiles:[],ip:{},
+ archive:{
+  folders:[
+   {id:800,section:'general',name:'模板',parentId:null,category:'标准',year:'2026',position:0},
+   {id:801,section:'general',name:'下级',parentId:800,position:0}
+  ],
+  archives:[],general:[],orders:{},
+  files:[
+   {linkId:86,fileId:860,version:1,ownerId:800,kind:'archive_folder',name:'旧版.pdf',size:5},
+   {linkId:86,fileId:860,version:2,ownerId:800,kind:'archive_folder',name:'新版.pdf',size:8},
+   {linkId:87,fileId:861,version:1,ownerId:801,kind:'archive_folder',name:'子级.docx',size:3}
+  ]
+ }
+};
+run('ROOT=VaultStore.buildTree('+JSON.stringify(unifiedFolder)+')');
+assert.deepEqual(Array.from(run("findById('af:800').children"),x=>x.id).sort(),
+ ['af:801','f:86:2'].sort(),'One folder owns files and nested folders together');
+assert.equal(run("findById('af:800').size"),11,'Nested bytes include only latest versions');
+assert.equal(run("findById('af:800').biz.category"),'标准');
+assert.equal(run("findById('af:800').biz.year"),'2026');
+assert.equal(run("findParent('f:86:2').id"),'af:800');
+assert.equal(run("findById('f:86:2').biz.ownerKind"),'archive_folder');
+
 /* BUG-002：所有业务模块只按 LinkId 展示最新版，不能按 FileId 合并共享引用。 */
 const childIds=id=>Array.from(run("findById("+JSON.stringify(id)+").children"),x=>x.id);
 assert.deepEqual(childIds('a:achievement:91'),['f:10:2']);
@@ -187,7 +212,7 @@ assert.equal(run("findById('i:603').biz.year"),'2024');
 
 /* Seven shared directory scopes; nested folder IDs must never attach to another category. */
 for (const ws of ['company','personal']) {
- const scopes=ws==='company'?['achievement','party','general']:
+ const scopes=ws==='company'?['certificate','achievement','party','general']:
   ['certificate','achievement','academic','general'];
  const folders=[],archives=[],general=[];
  scopes.forEach((section,index)=>{

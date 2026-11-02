@@ -217,6 +217,49 @@ const RecordForms = {
     });
   },
 
+  /* 普通资料文件夹：可以同时包含子目录和附件，属性均可选。 */
+  archiveFolder(section, node = null, parentId = null, renameOnly = false) {
+    const b = node?.biz || {};
+    const old = b.raw || {};
+    const scope = section || b.section;
+    const name = node?.name || "";
+    this.open({
+      title: node ? (renameOnly ? "重命名文件夹" : "文件夹属性") : "新建文件夹",
+      submitText: node ? "保存" : "创建",
+      values: {
+        name, category: old.category || "", year: old.year || "",
+        tags: old.tags || "", remarks: old.remarks || "",
+      },
+      fields: [
+        {key:"name",label:"文件夹名称",required:true,span:2},
+        ...(!renameOnly ? [
+          {key:"category",label:"类别"},
+          {key:"year",label:"年度",placeholder:"如 2026"},
+          {key:"tags",label:"标签",span:2},
+          {key:"remarks",label:"备注",type:"textarea",span:2}
+        ] : [])
+      ],
+      onSubmit: async data => {
+        const archiveFolder = {
+          name:data.name,
+          parentId:node ? b.parentId ?? null : parentId,
+          category:renameOnly ? old.category || "" : data.category || "",
+          year:renameOnly ? old.year || "" : data.year || "",
+          tags:renameOnly ? old.tags || "" : data.tags || "",
+          remarks:renameOnly ? old.remarks || "" : data.remarks || "",
+        };
+        const path="/api/v2/folders/"+VaultStore.ws+"/archive_folder";
+        const query="?section="+encodeURIComponent(scope);
+        await VaultStore.api(node ? path+"/"+b.id+query : path,{
+          method:node ? "PUT" : "POST",
+          json:node ? {archiveFolder} : {section:scope,archiveFolder},
+        });
+        await refreshCurrent();
+        toast(node ? "文件夹已保存" : "文件夹已创建");
+      }
+    });
+  },
+
   /* ---------------- 档案（资质 / 成果 / 学术） ---------------- */
 
   archive(section, node, parentId = null) {

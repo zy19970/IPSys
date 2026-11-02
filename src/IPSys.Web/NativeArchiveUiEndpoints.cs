@@ -1,4 +1,5 @@
 using Microsoft.Data.Sqlite;
+using System.Text.Json;
 
 // N2-04 snapshot for frozen company/personal archive and general browser.
 // All IDs in this response are native FolderId/FileId/LinkId; never query
@@ -70,16 +71,16 @@ static class NativeArchiveUiEndpoints
                         remarks=metadata.Remarks??"",modifiedAt=snapshot.Folder.ModifiedAt,files});
                 }
                 foreach(string scope in workspace=="company"
-                    ?new[]{"achievement","party","general"}
+                    ?new[]{"certificate","achievement","party","general"}
                     :new[]{"certificate","achievement","academic","general"})
                 {
                     var parentIds=new List<long>{0};
                     var directoryRows=new List<(long Id,long? Parent,string Name,
-                        int Position,bool IsSystem,string? ModifiedAt)>();
+                        int Position,bool IsSystem,string? ModifiedAt,string Metadata)>();
                     using(var cmd=v.Db.CreateCommand())
                     {
                         cmd.CommandText="""
-                            SELECT id,parent_id,name,position,is_system,modified_at FROM folders
+                            SELECT id,parent_id,name,position,is_system,modified_at,attributes_json FROM folders
                             WHERE workspace=$w AND kind='archive_folder'
                               AND section=$section AND deleted=0
                             ORDER BY position,id;
@@ -93,7 +94,7 @@ static class NativeArchiveUiEndpoints
                             long? parent=rd.IsDBNull(1)?null:rd.GetInt64(1);
                             directoryRows.Add((id,parent,rd.GetString(2),
                                 rd.GetInt32(3),rd.GetInt64(4)!=0,
-                                rd.IsDBNull(5)?null:rd.GetString(5)));
+                                rd.IsDBNull(5)?null:rd.GetString(5),rd.GetString(6)));
                         }
                     }
                     foreach(var row in directoryRows)
@@ -103,11 +104,17 @@ static class NativeArchiveUiEndpoints
                         // not reappear as an orphan at the category root.
                         if(!NativeFileStore.FolderActive(v.Db,workspace,row.Id))
                             continue;
+                        var meta=JsonSerializer.Deserialize<ArchiveFolderInput>(row.Metadata);
                         folders.Add(new{
                             id=row.Id,section=scope,parentId=row.Parent,
                             name=row.Name,position=row.Position,isSystem=row.IsSystem,
+                            category=meta?.Category??"",year=meta?.Year??"",
+                            tags=meta?.Tags??"",remarks=meta?.Remarks??"",
                             modifiedAt=row.ModifiedAt
                         });
+                        // A directory is also a file owner; its direct attachments
+                        // must be returned just like those belonging to records.
+                        AddFiles(v.Db,workspace,row.Id,"archive_folder",scope,fileRows);
                         parentIds.Add(row.Id);
                     }
                     foreach(long parentId in parentIds)

@@ -113,7 +113,11 @@ static class NativeArchiveOrder
 
         string updatedJson;
         if(r.Kind==FolderKinds.ArchiveFolder)
-            updatedJson=JsonSerializer.Serialize(new ArchiveFolderInput(name,targetParent));
+        {
+            var data=JsonSerializer.Deserialize<ArchiveFolderInput>(json)
+                ?? new ArchiveFolderInput(name,oldParent);
+            updatedJson=JsonSerializer.Serialize(data with {Name=name,ParentId=targetParent});
+        }
         else if(r.Kind==FolderKinds.Archive)
         {
             var data=JsonSerializer.Deserialize<ArchiveInput>(json)

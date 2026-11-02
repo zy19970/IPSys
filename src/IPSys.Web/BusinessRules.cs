@@ -27,7 +27,8 @@ record IpInput(
 record ArchiveInput(string? Name, string? Category, string? Remarks, string? Tags, string? Year = null,long? FolderId = null);
 
 record ArchiveTransfer(string TargetWorkspace,string TargetSection,bool Move);
-record ArchiveFolderInput(string Name,long? ParentId);
+record ArchiveFolderInput(string Name,long? ParentId,
+    string? Category=null,string? Year=null,string? Tags=null,string? Remarks=null);
 record ArchiveEntryOrderItem(string Kind,long Id);
 record ArchiveEntryReorder(long ParentId,List<ArchiveEntryOrderItem>? Items);
 

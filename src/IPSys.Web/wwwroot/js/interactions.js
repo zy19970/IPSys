@@ -1282,21 +1282,7 @@ function archiveParentId() {
 
 function createArchiveFolder(parentId = archiveParentId()) {
   const section=archiveScopeSection();
-  if (!section || !Number.isFinite(parentId ?? 0)) return;
-  RecordForms.open({
-    title: "新建下级目录",
-    submitText: "创建",
-    fields: [{key:"name",label:"目录名称",required:true}],
-    onSubmit: async data => {
-      const json={archiveFolder:{name:data.name,parentId}};
-      if (section!=="achievement" || VaultStore.ws!=="company") json.section=section;
-      await VaultStore.api("/api/v2/folders/" + VaultStore.ws + "/archive_folder", {
-        method:"POST", json,
-      });
-      await refreshCurrent();
-      toast("目录已创建");
-    },
-  });
+  if (section) RecordForms.archiveFolder(section,null,parentId);
 }
 
 async function deleteArchiveFolder(node) {
@@ -1337,7 +1323,8 @@ async function reorderArchiveEntry(node, direction) {
     return;
   }
   const parent = Drive.currentFolder;
-  const peers = [...(parent.children || [])]; // full unfiltered sibling set
+  const peers = (parent.children || []).filter(n =>
+    ["archive_folder","archive","general"].includes(n.biz?.kind));
   const index = peers.findIndex(n => n.id === node.id);
   const next = index + direction;
   if (next < 0 || next >= peers.length) return;
@@ -1434,19 +1421,10 @@ function openNewMenu(anchor) {
   /* 分类根目录只能新建目录；在具体目录中可新建下级目录或资料。
      不把业务档案资料创建到无真实 FolderId 的虚拟根。 */
   if (archiveScope()) {
-    const section=archiveScopeSection(), parentId=archiveParentId();
-    const handlers = {
+    const parentId=archiveParentId();
+    showCtx(r.left,r.bottom+6,MI("new-folder","folder","新建文件夹"),{
       "new-folder": () => createArchiveFolder(parentId),
-      "new-record": () => section === "general"
-        ? RecordForms.general(null,parentId)
-        : RecordForms.archive(section,null,parentId),
-    };
-    const allowRecord=tag === "af" ||
-      !(VaultStore.ws==="company" && section==="achievement");
-    showCtx(r.left,r.bottom+6,
-      MI("new-folder","folder","新建下级目录") +
-      (allowRecord ? MI("new-record","doc","新建资料") : ""),
-      handlers);
+    });
     return;
   }
 
@@ -1688,7 +1666,7 @@ function bindContent() {
     const node = findById(Drive.state.folderId);
     if (fileTaskBusy()) return toast("已有文件任务，请完成后再上传");
     if (canUploadFiles(node)) return uploadFiles(e.dataTransfer.files, node);
-    toast("请先进入具体业务记录，再上传附件");
+    toast("请先进入文件夹，再上传附件");
   });
 }
 
@@ -1696,23 +1674,9 @@ function bindContent() {
 function renameNode(node) {
   if (!node || node.type !== "folder") return;
   const b = node.biz || {};
-  if (b.kind !== "archive_folder") return RecordForms.edit(node);
-  RecordForms.open({
-    title: "重命名目录",
-    fields: [{ key: "name", label: "目录名称", required: true }],
-    values: { name: node.name },
-    onSubmit: async (data) => {
-      await VaultStore.api("/api/v2/folders/" + VaultStore.ws + "/archive_folder/" +
-        b.id +
-        (VaultStore.ws==="company" && (!b.section || b.section==="achievement")
-          ? "" : "?section="+encodeURIComponent(b.section)), {
-        method: "PUT",
-        json: { archiveFolder: { name: data.name, parentId: b.parentId } },
-      });
-      await refreshCurrent();
-      toast("目录名称已更新");
-    },
-  });
+  if (b.kind === "archive_folder")
+    return RecordForms.archiveFolder(b.section,node,b.parentId,true);
+  return RecordForms.edit(node);
 }
 
 function showItemMenu(id, x, y) {
@@ -1740,7 +1704,7 @@ function showItemMenu(id, x, y) {
     /* 合同挂在项目下,所以在项目节点上直接给一个建合同的入口 —— 比先打开
        项目再点工具栏少一步。 */
     b.kind === "project" ? MI("newcontract", "folder", "新建合同") : "",
-    (isFolder && b.kind !== "archive_folder") || !isFolder ? MI("props", "info", "属性") : "",
+    MI("props", "info", "属性"),
     MI("download", "download", actionItems.length > 1 || isFolder ? "打包下载" : "下载"),
     !isFolder ? MI("newver", "upload", "上传新版本") : "",
     !isFolder ? MI("assoc", "copy", "共享原件到其它记录") : "",
@@ -1767,7 +1731,9 @@ function showItemMenu(id, x, y) {
   showCtx(x, y, html, {
     open: () => (isFolder ? Drive.openFolder(id) : previewFile(id)),
     newcontract: () => RecordForms.contract(null, b.id),
-    props: () => RecordForms.edit(item),
+    props: () => b.kind === "archive_folder"
+      ? RecordForms.archiveFolder(b.section,item,b.parentId)
+      : RecordForms.edit(item),
     download: () => downloadNodes(actionItems),
     newver: () => uploadNewVersion(item),
     assoc: () => associateOriginal(item, false),
@@ -2409,13 +2375,13 @@ async function previewFile(id) {
 
 function canUploadFiles(node) {
   return node?.type === "folder" &&
-    ["project", "contract", "archive", "ip", "general"].includes(node.biz?.kind);
+    ["project", "contract", "archive", "archive_folder", "ip", "general"].includes(node.biz?.kind);
 }
 
 function pickFiles() {
   const node = findById(Drive.state.folderId);
   if (!canUploadFiles(node))
-    return toast("请先进入具体业务记录，再上传附件");
+    return toast("请先进入文件夹，再上传附件");
 
   const input = document.createElement("input");
   input.type = "file";

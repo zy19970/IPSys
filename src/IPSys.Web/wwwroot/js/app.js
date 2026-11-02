@@ -237,13 +237,13 @@ const Drive = {
     /* 搜索、回收站、首页、记录内部一律没有列集 —— 那里没有单一分类 */
     if (s.view !== "files" || s.query.trim()) return null;
     const id = String(s.folderId || "");
-    /* 业务档案的目录里装的仍然是同类记录,照样出台账 */
-    if (id.startsWith("af:"))
-      return LEDGER_COLS[this.currentFolder?.biz?.section || "achievement"] || ARCHIVE_COLS;
+    /* Ordinary folders can mix subfolders and attachments: file-manager columns. */
+    if (id.startsWith("af:")) return null;
     if (!id.startsWith("k:")) return null;
     const sec = id.slice(2);
     /* 公司业务档案入口展示普通目录树，所有目录操作规则一致 → 通用三列 */
-    if (catIsDir(sec, VaultStore.ws)) return null;
+    if (catIsDir(sec, VaultStore.ws) &&
+        !(VaultStore.ws === "company" && sec === "certificate")) return null;
     return LEDGER_COLS[sec] || null;
   },
 

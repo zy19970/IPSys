@@ -65,6 +65,51 @@ static class NativeArchiveUiHttpSmoke
             =="申报与认定").GetProperty("id").GetInt64();
         long child=await Add(client,"/api/v2/folders/company/archive_folder",
             new{archiveFolder=new{name=marker+"下级目录",parentId=root}});
+        // Ordinary directories can now contain both files and nested folders.
+        long ordinary=await Add(client,"/api/v2/folders/company/archive_folder",
+            new{section="general",archiveFolder=new{
+                name=marker+"普通文件夹",category="合同模板",year="2026",
+                tags="测试",remarks="可嵌套且可上传"}});
+        long ordinaryChild=await Add(client,"/api/v2/folders/company/archive_folder",
+            new{section="general",archiveFolder=new{
+                name=marker+"子文件夹",parentId=ordinary}});
+        long ordinaryFile=await Upload(client,
+            $"/api/v2/files/company/upload?folderId={ordinary}",
+            RandomNumberGenerator.GetBytes(128),marker+"直传.pdf");
+        // A shared FileId keeps its versions; each directory owns a separate LinkId.
+        using(var version=new HttpRequestMessage(HttpMethod.Post,
+            $"/api/v2/files/company/{ordinaryFile}/versions")
+            {Content=new ByteArrayContent(RandomNumberGenerator.GetBytes(137))})
+        {
+            version.Headers.Add("X-File-Name",Uri.EscapeDataString(marker+"新版.pdf"));
+            await Json(await client.SendAsync(version));
+        }
+        await Json(await client.PostAsJsonAsync(
+            $"/api/v2/files/company/{ordinaryFile}/links",
+            new{folderId=ordinaryChild}));
+        var unified=await client.GetFromJsonAsync<JsonElement>(
+            "/api/v2/ui/archive/company");
+        Assert(unified.GetProperty("folders").EnumerateArray().Any(x=>
+            x.GetProperty("id").GetInt64()==ordinary &&
+            x.GetProperty("category").GetString()=="合同模板" &&
+            x.GetProperty("year").GetString()=="2026" &&
+            x.GetProperty("remarks").GetString()=="可嵌套且可上传"),
+            "ordinary folder metadata is optional and queryable");
+        Assert(unified.GetProperty("folders").EnumerateArray().Any(x=>
+            x.GetProperty("id").GetInt64()==ordinaryChild &&
+            x.GetProperty("parentId").GetInt64()==ordinary),
+            "ordinary folder contains nested subfolder");
+        Assert(unified.GetProperty("files").EnumerateArray().Any(x=>
+            x.GetProperty("ownerId").GetInt64()==ordinary &&
+            x.GetProperty("kind").GetString()=="archive_folder" &&
+            x.GetProperty("fileId").GetInt64()==ordinaryFile),
+            "ordinary folder directly owns an uploaded attachment");
+        var shared=unified.GetProperty("files").EnumerateArray().Where(x=>
+            x.GetProperty("fileId").GetInt64()==ordinaryFile).ToArray();
+        Assert(shared.Length==4 &&
+            shared.Select(x=>x.GetProperty("linkId").GetInt64()).Distinct().Count()==2 &&
+            shared.Select(x=>x.GetProperty("version").GetInt32()).Distinct().Count()==2,
+            "direct and nested folder links share one FileId and two version histories");
         long record=await Add(client,"/api/v2/folders/company/archive",
             new{section="achievement",archive=new{
                 name=marker+"申报",folderId=child,year="2026"}});
