@@ -81,9 +81,9 @@ static class NativeExcelFileFilterSmoke
             "archive Excel omits folder matched solely through its file");
         Check(await Rows(client,"company","archive_folder","general",generalFile)==1,
             "general Excel omits folder matched solely through its file");
-        Check(await Rows(client,"company","archive","certificate",generalFile)==0,
+        Check(await Rows(client,"company","archive_folder","certificate",generalFile)==0,
             "general file must not leak into archive module");
-        Check(await Rows(client,"company","general","",archiveFile)==0,
+        Check(await Rows(client,"company","archive_folder","general",archiveFile)==0,
             "archive file must not leak into general module");
         Check(await Rows(client,"personal","archive_folder","certificate",archiveFile)==0,
             "company file must not leak into personal workspace");
