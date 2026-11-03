@@ -216,12 +216,17 @@ const fn=name=>vm.runInContext(name,context);
  };
  const deleteBatches=[];
  context.deleteNodes=items=>deleteBatches.push(items.map(item=>item.id));
+ vm.runInContext(extract("function selectionActionTargets(nodes, forDelete = false) {",
+  "/* 下载入口共用：单文件直下"),context);
  vm.runInContext(extract("function showItemMenu(id, x, y) {",
   "function showBlankMenu(x, y) {"),context);
  fn("showItemMenu")(parent.id,45,50);
  const multiMenu=menus.at(-1);
  assert.match(multiMenu.html,/删除选中的 2 项/);
- multiMenu.handlers["delete-folder"]();
+ assert.doesNotMatch(multiMenu.html,/data-act="(?:open|props|newver|assoc|assoc-move|rename|move-archive|copy-record|transfer-record|sort-up|sort-down)"/,
+  "Multi-selection must not expose single-folder actions");
+ assert.match(multiMenu.html,/打包下载选中的 2 项/);
+ multiMenu.handlers.delete();
  assert.deepEqual(deleteBatches.at(-1),[parent.id,other.id],
   "Right-click selected folder deletes every checked folder");
  assert.equal(Drive.state.selection.size,2,

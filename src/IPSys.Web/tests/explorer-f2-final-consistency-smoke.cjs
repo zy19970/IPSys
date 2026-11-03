@@ -16,12 +16,15 @@ const downloads=[],exportedCalls=[],notes=[];
 const nodes=[
  {id:"p:1",name:"项目",type:"folder",biz:{kind:"project",id:1}},
  {id:"f:12:1",name:"附件.pdf",type:"file",biz:{kind:"file"}},
+ {id:"f:13:1",name:"另一附件.docx",type:"file",biz:{kind:"file"}},
+ {id:"f:99:1",name:"旧版本.pdf",type:"file",biz:{kind:"file"}},
+ {id:"f:99:2",name:"新版本.pdf",type:"file",biz:{kind:"file"}},
  {id:"p:2",name:"其它项目",type:"folder",biz:{kind:"project",id:2}},
  {id:"t:8",name:"回收条目甲",type:"folder",biz:{kind:"trash",id:8}},
  {id:"t:9",name:"回收条目乙",type:"folder",biz:{kind:"trash",id:9}},
 ];
 const found=new Map(nodes.map(n=>[n.id,n]));
-const trash=nodes.slice(3);
+const trash=nodes.filter(n=>n.id.startsWith("t:"));
 const selection=new Set(["p:1"]);
 const drive={
  state:{selection,view:"files",folderId:"p:1",ready:true,
@@ -32,8 +35,12 @@ const drive={
 };
 const menus=[],deleted=[],recycled=[],dialogs=[];
 const sandbox=vm.createContext({
- Drive:drive,VaultStore:{ws:"company"},
+ Drive:drive,VaultStore:{ws:"company",metaOf:id=>({
+  "f:12:1":{linkId:12,fileId:12},"f:13:1":{linkId:13,fileId:13},
+  "f:99:1":{linkId:99,fileId:99},"f:99:2":{linkId:99,fileId:99}
+ }[id])},
  findById:id=>found.get(id)||null,RECYCLE:trash,
+ pathTo:id=>id==="f:12:1"?[found.get("p:1"),found.get(id)]:[found.get(id)],
  nodeTag:id=>String(id).split(":")[0],
  isTrashNode:id=>id.startsWith("t:"),fileTaskBusy:()=>false,
  canUploadFiles:n=>!!n&&n.type==="folder"&&
@@ -48,7 +55,7 @@ const sandbox=vm.createContext({
  recycleAction:(items,op)=>recycled.push({ids:Array.from(items,i=>i.id),op}),
  askConfirm:async()=>true,
 });
-vm.runInContext(part(inter,"/* 下载入口共用","function bindCmdbar() {"),sandbox);
+vm.runInContext(part(inter,"/* 所有批量入口共用目标规范化","function bindCmdbar() {"),sandbox);
 vm.runInContext(part(inter,"function showItemMenu(id, x, y) {","function showBlankMenu(x, y) {"),sandbox);
 vm.runInContext(part(inter,"function showBlankMenu(x, y) {","/* ---------------- 框选"),sandbox);
 const act=cmd=>vm.runInContext(cmd,sandbox);
@@ -58,7 +65,8 @@ const act=cmd=>vm.runInContext(cmd,sandbox);
  act("downloadNodes([findById('p:1')])");
  assert.deepEqual(exportedCalls.at(-1),["p:1"],"Folder download uses exporter");
  act("downloadNodes([findById('p:1'),findById('f:12:1')])");
- assert.deepEqual(exportedCalls.at(-1),["p:1","f:12:1"],"Mixed selection preserves folders and files");
+ assert.deepEqual(exportedCalls.at(-1),["p:1"],
+  "Selected parent already includes its child; do not duplicate in ZIP");
  drive.state.view="home";
  assert.equal(act("canCreateHere()"),true);
  drive.state.view="files";
@@ -82,14 +90,81 @@ const act=cmd=>vm.runInContext(cmd,sandbox);
  assert.deepEqual([...drive.state.selection],["p:2"]);
  menus.at(-1).handlers.delete();
  assert.deepEqual(deleted.at(-1),["p:2"]);
- // Opening a context menu on an already-selected row retains multiselection.
+ // Single-file commands are exclusive to the sole selected attachment.
+ drive.state.selection=new Set(["f:12:1"]);
+ act("showItemMenu('f:12:1',10,20)");
+ assert.match(menus.at(-1).markup,/data-act="(?:open|props|newver|assoc|assoc-move)"/);
+ assert.match(menus.at(-1).markup,/data-act="newver"/);
+ assert.match(menus.at(-1).markup,/data-act="assoc-move"/);
+
+ // Two checked files must offer only full-selection actions, never a hidden
+ // write to the last right-clicked file.
+ drive.state.selection=new Set(["f:12:1","f:13:1"]);
+ act("showItemMenu('f:13:1',10,20)");
+ let menu=menus.at(-1);
+ assert.deepEqual([...drive.state.selection],["f:12:1","f:13:1"]);
+ assert.match(menu.markup,/打包下载选中的 2 项/);
+ assert.match(menu.markup,/删除选中的 2 项/);
+ assert.doesNotMatch(menu.markup,/data-act="(?:open|props|newver|assoc|assoc-move|rename|copy-record|transfer-record|move-archive|sort-up|sort-down|newcontract)"/);
+ assert.deepEqual(Object.keys(menu.handlers).sort(),["delete","download"]);
+ menu.handlers.download();
+ assert.deepEqual(exportedCalls.at(-1),["f:12:1","f:13:1"]);
+ menu.handlers.delete();
+ assert.deepEqual(deleted.at(-1),["f:12:1","f:13:1"]);
+
+ // Two checked folders and mixed file/folder selections use the same
+ // batch-only menu; one selected folder keeps its own single-item commands.
  drive.state.selection=new Set(["p:1","p:2"]);
  act("showItemMenu('p:2',10,20)");
- menus.at(-1).handlers.delete();
+ menu=menus.at(-1);
+ assert.deepEqual([...drive.state.selection],["p:1","p:2"]);
+ assert.doesNotMatch(menu.markup,/data-act="(?:open|props|rename|copy-record|transfer-record|newcontract)"/);
+ assert.match(menu.markup,/打包下载选中的 2 项/);
+ menu.handlers.delete();
  assert.deepEqual(deleted.at(-1),["p:1","p:2"]);
+ drive.state.selection=new Set(["p:2","f:12:1"]);
+ act("showItemMenu('f:12:1',10,20)");
+ menu=menus.at(-1);
+ assert.deepEqual(Object.keys(menu.handlers).sort(),["delete","download"]);
+ menu.handlers.delete();
+ assert.deepEqual(deleted.at(-1),["p:2","f:12:1"]);
+
+ // Parent + child is one effective operation. Repeated versions sharing
+ // LinkId remain two download versions but only one unlink/delete target.
+ drive.state.selection=new Set(["p:1","f:12:1"]);
+ act("showItemMenu('f:12:1',10,20)");
+ menu=menus.at(-1);
+ assert.match(menu.markup,/删除选中的 1 项/);
+ menu.handlers.delete();
+ assert.deepEqual(deleted.at(-1),["p:1"]);
+ drive.state.selection=new Set(["f:99:1","f:99:2"]);
+ act("showItemMenu('f:99:2',10,20)");
+ menu=menus.at(-1);
+ assert.match(menu.markup,/打包下载选中的 2 项/);
+ assert.match(menu.markup,/删除选中的 1 项/);
+ menu.handlers.delete();
+ assert.deepEqual(deleted.at(-1),["f:99:1"]);
+
+ // Stale menu actions must never execute in a different workspace.
+ const before=deleted.length;
+ sandbox.VaultStore.ws="personal";
+ menu.handlers.delete();
+ assert.equal(deleted.length,before);
+ assert.match(notes.at(-1),/工作区已经切换/);
+ sandbox.VaultStore.ws="company";
+
+ // A right click on a row outside the selection must replace the selection.
+ act("showItemMenu('p:2',10,20)");
+ assert.deepEqual([...drive.state.selection],["p:2"]);
+ assert.match(menus.at(-1).markup,/data-act="props"/);
+ assert.match(menus.at(-1).markup,/data-act="copy-record"/);
+
  drive.state.selection=new Set(["t:8","t:9"]);
  drive.state.view="recycle";
  act("showItemMenu('t:8',10,20)");
+ assert.match(menus.at(-1).markup,/还原选中的 2 项/);
+ assert.match(menus.at(-1).markup,/彻底删除选中的 2 项/);
+ assert.deepEqual(Object.keys(menus.at(-1).handlers).sort(),["purge","restore"]);
  menus.at(-1).handlers.purge();
  assert.deepEqual(recycled.at(-1),{ids:["t:8","t:9"],op:"purge"});
  menus.at(-1).handlers.restore();

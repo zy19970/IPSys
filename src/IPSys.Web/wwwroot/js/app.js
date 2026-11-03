@@ -761,9 +761,20 @@ const Drive = {
     if (bar) bar.classList.toggle("show", n > 0);
     const sc = $("#selCount");
     if (sc) sc.textContent = `已选择 ${n} 项`;
-    $("#selDownload")?.classList.toggle("hidden", locked);
+    const selected = this.selectedItems;
+    const downloadCount = typeof selectionActionTargets === "function"
+      ? selectionActionTargets(selected).length : selected.length;
+    const deleteCount = typeof selectionActionTargets === "function"
+      ? selectionActionTargets(selected, true).length : selected.length;
+    const sdDownload = $("#selDownload");
+    if (sdDownload) {
+      sdDownload.classList.toggle("hidden", locked);
+      sdDownload.innerHTML = `${icon("download", 18)}<span>${n > 1 ? "打包下载选中的 " + downloadCount + " 项" : "下载"}</span>`;
+    }
     const sd = $("#selDelete");
-    if (sd) sd.innerHTML = `${icon("trash", 18)}<span>${locked ? "彻底删除" : "删除"}</span>`;
+    if (sd) sd.innerHTML = `${icon(locked ? "trashForever" : "trash", 18)}<span>${locked
+      ? n > 1 ? "彻底删除选中的 " + deleteCount + " 项" : "彻底删除"
+      : n > 1 ? "删除选中的 " + deleteCount + " 项" : "删除"}</span>`;
 
     const allIds = this.sortedItems.map((i) => i.id);
     const total = allIds.length;
@@ -1228,6 +1239,10 @@ const Drive = {
 
     /* 多选 */
     if (items.length > 1) {
+      const downloadCount = typeof selectionActionTargets === "function"
+        ? selectionActionTargets(items).length : items.length;
+      const deleteCount = typeof selectionActionTargets === "function"
+        ? selectionActionTargets(items, true).length : items.length;
       const total = items.reduce((a, b) => a + (b.size || 0), 0);
       body.innerHTML = `
         <div class="detail-hero">
@@ -1236,8 +1251,8 @@ const Drive = {
           <div class="detail-sub">${total ? `共 ${fmtSize(total)}` : "均为记录"}</div>
         </div>
         <div class="detail-actions">
-          ${locked ? "" : `<button class="btn" data-detail-act="download">${icon("download", 16)}下载</button>`}
-          <button class="btn" data-detail-act="delete">${icon("trash", 16)}${locked ? "彻底删除" : "删除"}</button>
+          ${locked ? "" : `<button class="btn" data-detail-act="download">${icon("download", 16)}打包下载选中的 ${downloadCount} 项</button>`}
+          <button class="btn" data-detail-act="delete">${icon(locked ? "trashForever" : "trash", 16)}${locked ? "彻底删除选中的 " : "删除选中的 "}${deleteCount} 项</button>
         </div>
         <div class="detail-section" style="border-bottom:0">
           <h4>包含</h4>

@@ -14,6 +14,8 @@ function extract(start,end){
  assert.ok(a>=0 && b>a,'Cannot extract '+start);
  return shell.slice(a,b);
 }
+const selection=extract('function selectionActionTargets(nodes, forDelete = false) {',
+ '/* 下载入口共用：单文件直下');
 const deletion=extract('async function deleteNodes(nodes) {','async function recycleAction(nodes, op) {');
 const locking=extract('async function lockVault() {','function bindSettings()');
 
@@ -45,6 +47,7 @@ const locking=extract('async function lockVault() {','function bindSettings()');
   Drive:{clearSelection:()=>{clears++;}},
   refreshCurrent:async()=>{refreshes++;},
  });
+ vm.runInContext(selection,context);
  vm.runInContext(deletion,context);
  const nodes=[
   {id:'f:3:1',type:'file',name:'旧版'},
@@ -100,9 +103,9 @@ const locking=extract('async function lockVault() {','function bindSettings()');
  messages.length=0;
  await context.deleteNodes([
   {id:'af:1',type:'folder',name:'目录甲',
-   biz:{kind:'archive_folder',id:1,section:'general'}},
+   biz:{kind:'archive_folder',id:1,section:'general',raw:{name:'甲',category:'合同'}}},
   {id:'af:2',type:'folder',name:'目录乙',
-   biz:{kind:'archive_folder',id:2,section:'general'}},
+   biz:{kind:'archive_folder',id:2,section:'general',raw:{name:'乙',category:'资质'}}},
  ]);
  assert.equal(switched.length,2,'Both selected folders are submitted');
  assert.ok(switched.every(url=>url.startsWith('/api/v2/folders/company/')),

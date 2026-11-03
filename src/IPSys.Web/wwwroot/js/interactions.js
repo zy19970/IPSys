@@ -1114,12 +1114,42 @@ function bindNav() {
   $("#btnNewSide").addEventListener("click", (e) => openNewMenu(e.currentTarget));
 }
 
+/* 所有批量入口共用目标规范化：
+   1. 同一节点只保留一次；
+   2. 父目录已选中时不再单独处理其下级，避免ZIP重复与删除重复报错；
+   3. 删除按LinkId合并同一关联的历史版本，下载仍可保留不同版本。
+   不改写实际选择集合，保证右键、工具栏、详情面板使用相同对象快照。 */
+function selectionActionTargets(nodes, forDelete = false) {
+  const selected = (nodes || []).filter(Boolean);
+  const folderIds = new Set(selected.filter(n => n.type === "folder").map(n => n.id));
+  const seen = new Set();
+  const targets = [];
+  for (const node of selected) {
+    const ancestors = typeof pathTo === "function" ? (pathTo(node.id) || []) : [];
+    if (ancestors.slice(0, -1).some(n => folderIds.has(n.id))) continue;
+    let key = node.id;
+    if (forDelete && node.type === "file" && typeof VaultStore.metaOf === "function") {
+      const linkId = VaultStore.metaOf(node.id)?.linkId;
+      if (linkId != null) key = "link:" + linkId;
+    } else if (forDelete && node.id.startsWith("t:") &&
+        node.biz?.raw?.kind && Number(node.biz.raw.id) > 0) {
+      const raw = node.biz.raw;
+      key = "trash:" + raw.kind + ":" + raw.id + ":" + (raw.section || "");
+    }
+    if (seen.has(key)) continue;
+    seen.add(key);
+    targets.push(node);
+  }
+  return targets;
+}
+
 /* 下载入口共用：单文件直下，目录与多选打包导出。 */
 function downloadNodes(nodes) {
-  if (!nodes?.length) return toast("请选择要下载的内容");
-  if (nodes.length === 1 && nodes[0].type === "file")
-    return downloadFile(nodes[0].id);
-  return exportNodes(nodes);
+  const targets = selectionActionTargets(nodes);
+  if (!targets.length) return toast("请选择要下载的内容");
+  if (targets.length === 1 && targets[0].type === "file")
+    return downloadFile(targets[0].id);
+  return exportNodes(targets);
 }
 
 function canCreateHere() {
@@ -1675,33 +1705,56 @@ function renameNode(node) {
 function showItemMenu(id, x, y) {
   const item = findById(id) || RECYCLE.find((i) => i.id === id);
   if (!item) return;
+  /* 右键已勾选条目沿用整个选择；右键未勾选条目收敛为单选。 */
   if (!Drive.state.selection.has(id)) Drive.select(id, "single");
   const trash = isTrashNode(id);
-  const actionItems = Drive.selectedItems.filter(n => isTrashNode(n.id) === trash);
-  const deleteLabel = actionItems.length > 1 ? "删除选中的 " + actionItems.length + " 项" : null;
-  const isFolder = item.type === "folder";
-  const b = item.biz || {};
+  const selected = Drive.selectedItems.filter(n => isTrashNode(n.id) === trash);
+  const downloads = selectionActionTargets(selected);
+  const deletions = selectionActionTargets(selected, true);
+  const multiple = selected.length > 1;
+  const sourceWorkspace = VaultStore.ws;
+  const inWorkspace = action => () => {
+    if (VaultStore.ws !== sourceWorkspace) {
+      toast("工作区已经切换，请重新选择操作目标", { tone: "error" });
+      return;
+    }
+    return action();
+  };
 
   if (trash) {
+    /* 回收站批量还原和永久删除共用同一规范化目标集。 */
     showCtx(x, y, [
-      MI("restore", "restore", "还原"),
-      MI("purge", "trashForever", "彻底删除", "", true),
+      MI("restore", "restore", multiple ? "还原选中的 " + deletions.length + " 项" : "还原"),
+      MI("purge", "trashForever",
+        multiple ? "彻底删除选中的 " + deletions.length + " 项" : "彻底删除", "", true),
     ].join(""), {
-      restore: () => recycleAction(actionItems, "restore"),
-      purge: () => recycleAction(actionItems, "purge"),
+      restore: inWorkspace(() => recycleAction(deletions, "restore")),
+      purge: inWorkspace(() => recycleAction(deletions, "purge")),
     });
     return;
   }
 
-  /* A02/N2：普通资料是文件夹，模块名仍按 section 折算，复制/转移照旧可用。 */
+  /* 批量菜单的每个命令都作用于整个选择集合；单项命令绝不混入。 */
+  if (multiple) {
+    showCtx(x, y, [
+      MI("download", "download", "打包下载选中的 " + downloads.length + " 项"),
+      '<div class="ctx-sep"></div>',
+      MI("delete", "trash", "删除选中的 " + deletions.length + " 项", "", true),
+    ].join(""), {
+      download: inWorkspace(() => downloadNodes(downloads)),
+      delete: inWorkspace(() => deleteNodes(deletions)),
+    });
+    return;
+  }
+
+  const isFolder = item.type === "folder";
+  const b = item.biz || {};
   const recordKind = b.kind;
   const html = [
     isFolder ? MI("open", "folder", "打开") : MI("open", "eye", "预览"),
-    /* 合同挂在项目下,所以在项目节点上直接给一个建合同的入口 —— 比先打开
-       项目再点工具栏少一步。 */
     b.kind === "project" ? MI("newcontract", "folder", "新建合同") : "",
     MI("props", "info", "属性"),
-    MI("download", "download", actionItems.length > 1 || isFolder ? "打包下载" : "下载"),
+    MI("download", "download", isFolder ? "打包下载" : "下载"),
     !isFolder ? MI("newver", "upload", "上传新版本") : "",
     !isFolder ? MI("assoc", "copy", "共享原件到其它记录") : "",
     !isFolder ? MI("assoc-move", "move", "移动附件到其它记录") : "",
@@ -1716,35 +1769,30 @@ function showItemMenu(id, x, y) {
     b.kind === "archive_folder"
       ? MI("move-archive", "move", "移动至其他目录") : "",
     b.kind === "archive_folder"
-      ? MI("delete-folder","trash",deleteLabel || "删除文件夹","",true)
-      : MI("delete", "trash", deleteLabel || "删除", "Del", true),
-  ]
-    .filter(Boolean)
-    .join("");
+      ? MI("delete-folder","trash","删除文件夹","",true)
+      : MI("delete", "trash", "删除", "Del", true),
+  ].filter(Boolean).join("");
 
   showCtx(x, y, html, {
-    open: () => (isFolder ? Drive.openFolder(id) : previewFile(id)),
-    newcontract: () => RecordForms.contract(null, b.id),
-    props: () => b.kind === "archive_folder"
+    open: inWorkspace(() => isFolder ? Drive.openFolder(id) : previewFile(id)),
+    newcontract: inWorkspace(() => RecordForms.contract(null, b.id)),
+    props: inWorkspace(() => b.kind === "archive_folder"
       ? RecordForms.archiveFolder(b.section,item,b.parentId)
-      : RecordForms.edit(item),
-    download: () => downloadNodes(actionItems),
-    newver: () => uploadNewVersion(item),
-    assoc: () => associateOriginal(item, false),
-    "assoc-move": () => associateOriginal(item, true),
-    "copy-record": () => transferBusinessRecord(item, false),
-    "transfer-record": () => transferBusinessRecord(item, true),
-    rename: () => renameNode(item),
-    "sort-up": () => reorderArchiveEntry(item,-1),
-    "sort-down": () => reorderArchiveEntry(item,1),
-    "move-archive": () => moveArchiveEntry(item),
-    // Unified files/folders use the existing batch-delete flow, preserving
-    // the selection and its confirm/recycle/partial-failure handling.
-    "delete-folder": () => deleteNodes(actionItems),
-    delete: () => deleteNodes(actionItems),
+      : RecordForms.edit(item)),
+    download: inWorkspace(() => downloadNodes(downloads)),
+    newver: inWorkspace(() => uploadNewVersion(item)),
+    assoc: inWorkspace(() => associateOriginal(item, false)),
+    "assoc-move": inWorkspace(() => associateOriginal(item, true)),
+    "copy-record": inWorkspace(() => transferBusinessRecord(item, false)),
+    "transfer-record": inWorkspace(() => transferBusinessRecord(item, true)),
+    rename: inWorkspace(() => renameNode(item)),
+    "sort-up": inWorkspace(() => reorderArchiveEntry(item,-1)),
+    "sort-down": inWorkspace(() => reorderArchiveEntry(item,1)),
+    "move-archive": inWorkspace(() => moveArchiveEntry(item)),
+    "delete-folder": inWorkspace(() => deleteNodes(deletions)),
+    delete: inWorkspace(() => deleteNodes(deletions)),
   });
 }
-
 function showBlankMenu(x, y) {
   const s = Drive.state;
   if (s.view !== "files") {
@@ -2016,6 +2064,7 @@ function bindOverlays() {
    ========================================================================== */
 
 async function deleteNodes(nodes) {
+  nodes = selectionActionTargets(nodes, true);
   if (!nodes.length) return;
   const requestedWorkspace = VaultStore.ws;
 
@@ -2097,7 +2146,9 @@ async function deleteNodes(nodes) {
 }
 
 async function recycleAction(nodes, op) {
+  nodes = selectionActionTargets(nodes, true);
   if (!nodes.length) return;
+  const requestedWorkspace = VaultStore.ws;
   if (op === "purge") {
     const ok = await askConfirm({
       title: "彻底删除",
@@ -2107,6 +2158,8 @@ async function recycleAction(nodes, op) {
     });
     if (!ok) return;
   }
+  if (VaultStore.ws !== requestedWorkspace)
+    return toast("工作区已经切换，请重新选择回收站目标");
 
   try {
     /* 彻底删除走服务端任务,进度与结果由 bridge.js 的 purgeTrash 接管 ——
@@ -2123,7 +2176,7 @@ async function recycleAction(nodes, op) {
 
     if (!items.length) return toast("这些条目缺少回收站标识");
 
-    await VaultStore.api(`/api/trash/${VaultStore.ws}/restore`, { method: "POST", json: { items } });
+    await VaultStore.api(`/api/trash/${requestedWorkspace}/restore`, { method: "POST", json: { items } });
     toast(`已还原 ${items.length} 项`);
     Drive.clearSelection();
     await refreshCurrent();
