@@ -141,6 +141,8 @@ function open(move=false) {
 
   // Same-source and duplicate-FileId directories are not allowed targets.
   open();
+  get("search").value="来源";
+  get("search").emit("input");
   assert.match(get("list").innerHTML,/来源/);
   assert.match(get("list").innerHTML,/disabled/);
   get("search").value="已有相同原件";
