@@ -152,7 +152,7 @@ assert.equal(run("Drive.yearOf({biz:{kind:'project',start:'',end:'2022-12-31'}})
 
   vault.getJson = async url => {
     if (url.startsWith("/api/trash/")) throw Error("HTTP 503");
-    if (url.includes("/archive/")) return payload.archive;
+    if (url.includes("/api/v2/ui/folders/")) return payload.archive;
     if (url.includes("/ip/")) return payload.ip;
     return [];
   };
@@ -162,7 +162,7 @@ assert.equal(run("Drive.yearOf({biz:{kind:'project',start:'',end:'2022-12-31'}})
 
   vault.getJson = async url => {
     if (url.startsWith("/api/trash/")) return [];
-    if (url.includes("/archive/")) return payload.archive;
+    if (url.includes("/api/v2/ui/folders/")) return payload.archive;
     if (url.includes("/ip/")) return payload.ip;
     return [];
   };
