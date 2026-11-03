@@ -247,9 +247,12 @@ static class ResourceSchemaV2Smoke
                 using var cmd=reopen.CreateCommand();
                 cmd.CommandText="SELECT count(*) FROM files;";
                 Check((long)cmd.ExecuteScalar()! == 2,"encrypted files survive reopen");
-                cmd.CommandText="SELECT count(*) FROM folders WHERE kind='archive_folder' AND parent_id IS NULL;";
+                cmd.CommandText="SELECT count(*) FROM folders WHERE kind='archive_folder' AND section='achievement' AND parent_id IS NULL;";
                 Check((long)cmd.ExecuteScalar()! == 7,
-                    "only six surviving initial folders plus one user-created folder after reopen");
+                    "six surviving achievement seeds plus one user-created folder after reopen");
+                cmd.CommandText="SELECT count(*) FROM folders WHERE kind='archive_folder' AND section='party' AND parent_id IS NULL;";
+                Check((long)cmd.ExecuteScalar()! == 1,
+                    "company party record shares archive_folder kind after reopen");
                 cmd.CommandText="SELECT count(*) FROM folders WHERE is_system<>0;";
                 Check((long)cmd.ExecuteScalar()! == 0,
                     "legacy starter flags remain cleared after reopen");
