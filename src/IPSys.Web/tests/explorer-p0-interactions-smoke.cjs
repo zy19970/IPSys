@@ -92,6 +92,29 @@ const locking=extract('async function lockVault() {','function bindSettings()');
  assert.ok(messages.some(x=>x.message.includes('已删除 2 项')),
   'Reported counts must describe the real outcome');
 
+ /* Switching from the UI is forbidden during an in-flight DELETE. */
+ const switching=extract('async function switchWorkspace(ws) {',
+  '/* ==========================================================================');
+ vm.runInContext(switching,context);
+ context.Drive.state={wsPending:null,selection:new Set(),history:[]};
+ context.fileTaskBusy=()=>false;
+ context.enterWorkspace=async()=>{throw Error('must not switch');};
+ context.VaultStore.ws='company';
+ let finishDelete;
+ context.VaultStore.api=()=>new Promise(resolve=>{finishDelete=resolve;});
+ const active=context.deleteNodes([
+  {id:'af:8',type:'folder',name:'处理中目录',
+   biz:{kind:'archive_folder',id:8,section:'general'}},
+ ]);
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(context.Drive.batchDeleteActive,true);
+ await context.switchWorkspace('personal');
+ assert.equal(context.VaultStore.ws,'company');
+ assert.ok(messages.some(x=>x.message.includes('批量删除任务进行中')));
+ finishDelete();
+ await active;
+ assert.equal(context.Drive.batchDeleteActive,false);
+
  /* A refused POST /api/lock (409) must neither drop tokens nor reload UI.
     On success the server has locked, so clearing only own session keys is OK. */
  let rejectLock=true, confirmLock=true, closes=0, reloads=0;

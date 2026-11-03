@@ -99,5 +99,57 @@ const refreshSource=slice(inter,'async function refreshCurrent() {',
   assert.equal(refreshDrive.state.folderId,'af:5','current folder survives refresh');
   assert.equal(refreshDrive.state.view,'files');
 
+  /* ---- 5. The user edits the query while a folder refresh awaits HTTP. ---- */
+  let completeReload;
+  refreshVault.loadAll=async()=>new Promise(resolve=>{completeReload=resolve;});
+  refreshDrive.state.query='旧词';
+  order.length=0;
+  const refreshPending=refreshCtx.refreshCurrent();
+  refreshDrive.state.query='最新关键词';
+  completeReload();
+  await refreshPending;
+  assert.equal(order.at(-1),'search:最新关键词',
+    'refresh must restart the current query, not a pre-await snapshot');
+
+  /* ---- 6. Workspace changed during refresh: discard stale repaint. ---- */
+  order.length=0;
+  refreshVault.ws='company';
+  const staleRefresh=refreshCtx.refreshCurrent();
+  refreshVault.ws='personal';
+  completeReload();
+  await staleRefresh;
+  assert.deepEqual(order,[],
+    'stale workspace refresh must not render or start a search');
+  refreshVault.ws='company';
+
+  /* ---- 7. Two store.loadAll calls finishing backwards cannot swap trees. ---- */
+  const store=fs.readFileSync(path.join(root,'store.js'),'utf8');
+  const loader=slice(store,'  async loadAll(ws = "company") {',
+    '  /* 后端回收站是扁平的').trim().replace(/,$/,'');
+  let releaseCompany;
+  const loaderContext=vm.createContext({ROOT:{workspace:'original'},
+    RECYCLE:[],Set,Map,Promise,Error,encodeURIComponent});
+  const load=vm.runInContext('({'+loader+'})',loaderContext).loadAll;
+  const loaderVault={
+    ws:null,loadEpoch:0,biz:new Map(),fileMeta:new Map(),
+    getJson:async url=>{
+      if(url.includes('/company') && url.includes('/projects/'))
+        return new Promise(resolve=>{releaseCompany=()=>resolve({});});
+      return {};
+    },
+    loadRecycle:async()=>[],
+    buildTree:({ws})=>({workspace:ws}),
+  };
+  const slow=load.call(loaderVault,'company');
+  const fast=load.call(loaderVault,'personal');
+  await fast;
+  releaseCompany();
+  await slow;
+  assert.equal(loaderVault.ws,'personal');
+  assert.equal(loaderContext.ROOT.workspace,'personal',
+    'old workspace cannot commit its tree after a newer load');
+  assert.equal(loaderVault.loading,false,
+    'old request cannot reset a newer request loading flag');
+
   console.log('SEARCH REFRESH SMOKE PASS: query preserved, stale responses ignored, failures surfaced');
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -197,6 +197,7 @@ const VaultStore = {
   /* ---------------- 加载 ---------------- */
 
   async loadAll(ws = "company") {
+    const epoch = this.loadEpoch = (this.loadEpoch || 0) + 1;
     this.ws = ws;
     this.loading = true;
     this.error = null;
@@ -219,16 +220,19 @@ const VaultStore = {
       ]);
       /* 全部必需接口成功以后，才可以替换旧树；失败不是「空库」。 */
       const recycle = await this.loadRecycle(ws);
+      // A slower request for a previous workspace must never replace the
+      // tree loaded by a newer request (including its attachment metadata).
+      if (epoch !== this.loadEpoch || ws !== this.ws) return ROOT;
       this.biz.clear();
       this.fileMeta.clear();
       ROOT = this.buildTree({ ws, projects, contracts, archive, ip, projectFiles });
       RECYCLE = recycle;
       return ROOT;
     } catch (e) {
-      this.error = e.message || String(e);
+      if (epoch === this.loadEpoch) this.error = e.message || String(e);
       throw e;
     } finally {
-      this.loading = false;
+      if (epoch === this.loadEpoch) this.loading = false;
     }
   },
 

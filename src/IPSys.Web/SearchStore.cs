@@ -44,7 +44,8 @@ static class SearchStore
             "achievement"=>workspace=="company"?"业务档案":"成果与奖励",
             "party"=>"党团建设",
             "general"=>workspace=="company"?"综合资料":"其他资料",
-            _=>"资质与证件"
+            "certificate"=>workspace=="personal"?"人力资源":"企业资质",
+            _=>section
         };
     private static string Summary(params string?[] fields)=>string.Join(" · ",
         fields.Where(x=>!string.IsNullOrWhiteSpace(x)).Select(x=>x!.Trim()));

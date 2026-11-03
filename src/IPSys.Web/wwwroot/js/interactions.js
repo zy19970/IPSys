@@ -264,8 +264,8 @@ async function switchWorkspace(ws) {
   }
   /* 上传/导出还在跑时切工作区,请求会落到新工作区的路径上,服务端收到的是
      错配的 folderId;导出则是把旧工作区的树画到新界面上。直接挡住。 */
-  if (fileTaskBusy()) {
-    toast("文件任务进行中,完成后再切换工作区", { ms: 5000 });
+  if (fileTaskBusy() || Drive.batchDeleteActive) {
+    toast("文件或批量删除任务进行中，完成后再切换工作区", { ms: 5000 });
     return;
   }
   const cur = VaultStore.ws === "company" ? "company" : "personal";
@@ -2042,6 +2042,9 @@ async function deleteNodes(nodes) {
     danger: true,
   });
   if (!ok) return;
+  if (Drive.batchDeleteActive) return toast("已有批量删除正在执行");
+  Drive.batchDeleteActive = true;
+  try {
 
   /* 整批固定发起时的工作区:循环里重读 VaultStore.ws 会把后半段请求
      打到切换后的工作区,造成"成功 N 失败 M"的假象。 */
@@ -2082,6 +2085,9 @@ async function deleteNodes(nodes) {
       { ms: 9000, tone: "error" });
   } else {
     toast("已删除 " + succeeded + " 项");
+  }
+  } finally {
+    Drive.batchDeleteActive = false;
   }
 }
 
@@ -2127,13 +2133,16 @@ async function emptyRecycle() {
 }
 
 async function refreshCurrent() {
+  const ws = VaultStore.ws;
+  await VaultStore.loadAll(ws);
+  // An asynchronous reload can outlive a workspace change. Do not paint
+  // the old workspace or restart an obsolete search in the new workspace.
+  if (VaultStore.ws !== ws || Drive.state.wsPending) return;
   const keep = Drive.state.folderId;
   const view = Drive.state.view;
-  /* 刷新前记下搜索词:重建树会作废旧命中,若只清命中不重查,列表会
-     静默退回本地匹配,用户会以为跨目录命中的资料消失了。 */
+  // Use the CURRENT query after await: the user may have typed another
+  // keyword while the database snapshot was reloading.
   const query = Drive.state.query.trim();
-  await VaultStore.loadAll(VaultStore.ws);
-  /* 树重建了,旧的搜索命中项指向已经不在树里的节点,全部作废 */
   Drive.resetSearch();
   const node = findById(keep);
   Drive.state.ready = true;
