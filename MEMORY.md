@@ -493,3 +493,6 @@ CI #506 run41623186950首次通过编译、MCP和早期UI检查，但新测试�
 ## 2026-11-03：公司项目类型颜色及项目台账正文字号统一（会话第二轮）
 
 用户截图指出公司项目台账科研/横向项目标签颜色相同且字小，要求“项目类型用不同的颜色区分，另外字体大小都要一样大”，并明确授权“按照你的思路，直接修改代码”。按照AIGT基础三规范读取本仓记忆及main，核对forms.js/BusinessRules.cs现有可选项目类型只有科研项目、横向项目、其他项目；此前讨论的纵向/合作仅为未来举例，不擅自扩大业务枚举。前端app.js项目类型列单独用project-type与PROJECT_TYPE_TONES，CSS提供科研浅蓝、横向浅橙、其他浅绿、未知灰色；项目类型与项目名称font-size 13.5px，项目年份/编号/附件数量仅在项目表格中同步13.5px；高度24px，保留IP/state及通用tag样式。更新现有ip-type-badge-smoke.cjs检查三类真实颜色、字体、行专属类和HTML转义。首次工具补丁在测试文本锚点匹配时停止，未写Git对象；通知失败#2163、重启#2164。此轮原子提交后以新SHA和Windows CI核验，当前不预称CI通过；不修改数据库、共享文件、Excel、MCP或正式Release。会话路径memory/sessions/2026-11-03-IPSys项目整体认知复盘.md，第二轮。
+
+
+**项目类型配色及字号修改最终 CI 验收（2026-11-03）**：产品+测试+Memory提交 `ba2d24f992a0e703dcb63facc229d7be864f0e9d` 已核对 main，只有 `src/IPSys.Web/wwwroot/js/app.js`、`wwwroot/css/app.css`、`tests/ip-type-badge-smoke.cjs` 及两份项目记忆改变。Windows Actions `#510`（run `41648545951`）针对**精确同一源码SHA**已 `completed/success`，26步骤success、0失败、2项可选超4GiB ZIP64步骤skipped；通过前端动态类型配色/字号/HTML转义、Node/UI全套、Edge/HTTP、SQLCipher/HTTP、MCP及两种单EXE构建启动。未过期artifact：`IPSys-Web-win-x64-self-contained` ID 13235574412（推荐）、`IPSys-Web-win-x64` ID 13235624188、`IPSys-Explorer-V2-Retest-41648545951-1` ID 13236248158。验收页面 https://github.com/zy19970/IPSys/actions/runs/41648545951 。此处仅意味着自动回归通过；正式Release和用户本机新版GUI人工验证仍未进行。最近会话仍是 memory/sessions/2026-11-03-IPSys项目整体认知复盘.md，第二轮最终收敛。
