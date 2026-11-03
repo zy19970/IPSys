@@ -391,3 +391,14 @@ GitHub Actions #489 run `41568442664` 针对主提交 `b21aab8`，已完成 succ
 建议统一唯一普通资料kind archive_folder，加section约束；去掉隐式company achievement默认，统一CRUD/排序/删除/搜索/Excel/附件/MCP与UI所有旧类型映射，六列表格单实现，移除旧Excel模板回退和旧SQL分支；跨工作区转移使用一套Folder树执行器与集中的业务允许矩阵，不擅自放宽模块间转移权限。MCP缩减重叠工具，补全同一套可选业务字段，保留项目/IP/合同专用工具。主测试使用新隔离SQLCipher库覆盖各section、无父级根文件夹、Excel/Agent/搜索/回收站、共享FileId与版本、跨区复制及失败回滚；旧类型当作无效输入拒绝。当前无数据库迁移要求，但不允许自动覆盖/删除用户现有测试库。具体批次方案待用户认可，本轮没有改动产品代码、没有运行CI或发布EXE/Release。
 
 会话记录：memory/sessions/2026-11-03-仓库文件提交与项目全貌复盘.md，已归档第二轮。开始通知 office-renderer/wechat-webhook#2094。
+
+
+## 2026-11-03：archive/general 清理实施及 Windows CI #502 最终通过（本会话第三、四轮；状态补记）
+
+**用户先后确认：“你的思路没问题……按照你的思路修改吧”，后续询问：“怎么断开连接了？继续推进”“怎么超时了？进展到哪一步了？”** 已遵循 AIGT 规则在 IPSys/main 执行 archive_folder+section 一次性重构与失败后的测试收敛。本轮为中断恢复后的现状复核，未再修改产品源码；对当前主分支及 Actions 进行实时复核。
+
+代码主提交 `be8853ca5fdd19825c9f4137d55be231c5835acf` 修改39文件，统一普通资料唯一 kind=`archive_folder`、按工作区显式 section（company: certificate/achievement/party/general；personal: certificate/achievement/academic/general）、可在模块根目录建立/转移普通文件夹，清理旧archive/general对象、路由、回收站分支、文件夹伪record排序，Excel统一六列、旧格式不兼容，MCP统一list/create/update/delete/move/transfer_folder，前端/测试同步；保留业务模块与合法跨模块转移权限、文件共享FileId/LinkId、跨工作区物理独立及完整FileVersion、回收站与事务安全。后续陆续修复 NativeFolderStore 已删DTO字段、共享关联HTTP用例、Excel导入section与模板kind判断、Excel过滤、SearchSmoke、MCP旧名称负向断言、MCP非法parent_id的确定性拒绝（不产生uncertain）、Explorer导出路径及Node测试、发布版MCP51工具检查、隔离SQLCipher/Edge真实夹具；同步 README/TESTING/UI_BASELINE/DEVELOPMENT_PLAN/USER_GUIDE/MCP_CODEX/wiki。关键修复提交按序包括 `029e9f79`、`a2d5c4cb`、`e040942f`、`0ce30445`、`0acddd0d`、`e3a8ca44`、`fe2992d3`、`be1826d6`、`4d51429b`、`9219bd85`(docs skip CI)、`948b1f87`。
+
+**实际最终验证：** 截至本轮当前时间，`main=948b1f87d8f4a75a576ca4aa0b7089dac6f8edae`；Windows Actions **#502 run 41598924583** 针对该精确SHA `completed/success`：26项success、0项failure、2项可选ZIP64大型物理生成/元数据步骤skipped。包括Debug嵌入Web、SQLCipher本机HTTP冒烟、统一MCP stdio与51工具、Node/Explorer、隔离SQLCipher+真实Edge重测、两种win-x64单EXE构建/启动和资源图标。之前#492–#501各次失败为循序发现并修复的具体迁移/测试残留，不能把历史失败说成最终状态。主程序未触发正式Release；不等于用户本机实际操作、真实第三方Agent或可选>4GiB ZIP64生成全验收。用户生产数据库未触碰、不做旧数据库迁移。仓库无需要再推送的可证实源码待办，下一步用户拉取当前CI的EXE做个人/公司普通资料、Excel、MCP、复制移动、共享版本和回收站实际操作确认。正式Release仍需用户手动触发，不自动发版。
+
+**本轮归档文件：** `memory/sessions/2026-11-03-仓库文件提交与项目全貌复盘.md`。助手对用户先解释中断前“e3a8ca44/#498未通过”的时间点，随后通过GitHub重新取现状确认main已前进至948b1f87，CI#502最终通过并即时更新说明。不要将较早状态解读为最新结论。
