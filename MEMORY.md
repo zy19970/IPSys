@@ -452,3 +452,10 @@ GitHub Actions #489 run `41568442664` 针对主提交 `b21aab8`，已完成 succ
 ## 2026-11-03 第十轮：实施深层目录共享/移动目标选择器
 
 用户明确授权：“思路没问题，修改一下吧”。遵守AIGT三份基础规则，以 main=f6911a842cbf9c0d8e0a4241ef96f5d668d8f969 为基线实施。新增 `src/IPSys.Web/wwwroot/js/folder-picker.js`，为移动附件及共享原件提供单一可复用选择器。当前模块开始浏览，支持任意层级单层目录、面包屑返回、全局路径搜索定位、本级搜索、40项一批展示、真实文件夹选择与独立确认，模块虚拟目录不能选；来源和目标路径及移动/共享后果可见。新组件用迭代方式索引 `ROOT` 文件夹（Map by id + FolderId），避免深层递归和逐条全树 `pathTo`，不引入数据库迁移。`bridge.js` 使用 picker，并保留原附件 FileId/LinkId 事务与拖拽直达路径和目标重复关联、切工作区、任务锁校验。`css/app.css` 提供固定高度弹窗与独立滚动，bundle.cjs 增加新模块，避免新脚本遗漏。F2-03测试更改为对真实picker索引及原HTTP提交回归；新增 folder-picker-smoke.cjs 覆盖75层嵌套、1230个同级目录、搜索分页、取消、工作区切换和目标去重；Windows workflow已纳入新测试。本轮首批提交的改动需按CI完成验收，不能将静态代码检查等同已通过工作流，未发布Release/未修改用户数据库。
+
+
+## 第十轮收尾：多级文件夹选择器代码与CI验收完成
+
+本轮“思路没问题，修改一下吧”已落地至 `main`，产品提交 `f587f8a7006775f5879f9d74ee740ff743dd36aa` 和测试修复 `87a54c3d80864cae788f0d4efd8798e8a05ec110`。新 `folder-picker.js` 被 `tools/bundle.cjs` 编入正式内嵌Web，`bridge.js` 的移动附件和共享原件改用该目录选择窗口。支持从来源业务模块开始逐级导航、面包屑返回、本级过滤与全工作区深层目录名称/路径搜索、每次40项加载、选中真实FolderId后单独确认；虚拟目录与来源目录不能选，目标已共享相同FileId也不能选。CSS保持独立滚动区域及固定确认。FileId/LinkId、FileVersion、跨工作区限制与现有事务不变，拖拽直接移动路径保留。新增 `folder-picker-smoke.cjs` 测试75层深目录、1230同级候选、分页/搜索/确认/工作区和重复关联，原F2-03关联测试继续验证HTTP、409和来源目标边界。
+
+CI #506 run41623186950首次通过编译、MCP和早期UI检查，但新测试误以为来源文件夹一定出现在排序后前40个结果里而失败。测试修复 `87a54c3d` 在判断来源不可选之前先筛选来源名称，保留40项分页和原业务断言。随后Windows CI **#507 run41623938277** 对源码sha `87a54c3d80864cae788f0d4efd8798e8a05ec110` 已经 **completed/success**：26步骤success、0failure、2可选ZIP64步骤skipped；涵盖Windows Debug、Node UI（含新选择器）、MCP、真实Edge/HTTP、SQLCipher/HTTP、两种单EXE构建/启动。产物：`IPSys-Web-win-x64`（框架依赖）、`IPSys-Web-win-x64-self-contained`（自包含），另有 Explorer V2 retest证据包。正式 Release 未手动触发；用户本机GUI和真实资料尚未由用户验收。最新验证地址：https://github.com/zy19970/IPSys/actions/runs/41623938277 。本轮项目记忆指针仍为 `memory/sessions/2026-11-03-仓库文件提交与项目全貌复盘.md`，第十轮最终归档。
