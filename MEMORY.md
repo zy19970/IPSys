@@ -378,3 +378,16 @@ GitHub Actions #489 run `41568442664` 针对主提交 `b21aab8`，已完成 succ
 当前未完全关闭的7项（均来自11月3日经复核的整改总表，不意味着7个已实机复现的严重Bug）：P1-4 Vault.Gate大文件上传下载导致其他数据库请求延后影响待测；P2-1 Excel逐行ListAll的约二次性能风险；P2-2 完成后退出在失活/半开连接时可能长期等待；P2-6 框选Shift锚点规则待定；P2-7 未解锁/api/status的路径信息最小化；P3-2旧records辅助函数清理；P3-3项目位置MAX跨父级的实效。专项建议首先使用新建的隔离测试库复核2GiB+并发、退出、共享多版本整树转移、5000行Excel、真实Agent任务与不同缩放的GUI，不改旧测试库、不仓促重构和发布。文档小幅滞后：2026-11-02编写的README/TESTING/DEVELOPMENT_PLAN/UI_BASELINE仍把综合资料Excel写为3列；当前ExcelLedger.cs实际已经为6列（名称/类别/备注/标签/年度/所属目录），需要在后续明确文档同步任务定向更新。不能仅据旧文档声称代码有Bug。
 
 本轮仅为仓库分析，没有修改任何业务代码、测试脚本或用户数据；没有启动新CI、生成EXE、触发Release。依据AIGT规范将本轮记忆写入本仓而不写入模板仓库。开始通知office-renderer/wechat-webhook#2092。新会话记录：memory/sessions/2026-11-03-仓库文件提交与项目全貌复盘.md，已归档第一轮。
+
+
+## 2026-11-03：archive/general 普通资料旧类型与真实业务分流专项审查（当前会话第二轮）
+
+用户选中上轮回答中的“旧接口中仍保留 archive/general 作为业务模块名称”并指出尚未投产、无旧数据库兼容需求，要求先系统审查 archive/general 是否承载其它真实业务逻辑，再讨论改法。本轮仅分析，不获授权修改业务源码。重新读 AIGT AGENTS/GIT_OPERATIONS/MEMORY_PROTOCOL、项目MEMORY及本会话；从main=3ca9d3cd818b547f183eafb9c9bc1b560c53621d 出发，对核心仓库代码做定向查询。
+
+实证：ResourceSchemaV2新库 kind 只容许 project/contract/ip/archive_folder；但 FolderModel 的 FolderKinds.Archive/General、ResourceRef.IsValid、FolderTypePolicy、ArchiveDirectoryScopes.ForRecord/RecordKind；NativeArchiveStore 的 Handles、Unify、AsFolder(ArchiveInput/TitleInput)、Section和Read分支；NativeFolderEndpoints 的旧kind路由仍接收旧对象；RecycleStore 查询 kind='archive'/'general' 和 v2_archive/v2_general、永久删除子树旧kind兼容；NativeArchiveOrder的 folder/record 两类排序规范化；SearchStore允许旧kind但当前命中返回archive_folder导致旧filter实际为空；NativeMcpFileQuery用CASE接收旧过滤并把结果类型重新映射为archive/general；MCP的list/create/update/delete_archive、general、archive_folder、party工具并行共存，upload_files/list_files_page、move_folder/transfer_archive/transfer_general的kind输入分流；前端excel.js/bridge.js/interactions.js/store.js仍有旧kind转换和v2_general等显示；当前普通资料Excel ArchiveColumns与GeneralColumns均为6列名称/类别/备注/标签/年度/所属目录，但ExcelLedger仍读取旧档案4列及综合资料1/2/3列；NativeArchiveGeneralExcelEndpoints按archive/general设置两条活跃路由；NativeArchiveGeneralExcelLedger依kind决定同一种表、旧4列按类别找一级目录并提供兼容读取；ExcelLedger里GeneralRules/InsertGeneral/UpdateGeneral等存在弃用代码。
+
+确实存在的业务差异不应误删：section区分company和personal的certificate/achievement/academic/party/general；ArchiveRules.Module映射业务属性类型、跨区转移合法范围（company achievement与personal achievement/academic，certificate限同类同工作区，party限公司；general可跨公司/个人）；公司七个预置业务档案分类属普通文件夹；不同业务模块导航名称、入口与转移目标展示要保留；项目/合同/IP专属数据模型要保留。原MCP create_archive要求company achievement必须指定父目录、NativeArchiveActionsEndpoints转移到company achievement强制targetFolderId、McpLocalExtras.move_folder对kind=archive强制parent，这些约束仍残留旧“分类目录/资料记录”模型，与用户已确认普通文件夹可在根部创建及递归相冲突，建议取消而不是当作正式业务规则；保留必要安全校验，如跨区独立FileObject、完整版本与事务回滚、权限范围、显式目标ID。
+
+建议统一唯一普通资料kind archive_folder，加section约束；去掉隐式company achievement默认，统一CRUD/排序/删除/搜索/Excel/附件/MCP与UI所有旧类型映射，六列表格单实现，移除旧Excel模板回退和旧SQL分支；跨工作区转移使用一套Folder树执行器与集中的业务允许矩阵，不擅自放宽模块间转移权限。MCP缩减重叠工具，补全同一套可选业务字段，保留项目/IP/合同专用工具。主测试使用新隔离SQLCipher库覆盖各section、无父级根文件夹、Excel/Agent/搜索/回收站、共享FileId与版本、跨区复制及失败回滚；旧类型当作无效输入拒绝。当前无数据库迁移要求，但不允许自动覆盖/删除用户现有测试库。具体批次方案待用户认可，本轮没有改动产品代码、没有运行CI或发布EXE/Release。
+
+会话记录：memory/sessions/2026-11-03-仓库文件提交与项目全貌复盘.md，已归档第二轮。开始通知 office-renderer/wechat-webhook#2094。
