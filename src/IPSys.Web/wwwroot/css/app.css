@@ -1847,8 +1847,6 @@ svg { display: block; flex: none; }
   color: var(--text-2);
   font-variant-numeric: tabular-nums;
 }
-.catcard.is-empty .cc-plate { opacity: .55; }
-.catcard.is-empty .cc-name { color: var(--text-2); font-weight: 500; }
 
 .panel {
   background: var(--surface);

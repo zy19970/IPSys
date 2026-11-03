@@ -21,6 +21,10 @@ const WEB=path.resolve(__dirname,'..');
 const read=rel=>fs.readFileSync(path.join(SHELL,rel),'utf8');
 const srcHtml=read('index.html');
 const srcCss=read('css/app.css');
+/* Empty categories are still clickable: icons must retain the same full
+   colour as their shortcut counterparts instead of looking disabled. */
+assert.doesNotMatch(srcCss,/\.catcard\.is-empty\s+\.cc-plate\s*\{[^}]*opacity\s*:/,
+ 'Empty category icon must not be faded relative to sidebar shortcuts');
 const csproj=fs.readFileSync(path.join(WEB,'IPSys.Web.csproj'),'utf8');
 const bundle=read('tools/bundle.cjs');
 
