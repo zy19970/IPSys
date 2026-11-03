@@ -1678,6 +1678,7 @@ function showItemMenu(id, x, y) {
   if (!Drive.state.selection.has(id)) Drive.select(id, "single");
   const trash = isTrashNode(id);
   const actionItems = Drive.selectedItems.filter(n => isTrashNode(n.id) === trash);
+  const deleteLabel = actionItems.length > 1 ? "删除选中的 " + actionItems.length + " 项" : null;
   const isFolder = item.type === "folder";
   const b = item.biz || {};
 
@@ -1716,8 +1717,8 @@ function showItemMenu(id, x, y) {
     b.kind === "archive_folder"
       ? MI("move-archive", "move", "移动至其他目录") : "",
     b.kind === "archive_folder"
-      ? MI("delete-folder","trash","删除文件夹","",true)
-      : MI("delete", "trash", "删除", "Del", true),
+      ? MI("delete-folder","trash",deleteLabel || "删除文件夹","",true)
+      : MI("delete", "trash", deleteLabel || "删除", "Del", true),
   ]
     .filter(Boolean)
     .join("");
@@ -1738,7 +1739,9 @@ function showItemMenu(id, x, y) {
     "sort-up": () => reorderArchiveEntry(item,-1),
     "sort-down": () => reorderArchiveEntry(item,1),
     "move-archive": () => moveArchiveEntry(item),
-    "delete-folder": () => deleteArchiveFolder(item),
+    // Unified files/folders use the existing batch-delete flow, preserving
+    // the selection and its confirm/recycle/partial-failure handling.
+    "delete-folder": () => deleteNodes(actionItems),
     delete: () => deleteNodes(actionItems),
   });
 }

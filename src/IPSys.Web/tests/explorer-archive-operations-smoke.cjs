@@ -203,6 +203,37 @@ const fn=name=>vm.runInContext(name,context);
  assert.deepEqual(menus.at(-1).archiveFolder,["achievement",parent,null,true],
   "The existing directory must use the common folder editor for F2 rename");
 
+ /* Multiple checked folders must be deleted together from the context menu.
+    Right-clicking an unselected row still narrows the selection to that row. */
+ context.RECYCLE=[];
+ context.isTrashNode=id=>String(id).startsWith("t:");
+ Drive.state.selection=new Set([parent.id,other.id]);
+ Object.defineProperty(Drive,"selectedItems",{
+  get(){return [...this.state.selection].map(id=>nodes.get(id)).filter(Boolean);}
+ });
+ Drive.select=(id,mode)=>{
+  if(mode==="single")Drive.state.selection=new Set([id]);
+ };
+ const deleteBatches=[];
+ context.deleteNodes=items=>deleteBatches.push(items.map(item=>item.id));
+ vm.runInContext(extract("function showItemMenu(id, x, y) {",
+  "function showBlankMenu(x, y) {"),context);
+ fn("showItemMenu")(parent.id,45,50);
+ const multiMenu=menus.at(-1);
+ assert.match(multiMenu.html,/删除选中的 2 项/);
+ multiMenu.handlers["delete-folder"]();
+ assert.deepEqual(deleteBatches.at(-1),[parent.id,other.id],
+  "Right-click selected folder deletes every checked folder");
+ assert.equal(Drive.state.selection.size,2,
+  "Opening the menu over a selected row preserves multi-selection");
+ fn("showItemMenu")(child.id,45,50);
+ const singleMenu=menus.at(-1);
+ assert.match(singleMenu.html,/删除文件夹/);
+ singleMenu.handlers["delete-folder"]();
+ assert.deepEqual(deleteBatches.at(-1),[child.id],
+  "Right-click outside current selection only deletes that folder");
+ assert.deepEqual([...Drive.state.selection],[child.id]);
+
  const formContext=vm.createContext({
  catLabel:id=>id,VaultStore,toast:()=>{},refreshCurrent:async()=>{}
  });
