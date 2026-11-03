@@ -323,3 +323,14 @@ P3-1 last_insert_rowid 两次、脆弱可简化但当下正确；P3-2 ExcelLedge
 ## 2026-11-03：普通资料统一后的问题修复规划（本会话第十五轮）
 
 用户：“你先梳理一下问题，看看怎么修改”。读取AIGT规则、本仓记忆、整改总表、当前main fb309e664（业务22e2f84）及成功Windows CI run41477357400。只给方案，不改业务代码。代码已证实：MCP目录重命名仅写name/parentId会清空category/tags/remarks；Excel筛选导出 file 命中在按kind判断时被过滤，影响项目/IP/资料附件搜索；公司achievement根文件夹Excel导出空所属目录却被导入拒绝；综合资料Excel仅3列而表单可填写6项；新UI不显示旧archive/general行，但V2库打开未按旧kind内容阻断；有子目录的资料跨区转移被拒绝；搜索刷新期间改关键词和批删期间切区尚有竞态。推荐第一批修属性保留、file筛选、旧库提示；第二批Excel目录根层及父先子后导入、综合资料完整列和旧3/2/1列兼容及同名提示；第三批整树复制/转移能力与客户端一致、异步切区/搜索、个人“人力资源”文案。新增定向HTTP+SQLCipher+Node测试后再进行Windows CI和隔离新库测试。保留项目/IP/合同独立类型，普通资料唯一archive_folder；archive/general仅作为旧API模块名，拒绝旧数据自动迁移和覆盖；本轮未获授权修源码。通知#2058，记忆首次合并写入被平台拦截#2059，重新开始#2060。最近会话 memory/sessions/2026-11-02-操作细节精修仓库梳理.md，第十五轮。
+
+
+## 2026-11-03：统一资料模型第一批定向修复完成（本会话第十六轮）
+
+用户原话：“先推进第一批”。依据上一轮已明确三项：① MCP 普通文件夹仅修改名称不得丢元数据；② Excel 仅命中附件名称时必须导出所属项目/知识产权/资质/综合资料；③ 含退休 `archive/general` 存储记录的旧 V2 库不能静默隐藏。重新读取AIGT三基础规则、IPSys MEMORY/会话与整改任务书后，以 main `af7eb7a9e01579ab561224da724eaedcc81bc588` 开始，现已非强制CAS向main提交完整修复和测试。
+
+实际代码提交：`bc1cb168da7c9d16394e5098ef15e23343936080`，改9文件（4个业务实现、4个测试/入口文件，新增1个测试）。`NativeArchiveStore.Update` 对 Category/Year/Tags/Remarks/ParentId 缺省值保留、显式空串可清空；`McpLocalArchive.update_archive_folder` 从GET的businessData深拷贝并保留元数据；`NativeExcelExportFilter.ExportIds` 将 file 命中先转换OwnerKind/Section，再从OwnerId获取Excel记录，避免文件命中被筛掉；`ResourceSchemaV2.Create` 只允许project/contract/ip/archive_folder存储kind，`ResourceSchemaV2.Validate` 在Vault其余维护步骤前只读检测所有（含deleted）archive/general旧kind，明确报错、不覆盖/迁移旧库。新增真实HTTP/SQLCipher筛选用例 `NativeExcelFileFilterSmoke`，拓展MCP重命名/字段保留、Schema新旧kind验证；修正RecyclePurgeSmoke旧archive直接插入测试。
+
+CI迭代的真实记录：初次 #484 run41561041264 C# 编译0警告但Schema父级触发器SQL括号多一层，修复提交`5c4d7f78bdd45233be0a6875df7b3498e32f5e86`；#485 run41561382911 新统一Schema不带旧archive party指纹而旧EnsurePartyArchiveSection误判，修复提交`aa089b2237de372b5692a30a5be2d5d3aaa88a25`；#486 run41561724802 Schema冒烟旧计数把party的archive_folder计入achievement初始目录，修复提交`0d223a2b7423751de6759d188619ebc86d75f474`。最终Windows CI #487 run`41562014243` **completed/success**，job 26个success步骤、2个可选ZIP64 skipped，包含Debug/SQLCipher/HTTP/MCP/Excel/Explorer和两种单文件发布检查，0 failed。未把前三次失败伪称成功。
+
+更新 `docs/IPSys_当前问题与整改任务总表_20261102.md` 第十一节记录上述修复、提交、CI和剩余待办。第一批三项的源码与自动化验证已收敛；真实用户旧数据库未操作，用户本机GUI、实际版本发布及生产验收不在本轮范围。第二批仍是company/achievement根与多层Excel往返、general Excel完整属性/旧表兼容；第三批整树转移和异步竞态。发送开始通知#2062、失败#2063/#2065/#2067/#2069、重新开始#2064/#2066/#2068/#2070；最终完成通知待文档与Memory提交并核验后发送。当前会话记录 `memory/sessions/2026-11-02-操作细节精修仓库梳理.md`，第十六轮。
