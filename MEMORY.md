@@ -318,3 +318,8 @@ P3-1 last_insert_rowid 两次、脆弱可简化但当下正确；P3-2 ExcelLedge
 当前实施决策是去除 archive/general 独立身份，让普通资料按 section 模块分区全部归 archive_folder；Excel台账只负责文件夹属性和位置，不传附件内容；企业资质/业务档案/个人等统一视图；项目/知识产权的专用记录依旧保留。已经确认的用户要求仍是无需考虑旧测试库迁移，避免把新建议写成用户已明确确认。任务开始通知 office-renderer/wechat-webhook#2052。本轮仅方案讨论，未改业务代码、真实DB或正式 Release；会话路径 memory/sessions/2026-11-02-操作细节精修仓库梳理.md，第十二轮。
 
 补充：本轮审查进行中 main 又新增提交22e2f849a249e25b4a4d95cb40638ede07ec3ea6，修复首页点击“新建”仍按上次项目ID新建合同的问题，app.js navigate(home) 归位root、interactions.js 首页inProject条件改为!onHome，并加explorer-home-create-context-smoke；源码修复方向正确。该提交Windows CI run41477357400在最后查询时仍in_progress，不能套用213aa的success。由于新提交不涉及本轮指出的MCP/Excel/旧库问题，原审核结论仍适用。
+
+
+## 2026-11-03：普通资料统一后的问题修复规划（本会话第十五轮）
+
+用户：“你先梳理一下问题，看看怎么修改”。读取AIGT规则、本仓记忆、整改总表、当前main fb309e664（业务22e2f84）及成功Windows CI run41477357400。只给方案，不改业务代码。代码已证实：MCP目录重命名仅写name/parentId会清空category/tags/remarks；Excel筛选导出 file 命中在按kind判断时被过滤，影响项目/IP/资料附件搜索；公司achievement根文件夹Excel导出空所属目录却被导入拒绝；综合资料Excel仅3列而表单可填写6项；新UI不显示旧archive/general行，但V2库打开未按旧kind内容阻断；有子目录的资料跨区转移被拒绝；搜索刷新期间改关键词和批删期间切区尚有竞态。推荐第一批修属性保留、file筛选、旧库提示；第二批Excel目录根层及父先子后导入、综合资料完整列和旧3/2/1列兼容及同名提示；第三批整树复制/转移能力与客户端一致、异步切区/搜索、个人“人力资源”文案。新增定向HTTP+SQLCipher+Node测试后再进行Windows CI和隔离新库测试。保留项目/IP/合同独立类型，普通资料唯一archive_folder；archive/general仅作为旧API模块名，拒绝旧数据自动迁移和覆盖；本轮未获授权修源码。通知#2058，记忆首次合并写入被平台拦截#2059，重新开始#2060。最近会话 memory/sessions/2026-11-02-操作细节精修仓库梳理.md，第十五轮。
