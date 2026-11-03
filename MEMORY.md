@@ -475,3 +475,6 @@ CI #506 run41623186950首次通过编译、MCP和早期UI检查，但新测试�
 ## 2026-11-03 第十三轮：首页分类图标被空状态透明度淡化
 
 用户截图指出：首页“分类目录”企业资质、业务档案、公司项目、党团建设等卡片图标相较左侧快捷访问灰蒙蒙。实际源代码根因：`wwwroot/js/app.js` 导航使用 `nodeMark→catIcon(section,20,false)`，首页使用 `catIcon(section,46,true)`，二者均来自同一 `icons.js/CAT_TYPES` 配色；但首页空分类添加 `is-empty`，`wwwroot/css/app.css` 存在 `.catcard.is-empty .cc-plate { opacity: .55; }`，并对空类别名称改灰。该透明度降低视觉对比度，误导成不可点击/禁用分类，而空状态已有“暂无记录”文字。依据用户指出的不一致，删除这两条额外淡化覆盖，首页和侧边栏同一分类色强度保持一致，不改类别颜色值、图标SVG、结构或功能。更新 `tests/ui-assets-smoke.cjs`，增加空分类图标不再被CSS透明度覆盖的回归断言。已进行JS语法检查，剩余以新提交Windows CI验收为准。用户指令原文：“我发现了一个问题，所有的这些图标和快捷访问里相比，怎么变得灰蒙蒙了”。本轮不触及任何数据库、FileId/LinkId、正式Release。最近会话路径 `memory/sessions/2026-11-03-仓库文件提交与项目全貌复盘.md`；最后归档轮次第十三轮。
+
+
+第十三轮CI最终验收：修复首页空分类图标变灰提交c8041fcbebfa6ffda0357fb678651e72241c20c0对应Windows CI #509（41642094605）已经completed/success，26步骤成功、0失败、2项可选ZIP64跳过。已通过前端CSS回归、真实Edge、SQLCipher/HTTP以及两种单文件EXE构建启动。去除了`.catcard.is-empty .cc-plate`透明度0.55和空类别标题灰化覆盖；分类图标颜色仍来自CAT_TYPES，同侧栏一致。正式Release未触发，用户本机新版仍待视觉检查。最近会话：memory/sessions/2026-11-03-仓库文件提交与项目全貌复盘.md，第十三轮最终收敛。
