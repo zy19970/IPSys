@@ -18,11 +18,11 @@ static class NativeFileAssociateSmoke
     {
         string tag="LINK204-"+Guid.NewGuid().ToString("N")[..8];
         long a=(await Create(await client.PostAsJsonAsync(
-            "/api/v2/folders/company/general",
-            new {general=new{title=tag+"来源"}}))).GetProperty("id").GetInt64();
+            "/api/v2/folders/company/archive_folder",
+            new {section="general",archiveFolder=new{name=tag+"来源"}}))).GetProperty("id").GetInt64();
         long b=(await Create(await client.PostAsJsonAsync(
-            "/api/v2/folders/company/general",
-            new {general=new{title=tag+"目标"}}))).GetProperty("id").GetInt64();
+            "/api/v2/folders/company/archive_folder",
+            new {section="general",archiveFolder=new{name=tag+"目标"}}))).GetProperty("id").GetInt64();
         byte[] original=RandomNumberGenerator.GetBytes(701);
         long file;
         using(var request=new HttpRequestMessage(HttpMethod.Post,
@@ -55,8 +55,8 @@ static class NativeFileAssociateSmoke
         if(links.GetArrayLength()!=1)
             throw new IOException("duplicate move must preserve source");
         long c=(await Create(await client.PostAsJsonAsync(
-            "/api/v2/folders/company/general",
-            new {general=new{title=tag+"第三位置"}}))).GetProperty("id").GetInt64();
+            "/api/v2/folders/company/archive_folder",
+            new {section="general",archiveFolder=new{name=tag+"第三位置"}}))).GetProperty("id").GetInt64();
         await Create(await client.PostAsJsonAsync(
             $"/api/v2/files/company/{file}/associate",
             new NativeFileAssociateInput(source,c,true)));

@@ -32,20 +32,20 @@ static class NativeArchiveUiHttpSmoke
     public static async Task VerifyAsync(HttpClient client)
     {
         string marker="V2UI-"+Guid.NewGuid().ToString("N")[..8];
-        long certificate=await Add(client,"/api/v2/folders/company/archive",
-            new {section="certificate",archive=new {
+        long certificate=await Add(client,"/api/v2/folders/company/archive_folder",
+            new {section="certificate",archiveFolder=new {
                 name=marker+"证书",remarks="档案页面"}});
-        long party=await Add(client,"/api/v2/folders/company/archive",
-            new {section="party",archive=new {
+        long party=await Add(client,"/api/v2/folders/company/archive_folder",
+            new {section="party",archiveFolder=new {
                 name=marker+"党团会议",year="2026",remarks="党团建设档案"}});
         byte[] partyBytes=RandomNumberGenerator.GetBytes(97);
         await Upload(client,$"/api/v2/files/company/upload?folderId={party}",
             partyBytes,marker+"党团材料.pdf");
         using(var blocked=await client.PostAsJsonAsync(
-            "/api/v2/folders/personal/archive",new{section="party",archive=new{name="越界党团"}}))
+            "/api/v2/folders/personal/archive_folder",new{section="party",archiveFolder=new{name="越界党团"}}))
             Assert(!blocked.IsSuccessStatusCode,"party section must be company-only");
-        long general=await Add(client,"/api/v2/folders/company/general",
-            new {general=new{title=marker+"综合资料"}});
+        long general=await Add(client,"/api/v2/folders/company/archive_folder",
+            new {section="general",archiveFolder=new{name=marker+"综合资料"}});
         var baseSnapshot=await client.GetFromJsonAsync<JsonElement>(
             "/api/v2/ui/folders/company");
         /* A02/N2: the browser snapshot has exactly one collection. A material and
@@ -69,7 +69,7 @@ static class NativeArchiveUiHttpSmoke
         long root=roots.EnumerateArray().First(x=>x.GetProperty("name").GetString()
             =="申报与认定").GetProperty("id").GetInt64();
         long child=await Add(client,"/api/v2/folders/company/archive_folder",
-            new{archiveFolder=new{name=marker+"下级目录",parentId=root}});
+            new{section="achievement",archiveFolder=new{name=marker+"下级目录",parentId=root}});
         // Ordinary directories can now contain both files and nested folders.
         long ordinary=await Add(client,"/api/v2/folders/company/archive_folder",
             new{section="general",archiveFolder=new{
@@ -115,9 +115,9 @@ static class NativeArchiveUiHttpSmoke
             shared.Select(x=>x.GetProperty("linkId").GetInt64()).Distinct().Count()==2 &&
             shared.Select(x=>x.GetProperty("version").GetInt32()).Distinct().Count()==2,
             "direct and nested folder links share one FileId and two version histories");
-        long record=await Add(client,"/api/v2/folders/company/archive",
-            new{section="achievement",archive=new{
-                name=marker+"申报",folderId=child,year="2026"}});
+        long record=await Add(client,"/api/v2/folders/company/archive_folder",
+            new{section="achievement",archiveFolder=new{
+                name=marker+"申报",parentId=child,year="2026"}});
         var historyA=RandomNumberGenerator.GetBytes(1203);
         var historyB=RandomNumberGenerator.GetBytes(1967);
         long file=await Upload(client,
