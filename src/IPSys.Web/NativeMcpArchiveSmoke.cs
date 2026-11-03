@@ -110,9 +110,46 @@ static class NativeMcpArchiveSmoke
               reject409Log["state"]?.GetValue<string>()=="done" &&
               reject409Log["businessOk"]?.GetValue<bool>()==false,
               "ISS-002 known 409 validation rejection is durable, not uncertain");
+        // Seed every optional field through HTTP; MCP renaming must not
+        // erase anything in the unified archive_folder attributes JSON.
+        using(var seeded=await client.PutAsJsonAsync(
+            $"/api/v2/folders/company/archive_folder/{folder}?section=achievement",
+            new{archiveFolder=new{name=tag+"子目录",parentId=root,
+                category="原类别",year="2026",tags="甲;乙",remarks="原备注"}}))
+            seeded.EnsureSuccessStatusCode();
         await Run("update_archive_folder",new{
             workspace="company",folder_id=folder,name=tag+"重命名目录"
         });
+        var renamed=await client.GetFromJsonAsync<JsonElement>(
+            $"/api/v2/folders/company/archive_folder/{folder}?section=achievement");
+        var metadata=renamed.GetProperty("businessData");
+        Check(renamed.GetProperty("folder").GetProperty("ref")
+                .GetProperty("id").GetInt64()==folder &&
+              renamed.GetProperty("folder").GetProperty("parent")
+                .GetProperty("id").GetInt64()==root &&
+              metadata.GetProperty("name").GetString()==tag+"重命名目录" &&
+              metadata.GetProperty("category").GetString()=="原类别" &&
+              metadata.GetProperty("year").GetString()=="2026" &&
+              metadata.GetProperty("tags").GetString()=="甲;乙" &&
+              metadata.GetProperty("remarks").GetString()=="原备注",
+              "MCP name-only update keeps FolderId, parent and all optional metadata");
+        // Backend partial updates have the same contract, independent of MCP.
+        using(var partial=await client.PutAsJsonAsync(
+            $"/api/v2/folders/company/archive_folder/{folder}?section=achievement",
+            new{archiveFolder=new{name=tag+"重命名目录"}}))
+            partial.EnsureSuccessStatusCode();
+        using(var clear=await client.PutAsJsonAsync(
+            $"/api/v2/folders/company/archive_folder/{folder}?section=achievement",
+            new{archiveFolder=new{name=tag+"重命名目录",category=""}}))
+            clear.EnsureSuccessStatusCode();
+        var afterClear=await client.GetFromJsonAsync<JsonElement>(
+            $"/api/v2/folders/company/archive_folder/{folder}?section=achievement");
+        var preserved=afterClear.GetProperty("businessData");
+        Check(preserved.GetProperty("category").GetString()=="" &&
+              preserved.GetProperty("tags").GetString()=="甲;乙" &&
+              preserved.GetProperty("remarks").GetString()=="原备注" &&
+              preserved.GetProperty("year").GetString()=="2026",
+              "omitted fields are retained; an explicit empty category is cleared");
         long empty=Id(await Run("create_archive_folder",new{
             workspace="company",parent_id=root,name=tag+"空目录"
         }));

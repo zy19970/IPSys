@@ -280,7 +280,7 @@ static class RecyclePurgeSmoke
                 {
                     cmd.CommandText="""
                         INSERT INTO folders(workspace,kind,section,name,deleted)
-                        VALUES('company','archive','certificate','已删证书',0);
+                        VALUES('company','archive_folder','certificate','已删证书',0);
                         SELECT last_insert_rowid();
                         """;
                     archived=(long)cmd.ExecuteScalar()!;
@@ -297,7 +297,7 @@ static class RecyclePurgeSmoke
                     Check(cmd.ExecuteNonQuery()==1,"archive soft delete");
                 }
                 Check(RecycleStore.Change(db,"company",
-                    [new RecycleKey("v2_archive",archived,"certificate")],true),
+                    [new RecycleKey("v2_archive_folder",archived,"certificate")],true),
                     "archived record with an active link purged atomically");
                 Check(Scalar(db,"SELECT COUNT(*) FROM folders WHERE id=$id;",archived)==0 &&
                       Scalar(db,

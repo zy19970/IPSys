@@ -241,12 +241,14 @@ static partial class McpLocal
                 long id=ReadId(args,"folder_id");
                 var current=await RequestAsync(client,HttpMethod.Get,
                     V2Url(workspace,"archive_folder",id)+"?section="+Uri.EscapeDataString(section));
-                long? parent=current["folder"]?["parent"]?["id"]?.GetValue<long>();
+                // A name-only MCP edit must carry forward all folder metadata.
+                if(current["businessData"] is not JsonObject currentFields)
+                    throw new McpKnownRejectionException("文件夹业务属性无效。");
+                var fields=(JsonObject)currentFields.DeepClone();
+                fields["name"]=ReadString(args,"name");
                 return await RequestAsync(client,HttpMethod.Put,
                     V2Url(workspace,"archive_folder",id)+"?section="+Uri.EscapeDataString(section),
-                    new JsonObject{["archiveFolder"]=new JsonObject{
-                        ["name"]=ReadString(args,"name"),
-                        ["parentId"]=parent is long p?JsonValue.Create(p):null}});
+                    new JsonObject{["archiveFolder"]=fields});
             }
             case "delete_archive_folder":
                 return await RequestAsync(client,HttpMethod.Delete,

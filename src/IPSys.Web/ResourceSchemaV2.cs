@@ -19,7 +19,7 @@ static class ResourceSchemaV2
               id INTEGER PRIMARY KEY,
               workspace TEXT NOT NULL CHECK(workspace IN ('company','personal')),
               kind TEXT NOT NULL CHECK(kind IN
-                ('project','contract','ip','archive','archive_folder','general')),
+                ('project','contract','ip','archive_folder')),
               section TEXT NOT NULL DEFAULT '',
               parent_id INTEGER,
               name TEXT NOT NULL CHECK(length(trim(name)) BETWEEN 1 AND 300),
@@ -32,14 +32,11 @@ static class ResourceSchemaV2
               UNIQUE(id,workspace),
               FOREIGN KEY(parent_id,workspace) REFERENCES folders(id,workspace) ON DELETE RESTRICT,
               CHECK(kind!='contract' OR parent_id IS NOT NULL),
-              CHECK(kind NOT IN ('project','contract','ip','general') OR section=''),
+              CHECK(kind NOT IN ('project','contract','ip') OR section=''),
               CHECK(kind!='archive_folder' OR
                 (workspace='company' AND section IN ('certificate','achievement','party','general') OR
                  workspace='personal' AND section IN ('certificate','achievement','academic','general'))),
-              CHECK(kind!='archive' OR
-                (workspace='company' AND section IN ('certificate','achievement','party') OR
-                 workspace='personal' AND section IN ('certificate','achievement','academic'))),
-              CHECK(parent_id IS NULL OR kind IN ('contract','archive_folder','archive','general')),
+              CHECK(parent_id IS NULL OR kind IN ('contract','archive_folder')),
               CHECK(is_system=0 OR
                 (kind='archive_folder' AND parent_id IS NULL AND workspace='company')));
             CREATE INDEX idx_folder_children ON folders(workspace,parent_id,position,id)
@@ -57,10 +54,7 @@ static class ResourceSchemaV2
                   AND ((NEW.kind='contract' AND p.kind='project')
                     OR (NEW.kind='archive_folder' AND p.kind='archive_folder'
                         AND p.section=NEW.section)
-                    OR (NEW.kind='archive' AND p.kind='archive_folder'
-                        AND p.section=NEW.section)
-                    OR (NEW.kind='general' AND p.kind='archive_folder'
-                        AND p.section='general')));
+                  )));
             END;
             CREATE TRIGGER folder_parent_update BEFORE UPDATE OF parent_id ON folders
             WHEN NEW.parent_id IS NOT NULL BEGIN
@@ -70,10 +64,7 @@ static class ResourceSchemaV2
                   AND ((NEW.kind='contract' AND p.kind='project')
                     OR (NEW.kind='archive_folder' AND p.kind='archive_folder'
                         AND p.section=NEW.section)
-                    OR (NEW.kind='archive' AND p.kind='archive_folder'
-                        AND p.section=NEW.section)
-                    OR (NEW.kind='general' AND p.kind='archive_folder'
-                        AND p.section='general')));
+                  )));
               SELECT RAISE(ABORT,'folder cycle') WHERE NEW.parent_id=NEW.id
                 OR EXISTS(WITH RECURSIVE ancestors(id,parent_id) AS (
                   SELECT id,parent_id FROM folders WHERE id=NEW.parent_id
@@ -430,6 +421,13 @@ static class ResourceSchemaV2
                 if((long)cmd.ExecuteScalar()! != 1)
                     throw new IOException("新版资料库缺少表："+table);
             }
+            // This runs before Vault's in-place maintenance. Old V2 material
+            // kinds are invisible to the canonical Explorer and must never be
+            // silently hidden. Include recycled rows; leave the vault intact.
+            cmd.Parameters.Clear();
+            cmd.CommandText="SELECT count(*) FROM folders WHERE kind IN ('archive','general');";
+            if((long)cmd.ExecuteScalar()!>0)
+                throw new IOException("资料库含旧版 archive/general 资料记录。请保留原数据库并新建新版资料库；旧资料库不会被迁移、覆盖或删除。");
         }
         catch(SqliteException ex)
         {

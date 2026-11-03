@@ -160,6 +160,7 @@ static class WebSmoke
             await NativeProjectMilestoneSmoke.VerifyAsync(client,vault);
             await NativeArchiveGeneralMilestoneSmoke.VerifyAsync(client);
             await NativeExcelAmbiguitySmoke.VerifyAsync(client);
+            await NativeExcelFileFilterSmoke.VerifyAsync(client);
             await NativeArchiveUiHttpSmoke.VerifyAsync(client);
             await NativeTransferTargetSmoke.VerifyAsync(client);
             await NativeIpSearchRecycleHttpSmoke.VerifyAsync(client);

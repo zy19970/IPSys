@@ -165,12 +165,16 @@ static class ResourceSchemaV2Smoke
                     "cycle detection");
 
                 var partyFolder=ExecuteId(db,
-                    "INSERT INTO folders(workspace,kind,section,name) VALUES('company','archive','party','党团建设资料')");
-                Check(partyFolder>0,"company party archive accepts standalone records");
-                Reject(db,"INSERT INTO folders(workspace,kind,section,name) VALUES('personal','archive','party','非法个人党团资料')",
+                    "INSERT INTO folders(workspace,kind,section,name) VALUES('company','archive_folder','party','党团建设资料')");
+                Check(partyFolder>0,"company party records share canonical folder kind");
+                Reject(db,"INSERT INTO folders(workspace,kind,section,name) VALUES('personal','archive_folder','party','非法个人党团资料')",
                     "party section is company-only");
-                Reject(db,$"INSERT INTO folders(workspace,kind,section,parent_id,name) VALUES('company','archive','party',{linkFolder},'非法党团子记录')",
-                    "party records do not enter achievement directories");
+                Reject(db,$"INSERT INTO folders(workspace,kind,section,parent_id,name) VALUES('company','archive_folder','party',{linkFolder},'非法党团子记录')",
+                    "party folders cannot cross module scope");
+                Reject(db,"INSERT INTO folders(workspace,kind,section,name) VALUES('company','archive','party','废弃档案类型')",
+                    "new schema refuses retired archive kind");
+                Reject(db,"INSERT INTO folders(workspace,kind,section,name) VALUES('company','general','general','废弃综合资料类型')",
+                    "new schema refuses retired general kind");
                 ResourceSchemaV2.EnsurePartyArchiveSection(db); // idempotent on new V2 vaults
                 fileId=ExecuteId(db,"INSERT INTO files(workspace,name) VALUES('company','原件.pdf')");
                 objectId=ExecuteId(db,
@@ -255,6 +259,42 @@ static class ResourceSchemaV2Smoke
         {
             foreach(var suffix in new[]{"","-wal","-shm","-journal"})
                 if(File.Exists(path+suffix))File.Delete(path+suffix);
+        }
+        // A V2-shaped legacy vault must fail BEFORE any in-place upgrade,
+        // including when the retired record is only in the recycle bin.
+        // Use a disposable encrypted fixture, never a user's existing file.
+        string oldPath=Path.Combine(Path.GetTempPath(),
+            "ipsys-v2-retired-"+Guid.NewGuid().ToString("N")+".db");
+        try
+        {
+            using var old=Vault.Connect(oldPath,"v2-retired-key",create:true);
+            using var cmd=old.CreateCommand();
+            cmd.CommandText="""
+                CREATE TABLE resource_schema_version(id INTEGER PRIMARY KEY,version INTEGER);
+                INSERT INTO resource_schema_version VALUES(1,2);
+                CREATE TABLE folders(id INTEGER PRIMARY KEY,kind TEXT,deleted INTEGER);
+                INSERT INTO folders(kind,deleted) VALUES('archive',0),('general',1);
+                CREATE TABLE files(id INTEGER PRIMARY KEY);
+                CREATE TABLE file_versions(id INTEGER PRIMARY KEY);
+                CREATE TABLE file_objects(id INTEGER PRIMARY KEY);
+                CREATE TABLE file_chunks(id INTEGER PRIMARY KEY);
+                CREATE TABLE folder_file_links(id INTEGER PRIMARY KEY);
+                CREATE TABLE mcp_operations(id INTEGER PRIMARY KEY);
+                """;
+            cmd.ExecuteNonQuery();
+            bool blocked=false;
+            try {Vault.ValidateSchema(old);}
+            catch(IOException ex) when(ex.Message.Contains("archive/general",
+                StringComparison.Ordinal)){blocked=true;}
+            Check(blocked,"V2 retired record kinds must be rejected with explicit guidance");
+            cmd.CommandText="SELECT count(*) FROM folders WHERE kind IN ('archive','general');";
+            Check((long)cmd.ExecuteScalar()! == 2,
+                "rejected old V2 vault remains intact, including deleted entries");
+        }
+        finally
+        {
+            foreach(var suffix in new[]{"","-wal","-shm","-journal"})
+                if(File.Exists(oldPath+suffix))File.Delete(oldPath+suffix);
         }
         Console.WriteLine("RESOURCE V2 SQLCIPHER SMOKE PASS");
     }

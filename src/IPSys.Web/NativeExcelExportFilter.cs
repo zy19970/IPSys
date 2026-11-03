@@ -25,11 +25,13 @@ static partial class ExcelLedger
             matches=new HashSet<long>();
             foreach(var hit in results)
             {
-                if(ModuleOf(hit.Kind,hit.Section)!=kind ||
+                // A file hit belongs to its owner folder; filter by the
+                // owner module BEFORE choosing its FolderId for Excel.
+                string ownerKind=hit.Kind=="file"?hit.OwnerKind:hit.Kind;
+                if(ModuleOf(ownerKind,hit.Section)!=kind ||
                    kind=="archive"&&hit.Section!=section)
                     continue;
-                if(hit.Kind=="file")matches.Add(hit.OwnerId);
-                else matches.Add(hit.Id);
+                matches.Add(hit.Kind=="file"?hit.OwnerId:hit.Id);
             }
         }
         var rows=kind switch

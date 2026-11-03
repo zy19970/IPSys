@@ -199,14 +199,17 @@ static class NativeArchiveStore
         long? current;
         try{current=Parent(db,r);}
         catch(KeyNotFoundException){return false;}
-        // Omitted parent/year mean "retain": an edit form only ever sends the
-        // business fields it shows, and must not silently unparent the folder.
+        // Missing optional fields mean "retain"; explicit empty strings clear them.
+        // All ordinary folder writers share this partial-update contract.
         if(input.ArchiveFolder is ArchiveFolderInput folder)
         {
             var existing=Get(db,r)?.BusinessData as ArchiveFolderInput;
             input=input with {ArchiveFolder=folder with {
                 ParentId=folder.ParentId??current,
-                Year=folder.Year??existing?.Year
+                Category=folder.Category??existing?.Category,
+                Year=folder.Year??existing?.Year,
+                Tags=folder.Tags??existing?.Tags,
+                Remarks=folder.Remarks??existing?.Remarks
             }};
         }
         var data=Prepare(r.Workspace,r.Kind,input,false,r.Section);
