@@ -215,7 +215,7 @@ const fn=name=>vm.runInContext(name,context);
   if(mode==="single")Drive.state.selection=new Set([id]);
  };
  const deleteBatches=[];
- context.deleteNodes=items=>deleteBatches.push(items.map(item=>item.id));
+ context.deleteNodes=items=>deleteBatches.push(Array.from(items,item=>item.id));
  vm.runInContext(extract("function selectionActionTargets(nodes, forDelete = false) {",
   "/* 下载入口共用：单文件直下"),context);
  vm.runInContext(extract("function showItemMenu(id, x, y) {",
