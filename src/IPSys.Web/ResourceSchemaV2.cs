@@ -54,7 +54,7 @@ static class ResourceSchemaV2
                   AND ((NEW.kind='contract' AND p.kind='project')
                     OR (NEW.kind='archive_folder' AND p.kind='archive_folder'
                         AND p.section=NEW.section)
-                  )));
+                  ));
             END;
             CREATE TRIGGER folder_parent_update BEFORE UPDATE OF parent_id ON folders
             WHEN NEW.parent_id IS NOT NULL BEGIN
@@ -64,7 +64,7 @@ static class ResourceSchemaV2
                   AND ((NEW.kind='contract' AND p.kind='project')
                     OR (NEW.kind='archive_folder' AND p.kind='archive_folder'
                         AND p.section=NEW.section)
-                  )));
+                  ));
               SELECT RAISE(ABORT,'folder cycle') WHERE NEW.parent_id=NEW.id
                 OR EXISTS(WITH RECURSIVE ancestors(id,parent_id) AS (
                   SELECT id,parent_id FROM folders WHERE id=NEW.parent_id
