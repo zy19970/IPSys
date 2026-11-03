@@ -3,7 +3,7 @@
 > **现行 UI 基线（2026-11-02）**：正式前端在 [`src/IPSys.Web/wwwroot/`](./src/IPSys.Web/wwwroot/README.md)。已核验产品/测试提交 `4567ae96b7` 的 Windows [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 为 completed/success（26 步成功、0 失败，两项可选 ZIP64 步骤跳过）。目前正式 Release 仍为 `v0.9.1-rc1`；自动 CI 不等于全部本地 GUI/第三方 Agent 验收。
 
 
-> N4/MCP 早期阶段属于历史；现行 **64** 个 MCP 工具。自动回归不能替代多种显示缩放下的人工视觉验收。
+> N4/MCP 早期阶段属于历史；现行 **51** 个 MCP 工具。自动回归不能替代多种显示缩放下的人工视觉验收。
 
 ## 1. 产品交互模型
 

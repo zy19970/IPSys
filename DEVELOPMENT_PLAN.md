@@ -13,8 +13,8 @@ IPSys 是 WinForms 启动器、仅本机访问的 Web Explorer、单 SQLCipher V
 | 阶段 | 状态/证据 |
 | --- | --- |
 | M0、N1～N4、Explorer F2-01～F2-06 | 已合并 `main`；[历史合并 CI](https://github.com/zy19970/IPSys/actions/runs/39947975625) 成功 |
-| MCP 和分层 Agent 规范 | 当前 64 工具、Prompts、缺项筛选及设置规范覆盖已实现并纳入 Windows 自动回归；第三方真实 Agent 智能任务另验 |
-| Excel 与知识产权 | 项目 11 列、知识产权 19 列、资料档案/党团/资质 6 列、综合资料 3 列；合同无独立 Excel；十类型三编号及空 Excel 单元格保留已有值规则生效 |
+| MCP 和分层 Agent 规范 | 当前 51 工具、Prompts、缺项筛选及设置规范覆盖已实现并纳入 Windows 自动回归；第三方真实 Agent 智能任务另验 |
+| Excel 与知识产权 | 项目 11 列、知识产权 19 列、资料档案/党团/资质 6 列、综合资料 6 列；合同无独立 Excel；十类型三编号及空 Excel 单元格保留已有值规则生效 |
 | 普通文件夹统一与回收站 | [统一文件夹 CI](https://github.com/zy19970/IPSys/actions/runs/41406914227) 成功，支持目录与附件共存、可选属性、整树回收及共享引用安全清理 |
 | 操作细节 | 右键批量下载、侧栏默认展开、表头全选、真实更新时间、菜单图标、成功删除面板 4 秒隐藏、单一“新建”直达；最新 [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 成功 |
 | 大文件与 ZIP64 | [大库及 VACUUM](https://github.com/zy19970/IPSys/actions/runs/39943364663) 通过；[4 GiB+ ZIP64 生成](https://github.com/zy19970/IPSys/actions/runs/39944440866) 通过，但只是生成验证 |
@@ -22,7 +22,7 @@ IPSys 是 WinForms 启动器、仅本机访问的 Web Explorer、单 SQLCipher V
 ## 3. 下一阶段工作方法
 
 1. 以真实使用截图、操作复现为入口，优先修改共用组件而非单个页面补丁；新建/上传/下载/移动/删除应检查顶部、侧栏、右键和详情之间的一致性。
-2. 横向复核统一普通文件夹与遗留 `archive/general` Excel/MCP 接口、搜索、ZIP、回收站和共享文件之间的语义；保留旧接口不等于用户实际工作流全通过。
+2. 按统一 `archive_folder + section` 契约复核普通文件夹的 Excel、MCP、搜索、ZIP、回收站与共享文件；旧 `archive/general` 对象和重复接口已经退出当前调用路径，回归证据与真实业务验收分别核对。
 3. 按风险范围运行 Node、Edge/HTTP、SQLCipher 和必要的实际 Windows GUI 用例，区别测试 mock 与真正产品缺陷，使用隔离数据库。
 4. 按当前源码同步 README、设计、需求、用户指南、Wiki 和证据索引，保留历史测试失败的原始时间与结论。
 

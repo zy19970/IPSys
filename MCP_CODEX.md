@@ -1,5 +1,21 @@
 # IPSys 本机 Codex MCP
 
+## 当前唯一有效的普通资料 MCP 契约（2026-11-03）
+
+当前源码注册 **51 项 MCP 工具**。普通资料统一以 `archive_folder` 表示资源类型，业务模块只由 `section` 决定，不再创建 `archive` 或 `general` 类型的记录。工作区必须显式填写，所有普通文件夹操作必须显式填写 `section`，不能依赖默认值。公司允许 `certificate/achievement/party/general`，个人允许 `certificate/achievement/academic/general`。
+
+`list_folders(workspace,section,parent_id?)` 查询文件夹；`create_folder(workspace,section,name,parent_id?,category?,year?,tags?,remarks?)` 创建；`update_folder(workspace,section,folder_id,...)` 更新可选字段（省略字段不清空）；`delete_folder(workspace,section,folder_id)` 移入回收站；`move_folder(workspace,section,folder_id,parent_id?)` 同模块调整父目录；`transfer_folder(workspace,section,folder_id,target_workspace,target_section,target_folder_id?,move?)` 按业务允许范围复制/转移整树。普通文件夹可以直接处于对应模块根目录，`parent_id` 或 `target_folder_id` 省略表示模块根目录。公司 `achievement` 混排使用 `list_folder_entries`、`reorder_entries`，其余可用模块依实际 `reorder_folders` 契约排序。
+
+文件上传指定 `upload_files(workspace,kind="archive_folder",section,owner_id=FolderId,paths=[...])`；分页查询 `list_files_page(workspace,kind="archive_folder",section,...)`；`search_records` 的有效类别是 `project/contract/ip/archive_folder/file`。回收站中普通文件夹的类型为 `v2_archive_folder`，恢复/永久清理时应使用 `list_trash` 返回的原始 `kind/id/section`。同工作区共享文件的 FileId/LinkId 和跨区独立文件物理对象机制不变，所有文件版本随整树转移保留。
+
+Excel 的统一地址是 `/api/v2/excel/{workspace}/archive_folder/{template|export|import}?section=...`，固定六列为名称、类别、备注、标签、年度、所属目录。原 `archive/general` Excel 路由及旧四列、单列/双列/三列模板已退出，不进行旧数据库迁移。
+
+**已退役工具名称**：`list/create/update/delete_archive`、`list/create/update/delete_general`、`list/create/update/delete_archive_folder`、`list/create/update/delete_party_archive`、`move_archive_entry`、`transfer_archive`、`transfer_general`。接入端更新 EXE 后须重新连接 MCP 并通过 `tools/list` 刷新名称和参数；不要用旧工具重试失败操作。
+
+**阅读优先级**：本节及实际 `tools/list`、源码代表当前接口。以下保留的按日期记录只是开发历史证据；其中“64/63/59个工具”“旧命令仍有效”等文字不代表当前可调用接口，也不能直接作为操作步骤。
+
+---
+
 ## 第三阶段：设置中的 Agent 规范管理（自动 CI 已通过，第三方实机另验）
 
 在 IPSys 的「设置 → Agent 工作规范」中可按 index、search、upload、metadata 浏览。index 是不可编辑的轻量目录；其余三篇允许编辑内容、预览当前有效文本、单篇恢复内置默认、导出或导入用户覆盖配置。默认规范与 upload/metadata 共用的文件读取和权限安全规则仍随 EXE 内嵌且不能被覆盖。
@@ -22,7 +38,7 @@
 
 
 
-现行 tools/list 在此前 63 项业务工具之外增加 **get_agent_guidance** 只读工具，合计 **64 项**；原有 63 项接口不改名、不改变参数语义。调用 `get_agent_guidance()` 或 `get_agent_guidance(topic="index")` 只返回 search/upload/metadata 专项的 ID、标题、摘要、版本；分别调用 `topic="search"`、`topic="upload"`、`topic="metadata"` 才返回单篇正文。未知 topic 明确拒绝。用户仅要求读取规范时不会上传、下载原件、修改属性或删除资料。
+现行 tools/list 共 **51 项**（含 **get_agent_guidance**），普通文件夹工具已统一；其余后续历史工具数量仅对应当时版本。调用 `get_agent_guidance()` 或 `get_agent_guidance(topic="index")` 只返回 search/upload/metadata 专项的 ID、标题、摘要、版本；分别调用 `topic="search"`、`topic="upload"`、`topic="metadata"` 才返回单篇正文。未知 topic 明确拒绝。用户仅要求读取规范时不会上传、下载原件、修改属性或删除资料。
 
 MCP initialize.instructions 只输出来自内嵌 index.md 的短入口，必须先在资料库中人工开启 MCP 授权；规范读取通过现行受限命名管道及宿主授权门禁，不依赖外网或额外本地服务。内嵌规范文件统一位于 src/IPSys.Web/AgentGuidance/，由 AgentGuidance.cs 注册并读取，upload/metadata 共享 file-reading.md 内容。用户换 Agent 或刷新工具清单时需重启或重新连接客户端。当前第二阶段源码已提供标准 MCP Prompts、通用缺失属性筛选；**真实智能入库和补录仍需本地 Agent 实测**，设置编辑/覆盖界面属于第三阶段。新增规范工具后的 [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 已成功；早期 63 工具 CI 仍只是历史证据，第三方 Agent 自动读取和批量补录继续独立验收。
 
@@ -31,7 +47,7 @@ MCP initialize.instructions 只输出来自内嵌 index.md 的短入口，必须
 
 IPSys 只提供工作区内结构化关键词检索及原件版本下载，不解析 PDF/Word 正文、不做 OCR 或模型推理。Agent 自主选择同义词进行多轮检索，再使用 `get_file_details`、`list_file_links` 和 `download_file_version` 获取原件并分析。
 
-现行 `search_records(workspace,query,kind?,offset?,limit?)` 支持可选结果类别 `project/contract/ip/archive/archive_folder/general/file`，指定 offset 或 limit 任意一个即可进入无分组截断的分页模式。默认 offset=0、limit=100，最大单页 200；响应有 `total/offset/limit/hasMore/nextOffset`。Agent 应继续分页直到 hasMore=false。实际逐条核查时建议 limit=10–20，避免客户端只显示大页预览；预览不等于完整阅读。完全不传分页参数保留旧页面所依赖的每类别最多 60 条结果与 truncated 提示。文件搜索项 description 现为真实原件说明（无说明时为空），ownerLabel 另存“目录/项目 · 原件名”展示摘要，matchedFields=description 根据真实原件说明计算。检索结果 total 按命中的业务项/文件关联计数，不保证等于唯一 FileId 数量。
+现行 `search_records(workspace,query,kind?,offset?,limit?)` 支持可选结果类别 `project/contract/ip/archive_folder/file`，指定 offset 或 limit 任意一个即可进入无分组截断的分页模式。默认 offset=0、limit=100，最大单页 200；响应有 `total/offset/limit/hasMore/nextOffset`。Agent 应继续分页直到 hasMore=false。实际逐条核查时建议 limit=10–20，避免客户端只显示大页预览；预览不等于完整阅读。完全不传分页参数保留旧页面所依赖的每类别最多 60 条结果与 truncated 提示。文件搜索项 description 现为真实原件说明（无说明时为空），ownerLabel 另存“目录/项目 · 原件名”展示摘要，matchedFields=description 根据真实原件说明计算。检索结果 total 按命中的业务项/文件关联计数，不保证等于唯一 FileId 数量。
 
 命中项包含 `matchedFields`（命中依据）、`path`（业务目录路径）、`folderId`；文件命中另包含 `fileId/linkId/ownerId/ownerKind/latestVersion/size/tags/fileNumber/fileDate`。历史 `id` 对文件仍表示 FileId，并非 LinkId；相同 FileId 出现在多个位置时应保留各位置但避免重复下载。分页期间发生文件变更时应重新校验。
 
@@ -39,7 +55,7 @@ IPSys 只提供工作区内结构化关键词检索及原件版本下载，不�
 
 
 
-> 本手册的**现行操作规则**以前置章节（知识产权三编号、党团建设、64 工具及安全操作）为准；下文按日期保留的“新增工具”“当前版本”“59/69/70 个工具”“`v2_*` 工具仍有效”等是对应历史提交的增量记录，不可直接作为现行接口清单。合同不设独立 Excel 导入或导出，该限制不影响合同业务 MCP 新增、编辑及附件接口。
+> 本手册的**现行操作规则**以前置章节（知识产权三编号、统一普通文件夹、51 工具及安全操作）为准；下文按日期保留的“新增工具”“当前版本”“59/69/70 个工具”“`v2_*` 工具仍有效”等是对应历史提交的增量记录，不可直接作为现行接口清单。合同不设独立 Excel 导入或导出，该限制不影响合同业务 MCP 新增、编辑及附件接口。
 
 ## 知识产权 MCP：十类型、统一三个编号（2026-10-25）
 
@@ -51,7 +67,7 @@ IPSys 只提供工作区内结构化关键词检索及原件版本下载，不�
 
 > **历史已验证接口口径（2026-10-25，8c1ca9a）**：`8c1ca9a` 对应 [Windows CI #40162144248](https://github.com/zy19970/IPSys/actions/runs/40162144248) 的 MCP stdio `tools/list` 验证通过。工具由旧 59 个扩展为 **63 个无版本前缀的工具**，新增 `list_party_archives`、`create_party_archive`、`update_party_archive`、`delete_party_archive`，专用于公司工作区“党团建设”。既有通用 `list_archives/create_archive/update_archive/delete_archive` 仍支持 `workspace=company, section=party`。以下此前的“59 工具”描述属于旧提交验收历史，不能再当作当前清单。更新 EXE 后需重启本机 MCP 客户端，使 Agent 刷新 `tools/list`。
 
-## 党团建设 MCP（公司工作区）
+## 历史接口记录：党团建设 MCP（公司工作区）
 
 党团建设与网页使用同一 SQLCipher V2 档案 FolderId，独立 `section=party`，不是“业务档案 achievement”下的子目录。专用命令 `list_party_archives(workspace=company)`、`create_party_archive(workspace=company,name,category?,remarks?,tags?,year?,request_id?)`、`update_party_archive(workspace=company,archive_id,name?,category?,remarks?,tags?,year?,request_id?)`、`delete_party_archive(workspace=company,archive_id,request_id?)`。专用命令不需要 `section` 或 `folder_id`；写操作沿用 MCP 幂等日志与回收站机制。
 
@@ -80,7 +96,7 @@ IPSys 只提供工作区内结构化关键词检索及原件版本下载，不�
 
 ## 新增 `purge_trash` 与最终安全边界
 
-`purge_trash(workspace,kind,id,section?,confirm=true,request_id?)` 只能操作经 `list_trash` 确认的已删除资料，目前允许的 kind 为 `project/contract/ip/v2_general/v2_archive/v2_archive_folder/v2_file/v2_ip_file`；必须明确 `confirm=true`。原件关联永久清理仅对所选 LinkId 生效，文件/版本/对象受其它引用保护；选择 `v2_archive_folder` 时会递归清理整个目录子树（包括其资料记录和附件 LinkId），其他共享位置及文件版本在仍有引用时保留。
+`purge_trash(workspace,kind,id,section?,confirm=true,request_id?)` 只能操作经 `list_trash` 确认的已删除资料，当前有效 kind 为 `project/contract/ip/v2_archive_folder/v2_file/v2_ip_file`；必须明确 `confirm=true`。原件关联永久清理仅对所选 LinkId 生效，文件/版本/对象受其它引用保护；选择 `v2_archive_folder` 时会递归清理整个目录子树（包括其资料记录和附件 LinkId），其他共享位置及文件版本在仍有引用时保留。
 
 上传源路径与下载输出路径须是 IPSys 宿主机器的本地盘符绝对路径，UNC/网络共享路径不允许。取消上传时仍保留在途 HTTP 结果未知的 `uncertain`，按 `cancelReason`（`user_cancel/authorization_revoked/host_stopping`）判断触发原因，不能仅凭取消指令断言未入库。协议 `tools/call` 的失败响应现在是结构化 JSON 文本，客户端解析 `ok/code/message/retryable` 以及可选的 `httpStatus`；真实业务失败仍应通过 `get_operation_result` 查询幂等日志。不允许直接复用失败参数的新编号或自动重传不确定结果。
 
@@ -252,7 +268,7 @@ stdio 初始化只声明真正支持的 `2025-06-18` 协议版本；空行静默
 
 上传不会无提示合并已有原件；当前单文件上限 8 GiB，超 2 GiB 参见 LARGE_FILE_TESTING.md。业务记录软删除可在回收站恢复；删除原件只解除指定 LinkId，原件版本和其它共享位置保留，物理清理仍受历史引用保护。
 
-## N2-04 档案、目录及综合资料 MCP 工具
+## 历史接口记录：N2-04 档案、目录及综合资料 MCP 工具
 
 现行综合资料 MCP create_general/update_general 增加可选 remarks；update_general 未传 remarks 时会先读取已有资料并保留原备注。业务档案 category 是业务分类属性，folder_id 才是实际所属目录；修改 category 不移动文件夹。业务档案 Excel 以独立“年度”和“所属目录”列保留跨库元数据及公司业务档案层级。
 
@@ -304,7 +320,7 @@ Codex 通过 stdio 使用同一个 EXE 的 `--mcp` 模式，子进程仅通过�
 
 **历史阶段说明**：此处所述项目/合同 MCP 原名与 V2 的切换，以及当时尚需开发的 Excel、搜索、回收站和跨区复制均已在后续 N2-04 与第三批 MCP 完成。现行 `list_files` 已改为一次 SQL 查询；`delete_file` 须同时核对 owner_id=FolderId、file_id=FileId、link_id=LinkId。当前操作规则和最新验收以本手册前文为准。
 
-## 七模块共享多级资料目录（2026-11-01）
+## 历史接口记录：七模块共享多级资料目录（2026-11-01）
 
 支持目录作用域：`company/achievement`、`company/party`、`company/general`、`personal/certificate`、`personal/achievement`、`personal/academic`、`personal/general`。上述模块共用 `archive_folder` 目录，`section` 为目录的模块；company 的旧 `achievement` 调用可省略 section。MCP `list_archive_folders`、`create_archive_folder`、`update_archive_folder`、`delete_archive_folder` 新增可选 section，`create_archive_folder` 的 parent_id 可省略以创建模块顶层目录。目录移动、资料移动使用新增 `move_archive_entry`，指定 workspace、section、kind、entry_id 和可选 parent_id。档案创建 `create_archive`、党团建设 `create_party_archive` 可以带 folder_id，综合资料 `create_general` 可以带 parent_id；不带父级的其他模块资料默认在对应模块根层。资料内容和附件仍由原有工具管理。移动的工作区、模块和循环校验在服务端执行。
 

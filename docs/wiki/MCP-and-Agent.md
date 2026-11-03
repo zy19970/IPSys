@@ -17,16 +17,16 @@ Agent MCP 子进程需要与图形宿主运行在同一个 Windows 用户登录�
 
 | 任务 | 常见工具或能力 |
 | --- | --- |
-| 查项目、知识产权、档案 | `list_projects`、`list_ips`、`list_archives` 等业务工具 |
+| 查项目、知识产权、档案 | `list_projects`、`list_ips`、`list_folders(workspace,section)` 等工具 |
 | 跨模块查询 | `search_records`，支持查询范围及分页 |
 | 文件逐页列出、筛缺项 | `list_files_page` |
 | 查看文件与版本 | `get_file_details` 与文件版本相关工具 |
 | 上传与属性补录 | `upload_files`、`start_upload_task`、`update_file_metadata` |
-| 多层目录管理 | `list_archive_folders`、`create_archive_folder`、`move_archive_entry` |
+| 多层目录管理 | `list_folders`、`create_folder`、`update_folder`、`move_folder`、`transfer_folder`、`delete_folder` |
 | 回收站 | `list_trash`、`restore_trash`、`purge_trash` |
 | 读取 Agent 规范 | `get_agent_guidance` |
 
-实际工具名称、参数和授权条件应通过连接后的 `tools/list` 与仓库 [MCP_CODEX.md](https://github.com/zy19970/IPSys/blob/main/MCP_CODEX.md) 核对，不建议使用早期已下线的 `v2_*` 历史别名。
+普通资料统一为 `archive_folder`，必须明确工作区与 `section`（公司支持 certificate/achievement/party/general，个人支持 certificate/achievement/academic/general）；当前 MCP 注册 51 项工具。实际工具名称、参数和授权条件应通过连接后的 `tools/list` 与仓库 [MCP_CODEX.md](https://github.com/zy19970/IPSys/blob/main/MCP_CODEX.md) 核对，不建议使用早期已下线的 `v2_*` 历史别名。
 
 ## 示例任务
 

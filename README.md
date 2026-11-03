@@ -97,7 +97,7 @@ IPSys 的正式发布由 [Publish IPSys Release](https://github.com/zy19970/IPSy
 | 验证范围 | 当前结论与证据 |
 | --- | --- |
 | Explorer F2-01～F2-06 核心业务、三批缺陷修复 | 功能与对应自动回归已完成，历史合并 CI [#39947975625](https://github.com/zy19970/IPSys/actions/runs/39947975625) 成功 |
-| Excel、知识产权、启动器与 MCP | 现行固定 Excel：项目 11 列、知识产权 19 列、档案/资质/党团 6 列、综合资料 3 列；MCP 64 工具；详情见 [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) |
+| Excel、知识产权、启动器与 MCP | 现行固定 Excel：项目 11 列、知识产权 19 列，所有普通资料模块（档案、资质、党团、综合资料）统一六列；本机 MCP 为 51 个工具，普通文件夹操作统一使用 archive_folder 与 section；[CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 仅为旧接口历史证据 |
 | 统一文件夹、新建直达与操作细节 | [统一文件夹 CI](https://github.com/zy19970/IPSys/actions/runs/41406914227) 和 [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 成功，本机 GUI 仍需实测 |
 | 运行期 401 重新登录、拖放与待确认上传、跨工作区关联/物理隔离 | 已修复；专项 Node/HTTP 与 Agent 取证见 [验收证据索引](./tests/TEST_EVIDENCE_INDEX.md) |
 | 超过 2 GiB SQLCipher/HTTP 原件及大库 VACUUM | 专项 [#39943364663](https://github.com/zy19970/IPSys/actions/runs/39943364663) 通过（未跳过压缩或完整性检查） |
@@ -114,7 +114,7 @@ IPSys 的正式发布由 [Publish IPSys Release](https://github.com/zy19970/IPSy
 | [DESIGN.md](./DESIGN.md) | 现行系统架构、SQLCipher V2 资源与安全边界 |
 | [UI_BASELINE.md](./UI_BASELINE.md) | 当前业务导航和交互原则；实际 Explorer 入口以源码为准 |
 | [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md) | 当前完成状态、可继续开发的事项和验收门槛 |
-| [MCP_CODEX.md](./MCP_CODEX.md) | 本机 MCP 接入、64 个工具（含党团建设专用接口）与安全规则 |
+| [MCP_CODEX.md](./MCP_CODEX.md) | 本机 MCP 接入、51 个工具（含统一的普通文件夹操作）与安全规则 |
 | [USER_GUIDE.md](./USER_GUIDE.md) | Excel、搜索、附件/ZIP 与用户操作 |
 | [TESTING.md](./TESTING.md) 与 [测试证据索引](./tests/TEST_EVIDENCE_INDEX.md) | 现行验证方法与各次独立原始证据 |
 | [正式前端源码说明](./src/IPSys.Web/wwwroot/README.md) | Explorer 前端源码、打包和代码契约 |
