@@ -123,7 +123,7 @@ assert.equal(run("Drive.cellValue({biz:{kind:'ip',start:'2023-06-15',end:'2026-0
 assert.equal(run("Drive.yearOf({biz:{kind:'ip',start:'',end:'2026-09-20',year:'2026'}})"),"",
   "Grant date or a stale year field cannot replace a missing IP application date");
 assert.equal(run("Drive.yearOf({biz:{kind:'ip',start:'2024-01-01',end:''}})"),"2024");
-assert.equal(run("Drive.yearOf({biz:{kind:'archive',year:'2025'}})"),"2025",
+assert.equal(run("Drive.yearOf({biz:{kind:'archive_folder',year:'2025'}})"),"2025",
   "Explicit archive year must retain its current meaning");
 assert.equal(run("Drive.yearOf({biz:{kind:'project',start:'',end:'2022-12-31'}})"),"2022",
   "Project year fallback must remain unchanged");
@@ -132,7 +132,7 @@ assert.equal(run("Drive.yearOf({biz:{kind:'project',start:'',end:'2022-12-31'}})
   const oldRoot = run("ROOT");
   const vault = run("VaultStore");
   vault.getJson = async url => {
-    if (url.includes("/archive/")) throw Error("HTTP 500");
+    if (url.includes("/api/v2/ui/folders/")) throw Error("HTTP 500");
     return [];
   };
   await assert.rejects(vault.loadAll("company"), /业务档案加载失败.*500/);

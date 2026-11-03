@@ -78,7 +78,7 @@ static partial class McpLocal
         string workspace,string name,JsonElement args)
     {
         string section=DirectoryScope(workspace,args);
-        long FolderId()=>ReadId(args,"folder_id");
+        long FolderId()=>FolderIdFrom("folder_id");
         switch(name)
         {
             case "list_folders":
@@ -93,7 +93,7 @@ static partial class McpLocal
             }
             case "create_folder":
             {
-                string nameValue=RequiredText(args,"name");
+                string nameValue=RequiredFolderText("name");
                 var fields=Patch(new JsonObject(),args,FolderFields);
                 fields["name"]=nameValue;
                 if(args.TryGetProperty("parent_id",out var parent) &&
@@ -130,8 +130,8 @@ static partial class McpLocal
             }
             case "transfer_folder":
             {
-                string targetWorkspace=RequiredText(args,"target_workspace");
-                string targetSection=RequiredText(args,"target_section");
+                string targetWorkspace=RequiredFolderText("target_workspace");
+                string targetSection=RequiredFolderText("target_section");
                 if(!ArchiveDirectoryScopes.Allowed(targetWorkspace,targetSection))
                     throw new McpKnownRejectionException("目标工作区或 section 无效。");
                 var body=new JsonObject{
@@ -149,6 +149,17 @@ static partial class McpLocal
             default:throw new IOException("不支持的普通文件夹 MCP 操作："+name);
         }
 
-        long FolderIdFrom(string key)=>ReadId(args,key);
+        // Invalid local arguments have a definite outcome: no HTTP write was
+        // issued. Record them as done/businessOk=false, never uncertain.
+        long FolderIdFrom(string key)
+        {
+            try { return ReadId(args,key); }
+            catch(IOException ex) { throw new McpKnownRejectionException(ex.Message); }
+        }
+        string RequiredFolderText(string key)
+        {
+            try { return RequiredText(args,key); }
+            catch(IOException ex) { throw new McpKnownRejectionException(ex.Message); }
+        }
     }
 }

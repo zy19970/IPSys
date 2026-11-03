@@ -27,7 +27,6 @@ const IPSysExport=(()=>{
   return candidate;
  }
  function owner(file){
-  if(file.kind==='general')return {recordKey:'g:'+file.ownerId,root:file.ownerName};
   if(file.kind==='project')return {recordKey:'p:'+file.ownerId,root:file.ownerName};
   if(file.kind==='contract')return {recordKey:'c:'+file.ownerId,root:file.projectName,
    parentKey:'p:'+file.projectId,sub:file.ownerName};
@@ -56,22 +55,10 @@ const IPSysExport=(()=>{
      parts.push(group.get(childKey));
      directoryKey=childKey;
     }
-    // Attachments stored directly in a directory do not need a synthetic record.
-    if(file.kind==='archive_folder'){
-     if(!fileNames.has(directoryKey))fileNames.set(directoryKey,new Set());
-     parts.push(distinctName(cleanName(file.name,true),fileNames.get(directoryKey)));
-     return {...file,parts,path:parts.join('/')};
-    }
-    const recordKey='archive-record:'+file.ownerId+':'+file.section;
-    if(!children.has(directoryKey))children.set(directoryKey,new Map());
-    const records=children.get(directoryKey);
-    if(!records.has(recordKey)){
-     const used=new Set([...records.values()].map(x=>x.toLowerCase()));
-     records.set(recordKey,distinctName(cleanName(file.ownerName),used,true));
-    }
-    parts.push(records.get(recordKey));
-    if(!fileNames.has(recordKey))fileNames.set(recordKey,new Set());
-    parts.push(distinctName(cleanName(file.name,true),fileNames.get(recordKey)));
+    // Every ordinary material is already a real folder. Its complete chain
+    // ends at the owning folder; no synthetic archive-record level is needed.
+    if(!fileNames.has(directoryKey))fileNames.set(directoryKey,new Set());
+    parts.push(distinctName(cleanName(file.name,true),fileNames.get(directoryKey)));
     return {...file,parts,path:parts.join('/')};
    }
    const where=owner(file);

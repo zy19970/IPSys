@@ -43,9 +43,9 @@ const attachment={id:"f:201:2",type:"file",name:"申请书.pdf",biz:{kind:"file"
 const ip={id:"i:11",name:"原知识产权",type:"folder",biz:{id:11,kind:"ip"},children:[attachment]};
 const project={id:"p:22",name:"目标项目",type:"folder",biz:{id:22,kind:"project"},children:[]};
 const contract={id:"c:33",name:"目标合同",type:"folder",biz:{id:33,kind:"contract"},children:[]};
-const archiveDir={id:"af:44",name:"归档目录",type:"folder",biz:{id:44,kind:"archive_folder"},children:[]};
-const archive={id:"a:achievement:55",name:"目标资料",type:"folder",biz:{id:55,kind:"archive",section:"achievement"},children:[]};
-const general={id:"g:66",name:"综合资料",type:"folder",biz:{id:66,kind:"general"},children:[]};
+const archiveDir={id:"af:44",name:"归档目录",type:"folder",biz:{id:44,kind:"archive_folder",section:"achievement"},children:[]};
+const archive={id:"a:achievement:55",name:"目标资料",type:"folder",biz:{id:55,kind:"archive_folder",section:"achievement"},children:[]};
+const general={id:"g:66",name:"综合资料",type:"folder",biz:{id:66,kind:"archive_folder",section:"general"},children:[]};
 const category={id:"k:ip",name:"知识产权",type:"folder",children:[ip,project,contract,archiveDir,archive,general]};
 const ROOT={id:"root",type:"folder",name:"根目录",children:[category]};
 const map=new Map([[attachment.id,ip], [ip.id,category],[project.id,category],[contract.id,category],
@@ -71,7 +71,7 @@ const workspace={ws:"company",metaOf:()=>({fileId:101,linkId:201,version:2}),
 const sandbox=vm.createContext({
  ROOT,VaultStore:workspace,RecordForms:{open:o=>dialogs.push(o)},
  Drive:{clearSelection:()=>{clear++;}},
- UPLOADABLE_KINDS:["project","contract","archive","ip","general"],
+ UPLOADABLE_KINDS:["project","contract","archive_folder","ip"],
  findParent:id=>map.get(id)||null,pathTo,fileTaskBusy:()=>busy,
  refreshCurrent:async()=>{refresh++;if(failRefresh)throw Error("刷新失败");},
  toast:(m)=>notes.push(m),
@@ -85,8 +85,8 @@ const invoke=vm.runInContext("associateOriginal",sandbox);
  let f=dialogs.at(-1);
  assert.equal(f.title,"共享附件原件");
  const ids=f.fields[0].options.map(x=>x.value);
- assert.deepEqual(Array.from(ids).sort(),["22","33","55","66"],
-  "Only real same-workspace business owners; no virtual, archive or source folders");
+ assert.deepEqual(Array.from(ids).sort(),["22","33","44","55","66"],
+  "Only real same-workspace project, contract and ordinary-folder owners; no virtual or source folders");
  assert.ok(f.fields[0].options.find(x=>x.value==="33").label.includes("目标合同"));
  await f.onSubmit({target:"22"});
  assert.deepEqual(JSON.parse(JSON.stringify(requests.at(-1))),{

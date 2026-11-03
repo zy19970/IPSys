@@ -138,19 +138,19 @@ function attachment(id,name,size,ownerKind,meta){
 const achievement=folder('k:achievement','业务档案',{kind:'k'},[
  folder('a:201','认定申报',{kind:'archive_folder',id:201},[
   folder('a:203','企业行标',{kind:'archive_folder',id:203},[
-   folder('a:31','评审资料',{kind:'archive',id:31},[
-    attachment('f:31:1','证明.docx',4,'archive',{fileId:401,version:1}),
+   folder('a:31','评审资料',{kind:'archive_folder',id:31,section:'achievement'},[
+    attachment('f:31:1','证明.docx',4,'archive_folder',{fileId:401,version:1}),
    ]),
   ]),
  ]),
 ]);
 const archiveEntries=Array.from(shellCtx.collect(achievement));
 assert.equal(archiveEntries.length,1,'Every attachment under the selected category must be exported');
-assert.equal(archiveEntries[0].kind,'archive');
+assert.equal(archiveEntries[0].kind,'archive_folder');
 assert.equal(archiveEntries[0].source,'v2file');
-assert.equal(archiveEntries[0].ownerName,'评审资料','The record, not the directory, owns the ZIP subfolder');
-assert.deepEqual(Array.from(archiveEntries[0].archiveFolderPath,x=>x.name),['认定申报','企业行标'],
- 'The archive directory chain must survive the projection');
+assert.equal(archiveEntries[0].ownerName,'评审资料','The owning ordinary folder is the final ZIP directory');
+assert.deepEqual(Array.from(archiveEntries[0].archiveFolderPath,x=>x.name),['认定申报','企业行标','评审资料'],
+ 'The archive directory chain must include the owning folder');
 assert.deepEqual(JSON.parse(JSON.stringify(exporter.makePlan(archiveEntries).map(x=>x.path))),
  ['认定申报/企业行标/评审资料/证明.docx'],'ZIP must rebuild every nested directory level');
 
@@ -208,7 +208,7 @@ assert.equal(Array.from(shellCtx.collect(ip))[0].source,'v2ip','IP attachments k
 // (A renamed recycle-bin entry is the realistic case: it has a name and a size
 // but no download identity the exporter can trust.)
 const unknown=folder('k:general','其他资料',{kind:'k'},[
- folder('g:7','杂项',{kind:'general',id:7},[
+ folder('g:7','杂项',{kind:'archive_folder',id:7,section:'general'},[
   attachment('f:8:1','说明.txt',2,'trash',{fileId:601,version:1}),
  ]),
 ]);
@@ -249,15 +249,15 @@ assert.equal(Array.from(shellCtx.collect(unknown)).length,0,
  assert.equal(elems.get('exportStatus').hidden,true,'Export result must auto-dismiss');
  // Directory exports use folder identities and keep arbitrary depth in the ZIP.
  const archiveFiles=[
-  {source:'v2file',kind:'archive',section:'achievement',workspace:'company',
+  {source:'v2file',kind:'archive_folder',section:'achievement',workspace:'company',
    ownerId:31,ownerName:'申报资料',id:401,fileId:401,version:1,name:'申报.pdf',size:3,
-   archiveFolderPath:[{id:201,name:'认定申报'},{id:203,name:'企业行标'}]},
-  {source:'v2file',kind:'archive',section:'achievement',workspace:'company',
+   archiveFolderPath:[{id:201,name:'认定申报'},{id:203,name:'企业行标'},{id:31,name:'申报资料'}]},
+  {source:'v2file',kind:'archive_folder',section:'achievement',workspace:'company',
    ownerId:33,ownerName:'评审资料',id:402,fileId:402,version:1,name:'证明.docx',size:4,
-   archiveFolderPath:[{id:201,name:'认定申报'},{id:203,name:'企业行标'},{id:204,name:'2026年度'}]},
-  {source:'v2file',kind:'archive',section:'achievement',workspace:'company',
+   archiveFolderPath:[{id:201,name:'认定申报'},{id:203,name:'企业行标'},{id:204,name:'2026年度'},{id:33,name:'评审资料'}]},
+  {source:'v2file',kind:'archive_folder',section:'achievement',workspace:'company',
    ownerId:34,ownerName:'申报资料',id:403,fileId:403,version:1,name:'申报.pdf',size:5,
-   archiveFolderPath:[{id:201,name:'认定申报'},{id:205,name:'技术认证'}]}
+   archiveFolderPath:[{id:201,name:'认定申报'},{id:205,name:'技术认证'},{id:34,name:'申报资料'}]}
  ];
  const archivePlan=exporter.makePlan(archiveFiles);
  assert.deepEqual(JSON.parse(JSON.stringify(archivePlan.map(x=>x.path))),[
