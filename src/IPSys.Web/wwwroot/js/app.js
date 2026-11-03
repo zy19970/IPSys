@@ -73,7 +73,7 @@ const LEDGER_COLS = {
   project: [
     YEAR,
     NAME("项目名称"),
-    { k: "typeName", t: "项目类型", w: "92px", f: "tag" },
+    { k: "typeName", t: "项目类型", w: "92px", f: "project-type" },
     { k: "code", t: "项目编号", w: "124px", f: "mono" },
     { k: "_files", t: "附件数量", w: "84px", f: "num", r: 1 },
   ],
@@ -113,6 +113,16 @@ const IP_TYPE_TONES = Object.freeze({
 });
 function ipTypeTone(v) {
   return IP_TYPE_TONES[String(v || "")] || "neutral";
+}
+
+/* 现有三种项目类型独立配色，和知识产权业务类型、状态色互不混用。 */
+const PROJECT_TYPE_TONES = Object.freeze({
+  "科研项目": "research",
+  "横向项目": "horizontal",
+  "其他项目": "other",
+});
+function projectTypeTone(v) {
+  return PROJECT_TYPE_TONES[String(v || "").trim()] || "neutral";
 }
 
 /* 状态 → 颜色。先判负向,再判正向,最后判进行中;都不中就是中性灰。
@@ -318,6 +328,9 @@ const Drive = {
         break;
       case "tag":
         inner = `<span class="pill tag">${esc(v)}</span>`;
+        break;
+      case "project-type":
+        inner = `<span class="pill project-type ${projectTypeTone(v)}" title="${esc(v)}">${esc(v)}</span>`;
         break;
       case "ip-type":
         inner = `<span class="pill ip-type ${ipTypeTone(v)}" title="${esc(v)}">${esc(v)}</span>`;
@@ -1119,7 +1132,7 @@ const Drive = {
             return html;
           })
           .join("");
-        return `<div class="row is-ledger ${sel ? "is-selected" : ""}" data-id="${esc(it.id)}" draggable="true">
+        return `<div class="row is-ledger${cols === LEDGER_COLS.project ? " is-project-ledger" : ""} ${sel ? "is-selected" : ""}" data-id="${esc(it.id)}" draggable="true">
           <span class="row-check">${icon("check", 10)}</span>
           ${cells}
           <div class="col-gap"></div>

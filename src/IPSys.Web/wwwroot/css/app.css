@@ -693,7 +693,7 @@ svg { display: block; flex: none; }
   letter-spacing: -.1px;
 }
 
-/* 状态用语义色;项目类型维持中性标签,知识产权业务类型按类别配色 */
+/* 状态、项目类型、知识产权业务类型使用各自独立的配色语义。 */
 .pill {
   display: inline-block;
   max-width: 100%;
@@ -713,6 +713,23 @@ svg { display: block; flex: none; }
 .pill.red { background: #fdecec; color: #a32d2d; }
 .pill.gray { background: var(--surface-subtle); color: var(--text-2); }
 .pill.tag { background: var(--surface-subtle); color: var(--text-2); font-weight: 400; }
+/* 项目台账的项目名称、年份、编号、附件数量采用相同的正文字号。 */
+.row.is-project-ledger .cell,
+.row.is-project-ledger .mono { font-size: 13.5px; }
+
+/* 项目类型用浅底深字，字号与项目名称一致，胶囊尺寸统一。 */
+.pill.project-type {
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  line-height: 24px;
+  font-weight: 400;
+}
+.pill.project-type.research { background: #eaf3ff; color: #2457ac; }
+.pill.project-type.horizontal { background: #fff0e2; color: #94501d; }
+.pill.project-type.other { background: #edf3eb; color: #386744; }
+.pill.project-type.neutral { background: var(--surface-subtle); color: var(--text-2); }
 /* 知识产权业务类型标签与文件夹名称等大,按业务类型用浅底深字。 */
 .pill.ip-type {
   height: 24px;

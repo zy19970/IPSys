@@ -1,4 +1,4 @@
-/* 知识产权类型十色标签:字号与名称一致,不改变项目类型或状态。 */
+/* 知识产权、项目业务类型固定分类色，与名称字体尺寸一致。 */
 "use strict";
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -71,7 +71,40 @@ types.forEach(type => {
   assert.ok(html.includes("pill ip-type " + badgeTone(type)), "Wrong class: " + type);
   assert.ok(html.includes(type) && html.includes('title="' + type + '"'));
 });
-assert.match(call("科研项目", "tag"), /class="pill tag"/, "Project badges stay neutral");
+const projectTone = value => vm.runInContext("projectTypeTone(" + JSON.stringify(value) + ")", context);
+const projectTypes = ["科研项目", "横向项目", "其他项目"];
+const projectClasses = projectTypes.map(projectTone);
+assert.deepEqual(projectClasses, ["research", "horizontal", "other"]);
+assert.equal(projectTone("未知项目类型"), "neutral");
+assert.match(app, /\{ k: "typeName", t: "项目类型", w: "92px", f: "project-type" \}/);
+const projectRule = css.match(/\.pill\.project-type\s*\{([^}]+)\}/);
+assert.ok(projectRule, "Project type badge must have dedicated CSS");
+assert.equal(font(projectRule[1]), font(nameRule[1]),
+  "Project badge must match the project name font");
+assert.match(projectRule[1], /height:\s*24px/);
+assert.match(projectRule[1], /line-height:\s*24px/);
+assert.match(projectRule[1], /font-weight:\s*400/);
+const projectSwatches = projectTypes.map(type => {
+  const tone = projectTone(type);
+  const rule = css.match(new RegExp("\\.pill\\.project-type\\." + tone + "\\s*\\{([^}]+)\\}"));
+  assert.ok(rule, "Project palette missing " + type);
+  const bg = rule[1].match(/background:\s*(#[a-f\d]{6})/i)?.[1];
+  const fg = rule[1].match(/color:\s*(#[a-f\d]{6})/i)?.[1];
+  assert.ok(bg && fg, "Project background and text colors required");
+  return bg + "/" + fg;
+});
+assert.equal(new Set(projectSwatches).size, projectTypes.length);
+projectTypes.forEach(type => {
+  const html = call(type, "project-type");
+  assert.ok(html.includes("pill project-type " + projectTone(type)), "Wrong project color: " + type);
+  assert.ok(html.includes('title="' + type + '"'), "Missing original project type");
+});
+assert.match(call("未知项目类型", "project-type"), /pill project-type neutral/);
+assert.match(call("<类型>", "project-type"), /&lt;类型&gt;/);
+assert.doesNotMatch(call("<类型>", "project-type"), /<类型>/);
+assert.match(css, /\.row\.is-project-ledger \.cell,\s*\.row\.is-project-ledger \.mono\s*\{\s*font-size:\s*13\.5px/);
+assert.match(app, /cols === LEDGER_COLS\.project \? " is-project-ledger"/);
+assert.match(call("普通标签", "tag"), /class="pill tag"/);
 const statusRule = css.match(/\.pill\.status\s*\{([^}]+)\}/);
 assert.ok(statusRule, "Status badges need dedicated readable typography");
 assert.equal(font(statusRule[1]), font(nameRule[1]), "Status font must match both folder name and IP type");
@@ -87,4 +120,4 @@ assert.doesNotMatch(css.match(/\.pill\.tag\s*\{([^}]+)\}/)?.[1] || "", /font-siz
 assert.match(call("<sample>", "ip-type"), /&lt;sample&gt;/, "Untrusted type values remain escaped");
 assert.doesNotMatch(call("<sample>", "ip-type"), /<sample>/);
 
-console.log("IP TYPE BADGE SMOKE PASS: 10 tones, status + type at folder font size, semantic colors, safe fallback");
+console.log("TYPE BADGE SMOKE PASS: IP 10 tones, project 3 tones, consistent project row font sizes");
