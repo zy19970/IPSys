@@ -96,8 +96,8 @@ static partial class ExcelLedger
         {
             if(string.IsNullOrWhiteSpace(directory))
             {
-                if(workspace=="company" && section=="achievement")
-                    throw new InvalidDataException("公司业务档案需要填写“所属目录”。");
+                // An empty path denotes a legitimate top-level folder, even
+                // in company/achievement. ParentId is not mandatory.
                 return null;
             }
             long? parent=null;
@@ -123,10 +123,10 @@ static partial class ExcelLedger
         return roots[0].Key;
     }
 
-    // The general workbook only carries name + remarks, so its missing columns
-    // must never blank out category/year/tags that the same folder already has.
-    private static string? KeepColumn(string kind,string? next,string? existing)=>
-        kind=="general"?existing:KeepExcel(next,existing);
+    // Blank cells from both current and legacy templates preserve existing
+    // metadata; only nonblank supplied values update the corresponding field.
+    private static string? KeepColumn(string? next,string? existing)=>
+        KeepExcel(next,existing);
 
     internal static object NativeArchiveGeneralImport(SqliteConnection db,
         string workspace,string kind,string section,string policy,byte[] bytes)
@@ -141,8 +141,14 @@ static partial class ExcelLedger
         string scope=MaterialScope(kind,section);
         var parsed=kind=="archive"
             ?ReadCompatibleArchive(bytes):ReadCompatibleGeneral(bytes);
-        var rows=parsed.Rows;
         bool legacy=parsed.Legacy;
+        // Export order follows user sorting, not hierarchy. A fresh database
+        // must import ancestors before descendants regardless of worksheet
+        // order; retain source row numbers for actionable error reporting.
+        var rows=legacy&&kind=="archive"?parsed.Rows:parsed.Rows
+            .OrderBy(r=>r.Values[^1].Split(" / ",StringSplitOptions.None)
+                .Count(part=>!string.IsNullOrWhiteSpace(part)))
+            .ThenBy(r=>r.Number).ToList();
         int created=0,updated=0,skipped=0,failed=0;
         var errors=new List<object>();
         foreach(var (line,fields) in rows)
@@ -165,16 +171,16 @@ static partial class ExcelLedger
                 }
                 else
                 {
-                    var title=new TitleInput(fields[0],fields[1]);
-                    if(GeneralRules.Validate(title) is string error)
+                    var input=Archive(fields);
+                    if(ArchiveRules.Validate(input) is string error)
                         throw new InvalidDataException(error);
-                    name=title.Title!.Trim();
-                    category=null;
-                    remarks=title.Remarks;
-                    tags=null;
-                    year=null;
+                    name=input.Name!.Trim();
+                    category=input.Category;
+                    remarks=input.Remarks;
+                    tags=TagRules.Normalize(input.Tags);
+                    year=input.Year;
                     parent=ArchiveParent(db,workspace,"general",null,
-                        fields.Length>2?fields[2]:null,false);
+                        fields[5],false);
                 }
 
                 var matches=NativeArchiveStore.ListAll(db,workspace,scope).Where(x=>{
@@ -185,13 +191,16 @@ static partial class ExcelLedger
                     return Same(m.Category??"",category??"");
                 }).ToArray();
                 var existing=matches.FirstOrDefault();
-                /* 歧义只对 update 有意义：create 允许同名新建，skip 本就该跳过，
-                   若在此处无差别抛错会让已有重复的数据永久无法再导入。 */
+                // Ambiguous matches block updates; skip can safely ignore
+                // duplicates, while create reports a same-level name conflict.
                 if(matches.Length>1&&policy=="update")
                     throw new InvalidDataException("同名同目录资料有 "+matches.Length+
                         " 条（ID "+string.Join("、",matches.Take(5).Select(x=>x.Folder.Ref.Id))+
                         "），无法确定更新目标，请先消除重复。");
                 if(existing is not null && policy=="skip"){skipped++;continue;}
+                if(existing is not null && policy=="create")
+                    throw new InvalidDataException("当前所属目录下已存在同名文件夹：“"+
+                        name+"”。请选择跳过或更新已有记录，或先修改名称。");
                 if(existing is not null && policy=="update")
                 {
                     // Preserve the owning folder, FileId and all FileVersions.
@@ -200,9 +209,9 @@ static partial class ExcelLedger
                         // Name is mandatory in both workbooks, so it never falls
                         // back; the other columns follow the "blank keeps old" rule.
                         Name=name,
-                        Category=KeepColumn(kind,category,old.Category),
-                        Year=KeepColumn(kind,year,old.Year),
-                        Tags=KeepColumn(kind,tags,old.Tags),
+                        Category=KeepColumn(category,old.Category),
+                        Year=KeepColumn(year,old.Year),
+                        Tags=KeepColumn(tags,old.Tags),
                         Remarks=KeepExcel(remarks,old.Remarks),
                         ParentId=existing.Folder.Parent?.Id
                     };

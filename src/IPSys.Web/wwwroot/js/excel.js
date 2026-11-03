@@ -107,7 +107,7 @@ function chooseExcelDuplicatePolicy() {
       '<div class="excel-choice">' +
       '<button class="btn" data-excel-policy="skip">跳过重复记录（推荐）</button>' +
       '<button class="btn" data-excel-policy="update">更新已有记录</button>' +
-      '<button class="btn" data-excel-policy="create">将重复记录另建一条</button>' +
+      '<button class="btn" data-excel-policy="create">尝试新增（同级同名文件夹会失败）</button>' +
       '<button class="btn" data-excel-policy="cancel">取消导入</button></div>';
     document.body.append(dialog);
 

@@ -73,6 +73,72 @@ static class NativeArchiveGeneralMilestoneSmoke
         return buffer.ToArray();
     }
 
+    // Recreate the actual historical general layouts from a current six-column
+    // XLSX. Their original columns were A (name), C (remarks) and F (parent).
+    private static byte[] PreviousGeneral(byte[] workbook,int count)
+    {
+        int[] sourceColumns=count switch
+        {
+            1=>[0],2=>[0,2],3=>[0,2,5],
+            _=>throw new ArgumentOutOfRangeException(nameof(count))
+        };
+        using var input=new ZipArchive(new MemoryStream(workbook),ZipArchiveMode.Read);
+        using var buffer=new MemoryStream();
+        using(var output=new ZipArchive(buffer,ZipArchiveMode.Create,true))
+        foreach(var entry in input.Entries)
+        {
+            var copy=output.CreateEntry(entry.FullName);
+            using var src=entry.Open();
+            using var dst=copy.Open();
+            if(entry.FullName!="xl/worksheets/sheet1.xml")
+            {src.CopyTo(dst);continue;}
+            var xml=XDocument.Load(src);
+            XNamespace x="http://schemas.openxmlformats.org/spreadsheetml/2006/main";
+            foreach(var row in xml.Descendants(x+"sheetData").Elements(x+"row"))
+            {
+                var cells=row.Elements(x+"c").ToArray();
+                var rowNum=(string?)row.Attribute("r");
+                var selected=new List<XElement>();
+                for(int col=0;col<sourceColumns.Length;col++)
+                {
+                    string oldRef=$"{(char)('A'+sourceColumns[col])}{rowNum}";
+                    var cell=new XElement(cells.Single(c=>
+                        (string?)c.Attribute("r")==oldRef));
+                    cell.SetAttributeValue("r",$"{(char)('A'+col)}{rowNum}");
+                    selected.Add(cell);
+                }
+                foreach(var cell in cells)cell.Remove();
+                row.Add(selected);
+            }
+            xml.Save(dst);
+        }
+        return buffer.ToArray();
+    }
+
+    // Prove importer dependency sorting independently from worksheet order.
+    private static byte[] ReverseDataRows(byte[] workbook)
+    {
+        using var input=new ZipArchive(new MemoryStream(workbook),ZipArchiveMode.Read);
+        using var buffer=new MemoryStream();
+        using(var output=new ZipArchive(buffer,ZipArchiveMode.Create,true))
+        foreach(var entry in input.Entries)
+        {
+            var copy=output.CreateEntry(entry.FullName);
+            using var src=entry.Open();
+            using var dst=copy.Open();
+            if(entry.FullName!="xl/worksheets/sheet1.xml")
+            {src.CopyTo(dst);continue;}
+            var xml=XDocument.Load(src);
+            XNamespace x="http://schemas.openxmlformats.org/spreadsheetml/2006/main";
+            var sheet=xml.Descendants(x+"sheetData").Single();
+            var data=sheet.Elements(x+"row").Skip(1).ToArray();
+            foreach(var row in data)row.Remove();
+            sheet.Add(data.Reverse());
+            xml.Save(dst);
+        }
+        return buffer.ToArray();
+    }
+
     public static async Task VerifyAsync(HttpClient client)
     {
         var savedArchive=new ArchiveInput("原资质","企业资质","原备注","原标签",
@@ -95,7 +161,9 @@ static class NativeArchiveGeneralMilestoneSmoke
                 remarks="可检索备注",tags="专属标签"}}))).GetProperty("id").GetInt64();
         long general=(await Read(await client.PostAsJsonAsync(cg,new{
             section="general",archiveFolder=new{
-                name=mark+"综合资料",remarks=mark+"综合备注"}}))).GetProperty("id").GetInt64();
+                name=mark+"综合资料",category="综合分类",
+                year="2024",tags="资料标签;财务",
+                remarks=mark+"综合备注"}}))).GetProperty("id").GetInt64();
         var generalRecord=await client.GetFromJsonAsync<JsonElement>(
             $"{cg}/{general}?section=general");
         Check(generalRecord.GetProperty("businessData").GetProperty("remarks")
@@ -152,6 +220,75 @@ static class NativeArchiveGeneralMilestoneSmoke
               nestedStored.GetProperty("businessData").GetProperty("year")
                 .GetString()=="2024",
             "nested archive keeps directory FolderId and year");
+
+        // A real top-level company business folder has no directory path.
+        // All selected levels must import into a fresh personal module even
+        // if the workbook rows are reversed (the export is position-sorted).
+        string treeRootName=mark+"树根",treeChildName=mark+"树二级",
+            treeLeafName=mark+"树三级";
+        long treeRoot=(await Read(await client.PostAsJsonAsync(ca,new{
+            section="achievement",archiveFolder=new{
+                name=treeRootName,category="自定义类别",year="2026",
+                tags="甲;乙",remarks="根级备注"}}))).GetProperty("id").GetInt64();
+        long treeChild=(await Read(await client.PostAsJsonAsync(ca,new{
+            section="achievement",archiveFolder=new{
+                name=treeChildName,parentId=treeRoot,category="次级"}})))
+                .GetProperty("id").GetInt64();
+        long treeLeaf=(await Read(await client.PostAsJsonAsync(ca,new{
+            section="achievement",archiveFolder=new{
+                name=treeLeafName,parentId=treeChild,remarks="叶级备注"}})))
+                .GetProperty("id").GetInt64();
+        var rootWorkbook=await Export(client,"archive","company","achievement",treeRoot);
+        var rootSkip=await Import(client,"archive","company","achievement",
+            "skip",rootWorkbook);
+        Check(rootSkip.GetProperty("skipped").GetInt32()==1 &&
+              rootSkip.GetProperty("failed").GetInt32()==0,
+            "company achievement root with blank directory can round-trip");
+        var rootConflict=await Import(client,"archive","company","achievement",
+            "create",rootWorkbook);
+        Check(rootConflict.GetProperty("failed").GetInt32()==1 &&
+              rootConflict.GetProperty("errors")[0].GetProperty("error")
+                  .GetString()!.Contains("同名文件夹"),
+            "same-parent Excel create yields actionable name conflict");
+        byte[] fullTree;
+        using(var response=await client.PostAsJsonAsync(
+            "/api/v2/excel/company/archive/export?section=achievement",
+            new ExcelExportInput("filtered",[treeRoot,treeChild,treeLeaf])))
+        {
+            response.EnsureSuccessStatusCode();
+            fullTree=ReverseDataRows(await response.Content.ReadAsByteArrayAsync());
+        }
+        var treeImport=await Import(client,"archive","personal","achievement",
+            "create",fullTree);
+        Check(treeImport.GetProperty("created").GetInt32()==3 &&
+              treeImport.GetProperty("failed").GetInt32()==0,
+            "reversed three-level folder workbook imports into empty module: "+
+            treeImport.GetRawText());
+        var personalTree=await client.GetFromJsonAsync<JsonElement>(
+            "/api/v2/folders/personal/archive_folder?section=achievement&flat=true");
+        JsonElement At(string name)=>personalTree.EnumerateArray().Single(x=>
+            x.GetProperty("folder").GetProperty("name").GetString()==name);
+        var r0=At(treeRootName);var r1=At(treeChildName);var r2=At(treeLeafName);
+        Check(r0.GetProperty("folder").GetProperty("parent").ValueKind==
+                  JsonValueKind.Null &&
+              r1.GetProperty("folder").GetProperty("parent").GetProperty("id")
+                  .GetInt64()==r0.GetProperty("folder").GetProperty("ref")
+                  .GetProperty("id").GetInt64() &&
+              r2.GetProperty("folder").GetProperty("parent").GetProperty("id")
+                  .GetInt64()==r1.GetProperty("folder").GetProperty("ref")
+                  .GetProperty("id").GetInt64() &&
+              r0.GetProperty("businessData").GetProperty("category")
+                  .GetString()=="自定义类别" &&
+              r0.GetProperty("businessData").GetProperty("tags")
+                  .GetString()=="甲;乙" &&
+              r0.GetProperty("businessData").GetProperty("year")
+                  .GetString()=="2026",
+            "three-level import preserves folder ancestry and all attributes");
+        var repeated=await Import(client,"archive","personal","achievement",
+            "skip",fullTree);
+        Check(repeated.GetProperty("skipped").GetInt32()==3 &&
+              repeated.GetProperty("failed").GetInt32()==0,
+            "reimport of same folder tree skips every level");
 
         byte[] original=RandomNumberGenerator.GetBytes(1317);
         byte[] revised=RandomNumberGenerator.GetBytes(2379);
@@ -221,6 +358,24 @@ static class NativeArchiveGeneralMilestoneSmoke
         Check(legacyGeneralSkip.GetProperty("skipped").GetInt32()==1,
             "historical 1-column general XLSX remains importable: "+
             legacyGeneralSkip.GetRawText());
+        foreach(int columns in new[]{2,3})
+        {
+            // Actual old schemas: 名称/备注 and 名称/备注/所属目录.
+            // Updating via either must retain modern category, year and tags.
+            var previous=PreviousGeneral(generalWorkbook,columns);
+            var oldUpdate=await Import(client,"general","company","",
+                "update",previous);
+            Check(oldUpdate.GetProperty("updated").GetInt32()==1 &&
+                  oldUpdate.GetProperty("failed").GetInt32()==0,
+                "historical general "+columns+"-column workbook still updates");
+        }
+        var preservedGeneral=await client.GetFromJsonAsync<JsonElement>(
+            $"{cg}/{general}?section=general");
+        var preservedData=preservedGeneral.GetProperty("businessData");
+        Check(preservedData.GetProperty("category").GetString()=="综合分类" &&
+              preservedData.GetProperty("tags").GetString()=="资料标签;财务" &&
+              preservedData.GetProperty("year").GetString()=="2024",
+            "old general workbook columns do not clear new folder metadata");
         var copied=await Import(client,"general","personal","","create",generalWorkbook);
         Check(copied.GetProperty("created").GetInt32()==1,
             "native general fixed XLSX import");
@@ -230,6 +385,77 @@ static class NativeArchiveGeneralMilestoneSmoke
             x.GetProperty("businessData").GetProperty("remarks").GetString()==
             mark+"综合备注"),
             "general XLSX preserves remarks in another workspace");
+        // A six-column general workbook must round-trip all folder fields.
+        // A blank Excel cell means retain, whereas other nonblank fields update.
+        byte[] updatedGeneral=RewriteSheet(generalWorkbook,99,"B2","修改后的类别");
+        updatedGeneral=RewriteSheet(updatedGeneral,99,"C2","");
+        updatedGeneral=RewriteSheet(updatedGeneral,99,"D2","更新标签");
+        updatedGeneral=RewriteSheet(updatedGeneral,99,"E2","2027");
+        var updatedGeneralReport=await Import(client,"general","personal","",
+            "update",updatedGeneral);
+        Check(updatedGeneralReport.GetProperty("updated").GetInt32()==1 &&
+              updatedGeneralReport.GetProperty("failed").GetInt32()==0,
+            "general six-column workbook updates optional metadata");
+        var personalGeneral=(await client.GetFromJsonAsync<JsonElement>(
+            "/api/v2/folders/personal/archive_folder?section=general&flat=true"))
+            .EnumerateArray().Single(x=>x.GetProperty("folder")
+                .GetProperty("name").GetString()==mark+"综合资料");
+        var generalData=personalGeneral.GetProperty("businessData");
+        long personalGeneralId=personalGeneral.GetProperty("folder")
+            .GetProperty("ref").GetProperty("id").GetInt64();
+        Check(generalData.GetProperty("category").GetString()=="修改后的类别" &&
+              generalData.GetProperty("year").GetString()=="2027" &&
+              generalData.GetProperty("tags").GetString()=="更新标签" &&
+              generalData.GetProperty("remarks").GetString()==mark+"综合备注",
+            "blank remark retains value while category/year/tags are updated");
+
+        long generalChild=(await Read(await client.PostAsJsonAsync(cg,new{
+            section="general",archiveFolder=new{
+                name=mark+"综合下级",parentId=general,
+                category="下级类别",year="2023",remarks="下级备注"}})))
+            .GetProperty("id").GetInt64();
+        byte[] generalTree;
+        using(var exported=await client.PostAsJsonAsync(
+            "/api/v2/excel/company/general/export",
+            new ExcelExportInput("filtered",[general,generalChild])))
+        {
+            exported.EnsureSuccessStatusCode();
+            generalTree=ReverseDataRows(await exported.Content.ReadAsByteArrayAsync());
+        }
+        var generalTreeResult=await Import(client,"general","personal","",
+            "skip",generalTree);
+        Check(generalTreeResult.GetProperty("skipped").GetInt32()==1 &&
+              generalTreeResult.GetProperty("created").GetInt32()==1 &&
+              generalTreeResult.GetProperty("failed").GetInt32()==0,
+            "general hierarchy respects existing root even with reversed rows");
+        var personalGeneralEntries=await client.GetFromJsonAsync<JsonElement>(
+            "/api/v2/folders/personal/archive_folder?section=general&flat=true");
+        var personalGeneralChild=personalGeneralEntries.EnumerateArray().Single(x=>
+            x.GetProperty("folder").GetProperty("name").GetString()==mark+"综合下级");
+        Check(personalGeneralChild.GetProperty("folder").GetProperty("parent")
+                  .GetProperty("id").GetInt64()==personalGeneralId &&
+              personalGeneralChild.GetProperty("businessData").GetProperty("year")
+                  .GetString()=="2023" &&
+              personalGeneralChild.GetProperty("businessData").GetProperty("category")
+                  .GetString()=="下级类别",
+            "general nested folder relationship and optional fields are retained");
+
+        var previousThree=PreviousGeneral(generalTree,3);
+        var legacyTreeUpdate=await Import(client,"general","personal","",
+            "update",previousThree);
+        Check(legacyTreeUpdate.GetProperty("updated").GetInt32()==2 &&
+              legacyTreeUpdate.GetProperty("failed").GetInt32()==0,
+            "historical three-column general workbook keeps nested path identity");
+
+        var invalidGeneralChild=RewriteSheet(
+            await Export(client,"general","company","",generalChild),
+            99,"F2","不存在的上级目录");
+        var missingParent=await Import(client,"general","personal","",
+            "create",invalidGeneralChild);
+        Check(missingParent.GetProperty("failed").GetInt32()==1 &&
+              missingParent.GetProperty("created").GetInt32()==0,
+            "missing parent directory must report an error instead of guessing");
+
         byte[] businessWorkbook=await Export(client,"archive","company","achievement",business);
         var businessSkip=await Import(client,"archive","company","achievement",
             "skip",businessWorkbook);
