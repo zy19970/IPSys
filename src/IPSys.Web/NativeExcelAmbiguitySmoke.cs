@@ -138,16 +138,16 @@ static class NativeExcelAmbiguitySmoke
             string conflict=await duplicate.Content.ReadAsStringAsync();
             Check(conflict.Contains("同名"),"duplicate rejection must explain the name clash");
         }
-        byte[] materialBook=await Export(client,"general",material);
-        var materialUpdate=await Import(client,"general","update",materialBook);
+        byte[] materialBook=await Export(client,"archive_folder",material,"general");
+        var materialUpdate=await Import(client,"archive_folder","update",materialBook,"general");
         Check(materialUpdate.GetProperty("updated").GetInt32()==1 &&
               materialUpdate.GetProperty("failed").GetInt32()==0,
             "unique material name updates through the general workbook");
-        var materialSkip=await Import(client,"general","skip",materialBook);
+        var materialSkip=await Import(client,"archive_folder","skip",materialBook,"general");
         Check(materialSkip.GetProperty("skipped").GetInt32()==1 &&
               materialSkip.GetProperty("failed").GetInt32()==0,
             "skip counts an existing material without changing it");
-        var materialCreate=await Import(client,"general","create",materialBook);
+        var materialCreate=await Import(client,"archive_folder","create",materialBook,"general");
         Check(materialCreate.GetProperty("created").GetInt32()==0 &&
               materialCreate.GetProperty("failed").GetInt32()==1 &&
               materialCreate.GetProperty("errors")[0].GetProperty("row").GetInt32()==2,

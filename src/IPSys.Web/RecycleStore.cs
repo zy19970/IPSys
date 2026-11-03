@@ -30,10 +30,6 @@ static class RecycleStore
             ""","project"));
         rows.AddRange(Simple(db,workspace,"""
             SELECT id,name,'' FROM folders
-            WHERE workspace=$w AND kind='general' AND deleted=1 ORDER BY id DESC;
-            ""","v2_general"));
-        rows.AddRange(Simple(db,workspace,"""
-            SELECT id,name,'' FROM folders
             WHERE workspace=$w AND kind='ip' AND deleted=1 ORDER BY id DESC;
             ""","ip"));
         rows.AddRange(Simple(db,workspace,"""
@@ -41,14 +37,6 @@ static class RecycleStore
             WHERE workspace=$w AND kind='archive_folder' AND deleted=1
             ORDER BY id DESC;
             ""","v2_archive_folder"));
-        rows.AddRange(Simple(db,workspace,"""
-            SELECT a.id,a.name,a.section FROM folders a
-            WHERE a.workspace=$w AND a.kind='archive' AND a.deleted=1
-              AND (a.parent_id IS NULL OR EXISTS(
-                SELECT 1 FROM folders p WHERE p.id=a.parent_id
-                  AND p.workspace=a.workspace AND p.deleted=0))
-            ORDER BY a.id DESC;
-            ""","v2_archive"));
         rows.AddRange(Simple(db,workspace,"""
             SELECT c.id,c.name,'',p.name FROM folders c
             JOIN folders p ON p.id=c.parent_id AND p.workspace=c.workspace
@@ -69,7 +57,7 @@ static class RecycleStore
               AND p.workspace=l.workspace
             JOIN files f ON f.id=l.file_id AND f.workspace=l.workspace
             WHERE l.workspace=$w AND l.deleted=1
-              AND p.kind IN ('project','contract','archive','archive_folder','general')
+              AND p.kind IN ('project','contract','archive_folder')
               AND p.deleted=0 AND f.deleted=0
               AND (p.parent_id IS NULL OR EXISTS(
                 SELECT 1 FROM folders parent WHERE parent.id=p.parent_id
@@ -78,7 +66,7 @@ static class RecycleStore
             ""","v2_file"));
         return rows.Where(x=>x.Kind switch
         {
-            "v2_archive_folder" or "v2_archive" or "v2_general" =>
+            "v2_archive_folder" =>
                 ParentChainActive(db,workspace,x.Id),
             "v2_file" or "v2_ip_file" => LinkParentActive(db,workspace,x.Id),
             _ => true
@@ -109,9 +97,9 @@ static class RecycleStore
     private static bool Deleted(SqliteConnection db,string workspace,RecycleKey item)
     {
         if(item.Id<=0)return false;
-        if(item.Kind is not ("v2_archive" or "v2_archive_folder") && item.Section.Length!=0)
+        if(item.Kind is not ("v2_archive_folder") && item.Section.Length!=0)
             return false;
-        if(item.Kind is "v2_archive_folder" or "v2_archive" or "v2_general")
+        if(item.Kind is "v2_archive_folder")
             if(!ParentChainActive(db,workspace,item.Id))return false;
         using var cmd=db.CreateCommand();
         cmd.Parameters.AddWithValue("$id",item.Id);
@@ -121,9 +109,8 @@ static class RecycleStore
         {
             case "project":
             case "ip":
-            case "v2_general":
                 cmd.CommandText="SELECT COUNT(*) FROM folders WHERE id=$id AND workspace=$w AND kind=$kind AND deleted=1;";
-                cmd.Parameters.AddWithValue("$kind",item.Kind=="v2_general"?"general":item.Kind);
+                cmd.Parameters.AddWithValue("$kind",item.Kind);
                 break;
             case "contract":
                 cmd.CommandText="""
@@ -139,15 +126,6 @@ static class RecycleStore
                       AND kind='archive_folder' AND section=$section AND deleted=1;
                     """;
                 break;
-            case "v2_archive":
-                cmd.CommandText="""
-                    SELECT COUNT(*) FROM folders a WHERE a.id=$id AND a.workspace=$w
-                    AND a.kind='archive' AND a.section=$section AND a.deleted=1
-                    AND (a.parent_id IS NULL OR EXISTS(
-                        SELECT 1 FROM folders p WHERE p.id=a.parent_id
-                          AND p.workspace=a.workspace AND p.deleted=0));
-                    """;
-                break;
             case "v2_ip_file":
             case "v2_file":
                 cmd.CommandText="""
@@ -157,7 +135,7 @@ static class RecycleStore
                     WHERE l.id=$id AND l.workspace=$w AND l.deleted=1
                       AND p.deleted=0 AND f.deleted=0
                       AND ((p.kind='ip' AND $kind='v2_ip_file')
-                        OR (p.kind IN ('project','contract','archive','archive_folder','general')
+                        OR (p.kind IN ('project','contract','archive_folder')
                             AND $kind='v2_file'))
                       AND (p.parent_id IS NULL OR EXISTS(
                         SELECT 1 FROM folders parent WHERE parent.id=p.parent_id
@@ -179,7 +157,7 @@ static class RecycleStore
         cmd.Parameters.AddWithValue("$section",item.Section);
         string sql= item.Kind switch
         {
-            "project" or "contract" or "ip" or "v2_general" or "v2_archive" or "v2_archive_folder" =>
+            "project" or "contract" or "ip" or "v2_archive_folder" =>
                 purge
                 ? "DELETE FROM folders WHERE id=$id AND workspace=$w AND deleted=1;"
                 : "UPDATE folders SET deleted=0 WHERE id=$id AND workspace=$w AND deleted=1;",
@@ -379,7 +357,7 @@ static class RecycleStore
         var descendants=new Dictionary<long,(string Kind,long Parent,int Depth)>();
         var allFolders=new HashSet<long>();
         foreach(var item in items.Where(x=>x.Kind is "project" or "contract" or
-            "ip" or "v2_general" or "v2_archive" or "v2_archive_folder"))
+            "ip" or "v2_archive_folder"))
         {
             selected.Add(item.Id);
             allFolders.Add(item.Id);
@@ -406,9 +384,7 @@ static class RecycleStore
                     bool contract=item.Kind=="project" && depth==0 &&
                         child.Kind=="contract";
                     bool directory=item.Kind=="v2_archive_folder" &&
-                        (child.Kind=="archive_folder" && child.Section==item.Section ||
-                         child.Kind=="archive" && child.Section==item.Section ||
-                         child.Kind=="general" && item.Section=="general");
+                        child.Kind=="archive_folder" && child.Section==item.Section;
                     if(!contract && !directory)
                         throw new InvalidOperationException(
                             "待删除目录包含不属于本目录的子项，永久删除已取消。");

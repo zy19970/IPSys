@@ -8,7 +8,7 @@ static class NativeArchiveUiEndpoints
 {
     public static void Map(WebApplication app,Func<string,int,IResult> fail)
     {
-        app.MapGet("/api/v2/ui/archive/{workspace}",async(
+        app.MapGet("/api/v2/ui/folders/{workspace}",async(
             HttpContext ctx,Vault v,string workspace)=>
         {
             if(!v.Allowed(ctx))return (IResult)Results.Unauthorized();
@@ -77,7 +77,7 @@ static class NativeArchiveUiEndpoints
                         var peers=NativeArchiveOrder.Entries(v.Db,workspace,
                             scope,parentId==0?null:parentId);
                         var order=peers.Select(x=>new{
-                            kind=x.Folder.Ref.Kind==FolderKinds.ArchiveFolder?"folder":"record",
+                            kind="folder",
                             id=x.Folder.Ref.Id
                         }).ToArray();
                         orders[scope+":"+parentId]=order;

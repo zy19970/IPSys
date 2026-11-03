@@ -114,7 +114,7 @@ function bizKindOf(node) {
   const b = node.biz || {};
   if (b.kind) return b.kind;
   const t = nodeTag(node.id);
-  return { p: "project", af: "archive_folder", a: "archive", i: "ip", g: "general" }[t] || "";
+  return { p: "project", af: "archive_folder", i: "ip" }[t] || "";
 }
 
 /* ==========================================================================
@@ -1694,8 +1694,7 @@ function showItemMenu(id, x, y) {
   }
 
   /* A02/N2：普通资料是文件夹，模块名仍按 section 折算，复制/转移照旧可用。 */
-  const recordKind = b.kind === "archive_folder"
-    ? (b.section === "general" ? "general" : "archive") : b.kind;
+  const recordKind = b.kind;
   const html = [
     isFolder ? MI("open", "folder", "打开") : MI("open", "eye", "预览"),
     /* 合同挂在项目下,所以在项目节点上直接给一个建合同的入口 —— 比先打开
@@ -1706,9 +1705,9 @@ function showItemMenu(id, x, y) {
     !isFolder ? MI("newver", "upload", "上传新版本") : "",
     !isFolder ? MI("assoc", "copy", "共享原件到其它记录") : "",
     !isFolder ? MI("assoc-move", "move", "移动附件到其它记录") : "",
-    isFolder && ["project","contract","ip","archive","general"].includes(recordKind)
+    isFolder && ["project","contract","ip","archive_folder"].includes(recordKind)
       ? MI("copy-record","copy","复制整条记录") : "",
-    isFolder && ["project","contract","ip","archive","general"].includes(recordKind)
+    isFolder && ["project","contract","ip","archive_folder"].includes(recordKind)
       ? MI("transfer-record","move","移动或跨区转移") : "",
     '<div class="ctx-sep"></div>',
     isFolder ? MI("rename", "rename", "重命名", "F2") : "",
@@ -2066,7 +2065,7 @@ async function deleteNodes(nodes) {
       } else {
         const biz = node.biz || {};
         if (!kind || !biz.id) throw new Error("找不到业务记录标识");
-        const qs = kind === "archive" || kind === "archive_folder"
+        const qs = kind === "archive_folder"
           ? "?section=" + encodeURIComponent(biz.section || "achievement") : "";
         await VaultStore.api("/api/v2/folders/" + ws + "/" + kind + "/" +
           biz.id + qs, { method: "DELETE" });
@@ -2393,7 +2392,7 @@ async function previewFile(id) {
 
 function canUploadFiles(node) {
   return node?.type === "folder" &&
-    ["project", "contract", "archive", "archive_folder", "ip", "general"].includes(node.biz?.kind);
+    ["project", "contract", "archive_folder", "ip"].includes(node.biz?.kind);
 }
 
 function pickFiles() {

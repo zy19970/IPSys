@@ -60,7 +60,7 @@ static class SearchStore
         if(offset is <0 || limit is <1 or >200)
             throw new InvalidDataException("搜索分页参数不合法：offset 非负，limit 为 1–200。");
         if(filterKind is not (null or "" or "project" or "contract" or "ip" or
-            "archive" or "archive_folder" or "general" or "file"))
+            "archive_folder" or "file"))
             throw new InvalidDataException("搜索类别无效。");
         var results=new List<SearchHit>();
         if(query.Length==0)return new SearchResponse(query,results,false,
@@ -205,7 +205,6 @@ static class SearchStore
                         " / "+parentTitle,
                     FolderKinds.Ip=>root+" / 知识产权 / "+parentTitle,
                     _=>root+" / "+SectionLabel(workspace,
-                        item.Folder.Ref.Kind==FolderKinds.General?"general":
                         item.Folder.Ref.Section)+" / "+
                         (ancestry.Length>0?ancestry+" / ":"")+parentTitle
                 };
@@ -217,7 +216,7 @@ static class SearchStore
                     ("parent",parentTitle),("ancestry",ancestry));
                 if(m.Length==0)continue;
                 Add(new SearchHit("file",link.FileId,
-                    kind==FolderKinds.General?"":item.Folder.Ref.Section,location,
+                    item.Folder.Ref.Section,location,
                     details.Description??"",kind,owner){
                     OwnerLabel=Summary(ancestry,parentTitle,link.MaterialCategory,
                         latest.OriginalName),

@@ -72,7 +72,7 @@ static class NativeFolderTreeTransferSmoke
             .GetProperty("fileId").GetInt64()==file,
             "source root and child share the same FileId");
 
-        string url=$"/api/v2/ui/archive/company/achievement/{root}/transfer";
+        string url=$"/api/v2/ui/folders/company/achievement/{root}/transfer";
         using(var rejected=await client.PostAsJsonAsync(url,new{
             targetWorkspace="personal",targetSection="achievement",
             targetFolderId=long.MaxValue,move=false}))
@@ -155,8 +155,8 @@ static class NativeFolderTreeTransferSmoke
         long generalChild=await Folder(client,"company","general",
             mark+"综合下级",general);
         var moved=await Read(await client.PostAsJsonAsync(
-            $"/api/v2/ui/general/company/{general}/transfer",
-            new{targetWorkspace="personal",move=true}));
+            $"/api/v2/ui/folders/company/general/{general}/transfer",
+            new{targetWorkspace="personal",targetSection="general",move=true}));
         Check(moved.GetProperty("files").GetInt32()==0,
             "empty general folder tree moves without attachments");
         var personal=await Flat(client,"personal","general");

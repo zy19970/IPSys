@@ -2,9 +2,8 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 
-// B02: a cross-workspace business-archive transfer must name its destination
-// folder by id. Directory names are user-editable, so no rule may resolve a
-// target by matching "其他业务资料" or any other default label.
+// Folder transfer accepts an explicit destination FolderId or the module root.
+// It never guesses a target by matching human-editable directory names.
 static class NativeTransferTargetSmoke
 {
     private static void Check(bool ok,string what)
@@ -44,17 +43,16 @@ static class NativeTransferTargetSmoke
             "/api/v2/folders/personal/archive_folder",new{
                 section="achievement",archiveFolder=new{name=mark+"来源资料"}})))
             .GetProperty("id").GetInt64();
-        string transfer=$"/api/v2/ui/archive/personal/achievement/{source}/transfer";
+        string transfer=$"/api/v2/ui/folders/personal/achievement/{source}/transfer";
 
-        using(var missing=await client.PostAsJsonAsync(transfer,new{
-            targetWorkspace="company",targetSection="achievement",move=false}))
-        {
-            Check(missing.StatusCode==HttpStatusCode.BadRequest,
-                "business-archive transfer without a target folder must be rejected");
-            string message=await Failure(missing);
-            Check(message.Contains("targetFolderId"),
-                "rejection must name the missing parameter, got: "+message);
-        }
+        // An ordinary folder may be copied directly into the destination module root.
+        var atRoot=await Read(await client.PostAsJsonAsync(transfer,new{
+            targetWorkspace="company",targetSection="achievement",move=false}));
+        long rootCopy=atRoot.GetProperty("id").GetInt64();
+        var rootStored=await client.GetFromJsonAsync<JsonElement>(
+            materials+"/"+rootCopy+"?section=achievement");
+        Check(rootStored.GetProperty("folder").GetProperty("parent").ValueKind==
+            JsonValueKind.Null,"module-root transfer is allowed");
 
         using(var unknown=await client.PostAsJsonAsync(transfer,new{
             targetWorkspace="company",targetSection="achievement",move=false,

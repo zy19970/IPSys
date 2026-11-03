@@ -5,17 +5,14 @@ static class FolderKinds
     public const string Project = "project";
     public const string Contract = "contract";
     public const string Ip = "ip";
-    public const string Archive = "archive";
     public const string ArchiveFolder = "archive_folder";
-    public const string General = "general";
 }
 
 readonly record struct ResourceRef(string Workspace,string Kind,long Id,string Section = "")
 {
     public bool IsValid => Id > 0 && Vault.WorkspaceValid(Workspace) && (Kind switch
     {
-        FolderKinds.Project or FolderKinds.Contract or FolderKinds.Ip or FolderKinds.General => Section == "",
-        FolderKinds.Archive => ArchiveRules.Module(Workspace,Section) != null,
+        FolderKinds.Project or FolderKinds.Contract or FolderKinds.Ip => Section == "",
         FolderKinds.ArchiveFolder => ArchiveDirectoryScopes.Allowed(Workspace,Section),
         _ => false
     });
@@ -47,10 +44,6 @@ static class FolderTypePolicy
         if(child.Kind == FolderKinds.ArchiveFolder)
             return parent is null || parent is ResourceRef folder &&
                 folder.Kind == FolderKinds.ArchiveFolder && folder.Section == child.Section;
-        if(child.Kind is FolderKinds.Archive or FolderKinds.General)
-            return parent is null || parent is ResourceRef folder &&
-                folder.Kind == FolderKinds.ArchiveFolder &&
-                folder.Section == (child.Kind==FolderKinds.General?"general":child.Section);
         return true;
     }
 }
@@ -60,8 +53,4 @@ static class ArchiveDirectoryScopes
     public static bool Allowed(string workspace,string section) =>
         workspace=="company" && section is ("certificate" or "achievement" or "party" or "general") ||
         workspace=="personal" && section is ("certificate" or "achievement" or "academic" or "general");
-    public static string ForRecord(string kind,string section) =>
-        kind==FolderKinds.General?"general":section;
-    public static string RecordKind(string section) =>
-        section=="general"?FolderKinds.General:FolderKinds.Archive;
 }

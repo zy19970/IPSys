@@ -13,12 +13,6 @@ static partial class ExcelLedger
             return input.Ids;
         string query=(input.Query??"").Trim();
         HashSet<long>? matches=null;
-        // A02/N2: storage kind is archive_folder, while the Excel module name is
-        // still "archive"/"general". Derive the module from the section so the
-        // filtered-export contract does not change for callers.
-        string ModuleOf(string storageKind,string hitSection)=>
-            storageKind=="archive_folder"
-                ?(hitSection=="general"?"general":"archive"):storageKind;
         if(query.Length>0)
         {
             var results=SearchStore.Find(db,workspace,query,int.MaxValue).Results;
@@ -28,8 +22,8 @@ static partial class ExcelLedger
                 // A file hit belongs to its owner folder; filter by the
                 // owner module BEFORE choosing its FolderId for Excel.
                 string ownerKind=hit.Kind=="file"?hit.OwnerKind:hit.Kind;
-                if(ModuleOf(ownerKind,hit.Section)!=kind ||
-                   kind=="archive"&&hit.Section!=section)
+                if(ownerKind!=kind ||
+                   kind=="archive_folder"&&hit.Section!=section)
                     continue;
                 matches.Add(hit.Kind=="file"?hit.OwnerId:hit.Id);
             }
@@ -38,8 +32,7 @@ static partial class ExcelLedger
         {
             "project"=>NativeFolderStore.List(db,workspace,FolderKinds.Project),
             "ip"=>NativeFolderStore.List(db,workspace,FolderKinds.Ip),
-            "archive"=>NativeArchiveStore.ListAll(db,workspace,section),
-            "general"=>NativeArchiveStore.ListAll(db,workspace,"general"),
+            "archive_folder"=>NativeArchiveStore.ListAll(db,workspace,section),
             _=>throw new InvalidDataException("Excel 导出模块无效。")
         };
         string status=(input.Status??"").Trim();

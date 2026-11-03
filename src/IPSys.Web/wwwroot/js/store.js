@@ -214,7 +214,7 @@ const VaultStore = {
       const [projects, contracts, archive, ip, projectFiles] = await Promise.all([
         required("项目", `/api/v2/ui/projects/${w}`),
         required("合同", `/api/v2/ui/contracts/${w}`),
-        required("业务档案", `/api/v2/ui/archive/${w}`),
+        required("业务档案", `/api/v2/ui/folders/${w}`),
         required("知识产权", `/api/v2/ui/ip/${w}`),
         required("附件", `/api/v2/ui/project-files/${w}`),
       ]);
@@ -288,7 +288,7 @@ const VaultStore = {
     return nodeId ? findById(nodeId) : null;
   },
 
-  /* 附件的 ownerKind 用的是后端 FolderKinds 的字面值(project/contract/ip/archive/general) */
+  /* 附件 ownerKind 直接使用持久类型 project/contract/ip/archive_folder。 */
   ownerIdOfHit(hit) {
     const id = Number(hit?.ownerId) || 0;
     if (!id) return "";
@@ -310,12 +310,9 @@ const VaultStore = {
     const KIND_MAP = {
       project: { typeName: "项目", folder: true },
       ip: { typeName: "知识产权", folder: true },
-      v2_archive: { typeName: "档案记录", folder: true },
       v2_archive_folder: { typeName: "目录", folder: true },
-      v2_general: { typeName: "综合资料", folder: true },
       v2_ip_file: { typeName: "知识产权附件", folder: false },
       v2_file: { typeName: "项目附件", folder: false },
-      v2_archive_file: { typeName: "档案附件", folder: false },
     };
 
     try {

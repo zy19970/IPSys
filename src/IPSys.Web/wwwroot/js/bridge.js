@@ -75,7 +75,7 @@ async function api(path, opts = {}) {
 
 /* ---------------- 上传 ---------------- */
 
-const UPLOADABLE_KINDS = ["project", "contract", "archive", "archive_folder", "ip", "general"];
+const UPLOADABLE_KINDS = ["project", "contract", "archive_folder", "ip"];
 
 /* 批量上传:去重提示、阶段文案、取消全部由 ip-v2 + upload-progress 负责,
    这里只做「一次 begin / 逐件 file / 一次 finish」的编排。 */
@@ -237,17 +237,17 @@ async function associateOriginal(node, move = false, directTarget = null) {
    Whole-record copies duplicate logical FileIds and all versions; the backend
    refuses cross-workspace physical FileObject sharing. */
 function recordTransferOptions(node, move) {
-  const kind=node?.biz?.kind==="archive_folder"
-    ?(node.biz.section==="general"?"general":"archive"):node?.biz?.kind;
+  const kind=node?.biz?.kind;
   const ws=VaultStore.ws;
-  if(!["project","contract","ip","archive","general"].includes(kind)) return [];
-  if(kind==="archive") {
+  if(!["project","contract","ip","archive_folder"].includes(kind)) return [];
+  if(kind==="archive_folder") {
     const section=node.biz.section;
     const modules={
       achievement:["company/achievement","personal/achievement","personal/academic"],
       academic:["company/achievement","personal/achievement","personal/academic"],
       certificate:[ws+"/certificate"],
       party:["company/party"],
+      general:["company/general","personal/general"],
     };
     const options=(modules[section]||[]).filter(item =>
       item===ws+"/"+section || section!=="certificate");
@@ -257,7 +257,9 @@ function recordTransferOptions(node, move) {
         "personal/academic":"个人 · 学术资料",
         "company/certificate":"公司 · 企业资质",
         "personal/certificate":"个人 · 资质证书",
-        "company/party":"公司 · 党团建设" })[item]||item,
+        "company/party":"公司 · 党团建设",
+        "company/general":"公司 · 综合资料",
+        "personal/general":"个人 · 其他资料" })[item]||item,
     }));
   }
   return ["company","personal"].filter(w=>!move || kind==="contract" || w!==ws)
@@ -265,8 +267,7 @@ function recordTransferOptions(node, move) {
 }
 
 function transferBusinessRecord(node, move=false) {
-  const kind=node?.biz?.kind==="archive_folder"
-    ?(node.biz.section==="general"?"general":"archive"):node?.biz?.kind;
+  const kind=node?.biz?.kind;
   const id=Number(node?.biz?.id);
   if(node?.type!=="folder" || !Number.isSafeInteger(id) || id<=0) return;
   if(fileTaskBusy()) return toast("当前有文件任务，请完成后再操作");
@@ -274,7 +275,7 @@ function transferBusinessRecord(node, move=false) {
   const choices=recordTransferOptions(node,move);
   if(!choices.length) return toast("当前记录没有受支持的目标工作区或类别");
   const typeLabel={project:"项目（含全部合同）",contract:"合同",
-    ip:"知识产权",archive:"资料档案",general:"综合资料"}[kind]||"记录";
+    ip:"知识产权",archive_folder:node.biz.section==="general"?"综合资料":"资料文件夹"}[kind]||"记录";
   RecordForms.open({
     title:(move?"移动/转移":"复制")+typeLabel,
     submitText:move?"继续转移":"确认复制",
@@ -288,17 +289,17 @@ function transferBusinessRecord(node, move=false) {
       if(!choices.some(opt=>opt.value===data.target))
         throw new Error("所选位置无效，请重新选择");
       const targetWorkspace=data.target.split("/")[0];
-      const targetSection=kind==="archive"?data.target.split("/")[1]:null;
+      const targetSection=kind==="archive_folder"?data.target.split("/")[1]:null;
       const route={
         project:"/api/v2/projects/",ip:"/api/v2/ip/",
-        general:"/api/v2/ui/general/",contract:"/api/v2/contracts/",
-        archive:"/api/v2/ui/archive/",
+        contract:"/api/v2/contracts/",
+        archive_folder:"/api/v2/ui/folders/",
       };
       let endpoint=route[kind]+sourceWorkspace+"/";
-      if(kind==="archive") endpoint+=node.biz.section+"/"+id+"/transfer";
+      if(kind==="archive_folder") endpoint+=node.biz.section+"/"+id+"/transfer";
       else endpoint+=id+"/transfer";
       const payload={targetWorkspace,move:!!move};
-      if(kind==="archive") payload.targetSection=targetSection;
+      if(kind==="archive_folder") payload.targetSection=targetSection;
       const finish=async ()=>{
         // Response is an authoritative transaction result: never auto-retry
         // after successful remote commit even if local refresh fails.
@@ -312,11 +313,9 @@ function transferBusinessRecord(node, move=false) {
             {tone:"error",ms:6000});
         }
       };
-      /* B02: 目标目录只能由用户明确指定。业务档案资料必须落在具体分类目录
-         下，所以那里不提供"顶层"；其余类别允许回到分类层。 */
-      if(kind==="archive"){
-        const required=targetWorkspace==="company"&&targetSection==="achievement";
-        const snapshot=await VaultStore.getJson("/api/v2/ui/archive/"+targetWorkspace);
+      /* All ordinary folders may be placed at the module root. */
+      if(kind==="archive_folder"){
+        const snapshot=await VaultStore.getJson("/api/v2/ui/folders/"+targetWorkspace);
         const rows=(snapshot?.folders||[]).filter(x=>x.section===targetSection);
         const byId=new Map(rows.map(x=>[String(x.id),x]));
         const pathOf=row=>{
@@ -331,16 +330,12 @@ function transferBusinessRecord(node, move=false) {
         const options=rows
           .filter(x=>!(sourceWorkspace===targetWorkspace && Number(x.id)===id))
           .map(x=>({value:String(x.id),label:pathOf(x)}));
-        if(!options.length && required)
-          throw new Error("目标业务档案下还没有可用的分类目录，请先在目标工作区新建分类目录");
-        if(!required) options.unshift({value:"0",label:catLabel(targetSection)+"（顶层）"});
+        options.unshift({value:"0",label:catLabel(targetSection)+"（顶层）"});
         if(!options.length) throw new Error("目标位置没有可用的目录");
         RecordForms.open({
           title:"选择目标分类目录",submitText:move?"确认转移":"确认复制",
           fields:[{key:"folderId",type:"select",label:"目标目录",required:true,
-            options,hint:required
-              ?"业务档案资料必须归属具体分类目录。"
-              :"选择「顶层」表示直接放在该类别下。"}],
+            options,hint:"选择「顶层」表示直接放在该类别下。"}],
           onSubmit:async next=>{
             if(VaultStore.ws!==sourceWorkspace)
               throw new Error("工作区已经切换，请重新选择");
@@ -392,7 +387,7 @@ function walkNodes(visit) {
 
 /* 合同也算导出主体:export.js 的 owner() 对 kind==='contract' 有专门分支,
    会用 projectId/projectName 建「项目 / 合同 / 文件」三层目录。 */
-const EXPORTABLE_KINDS = new Set(["project", "contract", "archive", "archive_folder", "ip", "general"]);
+const EXPORTABLE_KINDS = new Set(["project", "contract", "archive_folder", "ip"]);
 
 /* 附件上方的 archive_folder 目录链(不含分类根)。export.js 用它在 ZIP 里重建目录树。 */
 function archivePathOf(node) {

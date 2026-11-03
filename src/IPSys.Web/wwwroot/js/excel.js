@@ -7,19 +7,19 @@
    后端契约(未改动):
      POST /api/v2/excel/{ws}/{kind}/export[?section=]   body {mode,ids} → xlsx
      POST /api/v2/excel/{ws}/{kind}/import?policy=&section=  body=文件 → 报告 JSON
-   kind ∈ project | ip | general | archive;archive 必须带 section。
+   kind ∈ project | ip | archive_folder;archive_folder 必须带 section。
    all 忽略筛选;filtered 在服务端匹配完整模块数据,无需依赖可见条目。
    ========================================================================== */
 
-/* 分类 id → 后端台账。分类 id 恰好等于 archive 的 section 名。 */
+/* 分类 id → 后端台账。分类 id 对应 archive_folder 的 section。 */
 const EXCEL_TARGETS = {
-  certificate: { kind: "archive", section: "certificate", label: "资质" },
-  achievement: { kind: "archive", section: "achievement", label: "业务档案" },
-  academic: { kind: "archive", section: "academic", label: "学术成果" },
-  party: { kind: "archive", section: "party", label: "党团建设" },
+  certificate: { kind: "archive_folder", section: "certificate", label: "资质" },
+  achievement: { kind: "archive_folder", section: "achievement", label: "业务档案" },
+  academic: { kind: "archive_folder", section: "academic", label: "学术成果" },
+  party: { kind: "archive_folder", section: "party", label: "党团建设" },
   project: { kind: "project", section: "", label: "项目台账" },
   ip: { kind: "ip", section: "", label: "知识产权" },
-  general: { kind: "general", section: "", label: "综合资料" },
+  general: { kind: "archive_folder", section: "general", label: "综合资料" },
 };
 
 function excelTargetOf(categoryId) {
@@ -27,7 +27,7 @@ function excelTargetOf(categoryId) {
 }
 
 function excelQueryOf(target) {
-  return target.kind === "archive" ? `?section=${encodeURIComponent(target.section)}` : "";
+  return target.kind === "archive_folder" ? `?section=${encodeURIComponent(target.section)}` : "";
 }
 
 function downloadBlob(blob, filename) {
@@ -181,7 +181,7 @@ async function importLedger(categoryId) {
 
     const ws = VaultStore.ws;
     const query = `?policy=${encodeURIComponent(policy)}` +
-      (target.kind === "archive" ? `&section=${encodeURIComponent(target.section)}` : "");
+      (target.kind === "archive_folder" ? `&section=${encodeURIComponent(target.section)}` : "");
     try {
       const res = await api(`/api/v2/excel/${ws}/${target.kind}/import${query}`, {
         method: "POST",

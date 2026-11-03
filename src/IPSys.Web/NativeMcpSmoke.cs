@@ -66,16 +66,16 @@ static class NativeMcpSmoke
                   "delete_project_file","delete_contract_file"}.All(names.Contains),
               "project and contract file MCP actions are available");
         Check(new[]{"copy_contract","move_folder","list_folder_entries",
-            "reorder_entries","reorder_records","reorder_archive_records",
+            "reorder_entries","reorder_records","reorder_folders",
             "list_file_links"}.All(names.Contains),
             "second batch of V2 MCP endpoint adapters registered");
         Check(new[]{"start_upload_task","get_task_status","cancel_task","purge_trash"}
             .All(names.Contains) && names.Distinct().Count()==names.Length &&
-            names.Length>=65 && names.Contains("get_agent_guidance") &&
-            names.Contains("move_archive_entry") &&
-            new[]{"list_party_archives","create_party_archive",
-                "update_party_archive","delete_party_archive"}.All(names.Contains),
-            "MCP registry keeps all prior tools and adds explicit trash purge");
+            names.Length>=50 && names.Contains("get_agent_guidance") &&
+            new[]{"list_folders","create_folder","update_folder",
+                "delete_folder","move_folder","transfer_folder"}.All(names.Contains) &&
+            !names.Contains("create_archive") && !names.Contains("create_general"),
+            "MCP registry exposes one folder family without retired tools");
         // One idle client must never block an independent Agent's request.
         McpLocal.VerifySessionScopedIdentity();
         await McpLocal.VerifyConcurrentClientsAsync();
@@ -249,7 +249,7 @@ static class NativeMcpSmoke
         bool Accepts(JsonElement property,string kind)=>
             property.GetProperty("type").EnumerateArray().Any(x=>x.GetString()==kind);
         foreach(string tool in new[]{"create_project","update_project","create_ip",
-            "create_archive","create_party_archive","update_file_metadata"})
+            "create_folder","update_file_metadata"})
             Check(Properties(tool).GetProperty("tags").GetProperty("description")
                     .GetString()?.Contains("分号")==true,
                 "MCP tools/list must advertise semicolon-separated tags: "+tool);
@@ -257,7 +257,7 @@ static class NativeMcpSmoke
             "obsolete group_id must not appear in the tool schema");
         Check(Accepts(Properties("create_contract").GetProperty("amount"),"number") &&
               Accepts(Properties("update_project").GetProperty("leader"),"null") &&
-              Accepts(Properties("create_archive").GetProperty("year"),"number"),
+              Accepts(Properties("create_folder").GetProperty("year"),"number"),
             "schemas expose numeric year/amount and optional null semantics");
 
         bool meaningful404=false;
@@ -348,9 +348,8 @@ static class NativeMcpSmoke
         await CheckArrayRpc("list_projects",new{workspace="company"});
         await CheckArrayRpc("list_contracts",new{workspace="company"});
         await CheckArrayRpc("list_ips",new{workspace="company"});
-        await CheckArrayRpc("list_general",new{workspace="company"});
-        await CheckArrayRpc("list_archives",new{workspace="company",section="achievement"});
-        await CheckArrayRpc("list_archive_folders",new{workspace="company"});
+        await CheckArrayRpc("list_folders",new{workspace="company",section="general"});
+        await CheckArrayRpc("list_folders",new{workspace="company",section="achievement"});
         await CheckArrayRpc("list_trash",new{workspace="company"});
         await CheckArrayRpc("list_files",new{workspace="company"});
         await CheckArrayRpc("list_folder_entries",new{workspace="company",parent_id=0});
@@ -616,11 +615,11 @@ static class NativeMcpSmoke
         // The encrypted MCP retry ledger must return a durable result for
         // repeated request IDs without creating another folder.
         string operationId=Guid.NewGuid().ToString("N");
-        var firstWrite=await Original("create_general",new{
-            workspace="personal",title="MCP幂等验证"+suffix,request_id=operationId
+        var firstWrite=await Original("create_folder",new{
+            workspace="personal",section="general",name="MCP幂等验证"+suffix,request_id=operationId
         });
-        var secondWrite=await Original("create_general",new{
-            request_id=operationId,title="MCP幂等验证"+suffix,workspace="personal"
+        var secondWrite=await Original("create_folder",new{
+            request_id=operationId,name="MCP幂等验证"+suffix,workspace="personal",section="general"
         });
         Check(Id(firstWrite)==Id(secondWrite),
             "same request_id returns the stored response despite parameter order");
@@ -631,8 +630,8 @@ static class NativeMcpSmoke
               journal["result"]?["id"]?.GetValue<long>()==Id(firstWrite),
             "MCP operation result is queryable in encrypted V2 vault");
         bool reusedIdDenied=false;
-        try { await Original("create_general",new{
-            workspace="personal",title="错误复用编号",request_id=operationId
+        try { await Original("create_folder",new{
+            workspace="personal",section="general",name="错误复用编号",request_id=operationId
         }); }
         catch(IOException){reusedIdDenied=true;}
         Check(reusedIdDenied,"request_id cannot be reused with different arguments");
@@ -676,8 +675,8 @@ static class NativeMcpSmoke
         });
         Check(rejectedRepeat.ToJsonString()==rejected.ToJsonString(),
             "definite local rejection is replayable with same request_id");
-        await Original("delete_general",new{
-            workspace="personal",general_id=Id(firstWrite)
+        await Original("delete_folder",new{
+            workspace="personal",section="general",folder_id=Id(firstWrite)
         });
         var trash=await Original("list_trash",new{workspace="personal"});
         Check(trash is JsonArray waste && waste.Any(x=>
@@ -688,10 +687,10 @@ static class NativeMcpSmoke
             workspace="personal",kind="v2_archive_folder",id=Id(firstWrite),
             section="general"
         });
-        Check(Find(await Original("list_general",new{workspace="personal"}),
+        Check(Find(await Original("list_folders",new{workspace="personal",section="general"}),
             Id(firstWrite))!=null,"MCP restore_trash recovers a V2 folder");
-        await Original("delete_general",new{
-            workspace="personal",general_id=Id(firstWrite)
+        await Original("delete_folder",new{
+            workspace="personal",section="general",folder_id=Id(firstWrite)
         });
 
         bool unknownParamDenied=false;
@@ -892,8 +891,8 @@ static class NativeMcpSmoke
             Check(downloaded.SequenceEqual(originalBytes),
                 "MCP uploaded project original bytes round trip");
 
-            long copyFolder=Id(await Original("create_general",new{
-                workspace="company",title="MCP文件复制验证"+suffix
+            long copyFolder=Id(await Original("create_folder",new{
+                workspace="company",section="general",name="MCP文件复制验证"+suffix
             }));
             var copy=await Original("copy_file",new{
                 workspace="company",file_id=file,target_workspace="company",
@@ -906,8 +905,8 @@ static class NativeMcpSmoke
                     workspace="company",file_id=duplicateFile
                 }))["versions"] is JsonArray copiedVersions && copiedVersions.Count==1,
                 "MCP copy_file creates independent FileId/version identity");
-            await Original("delete_general",new{
-                workspace="company",general_id=copyFolder
+            await Original("delete_folder",new{
+                workspace="company",section="general",folder_id=copyFolder
             });
 
             // Contract shares the same immutable V2 file; detach only its link.

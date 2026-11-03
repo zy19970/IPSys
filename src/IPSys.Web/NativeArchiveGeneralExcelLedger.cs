@@ -1,34 +1,21 @@
 using Microsoft.Data.Sqlite;
 
-// Native N2-04 fixed-format Excel ledgers for ordinary materials.
-//
-// A02/N2: ordinary materials are ONE object type — archive_folder. The
-// "archive"/"general" module names survive only as the public Excel module
-// identifiers (URL segment, workbook layout, template name). Storage is
-// always an archive_folder inside the matching section scope, so a workbook
-// written by the UI, an agent or the importer lands on the same object.
-// No duplicate writes to legacy business_archives or records.
+// Unified six-column ledger for all ordinary folders. section defines the business scope.
 static partial class ExcelLedger
 {
-    // "archive" keeps its own section; "general" is the general scope of the
-    // same folder family.
-    private static string MaterialScope(string kind,string section)=>
-        kind=="general"?"general":section;
-
     internal static byte[] NativeArchiveGeneralExport(SqliteConnection db,
         string workspace,string kind,string section,string mode,long[]? ids)
     {
         if(!Vault.WorkspaceValid(workspace) ||
-           kind is not ("archive" or "general") ||
+           kind!="archive_folder" ||
            mode is not ("all" or "filtered") ||
            mode=="filtered" && (ids?.Length??0)>10000)
             throw new InvalidDataException("Excel 工作区、类型或筛选无效。");
-        if(kind=="archive"&&ArchiveRules.Module(workspace,section)==null ||
-           kind=="general"&&section.Length!=0)
+        if(!ArchiveDirectoryScopes.Allowed(workspace,section))
             throw new InvalidDataException("资料分类与工作区不匹配。");
-        string scope=MaterialScope(kind,section);
+        string scope=section;
         HashSet<long>? chosen=mode=="filtered"?new(ids??[]):null;
-        var cols=kind=="archive"?ArchiveColumns:GeneralColumns;
+        var cols=FolderColumns;
         var data=new List<string[]>();
         foreach(var item in NativeArchiveStore.ListAll(db,workspace,scope))
         {
@@ -83,7 +70,7 @@ static partial class ExcelLedger
         return string.Join(" / ",path);
     }
     private static long? ArchiveParent(SqliteConnection db,string workspace,
-        string section,string? category,string? directory,bool legacy)
+        string section,string? directory)
     {
         if(!ArchiveDirectoryScopes.Allowed(workspace,section))
         {
@@ -92,9 +79,7 @@ static partial class ExcelLedger
             return null;
         }
         var map=FolderMap(db,workspace,section);
-        if(!legacy || workspace!="company" || section!="achievement")
-        {
-            if(string.IsNullOrWhiteSpace(directory))
+        if(string.IsNullOrWhiteSpace(directory))
             {
                 // An empty path denotes a legitimate top-level folder, even
                 // in company/achievement. ParentId is not mandatory.
@@ -112,18 +97,9 @@ static partial class ExcelLedger
                 parent=candidates[0].Key;
             }
             return parent;
-        }
-        // Backwards compatibility: the old four-column workbook used
-        // category as a root-folder locator. Never silently create folders.
-        string name=string.IsNullOrWhiteSpace(category)?"其他业务资料":category.Trim();
-        var roots=map.Where(x=>x.Value.Parent is null &&
-            Same(x.Value.Name,name)).ToArray();
-        if(roots.Length!=1)
-            throw new InvalidDataException("旧版四列表格的类别必须对应唯一一级目录："+name);
-        return roots[0].Key;
     }
 
-    // Blank cells from both current and legacy templates preserve existing
+    // Blank cells preserve existing
     // metadata; only nonblank supplied values update the corresponding field.
     private static string? KeepColumn(string? next,string? existing)=>
         KeepExcel(next,existing);
@@ -132,20 +108,14 @@ static partial class ExcelLedger
         string workspace,string kind,string section,string policy,byte[] bytes)
     {
         if(!Vault.WorkspaceValid(workspace) ||
-           kind is not ("archive" or "general") ||
-           kind=="archive"&&ArchiveRules.Module(workspace,section)==null ||
-           kind=="general"&&section.Length!=0)
+           kind!="archive_folder" ||
+           !ArchiveDirectoryScopes.Allowed(workspace,section))
             throw new InvalidDataException("Excel 工作区或资料分类无效。");
         if(policy is not ("skip" or "update" or "create"))
             throw new InvalidDataException("重复记录策略应为 skip、update 或 create。");
-        string scope=MaterialScope(kind,section);
-        var parsed=kind=="archive"
-            ?ReadCompatibleArchive(bytes):ReadCompatibleGeneral(bytes);
-        bool legacy=parsed.Legacy;
-        // Export order follows user sorting, not hierarchy. A fresh database
-        // must import ancestors before descendants regardless of worksheet
-        // order; retain source row numbers for actionable error reporting.
-        var rows=legacy&&kind=="archive"?parsed.Rows:parsed.Rows
+        string scope=section;
+        // Import by explicit ancestry, not by retired record-type or category guesses.
+        var rows=ReadSheet(bytes,FolderColumns)
             .OrderBy(r=>r.Values[^1].Split(" / ",StringSplitOptions.None)
                 .Count(part=>!string.IsNullOrWhiteSpace(part)))
             .ThenBy(r=>r.Number).ToList();
@@ -155,41 +125,16 @@ static partial class ExcelLedger
         {
             try
             {
-                string name;string? category,remarks,tags,year;long? parent;
-                if(kind=="archive")
-                {
-                    var input=Archive(fields);
-                    if(ArchiveRules.Validate(input) is string error)
-                        throw new InvalidDataException(error);
-                    name=input.Name!.Trim();
-                    category=input.Category;
-                    remarks=input.Remarks;
-                    tags=TagRules.Normalize(input.Tags);
-                    year=input.Year;
-                    parent=ArchiveParent(db,workspace,section,
-                        input.Category,fields[5],legacy);
-                }
-                else
-                {
-                    var input=Archive(fields);
-                    if(ArchiveRules.Validate(input) is string error)
-                        throw new InvalidDataException(error);
-                    name=input.Name!.Trim();
-                    category=input.Category;
-                    remarks=input.Remarks;
-                    tags=TagRules.Normalize(input.Tags);
-                    year=input.Year;
-                    parent=ArchiveParent(db,workspace,"general",null,
-                        fields[5],false);
-                }
+                var input=new ArchiveFolderInput(fields[0],null,fields[1],fields[4],fields[3],fields[2]);
+                if(ArchiveRules.Validate(input) is string error)
+                    throw new InvalidDataException(error);
+                string name=input.Name!.Trim();
+                string? category=input.Category,remarks=input.Remarks,
+                    tags=TagRules.Normalize(input.Tags),year=input.Year;
+                long? parent=ArchiveParent(db,workspace,section,fields[5]);
 
-                var matches=NativeArchiveStore.ListAll(db,workspace,scope).Where(x=>{
-                    if(!Same(x.Folder.Name,name))return false;
-                    if(!legacy||kind=="general")
-                        return x.Folder.Parent?.Id==parent;
-                    var m=(ArchiveFolderInput)x.BusinessData;
-                    return Same(m.Category??"",category??"");
-                }).ToArray();
+                var matches=NativeArchiveStore.ListAll(db,workspace,scope).Where(x=>
+                    Same(x.Folder.Name,name) && x.Folder.Parent?.Id==parent).ToArray();
                 var existing=matches.FirstOrDefault();
                 // Ambiguous matches block updates; skip can safely ignore
                 // duplicates, while create reports a same-level name conflict.

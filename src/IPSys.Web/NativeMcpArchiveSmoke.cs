@@ -23,16 +23,15 @@ static class NativeMcpArchiveSmoke
     {
         var names=McpLocal.Tools().Select(x=>(string)x.GetType()
             .GetProperty("name")!.GetValue(x)!).ToArray();
-        Check(new[]{"list_archives","create_archive","update_archive","delete_archive",
-            "list_archive_folders","create_archive_folder","update_archive_folder",
-            "delete_archive_folder","list_general","create_general","update_general",
-            "delete_general","list_party_archives","create_party_archive",
-            "update_party_archive","delete_party_archive"}.All(names.Contains),
-            "archive/general and four company party actions registered");
+        Check(new[]{"list_folders","create_folder","update_folder",
+            "delete_folder","move_folder","transfer_folder"}.All(names.Contains),
+            "one canonical ordinary-folder MCP tool family is registered");
+        Check(!names.Contains("create_folder")&&!names.Contains("create_folder"),
+            "retired ordinary-record commands are absent");
         // ISS-002: invalid archive classification is a known local refusal,
         // not an unknown write outcome.
         string badSectionId=Guid.NewGuid().ToString("N");
-        var badSection=await Run("create_archive",new{
+        var badSection=await Run("create_folder",new{
             workspace="company",section="academic",name="错误分类测试",
             request_id=badSectionId
         });
@@ -44,14 +43,14 @@ static class NativeMcpArchiveSmoke
               badSectionLog["businessOk"]?.GetValue<bool>()==false,
               "invalid section is a durable, definitive local rejection");
         string tag="N204-MCP-"+Guid.NewGuid().ToString("N")[..8];
-        var roots=await Run("list_archive_folders",new{workspace="company"});
+        var roots=await Run("list_folders",new{workspace="company",section="achievement"});
         long root=roots.AsArray().First(x=>
             x?["folder"]?["name"]?.GetValue<string>()=="申报与认定")!
             ["folder"]!["ref"]!["id"]!.GetValue<long>();
-        long folder=Id(await Run("create_archive_folder",new{
-            workspace="company",parent_id=root,name=tag+"子目录"
+        long folder=Id(await Run("create_folder",new{
+            workspace="company",section="achievement",parent_id=root,name=tag+"子目录"
         }));
-        Check(Has(await Run("list_archive_folders",new{workspace="company",parent_id=root}),folder),
+        Check(Has(await Run("list_folders",new{workspace="company",section="achievement",parent_id=root}),folder),
             "new directory uses live V2 FolderId");
         // ISS-016: deterministic local rejects must be replayable done/false,
         // not an uncertain operation requiring manual reconciliation.
@@ -69,8 +68,8 @@ static class NativeMcpArchiveSmoke
               missingTrashLedger["result"]?["error"]?.GetValue<string>()?.Contains("回收站不存在")==true,
               "ISS-016 missing trash record is a known rejection");
         string invalidParentId=Guid.NewGuid().ToString("N");
-        var invalidParent=await Run("create_archive_folder",new{
-            workspace="company",parent_id=0,name=tag+"父目录错误",
+        var invalidParent=await Run("create_folder",new{
+            workspace="company",section="achievement",parent_id=0,name=tag+"父目录错误",
             request_id=invalidParentId
         });
         var invalidParentLedger=await Run("get_operation_result",new{
@@ -84,8 +83,8 @@ static class NativeMcpArchiveSmoke
         // ISS-017: duplicate sibling name is reported as a business conflict,
         // never the internal SQLITE_CONSTRAINT code 19.
         string duplicateId=Guid.NewGuid().ToString("N");
-        var duplicate=await Run("create_archive_folder",new{
-            workspace="company",parent_id=root,name=tag+"子目录",
+        var duplicate=await Run("create_folder",new{
+            workspace="company",section="achievement",parent_id=root,name=tag+"子目录",
             request_id=duplicateId
         });
         var duplicateLedger=await Run("get_operation_result",new{
@@ -99,7 +98,7 @@ static class NativeMcpArchiveSmoke
               "ISS-017 duplicate directory name has actionable Chinese error");
         string reject409Id=Guid.NewGuid().ToString("N");
         var reject409=await Run("move_folder",new{
-            workspace="company",kind="archive_folder",entry_id=folder,
+            workspace="company",section="achievement",folder_id=folder,
             parent_id=folder,request_id=reject409Id
         });
         var reject409Log=await Run("get_operation_result",new{
@@ -117,8 +116,8 @@ static class NativeMcpArchiveSmoke
             new{archiveFolder=new{name=tag+"子目录",parentId=root,
                 category="原类别",year="2026",tags="甲;乙",remarks="原备注"}}))
             seeded.EnsureSuccessStatusCode();
-        await Run("update_archive_folder",new{
-            workspace="company",folder_id=folder,name=tag+"重命名目录"
+        await Run("update_folder",new{
+            workspace="company",section="achievement",folder_id=folder,name=tag+"重命名目录"
         });
         var renamed=await client.GetFromJsonAsync<JsonElement>(
             $"/api/v2/folders/company/archive_folder/{folder}?section=achievement");
@@ -150,39 +149,39 @@ static class NativeMcpArchiveSmoke
               preserved.GetProperty("remarks").GetString()=="原备注" &&
               preserved.GetProperty("year").GetString()=="2026",
               "omitted fields are retained; an explicit empty category is cleared");
-        long empty=Id(await Run("create_archive_folder",new{
-            workspace="company",parent_id=root,name=tag+"空目录"
+        long empty=Id(await Run("create_folder",new{
+            workspace="company",section="achievement",parent_id=root,name=tag+"空目录"
         }));
         await Run("move_folder",new{
-            workspace="company",kind="archive_folder",entry_id=empty,
+            workspace="company",section="achievement",folder_id=empty,
             parent_id=folder,request_id=Guid.NewGuid().ToString("N")
         });
-        Check(Has(await Run("list_archive_folders",new{
+        Check(Has(await Run("list_folders",new{
             workspace="company",parent_id=folder
         }),empty),"move_folder places directory under requested parent");
         await Run("move_folder",new{
-            workspace="company",kind="archive_folder",entry_id=empty,parent_id=root
+            workspace="company",section="achievement",folder_id=empty,parent_id=root
         });
-        Check(Has(await Run("list_archive_folders",new{
+        Check(Has(await Run("list_folders",new{
             workspace="company",parent_id=root
         }),empty),"move_folder restores previous parent without new FolderId");
-        await Run("delete_archive_folder",new{
-            workspace="company",folder_id=empty
+        await Run("delete_folder",new{
+            workspace="company",section="achievement",folder_id=empty
         });
-        Check(!Has(await Run("list_archive_folders",new{workspace="company",parent_id=root}),empty),
+        Check(!Has(await Run("list_folders",new{workspace="company",section="achievement",parent_id=root}),empty),
             "empty archive directory deleted permanently");
         // ISS-014: explicitly purge an already-deleted attachment-free record
         // before removing its parent directory. A direct delete must not
         // silently wipe soft-deleted references.
-        long purgeFolder=Id(await Run("create_archive_folder",new{
-            workspace="company",parent_id=root,name=tag+"清理目录"
+        long purgeFolder=Id(await Run("create_folder",new{
+            workspace="company",section="achievement",parent_id=root,name=tag+"清理目录"
         }));
-        long purgeRecord=Id(await Run("create_archive",new{
-            workspace="company",section="achievement",folder_id=purgeFolder,
+        long purgeRecord=Id(await Run("create_folder",new{
+            workspace="company",section="achievement",parent_id=purgeFolder,
             name=tag+"清理测试资料"
         }));
-        await Run("delete_archive",new{
-            workspace="company",section="achievement",archive_id=purgeRecord
+        await Run("delete_folder",new{
+            workspace="company",section="achievement",folder_id=purgeRecord
         });
         bool explicitConfirmRequired=false;
         try{await Run("purge_trash",new{
@@ -196,21 +195,21 @@ static class NativeMcpArchiveSmoke
         });
         Check(purged["ok"]?.GetValue<bool>()==true,
             "permanent trash operation removes only the selected empty record");
-        await Run("delete_archive_folder",new{
-            workspace="company",folder_id=purgeFolder
+        await Run("delete_folder",new{
+            workspace="company",section="achievement",folder_id=purgeFolder
         });
-        Check(!Has(await Run("list_archive_folders",new{
+        Check(!Has(await Run("list_folders",new{
             workspace="company",parent_id=root
         }),purgeFolder),"after explicit purge, the empty directory can be deleted");
-        long archive=Id(await Run("create_archive",new{
-            workspace="company",section="achievement",folder_id=folder,
+        long archive=Id(await Run("create_folder",new{
+            workspace="company",section="achievement",parent_id=folder,
             name=tag+"业务材料",category="报批资料",remarks="更新前",year=2026
         }));
-        Check(Has(await Run("list_archives",new{
+        Check(Has(await Run("list_folders",new{
             workspace="company",section="achievement"
         }),archive),"MCP created archive appears in same Folder table as UI");
-        long peer=Id(await Run("create_archive_folder",new{
-            workspace="company",parent_id=folder,name=tag+"混排目录"
+        long peer=Id(await Run("create_folder",new{
+            workspace="company",section="achievement",parent_id=folder,name=tag+"混排目录"
         }));
         var entries=await Run("list_folder_entries",new{
             workspace="company",parent_id=folder
@@ -240,25 +239,25 @@ static class NativeMcpArchiveSmoke
         Check(staleRejected,"mixed reorder rejects missing siblings");
         bool cycleRejected=false;
         try{await Run("move_folder",new{
-            workspace="company",kind="archive_folder",entry_id=folder,
+            workspace="company",section="achievement",folder_id=folder,
             parent_id=peer
         });}catch(IOException){cycleRejected=true;}
         Check(cycleRejected,"move_folder rejects descendant cycles");
         await Run("move_folder",new{
-            workspace="company",kind="archive_folder",entry_id=archive,parent_id=peer
+            workspace="company",section="achievement",folder_id=archive,parent_id=peer
         });
         var movedArchive=await client.GetFromJsonAsync<JsonElement>(
             $"/api/v2/folders/company/archive_folder/{archive}?section=achievement");
         Check(movedArchive.GetProperty("businessData").GetProperty("parentId").GetInt64()==peer,
             "move_folder updates archive's persisted business parent");
         await Run("move_folder",new{
-            workspace="company",kind="archive_folder",entry_id=archive,parent_id=folder
+            workspace="company",section="achievement",folder_id=archive,parent_id=folder
         });
-        await Run("delete_archive_folder",new{
-            workspace="company",folder_id=peer
+        await Run("delete_folder",new{
+            workspace="company",section="achievement",folder_id=peer
         });
-        await Run("update_archive",new{
-            workspace="company",section="achievement",archive_id=archive,
+        await Run("update_folder",new{
+            workspace="company",section="achievement",folder_id=archive,
             remarks="已更新",year=(string?)null
         });
         var edited=await client.GetFromJsonAsync<JsonElement>(
@@ -272,15 +271,15 @@ static class NativeMcpArchiveSmoke
         bool crossDenied=false;
         try
         {
-            await Run("update_archive",new{workspace="personal",
-                section="achievement",archive_id=archive,name="错误操作"});
+            await Run("update_folder",new{workspace="personal",
+                section="achievement",folder_id=archive,name="错误操作"});
         }
         catch(IOException){crossDenied=true;}
         Check(crossDenied,"foreign workspace archive cannot be updated");
         bool sectionDenied=false;
         try
         {
-            await Run("create_archive",new{workspace="company",
+            await Run("create_folder",new{workspace="company",
                 section="academic",name=tag+"错误分类"});
         }
         catch(IOException){sectionDenied=true;}
@@ -290,34 +289,35 @@ static class NativeMcpArchiveSmoke
         // Company-only 党团建设: dedicated tools share the canonical
         // archive FolderId, SQLCipher files and existing MCP safety envelope.
         var partySchema=JsonSerializer.SerializeToElement(McpLocal.Tools())
-            .EnumerateArray().First(x=>x.GetProperty("name").GetString()=="create_party_archive")
+            .EnumerateArray().First(x=>x.GetProperty("name").GetString()=="create_folder")
             .GetProperty("inputSchema").GetProperty("properties");
-        Check(!partySchema.TryGetProperty("section",out _) &&
-            partySchema.TryGetProperty("folder_id",out _) &&
-            partySchema.GetProperty("workspace").GetProperty("enum")[0].GetString()=="company",
-            "party MCP schema is company-only with optional parent directory");
-        var partyProtocol=await McpLocal.RunSmokeProtocolToolAsync("list_party_archives",
-            Args(new{workspace="company"}));
+        Check(partySchema.TryGetProperty("section",out _) &&
+            partySchema.TryGetProperty("parent_id",out _) &&
+            partySchema.TryGetProperty("category",out _) &&
+            partySchema.TryGetProperty("year",out _),
+            "one ordinary folder MCP tool exposes full metadata and section");
+        var partyProtocol=await McpLocal.RunSmokeProtocolToolAsync("list_folders",
+            Args(new{workspace="company",section="party"}));
         Check(partyProtocol["result"]?["isError"]?.GetValue<bool>()==false &&
             partyProtocol["result"]?["content"]?[0]?["text"]?.GetValue<string>() is string partyJson &&
             JsonNode.Parse(partyJson) is JsonArray,
-            "public stdio MCP party listing returns a JSON array");
+            "public stdio MCP section-specific listing returns JSON array");
         string partyKey="N204-PARTY-"+Guid.NewGuid().ToString("N")[..8];
         var rejectedParty=await McpLocal.RunSmokeProtocolToolAsync(
-            "create_party_archive",Args(new{
-                workspace="personal",name=partyKey+"越区"
+            "create_folder",Args(new{
+                workspace="personal",section="party",name=partyKey+"越区"
             }));
         Check(rejectedParty["result"]?["isError"]?.GetValue<bool>()==true,
             "party tool schema rejects personal-workspace writes");
-        long party=Id(await Run("create_party_archive",new{
-            workspace="company",name=partyKey+"党团活动",category="组织活动",
+        long party=Id(await Run("create_folder",new{
+            workspace="company",section="party",name=partyKey+"党团活动",category="组织活动",
             remarks="新增记录",year=2026
         }));
-        Check(Has(await Run("list_party_archives",new{workspace="company"}),party) &&
-            Has(await Run("list_archives",new{workspace="company",section="party"}),party),
+        Check(Has(await Run("list_folders",new{workspace="company",section="party"}),party) &&
+            Has(await Run("list_folders",new{workspace="company",section="party"}),party),
             "party dedicated list and generic archive list share FolderId");
-        await Run("update_party_archive",new{
-            workspace="company",archive_id=party,remarks="更新后的活动资料"
+        await Run("update_folder",new{
+            workspace="company",section="party",folder_id=party,remarks="更新后的活动资料"
         });
         var partyEdited=await client.GetFromJsonAsync<JsonElement>(
             $"/api/v2/folders/company/archive_folder/{party}?section=party");
@@ -328,25 +328,25 @@ static class NativeMcpArchiveSmoke
         bool cannotCrossParty=false;
         try
         {
-            await Run("transfer_archive",new{
-                workspace="company",section="party",archive_id=party,
+            await Run("transfer_folder",new{
+                workspace="company",section="party",folder_id=party,
                 target_workspace="personal",target_section="academic",move=false
             });
         }
         catch(IOException){cannotCrossParty=true;}
         Check(cannotCrossParty,"party archives cannot leak into the personal workspace");
-        var copiedParty=await Run("transfer_archive",new{
-            workspace="company",section="party",archive_id=party,
+        var copiedParty=await Run("transfer_folder",new{
+            workspace="company",section="party",folder_id=party,
             target_workspace="company",target_section="party",move=false
         });
         long copiedPartyId=Id(copiedParty);
         Check(copiedPartyId!=party &&
-            Has(await Run("list_party_archives",new{workspace="company"}),copiedPartyId),
+            Has(await Run("list_folders",new{workspace="company",section="party"}),copiedPartyId),
             "generic transfer_archive supports same-category company party copies");
-        await Run("delete_party_archive",new{
-            workspace="company",archive_id=copiedPartyId
+        await Run("delete_folder",new{
+            workspace="company",section="party",folder_id=copiedPartyId
         });
-        Check(!Has(await Run("list_party_archives",new{workspace="company"}),copiedPartyId),
+        Check(!Has(await Run("list_folders",new{workspace="company",section="party"}),copiedPartyId),
             "party deletion soft-deletes copied record");
         var partyTrash=await Run("list_trash",new{workspace="company"});
         Check(partyTrash is JsonArray trash && trash.Any(x=>
@@ -357,10 +357,10 @@ static class NativeMcpArchiveSmoke
         await Run("restore_trash",new{
             workspace="company",kind="v2_archive_folder",id=copiedPartyId,section="party"
         });
-        Check(Has(await Run("list_party_archives",new{workspace="company"}),copiedPartyId),
+        Check(Has(await Run("list_folders",new{workspace="company",section="party"}),copiedPartyId),
             "restored party record returns to its original category");
-        await Run("delete_party_archive",new{
-            workspace="company",archive_id=copiedPartyId
+        await Run("delete_folder",new{
+            workspace="company",section="party",folder_id=copiedPartyId
         });
         // Also exercise the same standard archive upload path and file listing.
         string partyPath=Path.Combine(Path.GetTempPath(),partyKey+".txt");
@@ -368,7 +368,7 @@ static class NativeMcpArchiveSmoke
         try
         {
             var upload=await Run("upload_files",new{
-                workspace="company",kind="archive",section="party",
+                workspace="company",kind="archive_folder",section="party",
                 owner_id=party,paths=new[]{partyPath}
             });
             Check(upload["succeeded"]?.GetValue<int>()==1,
@@ -376,7 +376,7 @@ static class NativeMcpArchiveSmoke
             long partyLink=upload["files"]?[0]?["result"]?["linkId"]?.GetValue<long>()??0;
             long partyFile=upload["files"]?[0]?["result"]?["fileId"]?.GetValue<long>()??0;
             var page=await Run("list_files_page",new{
-                workspace="company",kind="archive",owner_id=party,limit=10
+                workspace="company",kind="archive_folder",section="party",owner_id=party,limit=10
             });
             Check(partyLink>0 && partyFile>0 &&
                 page["items"] is JsonArray partyFiles && partyFiles.Any(x=>
@@ -387,58 +387,58 @@ static class NativeMcpArchiveSmoke
                 workspace="company",owner_id=party,file_id=partyFile,link_id=partyLink
             });
             Check((await Run("list_files_page",new{
-                workspace="company",kind="archive",owner_id=party
+                workspace="company",kind="archive_folder",section="party",owner_id=party
             }))["items"] is JsonArray unlinked && unlinked.Count==0,
                 "party attachment can be unlinked using the standard file tool");
         }
         finally{File.Delete(partyPath);}
-        await Run("delete_party_archive",new{workspace="company",archive_id=party});
-        long general=Id(await Run("create_general",new{
-            workspace="company",title=tag+"综合资料"
+        await Run("delete_folder",new{workspace="company",section="achievement",folder_id=party});
+        long general=Id(await Run("create_folder",new{
+            workspace="company",section="general",name=tag+"综合资料"
         }));
-        Check(Has(await Run("list_general",new{workspace="company"}),general),
+        Check(Has(await Run("list_folders",new{workspace="company",section="general"}),general),
             "MCP general listed by V2 FolderId");
-        await Run("update_general",new{
-            workspace="company",general_id=general,title=tag+"改名"
+        await Run("update_folder",new{
+            workspace="company",section="general",folder_id=general,name=tag+"改名"
         });
-        Check(Has(await Run("list_general",new{workspace="company"}),general),
+        Check(Has(await Run("list_folders",new{workspace="company",section="general"}),general),
             "general rename preserves FolderId");
-        var generalCopied=await Run("transfer_general",new{
-            workspace="company",general_id=general,
-            target_workspace="personal",move=false
+        var generalCopied=await Run("transfer_folder",new{
+            workspace="company",section="general",folder_id=general,
+            target_workspace="personal",target_section="general",move=false
         });
         long newGeneral=Id(generalCopied);
-        Check(Has(await Run("list_general",new{workspace="personal"}),newGeneral),
+        Check(Has(await Run("list_folders",new{workspace="personal",section="general"}),newGeneral),
             "transfer_general copies V2 general folder to another workspace");
-        await Run("delete_general",new{
-            workspace="personal",general_id=newGeneral
+        await Run("delete_folder",new{
+            workspace="personal",section="general",folder_id=newGeneral
         });
-        var archiveCopied=await Run("transfer_archive",new{
-            workspace="company",section="achievement",archive_id=archive,
+        var archiveCopied=await Run("transfer_folder",new{
+            workspace="company",section="achievement",folder_id=archive,
             target_workspace="personal",target_section="achievement",move=false
         });
         long newArchive=Id(archiveCopied);
-        Check(Has(await Run("list_archives",new{
+        Check(Has(await Run("list_folders",new{
             workspace="personal",section="achievement"
         }),newArchive),"transfer_archive preserves V2 archive in target workspace");
-        var personalArchives=await Run("list_archives",new{
+        var personalArchives=await Run("list_folders",new{
             workspace="personal",section="achievement"
         });
         var ids=personalArchives.AsArray().Select(x=>
             x?["folder"]?["ref"]?["id"]?.GetValue<long>()??0).ToArray();
         Check(ids.Length>0&&ids.All(x=>x>0),
             "personal archive ordering input comes from current V2 folders");
-        await Run("reorder_archive_records",new{
+        await Run("reorder_folders",new{
             workspace="personal",section="achievement",ids,
             request_id=Guid.NewGuid().ToString("N")
         });
         bool wrongSectionOrder=false;
-        try{await Run("reorder_archive_records",new{
+        try{await Run("reorder_folders",new{
             workspace="company",section="achievement",ids=new[]{archive}
         });}catch(IOException){wrongSectionOrder=true;}
         Check(wrongSectionOrder,"company achievement must use mixed-entry reorder");
-        await Run("delete_archive",new{
-            workspace="personal",section="achievement",archive_id=newArchive
+        await Run("delete_folder",new{
+            workspace="personal",section="achievement",folder_id=newArchive
         });
 
         byte[] source=RandomNumberGenerator.GetBytes(1301);
@@ -447,7 +447,7 @@ static class NativeMcpArchiveSmoke
         try
         {
             var attached=await Run("upload_files",new{
-                workspace="company",kind="archive",section="achievement",
+                workspace="company",kind="archive_folder",section="achievement",
                 owner_id=archive,paths=new[]{path}
             });
             Check(attached["succeeded"]?.GetValue<int>()==1,
@@ -459,18 +459,18 @@ static class NativeMcpArchiveSmoke
             Check(files.AsArray().Any(x=>x?["id"]?.GetValue<long>()==link &&
                   x?["fileId"]?.GetValue<long>()==file &&
                   x?["ownerId"]?.GetValue<long>()==archive &&
-                  x?["kind"]?.GetValue<string>()=="archive" &&
+                  x?["kind"]?.GetValue<string>()=="archive_folder" &&
                   x?["section"]?.GetValue<string>()=="achievement"),
                 "global list_files includes archive with valid section and ownership");
             var archivePage=await Run("list_files_page",new{
-                workspace="company",kind="archive",owner_id=archive,
+                workspace="company",kind="archive_folder",section="achievement",owner_id=archive,
                 name=Path.GetFileName(path),offset=0,limit=5
             });
             Check(archivePage["items"] is JsonArray archiveRows &&
                 archiveRows.Count==1 &&
                 archiveRows[0]?["id"]?.GetValue<long>()==link &&
                 archiveRows[0]?["fileId"]?.GetValue<long>()==file &&
-                archiveRows[0]?["kind"]?.GetValue<string>()=="archive" &&
+                archiveRows[0]?["kind"]?.GetValue<string>()=="archive_folder" &&
                 archiveRows[0]?["section"]?.GetValue<string>()=="achievement" &&
                 archivePage["hasMore"]?.GetValue<bool>()==false,
                 "paged SQL query returns only the archive's active file link");
@@ -478,7 +478,7 @@ static class NativeMcpArchiveSmoke
             byte[] revised=RandomNumberGenerator.GetBytes(971);
             await File.WriteAllBytesAsync(path,revised);
             var version=await Run("upload_files",new{
-                workspace="company",kind="archive",section="achievement",
+                workspace="company",kind="archive_folder",section="achievement",
                 owner_id=archive,paths=new[]{path},on_conflict="update",file_id=file
             });
             Check(version["succeeded"]?.GetValue<int>()==1,
@@ -491,7 +491,7 @@ static class NativeMcpArchiveSmoke
             bool wrongOwner=false;
             try{
                 await Run("upload_files",new{
-                    workspace="company",kind="general",owner_id=general,
+                    workspace="company",kind="archive_folder",section="general",owner_id=general,
                     paths=new[]{path},on_conflict="update",file_id=file
                 });
             }catch(IOException){wrongOwner=true;}
@@ -501,7 +501,7 @@ static class NativeMcpArchiveSmoke
             // either kind's original versions or another folder's links.
             await File.WriteAllBytesAsync(path,RandomNumberGenerator.GetBytes(977));
             var generalUpload=await Run("upload_files",new{
-                workspace="company",kind="general",owner_id=general,
+                workspace="company",kind="archive_folder",section="general",owner_id=general,
                 paths=new[]{path}
             });
             Check(generalUpload["succeeded"]?.GetValue<int>()==1,
@@ -509,7 +509,7 @@ static class NativeMcpArchiveSmoke
             long generalLink=generalUpload["files"]?[0]?["result"]?["linkId"]?.GetValue<long>()??0;
             Check(generalLink>0&&(await Run("list_files",new{workspace="company"}))
                 .AsArray().Any(x=>x?["id"]?.GetValue<long>()==generalLink &&
-                  x?["kind"]?.GetValue<string>()=="general"),
+                  x?["kind"]?.GetValue<string>()=="archive_folder"),
                 "global list_files includes general");
             await Run("delete_file",new{workspace="company",owner_id=general,file_id=generalUpload["files"]?[0]?["result"]?["fileId"]?.GetValue<long>()??0,link_id=generalLink});
             Check(!(await Run("list_files",new{workspace="company"}))
@@ -521,20 +521,20 @@ static class NativeMcpArchiveSmoke
                 "archive unlink removed just selected link");
         }
         finally{File.Delete(path);}
-        await Run("delete_archive",new{
-            workspace="company",section="achievement",archive_id=archive
+        await Run("delete_folder",new{
+            workspace="company",section="achievement",folder_id=archive
         });
-        Check(!Has(await Run("list_archives",new{
+        Check(!Has(await Run("list_folders",new{
             workspace="company",section="achievement"
         }),archive),"soft-deleted archive excluded from active MCP list");
-        await Run("delete_general",new{workspace="company",general_id=general});
-        Check(!Has(await Run("list_general",new{workspace="company"}),general),
+        await Run("delete_folder",new{workspace="company",section="general",folder_id=general});
+        Check(!Has(await Run("list_folders",new{workspace="company",section="general"}),general),
             "soft-deleted general excluded from active MCP list");
         // Even a directory with deleted archive history is recyclable.
         // Deleting the root hides its descendants without unlinking anything;
         // restoring the root recovers the exact directory tree.
-        await Run("delete_archive_folder",new{
-            workspace="company",folder_id=folder
+        await Run("delete_folder",new{
+            workspace="company",section="achievement",folder_id=folder
         });
         var deletedDirs=(await Run("list_trash",new{workspace="company"})).AsArray();
         Check(deletedDirs.Any(x=>x?["kind"]?.GetValue<string>()=="v2_archive_folder" &&
@@ -543,12 +543,12 @@ static class NativeMcpArchiveSmoke
         await Run("restore_trash",new{
             workspace="company",kind="v2_archive_folder",id=folder,section="achievement"
         });
-        Check(Has(await Run("list_archive_folders",new{
+        Check(Has(await Run("list_folders",new{
             workspace="company",parent_id=root
         }),folder),"restored directory visible under its original parent through MCP");
         // Company-only archive folder tools must never access a personal root.
         bool personalDenied=false;
-        try{await Run("list_archive_folders",new{workspace="personal"});}
+        try{await Run("list_folders",new{workspace="personal",section="party"});}
         catch(IOException){personalDenied=true;}
         Check(personalDenied,"no company archive folders in personal workspace");
         Console.WriteLine("N2-04 ARCHIVE GENERAL MCP V2 SQLCIPHER PASS");

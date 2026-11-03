@@ -61,16 +61,16 @@ assert.match(generalForm,/remarks: d\.remarks/,
   "General edit/create form must persist remarks");
 // A02/N2: one storage scope per module, computed once from the request kind, so
 // the same scope drives listing, export ancestry and import placement.
-assert.match(archiveLedger,/string scope=MaterialScope\(kind,section\);/,
+assert.match(archiveLedger,/string scope=section;/,
   "Excel resolves one module scope for both reading and writing");
 assert.match(archiveLedger,
   /cells\[\^1\]=DirectoryPath\(db,workspace,scope,item\.Folder\.Parent\?\.Id\)/,
   "Excel exports folder ancestry with the actual workspace and module scope");
 assert.match(archiveLedger,/FolderMap\(db,workspace,section\)/,
   "Directory paths must be looked up within the correct workspace and module");
-assert.match(archiveLedger,/ReadCompatibleArchive\(bytes\)/,
-  "Archive Excel must retain old four-column import compatibility");
-const archiveColumns=ledger.match(/private static readonly Column\[\] ArchiveColumns=\s*\[([\s\S]*?)\];/)[1];
+assert.match(archiveLedger,/ReadSheet\(bytes,FolderColumns\)/,
+  "Ordinary folder Excel must accept only the canonical six-column layout");
+const archiveColumns=ledger.match(/private static readonly Column\[\] FolderColumns\s*=\s*\[([\s\S]*?)\];/)[1];
 assert.match(archiveColumns,/new\("year","年度"\)/);
 assert.match(archiveColumns,/new\("directory","所属目录"\)/);
 assert.match(ledger,/new\("remarks","备注"\)/,
@@ -211,7 +211,7 @@ async function call(category,mode){
   assert.equal(requests.at(-1).body.ipType,null);
   ctx.VaultStore.ws="company";state.folderId="k:party";state.query="";
   await call("party","filtered");
-  assert.equal(requests.at(-1).url,"/api/v2/excel/company/archive/export?section=party");
+  assert.equal(requests.at(-1).url,"/api/v2/excel/company/archive_folder/export?section=party");
   assert.equal(requests.at(-1).body.query,"");
   const count=requests.length;
   await call("party",null);

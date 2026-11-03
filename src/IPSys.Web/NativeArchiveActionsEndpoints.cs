@@ -33,15 +33,18 @@ static class NativeArchiveActionsEndpoints
 
     public static void Map(WebApplication app,Func<string,int,IResult> fail)
     {
-        app.MapPost("/api/v2/ui/archive/{workspace}/{section}/{id:long}/transfer",async(
+        app.MapPost("/api/v2/ui/folders/{workspace}/{section}/{id:long}/transfer",async(
             HttpContext ctx,Vault v,string workspace,string section,long id,
-            ArchiveTransfer input)=>
+            FolderTransfer input)=>
         {
             if(!v.Allowed(ctx))return (IResult)Results.Unauthorized();
-            var from=ArchiveRules.Module(workspace,section);
-            var to=ArchiveRules.Module(input.TargetWorkspace,input.TargetSection);
+            if(!ArchiveDirectoryScopes.Allowed(workspace,section) ||
+               !ArchiveDirectoryScopes.Allowed(input.TargetWorkspace,input.TargetSection))
+                return fail("资料模块与工作区不匹配。",400);
+            var from=section=="general"?"general":ArchiveRules.Module(workspace,section);
+            var to=input.TargetSection=="general"?"general":ArchiveRules.Module(input.TargetWorkspace,input.TargetSection);
             if(from is null||from!=to)return fail(
-                "目标资料类别不兼容：科研成果可在 company/achievement 与 personal/achievement、personal/academic 之间转移；certificate 不支持跨工作区转移。",400);
+                "目标资料类别不兼容，请确认来源与目标模块的允许转移范围。",400);
             if(input.Move&&workspace==input.TargetWorkspace&&
                 section==input.TargetSection)
                 return fail("同一工作区同类别无需转移。",400);
@@ -72,9 +75,6 @@ static class NativeArchiveActionsEndpoints
                         if(status!=0)return fail(message,status);
                         parent=explicitTarget;
                     }
-                    else if(input.TargetWorkspace=="company"&&
-                        input.TargetSection=="achievement")
-                        return fail("公司业务档案必须明确指定目标分类目录 targetFolderId。",400);
                     var copied=await NativeFolderTreeTransfer.CopyAsync(v.Db,v.Path,
                         workspace,section,id,input.TargetWorkspace,
                         input.TargetSection,parent,input.Move,linked.Token);

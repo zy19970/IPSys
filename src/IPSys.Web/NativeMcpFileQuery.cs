@@ -41,10 +41,8 @@ static class NativeMcpFileQuery
           AND obj.workspace=version.workspace AND obj.state='ready'
         WHERE l.workspace=$w AND l.deleted=0
           AND folder.kind IN ('project','contract','ip','archive_folder')
-          AND ($kind='' OR folder.kind=CASE WHEN $kind IN ('archive','general')
-                THEN 'archive_folder' ELSE $kind END)
-          AND ($kind<>'general' OR folder.section='general')
-          AND ($kind<>'archive' OR folder.section<>'general')
+          AND ($kind='' OR folder.kind=$kind)
+          AND ($section='' OR folder.section=$section)
           AND ($owner=0 OR l.folder_id=$owner)
           AND ($name='' OR instr(lower(COALESCE(l.display_name,file.name)),lower($name))>0)
         ORDER BY l.id
@@ -78,12 +76,12 @@ static class NativeMcpFileQuery
         "trim(COALESCE(file."+field+",''), "+WhitespaceSql+") = ''";
 
     public static object Read(SqliteConnection db,string workspace,
-        string? kind,string? name,long ownerId,int offset,int limit,bool paged,
+        string? kind,string? section,string? name,long ownerId,int offset,int limit,bool paged,
         string? missingFields=null,string? missingMode=null)
     {
         if(!Vault.WorkspaceValid(workspace))
             throw new ArgumentException("工作区无效。");
-        if(kind is not (null or "" or "project" or "contract" or "ip" or "archive" or "general"))
+        if(kind is not (null or "" or "project" or "contract" or "ip" or "archive_folder"))
             throw new ArgumentException("文件类别无效。");
         if(ownerId<0 || offset<0 || limit is <1 or >200)
             throw new ArgumentException("文件列表 offset/ownerId/limit 不合法；limit 限制为 1–200。");
@@ -125,6 +123,7 @@ static class NativeMcpFileQuery
         cmd.CommandText=sql+(paged?" LIMIT $take OFFSET $skip":";");
         cmd.Parameters.AddWithValue("$w",workspace);
         cmd.Parameters.AddWithValue("$kind",kind??"");
+        cmd.Parameters.AddWithValue("$section",section??"");
         cmd.Parameters.AddWithValue("$owner",ownerId);
         cmd.Parameters.AddWithValue("$name",name??"");
         if(paged)
@@ -147,15 +146,9 @@ static class NativeMcpFileQuery
                             missing.Add(FileFields[i]);
                     gaps=missing;
                 }
-                // A02/N2: one storage kind, two business module names. Agent-facing
-                // rows keep the module name they have always reported so existing
-                // MCP consumers keep filtering on "archive" / "general".
-                string stored=rd.GetString(3),section=rd.GetString(4);
-                string ownerKind=stored==FolderKinds.ArchiveFolder
-                    ?(section=="general"?FolderKinds.General:FolderKinds.Archive)
-                    :stored;
+                string ownerKind=rd.GetString(3),ownerSection=rd.GetString(4);
                 rows.Add(new McpFileRow(rd.GetInt64(0),rd.GetInt64(1),rd.GetInt64(2),
-                    ownerKind,section,rd.GetString(5),
+                    ownerKind,ownerSection,rd.GetString(5),
                     rd.IsDBNull(6)?null:rd.GetInt32(6),
                     rd.IsDBNull(7)?null:rd.GetInt64(7),
                     rd.IsDBNull(8)?null:rd.GetString(8),gaps));
@@ -170,7 +163,7 @@ static class NativeMcpFileQuery
     public static void Map(WebApplication app,Func<string,int,IResult> fail)
     {
         app.MapGet("/api/v2/mcp/files/{workspace}",async (
-            HttpContext ctx,Vault vault,string workspace,string? kind,
+            HttpContext ctx,Vault vault,string workspace,string? kind,string? section,
             string? name,long? ownerId,int? offset,int? limit,
             string? missingFields,string? missingMode,bool paged=false)=>
         {
@@ -182,7 +175,7 @@ static class NativeMcpFileQuery
                 if(!vault.Allowed(ctx))return Results.Unauthorized();
                 try
                 {
-                    var value=Read(vault.Db,workspace,kind,name,ownerId??0,
+                    var value=Read(vault.Db,workspace,kind,section,name,ownerId??0,
                         offset??0,limit??100,paged,missingFields,missingMode);
                     return Results.Json(value);
                 }

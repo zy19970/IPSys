@@ -31,25 +31,7 @@ static partial class ExcelLedger
         new("firstPublishedDate","首次发表日期"),new("registrationDate","登记／注册日期"),
         new("category","辅助分类"),new("remarks","备注"),new("tags","标签")
     ];
-    private static readonly Column[] ArchiveLegacyColumns=
-    [
-        new("name","资料名称"),new("category","类别"),
-        new("remarks","备注"),new("tags","标签")
-    ];
-    private static readonly Column[] ArchiveColumns=
-    [
-        ..ArchiveLegacyColumns,new("year","年度"),
-        new("directory","所属目录")
-    ];
-    // The general module is a full ordinary folder too. Its current Excel
-    // template must round-trip all optional metadata and directory ancestry.
-    // Historical one-, two- and three-column templates remain readable.
-    private static readonly Column[] GeneralLegacyColumns=[new("name","资料名称")];
-    private static readonly Column[] GeneralPreviousColumns=
-        [new("name","资料名称"),new("remarks","备注")];
-    private static readonly Column[] GeneralThreeColumns=
-        [new("name","资料名称"),new("remarks","备注"),new("directory","所属目录")];
-    private static readonly Column[] GeneralColumns=
+    private static readonly Column[] FolderColumns =
     [
         new("name","资料名称"),new("category","类别"),
         new("remarks","备注"),new("tags","标签"),
@@ -94,24 +76,16 @@ static partial class ExcelLedger
         Remarks=KeepExcel(next.Remarks,old.Remarks),
         Tags=KeepExcel(next.Tags,old.Tags)
     };
-    internal static ArchiveInput MergeExcelUpdate(ArchiveInput next,ArchiveInput old)=>next with {
-        Name=KeepExcel(next.Name,old.Name),
-        Category=KeepExcel(next.Category,old.Category),
-        Remarks=KeepExcel(next.Remarks,old.Remarks),
-        Tags=KeepExcel(next.Tags,old.Tags),
-        Year=KeepExcel(next.Year,old.Year),
-        FolderId=old.FolderId
-    };
 
-    internal static bool ValidKind(string kind)=>kind is "project" or "ip" or "archive" or "general";
+    internal static bool ValidKind(string kind)=>kind is "project" or "ip" or "archive_folder";
     internal static bool SupportsImport(string kind)=>kind is "project" or "ip" or "archive" or "general";
     internal static bool ValidScope(string workspace,string kind,string? section)=>
-        ValidKind(kind)&&(kind!="archive"||ArchiveRules.Module(workspace,section??"")!=null);
+        ValidKind(kind)&&(kind!="archive_folder"||ArchiveDirectoryScopes.Allowed(workspace,section??""));
 
     private static Column[] Columns(string kind)=>kind switch
     {
-        "project"=>Projects,"ip"=>IntellectualProperty,"archive"=>ArchiveColumns,
-        "general"=>GeneralColumns,
+        "project"=>Projects,"ip"=>IntellectualProperty,
+        "archive_folder"=>FolderColumns,
         _=>throw new InvalidDataException("无效的 Excel 台账模块。")
     };
     private static string Text(JsonElement json,string key)
@@ -299,61 +273,6 @@ static partial class ExcelLedger
         }
         return output;
     }
-    private static ArchiveInput Archive(string[] v)=>new(v[0],v[1],v[2],v[3],v[4]); 
-    private static (bool Legacy,List<(int Number,string[] Values)> Rows)
-        ReadCompatibleArchive(byte[] bytes)
-    {
-        try{return (false,ReadSheet(bytes,ArchiveColumns));}
-        catch(InvalidDataException ex) when(ex.Message.StartsWith("表头不匹配",StringComparison.Ordinal))
-        {
-            return (true,ReadSheet(bytes,ArchiveLegacyColumns)
-                .Select(r=>(r.Number,r.Values.Concat(["",""]).ToArray())).ToList());
-        }
-    }
-    private static (bool Legacy,List<(int Number,string[] Values)> Rows)
-        ReadCompatibleGeneral(byte[] bytes)
-    {
-        try{return (false,ReadSheet(bytes,GeneralColumns));}
-        catch(InvalidDataException ex) when(ex.Message.StartsWith("表头不匹配",StringComparison.Ordinal))
-        {
-            try{return (true,ReadSheet(bytes,GeneralThreeColumns)
-                .Select(r=>(r.Number,new[]{r.Values[0],"",r.Values[1],"","",r.Values[2]}))
-                .ToList());}
-            catch(InvalidDataException three) when(three.Message.StartsWith("表头不匹配",StringComparison.Ordinal))
-            {
-                try{return (true,ReadSheet(bytes,GeneralPreviousColumns)
-                    .Select(r=>(r.Number,new[]{r.Values[0],"",r.Values[1],"","",""}))
-                    .ToList());}
-                catch(InvalidDataException two) when(two.Message.StartsWith("表头不匹配",StringComparison.Ordinal))
-                {
-                    return (true,ReadSheet(bytes,GeneralLegacyColumns)
-                        .Select(r=>(r.Number,new[]{r.Values[0],"","","","",""}))
-                        .ToList());
-                }
-            }
-        }
-    }
-    private static string? ValidateGeneral(string? title)=>
-        string.IsNullOrWhiteSpace(title)||title.Trim().Length>300
-        ?"资料名称必填，最多 300 字。":null;
-    private static long InsertGeneral(SqliteConnection db,string workspace,string title)
-    {
-        using var cmd=db.CreateCommand();
-        cmd.CommandText="INSERT INTO records(workspace,title) VALUES($workspace,$title); SELECT last_insert_rowid();";
-        cmd.Parameters.AddWithValue("$workspace",workspace);
-        cmd.Parameters.AddWithValue("$title",title.Trim());
-        return (long)cmd.ExecuteScalar()!;
-    }
-    private static bool UpdateGeneral(SqliteConnection db,string workspace,long id,string title)
-    {
-        using var cmd=db.CreateCommand();
-        cmd.CommandText="UPDATE records SET title=$title WHERE id=$id AND workspace=$workspace AND deleted=0;";
-        cmd.Parameters.AddWithValue("$title",title.Trim());
-        cmd.Parameters.AddWithValue("$id",id);
-        cmd.Parameters.AddWithValue("$workspace",workspace);
-        return cmd.ExecuteNonQuery()==1;
-    }
-
     private static ProjectInput Project(string[] v)=>new(
         v[0],v[1],v[2],v[3],v[4],v[5],v[6],
         string.IsNullOrWhiteSpace(v[7])?"筹备中":v[7],v[8],v[9],v[10]);

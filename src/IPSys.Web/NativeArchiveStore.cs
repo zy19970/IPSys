@@ -4,36 +4,11 @@ using Microsoft.Data.Sqlite;
 // N2-02: business archives, archive directories and general records use ONLY folders.
 static class NativeArchiveStore
 {
-    public static bool Handles(string kind) =>
-        kind is FolderKinds.ArchiveFolder or FolderKinds.Archive or FolderKinds.General;
+    public static bool Handles(string kind) => kind==FolderKinds.ArchiveFolder;
 
-    // A02/N2: one ordinary material and one ordinary folder are the same object.
-    // Callers still name them "archive"/"general" (module names, kept on purpose);
-    // that request vocabulary is translated here exactly once, so no new row is
-    // ever written under the retired kinds and there is only one read path.
-    public static ResourceRef Unify(ResourceRef r) => r.Kind switch
-    {
-        FolderKinds.Archive => ResourceRef.Create(r.Workspace,
-            FolderKinds.ArchiveFolder,r.Id,r.Section),
-        FolderKinds.General => ResourceRef.Create(r.Workspace,
-            FolderKinds.ArchiveFolder,r.Id,"general"),
-        _ => r
-    };
-
-    // Legacy create bodies (ArchiveInput/TitleInput) carry the same six business
-    // fields as a folder, so the conversion is lossless and needs no data fixup.
-    private static FolderMutationInput AsFolder(string kind,FolderMutationInput input)=>
-        kind switch
-        {
-            FolderKinds.Archive when input.Archive is ArchiveInput a => input with {
-                Archive=null,ArchiveFolder=new ArchiveFolderInput(
-                    a.Name?.Trim()??"",a.FolderId,a.Category,a.Year,a.Tags,a.Remarks)},
-            FolderKinds.General when input.General is TitleInput g => input with {
-                General=null,Section="general",
-                ArchiveFolder=new ArchiveFolderInput(
-                    g.Title?.Trim()??"",input.ParentId,null,null,null,g.Remarks)},
-            _ => throw new ArgumentException("文件夹类型和业务属性不匹配。")
-        };
+    public static ResourceRef Unify(ResourceRef r) =>
+        r.Kind==FolderKinds.ArchiveFolder?r:
+        throw new ArgumentException("普通资料仅支持 archive_folder 类型。");
 
     // A copied folder keeps its own name only when the target level is free;
     // otherwise it gets the first free "名称 (n)" suffix. The sibling-name index
@@ -64,35 +39,17 @@ static class NativeArchiveStore
 
     private static string Section(string workspace,string kind,string? section)
     {
-        if(!Vault.WorkspaceValid(workspace))throw new ArgumentException("无效的工作区。");
-        if(kind==FolderKinds.ArchiveFolder)
-        {
-            string scope=string.IsNullOrEmpty(section)&&workspace=="company"
-                ?"achievement":section??"";
-            if(!ArchiveDirectoryScopes.Allowed(workspace,scope))
-                throw new ArgumentException("目录与工作区或模块不匹配。");
-            return scope;
-        }
-        if(kind==FolderKinds.General)
-        {
-            // "general" is the storage section of the 综合资料 module; an explicit
-            // section is accepted because the folded kind carries it, but any
-            // other value is still a caller error.
-            if(!string.IsNullOrEmpty(section) && section!="general")
-                throw new ArgumentException("综合资料没有分段。");
-            return "general";
-        }
-        if(kind==FolderKinds.Archive && ArchiveRules.Module(workspace,section??"")!=null)
-            return section!;
-        throw new ArgumentException("当前工作区不支持该资料类别。");
+        if(!Vault.WorkspaceValid(workspace) || kind!=FolderKinds.ArchiveFolder ||
+           !ArchiveDirectoryScopes.Allowed(workspace,section??""))
+            throw new ArgumentException("普通资料要求合法的工作区与明确的 section。");
+        return section!;
     }
 
     private static (string Name,string Json,long? Parent,string Section) Prepare(
         string workspace,string kind,FolderMutationInput input,bool creating,string? section)
     {
         if(input.Project is not null || input.Contract is not null || input.Ip is not null ||
-           input.ParentId is not null && kind!=FolderKinds.General &&
-               input.ArchiveFolder is null)
+           input.ParentId is not null && input.ArchiveFolder is null)
             throw new ArgumentException("资料的业务类型或父级参数不匹配。");
         string scope=Section(workspace,kind,creating?input.Section:section);
         if(!creating && input.Section is not null && input.Section!=scope)
@@ -100,8 +57,7 @@ static class NativeArchiveStore
 
         switch(kind)
         {
-            case FolderKinds.ArchiveFolder when input.ArchiveFolder is not null &&
-                input.Archive is null && input.General is null:
+            case FolderKinds.ArchiveFolder when input.ArchiveFolder is not null:
                 // parentId is the shared parent alias of the whole folder API, so a
                 // body that only carries parentId still lands in the same place.
                 var folder=input.ArchiveFolder with {
@@ -168,7 +124,6 @@ static class NativeArchiveStore
     public static long Create(SqliteConnection db,string workspace,string kind,FolderMutationInput input)
     {
         if(!Handles(kind))throw new ArgumentException("不支持的资料类型。");
-        if(kind!=FolderKinds.ArchiveFolder)input=AsFolder(kind,input);
         var data=Prepare(workspace,FolderKinds.ArchiveFolder,input,true,null);
         if(data.Parent is long parent && !ActiveDirectory(db,workspace,
             data.Section,parent))
@@ -194,7 +149,6 @@ static class NativeArchiveStore
     {
         if(!r.IsValid || !Handles(r.Kind))
             throw new ArgumentException("资料引用无效。");
-        if(r.Kind!=FolderKinds.ArchiveFolder)input=AsFolder(r.Kind,input);
         r=Unify(r);
         long? current;
         try{current=Parent(db,r);}
@@ -281,16 +235,12 @@ static class NativeArchiveStore
         {
             FolderKinds.ArchiveFolder => (JsonSerializer.Deserialize<ArchiveFolderInput>(rd.GetString(7))
                 ?? new ArchiveFolderInput(name,parent)) with {Name=name,ParentId=parent},
-            FolderKinds.Archive => JsonSerializer.Deserialize<ArchiveInput>(rd.GetString(7))
-                ?? throw new InvalidDataException("档案资料属性无效。"),
-            FolderKinds.General => JsonSerializer.Deserialize<TitleInput>(rd.GetString(7))
-                ?? throw new InvalidDataException("综合资料属性无效。"),
             _ => throw new InvalidDataException("不支持的业务类型。")
         };
         return new FolderSnapshot(new FolderDescriptor(
             ResourceRef.Create(w,kind,id,section),name,
             parent is long p ? ResourceRef.Create(w,FolderKinds.ArchiveFolder,p,
-                ArchiveDirectoryScopes.ForRecord(kind,section)):null,
+                section):null,
             rd.GetInt32(6),ModifiedAt:rd.IsDBNull(8)?null:rd.GetString(8),
             CreatedAt:rd.IsDBNull(9)?null:rd.GetString(9)),metadata);
     }

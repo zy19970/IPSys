@@ -32,15 +32,13 @@ static class NativeArchiveOrder
         string section,ArchiveEntryReorder request)
     {
         if(request.Items is null || request.ParentId<0 ||
-            request.Items.Any(x=>x.Id<=0 || x.Kind is not ("folder" or "record")))
+            request.Items.Any(x=>x.Id<=0 || x.Kind!="folder"))
             throw new ArgumentException("排序项目格式不正确。");
         long? parent=request.ParentId==0?null:request.ParentId;
         CheckScope(db,workspace,section,parent);
         var existing=Entries(db,workspace,section,parent)
             .Select(x=>(Kind:"folder",Id:x.Folder.Ref.Id)).ToHashSet();
-        // "record" is still accepted from older clients; both spellings name the
-        // very same row now, so the incoming kind is normalised before the check.
-        var proposed=request.Items.Select(x=>("folder",x.Id)).ToArray();
+        var proposed=request.Items.Select(x=>(x.Kind,x.Id)).ToArray();
         if(proposed.Length!=existing.Count || proposed.Distinct().Count()!=proposed.Length ||
            proposed.Any(x=>!existing.Contains(x)))return false;
         using var tx=db.BeginTransaction();

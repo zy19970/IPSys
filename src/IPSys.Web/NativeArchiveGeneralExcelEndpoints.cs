@@ -9,7 +9,7 @@ static class NativeArchiveGeneralExcelEndpoints
 {
     public static void Map(WebApplication app,Func<string,int,IResult> fail)
     {
-        foreach(string kind in new[]{"archive","general"})
+        foreach(string kind in new[]{"archive_folder"})
         {
             app.MapGet($"/api/v2/excel/{{workspace}}/{kind}/template",(
                 HttpContext ctx,Vault v,string workspace,string? section)=>
@@ -17,7 +17,7 @@ static class NativeArchiveGeneralExcelEndpoints
                 if(!v.Allowed(ctx))return (IResult)Results.Unauthorized();
                 if(!Valid(workspace,kind,section))return fail("无效的资料分类或工作区。",400);
                 return Results.File(ExcelLedger.Template(kind),
-                    ExcelLedger.ContentType,kind+"-template.xlsx");
+                    ExcelLedger.ContentType,(section??"folder")+"-template.xlsx");
             });
             app.MapPost($"/api/v2/excel/{{workspace}}/{kind}/export",async(
                 HttpContext ctx,Vault v,string workspace,string? section,ExcelExportInput input)=>
@@ -33,7 +33,7 @@ static class NativeArchiveGeneralExcelEndpoints
                         return Results.File(ExcelLedger.NativeArchiveGeneralExport(
                             v.Db,workspace,kind,section??"",input.Mode,
                             ExcelLedger.ExportIds(v.Db,workspace,kind,section??"",input)),
-                            ExcelLedger.ContentType,kind+"-ledger.xlsx");
+                            ExcelLedger.ContentType,(section??"folder")+"-ledger.xlsx");
                     }
                     catch(ArgumentException ex){return fail(ex.Message,400);}
                     catch(InvalidDataException ex){return fail(ex.Message,400);}
@@ -79,6 +79,5 @@ static class NativeArchiveGeneralExcelEndpoints
     }
     private static bool Valid(string workspace,string kind,string? section)=>
         Vault.WorkspaceValid(workspace) &&
-        (kind=="general"?string.IsNullOrEmpty(section):
-          kind=="archive"&&ArchiveRules.Module(workspace,section??"")!=null);
+        kind=="archive_folder" && ArchiveDirectoryScopes.Allowed(workspace,section??"");
 }

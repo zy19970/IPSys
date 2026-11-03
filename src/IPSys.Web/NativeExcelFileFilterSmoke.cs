@@ -36,7 +36,7 @@ static class NativeExcelFileFilterSmoke
         string kind,string section,string query)
     {
         string path="/api/v2/excel/"+workspace+"/"+kind+"/export";
-        if(kind=="archive")path+="?section="+Uri.EscapeDataString(section);
+        if(kind=="archive_folder")path+="?section="+Uri.EscapeDataString(section);
         using var response=await client.PostAsJsonAsync(path,
             new ExcelExportInput("filtered",null,query));
         response.EnsureSuccessStatusCode();
@@ -77,15 +77,15 @@ static class NativeExcelFileFilterSmoke
             "project Excel omits folder matched solely through its file");
         Check(await Rows(client,"company","ip","",ipFile)==1,
             "IP Excel omits folder matched solely through its file");
-        Check(await Rows(client,"company","archive","certificate",archiveFile)==1,
+        Check(await Rows(client,"company","archive_folder","certificate",archiveFile)==1,
             "archive Excel omits folder matched solely through its file");
-        Check(await Rows(client,"company","general","",generalFile)==1,
+        Check(await Rows(client,"company","archive_folder","general",generalFile)==1,
             "general Excel omits folder matched solely through its file");
         Check(await Rows(client,"company","archive","certificate",generalFile)==0,
             "general file must not leak into archive module");
         Check(await Rows(client,"company","general","",archiveFile)==0,
             "archive file must not leak into general module");
-        Check(await Rows(client,"personal","archive","certificate",archiveFile)==0,
+        Check(await Rows(client,"personal","archive_folder","certificate",archiveFile)==0,
             "company file must not leak into personal workspace");
         Console.WriteLine("EXCEL FILE FILTER SMOKE PASS");
     }

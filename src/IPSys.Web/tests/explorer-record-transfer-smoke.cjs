@@ -36,7 +36,7 @@ const vault={
  },
  async getJson(url){
   const ws=url.split("/").at(-1);
-  if(url.includes("/api/v2/ui/archive/"))
+  if(url.includes("/api/v2/ui/folders/"))
    return {folders:archiveFolders[ws]||[],orders:{},files:[]};
   assert.ok(url.includes("/api/v2/ui/projects/"));
   return projects[ws];
@@ -76,12 +76,17 @@ const node=(kind,id,extra={})=>({id:kind+":"+id,type:"folder",name:kind+id,biz:{
  await dialogs.at(-1).onSubmit({target:"personal"});
  assert.equal(calls.at(-1).url,"/api/v2/ip/company/17/transfer");
 
- const general=node("general",12);
+ const general=node("archive_folder",12,{section:"general"});
  invoke(general,false);
- await dialogs.at(-1).onSubmit({target:"personal"});
- assert.equal(calls.at(-1).url,"/api/v2/ui/general/company/12/transfer");
+ await dialogs.at(-1).onSubmit({target:"personal/general"});
+ let generalDialog=dialogs.at(-1);
+ assert.deepEqual(Array.from(generalDialog.fields[0].options,x=>x.value),["0"]);
+ await generalDialog.onSubmit({folderId:"0"});
+ assert.equal(calls.at(-1).url,"/api/v2/ui/folders/company/general/12/transfer");
+ assert.deepEqual(JSON.parse(JSON.stringify(calls.at(-1).opts.json)),
+  {targetWorkspace:"personal",move:false,targetSection:"general"});
 
- const archive=node("archive",6,{section:"achievement"});
+ const archive=node("archive_folder",6,{section:"achievement"});
  assert.deepEqual(Array.from(opt(archive,true),x=>x.value),
   ["personal/achievement","personal/academic"]);
  invoke(archive,false);
@@ -91,19 +96,19 @@ const node=(kind,id,extra={})=>({id:kind+":"+id,type:"folder",name:kind+id,biz:{
  assert.equal(archiveDialog.title,"选择目标分类目录");
  assert.deepEqual(Array.from(archiveDialog.fields[0].options,x=>x.value),["0","81"]);
  await archiveDialog.onSubmit({folderId:"81"});
- assert.equal(calls.at(-1).url,"/api/v2/ui/archive/company/achievement/6/transfer");
+ assert.equal(calls.at(-1).url,"/api/v2/ui/folders/company/achievement/6/transfer");
  assert.deepEqual(JSON.parse(JSON.stringify(calls.at(-1).opts.json)),
   {targetWorkspace:"personal",move:false,targetSection:"academic",targetFolderId:81});
 
- /* 目标是公司业务档案时不提供"顶层"：资料必须落在具体分类目录里。 */
+ /* 公司业务档案也是普通文件夹，目标可直接选顶层。 */
  invoke(archive,false);
  await dialogs.at(-1).onSubmit({target:"company/achievement"});
  archiveDialog=dialogs.at(-1);
- assert.deepEqual(Array.from(archiveDialog.fields[0].options,x=>x.value),["70","71"]);
+ assert.deepEqual(Array.from(archiveDialog.fields[0].options,x=>x.value),["0","70","71"]);
  await archiveDialog.onSubmit({folderId:"71"});
  assert.deepEqual(JSON.parse(JSON.stringify(calls.at(-1).opts.json)),
   {targetWorkspace:"company",move:false,targetSection:"achievement",targetFolderId:71});
- const certificate=node("archive",10,{section:"certificate"});
+ const certificate=node("archive_folder",10,{section:"certificate"});
  assert.equal(opt(certificate,true).length,0,
   "Certificate transfer cannot bypass module compatibility constraints");
  const beforeDialogs=dialogs.length;
@@ -153,5 +158,5 @@ const node=(kind,id,extra={})=>({id:kind+":"+id,type:"folder",name:kind+id,biz:{
 
  await assert.rejects(lockedDialog.onSubmit({target:"invalid"}),/无效/);
  assert.equal(calls.length,previousCalls+1);
- console.log("EXPLORER F2-04 PASS: project/contract/IP/archive/general transfers, modules, project target and busy/409");
+ console.log("EXPLORER F2-04 PASS: project/contract/IP/archive_folder transfers, sections, project target and busy/409");
 })().catch(e=>{console.error(e);process.exitCode=1;});

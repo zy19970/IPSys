@@ -5,7 +5,7 @@ static class NativeArchiveUiOrderEndpoints
 {
     public static void Map(WebApplication app,Func<string,int,IResult> fail)
     {
-        app.MapPost("/api/v2/ui/archive/{workspace}/{section}/order",async(
+        app.MapPost("/api/v2/ui/folders/{workspace}/{section}/order",async(
             HttpContext ctx,Vault v,string workspace,string section,
             NativeIpUiOrderInput input)=>
         {

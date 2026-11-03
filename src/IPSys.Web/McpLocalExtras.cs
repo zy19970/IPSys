@@ -97,32 +97,11 @@ static partial class McpLocal
             ["target_workspace"]=Field("string","目标工作区",Workspaces),
             ["move"]=new Dictionary<string,object>{{"type","boolean"},{"description","true 移动，false 复制"}}
         },["workspace","ip_id","target_workspace"]),
-        Tool("transfer_archive","在语义兼容类别间复制/移动档案与版本。company/achievement 与 personal/achievement 或 personal/academic 对应科研成果；证书 certificate 仅在相同工作区类别内使用；党团建设 party 仅支持 company/party 内复制，不跨区。实际接受范围以 ArchiveRules.Module 校验为准。目标是 company/achievement 时必须给出 target_folder_id（业务档案资料必须归属具体分类目录）；不再按目录名称猜目标。move=true 返回目标新 ID，来源软删除入原工作区回收站；恢复来源会形成并存副本。",new(){
-            ["workspace"]=Field("string","来源工作区",Workspaces),
-            ["section"]=Field("string","来源资料类别"),
-            ["archive_id"]=Field("integer","档案 FolderId"),
-            ["target_workspace"]=Field("string","目标工作区",Workspaces),
-            ["target_section"]=Field("string","目标类别：achievement ↔ academic（科研成果）；certificate 不跨区；party 只可 company/party"),
-            ["target_folder_id"]=Field("integer","目标分类目录 FolderId；目标为 company/achievement 时必填，其它类别省略表示顶层"),
-            ["move"]=new Dictionary<string,object>{{"type","boolean"},{"description","true 移动，false 复制"}}
-        },["workspace","section","archive_id","target_workspace","target_section"]),
-        Tool("transfer_general","复制/移动综合资料及历史文件。move=true 返回目标新 ID，来源软删除入原工作区回收站；恢复来源会形成并存副本。",new(){
-            ["workspace"]=Field("string","来源工作区",Workspaces),
-            ["general_id"]=Field("integer","综合资料 FolderId"),
-            ["target_workspace"]=Field("string","目标工作区",Workspaces),
-            ["move"]=new Dictionary<string,object>{{"type","boolean"},{"description","true 移动，false 复制"}}
-        },["workspace","general_id","target_workspace"]),
-        Tool("move_folder","调整公司业务档案目录或资料在 achievement 分类下的所属目录；kind=archive_folder 可移到根，kind=archive 必须指定目标目录。保留 FolderId 与附件。",new(){
-            ["workspace"]=Field("string","必须为 company",["company"]),
-            ["kind"]=Field("string","archive_folder 为目录，archive 为资料",["archive_folder","archive"]),
-            ["entry_id"]=Field("integer","待移动的目录或资料 FolderId"),
-            ["parent_id"]=Field("integer","新父目录 FolderId；省略或 null 表示根，仅 archive_folder 适用")
-        },["workspace","kind","entry_id"]),
         Tool("list_folder_entries","获取公司业务档案 achievement 指定父目录下的目录与资料混排列表，供 reorder_entries 使用。parent_id=0 表示根。",new(){
             ["workspace"]=Field("string","必须为 company",["company"]),
             ["parent_id"]=Field("integer","目录 FolderId；0 表示根目录")
         },["workspace","parent_id"]),
-        Tool("reorder_entries","按当前父目录下全部目录和资料的精确排列持久化排序；须提供完整 items，每项为 kind=folder/record 和 id；parent_id=0 为根。",new(){
+        Tool("reorder_entries","按当前父目录下全部目录和资料的精确排列持久化排序；须提供完整 items，每项为 kind=folder 和 id；parent_id=0 为根。",new(){
             ["workspace"]=Field("string","必须为 company",["company"]),
             ["parent_id"]=Field("integer","父目录 FolderId；0 为根"),
             ["items"]=new {type="array",minItems=1,maxItems=1000,
@@ -134,7 +113,7 @@ static partial class McpLocal
             ["ids"]=new {type="array",minItems=1,maxItems=1000,
                 items=Field("integer","待排序记录 FolderId")}
         },["workspace","kind","ids"]),
-        Tool("reorder_archive_records","调整证书、科研成果、个人履历等非混排档案模块的全部记录顺序；ids 必须包含该模块当前全部有效 FolderId。公司 achievement 混排应使用 reorder_entries。",new(){
+        Tool("reorder_folders","调整证书、科研成果、个人履历等非混排档案模块的全部记录顺序；ids 必须包含该模块当前全部有效 FolderId。公司 achievement 混排应使用 reorder_entries。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
             ["section"]=Field("string","archive 资料类别"),
             ["ids"]=new {type="array",minItems=1,maxItems=1000,
@@ -143,7 +122,7 @@ static partial class McpLocal
         Tool("search_records","工作区统一搜索；文件命中 kind=file 只是搜索结果种类，不等于回收站 kind=v2_file/v2_ip_file。恢复前必须 list_trash。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
             ["query"]=Field("string","检索词，最长 100 字；匹配记录名称、附件说明、分号标签、文件编号及路径。返回命中字段和明确的文件/关联 ID。"),
-            ["kind"]=Field("string","可选类别：project/contract/ip/archive/archive_folder/general/file"),
+            ["kind"]=Field("string","可选类别：project/contract/ip/archive_folder/file"),
             ["offset"]=Field("integer","可选分页偏移，从 0 开始；指定分页参数即可枚举全部结果"),
             ["limit"]=Field("integer","可选单页条数 1–200，默认 100")
         },["workspace","query"]),
@@ -158,7 +137,7 @@ static partial class McpLocal
         },["workspace","kind","id"]),
         Tool("purge_trash","明确确认后永久清理回收站记录或已解除的 File/Folder 关联。只有 FileId 不再存在任何有效或可恢复关联时，才清除文件历史及未被其它 FileId 共享的物理原件块；目录类条目会递归解绑并永久清理整个子树，其他共享位置不受影响。数据库文件未必立即缩小。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
-            ["kind"]=Field("string","回收站返回的原始类别（含 v2_file/v2_ip_file LinkId）",["project","contract","ip","v2_general","v2_archive","v2_archive_folder","v2_file","v2_ip_file"]),
+            ["kind"]=Field("string","回收站返回的原始类别（含 v2_file/v2_ip_file LinkId）",["project","contract","ip","v2_archive_folder","v2_file","v2_ip_file"]),
             ["id"]=Field("integer","待永久清理的已删除记录 ID"),
             ["section"]=Field("string","档案类别，其他类型留空"),
             ["confirm"]=new Dictionary<string,object>{{"type","boolean"},{"description","必须明确传 true 确认永久删除"}}
@@ -166,11 +145,10 @@ static partial class McpLocal
     ];
 
     private static bool ExtraWrite(string name) => name is
-        "copy_contract" or "move_folder" or "reorder_entries" or
-        "reorder_records" or "reorder_archive_records" or
+        "copy_contract" or "move_folder" or "transfer_folder" or "reorder_entries" or
+        "reorder_records" or "reorder_folders" or
         "associate_file" or "copy_file" or "restore_file_link" or
-        "transfer_project" or "transfer_ip" or "transfer_archive" or
-        "transfer_general" or "restore_trash" or "purge_trash";
+        "transfer_project" or "transfer_ip" or "restore_trash" or "purge_trash";
 
     private static long Positive(JsonElement args,string key)=>ReadId(args,key);
     private static bool Bool(JsonElement args,string key)
@@ -222,7 +200,7 @@ static partial class McpLocal
                !item.TryGetProperty("kind",out var kind)||
                !item.TryGetProperty("id",out var id)||
                kind.ValueKind!=JsonValueKind.String ||
-               kind.GetString() is not ("folder" or "record") ||
+               kind.GetString()!="folder" ||
                id.ValueKind!=JsonValueKind.Number ||
                !id.TryGetInt64(out long number)||number<=0||!seen.Add(number))
                 throw new IOException("items 每项必须仅含 kind=folder/record 与唯一正整数 id。");
@@ -367,35 +345,6 @@ static partial class McpLocal
                 return await RequestAsync(client,HttpMethod.Post,
                     $"/api/v2/ip/{workspace}/{Positive(args,"ip_id")}/transfer",
                     TransferBody());
-            case "transfer_archive":
-                return await RequestAsync(client,HttpMethod.Post,
-                    $"/api/v2/ui/archive/{workspace}/"+
-                    Uri.EscapeDataString(ArchiveSection(workspace,args))+
-                    $"/{Positive(args,"archive_id")}/transfer",TransferBody(true,true));
-            case "transfer_general":
-                return await RequestAsync(client,HttpMethod.Post,
-                    $"/api/v2/ui/general/{workspace}/{Positive(args,"general_id")}/transfer",
-                    TransferBody());
-            case "move_folder":
-            {
-                if(workspace!="company")throw new McpKnownRejectionException("仅支持公司业务档案目录移动。");
-                string kind=RequiredText(args,"kind");
-                if(kind is not ("archive_folder" or "archive"))
-                    throw new McpKnownRejectionException("kind 仅允许 archive_folder 或 archive。");
-                long id=Positive(args,"entry_id");
-                long? parent=null;
-                if(args.TryGetProperty("parent_id",out var destination) &&
-                   destination.ValueKind!=JsonValueKind.Null)
-                {
-                    long target=Nonnegative(args,"parent_id");
-                    if(target>0)parent=target;
-                }
-                if(kind=="archive"&&parent is null)
-                    throw new McpKnownRejectionException("业务档案资料必须指定正整数父目录 parent_id。");
-                return await RequestAsync(client,HttpMethod.Post,
-                    $"/api/v2/folders/company/{kind}/{id}/move?section=achievement",
-                    new JsonObject{["parentId"]=parent});
-            }
             case "list_folder_entries":
             {
                 if(workspace!="company")throw new IOException("仅支持公司业务档案混排列举。");
@@ -423,7 +372,7 @@ static partial class McpLocal
                     $"/api/v2/ui/order/{workspace}/{kind}",
                     JsonSerializer.SerializeToNode(new {ids})!);
             }
-            case "reorder_archive_records":
+            case "reorder_folders":
             {
                 string section=RequiredText(args,"section");
                 if(ArchiveRules.Module(workspace,section)==null)
@@ -432,7 +381,7 @@ static partial class McpLocal
                     throw new McpKnownRejectionException("公司业务档案请使用 reorder_entries 保证目录混排。");
                 long[] ids=ReorderIds(args);
                 return await RequestAsync(client,HttpMethod.Post,
-                    $"/api/v2/ui/archive/{workspace}/{Uri.EscapeDataString(section)}/order",
+                    $"/api/v2/ui/folders/{workspace}/{Uri.EscapeDataString(section)}/order",
                     JsonSerializer.SerializeToNode(new {ids})!);
             }
             case "search_records":

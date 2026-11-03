@@ -79,7 +79,7 @@ static class NativeMcpFileQuerySmoke
 
             McpFilePage Page(string? missing=null,string? mode=null,int offset=0,
                 int limit=100,string w="company",long owner=0,string? kind=null)=>
-                (McpFilePage)NativeMcpFileQuery.Read(db,w,kind,null,owner,offset,
+                (McpFilePage)NativeMcpFileQuery.Read(db,w,kind,null,null,owner,offset,
                     limit,true,missing,mode);
             var original=Page();
             Check(original.Items.Count==6 &&

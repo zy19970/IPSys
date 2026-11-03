@@ -47,7 +47,7 @@ static class NativeArchiveUiHttpSmoke
         long general=await Add(client,"/api/v2/folders/company/general",
             new {general=new{title=marker+"综合资料"}});
         var baseSnapshot=await client.GetFromJsonAsync<JsonElement>(
-            "/api/v2/ui/archive/company");
+            "/api/v2/ui/folders/company");
         /* A02/N2: the browser snapshot has exactly one collection. A material and
            a folder are the same row, so both the former "record" and the former
            "general record" must arrive through folders[]. */
@@ -93,7 +93,7 @@ static class NativeArchiveUiHttpSmoke
             $"/api/v2/files/company/{ordinaryFile}/links",
             new{folderId=ordinaryChild}));
         var unified=await client.GetFromJsonAsync<JsonElement>(
-            "/api/v2/ui/archive/company");
+            "/api/v2/ui/folders/company");
         Assert(unified.GetProperty("folders").EnumerateArray().Any(x=>
             x.GetProperty("id").GetInt64()==ordinary &&
             x.GetProperty("category").GetString()=="合同模板" &&
@@ -131,7 +131,7 @@ static class NativeArchiveUiHttpSmoke
             await Json(await client.SendAsync(version));
         }
         var v=await client.GetFromJsonAsync<JsonElement>(
-            "/api/v2/ui/archive/company");
+            "/api/v2/ui/folders/company");
         Assert(v.GetProperty("folders").EnumerateArray().Any(x=>
             x.GetProperty("id").GetInt64()==child),
             "nested folders must be visible beyond first-level root");
@@ -164,13 +164,13 @@ static class NativeArchiveUiHttpSmoke
             .SequenceEqual(historyB),"unified folder preserves historical attachment bytes");
 
         var transferred=await Json(await client.PostAsJsonAsync(
-            $"/api/v2/ui/archive/company/achievement/{record}/transfer",
+            $"/api/v2/ui/folders/company/achievement/{record}/transfer",
             new{targetWorkspace="personal",targetSection="achievement",move=false}));
         long targetId=transferred.GetProperty("id").GetInt64();
         Assert(transferred.GetProperty("versions").GetInt32()==2,
             "whole archive copy includes historical versions");
         var personalUi=await client.GetFromJsonAsync<JsonElement>(
-            "/api/v2/ui/archive/personal");
+            "/api/v2/ui/folders/personal");
         Assert(personalUi.GetProperty("folders").EnumerateArray().Any(x=>
             x.GetProperty("id").GetInt64()==targetId &&
             x.GetProperty("section").GetString()=="achievement"),
@@ -200,7 +200,7 @@ static class NativeArchiveUiHttpSmoke
                 Uri.EscapeDataString(marker+"综合附件新版本.txt"));
             await Json(await client.SendAsync(revision));
         }
-        v=await client.GetFromJsonAsync<JsonElement>("/api/v2/ui/archive/company");
+        v=await client.GetFromJsonAsync<JsonElement>("/api/v2/ui/folders/company");
         var row=v.GetProperty("folders").EnumerateArray().First(x=>
             x.GetProperty("id").GetInt64()==general);
         var generalFiles=v.GetProperty("files").EnumerateArray().Where(x=>
@@ -218,8 +218,8 @@ static class NativeArchiveUiHttpSmoke
         // A duplicate in the same workspace gets a separate FileId and retains
         // both versions. Cross-workspace move copies independent physical bytes.
         var same=await Json(await client.PostAsJsonAsync(
-            $"/api/v2/ui/general/company/{general}/transfer",
-            new {targetWorkspace="company",move=false}));
+            $"/api/v2/ui/folders/company/general/{general}/transfer",
+            new {targetWorkspace="company",targetSection="general",move=false}));
         long duplicatedGeneral=same.GetProperty("id").GetInt64();
         Assert(duplicatedGeneral!=general &&
             same.GetProperty("versions").GetInt32()==2,
@@ -233,14 +233,14 @@ static class NativeArchiveUiHttpSmoke
                 .SequenceEqual(generalRevision),
             "general clone has independent logical file history");
         var moved=await Json(await client.PostAsJsonAsync(
-            $"/api/v2/ui/general/company/{general}/transfer",
-            new {targetWorkspace="personal",move=true}));
+            $"/api/v2/ui/folders/company/general/{general}/transfer",
+            new {targetWorkspace="personal",targetSection="general",move=true}));
         long movedId=moved.GetProperty("id").GetInt64();
         Assert(moved.GetProperty("versions").GetInt32()==2 &&
             moved.GetProperty("newObjects").GetInt32()==2,
             "cross-workspace general move must clone every immutable object");
         using(var missing=await client.GetAsync(
-            $"/api/v2/folders/company/general/{general}"))
+            $"/api/v2/folders/company/archive_folder/{general}?section=general"))
             Assert(missing.StatusCode==System.Net.HttpStatusCode.NotFound,
                 "moving general record soft-deletes only the source record");
         var movedLinks=await client.GetFromJsonAsync<JsonElement>(
@@ -260,7 +260,7 @@ static class NativeArchiveUiHttpSmoke
                 x.GetProperty("parentId").ValueKind==JsonValueKind.Null)
             .Select(x=>x.GetProperty("id").GetInt64()).Reverse().ToArray();
         using(var order=await client.PostAsJsonAsync(
-            "/api/v2/ui/archive/company/certificate/order",
+            "/api/v2/ui/folders/company/certificate/order",
             new NativeIpUiOrderInput(certificateIds)))
             order.EnsureSuccessStatusCode();
         Console.WriteLine("N2-04 NATIVE ARCHIVE BROWSER SQLCIPHER PASS");

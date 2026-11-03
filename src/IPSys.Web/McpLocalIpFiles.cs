@@ -45,7 +45,8 @@ static partial class McpLocal
             if(!size.TryGetInt32(out limit)||limit is <1 or >200)
                 throw new IOException("limit 必须介于 1–200。");
         }
-        string kind=ReadString(args,"kind"),name=ReadString(args,"name");
+        string kind=ReadString(args,"kind"),section=ReadString(args,"section"),
+            name=ReadString(args,"name");
         long ownerId=args.TryGetProperty("owner_id",out var owner)&&
             owner.ValueKind!=JsonValueKind.Null?ReadId(args,"owner_id"):0;
         string missing="";
@@ -66,6 +67,7 @@ static partial class McpLocal
         string missingMode=ReadString(args,"missing_mode");
         var query=$"?paged=true&offset={offset}&limit={limit}&ownerId={ownerId}"+
             "&kind="+Uri.EscapeDataString(kind)+
+            "&section="+Uri.EscapeDataString(section)+
             "&name="+Uri.EscapeDataString(name)+
             "&missingFields="+Uri.EscapeDataString(missing)+
             "&missingMode="+Uri.EscapeDataString(missingMode);
@@ -123,17 +125,14 @@ static partial class McpLocal
         if(args.TryGetProperty("group_id",out _))
             throw new IOException("group_id 为已废弃的 V1 参数。追加版本请使用 on_conflict=update 与 file_id=FileId。");
         long folder=ReadId(args,"owner_id");
-        if(kind is not ("project" or "contract" or "ip" or "archive" or "general"))
+        if(kind is not ("project" or "contract" or "ip" or "archive_folder"))
             throw new IOException("文件归属类型无效。");
-        string section=kind=="archive"?ArchiveSection(workspace,args):
-            ReadString(args,"section","");
-        if(kind!="archive"&&section!="")
-            throw new McpKnownRejectionException("非归档文件类型不能指定 section。");
-        // A02/N2: "archive" and "general" are module names, not storage kinds.
-        // The owner of an attachment is always an archive_folder.
-        string ownerKind=kind is "archive" or "general"?
-            FolderKinds.ArchiveFolder:kind;
-        string ownerSection=kind=="general"?"general":section;
+        string section=ReadString(args,"section","");
+        if(kind=="archive_folder" && !ArchiveDirectoryScopes.Allowed(workspace,section))
+            throw new McpKnownRejectionException("普通文件夹上传必须明确指定合法的 section。");
+        if(kind!="archive_folder"&&section!="")
+            throw new McpKnownRejectionException("该业务类型不接受 section。");
+        string ownerKind=kind,ownerSection=section;
         await RequestAsync(client,HttpMethod.Get,
             V2Url(workspace,ownerKind,folder)+
             (ownerKind==FolderKinds.ArchiveFolder?

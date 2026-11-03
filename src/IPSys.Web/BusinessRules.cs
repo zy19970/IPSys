@@ -24,11 +24,10 @@ record IpInput(
     string? FirstPublishedDate, string? RegistrationDate,
     string? Category, string? Remarks, string? Tags);
 
-record ArchiveInput(string? Name, string? Category, string? Remarks, string? Tags, string? Year = null,long? FolderId = null);
 
 // TargetFolderId lets a caller name the destination outright instead of letting
 // the server guess a directory by matching the category text.
-record ArchiveTransfer(string TargetWorkspace,string TargetSection,bool Move,
+record FolderTransfer(string TargetWorkspace,string TargetSection,bool Move,
     long? TargetFolderId=null);
 record ArchiveFolderInput(string Name,long? ParentId,
     string? Category=null,string? Year=null,string? Tags=null,string? Remarks=null);
@@ -40,10 +39,8 @@ record FolderMutationInput(
     ContractInput? Contract = null,
     IpInput? Ip = null,
     long? ParentId = null,
-    ArchiveInput? Archive = null,
     ArchiveFolderInput? ArchiveFolder = null,
     string? Section = null,
-    TitleInput? General = null,
     // 与 parentId 等价的顶层别名，合同专用；解析与冲突判定见 ContractOwner。
     long? ProjectId = null);
 
@@ -154,12 +151,12 @@ static class IpRules
 static class ArchiveRules
 {
     private static string Clean(string? s) => s?.Trim() ?? "";
-    public static string? Validate(ArchiveInput value)
+    public static string? Validate(ArchiveFolderInput value)
     {
-        if (Clean(value.Name).Length is 0 or > 300) return "资料名称必填，最多 300 字。";
+        if (Clean(value.Name).Length is 0 or > 120) return "资料名称必填，最多 120 字。";
         foreach (var s in new[] {value.Category, value.Remarks, value.Tags})
             if (Clean(s).Length > 4000) return "字段内容过长。";
-        // The year is optional. Empty old records stay blank rather than guessing from notes.
+        // The year is optional.
         if(value.Year is not null && Clean(value.Year).Length>0 &&
            (!int.TryParse(Clean(value.Year),out int year) || year<1000 || year>9999 ||
             Clean(value.Year).Length!=4))
@@ -178,13 +175,3 @@ static class ArchiveRules
     };
 }
 
-static class GeneralRules
-{
-    public static string? Validate(TitleInput input)
-    {
-        if (string.IsNullOrWhiteSpace(input.Title)) return "名称不能为空。";
-        if (input.Title.Length > 300) return "名称不能超过 300 字。";
-        if ((input.Remarks?.Length??0)>4000) return "备注不能超过 4000 字。";
-        return null;
-    }
-}

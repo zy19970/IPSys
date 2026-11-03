@@ -23,7 +23,7 @@ static class NativeArchiveGeneralMilestoneSmoke
     private static async Task<byte[]> Export(HttpClient client,string kind,
         string workspace,string section,long id)
     {
-        string query=kind=="archive"?"?section="+section:"";
+        string query="?section="+section;
         using var response=await client.PostAsJsonAsync(
             $"/api/v2/excel/{workspace}/{kind}/export"+query,
             new ExcelExportInput("filtered",[id]));
@@ -33,7 +33,7 @@ static class NativeArchiveGeneralMilestoneSmoke
     private static async Task<JsonElement> Import(HttpClient client,string kind,
         string workspace,string section,string policy,byte[] bytes)
     {
-        string query="?policy="+policy+(kind=="archive"?"&section="+section:"");
+        string query="?policy="+policy+"&section="+section;
         return await Read(await client.PostAsync(
             $"/api/v2/excel/{workspace}/{kind}/import"+query,
             new ByteArrayContent(bytes)));
@@ -73,48 +73,6 @@ static class NativeArchiveGeneralMilestoneSmoke
         return buffer.ToArray();
     }
 
-    // Recreate the actual historical general layouts from a current six-column
-    // XLSX. Their original columns were A (name), C (remarks) and F (parent).
-    private static byte[] PreviousGeneral(byte[] workbook,int count)
-    {
-        int[] sourceColumns=count switch
-        {
-            1=>[0],2=>[0,2],3=>[0,2,5],
-            _=>throw new ArgumentOutOfRangeException(nameof(count))
-        };
-        using var input=new ZipArchive(new MemoryStream(workbook),ZipArchiveMode.Read);
-        using var buffer=new MemoryStream();
-        using(var output=new ZipArchive(buffer,ZipArchiveMode.Create,true))
-        foreach(var entry in input.Entries)
-        {
-            var copy=output.CreateEntry(entry.FullName);
-            using var src=entry.Open();
-            using var dst=copy.Open();
-            if(entry.FullName!="xl/worksheets/sheet1.xml")
-            {src.CopyTo(dst);continue;}
-            var xml=XDocument.Load(src);
-            XNamespace x="http://schemas.openxmlformats.org/spreadsheetml/2006/main";
-            foreach(var row in xml.Descendants(x+"sheetData").Elements(x+"row"))
-            {
-                var cells=row.Elements(x+"c").ToArray();
-                var rowNum=(string?)row.Attribute("r");
-                var selected=new List<XElement>();
-                for(int col=0;col<sourceColumns.Length;col++)
-                {
-                    string oldRef=$"{(char)('A'+sourceColumns[col])}{rowNum}";
-                    var cell=new XElement(cells.Single(c=>
-                        (string?)c.Attribute("r")==oldRef));
-                    cell.SetAttributeValue("r",$"{(char)('A'+col)}{rowNum}");
-                    selected.Add(cell);
-                }
-                foreach(var cell in cells)cell.Remove();
-                row.Add(selected);
-            }
-            xml.Save(dst);
-        }
-        return buffer.ToArray();
-    }
-
     // Prove importer dependency sorting independently from worksheet order.
     private static byte[] ReverseDataRows(byte[] workbook)
     {
@@ -141,15 +99,6 @@ static class NativeArchiveGeneralMilestoneSmoke
 
     public static async Task VerifyAsync(HttpClient client)
     {
-        var savedArchive=new ArchiveInput("原资质","企业资质","原备注","原标签",
-            "2026",42);
-        var sparseArchive=new ArchiveInput("原资质","企业资质","","新标签");
-        var mergedArchive=ExcelLedger.MergeExcelUpdate(sparseArchive,savedArchive);
-        Check(mergedArchive.Remarks=="原备注" &&
-              mergedArchive.Tags=="新标签" &&
-              mergedArchive.Year=="2026" &&
-              mergedArchive.FolderId==42,
-            "archive Excel blank cells retain metadata and folder/year identity");
         string mark="AG204-"+Guid.NewGuid().ToString("N")[..8];
         // A02/N2: ordinary materials are archive_folder; the Excel module name
         // ("archive"/"general") survives only in the workbook routes below.
@@ -207,8 +156,8 @@ static class NativeArchiveGeneralMilestoneSmoke
             section="achievement",archiveFolder=new{
                 name=mark+"深层资料",category="自定义业务标签",
                 parentId=nested,year="2024"}}))).GetProperty("id").GetInt64();
-        var nestedSheet=await Export(client,"archive","company","achievement",nestedRecord);
-        var nestedImport=await Import(client,"archive","company","achievement",
+        var nestedSheet=await Export(client,"archive_folder","company","achievement",nestedRecord);
+        var nestedImport=await Import(client,"archive_folder","company","achievement",
             "update",nestedSheet);
         Check(nestedImport.GetProperty("updated").GetInt32()==1 &&
               nestedImport.GetProperty("created").GetInt32()==0,
@@ -238,13 +187,13 @@ static class NativeArchiveGeneralMilestoneSmoke
             section="achievement",archiveFolder=new{
                 name=treeLeafName,parentId=treeChild,remarks="叶级备注"}})))
                 .GetProperty("id").GetInt64();
-        var rootWorkbook=await Export(client,"archive","company","achievement",treeRoot);
-        var rootSkip=await Import(client,"archive","company","achievement",
+        var rootWorkbook=await Export(client,"archive_folder","company","achievement",treeRoot);
+        var rootSkip=await Import(client,"archive_folder","company","achievement",
             "skip",rootWorkbook);
         Check(rootSkip.GetProperty("skipped").GetInt32()==1 &&
               rootSkip.GetProperty("failed").GetInt32()==0,
             "company achievement root with blank directory can round-trip");
-        var rootConflict=await Import(client,"archive","company","achievement",
+        var rootConflict=await Import(client,"archive_folder","company","achievement",
             "create",rootWorkbook);
         Check(rootConflict.GetProperty("failed").GetInt32()==1 &&
               rootConflict.GetProperty("errors")[0].GetProperty("error")
@@ -252,13 +201,13 @@ static class NativeArchiveGeneralMilestoneSmoke
             "same-parent Excel create yields actionable name conflict");
         byte[] fullTree;
         using(var response=await client.PostAsJsonAsync(
-            "/api/v2/excel/company/archive/export?section=achievement",
+            "/api/v2/excel/company/archive_folder/export?section=achievement",
             new ExcelExportInput("filtered",[treeRoot,treeChild,treeLeaf])))
         {
             response.EnsureSuccessStatusCode();
             fullTree=ReverseDataRows(await response.Content.ReadAsByteArrayAsync());
         }
-        var treeImport=await Import(client,"archive","personal","achievement",
+        var treeImport=await Import(client,"archive_folder","personal","achievement",
             "create",fullTree);
         Check(treeImport.GetProperty("created").GetInt32()==3 &&
               treeImport.GetProperty("failed").GetInt32()==0,
@@ -284,7 +233,7 @@ static class NativeArchiveGeneralMilestoneSmoke
               r0.GetProperty("businessData").GetProperty("year")
                   .GetString()=="2026",
             "three-level import preserves folder ancestry and all attributes");
-        var repeated=await Import(client,"archive","personal","achievement",
+        var repeated=await Import(client,"archive_folder","personal","achievement",
             "skip",fullTree);
         Check(repeated.GetProperty("skipped").GetInt32()==3 &&
               repeated.GetProperty("failed").GetInt32()==0,
@@ -312,21 +261,22 @@ static class NativeArchiveGeneralMilestoneSmoke
             $"/api/v2/files/company/folders/{certificate}/links");
         long link=files[0].GetProperty("id").GetInt64();
         var display=await client.GetFromJsonAsync<JsonElement>(
-            "/api/v2/ui/archive/company");
+            "/api/v2/ui/folders/company");
         Check(display.GetProperty("files").EnumerateArray().Any(x=>
             x.GetProperty("linkId").GetInt64()==link &&
             x.GetProperty("displayName").GetString()==mark+"资质.pdf"),
             "archive snapshot exposes per-link display name, not version filename");
-        byte[] workbook=await Export(client,"archive","company","certificate",certificate);
+        byte[] workbook=await Export(client,"archive_folder","company","certificate",certificate);
         Check(workbook.Length>750,"archive fixed XLSX export");
-        var legacyArchive=RewriteSheet(workbook,4);
-        var legacySkip=await Import(client,"archive","company","certificate",
-            "skip",legacyArchive);
-        Check(legacySkip.GetProperty("skipped").GetInt32()==1,
-            "historical 4-column archive XLSX remains importable");
-        var skip=await Import(client,"archive","company","certificate","skip",workbook);
+        // Old four-column layouts are deliberately rejected by the current contract.
+        using(var outdated=await client.PostAsync(
+            "/api/v2/excel/company/archive_folder/import?section=certificate&policy=skip",
+            new ByteArrayContent(RewriteSheet(workbook,4))))
+            Check(outdated.StatusCode==HttpStatusCode.BadRequest,
+                "retired four-column template is rejected");
+        var skip=await Import(client,"archive_folder","company","certificate","skip",workbook);
         Check(skip.GetProperty("skipped").GetInt32()==1,"native duplicate skipping");
-        var update=await Import(client,"archive","company","certificate","update",workbook);
+        var update=await Import(client,"archive_folder","company","certificate","update",workbook);
         Check(update.GetProperty("updated").GetInt32()==1,"native in-place update");
         var persisted=await client.GetFromJsonAsync<JsonElement>(
             $"{ca}/{certificate}?section=certificate");
@@ -337,7 +287,7 @@ static class NativeArchiveGeneralMilestoneSmoke
             && (await client.GetByteArrayAsync(
             $"/api/v2/files/company/{file}/versions/2/download")).SequenceEqual(revised),
             "Excel update retains complete original file history");
-        var personal=await Import(client,"archive","personal","certificate",
+        var personal=await Import(client,"archive_folder","personal","certificate",
             "create",workbook);
         Check(personal.GetProperty("created").GetInt32()==1,
             "personal archive import independent");
@@ -351,32 +301,13 @@ static class NativeArchiveGeneralMilestoneSmoke
             $"/api/v2/files/personal/folders/{personalId}/links");
         Check(emptyFiles.GetArrayLength()==0,"Excel does not copy attachments across workspaces");
 
-        byte[] generalWorkbook=await Export(client,"general","company","",general);
-        var legacyGeneral=RewriteSheet(generalWorkbook,1);
-        var legacyGeneralSkip=await Import(client,"general","company","",
-            "skip",legacyGeneral);
-        Check(legacyGeneralSkip.GetProperty("skipped").GetInt32()==1,
-            "historical 1-column general XLSX remains importable: "+
-            legacyGeneralSkip.GetRawText());
-        foreach(int columns in new[]{2,3})
-        {
-            // Actual old schemas: 名称/备注 and 名称/备注/所属目录.
-            // Updating via either must retain modern category, year and tags.
-            var previous=PreviousGeneral(generalWorkbook,columns);
-            var oldUpdate=await Import(client,"general","company","",
-                "update",previous);
-            Check(oldUpdate.GetProperty("updated").GetInt32()==1 &&
-                  oldUpdate.GetProperty("failed").GetInt32()==0,
-                "historical general "+columns+"-column workbook still updates");
-        }
-        var preservedGeneral=await client.GetFromJsonAsync<JsonElement>(
-            $"{cg}/{general}?section=general");
-        var preservedData=preservedGeneral.GetProperty("businessData");
-        Check(preservedData.GetProperty("category").GetString()=="综合分类" &&
-              preservedData.GetProperty("tags").GetString()=="资料标签;财务" &&
-              preservedData.GetProperty("year").GetString()=="2024",
-            "old general workbook columns do not clear new folder metadata");
-        var copied=await Import(client,"general","personal","","create",generalWorkbook);
+        byte[] generalWorkbook=await Export(client,"archive_folder","company","general",general);
+        using(var outdated=await client.PostAsync(
+            "/api/v2/excel/company/archive_folder/import?section=general&policy=skip",
+            new ByteArrayContent(RewriteSheet(generalWorkbook,1))))
+            Check(outdated.StatusCode==HttpStatusCode.BadRequest,
+                "retired one-column template is rejected");
+        var copied=await Import(client,"archive_folder","personal","general","create",generalWorkbook);
         Check(copied.GetProperty("created").GetInt32()==1,
             "native general fixed XLSX import");
         var copiedGeneral=await client.GetFromJsonAsync<JsonElement>(
@@ -391,7 +322,7 @@ static class NativeArchiveGeneralMilestoneSmoke
         updatedGeneral=RewriteSheet(updatedGeneral,99,"C2","");
         updatedGeneral=RewriteSheet(updatedGeneral,99,"D2","更新标签");
         updatedGeneral=RewriteSheet(updatedGeneral,99,"E2","2027");
-        var updatedGeneralReport=await Import(client,"general","personal","",
+        var updatedGeneralReport=await Import(client,"archive_folder","personal","",
             "update",updatedGeneral);
         Check(updatedGeneralReport.GetProperty("updated").GetInt32()==1 &&
               updatedGeneralReport.GetProperty("failed").GetInt32()==0,
@@ -416,13 +347,13 @@ static class NativeArchiveGeneralMilestoneSmoke
             .GetProperty("id").GetInt64();
         byte[] generalTree;
         using(var exported=await client.PostAsJsonAsync(
-            "/api/v2/excel/company/general/export",
+            "/api/v2/excel/company/archive_folder/export?section=general",
             new ExcelExportInput("filtered",[general,generalChild])))
         {
             exported.EnsureSuccessStatusCode();
             generalTree=ReverseDataRows(await exported.Content.ReadAsByteArrayAsync());
         }
-        var generalTreeResult=await Import(client,"general","personal","",
+        var generalTreeResult=await Import(client,"archive_folder","personal","",
             "skip",generalTree);
         Check(generalTreeResult.GetProperty("skipped").GetInt32()==1 &&
               generalTreeResult.GetProperty("created").GetInt32()==1 &&
@@ -440,30 +371,23 @@ static class NativeArchiveGeneralMilestoneSmoke
                   .GetString()=="下级类别",
             "general nested folder relationship and optional fields are retained");
 
-        var previousThree=PreviousGeneral(generalTree,3);
-        var legacyTreeUpdate=await Import(client,"general","personal","",
-            "update",previousThree);
-        Check(legacyTreeUpdate.GetProperty("updated").GetInt32()==2 &&
-              legacyTreeUpdate.GetProperty("failed").GetInt32()==0,
-            "historical three-column general workbook keeps nested path identity");
-
         var invalidGeneralChild=RewriteSheet(
-            await Export(client,"general","company","",generalChild),
+            await Export(client,"archive_folder","company","general",generalChild),
             99,"F2","不存在的上级目录");
-        var missingParent=await Import(client,"general","personal","",
+        var missingParent=await Import(client,"archive_folder","personal","",
             "create",invalidGeneralChild);
         Check(missingParent.GetProperty("failed").GetInt32()==1 &&
               missingParent.GetProperty("created").GetInt32()==0,
             "missing parent directory must report an error instead of guessing");
 
-        byte[] businessWorkbook=await Export(client,"archive","company","achievement",business);
-        var businessSkip=await Import(client,"archive","company","achievement",
+        byte[] businessWorkbook=await Export(client,"archive_folder","company","achievement",business);
+        var businessSkip=await Import(client,"archive_folder","company","achievement",
             "skip",businessWorkbook);
         Check(businessSkip.GetProperty("skipped").GetInt32()==1,
             "business directory-aware deduplication respects root");
         var yearAndFolder=RewriteSheet(businessWorkbook,99,"E2","2027");
         yearAndFolder=RewriteSheet(yearAndFolder,99,"B2","独立业务类别");
-        var changed=await Import(client,"archive","company","achievement",
+        var changed=await Import(client,"archive_folder","company","achievement",
             "update",yearAndFolder);
         Check(changed.GetProperty("updated").GetInt32()==1 &&
               changed.GetProperty("created").GetInt32()==0,
@@ -478,19 +402,19 @@ static class NativeArchiveGeneralMilestoneSmoke
                 .GetProperty("id").GetInt64()==root,
             "year/category change does not move archive out of its parent");
         var wrongFolder=RewriteSheet(businessWorkbook,99,"F2","不存在的目录");
-        var rejected=await Import(client,"archive","company","achievement",
+        var rejected=await Import(client,"archive_folder","company","achievement",
             "update",wrongFolder);
         Check(rejected.GetProperty("failed").GetInt32()==1 &&
               rejected.GetProperty("created").GetInt32()==0,
             "nonexistent directory cannot silently change parent or create record");
         using(var invalid=await client.PostAsync(
-            "/api/v2/excel/company/archive/import?section=certificate&policy=create",
+            "/api/v2/excel/company/archive_folder/import?section=certificate&policy=create",
             new ByteArrayContent(new byte[]{1,2,3,4})))
             Check(invalid.StatusCode==HttpStatusCode.BadRequest,
                 "invalid workbook rejected");
         using(var guest=new HttpClient{BaseAddress=client.BaseAddress})
         using(var denied=await guest.GetAsync(
-            "/api/v2/excel/company/archive/template?section=certificate"))
+            "/api/v2/excel/company/archive_folder/template?section=certificate"))
             Check(denied.StatusCode==HttpStatusCode.Unauthorized,"auth required");
 
         using(var removed=await client.DeleteAsync(

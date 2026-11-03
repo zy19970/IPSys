@@ -136,7 +136,8 @@ static partial class McpLocal
         },["workspace"]),
         Tool("list_files_page","分页查询 V2 文件关联；有缺项要求时指定 missing_fields=all 或字段列表及 missing_mode=any/all，将在 SQLCipher 内筛选并按 FileId 去重，返回每条 missingFields；原有无筛选语义不变。批量补录前按需读取 metadata 规范。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
-            ["kind"]=Field("string","业务资料类别",["project","contract","ip","archive","general"]),
+            ["kind"]=Field("string","业务资料类别",["project","contract","ip","archive_folder"]),
+            ["section"]=Field("string","普通资料 kind=archive_folder 时必须明确模块 section"),
             ["owner_id"]=Field("integer","仅返回指定所属 FolderId 的关联"),
             ["name"]=Field("string","文件位置显示名或文件名的部分匹配"),
             ["offset"]=Field("integer","从零开始的偏移量（默认 0）"),
@@ -235,8 +236,8 @@ static partial class McpLocal
         },["workspace","ip_id","file_id","link_id"]),
         Tool("upload_files","上传前默认应按需读取 upload 规范并分析原件、生成可靠属性；用户明确只上传则跳过分析。上传到 V2 项目/合同/知识产权/档案/综合资料 FolderId；同内容必须显式确认 duplicate_mode；追加版本需为本 Folder 已关联 FileId。每份上限 8 GiB；大文件建议使用 start_upload_task 异步上传并轮询状态。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
-            ["kind"]=Field("string","原件归属类别",["project","contract","ip","archive","general"]),
-            ["section"]=Field("string","kind=archive 必填；公司可用 certificate、achievement、party（党团建设），个人可用 certificate、achievement、academic"),
+            ["kind"]=Field("string","原件归属类别",["project","contract","ip","archive_folder"]),
+            ["section"]=Field("string","kind=archive_folder 必填；公司可用 certificate、achievement、party、general，个人可用 certificate、achievement、academic、general"),
             ["owner_id"]=Field("integer","归属资料 FolderId"),
             ["paths"]=new {type="array",minItems=1,maxItems=20,items=Field("string","本机绝对文件路径")},
             ["on_conflict"]=Field("string","new 独立原件；update 更新已有原件版本",["new","update"]),
@@ -255,8 +256,8 @@ static partial class McpLocal
                 },[]),
             Tool("start_upload_task","上传前按需读取 upload 规范并处理属性；异步启动 1–20 个本机原件上传，立即返回 request_id；其余参数与 upload_files 相同。请使用 get_task_status/cancel_task。",new(){
                 ["workspace"]=Field("string","工作区",Workspaces),
-                ["kind"]=Field("string","归属资源",["project","contract","ip","archive","general"]),
-                ["section"]=Field("string","kind=archive 必填；公司 certificate/achievement/party（党团建设），个人 certificate/achievement/academic"),
+                ["kind"]=Field("string","归属资源",["project","contract","ip","archive_folder"]),
+                ["section"]=Field("string","kind=archive_folder 必填；公司 certificate/achievement/party/general，个人 certificate/achievement/academic/general"),
                 ["owner_id"]=Field("integer","资料 FolderId"),
                 ["paths"]=new {type="array",minItems=1,maxItems=20,items=Field("string","本机绝对路径")},
                 ["on_conflict"]=Field("string","new 或 update",["new","update"]),
@@ -281,7 +282,7 @@ static partial class McpLocal
 
     private static bool LongFileOperation(string name)=>name is
         "upload_files" or "download_file_version" or "copy_file" or
-        "transfer_project" or "transfer_ip" or "transfer_archive" or "transfer_general";
+        "transfer_project" or "transfer_ip" or "transfer_folder";
 
     private static object Success(JsonElement id,object value)=>new {jsonrpc="2.0",id,result=value};
     private static object Error(JsonElement id,int code,string msg)=>new {
@@ -739,7 +740,7 @@ static partial class McpLocal
         {
             string kind=p[4] switch {
                 "project"=>"项目","contract"=>"合同","ip"=>"知识产权",
-                "archive"=>"档案","general"=>"综合资料",_=>"资料"
+                "archive_folder"=>"资料文件夹",_=>"资料"
             };
             return kind+"不存在或当前工作区无权访问（id="+
                 (p.Length>5?p[5]:"未知")+"）";
@@ -837,17 +838,12 @@ static partial class McpLocal
            "get_file_details" or "list_file_links" or
            "update_file_metadata" or "download_file_version" or
            "associate_file" or "copy_file" or "restore_file_link" or
-           "transfer_project" or "transfer_ip" or "transfer_archive" or
-           "transfer_general" or "move_folder" or "list_folder_entries" or
-           "reorder_entries" or "reorder_records" or "reorder_archive_records" or
+           "transfer_project" or "transfer_ip" or "list_folder_entries" or
+           "reorder_entries" or "reorder_records" or "reorder_folders" or
            "search_records" or "list_trash" or "restore_trash" or "purge_trash")
             return await ExecuteExtraAsync(client,workspace,name,args,stop);
-        if(name is "list_party_archives" or "create_party_archive" or
-           "update_party_archive" or "delete_party_archive" or
-           "list_archives" or "create_archive" or "update_archive" or
-           "delete_archive" or "list_archive_folders" or "create_archive_folder" or
-           "update_archive_folder" or "delete_archive_folder" or "move_archive_entry" or "list_general" or
-           "create_general" or "update_general" or "delete_general")
+        if(name is "list_folders" or "create_folder" or "update_folder" or
+           "delete_folder" or "move_folder" or "transfer_folder")
             return await ExecuteArchiveAsync(client,workspace,name,args);
         if(name=="list_projects")
         {
@@ -890,8 +886,8 @@ static partial class McpLocal
             case "upload_files":
             {
                 string kind=ReadString(args,"kind");
-                if(kind is not ("project" or "contract" or "ip" or "archive" or "general"))
-                    throw new IOException("kind 只能为 project、contract、ip、archive 或 general");
+                if(kind is not ("project" or "contract" or "ip" or "archive_folder"))
+                    throw new IOException("kind 只能为 project、contract、ip 或 archive_folder");
                 return await IpUploadFiles(client,workspace,args,stop,kind,progress);
             }
             default:throw new IOException("不支持的 MCP 工具："+name);

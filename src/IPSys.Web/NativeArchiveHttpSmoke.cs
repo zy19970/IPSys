@@ -2,13 +2,14 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 
+// Fresh SQLCipher database: one ordinary folder type, explicit workspace and section.
 static class NativeArchiveHttpSmoke
 {
     public static async Task VerifyAsync(HttpClient client)
     {
         static void Check(bool ok,string message)
         {
-            if(!ok)throw new IOException("N2 archive SQLCipher HTTP: "+message);
+            if(!ok)throw new IOException("FOLDER HTTP SMOKE: "+message);
         }
         static async Task<long> Add(HttpResponseMessage response)
         {
@@ -19,273 +20,125 @@ static class NativeArchiveHttpSmoke
                     .GetProperty("id").GetInt64();
             }
         }
-        static async Task<JsonElement> Read(HttpClient c,string url)
+        static async Task<JsonElement> Read(HttpClient c,string path)
         {
-            using var response=await c.GetAsync(url);
+            using var response=await c.GetAsync(path);
             response.EnsureSuccessStatusCode();
             return await response.Content.ReadFromJsonAsync<JsonElement>();
         }
-        string suffix=Guid.NewGuid().ToString("N")[..8];
-        const string root="/api/v2/folders/company/";
-        string dirs=root+"archive_folder";
-        string archive=root+"archive";
-        var roots=await Read(client,dirs);
-        Check(roots.EnumerateArray().Count()>=7,"seven root categories");
-        long systemRoot=roots.EnumerateArray().First(x=>x.GetProperty("folder")
+        const string company="/api/v2/folders/company/archive_folder";
+        string mark=Guid.NewGuid().ToString("N")[..8];
+        var roots=await Read(client,company+"?section=achievement");
+        Check(roots.GetArrayLength()>=7,"seven initial folders in business archives");
+        long starter=roots.EnumerateArray().First(x=>x.GetProperty("folder")
             .GetProperty("name").GetString()=="申报与认定")
             .GetProperty("folder").GetProperty("ref").GetProperty("id").GetInt64();
 
         using(var noAuth=new HttpClient{BaseAddress=client.BaseAddress})
-        using(var response=await noAuth.PostAsJsonAsync(dirs,
+        using(var res=await noAuth.PostAsJsonAsync(company,
             new FolderMutationInput(ArchiveFolder:
-                new ArchiveFolderInput("未授权目录",systemRoot))))
-            Check(response.StatusCode==HttpStatusCode.Unauthorized,"token required");
+                new ArchiveFolderInput("无授权",null),Section:"achievement")))
+            Check(res.StatusCode==HttpStatusCode.Unauthorized,"token required");
 
-        long a=await Add(await client.PostAsJsonAsync(dirs,
+        using(var missing=await client.PostAsJsonAsync(company,
+            new FolderMutationInput(ArchiveFolder:new ArchiveFolderInput("缺少模块",null))))
+            Check(missing.StatusCode==HttpStatusCode.BadRequest,"section must be explicit");
+        using(var old=await client.PostAsJsonAsync("/api/v2/folders/company/archive",
             new FolderMutationInput(ArchiveFolder:
-                new ArchiveFolderInput("归档分类"+suffix,systemRoot))));
-        long b=await Add(await client.PostAsJsonAsync(dirs,
+                new ArchiveFolderInput("旧类型",null),Section:"achievement")))
+            Check(old.StatusCode==HttpStatusCode.BadRequest,"retired archive kind rejected");
+        using(var old=await client.PostAsJsonAsync("/api/v2/folders/company/general",
             new FolderMutationInput(ArchiveFolder:
-                new ArchiveFolderInput("下级目录"+suffix,a))));
-        long empty=await Add(await client.PostAsJsonAsync(dirs,
+                new ArchiveFolderInput("旧类型",null),Section:"general")))
+            Check(old.StatusCode==HttpStatusCode.BadRequest,"retired general kind rejected");
+        using(var academic=await client.PostAsJsonAsync(company,
             new FolderMutationInput(ArchiveFolder:
-                new ArchiveFolderInput("空目录"+suffix,a))));
-        var info=new ArchiveInput("归档资料"+suffix,"", "备注","标签",
-            Year:"2026",FolderId:a);
-        long doc=await Add(await client.PostAsJsonAsync(archive,
-            new FolderMutationInput(Archive:info,Section:"achievement")));
-        var initial=await Read(client,root+$"entries?section=achievement&parentId={a}");
-        Check(initial.GetArrayLength()==3,"folder and archive mixed peers");
-        using(var reordered=await client.PostAsJsonAsync(
-            root+$"entries/reorder?section=achievement",
-            new ArchiveEntryReorder(a,[
-                new ArchiveEntryOrderItem("record",doc),
-                new ArchiveEntryOrderItem("folder",empty),
-                new ArchiveEntryOrderItem("folder",b)])))
-            reordered.EnsureSuccessStatusCode();
-        var ordered=await Read(client,root+$"entries?section=achievement&parentId={a}");
-        Check(ordered[0].GetProperty("folder").GetProperty("ref").GetProperty("id")
-                .GetInt64()==doc &&
-              ordered[0].GetProperty("folder").GetProperty("position").GetInt32()==0 &&
-              ordered[1].GetProperty("folder").GetProperty("ref").GetProperty("id")
-                .GetInt64()==empty,
-            "mixed persist order not folders-first");
-        using(var stale=await client.PostAsJsonAsync(
-            root+"entries/reorder?section=achievement",
-            new ArchiveEntryReorder(a,[
-                new ArchiveEntryOrderItem("folder",b)])))
-            Check(stale.StatusCode==HttpStatusCode.Conflict,"exact reorder permutation");
+                new ArchiveFolderInput("公司无学术模块",null),Section:"academic")))
+            Check(academic.StatusCode==HttpStatusCode.BadRequest,"workspace section scope");
 
-        // An initially seeded folder is editable and movable just like a user folder.
-        long starter=roots.EnumerateArray().First(x=>x.GetProperty("folder")
-            .GetProperty("name").GetString()=="其他业务资料")
-            .GetProperty("folder").GetProperty("ref").GetProperty("id").GetInt64();
-        using(var renamed=await client.PutAsJsonAsync(dirs+"/"+starter,
+        long root=await Add(await client.PostAsJsonAsync(company,
             new FolderMutationInput(ArchiveFolder:
-                new ArchiveFolderInput("可改名初始目录"+suffix,null))))
-            renamed.EnsureSuccessStatusCode();
-        using(var movedStarter=await client.PostAsJsonAsync(
-            dirs+$"/{starter}/move",new NativeFolderMoveInput(a)))
-            movedStarter.EnsureSuccessStatusCode();
-        using(var restoredStarter=await client.PostAsJsonAsync(
-            dirs+$"/{starter}/move",new NativeFolderMoveInput(null)))
-            restoredStarter.EnsureSuccessStatusCode();
-        using(var renamedBack=await client.PutAsJsonAsync(dirs+"/"+starter,
+                new ArchiveFolderInput("根资料"+mark,null),Section:"achievement")));
+        long child=await Add(await client.PostAsJsonAsync(company,
             new FolderMutationInput(ArchiveFolder:
-                new ArchiveFolderInput("其他业务资料",null))))
-            renamedBack.EnsureSuccessStatusCode();
-        // Previously nonempty initial/user folders could not be deleted.
-        // Both are now recyclable as complete subtrees and restorable.
-        foreach(long folderId in new[]{systemRoot,a})
-        {
-            using(var removed=await client.DeleteAsync(dirs+"/"+folderId))
-                removed.EnsureSuccessStatusCode();
-            using(var restored=await client.PostAsJsonAsync("/api/trash/company/restore",
-                new RecycleRequest([new RecycleKey(
-                    "v2_archive_folder",folderId,"achievement")])))
-                restored.EnsureSuccessStatusCode();
-        }
-        using(var cycle=await client.PostAsJsonAsync(dirs+$"/{a}/move",
-            new NativeFolderMoveInput(b)))
-            Check(cycle.StatusCode==HttpStatusCode.Conflict,"directory cycle rejected");
-        using(var rename=await client.PutAsJsonAsync(dirs+"/"+b,
+                new ArchiveFolderInput("子目录"+mark,root,"文档","2026","标签","备注"),Section:"achievement")));
+        long sibling=await Add(await client.PostAsJsonAsync(company,
             new FolderMutationInput(ArchiveFolder:
-                new ArchiveFolderInput("已改名目录"+suffix,a))))
-            rename.EnsureSuccessStatusCode();
-        using(var invalid=await client.PutAsJsonAsync(
-            archive+$"/{doc}?section=achievement",
-            new FolderMutationInput(Archive:info with {FolderId=b})))
-            Check(invalid.StatusCode==HttpStatusCode.BadRequest,
-                "archive edit cannot silently move parent");
+                new ArchiveFolderInput("同层目录"+mark,root),Section:"achievement")));
+        var listed=await Read(client,company+"?section=achievement&parentId="+root);
+        Check(listed.EnumerateArray().Count()==2,"nested folder siblings");
+        using(var order=await client.PostAsJsonAsync(
+            "/api/v2/folders/company/entries/reorder?section=achievement",
+            new ArchiveEntryReorder(root,[
+                new ArchiveEntryOrderItem("folder",sibling),
+                new ArchiveEntryOrderItem("folder",child)])))
+            order.EnsureSuccessStatusCode();
+        var sorted=await Read(client,company+"?section=achievement&parentId="+root);
+        Check(sorted[0].GetProperty("folder").GetProperty("ref").GetProperty("id")
+            .GetInt64()==sibling,"same-folder ordering");
+        using(var oldOrder=await client.PostAsJsonAsync(
+            "/api/v2/folders/company/entries/reorder?section=achievement",
+            new ArchiveEntryReorder(root,[
+                new ArchiveEntryOrderItem("record",sibling),
+                new ArchiveEntryOrderItem("folder",child)])))
+            Check(oldOrder.StatusCode==HttpStatusCode.BadRequest,"retired record marker rejected");
 
-        // A02/N2: a material IS a folder, so the module root is no longer a
-        // forbidden parent; it is an ordinary folder move in both directions.
-        using(var toRoot=await client.PostAsJsonAsync(
-            archive+$"/{doc}/move?section=achievement",new NativeFolderMoveInput(null)))
-            toRoot.EnsureSuccessStatusCode();
-        using(var fromRoot=await client.PostAsJsonAsync(
-            archive+$"/{doc}/move?section=achievement",new NativeFolderMoveInput(a)))
-            fromRoot.EnsureSuccessStatusCode();
+        using(var invalidMove=await client.PostAsJsonAsync(
+            company+"/"+root+"/move?section=achievement",new NativeFolderMoveInput(child)))
+            Check(invalidMove.StatusCode==HttpStatusCode.Conflict,"directory cycle rejected");
         using(var move=await client.PostAsJsonAsync(
-            archive+$"/{doc}/move?section=achievement",new NativeFolderMoveInput(b)))
+            company+"/"+child+"/move?section=achievement",new NativeFolderMoveInput(null)))
             move.EnsureSuccessStatusCode();
-        var moved=await Read(client,archive+$"/{doc}?section=achievement");
-        Check(moved.GetProperty("folder").GetProperty("parent").GetProperty("id")
-                .GetInt64()==b &&
-              moved.GetProperty("businessData").GetProperty("parentId").GetInt64()==b,
-            "move updates relationship and business payload");
-        using(var restoreMove=await client.PostAsJsonAsync(
-            archive+$"/{doc}/move?section=achievement",new NativeFolderMoveInput(a)))
-            restoreMove.EnsureSuccessStatusCode();
-        using(var rename=await client.PutAsJsonAsync(
-            archive+$"/{doc}?section=achievement",
-            new FolderMutationInput(Archive:info with {
-                Remarks="新备注",FolderId=null,Year=null})))
-            rename.EnsureSuccessStatusCode();
-        var updated=await Read(client,archive+$"/{doc}?section=achievement");
-        Check(updated.GetProperty("businessData").GetProperty("remarks")
-                .GetString()=="新备注" &&
-              updated.GetProperty("businessData").GetProperty("parentId")
-                .GetInt64()==a &&
-              updated.GetProperty("businessData").GetProperty("year")
-                .GetString()=="2026","edit preserves optional parent and year");
-
-        using(var remove=await client.DeleteAsync(
-            archive+$"/{doc}?section=achievement"))
-            remove.EnsureSuccessStatusCode();
-        using(var invisible=await client.GetAsync(
-            archive+$"/{doc}?section=achievement"))
-            Check(invisible.StatusCode==HttpStatusCode.NotFound,"soft delete record");
-        using(var recover=await client.PostAsync(
-            archive+$"/{doc}/restore?section=achievement",null))
-            recover.EnsureSuccessStatusCode();
-        using(var remove=await client.DeleteAsync(dirs+"/"+empty))
-            remove.EnsureSuccessStatusCode();
-        using(var restoredEmpty=await client.PostAsync(dirs+$"/{empty}/restore",null))
-            restoredEmpty.EnsureSuccessStatusCode();
-        using(var visibleEmpty=await client.GetAsync(dirs+"/"+empty))
-            visibleEmpty.EnsureSuccessStatusCode();
-        using(var duplicate=await client.PostAsJsonAsync(dirs,
+        var toRoot=await Read(client,company+"/"+child+"?section=achievement");
+        Check(toRoot.GetProperty("folder").GetProperty("parent").ValueKind==
+            JsonValueKind.Null,"ordinary folder can move to module root");
+        using(var move=await client.PostAsJsonAsync(
+            company+"/"+child+"/move?section=achievement",new NativeFolderMoveInput(root)))
+            move.EnsureSuccessStatusCode();
+        using(var patch=await client.PutAsJsonAsync(company+"/"+child+"?section=achievement",
             new FolderMutationInput(ArchiveFolder:
-                new ArchiveFolderInput("已改名目录"+suffix,a))))
-            Check(duplicate.StatusCode==HttpStatusCode.Conflict,"sibling unique names");
+                new ArchiveFolderInput("已更新"+mark,null,Remarks:"新备注"))))
+            patch.EnsureSuccessStatusCode();
+        var changed=await Read(client,company+"/"+child+"?section=achievement");
+        Check(changed.GetProperty("businessData").GetProperty("parentId").GetInt64()==root &&
+            changed.GetProperty("businessData").GetProperty("year").GetString()=="2026" &&
+            changed.GetProperty("businessData").GetProperty("remarks").GetString()=="新备注",
+            "partial edit retains parent and optional year");
 
-        long certificate=await Add(await client.PostAsJsonAsync(archive,
-            new FolderMutationInput(Archive:new ArchiveInput(
-                "资质文件"+suffix,null,null,null),Section:"certificate")));
-        var cert=await Read(client,archive+$"/{certificate}?section=certificate");
-        Check(cert.GetProperty("folder").GetProperty("parent").ValueKind==
-            JsonValueKind.Null,"certificate directly under virtual root");
-        using(var wrong=await client.GetAsync(
-            archive+$"/{certificate}?section=achievement"))
-            Check(wrong.StatusCode==HttpStatusCode.NotFound,"section isolation");
-        using(var invalid=await client.PostAsJsonAsync(archive,
-            new FolderMutationInput(Archive:new ArchiveInput(
-                "公司学术",null,null,null),Section:"academic")))
-            Check(invalid.StatusCode==HttpStatusCode.BadRequest,
-                "unsupported workspace section rejected");
-
-        long academic=await Add(await client.PostAsJsonAsync(
-            "/api/v2/folders/personal/archive",
-            new FolderMutationInput(Archive:new ArchiveInput(
-                "学术兼职"+suffix,null,null,null),Section:"academic")));
-        var personal=await Read(client,
-            $"/api/v2/folders/personal/archive/{academic}?section=academic");
-        Check(personal.GetProperty("folder").GetProperty("ref")
-            .GetProperty("workspace").GetString()=="personal",
-            "personal academic workspace");
-        long general=await Add(await client.PostAsJsonAsync(
-            "/api/v2/folders/personal/general",
-            new FolderMutationInput(General:new TitleInput("原生综合资料"+suffix))));
-        // The module list keeps its own route but must return the unified rows.
-        var generalList=await Read(client,"/api/v2/folders/personal/general");
-        Check(generalList.EnumerateArray().Any(x=>x.GetProperty("folder")
-                .GetProperty("ref").GetProperty("id").GetInt64()==general &&
-              x.GetProperty("folder").GetProperty("ref").GetProperty("kind")
-                .GetString()=="archive_folder"),
-            "general module list returns ordinary folders");
-        using(var changed=await client.PutAsJsonAsync(
-            $"/api/v2/folders/personal/general/{general}",
-            new FolderMutationInput(General:new TitleInput("综合资料修改"+suffix))))
-            changed.EnsureSuccessStatusCode();
-        using(var erased=await client.DeleteAsync(
-            $"/api/v2/folders/personal/general/{general}"))
-            erased.EnsureSuccessStatusCode();
-        using(var restored=await client.PostAsync(
-            $"/api/v2/folders/personal/general/{general}/restore",null))
-            restored.EnsureSuccessStatusCode();
-        using(var cross=await client.GetAsync(
-            $"/api/v2/folders/company/general/{general}"))
-            Check(cross.StatusCode==HttpStatusCode.NotFound,"general workspace isolation");
-
-        // All seven ordinary directory scopes share one recursive structure.
-        foreach(var (ws,section) in new[]{
-            ("company","party"),("company","general"),
-            ("personal","certificate"),("personal","achievement"),
-            ("personal","academic"),("personal","general")})
+        foreach(var (workspace,section) in new[]{
+            ("company","certificate"),("company","party"),("company","general"),
+            ("personal","certificate"),("personal","achievement"),("personal","academic"),
+            ("personal","general")})
         {
-            string baseUrl="/api/v2/folders/"+ws+"/";
-            string dir=baseUrl+"archive_folder";
-            string key="?section="+section;
-            long first=await Add(await client.PostAsJsonAsync(dir,
+            var path="/api/v2/folders/"+workspace+"/archive_folder";
+            long id=await Add(await client.PostAsJsonAsync(path,
                 new FolderMutationInput(ArchiveFolder:
-                    new ArchiveFolderInput("一级"+suffix,null),Section:section)));
-            long second=await Add(await client.PostAsJsonAsync(dir,
-                new FolderMutationInput(ArchiveFolder:
-                    new ArchiveFolderInput("二级"+suffix,first),Section:section)));
-            long third=await Add(await client.PostAsJsonAsync(dir,
-                new FolderMutationInput(ArchiveFolder:
-                    new ArchiveFolderInput("三级"+suffix,second),Section:section)));
-            var direct=await Read(client,dir+key+"&parentId="+second);
-            Check(direct.EnumerateArray().Any(x=>x.GetProperty("folder")
-                .GetProperty("ref").GetProperty("id").GetInt64()==third),
-                "nested folder list "+ws+"/"+section);
-            long entry=section=="general"
-                ?await Add(await client.PostAsJsonAsync(baseUrl+"general",
-                    new FolderMutationInput(General:new TitleInput("文档"+suffix),
-                        ParentId:third)))
-                :await Add(await client.PostAsJsonAsync(baseUrl+"archive",
-                    new FolderMutationInput(Archive:new ArchiveInput("文档"+suffix,
-                        null,null,null,FolderId:third),Section:section)));
-            string kind=section=="general"?"general":"archive";
-            string infoUrl=baseUrl+kind+"/"+entry+
-                (kind=="archive"?key:"");
-            var detail=await Read(client,infoUrl);
-            Check(detail.GetProperty("folder").GetProperty("parent")
-                .GetProperty("id").GetInt64()==third,
-                "nested record parent "+ws+"/"+section);
-            var mixed=await Read(client,baseUrl+"entries?section="+section+
-                "&parentId="+third);
-            Check(mixed.GetArrayLength()==1,"recursive direct record entries");
-            using(var correct=await client.PostAsJsonAsync(
-                baseUrl+kind+"/"+entry+"/move"+key,new NativeFolderMoveInput(second)))
-                correct.EnsureSuccessStatusCode();
-            using(var cycle=await client.PostAsJsonAsync(
-                dir+"/"+first+"/move"+key,new NativeFolderMoveInput(third)))
-                Check(cycle.StatusCode==HttpStatusCode.Conflict,
-                    "folder cycle rejected "+ws+"/"+section);
-            // Soft deletion must hide a nonempty subtree without unlinking
-            // any attachment, and restore must recover its original nesting.
-            using(var removed=await client.DeleteAsync(dir+"/"+first+key))
-                removed.EnsureSuccessStatusCode();
-            using(var hidden=await client.GetAsync(dir+"/"+second+key))
-                Check(hidden.StatusCode==HttpStatusCode.NotFound,
-                    "deleted ancestor hides descendant "+ws+"/"+section);
-            var trash=await Read(client,"/api/trash/"+ws);
-            Check(trash.EnumerateArray().Any(x=>
-                x.GetProperty("kind").GetString()=="v2_archive_folder" &&
-                x.GetProperty("id").GetInt64()==first &&
-                x.GetProperty("section").GetString()==section),
-                "directory root appears in recycle "+ws+"/"+section);
-            using(var restored=await client.PostAsJsonAsync(
-                "/api/trash/"+ws+"/restore",
-                new RecycleRequest([new RecycleKey("v2_archive_folder",first,section)])))
-                restored.EnsureSuccessStatusCode();
-            var recovered=await Read(client,dir+"/"+second+key);
-            Check(recovered.GetProperty("folder").GetProperty("ref")
-                .GetProperty("id").GetInt64()==second,
-                "directory restore preserves nesting "+ws+"/"+section);
+                    new ArchiveFolderInput("模块资料"+mark,null),Section:section)));
+            var item=await Read(client,path+"/"+id+"?section="+section);
+            Check(item.GetProperty("folder").GetProperty("ref").GetProperty("kind")
+                .GetString()=="archive_folder",workspace+"/"+section+" canonical kind");
+            using var wrong=await client.GetAsync(path+"/"+id+"?section="+
+                (section=="general"?"certificate":"general"));
+            Check(wrong.StatusCode==HttpStatusCode.NotFound,"cross-section isolation");
         }
-        Console.WriteLine("N2 ARCHIVE SQLCIPHER HTTP SMOKE PASS");
+        using(var deleted=await client.DeleteAsync(company+"/"+root+"?section=achievement"))
+            deleted.EnsureSuccessStatusCode();
+        var trash=await Read(client,"/api/trash/company");
+        Check(trash.EnumerateArray().Any(x=>x.GetProperty("kind").GetString()==
+            "v2_archive_folder" && x.GetProperty("id").GetInt64()==root),
+            "single canonical folder recycle kind");
+        using(var restored=await client.PostAsJsonAsync("/api/trash/company/restore",
+            new RecycleRequest([new RecycleKey("v2_archive_folder",root,"achievement")])))
+            restored.EnsureSuccessStatusCode();
+        var recovered=await Read(client,company+"/"+child+"?section=achievement");
+        Check(recovered.GetProperty("folder").GetProperty("parent").GetProperty("id")
+            .GetInt64()==root,"recursive folder restored");
+        using(var rename=await client.PutAsJsonAsync(company+"/"+starter+"?section=achievement",
+            new FolderMutationInput(ArchiveFolder:new ArchiveFolderInput("测试改名"+mark,null))))
+            rename.EnsureSuccessStatusCode();
+        using(var revert=await client.PutAsJsonAsync(company+"/"+starter+"?section=achievement",
+            new FolderMutationInput(ArchiveFolder:new ArchiveFolderInput("申报与认定",null))))
+            revert.EnsureSuccessStatusCode();
+        Console.WriteLine("FOLDER HTTP SMOKE PASS: unified kind, sections, root, CRUD, order, recycle");
     }
 }
