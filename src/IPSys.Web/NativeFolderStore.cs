@@ -13,8 +13,7 @@ static class NativeFolderStore
 
     private static (string Name,string Json) Payload(string kind, FolderMutationInput x)
     {
-        if (x.Archive is not null || x.ArchiveFolder is not null ||
-            x.General is not null || x.Section is not null)
+        if (x.ArchiveFolder is not null || x.Section is not null)
             throw new ArgumentException("业务属性和文件夹类型不匹配。");
         switch (kind)
         {
