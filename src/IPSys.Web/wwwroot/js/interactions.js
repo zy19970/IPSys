@@ -2015,6 +2015,7 @@ function bindOverlays() {
 
 async function deleteNodes(nodes) {
   if (!nodes.length) return;
+  const requestedWorkspace = VaultStore.ws;
 
   /* 相同 LinkId 的多个历史版本只有一次解绑操作。
      不同 LinkId 即便共用 FileId，也必须各自单独处理。 */
@@ -2042,6 +2043,8 @@ async function deleteNodes(nodes) {
     danger: true,
   });
   if (!ok) return;
+  if (VaultStore.ws !== requestedWorkspace)
+    return toast("工作区已经切换，请重新选择删除目标");
   if (Drive.batchDeleteActive) return toast("已有批量删除正在执行");
   Drive.batchDeleteActive = true;
   try {

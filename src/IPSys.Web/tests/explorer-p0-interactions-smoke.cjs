@@ -67,6 +67,25 @@ const locking=extract('async function lockVault() {','function bindSettings()');
  assert.equal(requested.length,0,'Canceled deletion must not send requests');
  assert.equal(refreshes,1,'Canceled deletion must not refresh');
 
+ /* If the user changes workspace during confirmation, no DELETE starts. */
+ allow=true;
+ requested.length=0;
+ const originalConfirm=context.askConfirm;
+ context.VaultStore.ws='company';
+ context.askConfirm=async()=>{
+  context.VaultStore.ws='personal';
+  return true;
+ };
+ await context.deleteNodes([{
+  id:'af:99',type:'folder',name:'原工作区目录',
+  biz:{kind:'archive_folder',id:99,section:'general'}
+ }]);
+ assert.equal(requested.length,0,
+  'confirmation cannot transfer an old selection into a new workspace');
+ assert.ok(messages.some(x=>x.message.includes('工作区已经切换')));
+ context.askConfirm=originalConfirm;
+ context.VaultStore.ws='company';
+
  /* B03: 批处理执行中切换工作区，后续请求不得改投到新工作区。
     否则会出现"成功 N 失败 M"的假象，甚至把公司对象当成个人对象删除。 */
  allow=true;
