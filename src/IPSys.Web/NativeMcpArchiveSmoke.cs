@@ -157,13 +157,13 @@ static class NativeMcpArchiveSmoke
             parent_id=folder,request_id=Guid.NewGuid().ToString("N")
         });
         Check(Has(await Run("list_folders",new{
-            workspace="company",parent_id=folder
+            workspace="company",section="achievement",parent_id=folder
         }),empty),"move_folder places directory under requested parent");
         await Run("move_folder",new{
             workspace="company",section="achievement",folder_id=empty,parent_id=root
         });
         Check(Has(await Run("list_folders",new{
-            workspace="company",parent_id=root
+            workspace="company",section="achievement",parent_id=root
         }),empty),"move_folder restores previous parent without new FolderId");
         await Run("delete_folder",new{
             workspace="company",section="achievement",folder_id=empty
@@ -199,7 +199,7 @@ static class NativeMcpArchiveSmoke
             workspace="company",section="achievement",folder_id=purgeFolder
         });
         Check(!Has(await Run("list_folders",new{
-            workspace="company",parent_id=root
+            workspace="company",section="achievement",parent_id=root
         }),purgeFolder),"after explicit purge, the empty directory can be deleted");
         long archive=Id(await Run("create_folder",new{
             workspace="company",section="achievement",parent_id=folder,
@@ -392,7 +392,7 @@ static class NativeMcpArchiveSmoke
                 "party attachment can be unlinked using the standard file tool");
         }
         finally{File.Delete(partyPath);}
-        await Run("delete_folder",new{workspace="company",section="achievement",folder_id=party});
+        await Run("delete_folder",new{workspace="company",section="party",folder_id=party});
         long general=Id(await Run("create_folder",new{
             workspace="company",section="general",name=tag+"综合资料"
         }));
@@ -544,7 +544,7 @@ static class NativeMcpArchiveSmoke
             workspace="company",kind="v2_archive_folder",id=folder,section="achievement"
         });
         Check(Has(await Run("list_folders",new{
-            workspace="company",parent_id=root
+            workspace="company",section="achievement",parent_id=root
         }),folder),"restored directory visible under its original parent through MCP");
         // Company-only archive folder tools must never access a personal root.
         bool personalDenied=false;

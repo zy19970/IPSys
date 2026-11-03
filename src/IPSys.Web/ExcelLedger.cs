@@ -78,7 +78,7 @@ static partial class ExcelLedger
     };
 
     internal static bool ValidKind(string kind)=>kind is "project" or "ip" or "archive_folder";
-    internal static bool SupportsImport(string kind)=>kind is "project" or "ip" or "archive" or "general";
+    internal static bool SupportsImport(string kind)=>kind is "project" or "ip" or "archive_folder";
     internal static bool ValidScope(string workspace,string kind,string? section)=>
         ValidKind(kind)&&(kind!="archive_folder"||ArchiveDirectoryScopes.Allowed(workspace,section??""));
 

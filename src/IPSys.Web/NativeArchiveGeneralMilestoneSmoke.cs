@@ -268,6 +268,9 @@ static class NativeArchiveGeneralMilestoneSmoke
             "archive snapshot exposes per-link display name, not version filename");
         byte[] workbook=await Export(client,"archive_folder","company","certificate",certificate);
         Check(workbook.Length>750,"archive fixed XLSX export");
+        using(var template=await client.GetAsync(
+            "/api/v2/excel/company/archive_folder/template?section=certificate"))
+            template.EnsureSuccessStatusCode();
         // Old four-column layouts are deliberately rejected by the current contract.
         using(var outdated=await client.PostAsync(
             "/api/v2/excel/company/archive_folder/import?section=certificate&policy=skip",
@@ -322,7 +325,7 @@ static class NativeArchiveGeneralMilestoneSmoke
         updatedGeneral=RewriteSheet(updatedGeneral,99,"C2","");
         updatedGeneral=RewriteSheet(updatedGeneral,99,"D2","更新标签");
         updatedGeneral=RewriteSheet(updatedGeneral,99,"E2","2027");
-        var updatedGeneralReport=await Import(client,"archive_folder","personal","",
+        var updatedGeneralReport=await Import(client,"archive_folder","personal","general",
             "update",updatedGeneral);
         Check(updatedGeneralReport.GetProperty("updated").GetInt32()==1 &&
               updatedGeneralReport.GetProperty("failed").GetInt32()==0,
@@ -353,7 +356,7 @@ static class NativeArchiveGeneralMilestoneSmoke
             exported.EnsureSuccessStatusCode();
             generalTree=ReverseDataRows(await exported.Content.ReadAsByteArrayAsync());
         }
-        var generalTreeResult=await Import(client,"archive_folder","personal","",
+        var generalTreeResult=await Import(client,"archive_folder","personal","general",
             "skip",generalTree);
         Check(generalTreeResult.GetProperty("skipped").GetInt32()==1 &&
               generalTreeResult.GetProperty("created").GetInt32()==1 &&
@@ -374,7 +377,7 @@ static class NativeArchiveGeneralMilestoneSmoke
         var invalidGeneralChild=RewriteSheet(
             await Export(client,"archive_folder","company","general",generalChild),
             99,"F2","不存在的上级目录");
-        var missingParent=await Import(client,"archive_folder","personal","",
+        var missingParent=await Import(client,"archive_folder","personal","general",
             "create",invalidGeneralChild);
         Check(missingParent.GetProperty("failed").GetInt32()==1 &&
               missingParent.GetProperty("created").GetInt32()==0,
