@@ -263,7 +263,7 @@ async function main() {
       "第二级目录存在 = " + hasLvl2 + "；第三级目录存在 = " + hasLvl3 + "；最深记录 af:" + fx.archive.records[0] + " 存在 = " + hasDeepRecord,
       "当前列表可见行：" + JSON.stringify(rootRows),
       "",
-      "后端 /api/v2/ui/archive/company 已返回 folders 的 parentId 链（见 HTTP 段的 T-P0-01#backend），",
+      "后端 /api/v2/ui/folders/company 已返回 folders 的 parentId 链（见 HTTP 段的 T-P0-01#backend），",
       "此处核对前端 buildTree 是否忠实还原每一级目录，以及最深记录是否挂在第三级目录下。",
     ].join("\n"));
     rec("T-P0-01", "DYNAMIC-BROWSER", (hasLvl2 && hasLvl3 && hasDeepRecord) ? "PASS" : "CONFIRMED_BUG",

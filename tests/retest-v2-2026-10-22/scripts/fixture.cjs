@@ -78,7 +78,9 @@ function makeTwoPagePdf() {
   const fx = { runid: RUNID, db: DB, company: {}, personal: {}, archive: {}, trash: {}, files: {} };
 
   /* ---------- 公司档案：7 个系统目录 + 二级/三级 ---------- */
-  let ar = (await L.get("/api/v2/ui/archive/company")).data;
+  let ar = (await L.get("/api/v2/ui/folders/company")).data;
+  if (!ar || !Array.isArray(ar.folders)) throw new Error("统一业务目录快照不可用");
+  ar = { ...ar, folders: ar.folders.filter(f => f.section === "achievement" && f.parentId == null) };
   log.add(`system folders: ${ar.folders.length} -> ${ar.folders.map((f) => f.id + ":" + f.name).join(", ")}`);
   if (ar.folders.length !== 7) throw new Error("系统目录不是 7 个");
   fx.archive.system = ar.folders.map((f) => ({ id: f.id, name: f.name }));
@@ -100,8 +102,8 @@ function makeTwoPagePdf() {
   const recIds = [];
   for (let i = 1; i <= 5; i++) {
     const folderId = i === 1 ? lvl3Id : sys1;
-    const r = await L.post("/api/v2/folders/company/archive", {
-      Archive: { Name: `档案-${String(i).padStart(2, "0")}`, Category: "其他", Year: "2026", FolderId: folderId },
+    const r = await L.post("/api/v2/folders/company/archive_folder", {
+      ArchiveFolder: { Name: `档案-${String(i).padStart(2, "0")}`, Category: "其他", Year: "2026", ParentId: folderId },
       Section: "achievement",
     });
     if (!r.ok) throw new Error("archive create " + JSON.stringify(r.data));
@@ -122,12 +124,12 @@ function makeTwoPagePdf() {
   log.add(`合同C1=${c1.id} 合同C2=${c2.id}（均挂项目A）`);
 
   /* ---------- IP / 综合资料 ---------- */
-  const ipA = { id: await create("ip", { Ip: { Name: "IP-A", IpType: "发明专利", Status: "已授权", ApplicationNo: "CN-A" } }) };
-  const ipB = { id: await create("ip", { Ip: { Name: "IP-B", IpType: "软件著作权", Status: "已登记", ApplicationNo: "CN-B" } }) };
+  const ipA = { id: await create("ip", { Ip: { Name: "IP-A", IpType: "发明专利", Status: "已授权", Number: "CN-A" } }) };
+  const ipB = { id: await create("ip", { Ip: { Name: "IP-B", IpType: "软件著作权", Status: "已登记", Number: "CN-B" } }) };
   fx.company.ipA = ipA.id; fx.company.ipB = ipB.id;
   log.add(`IP-A=${ipA.id} IP-B=${ipB.id}`);
 
-  const g1 = { id: await create("general", { General: { Title: "综合资料-G1" } }) };
+  const g1 = { id: await create("archive_folder", { ArchiveFolder: { Name: "综合资料-G1" }, Section: "general" }) };
   fx.company.general = g1.id;
   log.add(`综合资料G1=${g1.id}`);
 
@@ -183,7 +185,7 @@ function makeTwoPagePdf() {
   fx.personal.projectP = pP.id;
   log.add(`个人项目P=${pP.id}`);
 
-  const rIp = await L.post("/api/v2/folders/personal/ip", { Ip: { Name: "IP-P", IpType: "实用新型专利", Status: "已申请", ApplicationNo: "CN-P" } });
+  const rIp = await L.post("/api/v2/folders/personal/ip", { Ip: { Name: "IP-P", IpType: "实用新型专利", Status: "已申请", Number: "CN-P" } });
   if (!rIp.ok || !rIp.data?.id) throw new Error("个人IP创建失败 " + rIp.status + JSON.stringify(rIp.data));
   const ipP = rIp.data;
   fx.personal.ipP = ipP.id;
@@ -226,7 +228,7 @@ function makeTwoPagePdf() {
   const dB = await L.del(`/api/v2/folders/company/project/${pB.id}`);
   log.add(`delete 项目B -> ${dB.status} ${JSON.stringify(dB.data)}`);
 
-  const dArc5 = await L.del(`/api/v2/folders/company/archive/${recIds[4]}?section=achievement`);
+  const dArc5 = await L.del(`/api/v2/folders/company/archive_folder/${recIds[4]}?section=achievement`);
   log.add(`delete 档案-05 -> ${dArc5.status} ${JSON.stringify(dArc5.data)}`);
 
   const trash = await L.get("/api/trash/company");
@@ -239,7 +241,7 @@ function makeTwoPagePdf() {
 
   /* ---------- 记录回读，确认 fixture 真的落库 ---------- */
   const views = {};
-  for (const p of ["archive", "projects", "ip", "general", "contracts", "project-files"]) {
+  for (const p of ["folders", "projects", "ip", "contracts", "project-files"]) {
     const r = await L.get(`/api/v2/ui/${p}/company`);
     views[p] = Array.isArray(r.data) ? r.data.length : Object.keys(r.data || {});
     log.add(`GET /api/v2/ui/${p}/company -> ${r.status} (${Array.isArray(r.data) ? r.data.length + " rows" : JSON.stringify(views[p])})`);

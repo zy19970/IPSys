@@ -35,7 +35,7 @@ async function must(label, p, body) {
 
   /* ---------------- T-P0-01 后端三级目录 ---------------- */
   {
-    const ar = (await L.get("/api/v2/ui/archive/company")).data;
+    const ar = (await L.get("/api/v2/ui/folders/company")).data;
     const chain = ar.folders.map((f) => ({ id: f.id, parentId: f.parentId, name: f.name }));
     const lvl1 = chain.find((f) => f.id === fx.archive.system[0].id);
     const lvl2 = chain.find((f) => f.id === fx.archive.lvl2);
@@ -44,7 +44,7 @@ async function must(label, p, body) {
     const deep = ar.folders.find((f) => f.id === fx.archive.records[0]);
     const ok = lvl2 && lvl2.parentId === lvl1.id && lvl3 && lvl3.parentId === lvl2.id && deep && deep.parentId === lvl3.id;
     evFile("T-P0-01", [
-      "GET /api/v2/ui/archive/company 的 folders 链：",
+      "GET /api/v2/ui/folders/company 的 folders 链：",
       J(chain.filter((f) => f.id >= 1 && f.id <= 9), null, 1),
       "",
       "三级目录 parentId 关系：" + J({ lvl1: lvl1.id, lvl2: lvl2 && lvl2.parentId, lvl3: lvl3 && lvl3.parentId }),
@@ -120,8 +120,8 @@ async function must(label, p, body) {
     const entries0 = (await L.get(`/api/v2/folders/company/entries?section=achievement&parentId=${fx.archive.lvl2}`)).data || [];
     const has6 = entries0.some((e) => e.folder && e.folder.name === "档案-06");
     if (!has6) {
-      const r = await L.post("/api/v2/folders/company/archive", {
-        Archive: { Name: "档案-06", Category: "其他", Year: "2026", FolderId: fx.archive.lvl2 },
+      const r = await L.post("/api/v2/folders/company/archive_folder", {
+        ArchiveFolder: { Name: "档案-06", Category: "其他", Year: "2026", ParentId: fx.archive.lvl2 },
         Section: "achievement",
       });
       console.log("自愈 档案-06 ->", r.status, J(r.data));
@@ -176,11 +176,11 @@ async function must(label, p, body) {
 
   /* ---------------- T-P1-03 后端移动/转移可用性 ---------------- */
   {
-    const mv = await L.post(`/api/v2/folders/company/archive/${fx.archive.records[1]}/move?section=achievement`, { ParentId: fx.archive.lvl2 });
-    const ar = (await L.get("/api/v2/ui/archive/company")).data;
+    const mv = await L.post(`/api/v2/folders/company/archive_folder/${fx.archive.records[1]}/move?section=achievement`, { ParentId: fx.archive.lvl2 });
+    const ar = (await L.get("/api/v2/ui/folders/company")).data;
     const moved = ar.folders.find((f) => f.id === fx.archive.records[1]);
-    const back = await L.post(`/api/v2/folders/company/archive/${fx.archive.records[1]}/move?section=achievement`, { ParentId: fx.archive.system[0].id });
-    const xfer = await L.post(`/api/v2/ui/archive/company/achievement/${fx.archive.records[2]}/transfer`, { TargetWorkspace: "personal", TargetSection: "achievement", Move: false });
+    const back = await L.post(`/api/v2/folders/company/archive_folder/${fx.archive.records[1]}/move?section=achievement`, { ParentId: fx.archive.system[0].id });
+    const xfer = await L.post(`/api/v2/ui/folders/company/achievement/${fx.archive.records[2]}/transfer`, { TargetWorkspace: "personal", TargetSection: "achievement", Move: false });
     evFile("T-P1-03", [
       `POST /folders/company/archive/${fx.archive.records[1]}/move {ParentId:${fx.archive.lvl2}} -> ${mv.status} ${J(mv.data)}`,
       `回读 parentId=${moved && moved.parentId}（期望 ${fx.archive.lvl2}）`,
@@ -241,13 +241,13 @@ async function must(label, p, body) {
     const sec = "achievement";
     const parent = fx.archive.lvl2;   // 二级-A 下：三级-A1(目录) + 档案-01(资料)，正好混排
     const entries = (await L.get(`/api/v2/folders/company/entries?section=${sec}&parentId=${parent}`)).data;
-    const order = (entries || []).map((e) => ({ Kind: e.folder.ref.kind === "archive_folder" ? "folder" : "record", Id: e.folder.ref.id }));
+    const order = (entries || []).map((e) => ({ Kind: "folder", Id: e.folder.ref.id }));
     const reversed = [...order].reverse();
     const r1 = await L.post(`/api/v2/folders/company/entries/reorder?section=${sec}`, { ParentId: parent, Items: reversed });
     const after = (await L.get(`/api/v2/folders/company/entries?section=${sec}&parentId=${parent}`)).data;
     const afterIds = after.map((e) => e.folder.ref.id);
     const r2 = await L.post(`/api/v2/folders/company/entries/reorder?section=${sec}`, { ParentId: parent, Items: reversed.slice(0, Math.max(1, reversed.length - 1)) });
-    const r3 = await L.post(`/api/v2/ui/archive/company/${sec}/order`, { Ids: [fx.archive.records[0], 999999] });
+    const r3 = await L.post(`/api/v2/ui/folders/company/${sec}/order`, { Ids: [fx.archive.records[0], 999999] });
     evFile("T-P1-05", [
       `父目录 ${parent} 当前混排条目：${J((entries || []).map((e) => ({ kind: e.folder.ref.kind, id: e.folder.ref.id, name: e.folder.name, position: e.folder.position })))}`,
       `倒序 reorder -> ${r1.status} ${J(r1.data)}`,
