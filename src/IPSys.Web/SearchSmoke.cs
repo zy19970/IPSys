@@ -50,7 +50,7 @@ static class SearchSmoke
         long archiveId=(await archive.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
             .GetProperty("id").GetInt64();
         var roots=await client.GetFromJsonAsync<System.Text.Json.JsonElement>(
-            "/api/v2/folders/company/archive_folder");
+            "/api/v2/folders/company/archive_folder?section=achievement");
         long rootId=roots.EnumerateArray().First(x=>
             x.GetProperty("folder").GetProperty("name").GetString()=="申报与认定")
             .GetProperty("folder").GetProperty("ref").GetProperty("id").GetInt64();
