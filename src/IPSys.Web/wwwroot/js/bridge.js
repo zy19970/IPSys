@@ -167,36 +167,27 @@ async function associateOriginal(node, move = false, directTarget = null) {
   if (!meta?.fileId || !meta?.linkId || !owner?.biz?.id ||
       !UPLOADABLE_KINDS.includes(sourceKind)) return toast("找不到有效的附件引用");
 
-  const destinations = [];
-  walkNodes((target) => {
-    if (target.type !== "folder" ||
-        !UPLOADABLE_KINDS.includes(target.biz?.kind) ||
-        !Number.isSafeInteger(Number(target.biz?.id)) ||
-        Number(target.biz.id) <= 0 ||
-        target.biz.id === owner.biz.id) return;
-    const path = (pathTo(target.id) || [])
-      .filter((n) => n.id !== "root")
-      .map((n) => n.name)
-      .join(" › ");
-    destinations.push({ value: String(target.biz.id), label: path || target.name });
-  });
-  if (!destinations.length) return toast("当前工作区没有其它可接收附件的业务记录");
-  destinations.sort((a, b) => a.label.localeCompare(b.label, "zh-CN"));
+  // A folder index retains the actual hierarchy and stable FolderId; do not
+  // turn all nested folders into a native select containing thousands of rows.
+  const pickerIndex = AttachmentFolderPicker.index(ROOT, owner.biz.id);
+  if (![...pickerIndex.byFolderId.values()].some(r => pickerIndex.isTarget(r)))
+    return toast("当前工作区没有其它可接收附件的文件夹");
 
   // Internal drag-and-drop bypasses the chooser, but uses the exact same
   // validate-and-commit callback as F2-03's context-menu operation.
   const submitAssociation = async (data) => {
     if (workspace !== VaultStore.ws) throw new Error("工作区已变化，请重新选择附件");
     if (fileTaskBusy()) throw new Error("有文件任务正在执行，请完成后再操作");
-    const selected = destinations.find((d) => d.value === String(data.target));
-    if (!selected) throw new Error("目标记录无效或已变化，请重新选择");
-    const targetFolderId = Number(selected.value);
-    let target = null;
-    walkNodes((n) => {
-      if (n.type === "folder" && UPLOADABLE_KINDS.includes(n.biz?.kind) &&
-          Number(n.biz.id) === targetFolderId) target = n;
-    });
-    if (!target) throw new Error("目标记录已不存在，请刷新后重试");
+    const candidate = pickerIndex.byFolderId.get(Number(data.target));
+    if (!candidate || !pickerIndex.isTarget(candidate))
+      throw new Error("目标文件夹无效或已变化，请重新选择");
+    const targetFolderId = candidate.folderId;
+    // Re-read the current tree before writing: the dialog might have stayed
+    // open while files or folders changed.
+    const target = findById(candidate.id);
+    if (!target || target.type !== "folder" || !UPLOADABLE_KINDS.includes(target.biz?.kind) ||
+        Number(target.biz.id) !== targetFolderId)
+      throw new Error("目标文件夹已不存在，请刷新后重试");
     if ((target.children || []).some((child) =>
       child.type === "file" && Number(VaultStore.metaOf(child.id)?.fileId) === Number(meta.fileId))) {
       throw new Error("目标记录已经关联同一原件，请选择其它记录");
@@ -219,16 +210,13 @@ async function associateOriginal(node, move = false, directTarget = null) {
       throw new Error("只允许移动到真实业务记录");
     return submitAssociation({ target: String(directTarget.biz.id) });
   }
-  RecordForms.open({
-    title: move ? "移动附件关联" : "共享附件原件",
-    submitText: move ? "确认移动" : "确认共享",
-    fields: [{
-      key: "target", type: "select", label: "目标业务记录",
-      required: true, options: destinations,
-      hint: move
-        ? "移动后来源位置不再显示此附件；文件历史版本与其它共享关联保持不变。"
-        : "目标记录新增一条附件引用，不重复存储原件；所有历史版本保持共用。",
-    }],
+  AttachmentFolderPicker.open({
+    root: ROOT,
+    workspace,
+    sourceFolderId: owner.biz.id,
+    fileName: node.name,
+    fileId: meta.fileId,
+    move,
     onSubmit: submitAssociation,
   });
 }

@@ -7,6 +7,7 @@ const vm = require("node:vm");
 const explorer=path.resolve(__dirname,"../wwwroot");
 const bridge=fs.readFileSync(path.join(explorer,"js/bridge.js"),"utf8");
 const interactions=fs.readFileSync(path.join(explorer,"js/interactions.js"),"utf8");
+const picker=fs.readFileSync(path.join(explorer,"js/folder-picker.js"),"utf8");
 const from=bridge.indexOf("async function associateOriginal(node, move = false, directTarget = null) {");
 const to=bridge.indexOf("/* ---------------- 导出 ---------------- */",from);
 assert.ok(from>=0&&to>from,"Unified attachment association routine must exist");
@@ -70,14 +71,24 @@ const workspace={ws:"company",metaOf:()=>({fileId:101,linkId:201,version:2}),
   return {ok:true};
  }};
 const sandbox=vm.createContext({
- ROOT,VaultStore:workspace,RecordForms:{open:o=>dialogs.push(o)},
+ ROOT,VaultStore:workspace,dialogs,
  Drive:{clearSelection:()=>{clear++;}},
  UPLOADABLE_KINDS:["project","contract","archive_folder","ip"],
- findParent:id=>map.get(id)||null,pathTo,fileTaskBusy:()=>busy,
+ findParent:id=>map.get(id)||null,pathTo,findById:id=>pathTo(id)?.at(-1)||null,
+ fileTaskBusy:()=>busy,
  refreshCurrent:async()=>{refresh++;if(failRefresh)throw Error("刷新失败");},
  toast:(m)=>notes.push(m),
  walk(node,fn){const visit=n=>{fn(n);for(const c of n.children||[])visit(c);};visit(node);},
 });
+vm.runInContext(picker,sandbox,{filename:"folder-picker.js"});
+// The association regression exercises the exact index and submit callback.
+// The chooser's actual DOM navigation is checked in folder-picker-smoke.cjs.
+vm.runInContext(`AttachmentFolderPicker.open = function(o) {
+  const data = {title:o.move?"移动附件关联":"共享附件原件",
+    onSubmit:o.onSubmit,index:this.index(o.root,o.sourceFolderId)};
+  dialogs.push(data);
+  return data;
+}`,sandbox);
 vm.runInContext(assoc,sandbox,{filename:"bridge-file-associate.js"});
 const invoke=vm.runInContext("associateOriginal",sandbox);
 
@@ -85,10 +96,11 @@ const invoke=vm.runInContext("associateOriginal",sandbox);
  await invoke(attachment,false);
  let f=dialogs.at(-1);
  assert.equal(f.title,"共享附件原件");
- const ids=f.fields[0].options.map(x=>x.value);
+ const ids=[...f.index.byFolderId.values()].filter(r=>f.index.isTarget(r))
+  .map(r=>String(r.folderId));
  assert.deepEqual(Array.from(ids).sort(),["22","33","44","55","66"],
   "Only real same-workspace project, contract and ordinary-folder owners; no virtual or source folders");
- assert.ok(f.fields[0].options.find(x=>x.value==="33").label.includes("目标合同"));
+ assert.ok(f.index.path(f.index.byFolderId.get(33).id).includes("目标合同"));
  await f.onSubmit({target:"22"});
  assert.deepEqual(JSON.parse(JSON.stringify(requests.at(-1))),{
   url:"/api/v2/files/company/101/associate",
@@ -141,7 +153,9 @@ const invoke=vm.runInContext("associateOriginal",sandbox);
  const projectFile={id:"f:401:1",type:"file",name:"项目附件.pdf",biz:{ownerKind:"project"}};
  project.children.push(projectFile);map.set(projectFile.id,project);
  await invoke(projectFile,false);
- const destinations=dialogs.at(-1).fields[0].options.map(x=>x.value);
+ const finalIndex=dialogs.at(-1).index;
+ const destinations=[...finalIndex.byFolderId.values()].filter(r=>finalIndex.isTarget(r))
+   .map(r=>String(r.folderId));
  assert.ok(!destinations.includes("22"),"Source project must not be offered");
  assert.ok(destinations.includes("11"),"IP target allowed for normal project source");
  console.log("EXPLORER F2-03 PASS: shared/moved LinkId, target scopes, duplicate, 409, workspace and task locks");
