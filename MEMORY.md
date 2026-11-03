@@ -467,3 +467,6 @@ CI #506 run41623186950首次通过编译、MCP和早期UI检查，但新测试�
 
 ## 2026-11-03 第十二轮：多选附件批量共享与移动实施
 用户原话：“我想可以同时移动和共享好几个文件”，截图企业工作区知识产权下选中五个MD/DOCX/PDF等附件，目前多选右键只有打包下载/删除。本轮在main=6933056b8f628430d086531309a782d067c89503 基础上按已确认的单项/批量操作边界扩展：全部选中对象都是附件时，右键、底部选择栏、右侧详情增加“共享N个附件”“移动N个附件”；文件夹混选或回收站不显示。选中集合快照含FileId、LinkId、源FolderId，重复历史版本同LinkId合并成一个关联，多个不同LinkId指向同一FileId拒绝以防目标重复；多级folder-picker复用sourceFolderIds/fileIds，排除所有来源与已关联任意所选FileId的目标，搜索、面包屑和40项分页保持。新增NativeFileAssociateBatchEndpoints接口POST /api/v2/files/{workspace}/associate-batch：验证工作区、目标、每条来源关联与FileId，最多500个独立关联，单SQLCipher事务批量插入目标LinkId，move时删除来源LinkId，冲突/失效整批回滚、没有部分成功；单附件接口、共享版本/跨区限制、现有拖拽入口保留。新增NativeFileAssociateSmoke批量SQLCipher回归（共享/移动、冲突整体保留、错误来源回滚、字节完整、跨工作区禁止）、Node批量选择与API smoke、修改F2多选菜单测试，工作流纳入。独立V8 JS解析和模拟的批量前端测试已经通过；Windows完整CI仍待新commit检查，正式Release未触发、不操作用户实际数据库。最近会话：memory/sessions/2026-11-03-仓库文件提交与项目全貌复盘.md，第十二轮。
+
+
+第十二轮最终验收：多选附件共享/移动代码已提交977df6b1，Windows CI #508（41634327312）completed/success，26成功、0失败、2项可选ZIP64步骤跳过；SQLCipher批量操作与整批回滚、Node多选、Edge、MCP和双单EXE启动均通过。Artifacts包含IPSys-Web-win-x64和IPSys-Web-win-x64-self-contained。批量最多500个独立FileId/LinkId，重复版本同一LinkId归并，不同LinkId引用同FileId时拒绝批量。未触发正式Release，用户本机尚待实测。最近会话memory/sessions/2026-11-03-仓库文件提交与项目全貌复盘.md，第十二轮。
