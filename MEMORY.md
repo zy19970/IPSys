@@ -345,3 +345,9 @@ CI迭代的真实记录：初次 #484 run41561041264 C# 编译0警告但Schema�
 **验证**：Windows Actions run `41564531663`（#488），`completed/success`，工作流实际26步骤success、2个ZIP64可选skipped、0failure；测试运行在临时隔离SQLCipher数据库，Windows Debug与HTTP/Excel及完整Explorer/Edge、自含/框架依赖单EXE发布检查纳入。未在用户本机GUI、用户实际旧库或正式Release中测试。被拦截的单次新增大型测试文件请求（#2073失败）已按规则另发重新开始#2074，改为向既有smoke小批量扩展并完成。开始通知#2072；完成通知待记忆文档归档核验发送。
 
 任务书 `docs/IPSys_当前问题与整改任务总表_20261102.md` 新增第十二节载明第二批代码、CI和下一步范围。第三批待办：跨工作区带子目录的文件夹整树复制/移动和共享FileId/版本/回滚语义、批量删除切区与搜索刷新异步竞态、个人“人力资源”搜索显示等；尚未改动。最近会话记录 `memory/sessions/2026-11-02-操作细节精修仓库梳理.md`，第十七轮。
+
+## 2026-11-03：第三批整树转移与切区竞态完成；CI 查询超时后复核（第十八至十九轮）
+
+用户前轮原话“推进下一批”，本轮原话“怎么超时了？”。第三批从 main `e9d7f18b080b4b8033eeae92e6fc8cb1244c2908` 继续，重读 AIGT 三基础规则、项目记忆与整改总表。实现提交 `b21aab89c25295fd5fc9a47bc80da3216c9a75b1`（10 文件）：`NativeFolderTreeTransfer` 整树快照后 SQLCipher 单事务重建多级普通文件夹；树内原 FileId 共享关系保留，目标新 FileId 可在多目标位置共享；跨区独立 FileObject/所有 FileVersion、保留显示名/材料类别/顺序；move 目标全部成功后才软删源根；archive/general 两接口共用。修复 `store.loadAll` 旧工作区覆盖、`refreshCurrent` await 后读取当前查询词及切区判断、`deleteNodes` busy 锁及固定 workspace，搜索中个人 certificate 路径叫“人力资源”；加 SQLCipher HTTP 故障注入、三级树、同一文件两个链接、两个版本、跨区字节验证及 Node 异步测试。追加提交 `c269bda1f6c5f35c4508ba12d118ebc2584a02f1`（2 文件）：删除确认弹框前快照 workspace，确认后如切区拒绝提交任何旧选择，扩展 Node 回归。
+
+GitHub Actions #489 run `41568442664` 针对主提交 `b21aab8`，已完成 success；最终 #490 run `41569226666` 针对 `c269bda`，于 2026-11-03T03:04:08Z 完成 `completed/success`，实际 26 success、2 skipped、0 failed。前轮末尾助手反复轮询 #490 状态，用户看到超时并提问。**这次中断是助手工具/对话查询过程，不能推断软件或 CI 卡死。** 本轮重新直接访问 Actions 和 main 验证最新 HEAD 为 `c269bda1f6c5f35c4508ba12d118ebc2584a02f1` 且 #490 success。用户可见的部分回复已明确该区别和结果。历史执行中 Git blob、tree 聚合请求受平台安全检查阻断，按通知 #2077/2078、#2079/2080 分拆恢复；项目任务开始通知 #2076。未操作用户实际数据库，未发布 Release，未做本机 GUI/超大文件实测。整改总表第十三节为第三批归档；本轮除归档外不再修改业务代码。会话文件 `memory/sessions/2026-11-02-操作细节精修仓库梳理.md` 追加第十八、第十九轮。
