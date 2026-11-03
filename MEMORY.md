@@ -422,3 +422,12 @@ GitHub Actions #489 run `41568442664` 针对主提交 `b21aab8`，已完成 succ
 **本次归档时的准确状态**：最终业务和测试提交 `19947a42c831e894e97279013a0f3cb8b44e57af`，Windows CI #505 run `41615569894` 已通过 Debug、Node 全套 UI（包括多选菜单）、MCP、真实 Edge、SQLCipher/HTTP，并已进入“两种单文件部署模式验证”，尚未查询到完成结论；不得将其写成全绿。后续需继续核验 CI #505 最终结论后追加状态。没有触发正式 Release，没有读取/删除/迁移用户现有数据库，也不代表用户本机GUI/真实Agent人工验收。会话归档继续存放 `memory/sessions/2026-11-03-仓库文件提交与项目全貌复盘.md`。
 
 **本轮最终 CI 验收补记：** `19947a42c831e894e97279013a0f3cb8b44e57af` 对应 Windows CI **#505**（`https://github.com/zy19970/IPSys/actions/runs/41615569894`）已 `completed/success`，准确结果 **26 个步骤 success、0 failure、2 个可选 >4 GiB ZIP64 生成/元数据步骤 skipped**。运行覆盖 Debug Web内嵌测试、MCP stdio、Node Explorer多选与关联/转移、真实 Edge/HTTP、SQLCipher/HTTP、framework-dependent与self-contained两种单EXE发布构建及实际启动测试。与上一段“运行中”的状态不同，此次是最终结果。没有手动触发 GitHub Release，也没有用户本机真实文件/GUI实测；当前应拉取 CI #505 构建产物进行人工验收。最后归档轮次：本会话第六轮，`memory/sessions/2026-11-03-仓库文件提交与项目全貌复盘.md`。
+
+
+## 2026-11-03：知识产权附件“移动到其它记录”真实语义与目标选择器问题（本会话第七轮）
+
+用户原话：“你这个移动附件是什么逻辑？”；截图中企业工作区 / 知识产权 / 装备型撬毛机器人自动化电气系统 下，选中PDF后打开“移动附件关联”弹窗，目标下拉框一次展开大量“知识产权 › [专利或软著]”项目，覆盖/挤占弹窗空间。已重新读取AIGT-templates AGENTS/GIT_OPERATIONS/MEMORY_PROTOCOL和IPSys项目Memory/本会话，检查当前main=d2797aa60131a9dd702fa2b35335c52f09c508a1，源码 `wwwroot/js/bridge.js:159–234`、`wwwroot/js/forms.js:41–48`、`NativeFileAssociateEndpoints.cs`、`NativeFileStore.cs:53–85`、F2-03自动化测试；本轮只读分析，不修改业务代码。
+
+核实：`associateOriginal(node, move=true)` 是**单个附件关联 LinkId 的移动**，并非搬运/复制SQLite中的文件二进制。前端先由当前附件`fileId/linkId`及`findParent`确认来源，遍历同工作区真实业务文件夹`project/contract/ip/archive_folder`（排除来源、虚拟根和无效文件夹），按全路径排序生成普通HTML原生 `select`，目标字段 `target`对应实际 FolderId；确认时 POST `/api/v2/files/{workspace}/{fileId}/associate`，请求 `{linkId,targetFolderId,move:true}`。后端验证来源当前活跃关联和目标同工作区有效文件夹，SQLite事务中目标建立新LinkId指向相同FileId，复制显示名称/资料类别，若move则将来源LinkId设deleted=1并提交；`move:false`只创建新关联。目标已存在相同FileId会409，不会静默覆盖；事务中出错回滚；各文件历史版本仍跟随FileId，其他共享关联不受影响。这个操作不移动/删除来源知识产权记录，只让所选附件从原记录消失并在目标记录出现；不能跨工作区（后台按workspace校验），但**同工作区可跨知识产权、项目、合同、普通资料模块**。真实跨区整条文件夹/记录复制属于另一套转移接口。前端工作区切换/忙碌/已关联同原件检查以及业务测试存在。截图长下拉来自所有符合条件的真实业务对象 + `RecordForms.open`使用未筛选的原生HTML select，列表多时无搜索/筛选、层级导航且弹窗视野受到覆盖；这属于显著的目标选择UX问题，而不表明物理文件正在移动。
+
+本轮建议（未获用户授权，不自动实施）：保留数据库层LinkId事务语义；将原生全量长下拉改为同工作区的可搜索树状目标目录/弹窗，先筛模块（可默认当前模块但允许跨模块，若需要限制跨模块应另行确认），显示完整来源和目标并给出“从来源解绑但所有版本和其他共享引用仍保留”的确认说明；校验重复目标，避免误移动。此次用户问的是逻辑，所以先解释实际业务含义与UI不足，后续按用户意见决定是否改界面或业务边界。已发送开始通知office-renderer/wechat-webhook#2144；无实际数据改动、未触发CI或Release。记忆和本会话记录按规范提交。
