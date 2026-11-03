@@ -33,7 +33,7 @@ const drive={
  select(id,mode){if(mode==="single"){this.state.selection=new Set([id]);}},
  render(){},resetSearch(){},clearSelection(){this.state.selection.clear();},
 };
-const menus=[],deleted=[],recycled=[],dialogs=[];
+const menus=[],deleted=[],recycled=[],dialogs=[],bulkAssociations=[];
 const sandbox=vm.createContext({
  Drive:drive,VaultStore:{ws:"company",metaOf:id=>({
   "f:12:1":{linkId:12,fileId:12},"f:13:1":{linkId:13,fileId:13},
@@ -52,6 +52,8 @@ const sandbox=vm.createContext({
  exportNodes:items=>exportedCalls.push(Array.from(items,i=>i.id)),
  toast:msg=>notes.push(msg),
  deleteNodes:items=>deleted.push(Array.from(items,i=>i.id)),
+ associateOriginalBatch:(items,move)=>bulkAssociations.push({
+  ids:Array.from(items,i=>i.id),move}),
  recycleAction:(items,op)=>recycled.push({ids:Array.from(items,i=>i.id),op}),
  askConfirm:async()=>true,
 });
@@ -106,7 +108,14 @@ const act=cmd=>vm.runInContext(cmd,sandbox);
  assert.match(menu.markup,/打包下载选中的 2 项/);
  assert.match(menu.markup,/删除选中的 2 项/);
  assert.doesNotMatch(menu.markup,/data-act="(?:open|props|newver|assoc|assoc-move|rename|copy-record|transfer-record|move-archive|sort-up|sort-down|newcontract)"/);
- assert.deepEqual(Object.keys(menu.handlers).sort(),["delete","download"]);
+ assert.match(menu.markup,/共享选中的 2 个附件/);
+ assert.match(menu.markup,/移动选中的 2 个附件/);
+ assert.deepEqual(Object.keys(menu.handlers).sort(),
+  ["assoc-batch","assoc-move-batch","delete","download"]);
+ menu.handlers["assoc-batch"]();
+ assert.deepEqual(bulkAssociations.at(-1),{ids:["f:12:1","f:13:1"],move:false});
+ menu.handlers["assoc-move-batch"]();
+ assert.deepEqual(bulkAssociations.at(-1),{ids:["f:12:1","f:13:1"],move:true});
  menu.handlers.download();
  assert.deepEqual(exportedCalls.at(-1),["f:12:1","f:13:1"]);
  menu.handlers.delete();
@@ -126,6 +135,7 @@ const act=cmd=>vm.runInContext(cmd,sandbox);
  act("showItemMenu('f:12:1',10,20)");
  menu=menus.at(-1);
  assert.deepEqual(Object.keys(menu.handlers).sort(),["delete","download"]);
+ assert.doesNotMatch(menu.markup,/共享选中的|移动选中的/);
  menu.handlers.delete();
  assert.deepEqual(deleted.at(-1),["p:2","f:12:1"]);
 

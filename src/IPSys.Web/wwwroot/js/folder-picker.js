@@ -1,7 +1,7 @@
 const AttachmentFolderPicker = {
   pageSize: 40,
 
-  index(root, sourceFolderId) {
+  index(root, sourceFolderId, sourceFolderIds = [sourceFolderId]) {
     const nodes = new Map(), byFolderId = new Map();
     const stack = [{node:root, parent:null}];
     while (stack.length) {
@@ -34,16 +34,19 @@ const AttachmentFolderPicker = {
       if(!paths.has(id)) paths.set(id,chain(id).map(n=>n.node.name).join(" / "));
       return paths.get(id);
     };
+    const forbiddenSources = new Set(sourceFolderIds.map(Number));
     const module=source && chain(source.id).find(n=>n.id.startsWith("k:"));
     return {nodes,byFolderId,source,rootId,chain,path,
       initialId:module?.id||rootId,
-      isTarget:n=>!!(n?.selectable && n.folderId!==Number(sourceFolderId))};
+      isTarget:n=>!!(n?.selectable && !forbiddenSources.has(n.folderId))};
   },
 
-  open({root,workspace,sourceFolderId,fileName,fileId,move,onSubmit}) {
-    const model=this.index(root,sourceFolderId);
+  open({root,workspace,sourceFolderId,sourceFolderIds,fileName,fileId,fileIds,
+    sourceDescription,move,onSubmit}) {
+    const model=this.index(root,sourceFolderId,sourceFolderIds);
     if(!model.source) throw new Error("当前附件的来源目录已失效，请刷新重试");
     document.querySelector("#attachmentFolderPicker")?.remove();
+    const protectedFiles = new Set((fileIds || [fileId]).map(Number));
     const mask=document.createElement("div");
     mask.id="attachmentFolderPicker";
     mask.className="mask show folder-picker-mask";
@@ -56,7 +59,7 @@ const AttachmentFolderPicker = {
         <div class="folder-picker-source">
           <small>当前附件 · ${esc(workspace==="company"?"企业工作区":"个人工作区")}</small>
           <b title="${esc(fileName)}">${esc(fileName)}</b>
-          <small title="${esc(model.path(model.source.id))}">来源：${esc(model.path(model.source.id))}</small>
+          <small title="${esc(model.path(model.source.id))}">来源：${esc(sourceDescription || model.path(model.source.id))}</small>
         </div>
         <div class="folder-picker-search">
           <input type="search" data-picker-search placeholder="筛选当前目录的子文件夹…" aria-label="搜索目标文件夹" autocomplete="off">
@@ -93,7 +96,7 @@ const AttachmentFolderPicker = {
     function unavailable(record) {
       if(!model.isTarget(record)) return true;
       return (record.node.children||[]).some(child=>child.type==="file" &&
-        Number(VaultStore.metaOf(child.id)?.fileId)===Number(fileId));
+        protectedFiles.has(Number(VaultStore.metaOf(child.id)?.fileId)));
     }
     function close() {
       if(closed||saving) return;

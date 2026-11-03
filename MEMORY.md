@@ -463,3 +463,7 @@ CI #506 run41623186950首次通过编译、MCP和早期UI检查，但新测试�
 
 ## 2026-11-03 第十一轮：对话中断后的状态核实
 用户原话：“为什么中断了”。本轮恢复后重新读取AIGT三份必读文件、MEMORY与最近会话。已核实main提交29fe541807bf9bf2597e4dc9cc794979b49f2c9b（仅两份记忆归档文件），证明上一轮归档实际上已完成；Windows CI #507 run41623938277为completed/success，对应业务SHA 87a54c3d80864cae788f0d4efd8798e8a05ec110，26成功0失败2项可选跳过。失去连续性的具体原因无法从仓库判定，不能归因于IPSys崩溃。已补发完成通知office-renderer/wechat-webhook#2153。新版EXE作为Actions产物可下载，正式Release未触发，本机人工测试尚待执行。本轮未修改业务源码。当前会话路径memory/sessions/2026-11-03-仓库文件提交与项目全貌复盘.md，最后归档第十一轮。
+
+
+## 2026-11-03 第十二轮：多选附件批量共享与移动实施
+用户原话：“我想可以同时移动和共享好几个文件”，截图企业工作区知识产权下选中五个MD/DOCX/PDF等附件，目前多选右键只有打包下载/删除。本轮在main=6933056b8f628430d086531309a782d067c89503 基础上按已确认的单项/批量操作边界扩展：全部选中对象都是附件时，右键、底部选择栏、右侧详情增加“共享N个附件”“移动N个附件”；文件夹混选或回收站不显示。选中集合快照含FileId、LinkId、源FolderId，重复历史版本同LinkId合并成一个关联，多个不同LinkId指向同一FileId拒绝以防目标重复；多级folder-picker复用sourceFolderIds/fileIds，排除所有来源与已关联任意所选FileId的目标，搜索、面包屑和40项分页保持。新增NativeFileAssociateBatchEndpoints接口POST /api/v2/files/{workspace}/associate-batch：验证工作区、目标、每条来源关联与FileId，最多500个独立关联，单SQLCipher事务批量插入目标LinkId，move时删除来源LinkId，冲突/失效整批回滚、没有部分成功；单附件接口、共享版本/跨区限制、现有拖拽入口保留。新增NativeFileAssociateSmoke批量SQLCipher回归（共享/移动、冲突整体保留、错误来源回滚、字节完整、跨工作区禁止）、Node批量选择与API smoke、修改F2多选菜单测试，工作流纳入。独立V8 JS解析和模拟的批量前端测试已经通过；Windows完整CI仍待新commit检查，正式Release未触发、不操作用户实际数据库。最近会话：memory/sessions/2026-11-03-仓库文件提交与项目全貌复盘.md，第十二轮。

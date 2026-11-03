@@ -221,6 +221,101 @@ async function associateOriginal(node, move = false, directTarget = null) {
   });
 }
 
+/* Multi-file association: one selected set -> one destination -> one atomic
+   SQLCipher transaction. Duplicate versions of a LinkId count as one link. */
+function batchAssociationItems(nodes) {
+  if (!Array.isArray(nodes) || !nodes.length ||
+      nodes.some(n => n?.type !== "file"))
+    throw new Error("请只选择附件文件，不要混选文件夹");
+  const links = new Map(), originals = new Map();
+  for (const node of nodes) {
+    const meta = VaultStore.metaOf(node.id);
+    const owner = findParent(node.id);
+    const fileId = Number(meta?.fileId), linkId = Number(meta?.linkId);
+    const sourceFolderId = Number(owner?.biz?.id);
+    if (!Number.isSafeInteger(fileId) || fileId<=0 ||
+        !Number.isSafeInteger(linkId) || linkId<=0 ||
+        !Number.isSafeInteger(sourceFolderId) || sourceFolderId<=0 ||
+        !UPLOADABLE_KINDS.includes(owner?.biz?.kind))
+      throw new Error("选中附件中存在无效的文件或关联，请刷新后重试");
+    if (links.has(linkId)) {
+      if (links.get(linkId).fileId !== fileId)
+        throw new Error("选中的附件关联信息不一致，请刷新后重试");
+      continue;
+    }
+    if (originals.has(fileId))
+      throw new Error("所选附件中有不同关联指向同一原件，请分别处理");
+    originals.set(fileId, linkId);
+    const item = {nodeId:node.id,name:node.name,fileId,linkId,sourceFolderId};
+    links.set(linkId,item);
+  }
+  if (links.size>500)throw new Error("单次最多操作500条附件关联，请分批选择");
+  return [...links.values()];
+}
+
+async function associateOriginalBatch(nodes, move = false) {
+  if (fileTaskBusy()) return toast("有文件任务正在执行，请完成后再操作");
+  let items;
+  try { items = batchAssociationItems(nodes); }
+  catch(e) { return toast(e.message, {tone:"error",ms:6000}); }
+  const workspace = VaultStore.ws;
+  const sourceIds = [...new Set(items.map(i=>i.sourceFolderId))];
+  const index = AttachmentFolderPicker.index(ROOT,sourceIds[0],sourceIds);
+  if (!index.source)return toast("来源文件夹已不存在，请刷新重试");
+  if (![...index.byFolderId.values()].some(r=>index.isTarget(r)))
+    return toast("当前工作区没有其它可接收附件的文件夹");
+
+  const onSubmit=async data=>{
+    if (workspace!==VaultStore.ws)throw new Error("工作区已变化，请重新选择附件");
+    if (fileTaskBusy())throw new Error("有文件任务正在执行，请完成后再操作");
+    const candidate=index.byFolderId.get(Number(data.target));
+    if (!candidate || !index.isTarget(candidate))
+      throw new Error("目标文件夹无效，请重新选择");
+    const target=findById(candidate.id);
+    if (!target || target.type!=="folder" ||
+        !UPLOADABLE_KINDS.includes(target.biz?.kind) ||
+        Number(target.biz.id)!==candidate.folderId)
+      throw new Error("目标文件夹已经发生变化，请刷新后重试");
+    for(const item of items) {
+      const current=findById(item.nodeId);
+      const meta=current && VaultStore.metaOf(current.id);
+      if (!current || Number(meta?.fileId)!==item.fileId ||
+          Number(meta?.linkId)!==item.linkId)
+        throw new Error("部分附件已经发生变化，请刷新后重新选择");
+    }
+    const ids=new Set(items.map(i=>i.fileId));
+    if ((target.children||[]).some(n=>n.type==="file" &&
+        ids.has(Number(VaultStore.metaOf(n.id)?.fileId))))
+      throw new Error("目标文件夹已关联其中一个原件，本次操作未执行");
+    await VaultStore.api("/api/v2/files/"+workspace+"/associate-batch",{
+      method:"POST",
+      json:{targetFolderId:candidate.folderId,move:!!move,
+        items:items.map(i=>({fileId:i.fileId,linkId:i.linkId}))}
+    });
+    try { await refreshCurrent(); }
+    catch {
+      toast("全部关联已提交，但列表刷新失败，请手动刷新",{tone:"error",ms:6000});
+      return;
+    }
+    Drive.clearSelection();
+    toast((move?"已移动 ":"已共享 ")+items.length+" 个附件");
+  };
+
+  const summary=items.length===nodes.length
+    ? "已选 "+items.length+" 个附件"
+    : "已选 "+nodes.length+" 个版本，共 "+items.length+" 条独立附件关联";
+  AttachmentFolderPicker.open({
+    root:ROOT,workspace,sourceFolderId:sourceIds[0],
+    sourceFolderIds:sourceIds,
+    fileName:summary,
+    fileIds:items.map(i=>i.fileId),
+    sourceDescription:sourceIds.length===1
+      ? index.path(index.source.id)
+      : "来自 "+sourceIds.length+" 个不同文件夹",
+    move,onSubmit,
+  });
+}
+
 /* F2-04: entire business folders; not the F2-03 attachment LinkId action.
    Whole-record copies duplicate logical FileIds and all versions; the backend
    refuses cross-workspace physical FileObject sharing. */

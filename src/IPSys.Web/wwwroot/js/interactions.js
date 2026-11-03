@@ -1736,12 +1736,19 @@ function showItemMenu(id, x, y) {
 
   /* 批量菜单的每个命令都作用于整个选择集合；单项命令绝不混入。 */
   if (multiple) {
+    const allFiles = selected.every(n => n.type === "file");
     showCtx(x, y, [
       MI("download", "download", "打包下载选中的 " + downloads.length + " 项"),
+      allFiles ? MI("assoc-batch", "copy", "共享选中的 " + selected.length + " 个附件") : "",
+      allFiles ? MI("assoc-move-batch", "move", "移动选中的 " + selected.length + " 个附件") : "",
       '<div class="ctx-sep"></div>',
       MI("delete", "trash", "删除选中的 " + deletions.length + " 项", "", true),
-    ].join(""), {
+    ].filter(Boolean).join(""), {
       download: inWorkspace(() => downloadNodes(downloads)),
+      ...(allFiles ? {
+        "assoc-batch": inWorkspace(() => associateOriginalBatch(selected, false)),
+        "assoc-move-batch": inWorkspace(() => associateOriginalBatch(selected, true)),
+      } : {}),
       delete: inWorkspace(() => deleteNodes(deletions)),
     });
     return;
@@ -1865,6 +1872,10 @@ function bindSelectionBar() {
   $("#selClear").addEventListener("click", () => Drive.clearSelection());
 
   $("#selDownload").addEventListener("click", () => downloadNodes(Drive.selectedItems));
+  $("#selShare").addEventListener("click", () =>
+    associateOriginalBatch(Drive.selectedItems, false));
+  $("#selMove").addEventListener("click", () =>
+    associateOriginalBatch(Drive.selectedItems, true));
 
   $("#selDelete").addEventListener("click", () => {
     const items = Drive.selectedItems;
@@ -1896,6 +1907,12 @@ function bindDetail() {
         break;
       case "download":
         downloadNodes(items);
+        break;
+      case "assoc-batch":
+        associateOriginalBatch(items, false);
+        break;
+      case "assoc-move-batch":
+        associateOriginalBatch(items, true);
         break;
       case "delete":
         if (Drive.state.view === "recycle") recycleAction(items, "purge");

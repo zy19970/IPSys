@@ -262,6 +262,7 @@ jobs:
             'explorer-archive-operations-smoke.cjs' = 'Explorer F2-02 archive directory actions and mixed reorder regression failed'
             'folder-picker-smoke.cjs'          = 'Attachment picker nested navigation, paging, and safety regression failed'
             'explorer-file-associate-smoke.cjs' = 'Explorer F2-03 same-workspace file share and move regression failed'
+            'explorer-file-associate-batch-smoke.cjs' = 'Explorer F2-03 atomic multi-file share/move regression failed'
             'explorer-record-transfer-smoke.cjs' = 'Explorer F2-04 whole-record copy/move/transfer regression failed'
             'explorer-internal-dragdrop-smoke.cjs' = 'Explorer F2-05 internal drag/drop and duplicate-upload regression failed'
             'explorer-pending-upload-smoke.cjs' = 'Explorer D-05 pending-original recovery regression failed'

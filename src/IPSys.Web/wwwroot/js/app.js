@@ -766,6 +766,15 @@ const Drive = {
       ? selectionActionTargets(selected).length : selected.length;
     const deleteCount = typeof selectionActionTargets === "function"
       ? selectionActionTargets(selected, true).length : selected.length;
+    const canAssociateMultiple = !locked && selected.length > 1 &&
+      selected.every(n => n.type === "file");
+    for (const [id,move] of [["#selShare",false],["#selMove",true]]) {
+      const btn = $(id);
+      if (btn) {
+        btn.classList.toggle("hidden", !canAssociateMultiple);
+        btn.textContent = (move ? "移动 " : "共享 ") + selected.length + " 个附件";
+      }
+    }
     const sdDownload = $("#selDownload");
     if (sdDownload) {
       sdDownload.classList.toggle("hidden", locked);
@@ -1243,6 +1252,7 @@ const Drive = {
         ? selectionActionTargets(items).length : items.length;
       const deleteCount = typeof selectionActionTargets === "function"
         ? selectionActionTargets(items, true).length : items.length;
+      const canAssociateMultiple = !locked && items.every(n => n.type === "file");
       const total = items.reduce((a, b) => a + (b.size || 0), 0);
       body.innerHTML = `
         <div class="detail-hero">
@@ -1252,6 +1262,8 @@ const Drive = {
         </div>
         <div class="detail-actions">
           ${locked ? "" : `<button class="btn" data-detail-act="download">${icon("download", 16)}打包下载选中的 ${downloadCount} 项</button>`}
+          ${canAssociateMultiple ? `<button class="btn" data-detail-act="assoc-batch">${icon("copy", 16)}共享 ${items.length} 个附件</button>
+          <button class="btn" data-detail-act="assoc-move-batch">${icon("move", 16)}移动 ${items.length} 个附件</button>` : ""}
           <button class="btn" data-detail-act="delete">${icon(locked ? "trashForever" : "trash", 16)}${locked ? "彻底删除选中的 " : "删除选中的 "}${deleteCount} 项</button>
         </div>
         <div class="detail-section" style="border-bottom:0">
