@@ -26,7 +26,7 @@ static class NativeMcpArchiveSmoke
         Check(new[]{"list_folders","create_folder","update_folder",
             "delete_folder","move_folder","transfer_folder"}.All(names.Contains),
             "one canonical ordinary-folder MCP tool family is registered");
-        Check(!names.Contains("create_folder")&&!names.Contains("create_folder"),
+        Check(!names.Contains("create_archive")&&!names.Contains("create_general"),
             "retired ordinary-record commands are absent");
         // ISS-002: invalid archive classification is a known local refusal,
         // not an unknown write outcome.
@@ -314,7 +314,7 @@ static class NativeMcpArchiveSmoke
             remarks="新增记录",year=2026
         }));
         Check(Has(await Run("list_folders",new{workspace="company",section="party"}),party) &&
-            Has(await Run("list_folders",new{workspace="company",section="party"}),party),
+            !Has(await Run("list_folders",new{workspace="company",section="achievement"}),party),
             "party dedicated list and generic archive list share FolderId");
         await Run("update_folder",new{
             workspace="company",section="party",folder_id=party,remarks="更新后的活动资料"
