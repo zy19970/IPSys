@@ -478,3 +478,14 @@ CI #506 run41623186950首次通过编译、MCP和早期UI检查，但新测试�
 
 
 第十三轮CI最终验收：修复首页空分类图标变灰提交c8041fcbebfa6ffda0357fb678651e72241c20c0对应Windows CI #509（41642094605）已经completed/success，26步骤成功、0失败、2项可选ZIP64跳过。已通过前端CSS回归、真实Edge、SQLCipher/HTTP以及两种单文件EXE构建启动。去除了`.catcard.is-empty .cc-plate`透明度0.55和空类别标题灰化覆盖；分类图标颜色仍来自CAT_TYPES，同侧栏一致。正式Release未触发，用户本机新版仍待视觉检查。最近会话：memory/sessions/2026-11-03-仓库文件提交与项目全貌复盘.md，第十三轮最终收敛。
+
+
+## 2026-11-03：新会话全仓文件与提交历史认知复盘（只读业务审查）
+
+用户原话：“你梳理一下仓库中的文件和提交记录，你对于整个项目有个把握”。本轮按 AIGT-templates AGENTS.md、AI_RULES/GIT_OPERATIONS.md、MEMORY_PROTOCOL.md 先恢复 IPSys 记忆和 2026-11-03 会话，再核对实际 main 源码、递归文件树、按页 Git 提交历史、Windows Actions 与核心文档。产品审查基线 main=1fa63e68b8525361931387f00ab39768a0a235bb，递归树827项（含目录，src 169、tests 591、docs 44），从2026-10-13至2026-11-03 共794条提交（不计本轮随后新增的记忆提交）。最近产品修复 c8041fc，Windows CI #509（41642094605）completed/success；26步骤成功、0失败、2个可选>4GiB ZIP64步骤跳过。当前代码正式Release仍需手动触发，历史最后正式预发布v0.9.1-rc1并不包含所有最新主分支变更。
+
+项目定位：本机离线 Windows WinForms+ASP.NET Core/内嵌 OneDrive风格Explorer+SQLCipher V2+MCP；公司和个人两个工作区共12个业务入口；项目/合同/IP为专用业务folder，普通资料统一archive_folder+section，文件夹可递归并直接关联附件；FileId、LinkId、FileVersion、FileObject分别表达文件身份、所在关联、历史版本和物理内容。同区明确共享/复用、跨区物理隔离。最近重点：11月2至3日统一旧archive/general为archive_folder、51个现行MCP工具、统一普通资料Excel六列和整树转移；右键单选多选目标规范化、多层级目标选择器、单事务批量共享/移动附件，以及空分类首页图标淡化修复均已有相应Windows成功CI证据。用户仍处未正式投产的真实使用反馈精修阶段；应优先保证各UI入口与MCP/Excel/HTTP一致和共享版本完整性，避免无授权整体重构。
+
+本轮对文档发现现行口径不一致：README和DESIGN部分段落仍写“64个MCP工具”，而11月3日统一重构后的发布测试明确定义51个；README部分表格自身也同时出现64与51。此前整改总表含旧阶段快照，必须结合11月3日后续实现和提交，不能不加核验地认定旧待办仍未修复。此处是文档口径问题，不代表已证实的运行错误。复盘建议本机用最新CI产物重点核验复杂文件树、跨模块/跨工作区复制、批量共享/移动、共享版本与回收站的真实交互；区别CI自动通过与真实Windows GUI、实际Agent端到端、正式Release。
+
+本轮未修改产品源码、数据库、测试或发布工作流，未进行本机运行测试；依记忆协议仅写入新会话记录和本节Memory。会话路径：memory/sessions/2026-11-03-IPSys项目整体认知复盘.md，最后归档轮次第一轮。任务开始通知 office-renderer/wechat-webhook#2158。
