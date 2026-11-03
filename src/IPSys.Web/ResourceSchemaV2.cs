@@ -207,7 +207,12 @@ static class ResourceSchemaV2
             ?? throw new IOException("资料库缺少文件夹表。");
         const string before="workspace='company' AND section IN ('certificate','achievement')";
         const string after="workspace='company' AND section IN ('certificate','achievement','party')";
-        if(definition.Contains(after,StringComparison.Ordinal))return;
+        // Canonical archive_folder already includes party AND general. The
+        // retired archive kind no longer leaves the older 'after' signature
+        // in freshly created V2 vaults; do not mistake them for old schemas.
+        const string unified="workspace='company' AND section IN ('certificate','achievement','party','general')";
+        if(definition.Contains(unified,StringComparison.Ordinal) ||
+           definition.Contains(after,StringComparison.Ordinal))return;
         if(!definition.Contains(before,StringComparison.Ordinal))
             throw new IOException("资料库文件夹约束未知，拒绝自动更新。");
 
