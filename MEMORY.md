@@ -365,3 +365,16 @@ GitHub Actions #489 run `41568442664` 针对主提交 `b21aab8`，已完成 succ
 用户原话：“这个删除也只能删除一个，不能删除可选”，附截图显示企业工作区业务档案内六个 archive_folder 文件夹已被勾选，但右键菜单仍为单条“删除文件夹”。本轮先读取 AIGT-templates 的 AGENTS/GIT_OPERATIONS/MEMORY_PROTOCOL、本仓 MEMORY 和最近会话，核对 main 基线 288ab250591b3d9550b54bfa40284ddaaf1b208b；确认 interactions.js 的 content.contextmenu 对已选条目保留选择、未选条目单选，showItemMenu 虽收集 actionItems，右键 delete-folder 回调却调用单条 deleteArchiveFolder(item)，绕开已有 deleteNodes(actionItems) 批量删除。已将 delete-folder 回调统一为 deleteNodes(actionItems)，多选时菜单显示“删除选中的 N 项”，单选仍显示“删除文件夹”，非普通文件夹的删除标签也在多选时显示相同计数；所有确认、工作区快照、批量逐项软删、回收站、错误统计沿用已有逻辑，不变更服务端接口。扩展 src/IPSys.Web/tests/explorer-archive-operations-smoke.cjs 的真实 showItemMenu 提取执行：右键已选文件夹保留两项并传两项给 deleteNodes，右键未选中条目收窄为单项。代码与测试提交 d299dc43be13a2136a40129885d83c8fce45a358 已经非强制CAS推送main并核对仅修改该 JS 与测试两文件；Windows Actions #491 run41583149320 在此前核查时仍执行中，最后结果需补记，不能提前声称success。已发送开始通知 office-renderer/wechat-webhook#2090。没有实际删除用户任何文件夹、没有操作旧数据库或触发Release。会话继续记入 memory/sessions/2026-11-02-操作细节精修仓库梳理.md 第21轮。
 
 **本轮最终验收补记**：Windows CI #491 run `41583149320` 针对业务提交 `d299dc43be13a2136a40129885d83c8fce45a358` 已 `completed/success`，26 个步骤成功、2 个可选步骤跳过、0 失败，包括 Explorer/Edge、SQLCipher/HTTP 和两种单文件 EXE 模式。先前记载“执行中”是此前查询时的真实状态，不再是最终状态。项目记忆首份提交 `8b37b73a8cb908b59845754c7ffb78be170b495c` 只含两记忆文件；本补记为验证状态收尾，不涉及新的业务修改。
+
+
+## 2026-11-03：仓库文件、提交与项目全貌复盘（新会话第一轮）
+
+用户原话：“你梳理一下仓库中的文件和提交记录，你对于整个项目有个把握”。按照 AIGT-templates 的 AGENTS/GIT_OPERATIONS/MEMORY_PROTOCOL 读取项目 README、MEMORY、最近会话，核对 main=ce7a567a6c2a5ce7c810d5edd58f697bdf84f20f、最近100条提交、正式需求/设计/测试/数据字典/前端 README 与整改总表，并针对 ResourceSchemaV2、NativeArchiveStore、NativeFolderTreeTransfer、ExcelLedger、interactions.js、Windows workflow 读取实际源码。上次完整递归文件树统计为2026-11-02审查记录中的814项/753个blob，本轮未重新取得完整递归树，不应冒称逐个读完所有文件。
+
+核心定位：离线 Windows WinForms 启动器+ASP.NET Core loopback Explorer+SQLCipher V2单库双工作区+本机64项MCP；OneDrive式统一文件交互、项目/IP/合同业务属性、可供AI Agent自动化管理。普通资料只用archive_folder存储，文件夹无版本、附件File有FileVersion、LinkId共享，同工作区复用FileId/物理内容，跨区必须复制独立FileObject。源码Schema确认为project/contract/ip/archive_folder四种kind；旧archive/general是API模块别名而非新库记录类型。
+
+提交主线：10月中旬冻结M0/N1–N4与文件模型；10月中下旬Explorer/SQLCipher/MCP/Excel及大文件功能；10月31日～11月1日字段/全选/状态筛选、侧栏和七模块递归目录；11月2日统一普通文件夹、直接新建、真实修改时间和右键操作；11月3日三批整改：bc1cb168及修复到0d223a2b（MCP属性、Excel按附件命中筛选、旧类型拒开），cfaf865e（目录Excel根及层级、综合资料6列），b21aab89及c269bda1（跨区整树事务、全版本复制、搜索和删除切区防竞态），d299dc43（右键多选文件夹删除）。CI #487/#488/#489/#490与#491对应实际产品或测试SHA历史记录均报告completed/success，#491 run41583149320对d299dc43有26个必选成功/2个可选跳过；不能当成本机人工GUI或真实2GiB+负载验收。主分支审查初始最新ce7a567a为CI补记，仅改Memory。正式Release还是v0.9.1-rc1，未包含近期main全部整改。
+
+当前未完全关闭的7项（均来自11月3日经复核的整改总表，不意味着7个已实机复现的严重Bug）：P1-4 Vault.Gate大文件上传下载导致其他数据库请求延后影响待测；P2-1 Excel逐行ListAll的约二次性能风险；P2-2 完成后退出在失活/半开连接时可能长期等待；P2-6 框选Shift锚点规则待定；P2-7 未解锁/api/status的路径信息最小化；P3-2旧records辅助函数清理；P3-3项目位置MAX跨父级的实效。专项建议首先使用新建的隔离测试库复核2GiB+并发、退出、共享多版本整树转移、5000行Excel、真实Agent任务与不同缩放的GUI，不改旧测试库、不仓促重构和发布。文档小幅滞后：2026-11-02编写的README/TESTING/DEVELOPMENT_PLAN/UI_BASELINE仍把综合资料Excel写为3列；当前ExcelLedger.cs实际已经为6列（名称/类别/备注/标签/年度/所属目录），需要在后续明确文档同步任务定向更新。不能仅据旧文档声称代码有Bug。
+
+本轮仅为仓库分析，没有修改任何业务代码、测试脚本或用户数据；没有启动新CI、生成EXE、触发Release。依据AIGT规范将本轮记忆写入本仓而不写入模板仓库。开始通知office-renderer/wechat-webhook#2092。新会话记录：memory/sessions/2026-11-03-仓库文件提交与项目全貌复盘.md，已归档第一轮。
