@@ -402,3 +402,12 @@ GitHub Actions #489 run `41568442664` 针对主提交 `b21aab8`，已完成 succ
 **实际最终验证：** 截至本轮当前时间，`main=948b1f87d8f4a75a576ca4aa0b7089dac6f8edae`；Windows Actions **#502 run 41598924583** 针对该精确SHA `completed/success`：26项success、0项failure、2项可选ZIP64大型物理生成/元数据步骤skipped。包括Debug嵌入Web、SQLCipher本机HTTP冒烟、统一MCP stdio与51工具、Node/Explorer、隔离SQLCipher+真实Edge重测、两种win-x64单EXE构建/启动和资源图标。之前#492–#501各次失败为循序发现并修复的具体迁移/测试残留，不能把历史失败说成最终状态。主程序未触发正式Release；不等于用户本机实际操作、真实第三方Agent或可选>4GiB ZIP64生成全验收。用户生产数据库未触碰、不做旧数据库迁移。仓库无需要再推送的可证实源码待办，下一步用户拉取当前CI的EXE做个人/公司普通资料、Excel、MCP、复制移动、共享版本和回收站实际操作确认。正式Release仍需用户手动触发，不自动发版。
 
 **本轮归档文件：** `memory/sessions/2026-11-03-仓库文件提交与项目全貌复盘.md`。助手对用户先解释中断前“e3a8ca44/#498未通过”的时间点，随后通过GitHub重新取现状确认main已前进至948b1f87，CI#502最终通过并即时更新说明。不要将较早状态解读为最新结论。
+
+
+## 2026-11-03：Explorer 右键菜单单选与批量操作混用审查（本会话第五轮）
+
+用户原话：“你再梳理一下右键菜单，有些是对可选文件的，有些是单个文件，这都混了”，附截图显示个人工作区综合资料/企业标准模板中勾选PDF与DOCX两个附件，但右键菜单同时出现针对右键项的“预览、属性、上传新版本、共享原件到其它记录、移动附件到其它记录”和针对两个勾选项的“打包下载、删除选中的2项”。本轮仅分析及提出统一规则，没有用户授权实施菜单修改。已重新读取AIGT-templates AGENTS/GIT_OPERATIONS/MEMORY_PROTOCOL、当前IPSys Memory及会话，检查main=f677294248d69bd2fdeaf954d0134f954ac50098，源码`src/IPSys.Web/wwwroot/js/interactions.js`的`showItemMenu(1675–1746)`、点击/右键事件、`deleteNodes`、`bindSelectionBar`和`bindDetail`，`app.js`中选取模型/详情面板、`bridge.js`中上传新版本/共享/目录转移、`forms.js`编辑分发，以及`explorer-archive-operations-smoke.cjs`测试。严格区分已证实行为和建议。
+
+结论：`showItemMenu`按照右键项`item`构造几乎所有菜单，只有download与delete使用`actionItems=Drive.selectedItems`；右键命中已选项保留当前选择，右键未选项会收敛为单选，此行为可保留。单选附件展示预览/属性/下载/上传新版本/共享/移动关联/删除；单选文件夹展示打开/属性/打包下载/复制/转移/重命名/上移下移（适用时）/模块内移动/删除；多选无论同类或混合类型应只显示真正作用于选择集合的批量命令（现有批量下载/删除），不展示只对右键项起效的单项命令。回收站还原/彻底删除已可处理actionItems，但标签未体现多选数量。详情面板多选仅有下载/删除，说明逻辑可共用。上传新版本及共享/移动对应单个文件的FileId/LinkId；多选时误以为作用于全选尤其危险。当前`deleteNodes`按LinkId去重相同附件历史版本，但菜单计数取原始选中节点数，可能不一致；父子文件夹或父文件夹+附件混选有重复覆盖潜在风险，需在后续实施时规范化批量目标。DOCX当前预览退化为下载确认，属于另一个用户体验细节。项目/合同/IP/普通资料、附件、回收站、右键动作按钮、Ctrl/Shift/复选框及工具栏/详情面板应共用统一单项/批量动作可用性表与动作目标快照，避免不同入口功能不一致。应新增针对2文件、2文件夹、文件+文件夹、历史版本同LinkId、单项右键已选/未选、回收站的菜单显示、目标和副作用验证。
+
+建议待用户确认再修改`showItemMenu`等组件，暂不推送产品代码，不触发CI/Release、不动用户资料库。本轮依记忆协议仅提交Memory与会话记录；开始通知office-renderer/wechat-webhook#2132。
