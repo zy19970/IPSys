@@ -334,3 +334,14 @@ P3-1 last_insert_rowid 两次、脆弱可简化但当下正确；P3-2 ExcelLedge
 CI迭代的真实记录：初次 #484 run41561041264 C# 编译0警告但Schema父级触发器SQL括号多一层，修复提交`5c4d7f78bdd45233be0a6875df7b3498e32f5e86`；#485 run41561382911 新统一Schema不带旧archive party指纹而旧EnsurePartyArchiveSection误判，修复提交`aa089b2237de372b5692a30a5be2d5d3aaa88a25`；#486 run41561724802 Schema冒烟旧计数把party的archive_folder计入achievement初始目录，修复提交`0d223a2b7423751de6759d188619ebc86d75f474`。最终Windows CI #487 run`41562014243` **completed/success**，job 26个success步骤、2个可选ZIP64 skipped，包含Debug/SQLCipher/HTTP/MCP/Excel/Explorer和两种单文件发布检查，0 failed。未把前三次失败伪称成功。
 
 更新 `docs/IPSys_当前问题与整改任务总表_20261102.md` 第十一节记录上述修复、提交、CI和剩余待办。第一批三项的源码与自动化验证已收敛；真实用户旧数据库未操作，用户本机GUI、实际版本发布及生产验收不在本轮范围。第二批仍是company/achievement根与多层Excel往返、general Excel完整属性/旧表兼容；第三批整树转移和异步竞态。发送开始通知#2062、失败#2063/#2065/#2067/#2069、重新开始#2064/#2066/#2068/#2070；最终完成通知待文档与Memory提交并核验后发送。当前会话记录 `memory/sessions/2026-11-02-操作细节精修仓库梳理.md`，第十六轮。
+
+
+## 2026-11-03：第二批 Excel 文件夹层级与综合资料元数据收敛（本会话第十七轮）
+
+用户原话：“推进下一批”。依前轮冻结方案推进第二批：公司业务档案顶层与多级普通文件夹 Excel 可往返；综合资料统一为名称/类别/备注/标签/年度/所属目录六列；兼容旧综合资料 1/2/3 列与资料 4 列模板，并验证缺失字段不覆盖既有元数据。任务开始前重读 AIGT AGENTS/GIT_OPERATIONS/MEMORY_PROTOCOL、IPSys MEMORY/会话及整改总表；起始main `09c7d32db2ffed7b6db4a1217738cfe997beac9a`，此前第一批CI #487 success。
+
+**业务代码提交**：`cfaf865e712765b3c672786df95d2176e3a8d53b`，Git Data API非强制CAS推送main并核验4文件diff：`ExcelLedger.cs` 将 general 新模板扩为六列，修正旧1/2/3列的插值映射（旧第2列备注对应新第3列、旧第3列所属目录对应新第6列）；`NativeArchiveGeneralExcelLedger.cs` 将新版公司achievement空所属目录解释为模块顶层，按路径层级先父后子并保留原行号，对一般资料和旧3列综合资料都处理层级；Excel `update` 的空白字段保留元数据，重复 `create` 返回明确的同级同名中文错误；`NativeArchiveGeneralMilestoneSmoke.cs` 增强真实HTTP/SQLCipher XLSX 测试，包括根目录skip、duplicate create、倒序三级目录跨工作区导入和原父子FolderId校验、general新六列属性更新与blank备注保留、旧1/2/3列表头保留category/year/tags和旧3列嵌套路径、缺失目录拒绝；`wwwroot/js/excel.js` 澄清新增策略与同级同名文件夹限制。旧4列公司业务档案模板仍沿用已存在的类别定位根目录约定，不静默创建特殊目录。
+
+**验证**：Windows Actions run `41564531663`（#488），`completed/success`，工作流实际26步骤success、2个ZIP64可选skipped、0failure；测试运行在临时隔离SQLCipher数据库，Windows Debug与HTTP/Excel及完整Explorer/Edge、自含/框架依赖单EXE发布检查纳入。未在用户本机GUI、用户实际旧库或正式Release中测试。被拦截的单次新增大型测试文件请求（#2073失败）已按规则另发重新开始#2074，改为向既有smoke小批量扩展并完成。开始通知#2072；完成通知待记忆文档归档核验发送。
+
+任务书 `docs/IPSys_当前问题与整改任务总表_20261102.md` 新增第十二节载明第二批代码、CI和下一步范围。第三批待办：跨工作区带子目录的文件夹整树复制/移动和共享FileId/版本/回滚语义、批量删除切区与搜索刷新异步竞态、个人“人力资源”搜索显示等；尚未改动。最近会话记录 `memory/sessions/2026-11-02-操作细节精修仓库梳理.md`，第十七轮。
