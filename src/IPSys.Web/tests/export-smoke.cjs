@@ -87,10 +87,12 @@ const selected=[
   name:'方案.pdf',size:6,workspace:'company'},
  {source:'v2file',kind:'project',ownerId:2,ownerName:'研发:项目',id:2,fileId:2,version:1,
   name:'方案.pdf',size:5,workspace:'company'},
- {source:'v2file',kind:'contract',ownerId:11,ownerName:'合同A',projectId:1,
-  projectName:'研发:项目',id:3,fileId:3,version:1,name:'附件.txt',size:7,workspace:'company'},
- {source:'v2file',kind:'contract',ownerId:12,ownerName:'合同A',projectId:1,
-  projectName:'研发:项目',id:4,fileId:4,version:1,name:'附件.txt',size:8,workspace:'company'}
+ {source:'v2file',kind:'archive_folder',section:'project',ownerId:11,ownerName:'合同A',
+   archiveFolderPath:[{id:'project:1',name:'研发:项目'},{id:11,name:'合同A'}],
+   id:3,fileId:3,version:1,name:'附件.txt',size:7,workspace:'company'},
+ {source:'v2file',kind:'archive_folder',section:'project',ownerId:12,ownerName:'合同A',
+   archiveFolderPath:[{id:'project:1',name:'研发:项目'},{id:12,name:'合同A'}],
+   id:4,fileId:4,version:1,name:'附件.txt',size:8,workspace:'company'}
 ];
 const urls=selected.map(x=>'/api/v2/files/company/'+x.fileId+
  '/versions/'+x.version+'/download');
@@ -100,7 +102,7 @@ assert.ok(selected.every(x=>x.source==='v2file'&&x.fileId>0&&x.version===1),
 const plan=exporter.makePlan(selected);
 assert.deepEqual(JSON.parse(JSON.stringify(plan.map(x=>x.path))),[
  '研发_项目/方案.pdf','研发_项目 (2)/方案.pdf',
- '研发_项目/合同A/附件.txt','研发_项目/合同A (2)/附件.txt'
+ '研发_项目 (3)/合同A/附件.txt','研发_项目 (3)/合同A (2)/附件.txt'
 ]);
 (async()=>{
  await exporter.start('folder',selected);
@@ -108,7 +110,7 @@ assert.deepEqual(JSON.parse(JSON.stringify(plan.map(x=>x.path))),[
  assert.equal((await (await root.getDirectoryHandle('研发_项目')).getFileHandle('方案.pdf')).bytes.toString(),'123456');
  await exporter.start('folder',[{...selected[0],fileId:0}]);
  assert.match(notices.at(-1).message,/V2 FileId/,'Missing native file identity must fail closed before folder writes');
- assert.equal((await (await root.getDirectoryHandle('研发_项目')).getDirectoryHandle('合同A')).children.get('附件.txt').bytes.toString(),'aFile01');
+ assert.equal((await (await root.getDirectoryHandle('研发_项目 (3)')).getDirectoryHandle('合同A')).children.get('附件.txt').bytes.toString(),'aFile01');
  
 // The shell projects the drive tree into export.js identities. The old shell
 // did this in projectOriginals(); the new one walks the real node tree, so the

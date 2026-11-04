@@ -32,11 +32,11 @@ static class NativeMcpSmoke
         // endpoint the UI uses; all writes continue through the real pipe.
         async Task<JsonNode> Call(string name,object input)
         {
-            if(name is "list_projects" or "list_contracts" or "list_ips")
+            if(name is "list_projects" or "list_ips")
             {
                 string workspace=Args(input).GetProperty("workspace").GetString()!;
                 string kind=name switch {
-                    "list_projects"=>"project","list_contracts"=>"contract",_=>"ip"
+                    "list_projects"=>"project",_=>"ip"
                 };
                 using var response=await client.GetAsync(
                     "/api/v2/folders/"+workspace+"/"+kind);
@@ -50,7 +50,6 @@ static class NativeMcpSmoke
             .GetProperty("name")!.GetValue(x)!).ToArray();
         string[] native={
             "list_projects","create_project","update_project","delete_project",
-            "list_contracts","create_contract","delete_contract",
             "list_ips","create_ip","update_ip","delete_ip"
         };
         Check(native.All(names.Contains) &&
@@ -62,20 +61,29 @@ static class NativeMcpSmoke
         Check(retiredAlias["error"]?["code"]?.GetValue<int>()==-32602,
             "retired v2_* MCP aliases are not discoverable or callable");
         Check(names.Contains("upload_files")&&!names.Contains("v2_upload_files") &&
-              new[]{"list_project_files","list_contract_files",
-                  "delete_project_file","delete_contract_file"}.All(names.Contains),
-              "project and contract file MCP actions are available");
-        Check(new[]{"copy_contract","move_folder","list_folder_entries",
+              new[]{"list_project_files","delete_project_file"}.All(names.Contains),
+              "project file MCP actions are available");
+        Check(new[]{"move_folder","list_folder_entries",
             "reorder_entries","reorder_records","reorder_folders",
             "list_file_links"}.All(names.Contains),
             "second batch of V2 MCP endpoint adapters registered");
         Check(new[]{"start_upload_task","get_task_status","cancel_task","purge_trash"}
             .All(names.Contains) && names.Distinct().Count()==names.Length &&
-            names.Length>=50 && names.Contains("get_agent_guidance") &&
+            names.Length>=44 && names.Contains("get_agent_guidance") &&
             new[]{"list_folders","create_folder","update_folder",
                 "delete_folder","move_folder","transfer_folder"}.All(names.Contains) &&
             !names.Contains("create_archive") && !names.Contains("create_general"),
             "MCP registry exposes one folder family without retired tools");
+        string[] retired=["list_contracts","create_contract","update_contract",
+            "delete_contract","copy_contract","list_contract_files","delete_contract_file"];
+        foreach(string tool in retired)
+        {
+            Check(!names.Contains(tool),"retired MCP tool still registered: "+tool);
+            var rejected=await McpLocal.RunSmokeProtocolToolAsync(
+                tool,Args(new{workspace="company"}));
+            Check(rejected["error"]?["code"]?.GetValue<int>()==-32602,
+                "retired MCP tools/call must reject: "+tool);
+        }
         // One idle client must never block an independent Agent's request.
         McpLocal.VerifySessionScopedIdentity();
         await McpLocal.VerifyConcurrentClientsAsync();
@@ -255,10 +263,9 @@ static class NativeMcpSmoke
                 "MCP tools/list must advertise semicolon-separated tags: "+tool);
         Check(!Properties("upload_files").TryGetProperty("group_id",out _),
             "obsolete group_id must not appear in the tool schema");
-        Check(Accepts(Properties("create_contract").GetProperty("amount"),"number") &&
-              Accepts(Properties("update_project").GetProperty("leader"),"null") &&
+        Check(Accepts(Properties("update_project").GetProperty("leader"),"null") &&
               Accepts(Properties("create_folder").GetProperty("year"),"number"),
-            "schemas expose numeric year/amount and optional null semantics");
+              "schemas expose optional null and numeric year semantics");
 
         bool meaningful404=false;
         try { await Original("get_file_details",new{
@@ -346,7 +353,6 @@ static class NativeMcpSmoke
               "MCP search_records rejects invalid limit");
         // ISS-001: call the actual JSON-RPC adapter, not just the pipe.
         await CheckArrayRpc("list_projects",new{workspace="company"});
-        await CheckArrayRpc("list_contracts",new{workspace="company"});
         await CheckArrayRpc("list_ips",new{workspace="company"});
         await CheckArrayRpc("list_folders",new{workspace="company",section="general"});
         await CheckArrayRpc("list_folders",new{workspace="company",section="achievement"});
@@ -377,50 +383,38 @@ static class NativeMcpSmoke
         catch(IOException ex)when(ex.Message.Contains("404")){crossDenied=true;}
         Check(crossDenied,"cross-workspace project mutation blocked");
 
-        bool orphanDenied=false;
+        // A contract named folder in a project is an ordinary directory.
+        bool foreignProjectParent=false;
         try
         {
-            await Call("create_contract",new{
-                workspace="personal",project_id=project,name="错误归属合同"
+            await Original("create_folder",new{
+                workspace="personal",section="project",parent_id=project,
+                name="跨区项目目录"+suffix
             });
         }
-        catch(IOException ex)when(ex.Message.Contains("404")){orphanDenied=true;}
-        Check(orphanDenied,"contracts must belong to a project in same workspace");
-        var contractResult=await Call("create_contract",new{
-            workspace="company",project_id=project,
-            name="原生MCP合同"+suffix,contract_no="C-"+suffix,amount=1234.5
+        catch(IOException){foreignProjectParent=true;}
+        Check(foreignProjectParent,"project child cannot reference another workspace");
+        long projectDir=Id(await Original("create_folder",new{
+            workspace="company",section="project",parent_id=project,
+            name="MCP项目合同资料"+suffix
+        }));
+        long childDir=Id(await Original("create_folder",new{
+            workspace="company",section="project",parent_id=projectDir,
+            name="MCP项目二级目录"+suffix
+        }));
+        var projectDirectories=await Original("list_folders",new{
+            workspace="company",section="project"
         });
-        long contract=Id(contractResult);
-        await CheckArrayRpc("list_contract_files",new{workspace="company",
-            contract_id=contract});
-        var contracts=await Call("list_contracts",new{workspace="company"});
-        var contractItem=Find(contracts,contract);
-        Check(contractItem?["folder"]?["parent"]?["id"]?.GetValue<long>()==project &&
-              contractItem?["businessData"]?["contractNo"]?.GetValue<string>()=="C-"+suffix &&
-              contractItem?["businessData"]?["amount"]?.GetValue<string>()=="1234.5",
-              "V2 MCP contract has actual V2 project parent");
-
-        await Original("update_contract",new{
-            workspace="company",contract_id=contract,remarks="MCP编辑合同回归",
-            amount=2345.75
+        Check(Find(projectDirectories,projectDir)!=null &&
+              Find(projectDirectories,childDir)!=null,
+            "nested project folders are real MCP FolderIds");
+        var folderSearch=await Original("search_records",new{
+            workspace="company",query="MCP项目合同资料"+suffix
         });
-        var editedContract=Find(await Call("list_contracts",new{workspace="company"}),contract);
-        Check(editedContract?["businessData"]?["remarks"]?.GetValue<string>()=="MCP编辑合同回归" &&
-              editedContract?["businessData"]?["amount"]?.GetValue<string>()=="2345.75" &&
-              editedContract?["businessData"]?["contractNo"]?.GetValue<string>()=="C-"+suffix,
-            "MCP update_contract patches fields without losing existing contract number");
-        var searched=await Original("search_records",new{
-            workspace="company",query="MCP编辑合同回归"
-        });
-        Check(searched["results"] is JsonArray hits &&
-            hits.Any(x=>x?["kind"]?.GetValue<string>()=="contract" &&
-                x?["id"]?.GetValue<long>()==contract),
-            "MCP unified search finds an updated contract");
-        bool illegalContract=false;
-        try {await Original("update_contract",new{
-            workspace="personal",contract_id=contract,name="越权"
-        });}catch(IOException){illegalContract=true;}
-        Check(illegalContract,"MCP contract update respects workspace isolation");
+        Check(folderSearch["results"] is JsonArray folderHits &&
+              folderHits.Any(x=>x?["kind"]?.GetValue<string>()=="archive_folder" &&
+                  x?["id"]?.GetValue<long>()==projectDir),
+            "MCP search finds project ordinary directory");
 
         string patent="原生MCP专利"+suffix;
         long ip=Id(await Call("create_ip",new{
@@ -525,20 +519,24 @@ static class NativeMcpSmoke
         await Call("delete_ip",new{workspace="personal",ip_id=copiedIp});
 
         await Call("delete_project",new{workspace="company",project_id=project});
-        Check(Find(await Call("list_contracts",new{workspace="company"}),contract)==null,
-              "project delete hides its V2 contracts");
-        using(var restore=await client.PostAsync(
+        using(var hidden=await client.GetAsync(
+            $"/api/v2/folders/company/archive_folder/{projectDir}?section=project"))
+            Check(hidden.StatusCode==System.Net.HttpStatusCode.NotFound,
+                "soft-deleted project hides its directories");
+        using(var restored=await client.PostAsync(
             $"/api/v2/folders/company/project/{project}/restore",null))
-            restore.EnsureSuccessStatusCode();
-        Check(Find(await Call("list_contracts",new{workspace="company"}),contract)!=null,
-            "restoring the parent restores original contract visibility");
-        await Call("delete_contract",new{workspace="company",contract_id=contract});
+            restored.EnsureSuccessStatusCode();
+        using(var visible=await client.GetAsync(
+            $"/api/v2/folders/company/archive_folder/{projectDir}?section=project"))
+            visible.EnsureSuccessStatusCode();
+        await Original("delete_folder",new{
+            workspace="company",section="project",folder_id=projectDir
+        });
         await Call("delete_ip",new{workspace="company",ip_id=ip});
-        Check(Find(await Call("list_contracts",new{workspace="company"}),contract)==null &&
-              Find(await Call("list_ips",new{workspace="company"}),ip)==null,
-              "MCP V2 soft-deletion correctly removes only native records");
+        Check(Find(await Call("list_ips",new{workspace="company"}),ip)==null,
+            "MCP IP soft delete remains in use");
         // N2-03-07-02: original tool names must use the same V2 FolderId
-        // as the live UI; no new legacy project/contract rows may appear.
+        // as the live UI; no retired business kinds may be created.
         var oldNameProject=await Original("create_project",new{
             workspace="company",name="原名MCP项目"+suffix,project_type="科研项目",
             project_no="ORIG-"+suffix,remarks="创建于 V2"
@@ -703,44 +701,40 @@ static class NativeMcpSmoke
         }
         Check(unknownParamDenied,"unknown and misspelled MCP parameters are rejected");
 
-        var originalContract=await Original("create_contract",new{
-            workspace="company",project_id=originalProject,
-            name="原名MCP合同"+suffix,contract_no="ORIG-C-"+suffix
+        // Retired contract objects become ordinary project directories.
+        long originalProjectDir=Id(await Original("create_folder",new{
+            workspace="company",section="project",parent_id=originalProject,
+            name="原项目文件夹"+suffix
+        }));
+        long copiedProjectDir=Id(await Original("create_folder",new{
+            workspace="company",section="project",parent_id=originalProject,
+            name="共享文件夹"+suffix
+        }));
+        var projectDirRows=await Original("list_folders",new{
+            workspace="company",section="project"
         });
-        long originalContractId=Id(originalContract);
-        var copiedContract=await Original("copy_contract",new{
-            workspace="company",contract_id=originalContractId,
-            request_id=Guid.NewGuid().ToString("N")
-        });
-        long copiedContractId=Id(copiedContract);
-        Check(copiedContractId!=originalContractId &&
-              Find(await Call("list_contracts",new{workspace="company"}),copiedContractId)?
-                 ["folder"]?["parent"]?["id"]?.GetValue<long>()==originalProject &&
-              Find(await Call("list_contracts",new{workspace="company"}),copiedContractId)?
-                 ["businessData"]?["contractNo"]?.GetValue<string>()=="ORIG-C-"+suffix,
-              "copy_contract creates a sibling with matching contract fields");
+        Check(Find(projectDirRows,originalProjectDir)!=null &&
+              Find(projectDirRows,copiedProjectDir)!=null,
+            "ordinary project directories exist as FolderIds");
         await Original("reorder_records",new{
-            workspace="company",kind="contract",
-            ids=new[]{copiedContractId,originalContractId},
+            workspace="company",kind="project",
+            ids=new[]{originalProject,project},
             request_id=Guid.NewGuid().ToString("N")
         });
-        var reorderedContracts=(await Original("list_contracts",new{
+        var sortedProjects=(await Original("list_projects",new{
             workspace="company"
         })).AsArray().Select(x=>x?["id"]?.GetValue<long>()??0).ToArray();
-        Check(Array.IndexOf(reorderedContracts,copiedContractId)<
-              Array.IndexOf(reorderedContracts,originalContractId),
-              "reorder_records persists selected contract ordering");
-        bool invalidOrderDenied=false;
-        try {await Original("reorder_records",new{
-            workspace="company",kind="contract",
-            ids=new[]{originalContractId,originalContractId}
-        });}catch(IOException){invalidOrderDenied=true;}
-        Check(invalidOrderDenied,"duplicate FolderId must be rejected by MCP reorder");
-        var listedContracts=await Original("list_contracts",new{workspace="company"});
-        Check(listedContracts is JsonArray contractRows &&
-              contractRows.Any(x=>x?["id"]?.GetValue<long>()==originalContractId &&
-                  x?["projectId"]?.GetValue<long>()==originalProject),
-            "original contract list and create share native parent FolderId");
+        Check(Array.IndexOf(sortedProjects,originalProject) <
+              Array.IndexOf(sortedProjects,project),
+            "reorder_records continues to sort projects");
+        bool retiredKindRejected=false;
+        try
+        {
+            await Original("reorder_records",new{
+                workspace="company",kind="contract",ids=new[]{originalProject}
+            });
+        }catch(IOException){retiredKindRejected=true;}
+        Check(retiredKindRejected,"reorder_records rejects retired contract kind");
         string path=Path.Combine(Path.GetTempPath(),"IPSys-V2-MCP-"+suffix+".bin");
         byte[] originalBytes=System.Security.Cryptography.RandomNumberGenerator.GetBytes(2173);
         await File.WriteAllBytesAsync(path,originalBytes);
@@ -909,150 +903,130 @@ static class NativeMcpSmoke
                 workspace="company",section="general",folder_id=copyFolder
             });
 
-            // Contract shares the same immutable V2 file; detach only its link.
+            // Independent project folders share a FileId but own distinct LinkIds.
             var shared=await Original("associate_file",new{
                 workspace="company",file_id=file,link_id=link,
-                target_folder_id=originalContractId,move=false
+                target_folder_id=originalProjectDir,move=false
             });
-            Check(shared is JsonObject,"MCP associate_file returns a V2 link result");
-            var contractFiles=await Original("list_contract_files",new{
-                workspace="company",contract_id=originalContractId
-            });
-            long contractLink=contractFiles.AsArray()
-                .FirstOrDefault(x=>x?["fileId"]?.GetValue<long>()==file)?["id"]?.GetValue<long>()??0;
-            Check(contractLink>0,"contract sees shared V2 FileId");
+            Check(shared is JsonObject,"MCP associate_file returns native link");
+            var projectDirFiles=await client.GetFromJsonAsync<JsonElement>(
+                $"/api/v2/files/company/folders/{originalProjectDir}/links");
+            long firstLink=projectDirFiles.EnumerateArray()
+                .Single(x=>x.GetProperty("fileId").GetInt64()==file)
+                .GetProperty("id").GetInt64();
+            Check(firstLink!=link,"shared FileId has separate directory LinkId");
             await CheckArrayRpc("list_file_links",new{workspace="company",file_id=file});
             var owners=await Original("list_file_links",new{
                 workspace="company",file_id=file
             });
             Check(owners is JsonArray activeLinks &&
-                activeLinks.Any(x=>x?["id"]?.GetValue<long>()==link &&
-                    x?["folderId"]?.GetValue<long>()==originalProject) &&
-                activeLinks.Any(x=>x?["id"]?.GetValue<long>()==contractLink &&
-                    x?["folderId"]?.GetValue<long>()==originalContractId),
-                "list_file_links returns all active folder associations for FileId");
-            bool foreignFileDenied=false;
+                  activeLinks.Any(x=>x?["id"]?.GetValue<long>()==link &&
+                      x?["folderId"]?.GetValue<long>()==originalProject) &&
+                  activeLinks.Any(x=>x?["id"]?.GetValue<long>()==firstLink &&
+                      x?["folderId"]?.GetValue<long>()==originalProjectDir),
+                "MCP lists all active shared FolderId/LinkId ownership");
+            bool foreignLinkDenied=false;
             try{await Original("list_file_links",new{
                 workspace="personal",file_id=file
-            });}catch(IOException){foreignFileDenied=true;}
-            Check(foreignFileDenied,"list_file_links must enforce workspace isolation");
-            var attachedCopy=await Original("copy_contract",new{
-                workspace="company",contract_id=originalContractId
+            });}catch(IOException){foreignLinkDenied=true;}
+            Check(foreignLinkDenied,"shared FileId lookup is workspace isolated");
+            await Original("associate_file",new{
+                workspace="company",file_id=file,link_id=link,
+                target_folder_id=copiedProjectDir,move=false
             });
-            long attachedCopyId=Id(attachedCopy);
-            var copiedLinks=await Original("list_contract_files",new{
-                workspace="company",contract_id=attachedCopyId
+            var secondFiles=await client.GetFromJsonAsync<JsonElement>(
+                $"/api/v2/files/company/folders/{copiedProjectDir}/links");
+            long secondLink=secondFiles[0].GetProperty("id").GetInt64();
+            Check(secondLink!=firstLink &&
+                  secondFiles[0].GetProperty("fileId").GetInt64()==file,
+                "another ordinary project directory shares same FileId");
+            await Original("delete_file",new{
+                workspace="company",owner_id=originalProjectDir,
+                file_id=file,link_id=firstLink
             });
-            Check(copiedLinks is JsonArray clonedLinks &&
-                clonedLinks.Any(x=>x?["fileId"]?.GetValue<long>()==file &&
-                    x?["id"]?.GetValue<long>()!=contractLink),
-                "copy_contract adds new LinkId while preserving shared FileId");
-            await Original("delete_contract_file",new{
-                workspace="company",contract_id=originalContractId,
-                file_id=file,link_id=contractLink
+            var active=await Original("list_file_links",new{
+                workspace="company",file_id=file
             });
-            Check((await Original("list_contract_files",new{
-                workspace="company",contract_id=originalContractId
-            })).AsArray().Count==0 &&
-                (await Original("list_file_links",new{
-                    workspace="company",file_id=file
-                })).AsArray().Any(x=>
-                    x?["folderId"]?.GetValue<long>()==attachedCopyId),
-                "contract unlink cannot erase another copied contract's shared file");
-            await Original("delete_contract",new{
-                workspace="company",contract_id=attachedCopyId
-            });
+            Check(active is JsonArray remain && remain.Any(x=>
+                x?["id"]?.GetValue<long>()==secondLink),
+                "unlink one location retains a second shared reference");
             await Original("restore_file_link",new{
-                workspace="company",owner_id=originalContractId,
-                file_id=file,link_id=contractLink
+                workspace="company",owner_id=originalProjectDir,
+                file_id=file,link_id=firstLink
             });
-            Check((await Original("list_contract_files",new{
-                workspace="company",contract_id=originalContractId
-            })).AsArray().Any(x=>x?["id"]?.GetValue<long>()==contractLink),
-                "MCP restores exact deleted LinkId in original folder");
-            await Original("delete_contract_file",new{
-                workspace="company",contract_id=originalContractId,
-                file_id=file,link_id=contractLink
+            projectDirFiles=await client.GetFromJsonAsync<JsonElement>(
+                $"/api/v2/files/company/folders/{originalProjectDir}/links");
+            Check(projectDirFiles.EnumerateArray().Any(x=>
+                x.GetProperty("id").GetInt64()==firstLink),
+                "restoring deleted link preserves original LinkId");
+            bool mismatch=false;
+            try{await Original("delete_project_file",new{
+                workspace="company",project_id=originalProject,
+                file_id=file,link_id=firstLink
+            });}catch(IOException){mismatch=true;}
+            Check(mismatch,"typed project unlink rejects child-directory LinkId");
+            await Original("delete_file",new{
+                workspace="company",owner_id=originalProjectDir,
+                file_id=file,link_id=firstLink
             });
-            Check((await Original("list_project_files",new{
-                workspace="company",project_id=originalProject
-            })).AsArray().Any(x=>x?["fileId"]?.GetValue<long>()==file),
-                "original project file still accessible after contract unlink");
-            var mismatched=false;
-            try{
-                await Original("delete_project_file",new{
-                    workspace="company",project_id=originalProject,
-                    file_id=file,link_id=contractLink
-                });
-            }catch(IOException){mismatched=true;}
-            Check(mismatched,"cannot unlink a link belonging to another folder");
-
-            var allFiles=await Original("list_files",new{workspace="company"});
-            Check(allFiles is JsonArray af && af.Any(x=>
+            var listed=await Original("list_files",new{workspace="company"});
+            Check(listed is JsonArray all && all.Any(x=>
                 x?["id"]?.GetValue<long>()==link &&
                 x?["fileId"]?.GetValue<long>()==file &&
                 x?["ownerId"]?.GetValue<long>()==originalProject &&
                 x?["kind"]?.GetValue<string>()=="project"),
-                "general legacy-name list_files uses only the V2 FileId/LinkId map");
+                "global files list uses original LinkId/FileId and project owner");
             using(var relink=await client.PostAsJsonAsync(
                 $"/api/v2/files/company/{file}/links",
-                new{folderId=originalContractId}))
+                new{folderId=originalProjectDir}))
                 relink.EnsureSuccessStatusCode();
-            var relinked=(await Original("list_contract_files",new{
-                workspace="company",contract_id=originalContractId
-            })).AsArray();
-            long renewed=relinked.Single()?["id"]?.GetValue<long>()??0;
-            Check(renewed>0,"contract re-association creates a new link");
+            projectDirFiles=await client.GetFromJsonAsync<JsonElement>(
+                $"/api/v2/files/company/folders/{originalProjectDir}/links");
+            long renewed=projectDirFiles[0].GetProperty("id").GetInt64();
+            Check(renewed>0 && renewed!=firstLink,
+                "reassociation creates new LinkId");
             var pageOne=await Original("list_files_page",new{
                 workspace="company",offset=0,limit=1
             });
             var pageRows=pageOne["items"] as JsonArray;
             Check(pageRows is {Count:1} &&
-                pageOne["hasMore"]?.GetValue<bool>()==true &&
-                pageOne["nextOffset"]?.GetValue<int>()==1,
-                "global V2 file list returns a bounded first page");
+                  pageOne["hasMore"]?.GetValue<bool>()==true &&
+                  pageOne["nextOffset"]?.GetValue<int>()==1,
+                "bounded global file page");
             var pageTwo=await Original("list_files_page",new{
                 workspace="company",offset=1,limit=1
             });
             Check(pageTwo["items"] is JsonArray secondRows && secondRows.Count==1 &&
-                pageRows?[0]?["id"]?.GetValue<long>()!=
-                    secondRows[0]?["id"]?.GetValue<long>(),
-                "file page offset advances to another link");
+                  pageRows?[0]?["id"]?.GetValue<long>()!=
+                  secondRows[0]?["id"]?.GetValue<long>(),
+                "page offset advances by LinkId");
             var projectPage=await Original("list_files_page",new{
                 workspace="company",kind="project",owner_id=originalProject,
                 name=Path.GetFileName(path),offset=0,limit=10
             });
-            Check(projectPage["items"] is JsonArray projectMatches &&
-                projectMatches.Any(x=>x?["id"]?.GetValue<long>()==link &&
-                    x?["fileId"]?.GetValue<long>()==file &&
-                    x?["ownerId"]?.GetValue<long>()==originalProject &&
-                    x?["kind"]?.GetValue<string>()=="project"),
-                "filtered file query preserves LinkId/FileId/FolderId identity");
+            Check(projectPage["items"] is JsonArray filtered &&
+                  filtered.Any(x=>x?["id"]?.GetValue<long>()==link &&
+                      x?["fileId"]?.GetValue<long>()==file),
+                "typed file page retains original identities");
             bool invalidPage=false;
             try{await Original("list_files_page",new{
                 workspace="company",offset=0,limit=201
             });}catch(IOException){invalidPage=true;}
-            Check(invalidPage,"file page size limit 1–200 is enforced");
-            bool wrongDeleteDenied=false;
-            try { await Original("delete_file",new{
-                workspace="company",owner_id=originalContractId,
+            Check(invalidPage,"invalid page limit rejected");
+            bool wrongDelete=false;
+            try{await Original("delete_file",new{
+                workspace="company",owner_id=originalProjectDir,
                 file_id=file,link_id=link
-            }); }
-            catch(IOException){wrongDeleteDenied=true;}
-            Check(wrongDeleteDenied,"delete_file requires all three matching identities");
+            });}catch(IOException){wrongDelete=true;}
+            Check(wrongDelete,"delete_file checks FolderId/FileId/LinkId together");
             await Original("delete_file",new{
-                workspace="company",owner_id=originalContractId,
+                workspace="company",owner_id=originalProjectDir,
                 file_id=file,link_id=renewed
             });
-            Check((await Original("list_contract_files",new{
-                workspace="company",contract_id=originalContractId
-            })).AsArray().Count==0 &&
-                  (await Original("list_project_files",new{
+            Check((await Original("list_project_files",new{
                 workspace="company",project_id=originalProject
             })).AsArray().Any(x=>x?["fileId"]?.GetValue<long>()==file),
-                "general delete_file unlinks one V2 location without erasing shared bytes");
-
-            // Append a version via a typed owner check, never by legacy group_id.
+                "project link survives nested directory unlink");
             byte[] revised=System.Security.Cryptography.RandomNumberGenerator.GetBytes(951);
             await File.WriteAllBytesAsync(path,revised);
             var appended=await Original("upload_files",new{
@@ -1063,15 +1037,15 @@ static class NativeMcpSmoke
                   (await client.GetByteArrayAsync(
                       $"/api/v2/files/company/{file}/versions/2/download"))
                   .SequenceEqual(revised),
-                "original project MCP appends genuine V2 FileVersion");
-            bool foreignVersion=false;
-            try{
-                await Original("upload_files",new{
-                    workspace="company",kind="contract",owner_id=originalContractId,
-                    paths=new[]{path},on_conflict="update",file_id=file
-                });
-            }catch(IOException){foreignVersion=true;}
-            Check(foreignVersion,"cannot version a FileId without owner link");
+                "MCP adds actual new historical FileVersion");
+            bool missingOwner=false;
+            try{await Original("upload_files",new{
+                workspace="company",kind="archive_folder",section="project",
+                owner_id=originalProjectDir,paths=new[]{path},
+                on_conflict="update",file_id=file
+            });}catch(IOException){missingOwner=true;}
+            Check(missingOwner,
+                "unlinked ordinary folder cannot append another folder's file history");
             await Original("delete_project_file",new{
                 workspace="company",project_id=originalProject,
                 file_id=file,link_id=link
@@ -1079,15 +1053,15 @@ static class NativeMcpSmoke
             Check(!(await Original("list_project_files",new{
                 workspace="company",project_id=originalProject
             })).AsArray().Any(x=>x?["id"]?.GetValue<long>()==link),
-                "target project LinkId unlinked; other async-uploaded files remain intact");
+                "typed project unlink does not disturb other uploaded files");
         }
         finally{File.Delete(path);}
 
-        await Original("delete_contract",new{
-            workspace="company",contract_id=copiedContractId
+        await Original("delete_folder",new{
+            workspace="company",section="project",folder_id=copiedProjectDir
         });
-        await Original("delete_contract",new{
-            workspace="company",contract_id=originalContractId
+        await Original("delete_folder",new{
+            workspace="company",section="project",folder_id=originalProjectDir
         });
         await Original("delete_project",new{
             workspace="company",project_id=originalProject

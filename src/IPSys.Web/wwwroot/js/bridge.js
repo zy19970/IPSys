@@ -75,7 +75,7 @@ async function api(path, opts = {}) {
 
 /* ---------------- 上传 ---------------- */
 
-const UPLOADABLE_KINDS = ["project", "contract", "archive_folder", "ip"];
+const UPLOADABLE_KINDS = ["project", "archive_folder", "ip"];
 
 /* 批量上传:去重提示、阶段文案、取消全部由 ip-v2 + upload-progress 负责,
    这里只做「一次 begin / 逐件 file / 一次 finish」的编排。 */
@@ -425,7 +425,7 @@ function moveSelectedItems(nodes) {
 function recordTransferOptions(node, move) {
   const kind=node?.biz?.kind;
   const ws=VaultStore.ws;
-  if(!["project","contract","ip","archive_folder"].includes(kind)) return [];
+  if(!["project","ip","archive_folder"].includes(kind)) return [];
   if(kind==="archive_folder") {
     const section=node.biz.section;
     const modules={
@@ -448,7 +448,7 @@ function recordTransferOptions(node, move) {
         "personal/general":"个人 · 其他资料" })[item]||item,
     }));
   }
-  return ["company","personal"].filter(w=>!move || kind==="contract" || w!==ws)
+  return ["company","personal"].filter(w=>!move || w!==ws)
     .map(w=>({value:w,label:w==="company"?"公司工作区":"个人工作区"}));
 }
 
@@ -460,7 +460,7 @@ function transferBusinessRecord(node, move=false) {
   const sourceWorkspace=VaultStore.ws;
   const choices=recordTransferOptions(node,move);
   if(!choices.length) return toast("当前记录没有受支持的目标工作区或类别");
-  const typeLabel={project:"项目（含全部文件夹）",contract:"合同",
+  const typeLabel={project:"项目（含全部文件夹）",
     ip:"知识产权",archive_folder:node.biz.section==="general"?"综合资料":"资料文件夹"}[kind]||"记录";
   RecordForms.open({
     title:(move?"移动/转移":"复制")+typeLabel,
@@ -478,7 +478,6 @@ function transferBusinessRecord(node, move=false) {
       const targetSection=kind==="archive_folder"?data.target.split("/")[1]:null;
       const route={
         project:"/api/v2/projects/",ip:"/api/v2/ip/",
-        contract:"/api/v2/contracts/",
         archive_folder:"/api/v2/ui/folders/",
       };
       let endpoint=route[kind]+sourceWorkspace+"/";
@@ -534,32 +533,7 @@ function transferBusinessRecord(node, move=false) {
         });
         return;
       }
-      if(kind!=="contract") return finish();
-
-      // Contracts are never free-standing. Resolve an active project in the
-      // destination workspace before opening a second target chooser.
-      const projects=await VaultStore.getJson("/api/v2/ui/projects/"+targetWorkspace);
-      if(!Array.isArray(projects))throw new Error("目标项目数据无效");
-      const projectOptions=projects.filter(x=>Number.isSafeInteger(Number(x.id)) && Number(x.id)>0)
-        .filter(x=> !(move&&sourceWorkspace===targetWorkspace &&
-          Number(node.biz.projectId)===Number(x.id)))
-        .map(x=>({value:String(x.id),label:x.name||"项目 "+x.id}));
-      if(!projectOptions.length) throw new Error("目标工作区没有其它有效项目，请先创建项目");
-      RecordForms.open({
-        title:move?"选择合同的新所属项目":"选择复制合同的所属项目",
-        submitText:move?"确认移动合同":"确认复制合同",
-        fields:[{key:"targetProjectId",type:"select",label:"目标项目",required:true,
-          options:projectOptions}],
-        onSubmit:async next=>{
-          if(VaultStore.ws!==sourceWorkspace)
-            throw new Error("工作区已变化，请重新开始");
-          if(fileTaskBusy())throw new Error("有其它文件任务正在执行");
-          if(!projectOptions.some(x=>x.value===next.targetProjectId))
-            throw new Error("目标项目无效");
-          payload.targetProjectId=Number(next.targetProjectId);
-          await finish();
-        },
-      });
+      return finish();
     },
   });
 }
@@ -571,9 +545,7 @@ function walkNodes(visit) {
 
 /* ---------------- 导出 ---------------- */
 
-/* 合同也算导出主体:export.js 的 owner() 对 kind==='contract' 有专门分支,
-   会用 projectId/projectName 建「项目 / 合同 / 文件」三层目录。 */
-const EXPORTABLE_KINDS = new Set(["project", "contract", "archive_folder", "ip"]);
+const EXPORTABLE_KINDS = new Set(["project", "archive_folder", "ip"]);
 
 /* 附件上方的 archive_folder 目录链(不含分类根)。export.js 用它在 ZIP 里重建目录树。 */
 function archivePathOf(node) {
@@ -610,12 +582,6 @@ function exportEntryOf(node, owner, path) {
     size: node.size || 0,
   };
   if (path && path.length) entry.archiveFolderPath = path;
-  /* export.js 的 owner() 认这三个字段才能把合同放回它所隶属的项目下;缺了
-     projectId 会退化成项目根目录下的一层平铺。 */
-  if (ownerKind === "contract") {
-    entry.projectId = owner.biz?.projectId;
-    entry.projectName = owner.biz?.projectName || owner.name;
-  }
   return entry;
 }
 

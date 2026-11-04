@@ -40,7 +40,7 @@ static class NativeMcpFileQuery
         LEFT JOIN file_objects obj ON obj.id=version.object_id
           AND obj.workspace=version.workspace AND obj.state='ready'
         WHERE l.workspace=$w AND l.deleted=0
-          AND folder.kind IN ('project','contract','ip','archive_folder')
+          AND folder.kind IN ('project','ip','archive_folder')
           AND ($kind='' OR folder.kind=$kind)
           AND ($section='' OR folder.section=$section)
           AND ($owner=0 OR l.folder_id=$owner)
@@ -81,7 +81,7 @@ static class NativeMcpFileQuery
     {
         if(!Vault.WorkspaceValid(workspace))
             throw new ArgumentException("工作区无效。");
-        if(kind is not (null or "" or "project" or "contract" or "ip" or "archive_folder"))
+        if(kind is not (null or "" or "project" or "ip" or "archive_folder"))
             throw new ArgumentException("文件类别无效。");
         if(ownerId<0 || offset<0 || limit is <1 or >200)
             throw new ArgumentException("文件列表 offset/ownerId/limit 不合法；limit 限制为 1–200。");

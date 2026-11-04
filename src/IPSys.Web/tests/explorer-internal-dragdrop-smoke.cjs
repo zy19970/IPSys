@@ -17,8 +17,8 @@ const handlers = new Map(), docHandlers = new Map(), calls = [], uploads = [], t
 const attachment = {id:"f:12:1",name:"原件.pdf",type:"file"};
 const source = {id:"p:10",name:"来源项目",type:"folder",
  biz:{kind:"project",id:10},children:[attachment]};
-const target = {id:"c:11",name:"目标合同",type:"folder",
- biz:{kind:"contract",id:11},children:[]};
+const target = {id:"af:11",name:"目标项目普通目录",type:"folder",
+ biz:{kind:"archive_folder",section:"project",id:11},children:[]};
 const invalid = {id:"af:99",name:"虚拟档案目录",type:"folder",
  biz:{kind:"archive_folder",id:99},children:[]};
 const byId = new Map([attachment,source,target,invalid].map(n=>[n.id,n]));
@@ -42,8 +42,9 @@ const sandbox = vm.createContext({
  VaultStore:{get ws(){return workspace;},metaOf:()=>({fileId:101,linkId:12})},
  Drive:{state:{folderId:source.id}},
  fileTaskBusy:()=>busy,
- canUploadFiles:n=>!!n&&n.type==="folder"&&
-  ["project","contract","archive","ip","general"].includes(n.biz?.kind),
+ canUploadFiles:n=>!!n&&n.type==="folder"&&(
+   ["project","ip"].includes(n.biz?.kind) ||
+   n.biz?.kind==="archive_folder" && !!n.biz?.section),
  askConfirm:async()=>confirm,
  associateOriginal:async(node,move,to)=>{
   if(pendingError)throw pendingError;

@@ -221,28 +221,27 @@ static class RecyclePurgeSmoke
                 Check(NativeFileStore.DownloadInfo(db,"personal",personalFile.FileId,1)!=null,
                     "personal original independent of company cleanup");
 
-                // BUG-020: soft-deleting a project hides its active contracts and
-                // links. Purging the project must clean that exact dependent
-                // subtree transactionally, while a second project continues to
-                // own the shared FileId and its original encrypted bytes.
+                // BUG-020: deleting a project hides all nested ordinary folders.
+                // Permanent purge cleans their LinkIds while another project
+                // retains its shared FileId and immutable version bytes.
                 long root=Folder(db,"company","待清空项目");
                 long keeper=Folder(db,"company","仍在使用项目");
-                long contract;
+                long projectDirectory;
                 using(var cmd=db.CreateCommand())
                 {
                     cmd.CommandText="""
-                        INSERT INTO folders(workspace,kind,parent_id,name)
-                        VALUES('company','contract',$project,'子合同');
+                        INSERT INTO folders(workspace,kind,section,parent_id,name)
+                        VALUES('company','archive_folder','project',$project,'合同资料目录');
                         SELECT last_insert_rowid();
                         """;
                     cmd.Parameters.AddWithValue("$project",root);
-                    contract=(long)cmd.ExecuteScalar()!;
+                    projectDirectory=(long)cmd.ExecuteScalar()!;
                 }
-                var inherited=NativeFileStore.UploadAsync(db,"company",contract,null,
+                var inherited=NativeFileStore.UploadAsync(db,"company",projectDirectory,null,
                     new NativeFileMetadataInput("子合同原件.bin"),null,payload.Length,
                     new MemoryStream(payload),CancellationToken.None)
                     .GetAwaiter().GetResult();
-                long inheritedLink=Link(db,inherited.FileId,contract);
+                long inheritedLink=Link(db,inherited.FileId,projectDirectory);
                 long keptLink=NativeFileLinkStore.Add(db,"company",inherited.FileId,
                     new NativeFileLinkInput(keeper));
                 Check(keptLink>0,"independent shared LinkId created");
@@ -257,13 +256,13 @@ static class RecyclePurgeSmoke
                 }
                 Check(Scalar(db,
                     "SELECT deleted FROM folder_file_links WHERE id=$id;",inheritedLink)==0,
-                    "project delete does not tombstone hidden contract link");
+                    "project delete leaves nested directory link as implicit child");
                 Check(RecycleStore.Change(db,"company",
                     [new RecycleKey("project",root,"")],true),
-                    "project purge cascades contract and inherited links");
+                    "project purge cascades ordinary directory and shared links");
                 Check(Scalar(db,"SELECT COUNT(*) FROM folders WHERE id=$id;",root)==0 &&
-                      Scalar(db,"SELECT COUNT(*) FROM folders WHERE id=$id;",contract)==0,
-                    "parent and contract removed after their links");
+                      Scalar(db,"SELECT COUNT(*) FROM folders WHERE id=$id;",projectDirectory)==0,
+                    "project and nested directory removed after their links");
                 Check(Scalar(db,
                     "SELECT COUNT(*) FROM folder_file_links WHERE id=$id;",inheritedLink)==0,
                     "hidden inherited LinkId removed");

@@ -1,59 +1,63 @@
-// R1-01: pure model smoke, invoked by existing --smoke; does not open or migrate a user database.
+// Pure folder identity and parent rules, exercised by the normal --smoke entrypoint.
 static class FolderModelSmoke
 {
     public static void Run()
     {
-        static void Check(bool condition,string name)
+        static void Check(bool ok,string name)
         {
-            if(!condition)throw new IOException("Folder model smoke failed: " + name);
+            if(!ok)throw new IOException("Folder model smoke failed: "+name);
         }
-        static void Reject(string workspace,string kind,long id,string section,string name)
+        static void Reject(string workspace,string kind,long id,string section,string label)
         {
-            try
-            {
-                _ = ResourceRef.Create(workspace,kind,id,section);
-                throw new IOException("Folder model accepted invalid reference: " + name);
-            }
-            catch(ArgumentException) { }
+            bool rejected=false;
+            try { _=ResourceRef.Create(workspace,kind,id,section); }
+            catch(ArgumentException) { rejected=true; }
+            Check(rejected,label);
         }
 
         var project=ResourceRef.Create("company",FolderKinds.Project,7);
-        var contract=ResourceRef.Create("company",FolderKinds.Contract,7);
-        var personProject=ResourceRef.Create("personal",FolderKinds.Project,7);
+        var otherProject=ResourceRef.Create("personal",FolderKinds.Project,7);
+        var ip=ResourceRef.Create("company",FolderKinds.Ip,9);
         var archive=ResourceRef.Create("company",FolderKinds.ArchiveFolder,7,"achievement");
+        var archiveParent=ResourceRef.Create("company",FolderKinds.ArchiveFolder,8,"achievement");
         var certificate=ResourceRef.Create("company",FolderKinds.ArchiveFolder,7,"certificate");
-        var category=ResourceRef.Create("company",FolderKinds.ArchiveFolder,7,"achievement");
-        Check(project != contract && project != personProject,"folder identity must include type and workspace");
-        Check(archive != certificate,"folder identity must include archive section");
-        Check(!default(ResourceRef).IsValid,"default record identity is invalid");
-        Check(FolderTypePolicy.MandatoryParentRulesSatisfied(contract,project),"contract belongs to project");
-        Check(!FolderTypePolicy.MandatoryParentRulesSatisfied(contract,null),"orphan contract forbidden");
-        Check(!FolderTypePolicy.MandatoryParentRulesSatisfied(contract,personProject),"cross-workspace contract forbidden");
-        Check(!FolderTypePolicy.MandatoryParentRulesSatisfied(contract,archive),"contract cannot belong to archive");
-        Check(FolderTypePolicy.MandatoryParentRulesSatisfied(category,null),"archive system root");
-        var parentCategory=ResourceRef.Create("company",FolderKinds.ArchiveFolder,8,"achievement");
-        Check(FolderTypePolicy.MandatoryParentRulesSatisfied(category,parentCategory),"archive folder parent type allowed");
-        Check(!FolderTypePolicy.MandatoryParentRulesSatisfied(category,category),"folder cannot be its own parent");
-        Check(FolderTypePolicy.MandatoryParentRulesSatisfied(archive,parentCategory),"archive folder within same section");
-        Check(!FolderTypePolicy.MandatoryParentRulesSatisfied(archive,project),"archive folder may not enter project");
-        var folder=new FolderDescriptor(project,"科研项目 A",null,0);
-        Check(folder.Ref==project && folder.Parent==null && !folder.Deleted,"folder descriptor preserves identity");
-        Reject("other",FolderKinds.Project,1,"","unknown workspace");
-        Reject("company","unknown",1,"","unknown kind");
+        var projectFolder=ResourceRef.Create("company",FolderKinds.ArchiveFolder,10,"project");
+        var nestedProject=ResourceRef.Create("company",FolderKinds.ArchiveFolder,11,"project");
+
+        Check(project!=otherProject,"workspace is part of Folder identity");
+        Check(project!=archive && archive!=certificate,
+            "kind and section are part of Folder identity");
+        Check(!default(ResourceRef).IsValid,"default identity is invalid");
+        Check(FolderTypePolicy.MandatoryParentRulesSatisfied(archive,null),
+            "ordinary archive folder may belong to module root");
+        Check(FolderTypePolicy.MandatoryParentRulesSatisfied(archive,archiveParent),
+            "ordinary archive folder accepts matching parent");
+        Check(!FolderTypePolicy.MandatoryParentRulesSatisfied(archive,certificate),
+            "different section cannot be parent");
+        Check(!FolderTypePolicy.MandatoryParentRulesSatisfied(archive,project),
+            "non-project section cannot be nested in project");
+        Check(FolderTypePolicy.MandatoryParentRulesSatisfied(projectFolder,project),
+            "project is real parent of project-section folder");
+        Check(FolderTypePolicy.MandatoryParentRulesSatisfied(nestedProject,projectFolder),
+            "project directories may nest without depth limit in model");
+        Check(!FolderTypePolicy.MandatoryParentRulesSatisfied(projectFolder,null),
+            "project module root is not a physical parent");
+        Check(!FolderTypePolicy.MandatoryParentRulesSatisfied(projectFolder,ip),
+            "IP cannot be project directory parent");
+        Check(!FolderTypePolicy.MandatoryParentRulesSatisfied(projectFolder,otherProject),
+            "cross-workspace parent denied");
+        Check(!FolderTypePolicy.MandatoryParentRulesSatisfied(projectFolder,projectFolder),
+            "self-parent denied");
+        var descriptor=new FolderDescriptor(project,"项目",null,0);
+        Check(descriptor.Ref==project && descriptor.Parent is null && !descriptor.Deleted,
+            "business descriptor retains FolderId without a child contract");
+        Reject("company","contract",1,"","retired contract kind");
+        Reject("company","archive",1,"achievement","retired archive kind");
+        Reject("company","general",1,"","retired general kind");
         Reject("company",FolderKinds.Project,0,"","nonpositive id");
-        Reject("company",FolderKinds.Contract,1,"achievement","contract section");
-        Reject("company",FolderKinds.ArchiveFolder,1,"academic","company academic scope");
-        Reject("company","archive",1,"achievement","old archive kind rejected");
-        Reject("company","general",1,"","old general kind rejected");
-        Reject("company",FolderKinds.ArchiveFolder,1,"","explicit section required");
-        var personalDir=ResourceRef.Create("personal",FolderKinds.ArchiveFolder,1,"achievement");
-        var personalGeneralDir=ResourceRef.Create("personal",FolderKinds.ArchiveFolder,2,"general");
-        Check(personalDir.IsValid && personalGeneralDir.IsValid,"personal recursive directory scopes");
-        Check(!FolderTypePolicy.MandatoryParentRulesSatisfied(personalDir,category),
-            "cross-workspace archive folder rejected");
-        Check(!FolderTypePolicy.MandatoryParentRulesSatisfied(personalDir,personalGeneralDir),
-            "cross-section archive folder rejected");
-        Reject("company",FolderKinds.ArchiveFolder,1,"academic","company academic folder invalid");
-        Console.WriteLine("FOLDER MODEL SMOKE PASS: identity, scope, contract parent and archive types");
+        Reject("company",FolderKinds.Project,1,"achievement","project has no section");
+        Reject("company",FolderKinds.ArchiveFolder,1,"","ordinary folder requires section");
+        Reject("company",FolderKinds.ArchiveFolder,1,"academic","academic not in company");
+        Console.WriteLine("FOLDER MODEL SMOKE PASS: project/IP/ordinary directory identity and parents");
     }
 }

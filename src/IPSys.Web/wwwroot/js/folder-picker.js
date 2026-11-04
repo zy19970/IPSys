@@ -9,7 +9,7 @@ const AttachmentFolderPicker = {
       if (node?.type !== "folder" || nodes.has(String(node.id))) continue;
       const id = String(node.id);
       const folderId = Number(node.biz?.id);
-      const selectable = ["project","contract","ip","archive_folder"].includes(node.biz?.kind) &&
+      const selectable = ["project","ip","archive_folder"].includes(node.biz?.kind) &&
         Number.isSafeInteger(folderId) && folderId > 0 && !node.synthetic;
       const record = {id,node,parent,folderId:selectable ? folderId:null,selectable,children:[]};
       nodes.set(id,record);

@@ -33,14 +33,14 @@ static class SearchSmoke
         ip.EnsureSuccessStatusCode();
         long ipId=(await ip.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
             .GetProperty("id").GetInt64();
-        using var contract=await client.PostAsJsonAsync(
-            "/api/v2/folders/company/contract",new {
-                parentId=projectId,contract=new{
-                  name=marker+"-合同",contractNo=marker+"-HT",
-                  signDate="2026-10-14",amount="125.50"}
+        using var projectDirectory=await client.PostAsJsonAsync(
+            "/api/v2/folders/company/archive_folder",new {
+                section="project",archiveFolder=new{
+                  name=marker+"-合同资料",parentId=projectId,
+                  remarks=marker+"-HT"}
             });
-        contract.EnsureSuccessStatusCode();
-        long contractId=(await contract.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
+        projectDirectory.EnsureSuccessStatusCode();
+        long directoryId=(await projectDirectory.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>())
             .GetProperty("id").GetInt64();
         using var archive=await client.PostAsJsonAsync("/api/v2/folders/company/archive_folder",new {
             section="certificate",archiveFolder=new {
@@ -79,7 +79,7 @@ static class SearchSmoke
             .GetProperty("id").GetInt64();
 
         var company=await Find(client,"company",marker);
-        foreach(var type in new[]{"project","ip","contract","archive_folder"})
+        foreach(var type in new[]{"project","ip","archive_folder"})
             if(!company.Results.Any(h=>h.Kind==type))
                 throw new IOException("搜索缺失真实业务模块："+type);
         if(company.Results.Any(h=>h.Title.Contains("个人项目")||h.Title.Contains("学术兼职")))
@@ -120,9 +120,10 @@ static class SearchSmoke
         var byProject=await Find(client,"company",marker+"-P");
         if(!byProject.Results.Any(h=>h.Kind=="project"&&h.Id==projectId))
             throw new IOException("项目编号搜索未命中。");
-        var byContract=await Find(client,"company",marker+"-HT");
-        if(!byContract.Results.Any(h=>h.Kind=="contract"&&h.Id==contractId))
-            throw new IOException("合同编号搜索未命中。");
+        var byProjectDirectory=await Find(client,"company",marker+"-HT");
+        if(!byProjectDirectory.Results.Any(h=>
+              h.Kind=="archive_folder"&&h.Section=="project"&&h.Id==directoryId))
+            throw new IOException("项目普通文件夹备注搜索未命中。");
 
         string filename=marker+"-项目原件.pdf";
         long fileId=0;

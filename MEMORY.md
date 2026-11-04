@@ -662,3 +662,10 @@ CI #517 (`41777836030`)因旧合同时间戳断言失败，CI #518 (`41780006022
 
 
 **第一阶段 CI 完成补记（2026-11-04）：** 产品提交 `13596b9739419ba9bd427b5b52e5c2d36ba31245` 的 Windows Actions #521（run `41793618031`）最终 `completed/success`，26 success、0 failure、2 skipped（可选 >4 GiB ZIP64）。通过 Debug 构建与包含 M01—M08 的完整 SQLCipher/HTTP Smoke、Node/UI、真实 Edge/HTTP、独立 SQLCipher/HTTP、MCP stdio、双版本单文件 EXE 启动和图标检查。Artifacts：自包含 EXE `13304304812`、框架依赖 EXE `13304414609`、Explorer 实机自动复验数据 `13305445116`。官方记录：https://github.com/zy19970/IPSys/actions/runs/41793618031 。第一阶段 S0 已完成当前代码及调用链复核、S1 已完成产品提交与自动化验收；**用户本机 GUI 手工验收和 S2—S5 未完成**。按照任务书仅更新第一阶段进度，不操作用户资料库、不发布 Release。本轮归档所在会话：`memory/sessions/2026-11-04-IPSys重构清理第一阶段.md`。
+
+
+## 2026-11-04：重构清理 S2 合同退出与新库 schema=3（代码候选，CI 待验证）
+
+用户先指令“继续推进”，随后追问“为什么卡住了？继续推进”。本轮继续按 `tests/REFACTOR_CLEANUP_AUDIT_20261104.md` 的 S2 执行。S2 开始通知 #2215；初次脚本定位失败 #2216，重启通知 #2217；因对话中断恢复 #2218。**此前只创建了远端 Git Data 草稿树，没有修改 main**。基线仍为 `d97dd3b25175`，rulesets 返回 []，branch protection 不能因权限 403 而声称不存在。
+
+本批拟一体化提交：新库 schema 版本 3、kind 限 project/ip/archive_folder；建立项目父级约束、时间戳触发器及原件引用清理保护的完整新建 DDL；现有库打开时只读校验，不自动 Ensure 更新；旧 v2 和结构损坏库明确拒绝。退休七项独立合同 MCP 工具（发现与直接调用双拒绝）、旧合同 HTTP 路由与专属表单/搜索/回收站分支，保留项目 Excel/查询/递归目录、FileId/LinkId/历史版本/共享。项目整树复制只遍历项目内普通目录，不再遍历合同类型。同步更新 Windows MCP 预期工具数 51→44、现行 MCP 手册及 Schema/HTTP/MCP/Node 回归。产品与测试已经构造为 Git Data 草稿树，**仍须原子提交、同 SHA Windows CI、缺陷修复后才能声称 S2 完成**。用户本机旧数据库未经修改，S3—S5 未启动。本轮会话 `memory/sessions/2026-11-04-IPSys重构清理S2合同退出.md`，记录内容仅覆盖当前可见消息与已核对事实。

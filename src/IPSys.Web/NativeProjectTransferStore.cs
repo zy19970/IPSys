@@ -1,20 +1,14 @@
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 
-// Whole project transfer: project, every active child contract and all
-// linked immutable FileVersions in one SQLCipher transaction.
+// Whole project transfer: project and its recursive ordinary folders plus all FileVersions.
 record NativeProjectTransferInput(string TargetWorkspace,bool Move=false);
 record NativeProjectTransferResult(long SourceId,long Id,string SourceWorkspace,
-    string TargetWorkspace,bool Moved,int Contracts,int Links,int Files,
+    string TargetWorkspace,bool Moved,int Links,int Files,
     int Versions,int NewObjects,int Directories);
 static class NativeProjectTransferStore
 {
     private sealed record SourceLink(long FolderId,NativeFolderFileLink Link);
-    private static IReadOnlyList<FolderSnapshot> Contracts(SqliteConnection db,
-        string w,long project)=>
-        NativeFolderStore.List(db,w,FolderKinds.Contract)
-            .Where(x=>x.Folder.Parent is ResourceRef p&&p.Id==project).ToArray();
-
     // Project is the business record; everything underneath is a normal
     // archive_folder subtree. Walk from this project only, never other projects.
     private static IReadOnlyList<FolderSnapshot> Directories(
@@ -47,11 +41,9 @@ static class NativeProjectTransferStore
     }
 
     private static List<SourceLink> Links(SqliteConnection db,string w,
-        long project,IReadOnlyList<FolderSnapshot> contracts,
-        IReadOnlyList<FolderSnapshot> directories)
+        long project,IReadOnlyList<FolderSnapshot> directories)
     {
-        var folders=new[]{project}.Concat(contracts.Select(c=>c.Folder.Ref.Id))
-            .Concat(directories.Select(c=>c.Folder.Ref.Id));
+        var folders=new[]{project}.Concat(directories.Select(c=>c.Folder.Ref.Id));
         var result=new List<SourceLink>();
         foreach(var folder in folders)
             foreach(var link in NativeFileLinkStore.ListFolder(db,w,folder,false)??[])
@@ -65,7 +57,7 @@ static class NativeProjectTransferStore
         if(NativeFolderStore.Get(db,ResourceRef.Create(w,FolderKinds.Project,id)) is null)
             throw new KeyNotFoundException("来源项目不存在。");
         if(w==target)return 0;
-        var links=Links(db,w,id,Contracts(db,w,id),Directories(db,w,id));
+        var links=Links(db,w,id,Directories(db,w,id));
         long total=0;
         foreach(long file in links.Select(x=>x.Link.FileId).Distinct())
             total=checked(total+NativeFileCopyStore.EstimateIndependentBytes(db,w,file));
@@ -101,21 +93,13 @@ static class NativeProjectTransferStore
             throw new ArgumentException("同一工作区不执行移动。");
         var project=NativeFolderStore.Get(db,ResourceRef.Create(w,FolderKinds.Project,id))
             ??throw new KeyNotFoundException("来源项目已删除或不存在。");
-        var contracts=Contracts(db,w,id);
         var directories=Directories(db,w,id);
-        var links=Links(db,w,id,contracts,directories);
+        var links=Links(db,w,id,directories);
         stop.ThrowIfCancellationRequested();
         using var tx=db.BeginTransaction();
         long target=InsertFolder(db,tx,input.TargetWorkspace,FolderKinds.Project,
             project.Folder.Name,JsonSerializer.Serialize((ProjectInput)project.BusinessData),null);
         var folderMap=new Dictionary<long,long>{{id,target}};
-        foreach(var child in contracts)
-        {
-            stop.ThrowIfCancellationRequested();
-            folderMap[child.Folder.Ref.Id]=InsertFolder(db,tx,input.TargetWorkspace,
-                FolderKinds.Contract,child.Folder.Name,
-                JsonSerializer.Serialize((ContractInput)child.BusinessData),target);
-        }
         foreach(var child in directories)
         {
             stop.ThrowIfCancellationRequested();
@@ -197,7 +181,7 @@ static class NativeProjectTransferStore
         stop.ThrowIfCancellationRequested();
         tx.Commit();
         return new(id,target,w,input.TargetWorkspace,input.Move,
-            contracts.Count,links.Count,mappedFiles.Count,versions,objects,
+            links.Count,mappedFiles.Count,versions,objects,
             directories.Count);
     }
 }

@@ -91,28 +91,25 @@ static partial class McpLocal
             $"/api/v2/files/{workspace}/{file}/links/{link}");
     }
 
-    private static async Task<JsonNode> ProjectContractLinks(HttpClient client,
-        string workspace,string kind,JsonElement args)
+    private static async Task<JsonNode> ProjectLinks(HttpClient client,
+        string workspace,JsonElement args)
     {
-        if(kind is not ("project" or "contract"))
-            throw new IOException("无效项目合同类别。");
-        long folder=ReadId(args,kind=="project"?"project_id":"contract_id");
-        // Ensure a numeric FolderId belongs to the requested kind, not just
-        // any active folder in the current workspace.
-        await RequestAsync(client,HttpMethod.Get,V2Url(workspace,kind,folder));
+        long folder=ReadId(args,"project_id");
+        // A FolderId must belong to a live project in this workspace.
+        await RequestAsync(client,HttpMethod.Get,V2Url(workspace,"project",folder));
         return await RequestAsync(client,HttpMethod.Get,
             $"/api/v2/files/{workspace}/folders/{folder}/links");
     }
 
-    private static async Task<JsonNode> DeleteProjectContractLink(HttpClient client,
-        string workspace,string kind,JsonElement args)
+    private static async Task<JsonNode> DeleteProjectLink(HttpClient client,
+        string workspace,JsonElement args)
     {
         long file=ReadId(args,"file_id"),link=ReadId(args,"link_id");
-        var links=await ProjectContractLinks(client,workspace,kind,args);
+        var links=await ProjectLinks(client,workspace,args);
         if(links is not JsonArray list || !list.Any(x=>
             x?["id"]?.GetValue<long>()==link &&
             x?["fileId"]?.GetValue<long>()==file))
-            throw new McpKnownRejectionException("文件关联不存在或不属于所选项目/合同。");
+            throw new McpKnownRejectionException("文件关联不存在或不属于所选项目。");
         return await RequestAsync(client,HttpMethod.Delete,
             $"/api/v2/files/{workspace}/{file}/links/{link}");
     }
@@ -125,7 +122,7 @@ static partial class McpLocal
         if(args.TryGetProperty("group_id",out _))
             throw new IOException("group_id 为已废弃的 V1 参数。追加版本请使用 on_conflict=update 与 file_id=FileId。");
         long folder=ReadId(args,"owner_id");
-        if(kind is not ("project" or "contract" or "ip" or "archive_folder"))
+        if(kind is not ("project" or "ip" or "archive_folder"))
             throw new IOException("文件归属类型无效。");
         string section=ReadString(args,"section","");
         if(kind=="archive_folder" && !ArchiveDirectoryScopes.Allowed(workspace,section))

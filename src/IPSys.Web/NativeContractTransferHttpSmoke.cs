@@ -1,123 +1,96 @@
 using System.Net;
 using System.Net.Http.Json;
-using System.Security.Cryptography;
 using System.Text.Json;
 
-// F2-04 contract: owner changes without losing LinkId in the same workspace;
-// cross-workspace copies hold complete independent encrypted original history.
+// Retired contract transfer rejects; real project ordinary folders can be moved.
 static class NativeContractTransferHttpSmoke
 {
-    private static void Check(bool good,string reason)
+    private static void Check(bool ok,string reason)
     {
-        if(!good)throw new IOException("F2-04 contract transfer: "+reason);
+        if(!ok)throw new IOException("PROJECT DIRECTORY TRANSFER SMOKE: "+reason);
     }
-    private static async Task<JsonElement> Ok(HttpResponseMessage response)
+    private static async Task<long> NewId(HttpResponseMessage reply)
+    {
+        using(reply)
+        {
+            reply.EnsureSuccessStatusCode();
+            return (await reply.Content.ReadFromJsonAsync<JsonElement>())
+                .GetProperty("id").GetInt64();
+        }
+    }
+    public static async Task VerifyAsync(HttpClient client,Vault vault)
+    {
+        string mark="PDT-"+Guid.NewGuid().ToString("N")[..8];
+        long a=await NewId(await client.PostAsJsonAsync(
+            "/api/v2/folders/company/project",
+            new{project=new{name=mark+"甲",projectType="科研项目"}}));
+        long b=await NewId(await client.PostAsJsonAsync(
+            "/api/v2/folders/company/project",
+            new{project=new{name=mark+"乙",projectType="科研项目"}}));
+        long folder=await NewId(await client.PostAsJsonAsync(
+            "/api/v2/folders/company/archive_folder",new{
+                section="project",archiveFolder=new{name=mark+"合同目录",parentId=a}}));
+        long child=await NewId(await client.PostAsJsonAsync(
+            "/api/v2/folders/company/archive_folder",new{
+                section="project",archiveFolder=new{name=mark+"附件",parentId=folder}}));
+        byte[] first=[9,8,7,6],revised=[5,4,3,2,1];
+        long file;
+        using(var upload=new HttpRequestMessage(HttpMethod.Post,
+            $"/api/v2/files/company/upload?folderId={child}")
+            {Content=new ByteArrayContent(first)})
+        {
+            upload.Headers.Add("X-File-Name",Uri.EscapeDataString(mark+".pdf"));
+            file=await NewIdFromUpload(await client.SendAsync(upload));
+        }
+        using(var req=new HttpRequestMessage(HttpMethod.Post,
+            $"/api/v2/files/company/{file}/versions")
+            {Content=new ByteArrayContent(revised)})
+        {
+            req.Headers.Add("X-File-Name",Uri.EscapeDataString(mark+"-v2.pdf"));
+            using var result=await client.SendAsync(req);
+            result.EnsureSuccessStatusCode();
+        }
+        var before=await client.GetFromJsonAsync<JsonElement>(
+            $"/api/v2/files/company/folders/{child}/links");
+        long link=before[0].GetProperty("id").GetInt64();
+        using(var retired=await client.PostAsJsonAsync(
+            $"/api/v2/contracts/company/{folder}/transfer",
+            new{targetWorkspace="personal",targetProjectId=b,move=true}))
+            Check(retired.StatusCode==HttpStatusCode.NotFound,
+                "retired contract transfer HTTP route is absent");
+
+        using(var move=await client.PostAsJsonAsync(
+            $"/api/v2/folders/company/archive_folder/{folder}/move?section=project",
+            new NativeFolderMoveInput(b)))
+            move.EnsureSuccessStatusCode();
+        var moved=await client.GetFromJsonAsync<JsonElement>(
+            $"/api/v2/folders/company/archive_folder/{folder}?section=project");
+        Check(moved.GetProperty("folder").GetProperty("parent")
+            .GetProperty("id").GetInt64()==b,"directory reparented to another project");
+        var nested=await client.GetFromJsonAsync<JsonElement>(
+            $"/api/v2/folders/company/archive_folder/{child}?section=project");
+        Check(nested.GetProperty("folder").GetProperty("parent")
+            .GetProperty("id").GetInt64()==folder,
+            "nested directory identity remains stable after parent move");
+        var after=await client.GetFromJsonAsync<JsonElement>(
+            $"/api/v2/files/company/folders/{child}/links");
+        Check(after[0].GetProperty("id").GetInt64()==link &&
+              after[0].GetProperty("fileId").GetInt64()==file,
+            "project folder move retains LinkId/FileId");
+        for(int ver=1;ver<=2;ver++)
+            Check((await client.GetByteArrayAsync(
+                $"/api/v2/files/company/{file}/versions/{ver}/download"))
+                .SequenceEqual(ver==1?first:revised),
+                "folder move retains all original version bytes");
+        Console.WriteLine("PROJECT DIRECTORY TRANSFER / CONTRACT RETIREMENT PASS");
+    }
+    private static async Task<long> NewIdFromUpload(HttpResponseMessage response)
     {
         using(response)
         {
             response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<JsonElement>();
+            var result=await response.Content.ReadFromJsonAsync<JsonElement>();
+            return result.GetProperty("fileId").GetInt64();
         }
-    }
-    private static async Task<long> Project(HttpClient client,string ws,string name)
-    {
-        var result=await Ok(await client.PostAsJsonAsync(
-            "/api/v2/folders/"+ws+"/project",
-            new{project=new{name,projectType="科研项目"}}));
-        return result.GetProperty("id").GetInt64();
-    }
-    public static async Task VerifyAsync(HttpClient client,Vault vault)
-    {
-        var key=Guid.NewGuid().ToString("N")[..8];
-        long a=await Project(client,"company","源项目"+key);
-        long b=await Project(client,"company","目标项目"+key);
-        long p=await Project(client,"personal","个人目标项目"+key);
-        var created=await Ok(await client.PostAsJsonAsync(
-            "/api/v2/folders/company/contract",new{parentId=a,
-                contract=new{name="可转移合同"+key,contractNo="TX-"+key,amount="1234.50"}}));
-        long id=created.GetProperty("id").GetInt64();
-        byte[] v1=RandomNumberGenerator.GetBytes(1857),v2=RandomNumberGenerator.GetBytes(379);
-        long file;
-        using(var upload=new HttpRequestMessage(HttpMethod.Post,
-            "/api/v2/files/company/upload?folderId="+id)
-            {Content=new ByteArrayContent(v1)})
-        {
-            upload.Headers.TryAddWithoutValidation("X-File-Name",
-                Uri.EscapeDataString("合同原件.pdf"));
-            file=(await Ok(await client.SendAsync(upload)))
-                .GetProperty("fileId").GetInt64();
-        }
-        using(var next=new HttpRequestMessage(HttpMethod.Post,
-            $"/api/v2/files/company/{file}/versions")
-            {Content=new ByteArrayContent(v2)})
-        {
-            next.Headers.TryAddWithoutValidation("X-File-Name",
-                Uri.EscapeDataString("合同原件修订.pdf"));
-            (await client.SendAsync(next)).EnsureSuccessStatusCode();
-        }
-        var linked=await client.GetFromJsonAsync<JsonElement>(
-            $"/api/v2/files/company/folders/{id}/links");
-        long linkId=linked[0].GetProperty("id").GetInt64();
-        using(var missing=await client.PostAsJsonAsync(
-            $"/api/v2/contracts/company/{id}/transfer",
-            new NativeContractTransferInput("personal",999999999,false)))
-            Check(missing.StatusCode==HttpStatusCode.NotFound,"reject absent project");
-
-        var moved=await Ok(await client.PostAsJsonAsync(
-            $"/api/v2/contracts/company/{id}/transfer",
-            new NativeContractTransferInput("company",b,true)));
-        Check(moved.GetProperty("id").GetInt64()==id&&
-              moved.GetProperty("moved").GetBoolean(),
-              "same workspace move retains FolderId");
-        linked=await client.GetFromJsonAsync<JsonElement>(
-            $"/api/v2/files/company/folders/{id}/links");
-        Check(linked[0].GetProperty("id").GetInt64()==linkId,
-              "reparented contract retains source LinkId and FileId");
-        var contracts=await client.GetFromJsonAsync<JsonElement>(
-            "/api/v2/ui/contracts/company");
-        Check(contracts.EnumerateArray().Any(x=>x.GetProperty("id").GetInt64()==id&&
-              x.GetProperty("projectId").GetInt64()==b),
-              "new owning project visible in business UI");
-        using(var noOp=await client.PostAsJsonAsync(
-            $"/api/v2/contracts/company/{id}/transfer",
-            new NativeContractTransferInput("company",b,true)))
-            Check(noOp.StatusCode==HttpStatusCode.Conflict,"no-op reparent rejected");
-
-        var copied=await Ok(await client.PostAsJsonAsync(
-            $"/api/v2/contracts/company/{id}/transfer",
-            new NativeContractTransferInput("personal",p,false)));
-        long copyId=copied.GetProperty("id").GetInt64();
-        Check(copyId!=id && copied.GetProperty("versions").GetInt32()==2 &&
-              copied.GetProperty("newObjects").GetInt32()>0,
-              "cross workspace copied distinct folder with independent objects");
-        var targetLinks=await client.GetFromJsonAsync<JsonElement>(
-            $"/api/v2/files/personal/folders/{copyId}/links");
-        long targetFile=targetLinks[0].GetProperty("fileId").GetInt64();
-        Check(targetFile!=file,"cross workspace creates independent FileId");
-        NativeTransferIsolationProof.Verify(vault.Db,"company",file,"personal",targetFile);
-        Check((await client.GetByteArrayAsync(
-            $"/api/v2/files/personal/{targetFile}/versions/1/download"))
-                .SequenceEqual(v1),"cross workspace v1 bytes");
-        Check((await client.GetByteArrayAsync(
-            $"/api/v2/files/personal/{targetFile}/versions/2/download"))
-                .SequenceEqual(v2),"cross workspace v2 bytes");
-        Check((await client.GetByteArrayAsync(
-            $"/api/v2/files/company/{file}/versions/2/download"))
-                .SequenceEqual(v2),"source retained after copy");
-
-        var transferred=await Ok(await client.PostAsJsonAsync(
-            $"/api/v2/contracts/company/{id}/transfer",
-            new NativeContractTransferInput("personal",p,true)));
-        Check(transferred.GetProperty("moved").GetBoolean(),
-              "cross workspace move committed successfully");
-        using(var source=await client.GetAsync(
-            $"/api/v2/folders/company/contract/{id}"))
-            Check(source.StatusCode==HttpStatusCode.NotFound,
-                "source contract becomes deleted only after move");
-        contracts=await client.GetFromJsonAsync<JsonElement>(
-            "/api/v2/ui/contracts/personal");
-        Check(contracts.EnumerateArray().Count(x=>x.GetProperty("projectId").GetInt64()==p)>=2,
-            "target project receives both copied and moved contracts");
-        Console.WriteLine("F2-04 CONTRACT TRANSFER SQLCIPHER PASS");
     }
 }

@@ -25,22 +25,6 @@ static partial class McpLocal
 
     private static object[] ExtraTools() =>
     [
-        Tool("update_contract","修改已有合同的指定字段，其余字段保留；不能借此更改所属项目。",new(){
-            ["workspace"]=Field("string","工作区",Workspaces),
-            ["contract_id"]=Field("integer","合同 FolderId"),
-            ["name"]=Field("string","合同名称"),
-            ["contract_no"]=Field("string","合同编号"),
-            ["sign_date"]=Field("string","签订日期 yyyy-MM-dd"),
-            ["amount"]=Field("string","合同金额，可为数字"),
-            ["signing_parties"]=Field("string","签约方"),
-            ["category"]=Field("string","合同类别"),
-            ["remarks"]=Field("string","备注"),
-            ["tags"]=Field("string","检索标签；多个标签以中文或英文分号分隔，服务端自动去重和规范化")
-        },["workspace","contract_id"]),
-        Tool("copy_contract","在同一工作区和所属项目下复制合同业务属性及全部有效文件关联；返回新合同 FolderId，附件共享 FileId/历史版本，不重复写原件。",new(){
-            ["workspace"]=Field("string","工作区",Workspaces),
-            ["contract_id"]=Field("integer","源合同 FolderId")
-        },["workspace","contract_id"]),
         Tool("get_file_details","获取 FileId 的元数据及全部有效历史版本（不读取原件字节）。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
             ["file_id"]=Field("integer","实际逻辑 FileId，不是 LinkId")
@@ -107,9 +91,9 @@ static partial class McpLocal
             ["items"]=new {type="array",minItems=1,maxItems=1000,
                 items=Field("object","按顺序排列的 {kind:folder/record,id:FolderId}")}
         },["workspace","parent_id","items"]),
-        Tool("reorder_records","调整同工作区项目或合同列表中选中记录的相对顺序；ids 按目标顺序提供，未选择的记录保持原有槽位。",new(){
+        Tool("reorder_records","调整同工作区项目列表中选中记录的相对顺序；ids 按目标顺序提供，未选择的记录保持原有槽位。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
-            ["kind"]=Field("string","project 或 contract",["project","contract"]),
+            ["kind"]=Field("string","仅 project",["project"]),
             ["ids"]=new {type="array",minItems=1,maxItems=1000,
                 items=Field("integer","待排序记录 FolderId")}
         },["workspace","kind","ids"]),
@@ -122,7 +106,7 @@ static partial class McpLocal
         Tool("search_records","工作区统一搜索；文件命中 kind=file 只是搜索结果种类，不等于回收站 kind=v2_file/v2_ip_file。恢复前必须 list_trash。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
             ["query"]=Field("string","检索词，最长 100 字；匹配记录名称、附件说明、分号标签、文件编号及路径。返回命中字段和明确的文件/关联 ID。"),
-            ["kind"]=Field("string","可选类别：project/contract/ip/archive_folder/file"),
+            ["kind"]=Field("string","可选类别：project/ip/archive_folder/file"),
             ["offset"]=Field("integer","可选分页偏移，从 0 开始；指定分页参数即可枚举全部结果"),
             ["limit"]=Field("integer","可选单页条数 1–200，默认 100")
         },["workspace","query"]),
@@ -137,7 +121,7 @@ static partial class McpLocal
         },["workspace","kind","id"]),
         Tool("purge_trash","明确确认后永久清理回收站记录或已解除的 File/Folder 关联。只有 FileId 不再存在任何有效或可恢复关联时，才清除文件历史及未被其它 FileId 共享的物理原件块；目录类条目会递归解绑并永久清理整个子树，其他共享位置不受影响。数据库文件未必立即缩小。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
-            ["kind"]=Field("string","回收站返回的原始类别（含 v2_file/v2_ip_file LinkId）",["project","contract","ip","v2_archive_folder","v2_file","v2_ip_file"]),
+            ["kind"]=Field("string","回收站返回的原始类别（含 v2_file/v2_ip_file LinkId）",["project","ip","v2_archive_folder","v2_file","v2_ip_file"]),
             ["id"]=Field("integer","待永久清理的已删除记录 ID"),
             ["section"]=Field("string","档案类别，其他类型留空"),
             ["confirm"]=new Dictionary<string,object>{{"type","boolean"},{"description","必须明确传 true 确认永久删除"}}
@@ -145,7 +129,7 @@ static partial class McpLocal
     ];
 
     private static bool ExtraWrite(string name) => name is
-        "copy_contract" or "move_folder" or "transfer_folder" or "reorder_entries" or
+        "move_folder" or "transfer_folder" or "reorder_entries" or
         "reorder_records" or "reorder_folders" or
         "associate_file" or "copy_file" or "restore_file_link" or
         "transfer_project" or "transfer_ip" or "restore_trash" or "purge_trash";
@@ -233,17 +217,6 @@ static partial class McpLocal
         }
         switch(name)
         {
-            case "update_contract":
-            {
-                long id=Positive(args,"contract_id");
-                var current=await NativeCurrentAsync(client,workspace,"contract",id);
-                return await RequestAsync(client,HttpMethod.Put,
-                    V2Url(workspace,"contract",id),
-                    NativePayload("contract",NativePatch(current,args,ContractFields)));
-            }
-            case "copy_contract":
-                return await RequestAsync(client,HttpMethod.Post,
-                    $"/api/v2/ui/contracts/{workspace}/{Positive(args,"contract_id")}/copy");
             case "get_file_details":
                 return await RequestAsync(client,HttpMethod.Get,
                     Files(Positive(args,"file_id")));
@@ -365,8 +338,8 @@ static partial class McpLocal
             case "reorder_records":
             {
                 string kind=RequiredText(args,"kind");
-                if(kind is not ("project" or "contract"))
-                    throw new IOException("kind 仅允许 project 或 contract。");
+                if(kind!="project")
+                    throw new IOException("kind 仅允许 project。");
                 long[] ids=ReorderIds(args);
                 return await RequestAsync(client,HttpMethod.Post,
                     $"/api/v2/ui/order/{workspace}/{kind}",
@@ -410,7 +383,7 @@ static partial class McpLocal
             {
                 bool purge=name=="purge_trash";
                 string kind=RequiredText(args,"kind");
-                if(kind is not ("project" or "contract" or "ip" or "v2_general" or
+                if(kind is not ("project" or "ip" or "v2_general" or
                                   "v2_archive" or "v2_archive_folder" or "v2_file" or "v2_ip_file"))
                     throw new McpKnownRejectionException(
                         "回收站 kind 非法；请通过 list_trash 获取合法 kind。");

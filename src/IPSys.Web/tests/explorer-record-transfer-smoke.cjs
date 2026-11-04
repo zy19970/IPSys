@@ -117,28 +117,11 @@ const node=(kind,id,extra={})=>({id:kind+":"+id,type:"folder",name:kind+id,biz:{
  // No new modal for an unsupported target; the caller only sees a toast.
  assert.equal(dialogs.length,beforeDialogs);
  assert.match(msgs.at(-1),/没有受支持的目标/);
-
- const contract=node("contract",30,{projectId:8});
- invoke(contract,true);
- let dialog=dialogs.at(-1);
- await dialog.onSubmit({target:"company"});
- dialog=dialogs.at(-1);
- assert.equal(dialog.title,"选择合同的新所属项目");
- assert.deepEqual(Array.from(dialog.fields[0].options,x=>x.value),["15"],
-  "Same-workspace contract move cannot select original project");
- await dialog.onSubmit({targetProjectId:"15"});
- assert.equal(calls.at(-1).url,"/api/v2/contracts/company/30/transfer");
- assert.deepEqual(JSON.parse(JSON.stringify(calls.at(-1).opts.json)),
-  {targetWorkspace:"company",move:true,targetProjectId:15});
-
- invoke(contract,false);
- dialog=dialogs.at(-1);
- await dialog.onSubmit({target:"personal"});
- dialog=dialogs.at(-1);
- assert.deepEqual(Array.from(dialog.fields[0].options,x=>x.value),["70"]);
- await dialog.onSubmit({targetProjectId:"70"});
- assert.deepEqual(JSON.parse(JSON.stringify(calls.at(-1).opts.json)),
-  {targetWorkspace:"personal",move:false,targetProjectId:70});
+ const retired=node("contract",30,{projectId:8});
+ assert.equal(opt(retired,true).length,0);
+ const beforeRetired=dialogs.length;
+ invoke(retired,true);
+ assert.equal(dialogs.length,beforeRetired,"No retired contract transfer modal");
 
  const previousCalls=calls.length;
  invoke(project,false);
@@ -159,5 +142,5 @@ const node=(kind,id,extra={})=>({id:kind+":"+id,type:"folder",name:kind+id,biz:{
 
  await assert.rejects(lockedDialog.onSubmit({target:"invalid"}),/无效/);
  assert.equal(calls.length,previousCalls+1);
- console.log("EXPLORER F2-04 PASS: project/contract/IP/archive_folder transfers, sections, project target and busy/409");
+ console.log("EXPLORER F2-04 PASS: project/IP/archive_folder transfers, sections, project target and busy/409");
 })().catch(e=>{console.error(e);process.exitCode=1;});

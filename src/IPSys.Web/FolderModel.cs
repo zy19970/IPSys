@@ -3,7 +3,6 @@
 static class FolderKinds
 {
     public const string Project = "project";
-    public const string Contract = "contract";
     public const string Ip = "ip";
     public const string ArchiveFolder = "archive_folder";
 }
@@ -12,7 +11,7 @@ readonly record struct ResourceRef(string Workspace,string Kind,long Id,string S
 {
     public bool IsValid => Id > 0 && Vault.WorkspaceValid(Workspace) && (Kind switch
     {
-        FolderKinds.Project or FolderKinds.Contract or FolderKinds.Ip => Section == "",
+        FolderKinds.Project or FolderKinds.Ip => Section == "",
         FolderKinds.ArchiveFolder => ArchiveDirectoryScopes.Allowed(Workspace,Section),
         _ => false
     });
@@ -25,7 +24,7 @@ readonly record struct ResourceRef(string Workspace,string Kind,long Id,string S
     }
 }
 
-// Stable shared DTO: specific project, contract, IP and archive properties stay with the provider.
+// Stable shared DTO: specific project, IP and archive properties stay with the provider.
 // The position and deletion marker belong to the folder, never to file versions.
 record FolderDescriptor(ResourceRef Ref,string Name,ResourceRef? Parent,int Position,bool Deleted = false,string? ModifiedAt = null,string? CreatedAt = null);
 
@@ -39,8 +38,6 @@ static class FolderTypePolicy
     {
         if(!child.IsValid)return false;
         if(parent is ResourceRef p && (!p.IsValid || p.Workspace != child.Workspace || p == child))return false;
-        if(child.Kind == FolderKinds.Contract)
-            return parent is ResourceRef project && project.Kind == FolderKinds.Project;
         if(child.Kind == FolderKinds.ArchiveFolder)
             return child.Section=="project"
                 ? parent is ResourceRef owner && (owner.Kind==FolderKinds.Project ||

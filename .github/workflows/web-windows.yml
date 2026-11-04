@@ -123,14 +123,14 @@ jobs:
             $line = $process.StandardOutput.ReadLineAsync().WaitAsync([TimeSpan]::FromSeconds(12)).GetAwaiter().GetResult()
             $listing = $line | ConvertFrom-Json
             $names = @($listing.result.tools | ForEach-Object { $_.name })
-            if ($names.Count -ne 51 -or @($names | Select-Object -Unique).Count -ne 51) {
-              throw "MCP tool registry mismatch: $($names.Count), expected 51 unique tools"
+            if ($names.Count -ne 44 -or @($names | Select-Object -Unique).Count -ne 44) {
+              throw "MCP tool registry mismatch: $($names.Count), expected 44 unique tools"
             }
             if (@($names | Where-Object { $_ -like 'v2_*' }).Count -gt 0) {
               throw 'Retired v2_* MCP aliases must not be exposed'
             }
             foreach ($required in @('list_projects','create_project','update_project',
-                                    'create_contract','upload_files','delete_project','delete_contract','delete_file',
+                                    'upload_files','delete_project','delete_file',
                                     'list_ips','create_ip','update_ip','delete_ip',
                                     'list_folders','create_folder','update_folder','delete_folder',
                                     'move_folder','transfer_folder','get_agent_guidance')) {
@@ -138,7 +138,10 @@ jobs:
             }
             foreach ($retired in @('list_archives','create_archive','list_general','create_general',
                                    'list_party_archives','create_party_archive','move_archive_entry',
-                                   'transfer_archive','transfer_general')) {
+                                   'transfer_archive','transfer_general',
+                                   'list_contracts','create_contract','update_contract',
+                                   'delete_contract','copy_contract','list_contract_files',
+                                   'delete_contract_file')) {
               if ($names -contains $retired) { throw "Retired MCP tool is still exposed: $retired" }
             }
             if ($null -eq $initialized.result.capabilities.prompts -or
@@ -253,7 +256,7 @@ jobs:
             'modification-time-smoke.cjs'        = 'Real update timestamps, additive V2 upgrade and business view mapping failed'
             'agent-guidance-ui-smoke.cjs'      = 'Agent guidance settings editor, preview and restore regression failed'
             'storage-usage-smoke.cjs'           = 'Whole-vault page usage API and shared UI contract failed'
-            'ui-tree-smoke.cjs'                = 'Drive tree (project / contract / original) smoke failed'
+            'ui-tree-smoke.cjs'                = 'Drive tree (project / ordinary folder / original) smoke failed'
             'explorer-p0-interactions-smoke.cjs' = 'Explorer P0 deletion and lock regression failed'
             'explorer-p1-regression-smoke.cjs' = 'Explorer P1 archive ordering and API error handling regression failed'
             'explorer-p2-interactions-smoke.cjs' = 'Explorer P2 safe recycle batching and UI regression failed'

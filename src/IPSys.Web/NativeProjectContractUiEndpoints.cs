@@ -1,5 +1,5 @@
 record NativeProjectContractOrderInput(long[] Ids);
-// N2-03-07: the frozen project/contract ledgers use the SAME FolderId,
+// N2-03-07: the project ledger use the SAME FolderId,
 // FileId and LinkId as the V2 Folder/File/MCP APIs. No legacy table reads.
 static class NativeProjectContractUiEndpoints
 {
@@ -25,7 +25,7 @@ static class NativeProjectContractUiEndpoints
         {
             if(!v.Allowed(ctx))return (IResult)Results.Unauthorized();
             if(!Vault.WorkspaceValid(workspace) ||
-               kind is not (FolderKinds.Project or FolderKinds.Contract))
+               kind!=FolderKinds.Project)
                 return fail("无效工作区或排序类型。",400);
             if(v.FileTaskActive||v.ExitRequested)return fail("文件任务正在执行。",409);
             await v.Gate.WaitAsync(ctx.RequestAborted);
@@ -65,65 +65,6 @@ static class NativeProjectContractUiEndpoints
             finally{v.Gate.Release();}
         });
 
-        app.MapPost("/api/v2/ui/contracts/{workspace}/{id:long}/copy",async(
-            HttpContext ctx,Vault v,string workspace,long id)=>
-        {
-            if(!v.Allowed(ctx))return (IResult)Results.Unauthorized();
-            if(!Vault.WorkspaceValid(workspace))return fail("工作区无效。",400);
-            if(v.FileTaskActive||v.ExitRequested)return fail("文件任务正在执行。",409);
-            await v.Gate.WaitAsync(ctx.RequestAborted);
-            try
-            {
-                if(!v.Allowed(ctx))return Results.Unauthorized();
-                if(v.FileTaskActive||v.ExitRequested)return fail("文件任务正在执行。",409);
-                var record=NativeFolderStore.Get(v.Db,
-                    ResourceRef.Create(workspace,FolderKinds.Contract,id));
-                if(record is null || record.Folder.Parent is not ResourceRef parent)
-                    return Results.NotFound();
-                using var tx=v.Db.BeginTransaction();
-                long copiedId;
-                using(var folder=v.Db.CreateCommand())
-                {
-                    folder.Transaction=tx;
-                    folder.CommandText="""
-                        INSERT INTO folders(workspace,kind,name,parent_id,
-                            position,attributes_json)
-                        VALUES($w,'contract',$name,$parent,
-                            (SELECT COALESCE(MAX(position),-1)+1 FROM folders
-                             WHERE workspace=$w AND kind='contract' AND deleted=0),
-                            $json);
-                        SELECT last_insert_rowid();
-                        """;
-                    folder.Parameters.AddWithValue("$w",workspace);
-                    folder.Parameters.AddWithValue("$name",record.Folder.Name);
-                    folder.Parameters.AddWithValue("$parent",parent.Id);
-                    folder.Parameters.AddWithValue("$json",
-                        System.Text.Json.JsonSerializer.Serialize(
-                            (ContractInput)record.BusinessData));
-                    copiedId=(long)folder.ExecuteScalar()!;
-                }
-                using(var links=v.Db.CreateCommand())
-                {
-                    links.Transaction=tx;
-                    links.CommandText="""
-                        INSERT INTO folder_file_links(workspace,folder_id,file_id,
-                            display_name,material_category,position)
-                        SELECT workspace,$new,file_id,display_name,
-                            material_category,position
-                        FROM folder_file_links WHERE workspace=$w
-                          AND folder_id=$source AND deleted=0;
-                        """;
-                    links.Parameters.AddWithValue("$w",workspace);
-                    links.Parameters.AddWithValue("$source",id);
-                    links.Parameters.AddWithValue("$new",copiedId);
-                    links.ExecuteNonQuery();
-                }
-                tx.Commit();
-                return Results.Json(new{id=copiedId});
-            }
-            finally{v.Gate.Release();}
-        });
-
         app.MapGet("/api/v2/ui/projects/{workspace}",(
             HttpContext ctx,Vault v,string workspace)=>
             Read(ctx,v,workspace,db=>Results.Json(
@@ -144,39 +85,12 @@ static class NativeProjectContractUiEndpoints
                     tags=((ProjectInput)x.BusinessData).Tags
                 }).ToArray())));
 
-        app.MapGet("/api/v2/ui/contracts/{workspace}",(
-            HttpContext ctx,Vault v,string workspace)=>
-            Read(ctx,v,workspace,db=>
-            {
-                var names=NativeFolderStore.List(db,workspace,FolderKinds.Project)
-                    .ToDictionary(x=>x.Folder.Ref.Id,x=>x.Folder.Name);
-                return Results.Json(
-                    NativeFolderStore.List(db,workspace,FolderKinds.Contract)
-                    .Where(x=>x.Folder.Parent is ResourceRef p &&
-                        names.ContainsKey(p.Id))
-                    .Select(x=>new {
-                        id=x.Folder.Ref.Id,
-                        modifiedAt=x.Folder.ModifiedAt,
-                        projectId=x.Folder.Parent!.Value.Id,workspace,
-                        projectName=names[x.Folder.Parent.Value.Id],
-                        name=((ContractInput)x.BusinessData).Name,
-                        contractNo=((ContractInput)x.BusinessData).ContractNo,
-                        signDate=((ContractInput)x.BusinessData).SignDate,
-                        amount=((ContractInput)x.BusinessData).Amount,
-                        signingParties=((ContractInput)x.BusinessData).SigningParties,
-                        category=((ContractInput)x.BusinessData).Category,
-                        remarks=((ContractInput)x.BusinessData).Remarks,
-                        tags=((ContractInput)x.BusinessData).Tags
-                    }).ToArray());
-            }));
-
         app.MapGet("/api/v2/ui/project-files/{workspace}",(
             HttpContext ctx,Vault v,string workspace)=>
             Read(ctx,v,workspace,db=>
             {
                 var result=new List<object>();
-                foreach(string kind in new[]{FolderKinds.Project,FolderKinds.Contract})
-                foreach(var folder in NativeFolderStore.List(db,workspace,kind))
+                foreach(var folder in NativeFolderStore.List(db,workspace,FolderKinds.Project))
                 {
                     long ownerId=folder.Folder.Ref.Id;
                     foreach(var link in NativeFileLinkStore.ListFolder(
@@ -187,7 +101,7 @@ static class NativeProjectContractUiEndpoints
                         foreach(var version in file.Versions)
                             result.Add(new {
                                 linkId=link.Id,fileId=link.FileId,folderId=ownerId,
-                                kind,version=version.Version,
+                                kind=FolderKinds.Project,version=version.Version,
                                 name=version.OriginalName,
                                 displayName=link.DisplayName??link.FileName,
                                 category=link.MaterialCategory??"",

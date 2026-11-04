@@ -126,8 +126,10 @@ static class NativeMcpFileQuerySmoke
                   Page("all",w:"personal").Items[0].FileId==f5 &&
                   Page("all",w:"personal").Items[0].MissingFields is {Count:4},
                 "company and personal workspaces stay isolated");
-            Check(Page("all",kind:"contract").Items.Count==0,
-                "type filter respects business kind");
+            bool retiredKindRejected=false;
+            try {Page("all",kind:"contract");}
+            catch(ArgumentException){retiredKindRejected=true;}
+            Check(retiredKindRejected,"retired contract kind is not a valid MCP file filter");
             foreach(var (field,mode) in new[]{
                 ("bad-field",(string?)null),("all","bad-mode"),
                 ((string?)null,"all"),(",","any")})

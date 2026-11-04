@@ -1767,9 +1767,9 @@ function showItemMenu(id, x, y) {
       ? MI("share-folder", "copy", "共享文件夹到其它目录") : "",
     isFolder && recordKind === "archive_folder"
       ? MI("move-folder", "move", "移动文件夹到其它目录") : "",
-    isFolder && ["project","contract","ip","archive_folder"].includes(recordKind)
+    isFolder && ["project","ip","archive_folder"].includes(recordKind)
       ? MI("copy-record","copy",recordKind==="archive_folder" ? "复制文件夹（独立副本）" : "复制整条记录") : "",
-    isFolder && ["project","contract","ip","archive_folder"].includes(recordKind)
+    isFolder && ["project","ip","archive_folder"].includes(recordKind)
       ? MI("transfer-record","move",recordKind==="archive_folder" ? "跨工作区或类别转移" : "移动或跨区转移") : "",
     '<div class="ctx-sep"></div>',
     isFolder ? MI("rename", "rename", "重命名", "F2") : "",
@@ -2479,7 +2479,7 @@ async function previewFile(id) {
 
 function canUploadFiles(node) {
   return node?.type === "folder" &&
-    ["project", "contract", "archive_folder", "ip"].includes(node.biz?.kind);
+    ["project", "archive_folder", "ip"].includes(node.biz?.kind);
 }
 
 function pickFiles() {

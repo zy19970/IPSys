@@ -38,12 +38,6 @@ static class RecycleStore
             ORDER BY id DESC;
             ""","v2_archive_folder"));
         rows.AddRange(Simple(db,workspace,"""
-            SELECT c.id,c.name,'',p.name FROM folders c
-            JOIN folders p ON p.id=c.parent_id AND p.workspace=c.workspace
-            WHERE c.workspace=$w AND c.kind='contract' AND c.deleted=1
-              AND p.kind='project' AND p.deleted=0 ORDER BY c.id DESC;
-            ""","contract"));
-        rows.AddRange(Simple(db,workspace,"""
             SELECT l.id,COALESCE(l.display_name,f.name),'',p.name
             FROM folder_file_links l JOIN folders p ON p.id=l.folder_id
               AND p.workspace=l.workspace
@@ -57,7 +51,7 @@ static class RecycleStore
               AND p.workspace=l.workspace
             JOIN files f ON f.id=l.file_id AND f.workspace=l.workspace
             WHERE l.workspace=$w AND l.deleted=1
-              AND p.kind IN ('project','contract','archive_folder')
+              AND p.kind IN ('project','archive_folder')
               AND p.deleted=0 AND f.deleted=0
               AND (p.parent_id IS NULL OR EXISTS(
                 SELECT 1 FROM folders parent WHERE parent.id=p.parent_id
@@ -112,14 +106,6 @@ static class RecycleStore
                 cmd.CommandText="SELECT COUNT(*) FROM folders WHERE id=$id AND workspace=$w AND kind=$kind AND deleted=1;";
                 cmd.Parameters.AddWithValue("$kind",item.Kind);
                 break;
-            case "contract":
-                cmd.CommandText="""
-                    SELECT COUNT(*) FROM folders c JOIN folders p ON p.id=c.parent_id
-                    AND p.workspace=c.workspace WHERE c.id=$id AND c.workspace=$w
-                    AND c.kind='contract' AND c.deleted=1
-                    AND p.kind='project' AND p.deleted=0;
-                    """;
-                break;
             case "v2_archive_folder":
                 cmd.CommandText="""
                     SELECT COUNT(*) FROM folders WHERE id=$id AND workspace=$w
@@ -135,7 +121,7 @@ static class RecycleStore
                     WHERE l.id=$id AND l.workspace=$w AND l.deleted=1
                       AND p.deleted=0 AND f.deleted=0
                       AND ((p.kind='ip' AND $kind='v2_ip_file')
-                        OR (p.kind IN ('project','contract','archive_folder')
+                        OR (p.kind IN ('project','archive_folder')
                             AND $kind='v2_file'))
                       AND (p.parent_id IS NULL OR EXISTS(
                         SELECT 1 FROM folders parent WHERE parent.id=p.parent_id
@@ -157,7 +143,7 @@ static class RecycleStore
         cmd.Parameters.AddWithValue("$section",item.Section);
         string sql= item.Kind switch
         {
-            "project" or "contract" or "ip" or "v2_archive_folder" =>
+            "project" or "ip" or "v2_archive_folder" =>
                 purge
                 ? "DELETE FROM folders WHERE id=$id AND workspace=$w AND deleted=1;"
                 : "UPDATE folders SET deleted=0 WHERE id=$id AND workspace=$w AND deleted=1;",
@@ -356,8 +342,7 @@ static class RecycleStore
         var selected=new HashSet<long>();
         var descendants=new Dictionary<long,(string Kind,long Parent,int Depth)>();
         var allFolders=new HashSet<long>();
-        foreach(var item in items.Where(x=>x.Kind is "project" or "contract" or
-            "ip" or "v2_archive_folder"))
+        foreach(var item in items.Where(x=>x.Kind is "project" or "ip" or "v2_archive_folder"))
         {
             selected.Add(item.Id);
             allFolders.Add(item.Id);
@@ -381,12 +366,10 @@ static class RecycleStore
                         children.Add((rd.GetInt64(0),rd.GetString(1),rd.GetString(2)));
                 foreach(var child in children)
                 {
-                    bool contract=item.Kind=="project" && depth==0 &&
-                        child.Kind=="contract";
                     bool directory=child.Kind=="archive_folder" &&
                         (item.Kind=="v2_archive_folder" && child.Section==item.Section ||
                          item.Kind=="project" && child.Section=="project");
-                    if(!contract && !directory)
+                    if(!directory)
                         throw new InvalidOperationException(
                             "待删除目录包含不属于本目录的子项，永久删除已取消。");
                     if(selected.Contains(child.Id) || descendants.ContainsKey(child.Id))

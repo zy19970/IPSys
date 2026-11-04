@@ -128,15 +128,12 @@ static partial class McpLocal
             ["workspace"]=Field("string","工作区",Workspaces),
             ["ip_id"]=Field("integer","知识产权 ID")
         },["workspace","ip_id"]),
-        Tool("list_contracts","查询 V2 有效合同及其所属项目 FolderId。",new(){
-            ["workspace"]=Field("string","工作区",Workspaces)
-        },["workspace"]),
-        Tool("list_files","列出工作区全部 V2 项目、合同、知识产权、档案和综合资料有效原件；id 是 LinkId，fileId 是逻辑文件身份。",new(){
+        Tool("list_files","列出工作区全部 V2 项目、知识产权、普通文件夹的有效原件；id 是 LinkId，fileId 是逻辑文件身份。",new(){
             ["workspace"]=Field("string","工作区",Workspaces)
         },["workspace"]),
         Tool("list_files_page","分页查询 V2 文件关联；有缺项要求时指定 missing_fields=all 或字段列表及 missing_mode=any/all，将在 SQLCipher 内筛选并按 FileId 去重，返回每条 missingFields；原有无筛选语义不变。批量补录前按需读取 metadata 规范。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
-            ["kind"]=Field("string","业务资料类别",["project","contract","ip","archive_folder"]),
+            ["kind"]=Field("string","业务资料类别",["project","ip","archive_folder"]),
             ["section"]=Field("string","普通资料 kind=archive_folder 时必须明确模块 section"),
             ["owner_id"]=Field("integer","仅返回指定所属 FolderId 的关联"),
             ["name"]=Field("string","文件位置显示名或文件名的部分匹配"),
@@ -178,26 +175,10 @@ static partial class McpLocal
             ["remarks"]=Field("string","备注"),
             ["tags"]=Field("string","标签；多个标签以中文或英文分号分隔，服务端自动去重和规范化")
         },["workspace","project_id"]),
-        Tool("delete_project","将项目及所属合同移至回收站，允许在 IPSys 中恢复。",new(){
+        Tool("delete_project","将项目及所属文件夹移至回收站，允许在 IPSys 中恢复。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
             ["project_id"]=Field("integer","要移至回收站的项目 ID")
         },["workspace","project_id"]),
-        Tool("create_contract","给指定的有效项目新增所属合同。",new(){
-            ["workspace"]=Field("string","工作区",Workspaces),
-            ["project_id"]=Field("integer","所属项目 ID"),
-            ["name"]=Field("string","合同名称"),
-            ["contract_no"]=Field("string","合同编号（可选）"),
-            ["sign_date"]=Field("string","签订日期 yyyy-MM-dd（可选）"),
-            ["amount"]=Field("string","人民币合同金额，如 1234.00（可选）"),
-            ["signing_parties"]=Field("string","签约方（可选）"),
-            ["category"]=Field("string","分类（可选）"),
-            ["remarks"]=Field("string","备注（可选）"),
-            ["tags"]=Field("string","标签（可选）；多个标签以中文或英文分号分隔，服务端自动去重和规范化")
-        },["workspace","project_id","name"]),
-        Tool("delete_contract","将所选合同移至回收站，可在 IPSys 内恢复。",new(){
-            ["workspace"]=Field("string","工作区",Workspaces),
-            ["contract_id"]=Field("integer","合同 ID")
-        },["workspace","contract_id"]),
         Tool("delete_file","解除一处 V2 文件关联；必须同时校验 FolderId、FileId、LinkId，误用旧参数将被拒绝。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
             ["owner_id"]=Field("integer","list_files 中的 ownerId（所属 FolderId）"),
@@ -208,22 +189,12 @@ static partial class McpLocal
             ["workspace"]=Field("string","工作区",Workspaces),
             ["project_id"]=Field("integer","项目 FolderId")
         },["workspace","project_id"]),
-        Tool("list_contract_files","查询 V2 合同 FolderId 下的有效 FileId、LinkId 与最新版本。",new(){
-            ["workspace"]=Field("string","工作区",Workspaces),
-            ["contract_id"]=Field("integer","合同 FolderId")
-        },["workspace","contract_id"]),
         Tool("delete_project_file","仅解除指定 V2 项目中的一条文件关联，不删除共享原件和历史版本。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
             ["project_id"]=Field("integer","项目 FolderId"),
             ["file_id"]=Field("integer","原件 FileId"),
             ["link_id"]=Field("integer","项目文件 LinkId")
         },["workspace","project_id","file_id","link_id"]),
-        Tool("delete_contract_file","仅解除指定 V2 合同中的一条文件关联，不删除共享原件和历史版本。",new(){
-            ["workspace"]=Field("string","工作区",Workspaces),
-            ["contract_id"]=Field("integer","合同 FolderId"),
-            ["file_id"]=Field("integer","原件 FileId"),
-            ["link_id"]=Field("integer","合同文件 LinkId")
-        },["workspace","contract_id","file_id","link_id"]),
         Tool("list_ip_files","查询 V2 知识产权下的有效原件；返回 LinkId、FileId、最新版与材料类别。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
             ["ip_id"]=Field("integer","知识产权 FolderId")
@@ -236,7 +207,7 @@ static partial class McpLocal
         },["workspace","ip_id","file_id","link_id"]),
         Tool("upload_files","上传前默认应按需读取 upload 规范并分析原件、生成可靠属性；用户明确只上传则跳过分析。上传到 V2 项目/合同/知识产权/档案/综合资料 FolderId；同内容必须显式确认 duplicate_mode；追加版本需为本 Folder 已关联 FileId。每份上限 8 GiB；大文件建议使用 start_upload_task 异步上传并轮询状态。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
-            ["kind"]=Field("string","原件归属类别",["project","contract","ip","archive_folder"]),
+            ["kind"]=Field("string","原件归属类别",["project","ip","archive_folder"]),
             ["section"]=Field("string","kind=archive_folder 必填；公司可用 certificate、achievement、party、general，个人可用 certificate、achievement、academic、general"),
             ["owner_id"]=Field("integer","归属资料 FolderId"),
             ["paths"]=new {type="array",minItems=1,maxItems=20,items=Field("string","本机绝对文件路径")},
@@ -256,7 +227,7 @@ static partial class McpLocal
                 },[]),
             Tool("start_upload_task","上传前按需读取 upload 规范并处理属性；异步启动 1–20 个本机原件上传，立即返回 request_id；其余参数与 upload_files 相同。请使用 get_task_status/cancel_task。",new(){
                 ["workspace"]=Field("string","工作区",Workspaces),
-                ["kind"]=Field("string","归属资源",["project","contract","ip","archive_folder"]),
+                ["kind"]=Field("string","归属资源",["project","ip","archive_folder"]),
                 ["section"]=Field("string","kind=archive_folder 必填；公司 certificate/achievement/party/general，个人 certificate/achievement/academic/general"),
                 ["owner_id"]=Field("integer","资料 FolderId"),
                 ["paths"]=new {type="array",minItems=1,maxItems=20,items=Field("string","本机绝对路径")},
@@ -688,12 +659,6 @@ static partial class McpLocal
         ["project_status"]="projectStatus",["category"]="category",
         ["remarks"]="remarks",["tags"]="tags"
     };
-    private static readonly Dictionary<string,string> ContractFields=new()
-    {
-        ["name"]="name",["contract_no"]="contractNo",["sign_date"]="signDate",
-        ["amount"]="amount",["signing_parties"]="signingParties",
-        ["category"]="category",["remarks"]="remarks",["tags"]="tags"
-    };
     private static readonly Dictionary<string,string> IpFields=new()
     {
         ["name"]="name",
@@ -739,7 +704,7 @@ static partial class McpLocal
         if(p.Length>=5 && p[0]=="api" && p[1]=="v2" && p[2]=="folders")
         {
             string kind=p[4] switch {
-                "project"=>"项目","contract"=>"合同","ip"=>"知识产权",
+                "project"=>"项目","ip"=>"知识产权",
                 "archive_folder"=>"资料文件夹",_=>"资料"
             };
             return kind+"不存在或当前工作区无权访问（id="+
@@ -831,10 +796,9 @@ static partial class McpLocal
         client.DefaultRequestHeaders.TryAddWithoutValidation("X-IPSys-Token",vault.SessionToken);
         // Only one public tool name per business action; writes use V2 FolderId.
         if(name is "create_project" or "update_project" or "delete_project" or
-           "create_contract" or "delete_contract" or
            "create_ip" or "update_ip" or "delete_ip")
             return await ExecuteNativeAsync(client,workspace,name,args);
-        if(name is "update_contract" or "copy_contract" or
+        if(name is
            "get_file_details" or "list_file_links" or
            "update_file_metadata" or "download_file_version" or
            "associate_file" or "copy_file" or "restore_file_link" or
@@ -851,12 +815,6 @@ static partial class McpLocal
                 "/api/v2/ui/projects/"+workspace);
             return ui.DeepClone();
         }
-        if(name=="list_contracts")
-        {
-            var ui=await RequestAsync(client,HttpMethod.Get,
-                "/api/v2/ui/contracts/"+workspace);
-            return ui.DeepClone();
-        }
         if(name=="list_ips")
         {
             JsonNode ui=await RequestAsync(client,HttpMethod.Get,
@@ -870,13 +828,9 @@ static partial class McpLocal
             case "list_files_page":
                 return await PageBusinessFiles(client,workspace,args);
             case "list_project_files":
-                return await ProjectContractLinks(client,workspace,"project",args);
-            case "list_contract_files":
-                return await ProjectContractLinks(client,workspace,"contract",args);
+                return await ProjectLinks(client,workspace,args);
             case "delete_project_file":
-                return await DeleteProjectContractLink(client,workspace,"project",args);
-            case "delete_contract_file":
-                return await DeleteProjectContractLink(client,workspace,"contract",args);
+                return await DeleteProjectLink(client,workspace,args);
             case "list_ip_files":
                 return await IpLinks(client,workspace,args);
             case "delete_ip_file":
@@ -886,8 +840,8 @@ static partial class McpLocal
             case "upload_files":
             {
                 string kind=ReadString(args,"kind");
-                if(kind is not ("project" or "contract" or "ip" or "archive_folder"))
-                    throw new IOException("kind 只能为 project、contract、ip 或 archive_folder");
+                if(kind is not ("project" or "ip" or "archive_folder"))
+                    throw new IOException("kind 只能为 project、ip 或 archive_folder");
                 return await IpUploadFiles(client,workspace,args,stop,kind,progress);
             }
             default:throw new IOException("不支持的 MCP 工具："+name);

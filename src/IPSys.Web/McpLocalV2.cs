@@ -41,8 +41,6 @@ static partial class McpLocal
         {
             case "list_projects":
                 return await RequestAsync(client,HttpMethod.Get,V2Url(workspace,"project"));
-            case "list_contracts":
-                return await RequestAsync(client,HttpMethod.Get,V2Url(workspace,"contract"));
             case "list_ips":
                 return await RequestAsync(client,HttpMethod.Get,V2Url(workspace,"ip"));
             case "create_project":
@@ -63,18 +61,6 @@ static partial class McpLocal
             case "delete_project":
                 return await RequestAsync(client,HttpMethod.Delete,
                     V2Url(workspace,"project",ReadId(args,"project_id")));
-            case "create_contract":
-            {
-                long parentId=ReadId(args,"project_id");
-                if(string.IsNullOrWhiteSpace(ReadString(args,"name")))
-                    throw new IOException("合同名称不能为空。");
-                return await RequestAsync(client,HttpMethod.Post,V2Url(workspace,"contract"),
-                    NativePayload("contract",Patch(new JsonObject(),args,ContractFields),
-                        parentId));
-            }
-            case "delete_contract":
-                return await RequestAsync(client,HttpMethod.Delete,
-                    V2Url(workspace,"contract",ReadId(args,"contract_id")));
             case "create_ip":
             {
                 if(string.IsNullOrWhiteSpace(ReadString(args,"name")) ||

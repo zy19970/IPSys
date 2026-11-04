@@ -119,7 +119,6 @@ NativeFolderBatchTransferEndpoints.Map(app, Fail);
 
 NativeIpTransferEndpoints.Map(app, Fail);
 NativeProjectTransferEndpoints.Map(app, Fail);
-NativeContractTransferEndpoints.Map(app, Fail);
 
 RecycleEndpoints.Map(app);
 VaultCompactEndpoints.Map(app);

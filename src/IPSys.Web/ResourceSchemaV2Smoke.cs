@@ -1,330 +1,219 @@
 using Microsoft.Data.Sqlite;
 
-// Exercise the v2 model in a disposable, encrypted database.
+// Disposable encrypted V3 vault only; open validation must not mutate an older vault.
 static class ResourceSchemaV2Smoke
 {
     public static void Run()
     {
-        static void Check(bool value,string name)
+        static void Check(bool ok,string message)
         {
-            if(!value)throw new IOException("V2 SCHEMA SMOKE FAIL: "+name);
+            if(!ok)throw new IOException("RESOURCE V3 SQLCIPHER SMOKE: "+message);
         }
-        static long ExecuteId(SqliteConnection db,string sql)
+        static long Scalar(SqliteConnection db,string sql)
+        {
+            using var cmd=db.CreateCommand();
+            cmd.CommandText=sql;
+            return Convert.ToInt64(cmd.ExecuteScalar());
+        }
+        static long Id(SqliteConnection db,string sql)
         {
             using var cmd=db.CreateCommand();
             cmd.CommandText=sql+"; SELECT last_insert_rowid();";
-            return (long)cmd.ExecuteScalar()!;
+            return Convert.ToInt64(cmd.ExecuteScalar());
         }
-        static void Reject(SqliteConnection db,string sql,string name)
+        static void Reject(SqliteConnection db,string sql,string message)
         {
+            bool rejected=false;
             try
             {
                 using var cmd=db.CreateCommand();
                 cmd.CommandText=sql;
                 cmd.ExecuteNonQuery();
-                throw new IOException("Invalid mutation accepted: "+name);
             }
-            catch(SqliteException) { }
+            catch(SqliteException){rejected=true;}
+            Check(rejected,message);
         }
-        string path=Path.Combine(Path.GetTempPath(),
-            "ipsys-v2-"+Guid.NewGuid().ToString("N")+".db");
-        try
+        static string? Sql(SqliteConnection db,string type,string name)
         {
-            long folderId,fileId,linkFolder,objectId;
-            using(var db=Vault.Connect(path,"v2-temporary-key",create:true))
-            {
-                Vault.CreateSchema(db);
-                // Simulate a V2 vault predating modification timestamps.
-                using(var legacyTime=db.CreateCommand())
-                {
-                    legacyTime.CommandText="ALTER TABLE folders DROP COLUMN modified_at; ALTER TABLE folders DROP COLUMN created_at;";
-                    legacyTime.ExecuteNonQuery();
-                }
-                Vault.ValidateSchema(db);
-                using(var upgradedTime=db.CreateCommand())
-                {
-                    upgradedTime.CommandText="SELECT count(*) FROM pragma_table_info('folders') WHERE name='modified_at';";
-                    Check((long)upgradedTime.ExecuteScalar()! == 1,
-                        "old V2 folder timestamp column upgraded in-place");
-                    upgradedTime.CommandText="SELECT count(*) FROM folders WHERE modified_at IS NOT NULL;";
-                    Check((long)upgradedTime.ExecuteScalar()! == 0,
-                        "unknown historical modification times remain unknown");
-                    upgradedTime.CommandText="SELECT count(*) FROM pragma_table_info('folders') WHERE name='created_at';";
-                    Check((long)upgradedTime.ExecuteScalar()! == 1,
-                        "old V2 folder creation column upgraded in-place");
-                    upgradedTime.CommandText="SELECT count(*) FROM folders WHERE created_at IS NOT NULL;";
-                    Check((long)upgradedTime.ExecuteScalar()! == 0,
-                        "unknown historical creation times remain NULL, not overwritten by modified_at");
-                }
-                using(var legacy=db.CreateCommand())
-                {
-                    legacy.CommandText="SELECT count(*) FROM sqlite_master WHERE type='table' AND name IN ('records','attachments','chunks','business_projects','business_contracts','business_ips','business_archives','business_file_links','business_file_objects','business_file_chunks','archive_folders');";
-                    Check((long)legacy.ExecuteScalar()! == 0,"new V2 vault contains no legacy business tables");
-                }
-                using(var count=db.CreateCommand())
-                {
-                    count.CommandText="SELECT count(*) FROM folders WHERE is_system<>0;";
-                    Check((long)count.ExecuteScalar()! == 0,"initial archive folders are ordinary");
-                    count.CommandText="SELECT count(*) FROM folders WHERE workspace='company' AND kind='archive_folder';";
-                    Check((long)count.ExecuteScalar()! == 7,"seven initial archive folders");
-                }
-
-                // Simulate an older V2 vault's protected first directory.
-                // Normalization must preserve its FolderId, undo old triggers
-                // and never seed deleted folders again on a later open.
-                long legacyFolder;
-                using(var old=db.CreateCommand())
-                {
-                    old.CommandText="SELECT id FROM folders WHERE name='申报与认定' AND workspace='company';";
-                    legacyFolder=(long)old.ExecuteScalar()!;
-                    old.CommandText=$"""
-                        DROP TRIGGER folder_immutable_scope;
-                        UPDATE folders SET is_system=1 WHERE id={legacyFolder};
-                        CREATE TRIGGER folder_immutable_scope BEFORE UPDATE OF
-                          workspace,kind,section,is_system ON folders BEGIN
-                          SELECT RAISE(ABORT,'folder identity immutable');
-                        END;
-                        CREATE TRIGGER folder_protect_system BEFORE UPDATE OF name,parent_id,deleted
-                          ON folders WHEN OLD.is_system=1 BEGIN
-                          SELECT RAISE(ABORT,'system category is protected');
-                        END;
-                        CREATE TRIGGER folder_protect_system_delete BEFORE DELETE ON folders
-                          WHEN OLD.is_system=1 BEGIN
-                          SELECT RAISE(ABORT,'system category is protected');
-                        END;
-                        """;
-                    old.ExecuteNonQuery();
-                }
-                long legacyChild=ExecuteId(db,
-                    $"INSERT INTO folders(workspace,kind,section,parent_id,name) VALUES('company','archive_folder','achievement',{legacyFolder},'历史子目录')");
-                using(var creation=db.CreateCommand())
-                {
-                    creation.CommandText=$"SELECT created_at FROM folders WHERE id={legacyChild};";
-                    var initial=creation.ExecuteScalar() as string;
-                    Check(!string.IsNullOrWhiteSpace(initial),
-                        "new folder has a real creation timestamp after V2 upgrade");
-                    creation.CommandText=$"UPDATE folders SET name='重命名子目录' WHERE id={legacyChild};";
-                    creation.ExecuteNonQuery();
-                    creation.CommandText=$"SELECT created_at FROM folders WHERE id={legacyChild};";
-                    Check(initial==creation.ExecuteScalar() as string,
-                        "rename cannot change the original creation timestamp");
-                }
-                Reject(db,$"UPDATE folders SET name='曾受保护' WHERE id={legacyFolder}",
-                    "legacy protected initial folder rejects rename");
-                Vault.ValidateSchema(db);
-                using(var normalized=db.CreateCommand())
-                {
-                    normalized.CommandText=$"SELECT is_system FROM folders WHERE id={legacyFolder};";
-                    Check((long)normalized.ExecuteScalar()! == 0,
-                        "legacy FolderId retained and protection flag cleared");
-                    normalized.CommandText="SELECT count(*) FROM sqlite_master WHERE type='trigger' AND name IN ('folder_protect_system','folder_protect_system_delete');";
-                    Check((long)normalized.ExecuteScalar()! == 0,
-                        "legacy protections removed permanently");
-                    normalized.CommandText=$"SELECT count(*) FROM folders WHERE id={legacyChild} AND parent_id={legacyFolder};";
-                    Check((long)normalized.ExecuteScalar()! == 1,
-                        "historical child relationships remain intact");
-                    normalized.CommandText=$"UPDATE folders SET name='更名后的初始文件夹' WHERE id={legacyFolder};";
-                    Check(normalized.ExecuteNonQuery()==1,"initial folder can be renamed");
-                    normalized.CommandText=$"SELECT modified_at FROM folders WHERE id={legacyFolder};";
-                    Check(!string.IsNullOrWhiteSpace(normalized.ExecuteScalar() as string),
-                        "editing an old V2 folder starts a real timestamp");
-                    normalized.CommandText=$"UPDATE folders SET parent_id=(SELECT id FROM folders WHERE name='其他业务资料') WHERE id={legacyFolder};";
-                    Check(normalized.ExecuteNonQuery()==1,"initial folder can move with existing children");
-                    normalized.CommandText=$"UPDATE folders SET parent_id=NULL WHERE id={legacyFolder};";
-                    Check(normalized.ExecuteNonQuery()==1,"initial folder can return to top level");
-                    normalized.CommandText=$"UPDATE folders SET name='申报与认定' WHERE id={legacyFolder};";
-                    Check(normalized.ExecuteNonQuery()==1,"initial folder rename can be reverted");
-                    normalized.CommandText="DELETE FROM folders WHERE name='其他业务资料' AND workspace='company' AND kind='archive_folder';";
-                    Check(normalized.ExecuteNonQuery()==1,"an empty initial folder can be deleted");
-                    normalized.CommandText="SELECT count(*) FROM folders WHERE kind='archive_folder' AND parent_id IS NULL;";
-                    Check((long)normalized.ExecuteScalar()! == 6,
-                        "the deleted starter is not automatically recreated");
-                }
-                folderId=ExecuteId(db,
-                    "INSERT INTO folders(workspace,kind,name) VALUES('company','project','项目')");
-                var contract=ExecuteId(db,
-                    $"INSERT INTO folders(workspace,kind,name,parent_id) VALUES('company','contract','合同',{folderId})");
-                Check(contract>0,"project-contract parent");
-                using(var newTime=db.CreateCommand())
-                {
-                    newTime.CommandText=$"SELECT modified_at FROM folders WHERE id={contract};";
-                    Check(!string.IsNullOrWhiteSpace(newTime.ExecuteScalar() as string),
-                        "new business folders carry an actual timestamp");
-                }
-                Reject(db,"INSERT INTO folders(workspace,kind,name) VALUES('company','contract','孤立合同')",
-                    "orphan contract");
-                Reject(db,$"INSERT INTO folders(workspace,kind,name,parent_id) VALUES('personal','contract','跨区合同',{folderId})",
-                    "cross-workspace parent");
-                Reject(db,$"INSERT INTO folders(workspace,kind,name,parent_id) VALUES('company','ip','非法父级',{folderId})",
-                    "invalid parent kind");
-                linkFolder=ExecuteId(db,
-                    "INSERT INTO folders(workspace,kind,section,name) VALUES('company','archive_folder','achievement','自建分类')");
-                var child=ExecuteId(db,
-                    $"INSERT INTO folders(workspace,kind,section,name,parent_id) VALUES('company','archive_folder','achievement','下级分类',{linkFolder})");
-                Reject(db,$"UPDATE folders SET parent_id={child} WHERE id={linkFolder}",
-                    "cycle detection");
-
-                var partyFolder=ExecuteId(db,
-                    "INSERT INTO folders(workspace,kind,section,name) VALUES('company','archive_folder','party','党团建设资料')");
-                Check(partyFolder>0,"company party records share canonical folder kind");
-                Reject(db,"INSERT INTO folders(workspace,kind,section,name) VALUES('personal','archive_folder','party','非法个人党团资料')",
-                    "party section is company-only");
-                Reject(db,$"INSERT INTO folders(workspace,kind,section,parent_id,name) VALUES('company','archive_folder','party',{linkFolder},'非法党团子记录')",
-                    "party folders cannot cross module scope");
-                Reject(db,"INSERT INTO folders(workspace,kind,section,name) VALUES('company','archive','party','废弃档案类型')",
-                    "new schema refuses retired archive kind");
-                Reject(db,"INSERT INTO folders(workspace,kind,section,name) VALUES('company','general','general','废弃综合资料类型')",
-                    "new schema refuses retired general kind");
-                ResourceSchemaV2.EnsurePartyArchiveSection(db); // idempotent on new V2 vaults
-
-                // New project-directory model: project is the business record;
-                // ordinary archive_folder rows form its arbitrarily deep tree.
-                long projectId=ExecuteId(db,
-                    "INSERT INTO folders(workspace,kind,name,attributes_json) VALUES('company','project','项目目录架构校验','{}')");
-                long projectChild=ExecuteId(db,
-                    $"INSERT INTO folders(workspace,kind,section,parent_id,name) VALUES('company','archive_folder','project',{projectId},'项目直属文件夹')");
-                long projectGrandchild=ExecuteId(db,
-                    $"INSERT INTO folders(workspace,kind,section,parent_id,name) VALUES('company','archive_folder','project',{projectChild},'项目二级文件夹')");
-                Check(projectChild>0 && projectGrandchild>0,
-                    "project archive folders nest under project and under each other");
-                Reject(db,"INSERT INTO folders(workspace,kind,section,name) VALUES('company','archive_folder','project','游离项目目录')",
-                    "project directory must have a project owner");
-                Reject(db,$"INSERT INTO folders(workspace,kind,section,parent_id,name) VALUES('company','archive_folder','project',{linkFolder},'错误父目录')",
-                    "project directory cannot have an achievement parent");
-                Reject(db,$"INSERT INTO folders(workspace,kind,section,parent_id,name) VALUES('company','archive_folder','general',{projectId},'错误跨模块目录')",
-                    "general directory cannot be placed inside a project");
-                Reject(db,$"UPDATE folders SET section='general' WHERE id={projectGrandchild}",
-                    "changing section without parent change must check its current parent");
-                using(var verifyProject=db.CreateCommand())
-                {
-                    verifyProject.CommandText=$"SELECT count(*) FROM folders WHERE id={projectGrandchild} AND parent_id={projectChild} AND section='project';";
-                    Check((long)verifyProject.ExecuteScalar()! == 1,
-                        "rejected update preserves nested project directory");
-                }
-
-                fileId=ExecuteId(db,"INSERT INTO files(workspace,name) VALUES('company','原件.pdf')");
-                objectId=ExecuteId(db,
-                    "INSERT INTO file_objects(workspace,state,expected_size) VALUES('company','writing',3)");
-                using(var finalize=db.CreateCommand())
-                {
-                    finalize.CommandText=$"INSERT INTO file_chunks(object_id,workspace,idx,bytes) VALUES({objectId},'company',0,X'010203');";
-                    finalize.ExecuteNonQuery();
-                    var digest=Convert.ToHexString(
-                        System.Security.Cryptography.SHA256.HashData(new byte[]{1,2,3}));
-                    finalize.CommandText=$"UPDATE file_objects SET state='ready',size=3,sha256='{digest}' WHERE id={objectId};";
-                    Check(finalize.ExecuteNonQuery()==1,"finalize content object");
-                }
-                Reject(db,$"UPDATE file_objects SET size=0 WHERE id={objectId}",
-                    "ready object immutability");
-                Reject(db,$"UPDATE file_chunks SET bytes=X'00' WHERE object_id={objectId}",
-                    "ready file chunk immutability");
-                // A ready orphan may be purged; referenced versions stay immutable.
-                Reject(db,$"INSERT INTO file_chunks(object_id,workspace,idx,bytes) VALUES({objectId},'company',1,X'00')",
-                    "cannot append bytes after object is ready");
-                ExecuteId(db,
-                    $"INSERT INTO file_versions(file_id,workspace,version,object_id,original_name) VALUES({fileId},'company',1,{objectId},'原件.pdf')");
-                Reject(db,$"DELETE FROM file_chunks WHERE object_id={objectId}",
-                    "referenced ready bytes must not be deleted");
-                ExecuteId(db,
-                    $"INSERT INTO folder_file_links(workspace,folder_id,file_id) VALUES('company',{folderId},{fileId})");
-                ExecuteId(db,
-                    $"INSERT INTO folder_file_links(workspace,folder_id,file_id) VALUES('company',{linkFolder},{fileId})");
-                Reject(db,$"INSERT INTO folder_file_links(workspace,folder_id,file_id) VALUES('personal',{folderId},{fileId})",
-                    "cross workspace file link");
-                Reject(db,$"INSERT INTO folder_file_links(workspace,folder_id,file_id) VALUES('company',{folderId},{fileId})",
-                    "duplicate active file link");
-                var secondFile=ExecuteId(db,
-                    "INSERT INTO files(workspace,name) VALUES('company','独立文件.pdf')");
-                ExecuteId(db,
-                    $"INSERT INTO file_versions(file_id,workspace,version,object_id,original_name) VALUES({secondFile},'company',1,{objectId},'独立文件.pdf')");
-                ExecuteId(db,
-                    $"INSERT INTO file_versions(file_id,workspace,version,object_id,original_name) VALUES({fileId},'company',2,{objectId},'原件第二版.pdf')");
-                using(var count=db.CreateCommand())
-                {
-                    count.CommandText=$"SELECT count(*) FROM file_versions WHERE file_id={fileId};";
-                    Check((long)count.ExecuteScalar()! == 2,"shared logical file has two versions");
-                    count.CommandText=$"SELECT count(*) FROM file_versions WHERE file_id={secondFile};";
-                    Check((long)count.ExecuteScalar()! == 1,
-                        "same byte content does not merge different file histories");
-                }
-                Reject(db,$"UPDATE file_versions SET original_name='伪造原名' WHERE file_id={fileId}",
-                    "immutable version identity");
-                var otherObject=ExecuteId(db,
-                    "INSERT INTO file_objects(workspace,state,expected_size,size,sha256) VALUES('personal','ready',3,3,'"+
-                    new string('A',64)+"')");
-                Reject(db,$"INSERT INTO file_versions(file_id,workspace,version,object_id,original_name) VALUES({fileId},'company',3,{otherObject},'越区.pdf')",
-                    "physical object workspace isolation");
-                var writing=ExecuteId(db,
-                    "INSERT INTO file_objects(workspace,state,expected_size) VALUES('company','writing',3)");
-                Reject(db,$"INSERT INTO file_versions(file_id,workspace,version,object_id,original_name) VALUES({fileId},'company',3,{writing},'暂存.pdf')",
-                    "unfinished content");
-                using(var unlink=db.CreateCommand())
-                {
-                    unlink.CommandText=$"UPDATE folder_file_links SET deleted=1 WHERE folder_id={folderId} AND file_id={fileId};";
-                    Check(unlink.ExecuteNonQuery()==1,"unlink one association");
-                    unlink.CommandText=$"SELECT count(*) FROM folder_file_links WHERE folder_id={linkFolder} AND file_id={fileId} AND deleted=0;";
-                    Check((long)unlink.ExecuteScalar()! == 1,
-                        "other folder retains shared FileId");
-                }
-            }
-            using(var reopen=Vault.Connect(path,"v2-temporary-key",create:false))
-            {
-                Vault.ValidateSchema(reopen);
-                using var cmd=reopen.CreateCommand();
-                cmd.CommandText="SELECT count(*) FROM files;";
-                Check((long)cmd.ExecuteScalar()! == 2,"encrypted files survive reopen");
-                cmd.CommandText="SELECT count(*) FROM folders WHERE kind='archive_folder' AND section='achievement' AND parent_id IS NULL;";
-                Check((long)cmd.ExecuteScalar()! == 7,
-                    "six surviving achievement seeds plus one user-created folder after reopen");
-                cmd.CommandText="SELECT count(*) FROM folders WHERE kind='archive_folder' AND section='party' AND parent_id IS NULL;";
-                Check((long)cmd.ExecuteScalar()! == 1,
-                    "company party record shares archive_folder kind after reopen");
-                cmd.CommandText="SELECT count(*) FROM folders WHERE is_system<>0;";
-                Check((long)cmd.ExecuteScalar()! == 0,
-                    "legacy starter flags remain cleared after reopen");
-            }
+            using var cmd=db.CreateCommand();
+            cmd.CommandText="SELECT sql FROM sqlite_master WHERE type=$type AND name=$name;";
+            cmd.Parameters.AddWithValue("$type",type);
+            cmd.Parameters.AddWithValue("$name",name);
+            return cmd.ExecuteScalar() as string;
         }
-        finally
+        static void Clean(string path)
         {
             foreach(var suffix in new[]{"","-wal","-shm","-journal"})
                 if(File.Exists(path+suffix))File.Delete(path+suffix);
         }
-        // A V2-shaped legacy vault must fail BEFORE any in-place upgrade,
-        // including when the retired record is only in the recycle bin.
-        // Use a disposable encrypted fixture, never a user's existing file.
-        string oldPath=Path.Combine(Path.GetTempPath(),
-            "ipsys-v2-retired-"+Guid.NewGuid().ToString("N")+".db");
+
+        string path=Path.Combine(Path.GetTempPath(),
+            "ipsys-schema3-"+Guid.NewGuid().ToString("N")+".db");
         try
         {
-            using var old=Vault.Connect(oldPath,"v2-retired-key",create:true);
-            using var cmd=old.CreateCommand();
-            cmd.CommandText="""
-                CREATE TABLE resource_schema_version(id INTEGER PRIMARY KEY,version INTEGER);
-                INSERT INTO resource_schema_version VALUES(1,2);
-                CREATE TABLE folders(id INTEGER PRIMARY KEY,kind TEXT,deleted INTEGER);
-                INSERT INTO folders(kind,deleted) VALUES('archive',0),('general',1);
-                CREATE TABLE files(id INTEGER PRIMARY KEY);
-                CREATE TABLE file_versions(id INTEGER PRIMARY KEY);
-                CREATE TABLE file_objects(id INTEGER PRIMARY KEY);
-                CREATE TABLE file_chunks(id INTEGER PRIMARY KEY);
-                CREATE TABLE folder_file_links(id INTEGER PRIMARY KEY);
-                CREATE TABLE mcp_operations(id INTEGER PRIMARY KEY);
-                """;
-            cmd.ExecuteNonQuery();
-            bool blocked=false;
-            try {Vault.ValidateSchema(old);}
-            catch(IOException ex) when(ex.Message.Contains("archive/general",
-                StringComparison.Ordinal)){blocked=true;}
-            Check(blocked,"V2 retired record kinds must be rejected with explicit guidance");
-            cmd.CommandText="SELECT count(*) FROM folders WHERE kind IN ('archive','general');";
-            Check((long)cmd.ExecuteScalar()! == 2,
-                "rejected old V2 vault remains intact, including deleted entries");
+            long project,projectDir,child,file,objectId,link;
+            using(var db=Vault.Connect(path,"schema3-test-key",create:true))
+            {
+                Vault.CreateSchema(db);
+                Vault.ValidateSchema(db);
+                Check(Scalar(db,"SELECT version FROM resource_schema_version WHERE id=1;")==3,
+                    "new vault schema version is exactly 3");
+                Check(Scalar(db,"SELECT count(*) FROM folders WHERE kind='archive_folder' AND is_system=0;")==7,
+                    "seven ordinary editable initial folders");
+                Check(Scalar(db,"SELECT count(*) FROM folders WHERE kind='contract';")==0,
+                    "new V3 vault has no independent contract rows");
+                Check(Sql(db,"table","folders")?.Contains("'contract'")==false,
+                    "V3 CHECK cannot admit retired contract kind");
+                Check(Sql(db,"trigger","folder_modified_business")?.Contains("section") == true,
+                    "new creation transaction already installs section-aware modified timestamp");
+                Check(Sql(db,"trigger","chunk_delete_ready")?.Contains("file_versions")==true,
+                    "new creation transaction already protects referenced ready objects");
+
+                Reject(db,"INSERT INTO folders(workspace,kind,name) VALUES('company','contract','不可创建合同')",
+                    "retired contract kind rejected at SQL level");
+                Reject(db,"INSERT INTO folders(workspace,kind,section,name) VALUES('company','archive','achievement','旧档案')",
+                    "retired archive kind rejected");
+                project=Id(db,"INSERT INTO folders(workspace,kind,name) VALUES('company','project','测试项目')");
+                long ip=Id(db,"INSERT INTO folders(workspace,kind,name) VALUES('company','ip','测试专利')");
+                projectDir=Id(db,$"INSERT INTO folders(workspace,kind,section,parent_id,name) VALUES('company','archive_folder','project',{project},'项目内合同资料')");
+                child=Id(db,$"INSERT INTO folders(workspace,kind,section,parent_id,name) VALUES('company','archive_folder','project',{projectDir},'二级附件')");
+                Check(projectDir>0 && child>0 && ip>0,"project directory nesting is valid");
+                Reject(db,"INSERT INTO folders(workspace,kind,section,name) VALUES('company','archive_folder','project','无归属项目目录')",
+                    "project directory without actual project parent rejected");
+                Reject(db,$"INSERT INTO folders(workspace,kind,section,parent_id,name) VALUES('personal','archive_folder','project',{project},'跨工作区')",
+                    "project folder cannot cross workspaces");
+                Reject(db,$"INSERT INTO folders(workspace,kind,section,parent_id,name) VALUES('company','archive_folder','project',{ip},'知识产权父级')",
+                    "IP cannot parent project folder");
+                Reject(db,$"UPDATE folders SET parent_id={child} WHERE id={projectDir}",
+                    "directory cycle rejected");
+                Reject(db,$"UPDATE folders SET section='general' WHERE id={child}",
+                    "section change cannot violate its parent scope");
+                Check(Scalar(db,$"SELECT count(*) FROM folders WHERE id={child} AND parent_id={projectDir} AND section='project';")==1,
+                    "failed scope update leaves original directory unchanged");
+
+                file=Id(db,"INSERT INTO files(workspace,name) VALUES('company','原件.pdf')");
+                objectId=Id(db,"INSERT INTO file_objects(workspace,state,expected_size) VALUES('company','writing',3)");
+                string sha=Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(new byte[]{1,2,3}));
+                using(var cmd=db.CreateCommand())
+                {
+                    cmd.CommandText=$"INSERT INTO file_chunks(object_id,workspace,idx,bytes) VALUES({objectId},'company',0,X'010203');";
+                    cmd.ExecuteNonQuery();
+                    cmd.CommandText=$"UPDATE file_objects SET state='ready',size=3,sha256='{sha}' WHERE id={objectId};";
+                    Check(cmd.ExecuteNonQuery()==1,"finalize immutable object");
+                }
+                Reject(db,$"UPDATE file_objects SET size=0 WHERE id={objectId}",
+                    "ready object immutable");
+                Id(db,$"INSERT INTO file_versions(file_id,workspace,version,object_id,original_name) VALUES({file},'company',1,{objectId},'原件.pdf')");
+                Id(db,$"INSERT INTO file_versions(file_id,workspace,version,object_id,original_name) VALUES({file},'company',2,{objectId},'历史版本.pdf')");
+                Reject(db,$"DELETE FROM file_chunks WHERE object_id={objectId}",
+                    "referenced immutable content bytes protected");
+                link=Id(db,$"INSERT INTO folder_file_links(workspace,folder_id,file_id) VALUES('company',{child},{file})");
+                Reject(db,$"INSERT INTO folder_file_links(workspace,folder_id,file_id) VALUES('personal',{project},{file})",
+                    "cross workspace link cannot exist");
+                Reject(db,$"INSERT INTO folder_file_links(workspace,folder_id,file_id) VALUES('company',{child},{file})",
+                    "duplicate active FileId link rejected");
+                Check(Scalar(db,$"SELECT count(*) FROM file_versions WHERE file_id={file};")==2,
+                    "both versions maintained");
+
+                // Read-only validation is observed by total_changes and schema SQL.
+                long before=Scalar(db,"SELECT total_changes();");
+                string? schemaBefore=Sql(db,"table","folders");
+                Vault.ValidateSchema(db);
+                Check(Scalar(db,"SELECT total_changes();")==before &&
+                      Sql(db,"table","folders")==schemaBefore,
+                    "V3 validation has no writes or DDL changes");
+                using(var cmd=db.CreateCommand())
+                {
+                    cmd.CommandText="DELETE FROM folders WHERE workspace='company' AND kind='archive_folder' AND name='其他业务资料';";
+                    Check(cmd.ExecuteNonQuery()==1,"starter folder can be removed");
+                    cmd.CommandText=$"UPDATE folders SET name='二级已更新' WHERE id={child};";
+                    Check(cmd.ExecuteNonQuery()==1,"project child can be modified immediately after CREATE");
+                    cmd.CommandText=$"SELECT modified_at FROM folders WHERE id={child};";
+                    Check(!string.IsNullOrWhiteSpace(cmd.ExecuteScalar() as string),
+                        "new folder has modification timestamp without reopen");
+                }
+                // A changed section with unchanged NULL parent must still be an
+                // observable metadata edit for cross-module root moves.
+                long root=Id(db,"INSERT INTO folders(workspace,kind,section,name) VALUES('company','archive_folder','certificate','跨模块移动')");
+                using(var cmd=db.CreateCommand())
+                {
+                    cmd.CommandText=$"UPDATE folders SET section='general' WHERE id={root};";
+                    Check(cmd.ExecuteNonQuery()==1,"same-workspace root section update");
+                }
+                Check(Scalar(db,$"SELECT count(*) FROM folders WHERE id={root} AND section='general' AND modified_at IS NOT NULL;")==1,
+                    "cross-module root modification timestamp is available");
+            }
+
+            using(var reopened=Vault.Connect(path,"schema3-test-key",create:false))
+            {
+                Vault.ValidateSchema(reopened);
+                Check(Scalar(reopened,"SELECT version FROM resource_schema_version;")==3,
+                    "reopen preserves V3 schema version");
+                Check(Scalar(reopened,$"SELECT count(*) FROM file_versions WHERE file_id={file};")==2 &&
+                      Scalar(reopened,$"SELECT count(*) FROM folder_file_links WHERE id={link};")==1,
+                    "both file versions and stable LinkId survive reopened validation");
+                Check(Scalar(reopened,"SELECT count(*) FROM folders WHERE name='其他业务资料';")==0,
+                    "deleted initial folder is not reseeded on reopen");
+                Check(Scalar(reopened,$"SELECT count(*) FROM folders WHERE id={child} AND name='二级已更新';")==1,
+                    "project tree edits survive reopen");
+            }
         }
-        finally
+        finally{Clean(path);}
+
+        // Two distinct V2-style schemas: an older ordinary-folder scope and
+        // a legacy contract-per-project schema. Both are refused untouched.
+        for(int fixture=0;fixture<2;fixture++)
         {
-            foreach(var suffix in new[]{"","-wal","-shm","-journal"})
-                if(File.Exists(oldPath+suffix))File.Delete(oldPath+suffix);
+            string legacyPath=Path.Combine(Path.GetTempPath(),
+                "ipsys-v2-refuse-"+Guid.NewGuid().ToString("N")+".db");
+            try
+            {
+                using var db=Vault.Connect(legacyPath,"old-schema-test-key",create:true);
+                using var setup=db.CreateCommand();
+                setup.CommandText=$"""
+                    CREATE TABLE resource_schema_version(id INTEGER PRIMARY KEY,version INTEGER);
+                    INSERT INTO resource_schema_version VALUES(1,2);
+                    CREATE TABLE folders(id INTEGER PRIMARY KEY,kind TEXT,section TEXT,deleted INTEGER);
+                    INSERT INTO folders(kind,section,deleted) VALUES('{(fixture==0?"archive_folder":"contract")}','{(fixture==0?"achievement":"")}',1);
+                    """;
+                setup.ExecuteNonQuery();
+                long before=Scalar(db,"SELECT total_changes();");
+                string? definition=Sql(db,"table","folders");
+                bool blocked=false;
+                try{Vault.ValidateSchema(db);}
+                catch(IOException ex)when(ex.Message.Contains("新建资料库",StringComparison.Ordinal))
+                {blocked=true;}
+                Check(blocked,"both legacy V2 structures are explicitly rejected");
+                Check(Scalar(db,"SELECT total_changes();")==before &&
+                      Sql(db,"table","folders")==definition &&
+                      Scalar(db,"SELECT count(*) FROM folders WHERE deleted=1;")==1,
+                    "legacy rows and old DDL remain untouched on rejection");
+            }
+            finally{Clean(legacyPath);}
         }
-        Console.WriteLine("RESOURCE V2 SQLCIPHER SMOKE PASS");
+
+        string brokenPath=Path.Combine(Path.GetTempPath(),
+            "ipsys-v3-invalid-"+Guid.NewGuid().ToString("N")+".db");
+        try
+        {
+            using var db=Vault.Connect(brokenPath,"broken-schema-key",create:true);
+            Vault.CreateSchema(db);
+            using(var change=db.CreateCommand())
+            {
+                change.CommandText="DROP TRIGGER folder_modified_business;";
+                change.ExecuteNonQuery();
+            }
+            long before=Scalar(db,"SELECT total_changes();");
+            bool blocked=false;
+            try{Vault.ValidateSchema(db);}
+            catch(IOException ex)when(ex.Message.Contains("结构不完整",StringComparison.Ordinal))
+            {blocked=true;}
+            Check(blocked,"V3 missing a required timestamp trigger is rejected");
+            Check(Scalar(db,"SELECT total_changes();")==before &&
+                  Sql(db,"trigger","folder_modified_business") is null,
+                "validation does not silently recreate a missing trigger");
+        }
+        finally{Clean(brokenPath);}
+        Console.WriteLine("RESOURCE V3 SQLCIPHER SMOKE PASS");
     }
 }

@@ -66,7 +66,6 @@ const run=code=>vm.runInContext(code,ctx);
 
 ctx.__fixtures={
  projects:[{id:1,name:'研发项目'}],
- contracts:[{id:11,name:'合同A',projectId:1,projectName:'研发项目'}],
  archive:{
   /* A02/N2：资料与目录同表，分类下直接挂普通文件夹。 */
   folders:[

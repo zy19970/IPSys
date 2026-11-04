@@ -1,18 +1,16 @@
 # IPSys 本机 Codex MCP
 
-## 当前唯一有效的普通资料 MCP 契约（2026-11-03）
+## 当前有效的项目／普通目录 MCP 契约（2026-11-04，S2）
 
-当前源码注册 **51 项 MCP 工具**。普通资料统一以 `archive_folder` 表示资源类型，业务模块只由 `section` 决定，不再创建 `archive` 或 `general` 类型的记录。工作区必须显式填写，所有普通文件夹操作必须显式填写 `section`，不能依赖默认值。公司允许 `certificate/achievement/party/general`，个人允许 `certificate/achievement/academic/general`。
+现行 `tools/list` 注册 **44 项 MCP 工具**，已完全退出独立的 `contract` 业务类型。原 `list_contracts`、`create_contract`、`update_contract`、`delete_contract`、`copy_contract`、`list_contract_files`、`delete_contract_file` 均不可调用；旧 `tools/call` 直接调用也会返回未知工具。项目下的合同资料只是一层或多层普通文件夹，不再单独维护合同对象或专有属性。
 
-`list_folders(workspace,section,parent_id?)` 查询文件夹；`create_folder(workspace,section,name,parent_id?,category?,year?,tags?,remarks?)` 创建；`update_folder(workspace,section,folder_id,...)` 更新可选字段（省略字段不清空）；`delete_folder(workspace,section,folder_id)` 移入回收站；`move_folder(workspace,section,folder_id,parent_id?)` 同模块调整父目录；`transfer_folder(workspace,section,folder_id,target_workspace,target_section,target_folder_id?,move?)` 按业务允许范围复制/转移整树。普通文件夹可以直接处于对应模块根目录，`parent_id` 或 `target_folder_id` 省略表示模块根目录。公司 `achievement` 混排使用 `list_folder_entries`、`reorder_entries`，其余可用模块依实际 `reorder_folders` 契约排序。
+业务记录类型为 `project`、`ip`，普通目录类型为 `archive_folder`。业务模块由 `section` 标识；公司支持 `certificate/achievement/party/general/project`，个人支持 `certificate/achievement/academic/general/project`。创建项目子目录须设置 `section="project"` 且提供 `parent_id`，该 ID 必须指向工作区内真实存在的项目或项目子目录。例如先调用 `create_project(workspace="company",name="项目A",project_type="科研项目")` 获得项目 FolderId=123（示例），再调用 `create_folder(workspace="company",section="project",parent_id=123,name="合同资料")`，实际调用以返回 ID 为准。目录可继续嵌套，不能将虚拟模块根视为项目父级。
 
-文件上传指定 `upload_files(workspace,kind="archive_folder",section,owner_id=FolderId,paths=[...])`；分页查询 `list_files_page(workspace,kind="archive_folder",section,...)`；`search_records` 的有效类别是 `project/contract/ip/archive_folder/file`。回收站中普通文件夹的类型为 `v2_archive_folder`，恢复/永久清理时应使用 `list_trash` 返回的原始 `kind/id/section`。同工作区共享文件的 FileId/LinkId 和跨区独立文件物理对象机制不变，所有文件版本随整树转移保留。
+普通目录使用 `list_folders/create_folder/update_folder/delete_folder/move_folder/transfer_folder` 及 `list_files_page/upload_files/list_file_links/associate_file` 等共享能力。上传项目目录附件时使用 `upload_files(workspace="company",kind="archive_folder",section="project",owner_id=实际目录FolderId,paths=[...])`。项目直属附件仍使用 `kind="project"`。统一搜索仅接受 `project/ip/archive_folder/file`；回收站记录类型使用 `list_trash` 实际返回的 `project/ip/v2_archive_folder/v2_file/v2_ip_file`。文件共享保持 FileId，不同位置拥有 LinkId；追加版本属于 FileId；跨工作区的项目整树复制含全部版本且物理 FileObject 隔离。
 
-Excel 的统一地址是 `/api/v2/excel/{workspace}/archive_folder/{template|export|import}?section=...`，固定六列为名称、类别、备注、标签、年度、所属目录。原 `archive/general` Excel 路由及旧四列、单列/双列/三列模板已退出，不进行旧数据库迁移。
+新建加密资料库的资源结构版本固定为 **3**，旧 v2、缺失版本表或结构不完整的库在打开阶段拒绝，不作自动迁移和写入修补。HTTP 保留 `/api/v2` 路由命名：HTTP 路由版本与数据库 schema 版本不是同一个概念。请用新的空白资料库测试，旧测试库需自行保留或独立备份；不要以重新输入旧密码方式触发重建。更换 EXE 后重新连接 MCP 客户端，刷新 `tools/list`。
 
-**已退役工具名称**：`list/create/update/delete_archive`、`list/create/update/delete_general`、`list/create/update/delete_archive_folder`、`list/create/update/delete_party_archive`、`move_archive_entry`、`transfer_archive`、`transfer_general`。接入端更新 EXE 后须重新连接 MCP 并通过 `tools/list` 刷新名称和参数；不要用旧工具重试失败操作。
-
-**阅读优先级**：本节及实际 `tools/list`、源码代表当前接口。以下保留的按日期记录只是开发历史证据；其中“64/63/59个工具”“旧命令仍有效”等文字不代表当前可调用接口，也不能直接作为操作步骤。
+**阅读优先级：**本节、程序返回的 `tools/list` 和实际源码代表当前接口；后文按日期保留的工具数量和合同业务教程仅作为开发历史，不可作为当前操作指令。
 
 ---
 
@@ -38,7 +36,7 @@ Excel 的统一地址是 `/api/v2/excel/{workspace}/archive_folder/{template|exp
 
 
 
-现行 tools/list 共 **51 项**（含 **get_agent_guidance**），普通文件夹工具已统一；其余后续历史工具数量仅对应当时版本。调用 `get_agent_guidance()` 或 `get_agent_guidance(topic="index")` 只返回 search/upload/metadata 专项的 ID、标题、摘要、版本；分别调用 `topic="search"`、`topic="upload"`、`topic="metadata"` 才返回单篇正文。未知 topic 明确拒绝。用户仅要求读取规范时不会上传、下载原件、修改属性或删除资料。
+S2 前历史记录曾为 **51 项**（含 **get_agent_guidance**），普通文件夹工具已统一；其余后续历史工具数量仅对应当时版本。调用 `get_agent_guidance()` 或 `get_agent_guidance(topic="index")` 只返回 search/upload/metadata 专项的 ID、标题、摘要、版本；分别调用 `topic="search"`、`topic="upload"`、`topic="metadata"` 才返回单篇正文。未知 topic 明确拒绝。用户仅要求读取规范时不会上传、下载原件、修改属性或删除资料。
 
 MCP initialize.instructions 只输出来自内嵌 index.md 的短入口，必须先在资料库中人工开启 MCP 授权；规范读取通过现行受限命名管道及宿主授权门禁，不依赖外网或额外本地服务。内嵌规范文件统一位于 src/IPSys.Web/AgentGuidance/，由 AgentGuidance.cs 注册并读取，upload/metadata 共享 file-reading.md 内容。用户换 Agent 或刷新工具清单时需重启或重新连接客户端。当前第二阶段源码已提供标准 MCP Prompts、通用缺失属性筛选；**真实智能入库和补录仍需本地 Agent 实测**，设置编辑/覆盖界面属于第三阶段。新增规范工具后的 [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 已成功；早期 63 工具 CI 仍只是历史证据，第三方 Agent 自动读取和批量补录继续独立验收。
 
@@ -47,15 +45,15 @@ MCP initialize.instructions 只输出来自内嵌 index.md 的短入口，必须
 
 IPSys 只提供工作区内结构化关键词检索及原件版本下载，不解析 PDF/Word 正文、不做 OCR 或模型推理。Agent 自主选择同义词进行多轮检索，再使用 `get_file_details`、`list_file_links` 和 `download_file_version` 获取原件并分析。
 
-现行 `search_records(workspace,query,kind?,offset?,limit?)` 支持可选结果类别 `project/contract/ip/archive_folder/file`，指定 offset 或 limit 任意一个即可进入无分组截断的分页模式。默认 offset=0、limit=100，最大单页 200；响应有 `total/offset/limit/hasMore/nextOffset`。Agent 应继续分页直到 hasMore=false。实际逐条核查时建议 limit=10–20，避免客户端只显示大页预览；预览不等于完整阅读。完全不传分页参数保留旧页面所依赖的每类别最多 60 条结果与 truncated 提示。文件搜索项 description 现为真实原件说明（无说明时为空），ownerLabel 另存“目录/项目 · 原件名”展示摘要，matchedFields=description 根据真实原件说明计算。检索结果 total 按命中的业务项/文件关联计数，不保证等于唯一 FileId 数量。
+现行 `search_records(workspace,query,kind?,offset?,limit?)` 支持可选结果类别 `project/ip/archive_folder/file`，指定 offset 或 limit 任意一个即可进入无分组截断的分页模式。默认 offset=0、limit=100，最大单页 200；响应有 `total/offset/limit/hasMore/nextOffset`。Agent 应继续分页直到 hasMore=false。实际逐条核查时建议 limit=10–20，避免客户端只显示大页预览；预览不等于完整阅读。完全不传分页参数保留旧页面所依赖的每类别最多 60 条结果与 truncated 提示。文件搜索项 description 现为真实原件说明（无说明时为空），ownerLabel 另存“目录/项目 · 原件名”展示摘要，matchedFields=description 根据真实原件说明计算。检索结果 total 按命中的业务项/文件关联计数，不保证等于唯一 FileId 数量。
 
 命中项包含 `matchedFields`（命中依据）、`path`（业务目录路径）、`folderId`；文件命中另包含 `fileId/linkId/ownerId/ownerKind/latestVersion/size/tags/fileNumber/fileDate`。历史 `id` 对文件仍表示 FileId，并非 LinkId；相同 FileId 出现在多个位置时应保留各位置但避免重复下载。分页期间发生文件变更时应重新校验。
 
-项目、合同、知识产权、业务档案及文件属性中的 `tags` 均支持中英文分号（`；`、`;`）分隔，服务端规范化为英文分号、去前后空格、空项与重复项。标签、说明、编号均参与统一检索；MCP 的 `create_*`、`update_*`、`update_file_metadata` 自动执行同一规则，所有属性选填，文件内容及版本不受元数据编辑影响。
+项目、普通目录、知识产权及文件属性中的 `tags` 均支持中英文分号（`；`、`;`）分隔，服务端规范化为英文分号、去前后空格、空项与重复项。标签、说明、编号均参与统一检索；MCP 的 `create_*`、`update_*`、`update_file_metadata` 自动执行同一规则，所有属性选填，文件内容及版本不受元数据编辑影响。
 
 
 
-> 本手册的**现行操作规则**以前置章节（知识产权三编号、统一普通文件夹、51 工具及安全操作）为准；下文按日期保留的“新增工具”“当前版本”“59/69/70 个工具”“`v2_*` 工具仍有效”等是对应历史提交的增量记录，不可直接作为现行接口清单。合同不设独立 Excel 导入或导出，该限制不影响合同业务 MCP 新增、编辑及附件接口。
+> 本手册现行操作规则以 S2 开头章节及实际 tools/list 为准；下文按日期保留的旧工具数量与合同业务 API 均是历史记录，不代表当前可执行命令。
 
 ## 知识产权 MCP：十类型、统一三个编号（2026-10-25）
 

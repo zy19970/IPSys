@@ -1,18 +1,8 @@
 using System.Globalization;
-using System.Text.Json.Serialization;
 
 record ProjectInput(string? Name, string? ProjectType, string? ProjectNo, string? Leader,
     string? UndertakingOrg, string? StartDate, string? EndDate, string? ProjectStatus,
     string? Category, string? Remarks, string? Tags);
-
-// ProjectId is a request alias only: the real owner is folders.parent_id. Callers
-// routinely echo back a contract object returned by GET /api/v2/ui/contracts, so
-// the alias is accepted on write and cleared before the attributes JSON is stored.
-// JsonIgnore(WhenWritingNull) keeps attributes_json byte-identical to before this
-// field existed - the property is read from requests but never serialized.
-record ContractInput(string? Name, string? ContractNo, string? SignDate, string? Amount,
-    string? SigningParties, string? Category, string? Remarks, string? Tags,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] long? ProjectId = null);
 
 record IpInput(
     string? Name, string? IpType, string? Status,
@@ -35,14 +25,8 @@ record ArchiveEntryOrderItem(string Kind,long Id);
 record ArchiveEntryReorder(long ParentId,List<ArchiveEntryOrderItem>? Items);
 
 record FolderMutationInput(
-    ProjectInput? Project = null,
-    ContractInput? Contract = null,
-    IpInput? Ip = null,
-    long? ParentId = null,
-    ArchiveFolderInput? ArchiveFolder = null,
-    string? Section = null,
-    // 与 parentId 等价的顶层别名，合同专用；解析与冲突判定见 ContractOwner。
-    long? ProjectId = null);
+    ProjectInput? Project = null, IpInput? Ip = null, long? ParentId = null,
+    ArchiveFolderInput? ArchiveFolder = null, string? Section = null);
 
 // Semicolon-separated tags remain one optional field; no secondary index/table.
 static class TagRules
@@ -78,28 +62,6 @@ static class ProjectRules
         foreach (var date in new[] {Text(x.StartDate),Text(x.EndDate)})
             if (date.Length != 0 && (!DateOnly.TryParseExact(date, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var parsed) ||
                 parsed.ToString("yyyy-MM-dd") != date)) return "日期格式必须是 yyyy-MM-dd。";
-        return null;
-    }
-}
-
-static class ContractRules
-{
-    private static string Clean(string? value) => value?.Trim() ?? "";
-    public static string? Validate(ContractInput x)
-    {
-        if (Clean(x.Name).Length is 0 or > 300) return "合同名称必填，最多 300 字。";
-        foreach (var value in new[] { x.ContractNo, x.SigningParties, x.Category, x.Remarks, x.Tags })
-            if (Clean(value).Length > 4000) return "合同字段内容过长。";
-        string date = Clean(x.SignDate);
-        if (date.Length != 0 &&
-            (!DateOnly.TryParseExact(date, "yyyy-MM-dd", CultureInfo.InvariantCulture,
-                DateTimeStyles.None, out var parsed) || parsed.ToString("yyyy-MM-dd") != date))
-            return "合同签订日期必须为 yyyy-MM-dd。";
-        string amount = Clean(x.Amount);
-        if (amount.Length > 30 || (amount.Length != 0 &&
-            (!decimal.TryParse(amount, NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint,
-                CultureInfo.InvariantCulture, out var parsedAmount) || parsedAmount < 0)))
-            return "合同金额必须是非负的有效十进制数值。";
         return null;
     }
 }

@@ -45,6 +45,7 @@ static class SearchStore
             "party"=>"党团建设",
             "general"=>workspace=="company"?"综合资料":"其他资料",
             "certificate"=>workspace=="personal"?"人力资源":"企业资质",
+            "project"=>"项目",
             _=>section
         };
     private static string Summary(params string?[] fields)=>string.Join(" · ",
@@ -59,7 +60,7 @@ static class SearchStore
         bool paged=offset.HasValue||limit.HasValue;
         if(offset is <0 || limit is <1 or >200)
             throw new InvalidDataException("搜索分页参数不合法：offset 非负，limit 为 1–200。");
-        if(filterKind is not (null or "" or "project" or "contract" or "ip" or
+        if(filterKind is not (null or "" or "project" or "ip" or
             "archive_folder" or "file"))
             throw new InvalidDataException("搜索类别无效。");
         var results=new List<SearchHit>();
@@ -77,15 +78,14 @@ static class SearchStore
         }
         string root=workspace=="company"?"公司":"个人";
         var projects=NativeFolderStore.List(db,workspace,FolderKinds.Project);
-        var contracts=NativeFolderStore.List(db,workspace,FolderKinds.Contract);
         var projectTitles=projects.ToDictionary(x=>x.Folder.Ref.Id,x=>x.Folder.Name);
         var ips=NativeFolderStore.List(db,workspace,FolderKinds.Ip);
         // A02/N2: ordinary materials are archive_folder inside a module scope.
         // This is the only readable shape; the retired archive/general kinds are
         // no longer created and intentionally not searched.
         var materialScopes=workspace=="company"
-            ?new[]{"certificate","achievement","party","general"}
-            :new[]{"certificate","achievement","academic","general"};
+            ?new[]{"certificate","achievement","party","general","project"}
+            :new[]{"certificate","achievement","academic","general","project"};
         var materials=materialScopes.SelectMany(section=>
             NativeArchiveStore.ListAll(db,workspace,section)).ToArray();
         // A material inherits its ancestor folder names for search without
@@ -97,11 +97,19 @@ static class SearchStore
         {
             var names=new List<string>();
             var seen=new HashSet<long>();
-            while(id is long parent && seen.Add(parent) &&
-                materialParents.TryGetValue(parent,out var entry))
+            while(id is long parent && seen.Add(parent))
             {
-                names.Add(entry.Name);
-                id=entry.Parent;
+                if(materialParents.TryGetValue(parent,out var entry))
+                {
+                    names.Add(entry.Name);
+                    id=entry.Parent;
+                }
+                else if(projectTitles.TryGetValue(parent,out var projectName))
+                {
+                    names.Add(projectName);
+                    break;
+                }
+                else break;
             }
             return string.Join(" / ",names.AsEnumerable().Reverse());
         }
@@ -118,21 +126,6 @@ static class SearchStore
                 Summary(p.ProjectType,p.ProjectNo,p.ProjectStatus)){
                 Path=root+" / 项目 / "+row.Folder.Name,MatchedFields=m,
                 FolderId=row.Folder.Ref.Id,Tags=p.Tags,Status=p.ProjectStatus
-            });
-        }
-        foreach(var row in contracts)
-        {
-            var c=(ContractInput)row.BusinessData;
-            if(row.Folder.Parent is not ResourceRef parent ||
-               !projectTitles.TryGetValue(parent.Id,out string? parentName))continue;
-            var m=Matched(query,("name",c.Name),("number",c.ContractNo),
-                ("parent",parentName),("signingParties",c.SigningParties),
-                ("category",c.Category),("remarks",c.Remarks),("tags",c.Tags));
-            if(m.Length==0)continue;
-            Add(new SearchHit("contract",row.Folder.Ref.Id,"",Label(c.Name),
-                Summary(parentName,c.ContractNo)){
-                Path=root+" / 项目 / "+parentName+" / "+row.Folder.Name,
-                MatchedFields=m,FolderId=row.Folder.Ref.Id,Tags=c.Tags
             });
         }
         foreach(var ip in ips)
@@ -172,17 +165,13 @@ static class SearchStore
         // Search only active V2 FolderFileLinks; legacy business_file_links
         // and attachments cannot masquerade as a matching native FolderId.
         var projectNames=projects.ToDictionary(x=>x.Folder.Ref.Id,x=>x.Folder.Name);
-        var activeContracts=contracts.Where(x=>x.Folder.Parent is ResourceRef p &&
-            projectNames.ContainsKey(p.Id)).ToArray();
         // All business records, including archives and general folders, use
         // the same FileId and FileVersion search contract.
-        foreach(var item in projects.Concat(activeContracts).Concat(ips)
+        foreach(var item in projects.Concat(ips)
             .Concat(materials))
         {
             long owner=item.Folder.Ref.Id;
             string kind=item.Folder.Ref.Kind;
-            if(kind==FolderKinds.Contract &&
-                item.Folder.Parent is not ResourceRef parent)continue;
             foreach(var link in NativeFileLinkStore.ListFolder(db,workspace,owner,false)??[])
             {
                 var details=NativeFileStore.Get(db,workspace,link.FileId);
@@ -199,10 +188,6 @@ static class SearchStore
                 };
                 string parentPath=kind switch {
                     FolderKinds.Project=>root+" / 项目 / "+parentTitle,
-                    FolderKinds.Contract=>root+" / 项目 / "+
-                        (item.Folder.Parent is ResourceRef cp &&
-                         projectTitles.TryGetValue(cp.Id,out string? pn)?pn:"")+
-                        " / "+parentTitle,
                     FolderKinds.Ip=>root+" / 知识产权 / "+parentTitle,
                     _=>root+" / "+SectionLabel(workspace,
                         item.Folder.Ref.Section)+" / "+

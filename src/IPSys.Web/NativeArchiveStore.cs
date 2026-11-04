@@ -48,7 +48,7 @@ static class NativeArchiveStore
     private static (string Name,string Json,long? Parent,string Section) Prepare(
         string workspace,string kind,FolderMutationInput input,bool creating,string? section)
     {
-        if(input.Project is not null || input.Contract is not null || input.Ip is not null ||
+        if(input.Project is not null || input.Ip is not null ||
            input.ParentId is not null && input.ArchiveFolder is null)
             throw new ArgumentException("资料的业务类型或父级参数不匹配。");
         string scope=Section(workspace,kind,creating?input.Section:section);

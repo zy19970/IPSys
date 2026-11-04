@@ -250,16 +250,5 @@ sealed class Vault : IDisposable
     public static void ValidateSchema(SqliteConnection db)
     {
         ResourceSchemaV2.Validate(db);
-        ResourceSchemaV2.EnsurePartyArchiveSection(db);
-        // Normalize the seven legacy protected starter folders on existing V2 vaults.
-        ResourceSchemaV2.EnsureEditableArchiveSeeds(db);
-        // Enable cross-module ordinary-folder moves on existing V2 vaults
-        // by updating only the identity guard; no data or FileId migration.
-        ResourceSchemaV2.EnsureArchiveFolderSectionRelocation(db);
-        // Retain existing V2 data and enable real update timestamps in-place.
-        ResourceSchemaV2.EnsureFolderModifiedTimes(db);
-        // An existing V2 database may have the original immutable-byte trigger.
-        // Update only that guard, atomically, without changing FileId/Version/LinkId.
-        ResourceSchemaV2.EnsureOrphanPurgeTrigger(db);
     }
 }

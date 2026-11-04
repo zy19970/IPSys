@@ -51,13 +51,13 @@ for(const [act,label] of moveActions){
 const attachment={id:"f:201:2",type:"file",name:"申请书.pdf",biz:{kind:"file",ownerKind:"ip"}};
 const ip={id:"i:11",name:"原知识产权",type:"folder",biz:{id:11,kind:"ip"},children:[attachment]};
 const project={id:"p:22",name:"目标项目",type:"folder",biz:{id:22,kind:"project"},children:[]};
-const contract={id:"c:33",name:"目标合同",type:"folder",biz:{id:33,kind:"contract"},children:[]};
+const projectDir={id:"af:33",name:"项目合同目录",type:"folder",biz:{id:33,kind:"archive_folder",section:"project"},children:[]};
 const archiveDir={id:"af:44",name:"归档目录",type:"folder",biz:{id:44,kind:"archive_folder",section:"achievement"},children:[]};
 const archive={id:"a:achievement:55",name:"目标资料",type:"folder",biz:{id:55,kind:"archive_folder",section:"achievement"},children:[]};
 const general={id:"g:66",name:"综合资料",type:"folder",biz:{id:66,kind:"archive_folder",section:"general"},children:[]};
-const category={id:"k:ip",name:"知识产权",type:"folder",children:[ip,project,contract,archiveDir,archive,general]};
+const category={id:"k:ip",name:"知识产权",type:"folder",children:[ip,project,projectDir,archiveDir,archive,general]};
 const ROOT={id:"root",type:"folder",name:"根目录",children:[category]};
-const map=new Map([[attachment.id,ip], [ip.id,category],[project.id,category],[contract.id,category],
+const map=new Map([[attachment.id,ip], [ip.id,category],[project.id,category],[projectDir.id,category],
  [archiveDir.id,category],[archive.id,category],[general.id,category],[category.id,ROOT]]);
 const pathTo=id=>{
  const find=(node,stack)=>{
@@ -80,7 +80,7 @@ const workspace={ws:"company",metaOf:()=>({fileId:101,linkId:201,version:2}),
 const sandbox=vm.createContext({
  ROOT,VaultStore:workspace,dialogs,
  Drive:{clearSelection:()=>{clear++;}},
- UPLOADABLE_KINDS:["project","contract","archive_folder","ip"],
+ UPLOADABLE_KINDS:["project","archive_folder","ip"],
  findParent:id=>map.get(id)||null,pathTo,findById:id=>pathTo(id)?.at(-1)||null,
  fileTaskBusy:()=>busy,
  refreshCurrent:async()=>{refresh++;if(failRefresh)throw Error("刷新失败");},
@@ -106,8 +106,8 @@ const invoke=vm.runInContext("associateOriginal",sandbox);
  const ids=[...f.index.byFolderId.values()].filter(r=>f.index.isTarget(r))
   .map(r=>String(r.folderId));
  assert.deepEqual(Array.from(ids).sort(),["22","33","44","55","66"],
-  "Only real same-workspace project, contract and ordinary-folder owners; no virtual or source folders");
- assert.ok(f.index.path(f.index.byFolderId.get(33).id).includes("目标合同"));
+  "Only real project/IP/ordinary-folder destinations");
+ assert.ok(f.index.path(f.index.byFolderId.get(33).id).includes("项目合同目录"));
  await f.onSubmit({target:"22"});
  assert.deepEqual(JSON.parse(JSON.stringify(requests.at(-1))),{
   url:"/api/v2/files/company/101/associate",

@@ -28,8 +28,7 @@ const IPSysExport=(()=>{
  }
  function owner(file){
   if(file.kind==='project')return {recordKey:'p:'+file.ownerId,root:file.ownerName};
-  if(file.kind==='contract')return {recordKey:'c:'+file.ownerId,root:file.projectName,
-   parentKey:'p:'+file.projectId,sub:file.ownerName};
+
   return {recordKey:file.kind+':'+file.ownerId+':'+file.section,root:file.ownerName};
  }
  // The plan is stable regardless of download ordering and never merges homonymous records.

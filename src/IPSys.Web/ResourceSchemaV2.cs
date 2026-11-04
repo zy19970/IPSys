@@ -1,9 +1,9 @@
 using Microsoft.Data.Sqlite;
 
-// SQLCipher v2: canonical model for newly created vaults. No legacy migration.
+// SQLCipher V3: project, IP and ordinary folders; no legacy migrations.
 static class ResourceSchemaV2
 {
-    public const long Version = 2;
+    public const long Version = 3;
 
     public static void Create(SqliteConnection db)
     {
@@ -12,14 +12,14 @@ static class ResourceSchemaV2
         cmd.Transaction = tx;
         cmd.CommandText = """
             CREATE TABLE resource_schema_version(
-              id INTEGER PRIMARY KEY CHECK(id=1),version INTEGER NOT NULL CHECK(version=2));
-            INSERT INTO resource_schema_version VALUES(1,2);
+              id INTEGER PRIMARY KEY CHECK(id=1),version INTEGER NOT NULL CHECK(version=3));
+            INSERT INTO resource_schema_version VALUES(1,3);
 
             CREATE TABLE folders(
               id INTEGER PRIMARY KEY,
               workspace TEXT NOT NULL CHECK(workspace IN ('company','personal')),
               kind TEXT NOT NULL CHECK(kind IN
-                ('project','contract','ip','archive_folder')),
+                ('project','ip','archive_folder')),
               section TEXT NOT NULL DEFAULT '',
               parent_id INTEGER,
               name TEXT NOT NULL CHECK(length(trim(name)) BETWEEN 1 AND 300),
@@ -31,12 +31,11 @@ static class ResourceSchemaV2
               modified_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
               UNIQUE(id,workspace),
               FOREIGN KEY(parent_id,workspace) REFERENCES folders(id,workspace) ON DELETE RESTRICT,
-              CHECK(kind!='contract' OR parent_id IS NOT NULL),
-              CHECK(kind NOT IN ('project','contract','ip') OR section=''),
+              CHECK(kind NOT IN ('project','ip') OR section=''),
               CHECK(kind!='archive_folder' OR
                 (workspace='company' AND section IN ('certificate','achievement','party','general','project') OR
                  workspace='personal' AND section IN ('certificate','achievement','academic','general','project'))),
-              CHECK(parent_id IS NULL OR kind IN ('contract','archive_folder')),
+              CHECK(parent_id IS NULL OR kind='archive_folder'),
               CHECK(kind!='archive_folder' OR section!='project' OR parent_id IS NOT NULL),
               CHECK(is_system=0 OR
                 (kind='archive_folder' AND parent_id IS NULL AND workspace='company')));
@@ -52,22 +51,20 @@ static class ResourceSchemaV2
               SELECT RAISE(ABORT,'invalid folder parent') WHERE NOT EXISTS(
                 SELECT 1 FROM folders p
                 WHERE p.id=NEW.parent_id AND p.workspace=NEW.workspace AND p.deleted=0
-                  AND ((NEW.kind='contract' AND p.kind='project')
-                    OR (NEW.kind='archive_folder' AND
+                  AND (NEW.kind='archive_folder' AND
                         ((p.kind='archive_folder' AND p.section=NEW.section)
                          OR (p.kind='project' AND NEW.section='project')))
-                  ));
+                  );
             END;
             CREATE TRIGGER folder_parent_update BEFORE UPDATE OF parent_id,section ON folders
             WHEN NEW.parent_id IS NOT NULL BEGIN
               SELECT RAISE(ABORT,'invalid folder parent') WHERE NOT EXISTS(
                 SELECT 1 FROM folders p
                 WHERE p.id=NEW.parent_id AND p.workspace=NEW.workspace AND p.deleted=0
-                  AND ((NEW.kind='contract' AND p.kind='project')
-                    OR (NEW.kind='archive_folder' AND
+                  AND (NEW.kind='archive_folder' AND
                         ((p.kind='archive_folder' AND p.section=NEW.section)
                          OR (p.kind='project' AND NEW.section='project')))
-                  ));
+                  );
               SELECT RAISE(ABORT,'folder cycle') WHERE NEW.parent_id=NEW.id
                 OR EXISTS(WITH RECURSIVE ancestors(id,parent_id) AS (
                   SELECT id,parent_id FROM folders WHERE id=NEW.parent_id
@@ -174,7 +171,47 @@ static class ResourceSchemaV2
                   AND workspace=NEW.workspace AND deleted=0);
             END;
 
-            -- MCP retry ledger lives inside the encrypted V2 vault. A pending row
+            CREATE TRIGGER folder_created_insert
+            AFTER INSERT ON folders WHEN NEW.created_at IS NULL BEGIN
+              UPDATE folders SET created_at=strftime('%Y-%m-%dT%H:%M:%SZ','now')
+              WHERE id=NEW.id;
+            END;
+            CREATE TRIGGER folder_modified_insert
+            AFTER INSERT ON folders BEGIN
+              UPDATE folders SET modified_at=strftime('%Y-%m-%dT%H:%M:%SZ','now')
+              WHERE id=NEW.id;
+            END;
+            CREATE TRIGGER folder_modified_business
+            AFTER UPDATE OF name,attributes_json,parent_id,section ON folders
+            WHEN NEW.name IS NOT OLD.name OR NEW.attributes_json IS NOT OLD.attributes_json
+              OR NEW.parent_id IS NOT OLD.parent_id OR NEW.section IS NOT OLD.section
+            BEGIN
+              UPDATE folders SET modified_at=strftime('%Y-%m-%dT%H:%M:%SZ','now')
+              WHERE id=NEW.id;
+            END;
+            CREATE TRIGGER folder_modified_link_insert
+            AFTER INSERT ON folder_file_links BEGIN
+              UPDATE folders SET modified_at=strftime('%Y-%m-%dT%H:%M:%SZ','now')
+              WHERE id=NEW.folder_id;
+            END;
+            CREATE TRIGGER folder_modified_link_update
+            AFTER UPDATE OF deleted,folder_id,file_id ON folder_file_links
+            WHEN NEW.deleted IS NOT OLD.deleted OR NEW.folder_id IS NOT OLD.folder_id
+              OR NEW.file_id IS NOT OLD.file_id
+            BEGIN
+              UPDATE folders SET modified_at=strftime('%Y-%m-%dT%H:%M:%SZ','now')
+              WHERE id=OLD.folder_id;
+              UPDATE folders SET modified_at=strftime('%Y-%m-%dT%H:%M:%SZ','now')
+              WHERE id=NEW.folder_id;
+            END;
+            CREATE TRIGGER folder_modified_version_insert
+            AFTER INSERT ON file_versions BEGIN
+              UPDATE folders SET modified_at=strftime('%Y-%m-%dT%H:%M:%SZ','now')
+              WHERE id IN (SELECT folder_id FROM folder_file_links
+                  WHERE workspace=NEW.workspace AND file_id=NEW.file_id AND deleted=0);
+            END;
+
+            -- MCP retry ledger lives inside the encrypted vault. A pending row
             -- after abnormal shutdown is intentionally not re-executed automatically.
             CREATE TABLE mcp_operations(
               workspace TEXT NOT NULL CHECK(workspace IN ('company','personal')),
@@ -203,284 +240,81 @@ static class ResourceSchemaV2
         tx.Commit();
     }
 
-    // SQLite cannot extend a CHECK constraint in place. Existing V2 vaults
-    // retain their exact FolderIds, version history and encrypted file bytes.
-    public static void EnsurePartyArchiveSection(SqliteConnection db)
-    {
-        using var inspect=db.CreateCommand();
-        inspect.CommandText="SELECT sql FROM sqlite_master WHERE type='table' AND name='folders';";
-        string definition=inspect.ExecuteScalar() as string
-            ?? throw new IOException("资料库缺少文件夹表。");
-        const string before="workspace='company' AND section IN ('certificate','achievement')";
-        const string after="workspace='company' AND section IN ('certificate','achievement','party')";
-        // Canonical archive_folder already includes party AND general. The
-        // retired archive kind no longer leaves the older 'after' signature
-        // in freshly created V2 vaults; do not mistake them for old schemas.
-        const string unified="workspace='company' AND section IN ('certificate','achievement','party','general')";
-        const string projectUnified="workspace='company' AND section IN ('certificate','achievement','party','general','project')";
-        if(definition.Contains(projectUnified,StringComparison.Ordinal) ||
-           definition.Contains(unified,StringComparison.Ordinal) ||
-           definition.Contains(after,StringComparison.Ordinal))return;
-        if(!definition.Contains(before,StringComparison.Ordinal))
-            throw new IOException("资料库文件夹约束未知，拒绝自动更新。");
-
-        string replacement=definition.Replace("CREATE TABLE folders(",
-            "CREATE TABLE folders_party_upgrade(",StringComparison.OrdinalIgnoreCase)
-            .Replace(before,after,StringComparison.Ordinal);
-        if(!replacement.Contains("CREATE TABLE folders_party_upgrade(",
-                StringComparison.OrdinalIgnoreCase))
-            throw new IOException("资料库文件夹建表语句未知，拒绝自动更新。");
-
-        // Explicit indexes and triggers disappear when their table is dropped.
-        // Recreate the actual definitions from this vault after the table swap.
-        var dependentSql=new List<string>();
-        inspect.CommandText="""
-            SELECT sql FROM sqlite_master
-            WHERE tbl_name='folders' AND type IN ('index','trigger')
-              AND sql IS NOT NULL ORDER BY type,name;
-            """;
-        using(var reader=inspect.ExecuteReader())
-            while(reader.Read())dependentSql.Add(reader.GetString(0));
-
-        // The FK references from FileLinks and other tables keep targeting
-        // 'folders'. Only this connection is used while the vault opens.
-        using var pragma=db.CreateCommand();
-        pragma.CommandText="PRAGMA foreign_keys=OFF;";
-        pragma.ExecuteNonQuery();
-        try
-        {
-            using var tx=db.BeginTransaction();
-            using var cmd=db.CreateCommand();
-            cmd.Transaction=tx;
-            cmd.CommandText=replacement+";"+
-                "INSERT INTO folders_party_upgrade SELECT * FROM folders;"+
-                "DROP TABLE folders;"+
-                "ALTER TABLE folders_party_upgrade RENAME TO folders;";
-            cmd.ExecuteNonQuery();
-            foreach(string sql in dependentSql)
-            {
-                cmd.CommandText=sql;
-                cmd.ExecuteNonQuery();
-            }
-            cmd.CommandText="PRAGMA foreign_key_check;";
-            using(var check=cmd.ExecuteReader())
-                if(check.Read())
-                    throw new IOException("文件夹约束更新后的外键校验失败，操作已回滚。");
-            tx.Commit();
-        }
-        finally
-        {
-            pragma.CommandText="PRAGMA foreign_keys=ON;";
-            pragma.ExecuteNonQuery();
-        }
-    }
-
-    // In-place trigger refresh for existing V2 vaults: ordinary archive_folder
-    // records may change section only through validated move operations.
-    // Workspace, kind and system identity remain immutable for every folder.
-    public static void EnsureArchiveFolderSectionRelocation(SqliteConnection db)
-    {
-        using var inspect=db.CreateCommand();
-        inspect.CommandText="""
-            SELECT sql FROM sqlite_master
-            WHERE type='trigger' AND name='folder_immutable_scope';
-            """;
-        string definition=inspect.ExecuteScalar() as string
-            ?? throw new IOException("资料库缺少文件夹身份保护触发器。");
-        if(definition.Contains("NEW.section<>OLD.section AND OLD.kind<>'archive_folder'",
-              StringComparison.Ordinal))return;
-        if(!definition.Contains("folder identity immutable",StringComparison.Ordinal))
-            throw new IOException("未知文件夹身份触发器，拒绝自动更新。");
-        using var tx=db.BeginTransaction();
-        using var cmd=db.CreateCommand();
-        cmd.Transaction=tx;
-        cmd.CommandText="""
-            DROP TRIGGER folder_immutable_scope;
-            CREATE TRIGGER folder_immutable_scope BEFORE UPDATE OF
-              workspace,kind,section,is_system ON folders
-            WHEN NEW.workspace<>OLD.workspace OR NEW.kind<>OLD.kind
-              OR NEW.is_system<>OLD.is_system
-              OR (NEW.section<>OLD.section AND OLD.kind<>'archive_folder') BEGIN
-              SELECT RAISE(ABORT,'folder identity immutable');
-            END;
-            """;
-        cmd.ExecuteNonQuery();
-        tx.Commit();
-    }
-
-    // An additive, in-place V2 upgrade: preserve every FolderId, LinkId,
-    // version and encrypted file object. Unknown pre-upgrade edit times stay NULL.
-    // Newly created folders have a real write timestamp; later mutations update it.
-    public static void EnsureFolderModifiedTimes(SqliteConnection db)
-    {
-        bool exists=false,hasCreatedAt=false;
-        using(var inspect=db.CreateCommand())
-        {
-            inspect.CommandText="PRAGMA table_info(folders);";
-            using var reader=inspect.ExecuteReader();
-            while(reader.Read())
-            {
-                if(reader.GetString(1)=="modified_at")exists=true;
-                if(reader.GetString(1)=="created_at")hasCreatedAt=true;
-            }
-        }
-        using var tx=db.BeginTransaction();
-        using var cmd=db.CreateCommand();
-        cmd.Transaction=tx;
-        if(!exists)
-        {
-            // SQLite forbids ADD COLUMN with non-constant CURRENT_TIMESTAMP.
-            // Do not fabricate historical timestamps on existing V2 folders.
-            cmd.CommandText="ALTER TABLE folders ADD COLUMN modified_at TEXT;";
-            cmd.ExecuteNonQuery();
-        }
-        if(!hasCreatedAt)
-        {
-            // The actual creation date of existing rows is not recoverable.
-            // Leave old rows NULL; never substitute their latest edit timestamp.
-            cmd.CommandText="ALTER TABLE folders ADD COLUMN created_at TEXT;";
-            cmd.ExecuteNonQuery();
-        }
-        cmd.CommandText="""
-            CREATE TRIGGER IF NOT EXISTS folder_created_insert
-            AFTER INSERT ON folders WHEN NEW.created_at IS NULL BEGIN
-              UPDATE folders SET created_at=strftime('%Y-%m-%dT%H:%M:%SZ','now')
-              WHERE id=NEW.id;
-            END;
-            CREATE TRIGGER IF NOT EXISTS folder_modified_insert
-            AFTER INSERT ON folders BEGIN
-              UPDATE folders SET modified_at=strftime('%Y-%m-%dT%H:%M:%SZ','now')
-              WHERE id=NEW.id;
-            END;
-            CREATE TRIGGER IF NOT EXISTS folder_modified_business
-            AFTER UPDATE OF name,attributes_json,parent_id ON folders
-            WHEN NEW.name IS NOT OLD.name OR NEW.attributes_json IS NOT OLD.attributes_json
-              OR NEW.parent_id IS NOT OLD.parent_id
-            BEGIN
-              UPDATE folders SET modified_at=strftime('%Y-%m-%dT%H:%M:%SZ','now')
-              WHERE id=NEW.id;
-            END;
-            CREATE TRIGGER IF NOT EXISTS folder_modified_link_insert
-            AFTER INSERT ON folder_file_links BEGIN
-              UPDATE folders SET modified_at=strftime('%Y-%m-%dT%H:%M:%SZ','now')
-              WHERE id=NEW.folder_id;
-            END;
-            CREATE TRIGGER IF NOT EXISTS folder_modified_link_update
-            AFTER UPDATE OF deleted,folder_id,file_id ON folder_file_links
-            WHEN NEW.deleted IS NOT OLD.deleted OR NEW.folder_id IS NOT OLD.folder_id
-              OR NEW.file_id IS NOT OLD.file_id
-            BEGIN
-              UPDATE folders SET modified_at=strftime('%Y-%m-%dT%H:%M:%SZ','now')
-              WHERE id=OLD.folder_id;
-              UPDATE folders SET modified_at=strftime('%Y-%m-%dT%H:%M:%SZ','now')
-              WHERE id=NEW.folder_id;
-            END;
-            CREATE TRIGGER IF NOT EXISTS folder_modified_version_insert
-            AFTER INSERT ON file_versions BEGIN
-              UPDATE folders SET modified_at=strftime('%Y-%m-%dT%H:%M:%SZ','now')
-              WHERE id IN (SELECT folder_id FROM folder_file_links
-                  WHERE workspace=NEW.workspace AND file_id=NEW.file_id AND deleted=0);
-            END;
-            """;
-        cmd.ExecuteNonQuery();
-        tx.Commit();
-    }
-
-    // Older V2 vaults created seven protected folders with is_system=1.
-    // Clear their legacy protection ONCE when an existing vault is opened,
-    // without touching folder IDs, parents, metadata, contents or order.
-    // The normal identity trigger is restored inside the same transaction.
-    public static void EnsureEditableArchiveSeeds(SqliteConnection db)
-    {
-        using var inspect=db.CreateCommand();
-        inspect.CommandText="""
-            SELECT count(*) FROM sqlite_master
-              WHERE type='trigger' AND name IN
-                ('folder_protect_system','folder_protect_system_delete');
-            """;
-        long oldProtections=(long)inspect.ExecuteScalar()!;
-        inspect.CommandText="SELECT count(*) FROM folders WHERE is_system<>0;";
-        long oldFlags=(long)inspect.ExecuteScalar()!;
-        if(oldProtections==0&&oldFlags==0)return;
-
-        using var tx=db.BeginTransaction();
-        using var cmd=db.CreateCommand();
-        cmd.Transaction=tx;
-        cmd.CommandText="""
-            DROP TRIGGER IF EXISTS folder_protect_system;
-            DROP TRIGGER IF EXISTS folder_protect_system_delete;
-            DROP TRIGGER IF EXISTS folder_immutable_scope;
-            UPDATE folders SET is_system=0 WHERE is_system<>0;
-            CREATE TRIGGER folder_immutable_scope BEFORE UPDATE OF
-              workspace,kind,section,is_system ON folders
-            WHEN NEW.workspace<>OLD.workspace OR NEW.kind<>OLD.kind
-              OR NEW.is_system<>OLD.is_system
-              OR (NEW.section<>OLD.section AND OLD.kind<>'archive_folder') BEGIN
-              SELECT RAISE(ABORT,'folder identity immutable');
-            END;
-            """;
-        cmd.ExecuteNonQuery();
-        tx.Commit();
-    }
-
-    // Existing V2 vaults need only this narrow, transactional trigger refresh.
-    // Keep ready bytes immutable while any (including historical/deleted) version
-    // still references them. This is not a V1 data migration.
-    public static void EnsureOrphanPurgeTrigger(SqliteConnection db)
-    {
-        using(var inspect=db.CreateCommand())
-        {
-            inspect.CommandText="SELECT sql FROM sqlite_master WHERE type='trigger' AND name='chunk_delete_ready';";
-            string? definition=inspect.ExecuteScalar() as string;
-            if(definition?.Contains("file_versions",StringComparison.OrdinalIgnoreCase)==true)
-                return;
-            if(string.IsNullOrEmpty(definition))
-                throw new IOException("新版加密库缺少原件删除保护触发器，拒绝执行清理。");
-        }
-        using var tx=db.BeginTransaction();
-        using var cmd=db.CreateCommand();
-        cmd.Transaction=tx;
-        cmd.CommandText="""
-            DROP TRIGGER chunk_delete_ready;
-            CREATE TRIGGER chunk_delete_ready BEFORE DELETE ON file_chunks
-            WHEN EXISTS(SELECT 1 FROM file_objects
-              WHERE id=OLD.object_id AND workspace=OLD.workspace AND state='ready')
-              AND EXISTS(SELECT 1 FROM file_versions
-                WHERE object_id=OLD.object_id AND workspace=OLD.workspace)
-            BEGIN SELECT RAISE(ABORT,'completed content bytes are still referenced'); END;
-            """;
-        cmd.ExecuteNonQuery();
-        tx.Commit();
-    }
-
+    // An existing vault is only inspected, never repaired or migrated.
     public static void Validate(SqliteConnection db)
     {
         using var cmd=db.CreateCommand();
         try
         {
             cmd.CommandText="SELECT version FROM resource_schema_version WHERE id=1;";
-            if (Convert.ToInt64(cmd.ExecuteScalar())!=Version)
-                throw new IOException("资料库不是新版统一资源数据库，请新建资料库。");
-            foreach(var table in new[]{"folders","files","file_versions","file_objects",
-                "file_chunks","folder_file_links","mcp_operations"})
+            var actual=cmd.ExecuteScalar();
+            if(actual is null || actual is DBNull || Convert.ToInt64(actual)!=Version)
+                throw new IOException("此资料库结构不受当前版本支持，请保留原库并新建资料库。旧库不会被迁移或覆盖。");
+            string Definition(string type,string name)
             {
-                cmd.CommandText="SELECT count(*) FROM sqlite_master WHERE type='table' AND name=$table;";
                 cmd.Parameters.Clear();
-                cmd.Parameters.AddWithValue("$table",table);
-                if((long)cmd.ExecuteScalar()! != 1)
-                    throw new IOException("新版资料库缺少表："+table);
+                cmd.CommandText="SELECT sql FROM sqlite_master WHERE type=$type AND name=$name;";
+                cmd.Parameters.AddWithValue("$type",type);
+                cmd.Parameters.AddWithValue("$name",name);
+                return cmd.ExecuteScalar() as string ?? "";
             }
-            // This runs before Vault's in-place maintenance. Old V2 material
-            // kinds are invisible to the canonical Explorer and must never be
-            // silently hidden. Include recycled rows; leave the vault intact.
+            string[] tables=["resource_schema_version","folders","files","file_versions",
+                "file_objects","file_chunks","folder_file_links","mcp_operations"];
+            string[] indexes=["idx_folder_children","idx_archive_sibling_names",
+                "idx_folder_type","idx_files_name","idx_versions_latest",
+                "idx_folder_file_active","idx_folder_file_list","idx_folder_file_reverse",
+                "idx_mcp_operations_created"];
+            string[] triggers=["folder_parent_insert","folder_parent_update",
+                "folder_immutable_scope","object_immutable_ready","chunk_insert_ready",
+                "chunk_update_ready","chunk_delete_ready","version_ready_insert",
+                "version_immutable","link_active_targets","folder_created_insert",
+                "folder_modified_insert","folder_modified_business",
+                "folder_modified_link_insert","folder_modified_link_update",
+                "folder_modified_version_insert"];
+            foreach(var table in tables)
+                if(Definition("table",table).Length==0)
+                    throw new IOException("资料库结构不完整：缺少表 "+table+"。");
+            foreach(var index in indexes)
+                if(Definition("index",index).Length==0)
+                    throw new IOException("资料库结构不完整：缺少索引 "+index+"。");
+            foreach(var trigger in triggers)
+                if(Definition("trigger",trigger).Length==0)
+                    throw new IOException("资料库结构不完整：缺少触发器 "+trigger+"。");
+            var missing=new HashSet<string>(StringComparer.Ordinal){
+                "id","workspace","kind","section","parent_id","name",
+                "attributes_json","position","is_system","deleted","created_at","modified_at"};
             cmd.Parameters.Clear();
-            cmd.CommandText="SELECT count(*) FROM folders WHERE kind IN ('archive','general');";
+            cmd.CommandText="PRAGMA table_info(folders);";
+            using(var rd=cmd.ExecuteReader())
+                while(rd.Read())missing.Remove(rd.GetString(1));
+            if(missing.Count>0)
+                throw new IOException("资料库结构不完整：缺少文件夹字段 "+string.Join(",",missing)+"。");
+            string folders=Definition("table","folders");
+            if(folders.Contains("'contract'",StringComparison.Ordinal) ||
+               !folders.Contains("'project'",StringComparison.Ordinal) ||
+               !folders.Contains("'ip'",StringComparison.Ordinal) ||
+               !folders.Contains("'archive_folder'",StringComparison.Ordinal) ||
+               !folders.Contains("section!='project' OR parent_id IS NOT NULL",StringComparison.Ordinal))
+                throw new IOException("资料库结构不完整：文件夹模型约束无效。");
+            string parent=Definition("trigger","folder_parent_update");
+            if(!parent.Contains("NEW.section",StringComparison.Ordinal) ||
+               !parent.Contains("p.kind='project'",StringComparison.Ordinal) ||
+               !parent.Contains("folder cycle",StringComparison.Ordinal))
+                throw new IOException("资料库结构不完整：项目目录父级约束无效。");
+            if(!Definition("trigger","folder_modified_business")
+                .Contains("NEW.section",StringComparison.Ordinal))
+                throw new IOException("资料库结构不完整：目录更新时间触发器无效。");
+            if(!Definition("trigger","chunk_delete_ready")
+                .Contains("file_versions",StringComparison.Ordinal))
+                throw new IOException("资料库结构不完整：原件清理保护无效。");
+            cmd.Parameters.Clear();
+            cmd.CommandText="SELECT count(*) FROM folders WHERE kind NOT IN ('project','ip','archive_folder');";
             if((long)cmd.ExecuteScalar()!>0)
-                throw new IOException("资料库含旧版 archive/general 资料记录。请保留原数据库并新建新版资料库；旧资料库不会被迁移、覆盖或删除。");
+                throw new IOException("资料库包含已退出的业务对象，请保留原库并新建资料库。");
         }
         catch(SqliteException ex)
         {
-            throw new IOException("旧测试库不再兼容，请新建新版资料库；旧文件不会被覆盖。",ex);
+            throw new IOException("此资料库结构不受当前版本支持或结构不完整，请保留原库并新建资料库。",ex);
         }
     }
 }

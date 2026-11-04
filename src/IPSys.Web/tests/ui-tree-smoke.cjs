@@ -25,16 +25,13 @@ const run=code=>vm.runInContext(code,ctx);
    Its stable certificate key and the company label must not change. */
 assert.equal(run("catLabel('certificate','personal')"),'人力资源');
 assert.equal(run("catLabel('certificate','company')"),'企业资质');
-const personalRoot=run("VaultStore.buildTree({ws:'personal',projects:[],contracts:[],archive:{},ip:{},projectFiles:[]})");
+const personalRoot=run("VaultStore.buildTree({ws:'personal',projects:[],archive:{},ip:{},projectFiles:[]})");
 assert.equal(personalRoot.children.find(node=>node.id==='k:certificate')?.name,'人力资源');
 assert.equal(run("catsOf('personal').find(x=>x.id==='certificate').id"),'certificate');
 
 const projects=[
  {id:1,name:'研发项目',projectType:'科研项目'},
  {id:2,name:'横向项目',projectType:'横向项目'}
-];
-const contracts=[
- {id:99,name:'旧合同业务记录',projectId:1,contractNo:'HT-01'}
 ];
 const projectFiles=[
  {linkId:1,fileId:101,version:1,folderId:1,kind:'project',name:'立项报告.pdf',size:100},
@@ -53,7 +50,7 @@ const projectArchive={
  orders:{}
 };
 run('ROOT=VaultStore.buildTree('+JSON.stringify({
- ws:'company',projects,contracts,archive:projectArchive,ip:{},projectFiles
+ ws:'company',projects,archive:projectArchive,ip:{},projectFiles
 })+')');
 const cat=run("findById('k:project')");
 assert.ok(cat,'The project business category exists');
@@ -62,7 +59,7 @@ const p1=run("findById('p:1')");
 const children=Array.from(p1.children,x=>x.id);
 assert.ok(children.includes('af:11'),'Normal folder appears directly beneath its project');
 assert.ok(children.includes('f:1:1'),'Project retains directly uploaded attachments');
-assert.ok(!children.includes('c:99'),'Legacy contract business records are not folder children');
+assert.ok(children.every(x=>!x.startsWith('c:')),'Projects contain ordinary directories, not legacy contracts');
 assert.equal(run("findById('af:11').biz.section"),'project');
 assert.equal(run("findById('af:13').biz.parentId"),11);
 assert.equal(run("findParent('af:11').id"),'p:1');
@@ -81,7 +78,7 @@ assert.ok(run("typeof VaultStore.loadRecycle==='function'"));
 const multilevel={
  ws:'company',
  projects:[{id:1,name:'项目甲'}],
- contracts:[],
+ 
  archive:{
   folders:[
    {id:70,name:'系统目录',section:'achievement',parentId:null,position:0,isSystem:true},
@@ -125,7 +122,7 @@ assert.equal(run("findById('af:70').size"),20,
 
 /* Ordinary folders are both nestable and directly uploadable; latest LinkId wins. */
 const unifiedFolder={
- ws:'company',projects:[],contracts:[],projectFiles:[],ip:{},
+ ws:'company',projects:[],projectFiles:[],ip:{},
  archive:{
   folders:[
    {id:800,section:'general',name:'模板',parentId:null,category:'标准',year:'2026',position:0},
@@ -167,7 +164,7 @@ assert.equal(run("findById('p:1').size"),12,
 
 /* The IP business-year snapshot and generic date label must never borrow grantDate. */
 const ipYearData = {
-  ws:'company', projects:[], contracts:[], projectFiles:[], archive:{},
+  ws:'company', projects:[],  projectFiles:[], archive:{},
   ip:{ rows:[
     {id:601,data:{name:'早申请晚授权',applicationDate:'2022-05-16',grantDate:'2026-10-01'}},
     {id:602,data:{name:'仅有授权日',applicationDate:'',grantDate:'2025-08-21'}},
@@ -200,7 +197,7 @@ for (const ws of ['company','personal']) {
   );
  });
  run('ROOT=VaultStore.buildTree('+JSON.stringify({
-  ws,projects:[],contracts:[],projectFiles:[],ip:{},
+  ws,projects:[],projectFiles:[],ip:{},
   archive:{folders,files:[],orders:{}}
  })+')');
  for(const section of scopes) {

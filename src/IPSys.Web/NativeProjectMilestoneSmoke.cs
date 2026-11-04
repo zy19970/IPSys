@@ -50,10 +50,11 @@ static class NativeProjectMilestoneSmoke
             "/api/v2/folders/company/project",new{project=new{
                 name=marker+"项目",projectType="科研项目",projectNo=marker+"-P"}})))
             .GetProperty("id").GetInt64();
-        long contract=(await Read(await client.PostAsJsonAsync(
-            "/api/v2/folders/company/contract",new{parentId=project,contract=new{
-                name=marker+"合同",contractNo=marker+"-C",amount="125.50"}})))
-            .GetProperty("id").GetInt64();
+        long projectFolder=(await Read(await client.PostAsJsonAsync(
+            "/api/v2/folders/company/archive_folder",new{
+                section="project",archiveFolder=new{
+                    name=marker+"合同目录",parentId=project}
+            }))).GetProperty("id").GetInt64();
         var original=RandomNumberGenerator.GetBytes(1901);
         var revised=RandomNumberGenerator.GetBytes(3377);
         long file=(await Upload(client,
@@ -62,7 +63,7 @@ static class NativeProjectMilestoneSmoke
         await Upload(client,$"/api/v2/files/company/{file}/versions",
             revised,marker+"修订版.pdf");
         using(var linked=await client.PostAsJsonAsync(
-            $"/api/v2/files/company/{file}/links",new{folderId=contract}))
+            $"/api/v2/files/company/{file}/links",new{folderId=projectFolder}))
             linked.EnsureSuccessStatusCode();
 
         using(var template=await client.GetAsync("/api/v2/excel/company/project/template"))
@@ -100,40 +101,40 @@ static class NativeProjectMilestoneSmoke
             "/api/v2/search/company?q="+Uri.EscapeDataString(marker));
         Check(search is not null &&
             search.Results.Any(x=>x.Kind=="project"&&x.Id==project) &&
-            search.Results.Any(x=>x.Kind=="contract"&&x.Id==contract),
-            "search uses V2 FolderId for project and contract");
+            search.Results.Any(x=>x.Kind=="archive_folder"&&x.Id==projectFolder),
+            "search uses real FolderId for project and project ordinary directory");
         var fileSearch=await client.GetFromJsonAsync<SearchResponse>(
             "/api/v2/search/company?q="+Uri.EscapeDataString(marker+"原件.pdf"));
         Check(fileSearch is not null &&
             fileSearch.Results.Any(x=>x.Kind=="file"&&
-                x.OwnerKind=="contract"&&x.OwnerId==contract),
-            "same shared file can be found at native contract link");
+                x.OwnerKind=="archive_folder"&&x.OwnerId==projectFolder),
+            "shared file found at project ordinary-folder link");
 
         var copied=await Read(await client.PostAsJsonAsync(
             $"/api/v2/projects/company/{project}/transfer",
             new{targetWorkspace="personal",move=false}));
         long target=copied.GetProperty("id").GetInt64();
-        Check(copied.GetProperty("contracts").GetInt32()==1 &&
+        Check(copied.GetProperty("directories").GetInt32()==1 &&
               copied.GetProperty("links").GetInt32()==2 &&
               copied.GetProperty("files").GetInt32()==1 &&
               copied.GetProperty("versions").GetInt32()==2 &&
               copied.GetProperty("newObjects").GetInt32()==2,
-              "one shared source FileId cloned once with two target links");
+              "project recursive directory and shared FileId cloned once");
         var copies=await client.GetFromJsonAsync<JsonElement>(
-            "/api/v2/folders/personal/contract");
-        long targetContract=copies.EnumerateArray().First(x=>
+            "/api/v2/folders/personal/archive_folder?section=project&flat=true");
+        long targetFolder=copies.EnumerateArray().First(x=>
             x.GetProperty("folder").GetProperty("parent").GetProperty("id")
                 .GetInt64()==target).GetProperty("folder")
             .GetProperty("ref").GetProperty("id").GetInt64();
         var projectLinks=await client.GetFromJsonAsync<JsonElement>(
             $"/api/v2/files/personal/folders/{target}/links");
         var contractLinks=await client.GetFromJsonAsync<JsonElement>(
-            $"/api/v2/files/personal/folders/{targetContract}/links");
+            $"/api/v2/files/personal/folders/{targetFolder}/links");
         Check(projectLinks.GetArrayLength()==1&&contractLinks.GetArrayLength()==1 &&
               projectLinks[0].GetProperty("fileId").GetInt64()==
                 contractLinks[0].GetProperty("fileId").GetInt64() &&
               projectLinks[0].GetProperty("fileId").GetInt64()!=file,
-            "target project/contract share a new logical FileId");
+            "target project and ordinary folder share one new logical FileId");
         long copiedFile=projectLinks[0].GetProperty("fileId").GetInt64();
         // Verify the SQLCipher objects and encrypted chunk ownership, not
         // merely different logical FileIds and equal downloaded bytes.
@@ -161,7 +162,7 @@ static class NativeProjectMilestoneSmoke
             .EnsureSuccessStatusCode();
         Check((await client.GetByteArrayAsync(
             $"/api/v2/files/company/{file}/versions/2/download"))
-            .SequenceEqual(revised),"restore preserves both project and contract file versions");
+            .SequenceEqual(revised),"restore preserves project and nested folder file versions");
         Console.WriteLine("N2-04 PROJECT EXCEL SEARCH RECYCLE TRANSFER SQLCIPHER PASS");
     }
 }

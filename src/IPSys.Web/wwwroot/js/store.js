@@ -211,9 +211,8 @@ const VaultStore = {
       }
     };
     try {
-      const [projects, contracts, archive, ip, projectFiles] = await Promise.all([
+      const [projects, archive, ip, projectFiles] = await Promise.all([
         required("项目", `/api/v2/ui/projects/${w}`),
-        required("合同", `/api/v2/ui/contracts/${w}`),
         required("业务档案", `/api/v2/ui/folders/${w}`),
         required("知识产权", `/api/v2/ui/ip/${w}`),
         required("附件", `/api/v2/ui/project-files/${w}`),
@@ -225,7 +224,7 @@ const VaultStore = {
       if (epoch !== this.loadEpoch || ws !== this.ws) return ROOT;
       this.biz.clear();
       this.fileMeta.clear();
-      ROOT = this.buildTree({ ws, projects, contracts, archive, ip, projectFiles });
+      ROOT = this.buildTree({ ws, projects, archive, ip, projectFiles });
       RECYCLE = recycle;
       return ROOT;
     } catch (e) {
@@ -278,8 +277,6 @@ const VaultStore = {
     const nodeId =
       hit.kind === "project"
         ? `p:${id}`
-        : hit.kind === "contract"
-        ? `c:${id}`
         : hit.kind === "ip"
         ? `i:${id}`
         : hit.kind === "archive_folder"
@@ -288,15 +285,13 @@ const VaultStore = {
     return nodeId ? findById(nodeId) : null;
   },
 
-  /* 附件 ownerKind 直接使用持久类型 project/contract/ip/archive_folder。 */
+  /* 附件 ownerKind 使用 project/ip/archive_folder。 */
   ownerIdOfHit(hit) {
     const id = Number(hit?.ownerId) || 0;
     if (!id) return "";
     switch (hit.ownerKind) {
       case "project":
         return `p:${id}`;
-      case "contract":
-        return `c:${id}`;
       case "ip":
         return `i:${id}`;
       case "archive_folder":
@@ -318,10 +313,7 @@ const VaultStore = {
     try {
       const rows = await this.getJson(`/api/trash/${encodeURIComponent(ws)}`);
       const list = Array.isArray(rows) ? rows : rows.items || [];
-      /* 合同不是业务模块,恢复出来也没有地方放 —— 不进回收站列表 */
-      return list
-        .filter((r) => r.kind !== "contract")
-        .map((r) => {
+      return list.map((r) => {
           const info = KIND_MAP[r.kind] || { typeName: r.kind || "记录", folder: true };
           const id = `t:${r.kind}:${r.id}`;
           const node = info.folder
@@ -342,7 +334,7 @@ const VaultStore = {
 
   /* ---------------- 建树 ---------------- */
 
-  buildTree({ ws, projects, contracts, archive, ip, projectFiles }) {
+  buildTree({ ws, projects, archive, ip, projectFiles }) {
     const root = F("我的文件", { id: "root", mtime: Date.now() });
     root.children = [];
 

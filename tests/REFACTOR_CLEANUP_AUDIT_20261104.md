@@ -628,7 +628,7 @@ Get-Content $env:IPSYS_SMOKE_REPORT
 | --- | --- | --- | --- | --- | --- |
 | S0 基线与范围 | 已完成 | 随 S1 提交 `13596b973941` 归档 | 已复核当前接口、SQLCipher 资源关系、旧合同/排序调用链及现有 Smoke | 历史基线 #520 与本轮产品 #521 均 success；后者非 S2—S5 验收 | 当前环境无本地 Windows/.NET，实机交互由现有 Edge/HTTP CI 覆盖，用户本机未验 |
 | S1 根目录移动 | 已完成（自动化验收） | `13596b973941` | M01—M08 真实 HTTP+SQLCipher、原有目录移动/共享/版本回归均通过 | [Windows CI #521](https://github.com/zy19970/IPSys/actions/runs/41793618031) completed/success，同 SHA，26 success/0 failure/2 可选 ZIP64 skipped | 用户本机操作未复验；S2—S5 尚未实施 |
-| S2 合同/数据库 | 待实施 | — | — | — | K01—K12 |
+| S2 合同/数据库 | 代码与测试已提交候选，CI 待核验 | 本批产品提交见最新 main 提交历史 | schema=3、新库 DDL/只读校验、合同 MCP/HTTP 退休、项目目录/文件历史/搜索/回收站自动回归待跑 | 尚未核验，禁止按通过汇报 | K01—K12 需按真实 CI 和用户本机复核逐项判定 |
 | S3 复制/移动/MCP | 待实施 | — | — | — | X01—X12 |
 | S4 统一排序 | 待实施 | — | — | — | O01—O07 |
 | S5 清理与收尾 | 待实施 | — | — | — | 文档、引用、跨入口闭环 |
@@ -653,3 +653,12 @@ Get-Content $env:IPSYS_SMOKE_REPORT
 GitHub Actions Windows CI #521（run `41793618031`）的 `head_sha=13596b9739419ba9bd427b5b52e5c2d36ba31245`，状态 `completed/success`，**26 个步骤成功、0 个失败、2 个可选 >4GiB ZIP64 步骤跳过**。包含 Debug 编译及业务 SQLCipher/HTTP 综合 Smoke、Node/UI、真实 Edge/HTTP Explorer、独立 SQLCipher/HTTP、MCP stdio、Release、自包含和框架依赖两种单文件 EXE 及图标验证。生成的构建产物有 `IPSys-Web-win-x64-self-contained`（artifact `13304304812`）、`IPSys-Web-win-x64`（artifact `13304414609`）以及 `IPSys-Explorer-V2-Retest-41793618031-1`（artifact `13305445116`）。可在上述 Actions run 页面下载。
 
 本批没有执行旧数据库迁移、用户本机真实数据库操作或正式 Release 发布。下一批 S2 合同对象退出和 schema 升级仍处于待实施；不能把此次成功写成全套 C01—C08 已清理。
+
+
+### 2026-11-04 S2 合同业务退出与 schema 3：产品代码候选（验收未完成）
+
+本批以第一阶段已通过的 `main=d97dd3b25175` 为父提交。同步处理旧合同业务对象、HTTP/MCP 调用、前端以及新建 SQLCipher 结构版本；拒绝旧版本、缺表/列/索引/保护触发器的数据库，不从旧库迁移，也不再在打开现有库时运行 Ensure 自动修补。取消合同七个 MCP 工具、合同 UI 读/复制、独立合同转移；通用 `kind=contract` 仍有路由但必须显式返回 400。项目下业务资料使用 `archive_folder + section=project + parentId`，项目转移递归复制目录、共享 FileId 关联及全部版本，跨区独立 FileObject。
+
+Smoke 迁移涉及 Schema、FolderModel、HTTP、MCP tools/list/tools/call、Search、RecyclePurge、ProjectMilestone、文件列表/共享/版本、Node 目录/导出/拖拽与 Windows workflow MCP 44 项检查。原历史合同成功用例改为项目目录正向行为及旧工具/URL 拒绝，未直接删除项目查询、项目 Excel、版本与跨区物理隔离断言。当前环境没有 Windows .NET 编译器，**此处只记录已编写代码，不把静态核对或上一批成功 CI 写成 S2 成功**；接下来必须读取本批产品提交 SHA 的完整 Windows CI 结果，失败时修正并重复验证。
+
+本次未操作真实用户资料库，也未发布 Release。S3—S5 不在本次产品提交范围；S2 的具体 K01—K12 分项结果在 CI 核验后补记。

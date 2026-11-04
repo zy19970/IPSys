@@ -1347,9 +1347,6 @@ const Drive = {
     };
 
     if (isFolder) {
-      /* 合同的字段语义和项目不同:签约方 / 签订日期 / 金额,
-         共用一个字段表但按 kind 换标签,免得把「负责人」扣在合同上。 */
-      const contract = b.kind === "contract";
       line("编号", b.code);
       if (b.kind === "ip") {
         line("公开号", b.raw?.publicationNo);
@@ -1357,9 +1354,9 @@ const Drive = {
       }
       line("类型", b.typeName);
       line("状态", b.status);
-      line(contract ? "签约方" : b.kind === "ip" ? "当前权利人" : "负责人", b.owner);
+      line(b.kind === "ip" ? "当前权利人" : "负责人", b.owner);
       line("承担单位", b.org);
-      line(contract ? "签订日期" : b.kind === "ip" ? "申请日期" : "开始日期", b.start);
+      line(b.kind === "ip" ? "申请日期" : "开始日期", b.start);
       line(b.kind === "ip" ? "授权日期" : "结束日期", b.end);
       line("金额", b.amount);
       line("所属年度", b.year);
