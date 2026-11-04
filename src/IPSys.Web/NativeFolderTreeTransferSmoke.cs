@@ -893,7 +893,7 @@ static class NativeFolderTreeTransferSmoke
                 .GetProperty("id").GetInt64()).ToArray();
         }
         static ArchiveEntryReorder Payload(long parent,long[] ids)=>
-            new(parent,ids.Select(x=>new ArchiveEntryOrderItem("folder",x)).ToArray());
+            new(parent,ids.Select(x=>new ArchiveEntryOrderItem("folder",x)).ToList());
         Task<HttpResponseMessage> Send(string ws,string sec,ArchiveEntryReorder payload)=>
             client.PostAsJsonAsync(
                 $"/api/v2/folders/{ws}/entries/reorder?section={sec}",payload);

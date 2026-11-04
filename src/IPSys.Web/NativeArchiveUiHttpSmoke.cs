@@ -262,7 +262,7 @@ static class NativeArchiveUiHttpSmoke
         using(var order=await client.PostAsJsonAsync(
             "/api/v2/folders/company/entries/reorder?section=certificate",
             new ArchiveEntryReorder(0,certificateIds
-                .Select(id=>new ArchiveEntryOrderItem("folder",id)).ToArray())))
+                .Select(id=>new ArchiveEntryOrderItem("folder",id)).ToList())))
             order.EnsureSuccessStatusCode();
         using(var retired=await client.PostAsJsonAsync(
             "/api/v2/ui/folders/company/certificate/order",
