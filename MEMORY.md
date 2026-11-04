@@ -529,3 +529,12 @@ CI #506 run41623186950首次通过编译、MCP和早期UI检查，但新测试�
 用户原话：“怎么又卡住不动了，继续推进”。恢复时main=ea01d20b8328eb2617bee5e03123b1ae83d2e844，Windows CI #514 run41761463249已completed/failure。实际下载job完整日志确认：此前.NET Debug/SQLCipher+HTTP目录批量事务、folder-picker-smoke等通过；当前失败处是Node`explorer-file-associate-smoke.cjs`第34行旧静态断言要求`transfer-record`始终显示“移动或跨区转移”及`move-archive`存在，而当前真实UI为普通`archive_folder`新增`move-folder`，跨区/类别入口按recordKind呈现不同文案，已撤销旧`move-archive`菜单，底层原业务转移功能仍在。此前失败通知 office-renderer/wechat-webhook#2173；本轮重启通知#2174。
 
 重新读取AIGT三项规范、IPSys MEMORY与当前会话，在默认分支无Ruleset约束时按Git Data原子修改。定向扫描12份相关Node smoke，仅`explorer-file-associate-smoke.cjs`对旧move-archive和旧transfer-record使用固定字面断言；`explorer-record-transfer-smoke.cjs`上轮已改，`explorer-f2-final-consistency-smoke.cjs`已覆盖新的文件夹单/多选操作。修复`explorer-file-associate-smoke.cjs`：校验`assoc-move`、`move-folder`、`move-folder-batch`使用共享move图标，`transfer-record`区分普通资料与项目等两类显示名，旧`move-archive`不再作为菜单动作；保留实际菜单SVG 18px render断言。通过V8静态语法检查，完整Windows CI待以新提交SHA核验。用户本地数据库、后端SQLCipher、MCP、Excel及正式Release不变；新的可交付状态以实际CI为准。最近会话仍为 memory/sessions/2026-11-03-IPSys项目整体认知复盘.md，第五轮。
+
+
+## 2026-11-04 第六轮：单个附件移动与文件夹移动共用设计评估（只讨论方案）
+
+用户原话：“你看一下单个文件的移动，你先思考一下，这两个能不能共用”。明确本轮只需比较现有单个附件移动与文件夹移动的复用可能性，不授权产品代码改动。重新读取AIGT三份必读规范，恢复IPSys项目MEMORY、2026-11-03当前会话及main=d2a8a149b57decb9df4977cde6284f0d92ff057c。逐段查看`src/IPSys.Web/wwwroot/js/bridge.js`的`associateOriginal`(单文件)、`associateOriginalBatch`(批量附件)、`transferFolderBatch`(单/多普通文件夹)、`folder-picker.js`的`AttachmentFolderPicker`以及`NativeFileAssociateBatchEndpoints`与`NativeFolderBatchTransferEndpoints`。三条前端入口已调用同一个`AttachmentFolderPicker.open`，复用了分层目录浏览、搜索、面包屑、确认；但各自还重复工作区/忙碌/刷新/目标校验和结果提示。
+
+结论：**移动的用户交互应进一步共用，而底层写入方式必须按对象分流。** 附件移动本质上保持FileId与全部版本，目标新增LinkId并解除来源LinkId（单附件现用`/api/v2/files/{workspace}/{fileId}/associate`，多附件现用`/api/v2/files/{workspace}/associate-batch`）；普通文件夹移动本质上只更新父级parent_id，保持FolderId、子文件夹和附件LinkId（当前`/api/v2/ui/folders/{workspace}/{section}/transfer-batch`）。选择器可以参数化`targetPolicy`并统一一个`moveSelectedItems(items)`用户操作入口、选择集合规范化、确认与忙碌校验、刷新与提示；文件和文件夹校验分别执行（附件目标允许可接收附件的真实业务文件夹、禁止重复FileId与来源，文件夹限同工作区同section，可选模块顶级parent=0、禁止祖先环及同名冲突）。单项与同类批量共用前端，后端保持两个受测事务端点，不强制统一SQL或改变FileId/FolderId模型；跨区/类别专用业务转移仍走既有独立路径。混选文件+文件夹若要一次性移动，需要新原子组合事务协议，否则有部分成功风险；**本轮建议暂不扩大到混选操作**，须单独确定原子性后再实现。后续仅在用户授权修改时落地，勿把本轮分析当作代码实现。
+
+另外核实最新产品Windows CI **#515** run41762187712对业务SHA d2a8a149...已`completed/success`，26步骤success、2可选ZIP64 skipped；Edge/HTTP、SQLCipher、前端测试及双EXE构建均通过，但用户本机实际GUI尚未手动验证，正式Release未触发。记录在当前会话`memory/sessions/2026-11-03-IPSys项目整体认知复盘.md`第六轮。本轮仅追加项目Memory/会话档案；任务开始通知office-renderer/wechat-webhook#2175。
