@@ -394,25 +394,31 @@ static class RecyclePurgeSmoke
                     "SELECT COUNT(*) FROM files WHERE id=$id;",treeFile.FileId)==0,
                     "last reference purge must reclaim file metadata");
             }
-            // Existing V2 vaults originally shipped a trigger that rejects even
-            // orphan-ready chunk deletion. Validation upgrades only that trigger.
+            // In V3 any damaged immutable-content guard must fail validation;
+            // opening an existing vault may not silently overwrite its DDL.
             using(var db=Vault.Connect(path,"recycle-gc-disposable",create:false))
             {
-                using(var legacy=db.CreateCommand())
+                long originalFileCount=Scalar(db,"SELECT COUNT(*) FROM files;");
+                using(var damaged=db.CreateCommand())
                 {
-                    legacy.CommandText="""
+                    damaged.CommandText="""
                         DROP TRIGGER chunk_delete_ready;
                         CREATE TRIGGER chunk_delete_ready BEFORE DELETE ON file_chunks
                         WHEN EXISTS(SELECT 1 FROM file_objects
                           WHERE id=OLD.object_id AND workspace=OLD.workspace AND state='ready')
                         BEGIN SELECT RAISE(ABORT,'completed content bytes are immutable'); END;
                         """;
-                    legacy.ExecuteNonQuery();
+                    damaged.ExecuteNonQuery();
                 }
-                Vault.ValidateSchema(db);
-                Check(Scalar(db,"SELECT COUNT(*) FROM sqlite_master WHERE type='trigger' AND name='chunk_delete_ready' AND sql LIKE '%file_versions%';")==1,
-                    "existing V2 cleanup trigger updated safely without replacing data");
-                Vault.ValidateSchema(db); // Idempotent.
+                bool refused=false;
+                try { Vault.ValidateSchema(db); }
+                catch(IOException ex) when(ex.Message.Contains("原件清理保护无效"))
+                { refused=true; }
+                Check(refused,"V3 rejects weakened immutable-byte cleanup guard");
+                Check(Scalar(db,"SELECT COUNT(*) FROM sqlite_master WHERE type='trigger' AND name='chunk_delete_ready' AND sql LIKE '%file_versions%';")==0,
+                    "validation must not repair damaged DDL on open");
+                Check(Scalar(db,"SELECT COUNT(*) FROM files;")==originalFileCount,
+                    "rejecting damaged V3 does not alter file records");
             }
         }
         finally{try{File.Delete(path);}catch(IOException){}}
