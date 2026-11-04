@@ -1,6 +1,6 @@
 # IPSys 本机 Codex MCP
 
-## 当前有效的项目／普通目录 MCP 契约（2026-11-04，S2）
+## 当前有效的项目／普通目录 MCP 契约（2026-11-04，S3）
 
 现行 `tools/list` 注册 **44 项 MCP 工具**，已完全退出独立的 `contract` 业务类型。原 `list_contracts`、`create_contract`、`update_contract`、`delete_contract`、`copy_contract`、`list_contract_files`、`delete_contract_file` 均不可调用；旧 `tools/call` 直接调用也会返回未知工具。项目下的合同资料只是一层或多层普通文件夹，不再单独维护合同对象或专有属性。
 
@@ -9,6 +9,36 @@
 普通目录使用 `list_folders/create_folder/update_folder/delete_folder/move_folder/transfer_folder` 及 `list_files_page/upload_files/list_file_links/associate_file` 等共享能力。上传项目目录附件时使用 `upload_files(workspace="company",kind="archive_folder",section="project",owner_id=实际目录FolderId,paths=[...])`。项目直属附件仍使用 `kind="project"`。统一搜索仅接受 `project/ip/archive_folder/file`；回收站记录类型使用 `list_trash` 实际返回的 `project/ip/v2_archive_folder/v2_file/v2_ip_file`。文件共享保持 FileId，不同位置拥有 LinkId；追加版本属于 FileId；跨工作区的项目整树复制含全部版本且物理 FileObject 隔离。
 
 新建加密资料库的资源结构版本固定为 **3**，旧 v2、缺失版本表或结构不完整的库在打开阶段拒绝，不作自动迁移和写入修补。HTTP 保留 `/api/v2` 路由命名：HTTP 路由版本与数据库 schema 版本不是同一个概念。请用新的空白资料库测试，旧测试库需自行保留或独立备份；不要以重新输入旧密码方式触发重建。更换 EXE 后重新连接 MCP 客户端，刷新 `tools/list`。
+
+## S3 目录复制、共享与原位移动：现行工具参数（Windows CI #529 已通过）
+
+`move_folder(workspace,section,folder_id,parent_id?,target_section?,request_id?)` 仅在**同一工作区**移动普通目录，`target_section` 未传等于来源 `section`；非 project 模块可省略 `parent_id`，也可使用 `null/0` 表示目标模块根。目标为 project 时 `parent_id` **必须**是同工作区真实项目或普通子目录的正整数 FolderId，不能用虚拟根。移动后返回 `id` 就是原 FolderId，关联 LinkId、FileId 和历史版本不变；如果跨模块成功，之后查询必须使用**新的来源 section**。
+
+`transfer_folder(workspace,section,folder_id,target_workspace,target_section,target_folder_id?,move?,request_id?)` 保留既有参数。目标为 project 必须提供真实 `target_folder_id`；非 project 的 `null/0/省略` 表示根目录。该工具的三种语义分别为：
+
+1. `move=false`：整树**独立复制**，返回新 FolderId，并为原件创建独立 FileId（全部历史版本保留）；来源不删除。与“共享目录树”不同，后续新增版本互不传播。
+2. `move=true` 且 `target_workspace=workspace`：同一工作区**原位移动**，返回原 FolderId，子目录/LinkId/FileId/版本保持不变；不在回收站产生被复制删除的来源副本。
+3. `move=true` 且跨工作区：整树独立复制后，来源移入回收站，返回目标的新 FolderId；目标文件历史完整但使用新的 FileId 和物理隔离 FileObject。跨区不支持的模块映射或同名目标移动会明确拒绝，事务不提交。
+
+同工作区普通文件夹“共享”由 Explorer `/api/v2/ui/folders/{workspace}/{section}/transfer-batch` 的 `move=false` 执行：为目标创建新 FolderId、LinkId，但仍引用**相同 FileId**，追加版本对两处均可见。它**不是** MCP `transfer_folder(move=false)` 的独立复制语义，Agent 不应混淆。MCP 如要共享单个原件，可调用现有 `associate_file`；不要假设 MCP 的目录独立复制自动构成共享关联。
+
+目标矩阵：同一工作区可转移到该工作区允许的普通模块；跨工作区仅允许 `company/achievement → personal/achievement|academic`、`company/general → personal/general`、`company/project → personal/project` 及对应反向 `personal/achievement|academic → company/achievement`、`personal/general → company/general`、`personal/project → company/project`。跨工作区的 certificate/party 转移不在支持范围。项目/子目录选择器可以逐级查找和搜索，不需要将所有目标加载为一条巨大下拉列表。
+
+实际调用示例（ID 应取本次工具返回值，以下仅示意）：
+
+```json
+{"workspace":"company","section":"project","folder_id":201,"target_section":"general","parent_id":0,"request_id":"s3-move-project-general-001"}
+```
+
+成功后使用 `section=general` 引用同一个 FolderId。独立复制回真实项目时：
+
+```json
+{"workspace":"company","section":"general","folder_id":201,"target_workspace":"company","target_section":"project","target_folder_id":101,"move":false,"request_id":"s3-copy-into-project-001"}
+```
+
+以上 101/201 都是示意数字，不得未经查询对用户库执行。每个不同写操作使用不同 `request_id`；**同一操作断线重试必须重用原编号及完全相同参数**。若状态为 `pending/uncertain`，先查询 `get_operation_result` 并核对资料，不能自动换号重做。用户现有数据库不需要也不允许因为新接口被自动迁移。
+
+S3 证据：[最终产品提交 `e040afb`](https://github.com/zy19970/IPSys/commit/e040afbf1cc557fac858a4f96ae8f7849332b351)、[Windows CI #529](https://github.com/zy19970/IPSys/actions/runs/41816669123)（`completed/success`，26 success/0 failed/2 可选 ZIP64 skipped）。以下原有章节按日期保留历史接口背景，若与本节不一致以实际 `tools/list`、本节和当前程序代码为准；S4 统一排序及 S5 全手册清理仍待执行。
 
 **阅读优先级：**本节、程序返回的 `tools/list` 和实际源码代表当前接口；后文按日期保留的工具数量和合同业务教程仅作为开发历史，不可作为当前操作指令。
 

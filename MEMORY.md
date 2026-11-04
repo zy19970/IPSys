@@ -687,3 +687,14 @@ S2 主要结果：SQLCipher schema 3 新建直接具备完整保护触发器，�
 当前 GitHub Git Data 未提交树 `eadb097e898c4ffc251092403a9fd2bff91b3382` 相对上述 main 包含 **8 个 S3 草稿文件**：`NativeFolderBatchTransferEndpoints.cs` 抽出 GUI/MCP 共同事务服务；`NativeArchiveActionsEndpoints.cs` 共享目标矩阵及 /transfer 同区原位 move；`NativeFolderTreeTransfer.cs` 独立复制防自身/后代及目标矩阵；`NativeFolderEndpoints.cs` 旧 /move 薄适配；`McpLocalArchive.cs` 新增 target_section 与统一 root 参数；`wwwroot/js/bridge.js` 独立复制与跨区目标快照构造和真实 picker；`wwwroot/js/folder-picker.js` 支持独立目标树、来源工作区绑定和独立复制说明；`tests/explorer-record-transfer-smoke.cjs` 新增真实菜单/跨区树与写入保护测试。**所有文件仍是草稿；未编译、未运行 Node/SQLCipher/Edge CI、未提交到 main，因此不能宣称 S3 已完成。**
 
 草稿生成过程中一次工具脚本抛 `ReferenceError: folderMode is not defined`（嵌入前端模板未转义），另一次抛 `ReferenceError: path is not defined`（临时脚本对象变量名）；二者均发生在 tree 创建前，重试后远端草稿树成功。该错误与用户所说的先前连接中断原因没有证据关联。通知 office-renderer/wechat-webhook #2230 开始，#2231 中断核查，#2232 脚本失败，#2233 重试。现有 S3 草稿尚未验证，应在下一轮检查 C# 逻辑/Node 断言，补齐 X01—X12 回归，运行真实同 SHA Windows CI 后再推进到 S4。旧 S2 CI #526 仍是最近已核验的产品成功版本。未访问用户实际数据库、未作旧库迁移、未发布 Release。对应会话记录 `memory/sessions/2026-11-04-IPSys重构清理S3连接续接.md`。
+
+
+## 2026-11-04：S3 CI #529 已验收且文档归档完成，后续进入 S4
+
+本会话用户先后提出“推进下一阶段”“为什么连接中断了”“继续”“为什么中断了，继续推进”；此前恢复记录见 `memory/sessions/2026-11-04-IPSys重构清理S3连接续接.md`。连接中断的服务端或网络根因**没有日志可判定**；恢复核对 GitHub 后确认产品提交未丢失。随后推进 S3 C03/C04：十一项源码/测试文件完成目录事务核心统一、同区原位移动保留 FolderId/FileId/LinkId、同区目录共享与独立复制分离、跨区复制独立 FileObject、项目真实父级与跨区选择器、MCP `move_folder.target_section`/ `transfer_folder` 行为一致、request_id 幂等和非法目标拒绝。产品提交 `c719810`（CI #527 Node VM 数组测试误判失败）→ `39305f2`（CI #528 新 Node 测试误用非法 personal/general 目标失败）→ **`e040afbf1cc557fac858a4f96ae8f7849332b351`**（最终产品）。第三次同时增加跨工作区 move 遇到同名目录整体拒绝，保证不会静默复制重命名。
+
+最终 Windows CI **#529** run `41816669123`、`head_sha=e040afbf1cc557fac858a4f96ae8f7849332b351`、`completed/success`、**26 success/0 failed/2 个可选大于 4GiB ZIP64 skipped**。实际通过 Windows Debug、MCP stdio、Node/UI（含新菜单 handler 与 picker）、临时 SQLCipher+HTTP、Edge 真浏览器与 HTTP 回归、独立库往返、自包含和依赖 .NET 的两种 Windows 单 EXE 构建启动及应用图标；新 X01—X12 相应测试和原回归均在本批 CI 执行。产物：self-contained `13315755805`，framework-dependent `13315661040`，Edge 报告 `13315231876`。链接 https://github.com/zy19970/IPSys/actions/runs/41816669123 。用户本机真实数据库未修改、未迁移旧库、未发布 Release。
+
+限制必须保留：CI Edge **历史观察脚本**仍给 `T-P2-02 CONFIRMED_BUG`（内部附件拖拽）和 `T-P2-09 FAIL`（分页状态），并保留 `T-P0-05/T-P1-03/T-P1-05 IMPLEMENTATION_GAP` 旧脚本标签；没有因 CI 绿色就声称这些已修复。用户本机 GUI 手动点击未验收；任务书第16.4节**MCP 创建→同一批对象 GUI 使用→MCP 核对**完整闭环尚未实际执行，留在 S5。S4 O01—O07 同层排序和 S5 旧代码及全套现行文档统一尚待开展，不能将 S3 完成当作 C01—C08 已全部清理。
+
+本轮恢复后核对 main 仍为 `e040afb`、#529 success，重新完成 `tests/REFACTOR_CLEANUP_AUDIT_20261104.md` 的 S3 状态/验收证据、`MCP_CODEX.md` 顶部现行 move/transfer 语义与示例，以及本 `MEMORY.md` 和会话记录的归档，文档内容不改业务代码。最新会话路径 `memory/sessions/2026-11-04-IPSys重构清理S3连接续接.md`；最后归档轮次：用户“为什么中断了，继续推进”。下一步按任务书进入 S4（只处理目录同层排序），之后 S5（遗留清理、跨入口闭环和文档总验收）。

@@ -629,7 +629,7 @@ Get-Content $env:IPSYS_SMOKE_REPORT
 | S0 基线与范围 | 已完成 | 随 S1 提交 `13596b973941` 归档 | 已复核当前接口、SQLCipher 资源关系、旧合同/排序调用链及现有 Smoke | 历史基线 #520 与本轮产品 #521 均 success；后者非 S2—S5 验收 | 当前环境无本地 Windows/.NET，实机交互由现有 Edge/HTTP CI 覆盖，用户本机未验 |
 | S1 根目录移动 | 已完成（自动化验收） | `13596b973941` | M01—M08 真实 HTTP+SQLCipher、原有目录移动/共享/版本回归均通过 | [Windows CI #521](https://github.com/zy19970/IPSys/actions/runs/41793618031) completed/success，同 SHA，26 success/0 failure/2 可选 ZIP64 skipped | 用户本机操作未复验；S2—S5 尚未实施 |
 | S2 合同/数据库 | 已完成本批自动化验收；跨入口总闭环待 S5 | `d74baf2`；修复至 `5c555d2` | 新建 schema 3／旧库只读拒绝／项目普通目录／版本共享／回收站／44 项 MCP／Node 和 Edge 回归 | [Windows CI #526](https://github.com/zy19970/IPSys/actions/runs/41802424444)：26 success，0 failure，2 可选 ZIP64 skipped；head_sha=`5c555d2` | 真实用户本机尚未复核；K03 跨入口同批对象闭环及 S3—S5 待推进，旧 Edge 观察脚本仍有已存在告警 |
-| S3 复制/移动/MCP | 待实施 | — | — | — | X01—X12 |
+| S3 复制/移动/MCP | 本批自动化验收完成；历史 Edge 观察缺口另列 | `c719810` → `39305f2` → `e040afb` | 同区原位 move、目录共享与独立复制、跨区物理隔离、项目真实父级、MCP 目标/幂等、Node/SQLCipher/HTTP/Edge 复验 | [Windows CI #529](https://github.com/zy19970/IPSys/actions/runs/41816669123) `completed/success`、26 success/0 failed/2 optional ZIP64 skipped；`head_sha=e040afb` | 第16.4节同批对象跨入口闭环、本机 GUI 人工复验和既有拖拽/分页问题待跟踪 |
 | S4 统一排序 | 待实施 | — | — | — | O01—O07 |
 | S5 清理与收尾 | 待实施 | — | — | — | 文档、引用、跨入口闭环 |
 
@@ -638,8 +638,8 @@ Get-Content $env:IPSYS_SMOKE_REPORT
 1. [x] 所有生产路径只接受目标三类 Folder kind，旧合同工具直调也失败。
 2. [x] 新库第一次使用即具备全部保护与更新时间能力；旧库明确拒绝且不迁移。
 3. [x] 两个不同模块的虚拟根不会再误判同一位置。
-4. [ ] 项目内普通文件夹独立复制、共享、移动、合法跨区转移均可从真实菜单进入。
-5. [ ] GUI/MCP 对同区移动保持同一身份语义。
+4. [x] 项目内普通文件夹独立复制、共享、移动、合法跨区转移均可从真实菜单进入。
+5. [x] GUI/MCP 对同区移动保持同一身份语义。
 6. [ ] 普通目录排序覆盖所有合法模块和父级，拒绝不完整兄弟集合。
 7. [ ] 旧长下拉无生产残留，测试保护迁移到实际入口。
 8. [ ] 现行手册、Wiki、Agent 提示和工具 schema 一致；历史证据仍可追溯。
@@ -677,3 +677,27 @@ K01—K12 在当前自动 Smoke 可覆盖的断言均执行通过：K01 旧 MCP 
 特别注意：旧 Edge 观察脚本将独立用例状态写入报告，但**其 `FAIL` 并不会自动使整个 CI job 失败**。本次 #526 的 `T-P1-02#cascade` 实测为 PASS（旧合同创建拒绝、项目删除/后代隐藏/原 FolderId 恢复）；历史脚本仍报告 `T-P2-02 CONFIRMED_BUG`（内部拖拽）与 `T-P2-09 FAIL`（分页状态抓取），同样的两项在整改前的 CI #521 中已存在，不能视为本次新引入，亦不能宣称已修复。另外 `T-P0-05/T-P1-03/T-P1-05` 保留旧 `IMPLEMENTATION_GAP` 观察口径，需在 S3/S4 或 S5 结合实际新 GUI 复核其有效性。这些既有缺口与本批 **S2 核心自动化验收完成** 是不同结论。
 
 后续仍按任务书推进 S3（独立复制、原位移动、MCP 合法目标矩阵和统一选择器）、S4（目录同层排序）、S5（去残留／现行文档统一／完整跨入口闭环）。S2 仅完成本阶段自动化验收，不代表所有 C01—C08 或完整 E2E 已收敛。
+
+
+### 2026-11-04 S3 C03/C04 目录转移统一：自动化验收结论
+
+用户指令为“推进下一阶段”“继续”，后续发生多次会话连接中断；实际完成过程以提交和对应 CI 为准，不能推断平台中断的根因。S3 产品初次提交 [`c719810`](https://github.com/zy19970/IPSys/commit/c719810f5f9a4aad5615fc079cc82bf9c61d7b41)，修复 Node 跨 VM 数组严格比较后为 [`39305f2`](https://github.com/zy19970/IPSys/commit/39305f2611b1a3674ca35ce06f9626f0bff867f8)，纠正跨区目录测试目标并补充跨工作区同名移动整体拒绝后的**最终产品提交**为 [`e040afbf1cc557fac858a4f96ae8f7849332b351`](https://github.com/zy19970/IPSys/commit/e040afbf1cc557fac858a4f96ae8f7849332b351)。三次产品提交累计修改 11 个源码及 Smoke 文件，不包括本次纯文档归档提交。
+
+**已证明的行为：**
+
+1. 同一工作区移动通过统一的 SQLCipher 事务服务：GUI `/transfer-batch`、旧单目录 `/move` 和 `/transfer(move=true)` 与 MCP `move_folder/transfer_folder(move=true)` 使用同一原位身份语义；合法跨模块/跨项目移动保留 FolderId、子目录 ID、原 FileId/LinkId、版本历史。目标为 `project` 时只能选择真实项目或其子目录；`0` 仅适用于其他普通模块的根。
+2. 同区共享目录树会创建新的 FolderId/LinkId、继续指向同一 FileId；独立复制目录树产生新 FolderId/LinkId/FileId 并拷贝全部有效历史版本，原树中的多处共享仍指向同一个新 FileId。跨工作区复制必须创建物理隔离的 FileObject；跨区移动是独立复制后软删除来源，恢复后源和目标可独立共存。跨区移动遇到同名目标拒绝且不提交；独立复制仍按自身的冲突命名策略。
+3. Explorer 记录复制与转移入口使用现有逐级搜索、分页、面包屑的目标文件夹选择器；跨区目标读取独立工作区快照、不替换当前工作区。支持真实项目及多层子目录、同工作区自身/后代拒绝、切工作区/任务占用/取消不写入、提交成功但刷新失败时不重复发送写请求。MCP `move_folder` 增加可选 `target_section`，`transfer_folder` 保留现有字段，写请求的 `request_id` 继续持久去重。
+4. 本批由现有 CI 中实际执行的 `NativeFolderTreeTransferSmoke`、`NativeMcpArchiveSmoke`、`explorer-record-transfer-smoke.cjs`、`folder-picker-smoke.cjs` 及其他原回归覆盖 X01—X12 对应场景，包含项目真父级、深层目录、同名、异常回滚、原件历史字节、FileObject 物理隔离、MCP 移动返回 ID/重试、前端真实菜单 payload 和工作区门禁。单个自动化步骤通过不能替代第16.4节跨入口同一批对象闭环。
+
+**CI 证据：**
+
+| Run | 产品 SHA | 结果与真实原因 |
+| --- | --- | --- |
+| [#527](https://github.com/zy19970/IPSys/actions/runs/41815567331) | `c719810` | failed：新增 Node smoke 第139行跨 VM Array 原型严格比较错误；Debug/MCP/JS 先前步骤成功，Edge/EXE 后续未执行 |
+| [#528](https://github.com/zy19970/IPSys/actions/runs/41815957302) | `39305f2` | failed：Node smoke 第160行错误选择不在合法矩阵内的 `personal/general` 作为 `company/project` 目标，被真实前端正确拒绝；未取消业务白名单 |
+| [#529](https://github.com/zy19970/IPSys/actions/runs/41816669123) | `e040afbf1cc557fac858a4f96ae8f7849332b351` | **completed/success**：26 个步骤 success、0 failed、2 个可选大于 4 GiB ZIP64 skipped；含 Windows Debug、MCP stdio（44项）、Node/UI、真实 Edge/HTTP、独立 SQLCipher/HTTP、两种 Windows 单 EXE 构建及启动、图标检查 |
+
+#529 Artifacts：`IPSys-Web-win-x64-self-contained` ID **13315755805**，`IPSys-Web-win-x64` ID **13315661040**，`IPSys-Explorer-V2-Retest-41816669123-1` ID **13315231876**。
+
+**已知限制，不能被绿色 CI 掩盖：**同次真实 Edge 观察脚本仍输出 `T-P2-02 CONFIRMED_BUG`（内部附件拖拽）和 `T-P2-09 FAIL`（分页状态）；两项此前基线已有，S3 不是其修复批次。其他 `T-P0-05/T-P1-03/T-P1-05` 仍为历史观察脚本的 `IMPLEMENTATION_GAP` 记录，不能直接当成当前真实 GUI 最终结论。完整 MCP 创建→同 ID GUI 显示及修改→MCP 核对→版本/共享/跨区/回收站的同一批对象闭环留在第16.4节 S5；用户本机手工 UI 验证也未进行。下一批 **S4 O01—O07 同层排序** 尚未实施，S5 的死代码清理和全套现行文档统一亦未完成。S3 自动验收不意味着 C01—C08 全部清零。本轮未操作用户真实数据库、旧库迁移或正式 Release。
