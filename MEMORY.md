@@ -516,3 +516,6 @@ CI #506 run41623186950首次通过编译、MCP和早期UI检查，但新测试�
 
 
 **首轮CI失败与精确修复（2026-11-04）**：产品提交`86af5a82`触发Windows CI #511 run41760417410 completed/failure；从真实job日志确认.NET Debug编译**0 warning、0 error，编译成功**，故障发生在新增真实SQLCipher/HTTP smoke 的`NativeFolderTreeTransferSmoke.VerifyFolderBatchAsync`第134行：测试先把两个文件夹共享到目标，再将同名源文件夹移动到该目标，后端按设计正确返回409防止同名覆盖，而测试错误地把此操作当成功移动，致`Read(...).EnsureSuccessStatusCode`失败。不是已证实的产品缺陷。修正测试为显式验证409且两个源保持原位，然后新建独立目标移动，检查FolderId、后代/附件不变。产品逻辑无需改动。失败通知office-renderer/wechat-webhook#2169、重新开始通知#2170。此次修复只变更NativeFolderTreeTransferSmoke.cs与两份记忆，重新触发CI后按实际结果收敛。
+
+
+**CI #512前端回归失败与最小修复（2026-11-04）**：修正同名测试后产品提交`00b03f876f82084e8fbfd537cc6edc33c4467f79`触发Windows CI #512 run41760917607。真实SQLCipher/HTTP整树共享/移动、版本与故障回滚验证已通过，随后Node `folder-picker-smoke.cjs`失败，错误`TypeError: Cannot read properties of undefined (reading 'map')`，发生在`folder-picker.js`第104行。定位新`open`使用`sourceFolderIds.map`但旧的单附件调用未提供可选`sourceFolderIds`参数，破坏兼容。最小修复只在`AttachmentFolderPicker.open`解构声明中设`sourceFolderIds=[sourceFolderId]`，保持旧单附件与新多选文件夹的调用契约。静态JS语法解析通过，新一轮Windows CI尚待验证。失败通知#2171、重新开始通知#2172。最近会话指针不变，第四轮继续收敛。

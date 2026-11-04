@@ -41,7 +41,7 @@ const AttachmentFolderPicker = {
       isTarget:n=>!!(n?.selectable && !forbiddenSources.has(n.folderId))};
   },
 
-  open({root,workspace,sourceFolderId,sourceFolderIds,fileName,fileId,fileIds,
+  open({root,workspace,sourceFolderId,sourceFolderIds=[sourceFolderId],fileName,fileId,fileIds,
     sourceDescription,move,onSubmit,folderMode=false,folderSection=""}) {
     const model=this.index(root,sourceFolderId,sourceFolderIds);
     if(!model.source) throw new Error("当前"+(folderMode?"文件夹":"附件")+"的来源目录已失效，请刷新重试");
