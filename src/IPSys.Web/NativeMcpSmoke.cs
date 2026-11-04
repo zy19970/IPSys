@@ -79,9 +79,9 @@ static class NativeMcpSmoke
         foreach(string tool in retired)
         {
             Check(!names.Contains(tool),"retired MCP tool still registered: "+tool);
-            var rejected=await McpLocal.RunSmokeProtocolToolAsync(
+            var retiredCallReply=await McpLocal.RunSmokeProtocolToolAsync(
                 tool,Args(new{workspace="company"}));
-            Check(rejected["error"]?["code"]?.GetValue<int>()==-32602,
+            Check(retiredCallReply["error"]?["code"]?.GetValue<int>()==-32602,
                 "retired MCP tools/call must reject: "+tool);
         }
         // One idle client must never block an independent Agent's request.
@@ -1004,8 +1004,8 @@ static class NativeMcpSmoke
                 workspace="company",kind="project",owner_id=originalProject,
                 name=Path.GetFileName(path),offset=0,limit=10
             });
-            Check(projectPage["items"] is JsonArray filtered &&
-                  filtered.Any(x=>x?["id"]?.GetValue<long>()==link &&
+            Check(projectPage["items"] is JsonArray projectFilteredItems &&
+                  projectFilteredItems.Any(x=>x?["id"]?.GetValue<long>()==link &&
                       x?["fileId"]?.GetValue<long>()==file),
                 "typed file page retains original identities");
             bool invalidPage=false;
