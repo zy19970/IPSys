@@ -735,3 +735,7 @@ S5-3 文档同步：实际检查 `ExcelLedger.cs` 确认所有 archive_folder（
 ## 2026-11-04：S5 同批对象端到端 E2E 候选
 
 S5 综合验收新增到活跃 Windows Edge 测试：同一临时 SQLCipher 库开启真实 MCP stdio，MCP 新建 P1/P2/D1/D2、双版本文件，Explorer 使用实际选择器移动/共享，MCP 原位返回/独立复制/排序，GUI 删除后 MCP 恢复、隔离共享副本永久清理，并核对 FileId/LinkId/所有版本 SHA；PDF 改为按 fixture FileId 在真实树中查找。此为待运行测试，不是已通过结论。
+
+## 2026-11-04 S5 #535 Debug Smoke 故障修复
+
+用户本轮原话：“为什么中断了，继续推进”。恢复后确认 main=6b1fe8a，Windows CI #535 completed/failure：Debug 编译成功（0 warning/0 error），在 NativeMcpSmoke.cs:97 因内嵌 MCP 初始化索引超过 512 字失败；S5-3 曾将 AgentGuidance/index.md 从 281 字扩到 699 字。已确定必须恢复简短索引，完整 schema 3 和工具用法留独立 MCP 文档。后续 E2E 尚未运行，不能误记为业务失败或总验收通过。本轮恢复通知见 office-renderer/wechat-webhook#2259、#2260；新 CI 仍待核验。最近会话为 memory/sessions/2026-11-04-IPSys-S5最终清理前仓库梳理.md。

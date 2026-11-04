@@ -739,3 +739,7 @@ S5-3 文档同步：实际检查 `ExcelLedger.cs` 确认所有 archive_folder（
 ### 2026-11-04 S5 同一批对象 E2E 测试候选
 
 S5 综合验收新增到活跃 Windows Edge 测试：同一临时 SQLCipher 库开启真实 MCP stdio，MCP 新建 P1/P2/D1/D2、双版本文件，Explorer 使用实际选择器移动/共享，MCP 原位返回/独立复制/排序，GUI 删除后 MCP 恢复、隔离共享副本永久清理，并核对 FileId/LinkId/所有版本 SHA；PDF 改为按 fixture FileId 在真实树中查找。此为待运行测试，不是已通过结论。
+
+### 2026-11-04 S5 #535 故障处理
+
+Windows CI #535（SHA 6b1fe8a）completed/failure，Debug 构建 0 warning / 0 error，但 `NativeMcpSmoke.cs:97` 断言 MCP initialize 根索引 <=512 字失败。原因是 S5-3 误将技术说明追加至 `src/IPSys.Web/AgentGuidance/index.md`，使根说明由 281 增至 699 字；现恢复为简短指引，详尽说明保留 MCP_CODEX 文档。后续真实 Edge E2E 不曾执行，需要新提交 CI 的单独结论；不可标记 S5 总验收通过。
