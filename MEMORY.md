@@ -624,3 +624,25 @@ CI #517 (`41777836030`)因旧合同时间戳断言失败，CI #518 (`41780006022
 
 
 **第十六轮验收补记（2026-11-04）**：产品修复提交`de7222e313cb0c9b95285f25fd758d435f09040f`已经原子更新到main并核验；Windows CI **#520** run`41786161181`同SHA `completed/success`，26个步骤success、0 failed、2个默认跳过的可选 >4GiB ZIP64测试。全部前端UI回归（包含新增从项目文件夹实际触发moveSelectedItems→transferFolderBatch→真实AttachmentFolderPicker并提交targetSection校验）、Edge/HTTP真实复验、独立SQLCipher/HTTP、MCP stdio握手、Debug/Release、两类Win64单文件EXE验证成功。构建产物：自包含`IPSys-Web-win-x64-self-contained` artifact id13301771637（建议用户下载）、框架依赖`IPSys-Web-win-x64` id13301876440、复验证据`IPSys-Explorer-V2-Retest-41786161181-1` id13302095120。完整证据 https://github.com/zy19970/IPSys/actions/runs/41786161181 。用户本机实际点击/界面尚待下载新版EXE验证；未触碰用户数据库或正式Release。上次提交中的“CI待执行”已由这次确认成功替代。用户可见最终答复：根因为bridge.js遗漏project目标分类并只接受archive_folder目标，异常又未提示；已修复并通过CI，请用户下载最新版自包含EXE试一次移动/共享。
+
+## 2026-11-04：上传重构清理方案后的实施前仓库审查
+
+用户本轮原话：“你梳理一下仓库中的文件和提交记录，了解一下这个仓库是做什么的，我准备按照上传的方案对仓库进行修改。”
+
+本轮已重新读取 AIGT-templates 的 AGENTS.md、AI_RULES/GIT_OPERATIONS.md、AI_RULES/MEMORY_PROTOCOL.md；读取本仓 MEMORY、最近会话、README/DESIGN/DEVELOPMENT_PLAN、现行源文件、工作流、GitHub commit。审查基线 main=`b53dc52e27b83611f1d2388da8649a063932f93f`，最后提交 b53dc52 仅新增 `tests/REFACTOR_CLEANUP_AUDIT_20261104.md`，并非业务整改。读取树显示当时有 769 个 Git blob 文件（src 160、tests 548、docs 41、memory 6、.github 3、根目录 11），主线 818 条可达提交；MCP 注册由 McpLocal.cs、McpLocalExtras.cs、McpLocalArchive.cs 汇总共 51 项，其中 7 个仍是旧 contract 工具。最后已核验的产品 CI #520，run 41786161181，head_sha de7222e，completed/success（26 成功、0 失败、2 个大型 ZIP64 可选项 skipped）；本次任务书上传后没有新的产品整改验收。
+
+**静态核实：**
+1. C01：ResourceSchemaV2 仍允许 contract，MCP 仍注册 list_contracts/create_contract/update_contract/delete_contract/copy_contract/list_contract_files/delete_contract_file，store.js 项目树不显示 contract 但仍请求合同接口；属于模型和可见性不一致。
+2. C02：NativeFolderBatchTransferEndpoints.cs 同区批量移动时的原位置判断只比较 Parent.Id，未比较源目标 section。不同模块根皆为 null，可能被错误拒绝。
+3. C03：bridge.js recordTransferOptions 中 archive_folder 的 modules 字典不含 project；项目子目录“独立复制/跨区转移”的旧入口缺目标。
+4. C04：GUI transferFolderBatch 调用 transfer-batch（同区原位），McpLocalArchive.move_folder 调用 /move，transfer_folder 调用 /transfer；语义尚未一致。
+5. C05：McpLocalExtras 的 list_folder_entries/reorder_entries 限公司 achievement；reorder_folders 使用旧模块层级端点；无法覆盖所有普通项目子目录同层排序。
+6. C06：ResourceSchemaV2.Version=2，CHECK 仍包含 contract；Vault.ValidateSchema 后调用 Ensure 开库修补，旧 V2 项目目录新约束未被可靠识别。
+7. C07：旧 moveArchiveEntry 残留；仅为候选清理，必须做全面生产引用和测试迁移后才删除。
+8. C08：README/DESIGN/DEVELOPMENT_PLAN 仍有合同专用业务、旧 CI #473、MCP 工具数量 64/51 不一致等陈旧口径。
+
+**审查意见与授权边界：**认可本次任务书的 S0 基线、S1 根目录误判、S2 合同退出+schema=3 的新库结构拒绝旧库、S3 同区移动/共享/独立复制/跨区转移语义统一、S4 同层排序、S5 旧代码和文档收尾顺序。严格区分移动保持原 FolderId/FileId/LinkId、共享目录新 FolderId 但同 FileId、独立复制新 FileId 和全部版本、跨区 FileObject 隔离。逐批配套 M01—M08、K01—K12、X01—X12、O01—O07 及真实 MCP→GUI 跨入口闭环，每批后核对同 SHA Windows CI。最需避免仅隐藏旧工具、误删共用 project 代码、偷改用户数据库或把现有绿色 CI 当清理完成。本轮只审查，**未修改产品源码、未运行新 Node/.NET/SQLCipher/Edge 测试、未操作用户本机库、未发布 Release、未实施 S0—S5**；实际开始整改仍需用户明确后续指令。通知：office-renderer/wechat-webhook#2211。
+
+**面向用户的实际可见回复核心（归档拟交付）：**解释产品架构、文件与提交规模、主要重构转折和源码冲突；指出方案方向正确但必须按 S0→S5 逐批施工；说明 CI #520 只是旧产品基线；当前状态为整改未开始、用户数据库未动。详细文档在 tests/REFACTOR_CLEANUP_AUDIT_20261104.md。未把方案中未复现的测试结论写成运行期事实。
+
+**后续执行入口：**以当前 main 和本任务书为准，S0 先定基线和收集失败实证；首个产品提交从 S1 开始。最近会话路径：`memory/sessions/2026-11-04-IPSys重构清理方案实施前核查.md`。
