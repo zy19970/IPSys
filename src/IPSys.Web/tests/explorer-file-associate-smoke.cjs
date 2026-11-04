@@ -25,19 +25,26 @@ assert.ok(iconEnd>0 && menuStart>=0 && menuEnd>menuStart,"Shared icon and menu r
 const iconVm=vm.createContext({});
 vm.runInContext(icons.slice(0,iconEnd),iconVm,{filename:"icons.js"});
 vm.runInContext(interactions.slice(menuStart,menuEnd),iconVm,{filename:"menu.js"});
+// Move actions share the same SVG. Folder-specific moves are now distinct
+// from independent record transfer and the retired move-archive command.
 const moveActions=[
  ["assoc-move","移动附件到其它记录"],
+ ["move-folder","移动文件夹到其它目录"],
+ ["transfer-record","跨工作区或类别转移"],
  ["transfer-record","移动或跨区转移"],
- ["move-archive","移动至其他目录"],
 ];
+assert.match(interactions,/MI\("assoc-move",\s*"move",\s*"移动附件到其它记录"\)/);
+assert.match(interactions,/MI\("move-folder",\s*"move",\s*"移动文件夹到其它目录"\)/);
+assert.ok(interactions.includes('MI("transfer-record","move",recordKind==="archive_folder" ? "跨工作区或类别转移" : "移动或跨区转移")'),
+ "Record transfer must retain both folder-specific and business labels");
+assert.match(interactions,/MI\("move-folder-batch",\s*"move",\s*"移动选中的 "\s*\+/);
+assert.doesNotMatch(interactions,/MI\("move-archive",/,"Retired move-archive action must remain absent");
 for(const [act,label] of moveActions){
- assert.match(interactions,new RegExp('MI\\("'+act+'"\\s*,\\s*"move"\\s*,\\s*"'+label+'"\\)'),
-  "Existing move action must use the shared move icon: "+act);
  const html=vm.runInContext("MI("+JSON.stringify(act)+',"move",'+JSON.stringify(label)+")",iconVm);
  assert.match(html,/<svg[^>]*width="18" height="18"[^>]*>[\s\S]*<\/svg>/,
   "Move menu must render a complete 18px SVG: "+act);
  assert.ok(html.includes('data-act="'+act+'"'),"Move action remains wired: "+act);
- assert.ok(html.includes("<span>"+label+"</span>"),"Move label remains unchanged: "+act);
+ assert.ok(html.includes("<span>"+label+"</span>"),"Move menu label renders fully: "+act);
 }
 
 

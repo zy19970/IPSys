@@ -522,3 +522,10 @@ CI #506 run41623186950首次通过编译、MCP和早期UI检查，但新测试�
 
 
 **右键文案回归断言同步（2026-11-04）**：审查到`tests/explorer-record-transfer-smoke.cjs`原先用正则硬编码“复制整条记录”“移动或跨区转移”，而本轮对普通archive_folder单项菜单调整为“复制文件夹（独立副本）”与“跨工作区或类别转移”，是为了区分新同FileId共享与同模块保ID移动；其他project/contract/IP仍使用原文案、原API。将测试更新为根据recordKind验证新表达和老入口仍存在，不反向恢复歧义文案。当前CI#513可能已经开始验证前序f1c419代码，新增测试同步提交将触发下一次CI；未改变产品逻辑。最近会话第四轮。
+
+
+## 2026-11-04 第五轮：恢复文件夹批量共享移动项目的前端菜单回归（用户催促继续）
+
+用户原话：“怎么又卡住不动了，继续推进”。恢复时main=ea01d20b8328eb2617bee5e03123b1ae83d2e844，Windows CI #514 run41761463249已completed/failure。实际下载job完整日志确认：此前.NET Debug/SQLCipher+HTTP目录批量事务、folder-picker-smoke等通过；当前失败处是Node`explorer-file-associate-smoke.cjs`第34行旧静态断言要求`transfer-record`始终显示“移动或跨区转移”及`move-archive`存在，而当前真实UI为普通`archive_folder`新增`move-folder`，跨区/类别入口按recordKind呈现不同文案，已撤销旧`move-archive`菜单，底层原业务转移功能仍在。此前失败通知 office-renderer/wechat-webhook#2173；本轮重启通知#2174。
+
+重新读取AIGT三项规范、IPSys MEMORY与当前会话，在默认分支无Ruleset约束时按Git Data原子修改。定向扫描12份相关Node smoke，仅`explorer-file-associate-smoke.cjs`对旧move-archive和旧transfer-record使用固定字面断言；`explorer-record-transfer-smoke.cjs`上轮已改，`explorer-f2-final-consistency-smoke.cjs`已覆盖新的文件夹单/多选操作。修复`explorer-file-associate-smoke.cjs`：校验`assoc-move`、`move-folder`、`move-folder-batch`使用共享move图标，`transfer-record`区分普通资料与项目等两类显示名，旧`move-archive`不再作为菜单动作；保留实际菜单SVG 18px render断言。通过V8静态语法检查，完整Windows CI待以新提交SHA核验。用户本地数据库、后端SQLCipher、MCP、Excel及正式Release不变；新的可交付状态以实际CI为准。最近会话仍为 memory/sessions/2026-11-03-IPSys项目整体认知复盘.md，第五轮。
