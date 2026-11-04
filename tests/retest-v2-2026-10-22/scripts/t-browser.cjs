@@ -546,15 +546,20 @@ async function main() {
 
   /* ---------- T-P2-09 连续滚动 PDF 实际渲染 ---------- */
   await (async function T_P2_09() {
-    // Previous search may leave current rows filtered. Inspect the fixture
-    // file in the actual project tree by its FileId rather than row text.
-    await evalJs("Drive.resetSearch();Drive.openFolder('p:" + fx.company.projectA + "')");
-    await waitFor("!!findById('p:" + fx.company.projectA + "')",10000,"PDF project tree");
-    const rows=await evalJs("(() => {const n=findById('p:" + fx.company.projectA + "');return (n?.children||[]).filter(x=>x.type==='file').map(x=>({id:x.id,name:x.name,fileId:Number(VaultStore.metaOf(x.id)?.fileId||0)}));})()");
-    const pdfRow=rows.find(x=>x.fileId===Number(fx.files.pdf.fileId));
-    if(!pdfRow)return rec("T-P2-09","DYNAMIC-BROWSER","FAIL",
-      "PDF FileId="+fx.files.pdf.fileId+" 缺失，项目节点="+JSON.stringify(rows),
-      "项目两页 PDF 必须可定位并完成两页 Canvas 渲染");
+    // T-P2-02 may move the actual PDF fixture earlier in this same test.
+    // Follow the stable FileId across the live tree rather than assuming
+    // that its original project location remains unchanged.
+    await evalJs("Drive.resetSearch();refreshCurrent()");
+    const rows=await evalJs("(() => {const hits=[];walkNodes(n=>{if(n?.type==='file'&&Number(VaultStore.metaOf(n.id)?.fileId)==="+Number(fx.files.pdf.fileId)+"){const parent=findParent(n.id);hits.push({id:n.id,name:n.name,parentId:parent?.id,fileId:Number(VaultStore.metaOf(n.id)?.fileId)});}});return hits;})()");
+    const pdfRow=rows.find(x=>x.fileId===Number(fx.files.pdf.fileId)&&x.parentId);
+    if(!pdfRow) {
+      rec("T-P2-09","DYNAMIC-BROWSER","FAIL",
+        "PDF FileId="+fx.files.pdf.fileId+" 在当前全部业务树内缺失："+JSON.stringify(rows),
+        "真实 FileId 无论此前拖动到哪里，均应可定位并连续渲染");
+      return;
+    }
+    await evalJs("Drive.openFolder("+JSON.stringify(pdfRow.parentId)+")");
+    await waitFor("Drive.state.folderId==="+JSON.stringify(pdfRow.parentId),10000,"PDF current owner");
     await evalJs("previewFile("+JSON.stringify(pdfRow.id)+")");
     await waitFor("document.querySelectorAll('.preview-mask .pdf-page').length===2",15000,"连续 PDF 两个页面容器").catch(()=>{});
     async function pageState(page) {
@@ -710,6 +715,15 @@ async function main() {
       const view=await evalJs("(() => {const a=findById('af:"+d1+"'),b=findById('af:"+d2+"');return {a:a?.biz?.parentId,b:b?.biz?.parentId,hasFile:!!b?.children?.some(n=>n.type==='file'&&Number(VaultStore.metaOf(n.id)?.fileId)==="+fileId+")};})()");
       need(Number(view.a)===p1&&Number(view.b)===d1&&view.hasFile,"GUI sees exact MCP IDs and FileId");
       evidence.push("Explorer same FolderId/FileId visible");
+      // S5-16.4: same FileId must be found through the real UI search,
+      // then map back to the originating D2 folder rather than only exist in memory.
+      await evalJs("(() => {Drive.state.view='files';Drive.state.folderId='root';Drive.render();const q=document.querySelector('#searchInput');q.value="+JSON.stringify(tag+"F.txt")+";q.dispatchEvent(new Event('input',{bubbles:true}));return true;})()");
+      const searchCheck="(() => [...document.querySelectorAll('#viewRoot .row')].some(r=>Number(VaultStore.metaOf(r.dataset.id)?.fileId)==="+fileId+"))()";
+      await waitFor(searchCheck,12000,"同批附件搜索命中");
+      const searched=await evalJs("(() => {const r=[...document.querySelectorAll('#viewRoot .row')].find(r=>Number(VaultStore.metaOf(r.dataset.id)?.fileId)==="+fileId+");const n=r&&findParent(r.dataset.id);return {id:r?.dataset.id,parent:n?.id};})()");
+      need(searched?.parent==="af:"+d2,"search result resolves original D2");
+      await evalJs("Drive.resetSearch();Drive.openFolder('af:"+d2+"')");
+      evidence.push("UI search hit same FileId="+fileId+" and mapped it to D2="+d2);
       await evalJs("moveSelectedItems([findById('af:"+d1+"')])");
       await pickGeneral();
       await waitFor("findById('af:"+d1+"')?.biz?.section==='general'",12000,"GUI in-place move");
@@ -731,18 +745,30 @@ async function main() {
       need(sharedD2?.id>0,"GUI sharing nested FolderIds");
       need((await links(sharedD2.id)).some(x=>Number(x.fileId)===fileId&&Number(x.id??x.linkId)!==linkId),"share same FileId new LinkId");
       evidence.push("GUI shared tree new FolderIds and LinkId, same FileId");
-      const clone=await tool("transfer_folder",{workspace:"company",section:"project",folder_id:d1,target_workspace:"company",target_section:"project",target_folder_id:p1,move:false});
-      const copiedId=idOf(clone);
-      need(copiedId>0&&copiedId!==d1,"MCP independent new FolderId");
+      // Independent copying must be performed by the genuine Explorer
+      // record-transfer form, not substituted by a backend-only MCP call.
+      await evalJs("transferBusinessRecord(findById('af:"+d1+"'),false)");
+      await waitFor("!!document.querySelector('#formMask [data-key=\"target\"]')",10000,"GUI 独立复制目标表单");
+      const choseScope=await evalJs("(() => {const field=document.querySelector('#formMask [data-key=\"target\"]');if(!field)return false;field.value='company/project';field.dispatchEvent(new Event('change',{bubbles:true}));const submit=document.querySelector('#formMask [data-submit]');submit?.click();return !!submit;})()");
+      need(choseScope,"GUI choose company project for independent copy");
+      await waitFor("!!document.querySelector('#attachmentFolderPicker')",12000,"GUI 独立复制目录选择器");
+      const choseProject=await evalJs("(() => {const mask=document.querySelector('#attachmentFolderPicker');const enter=mask?.querySelector('[data-picker-enter=\"p:"+p1+"\"]');if(!enter)return false;enter.click();const current=mask.querySelector('[data-picker-current]');if(!current||current.disabled)return false;current.click();const submit=mask.querySelector('[data-picker-submit]');if(!submit||submit.disabled)return false;submit.click();return true;})()");
+      need(choseProject,"GUI select actual P1 as independent copy target");
+      await waitFor("!document.querySelector('#attachmentFolderPicker')",15000,"GUI independent copy submitted");
       all=await folders();
+      const copies=all.filter(x=>x.section==="project"&&Number(x.parentId)===p1&&x.name===tag+"D1"&&Number(x.id)!==d1);
+      need(copies.length===1,"GUI copied D1 exactly once to P1");
+      const copiedId=Number(copies[0].id);
       const copiedD2=all.find(x=>Number(x.parentId)===copiedId&&x.name===tag+"D2");
-      need(copiedD2?.id>0,"independent full tree");
+      need(copiedD2?.id>0,"GUI independent nested tree");
       const copiedFile=Number((await links(copiedD2.id))[0]?.fileId);
-      need(copiedFile>0&&copiedFile!==fileId,"independent new FileId");
-      need(sha(await download(copiedFile,1))===sha(one)&&sha(await download(copiedFile,2))===sha(two),"independent copies both bytes");
+      need(copiedFile>0&&copiedFile!==fileId,"GUI independent copy creates new FileId");
+      need(sha(await download(copiedFile,1))===sha(one)&&sha(await download(copiedFile,2))===sha(two),"GUI copy retains both version bytes");
+      const listed=await tool("list_folders",{workspace:"company",section:"project",parent_id:p1});
+      need(listed.some(x=>Number(x?.folder?.ref?.id)===copiedId),"MCP sees GUI independent copy in P1");
       await evalJs("refreshCurrent()");
-      await waitFor("!!findById('af:"+copiedId+"')",12000,"GUI sees MCP copied tree");
-      evidence.push("MCP independent copy new FileId with both versions visible to GUI");
+      await waitFor("!!findById('af:"+copiedId+"')",12000,"GUI reload independently copied directory");
+      evidence.push("GUI independent copy new FolderId="+copiedId+" FileId="+copiedFile+"; MCP listing confirms, both versions match SHA");
       const extra=idOf(await tool("create_folder",{workspace:"company",section:"project",parent_id:p2,name:tag+"sort"}));
       const getOrder=async()=> (await tool("list_folder_entries",{workspace:"company",section:"project",parent_id:p2})).map(x=>Number(x?.folder?.ref?.id));
       const oldOrder=await getOrder();
@@ -784,6 +810,11 @@ async function main() {
   fs.writeFileSync(path.join(EVID, "browser-results.json"), JSON.stringify(results, null, 2), "utf8");
   console.log("\n=== 浏览器层汇总 ===");
   for (const r of results) console.log(`${r.id}\t${r.result}\t${r.observed}`);
+  // S5 acceptance must fail the workflow if a critical observation is
+  // FAIL/BLOCKED/missing. Historical non-gated cases retain dated evidence.
+  const required=["T-P2-02","T-P2-09","S5-E2E"];
+  const incomplete=required.filter(id=>!results.some(r=>r.id===id&&r.result==="PASS"));
+  if(incomplete.length) throw Error("S5 mandatory Edge cases not PASS: "+incomplete.join(", "));
 }
 
 main().catch((e) => { console.error("FAILED:", e.message); process.exitCode = 1; })

@@ -739,3 +739,7 @@ S5 综合验收新增到活跃 Windows Edge 测试：同一临时 SQLCipher 库�
 ## 2026-11-04 S5 #535 Debug Smoke 故障修复
 
 用户本轮原话：“为什么中断了，继续推进”。恢复后确认 main=6b1fe8a，Windows CI #535 completed/failure：Debug 编译成功（0 warning/0 error），在 NativeMcpSmoke.cs:97 因内嵌 MCP 初始化索引超过 512 字失败；S5-3 曾将 AgentGuidance/index.md 从 281 字扩到 699 字。已确定必须恢复简短索引，完整 schema 3 和工具用法留独立 MCP 文档。后续 E2E 尚未运行，不能误记为业务失败或总验收通过。本轮恢复通知见 office-renderer/wechat-webhook#2259、#2260；新 CI 仍待核验。最近会话为 memory/sessions/2026-11-04-IPSys-S5最终清理前仓库梳理.md。
+
+## 2026-11-04：S5 #536 全局绿色但 PDF 分项 FAIL，新增强制验收门禁
+
+用户本轮原话“为什么中断了，继续推进”。最小修复提交 `ee667f9db72768092370045a6894089829abcd99` 对应 Windows CI #536（run `41836771902`）已 completed/success，Windows Debug/MCP/Node/真实 Edge HTTP/SQLCipher/双 EXE 全流程通过。细读 #536 日志发现 `S5-E2E PASS`，同一批 Folder/File/Link、两版本 SHA、GUI 移动/共享、MCP 返回/独立复制/排序、GUI 删除/MCP 恢复/共享清理均确认；`T-P2-02 PASS`。但 `T-P2-09 FAIL`：此前 T-P2-02 将 fixture PDF FileId=8 从项目移动至 IP-B，后续 PDF 用例错误地仍在原项目中查找该 FileId，未真正运行预览；工作流没有把浏览器结果文件内的 FAIL 提升为门禁，存在假绿。已准备改为全树按 FileId 定位现归属并打开、强制 T-P2-02/T-P2-09/S5-E2E 分项均 PASS。对照任务书 16.4 增补同批文件 UI 搜索定位以及从实际 GUI 复制表单选择项目 P1 的独立复制，后续 MCP 验证新 FolderId/FileId 与两版本 SHA。修订仍需新 CI 才能认定通过。本轮不触碰用户实际库和正式 Release。

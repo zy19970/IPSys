@@ -743,3 +743,7 @@ S5 综合验收新增到活跃 Windows Edge 测试：同一临时 SQLCipher 库�
 ### 2026-11-04 S5 #535 故障处理
 
 Windows CI #535（SHA 6b1fe8a）completed/failure，Debug 构建 0 warning / 0 error，但 `NativeMcpSmoke.cs:97` 断言 MCP initialize 根索引 <=512 字失败。原因是 S5-3 误将技术说明追加至 `src/IPSys.Web/AgentGuidance/index.md`，使根说明由 281 增至 699 字；现恢复为简短指引，详尽说明保留 MCP_CODEX 文档。后续真实 Edge E2E 不曾执行，需要新提交 CI 的单独结论；不可标记 S5 总验收通过。
+
+### 2026-11-04 S5 #536 真实日志复核与 16.4 补充
+
+[CI #536](https://github.com/zy19970/IPSys/actions/runs/41836771902)（`head_sha=ee667f9db72768092370045a6894089829abcd99`）Windows 工作流 completed/success，包括 Debug/MCP/Node/Edge/SQLCipher/两类 EXE。但浏览器分项日志为 `S5-E2E PASS`、`T-P2-02 PASS`、`T-P2-09 FAIL`；后者不是 PDF Viewer 渲染失败，而是 T-P2-02 将 FileId=8 的 PDF 移到了 IP-B，PDF 用例在项目旧位置查找导致未执行。当前 CI 仅列出分项 FAIL 而未终止，须修复假绿验收。后续将 PDF 按完整业务树的稳定 FileId 与最新归属查找并实际渲染，`T-P2-02/T-P2-09/S5-E2E` 不为 PASS 时工作流必须失败。同时 16.4 对照检查发现第一版 S5-E2E 使用 MCP 独立复制而非 GUI 发起，且未对同批 F 执行 UI 搜索定位；本次补真实 Explorer 搜索及独立复制表单/目标选择器，再由 MCP 和 SHA 检验。新增断言需要下次 Windows CI，未通过前不得声称 S5 自动验收已完成。
