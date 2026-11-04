@@ -7,8 +7,9 @@ const vm=require("node:vm");
 const root=path.resolve(__dirname,"../wwwroot");
 const bridge=fs.readFileSync(path.join(root,"js/bridge.js"),"utf8");
 const interactions=fs.readFileSync(path.join(root,"js/interactions.js"),"utf8");
-assert.match(interactions,/MI\("copy-record",\s*"copy",\s*"复制整条记录"\)/);
-assert.match(interactions,/MI\("transfer-record",\s*"move",\s*"移动或跨区转移"\)/);
+// 普通文件夹的独立复制/跨区转移与新的同FileId共享/同模块移动语义分开。
+assert.ok(interactions.includes('MI("copy-record","copy",recordKind==="archive_folder" ? "复制文件夹（独立副本）" : "复制整条记录")'));
+assert.ok(interactions.includes('MI("transfer-record","move",recordKind==="archive_folder" ? "跨工作区或类别转移" : "移动或跨区转移")'));
 assert.match(interactions,/"copy-record": inWorkspace\(\(\) => transferBusinessRecord\(item, false\)\)/);
 assert.match(interactions,/"transfer-record": inWorkspace\(\(\) => transferBusinessRecord\(item, true\)\)/);
 const from=bridge.indexOf("function recordTransferOptions(node, move) {");

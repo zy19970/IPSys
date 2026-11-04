@@ -519,3 +519,6 @@ CI #506 run41623186950首次通过编译、MCP和早期UI检查，但新测试�
 
 
 **CI #512前端回归失败与最小修复（2026-11-04）**：修正同名测试后产品提交`00b03f876f82084e8fbfd537cc6edc33c4467f79`触发Windows CI #512 run41760917607。真实SQLCipher/HTTP整树共享/移动、版本与故障回滚验证已通过，随后Node `folder-picker-smoke.cjs`失败，错误`TypeError: Cannot read properties of undefined (reading 'map')`，发生在`folder-picker.js`第104行。定位新`open`使用`sourceFolderIds.map`但旧的单附件调用未提供可选`sourceFolderIds`参数，破坏兼容。最小修复只在`AttachmentFolderPicker.open`解构声明中设`sourceFolderIds=[sourceFolderId]`，保持旧单附件与新多选文件夹的调用契约。静态JS语法解析通过，新一轮Windows CI尚待验证。失败通知#2171、重新开始通知#2172。最近会话指针不变，第四轮继续收敛。
+
+
+**右键文案回归断言同步（2026-11-04）**：审查到`tests/explorer-record-transfer-smoke.cjs`原先用正则硬编码“复制整条记录”“移动或跨区转移”，而本轮对普通archive_folder单项菜单调整为“复制文件夹（独立副本）”与“跨工作区或类别转移”，是为了区分新同FileId共享与同模块保ID移动；其他project/contract/IP仍使用原文案、原API。将测试更新为根据recordKind验证新表达和老入口仍存在，不反向恢复歧义文案。当前CI#513可能已经开始验证前序f1c419代码，新增测试同步提交将触发下一次CI；未改变产品逻辑。最近会话第四轮。
