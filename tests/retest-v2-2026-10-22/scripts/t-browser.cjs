@@ -546,11 +546,15 @@ async function main() {
 
   /* ---------- T-P2-09 连续滚动 PDF 实际渲染 ---------- */
   await (async function T_P2_09() {
-    await evalJs("Drive.openFolder('p:" + fx.company.projectA + "')");
-    await sleep(800);
-    const rows=await evalJs("[...document.querySelectorAll('#viewRoot .row')].map(r=>({id:r.dataset.id,name:r.innerText.replace(/\\s+/g,' ').trim()}))");
-    const pdfRow=rows.find(r=>/pdf/i.test(r.name));
-    if(!pdfRow)return rec("T-P2-09","DYNAMIC-BROWSER","BLOCKED","未找到 PDF 附件行","有效两页 PDF 在连续滚动容器中依次真实渲染");
+    // Previous search may leave current rows filtered. Inspect the fixture
+    // file in the actual project tree by its FileId rather than row text.
+    await evalJs("Drive.resetSearch();Drive.openFolder('p:" + fx.company.projectA + "')");
+    await waitFor("!!findById('p:" + fx.company.projectA + "')",10000,"PDF project tree");
+    const rows=await evalJs("(() => {const n=findById('p:" + fx.company.projectA + "');return (n?.children||[]).filter(x=>x.type==='file').map(x=>({id:x.id,name:x.name,fileId:Number(VaultStore.metaOf(x.id)?.fileId||0)}));})()");
+    const pdfRow=rows.find(x=>x.fileId===Number(fx.files.pdf.fileId));
+    if(!pdfRow)return rec("T-P2-09","DYNAMIC-BROWSER","FAIL",
+      "PDF FileId="+fx.files.pdf.fileId+" 缺失，项目节点="+JSON.stringify(rows),
+      "项目两页 PDF 必须可定位并完成两页 Canvas 渲染");
     await evalJs("previewFile("+JSON.stringify(pdfRow.id)+")");
     await waitFor("document.querySelectorAll('.preview-mask .pdf-page').length===2",15000,"连续 PDF 两个页面容器").catch(()=>{});
     async function pageState(page) {
@@ -618,6 +622,163 @@ async function main() {
     rec("T-P2-11", "DYNAMIC-BROWSER", out.every((x) => x.scrollW <= x.clientW) ? "PASS" : "FAIL",
       out.map((x) => `${x.w}x${x.h}@${x.dpr}x scroll=${x.scrollW}/${x.clientW}`).join("；"),
       "三种视口不横向溢出、不重叠");
+  })();
+
+  /* ---------- S5 true MCP -> Explorer -> MCP, one isolated dataset ---------- */
+  await (async function S5_E2E() {
+    const crypto=require("node:crypto");
+    const tag="S5-"+RUNID.replace(/[^a-zA-Z0-9]/g,"").slice(-14);
+    const need=(ok,why)=>{if(!ok)throw Error("S5 E2E: "+why);};
+    const sha=b=>crypto.createHash("sha256").update(b).digest("hex");
+    L.setToken(resume.token);
+    const auth=await L.post("/api/mcp",{enabled:true});
+    need(auth.ok,"MCP authorization on isolated test vault");
+    const exe=path.resolve(__dirname,"../../../src/IPSys.Web/bin/Debug/net8.0-windows/IPSys.Web.exe");
+    need(fs.existsSync(exe),"Debug --mcp executable present");
+    const cp=spawn(exe,["--mcp"],{stdio:["pipe","pipe","pipe"],windowsHide:true});
+    let output="",seq=0,ended=false,err="";
+    const waiters=new Map();
+    cp.stderr.on("data",x=>{err=(err+String(x)).slice(-2000);});
+    cp.stdout.on("data",x=>{
+      output+=String(x);let idx;
+      while((idx=output.indexOf("\n"))>=0){
+        const line=output.slice(0,idx).trim();output=output.slice(idx+1);
+        let msg;try{msg=JSON.parse(line);}catch{continue;}
+        const w=waiters.get(msg.id);
+        if(w){waiters.delete(msg.id);clearTimeout(w.timer);
+          msg.error?w.reject(Error(JSON.stringify(msg.error))):w.resolve(msg);}
+      }
+    });
+    cp.on("exit",code=>{ended=true;for(const w of waiters.values()){
+      clearTimeout(w.timer);w.reject(Error("--mcp exit="+code+" "+err));
+    }waiters.clear();});
+    const rpc=(method,params)=>new Promise((resolve,reject)=>{
+      if(ended)return reject(Error("MCP child ended"));
+      const id=++seq,timer=setTimeout(()=>{waiters.delete(id);reject(Error("MCP timeout "+method));},30000);
+      waiters.set(id,{resolve,reject,timer});
+      cp.stdin.write(JSON.stringify({jsonrpc:"2.0",id,method,params})+"\n");
+    });
+    const tool=async(name,args)=>{
+      const x=(await rpc("tools/call",{name,arguments:args})).result;
+      const v=JSON.parse(x?.content?.[0]?.text||"null");
+      if(x?.isError||v?.ok===false||v?.status==="failed")throw Error("MCP "+name+": "+JSON.stringify(v));
+      return v;
+    };
+    const idOf=v=>Number(v?.id??v?.reference?.id??0);
+    const folders=async()=>{
+      const r=await L.get("/api/v2/ui/folders/company");
+      need(r.ok&&Array.isArray(r.data?.folders),"folder HTTP snapshot");
+      return r.data.folders;
+    };
+    const links=async id=>{
+      const r=await L.get("/api/v2/files/company/folders/"+id+"/links?includeDeleted=false");
+      need(r.ok,"folder links "+id);
+      return Array.isArray(r.data)?r.data:(r.data?.items||[]);
+    };
+    async function pickGeneral() {
+      await waitFor("!!document.querySelector('#attachmentFolderPicker')",10000,"GUI folder picker");
+      const ok=await evalJs("(() => {const m=document.querySelector('#attachmentFolderPicker');m.querySelector('[data-picker-go=\"root\"]')?.click();const target=m.querySelector('[data-picker-enter=\"k:general\"]');target?.click();m.querySelector('[data-picker-current]')?.click();const b=m.querySelector('[data-picker-submit]');if(!target||!b||b.disabled)return false;b.click();return true;})()");
+      need(ok,"GUI select general root");
+      await waitFor("!document.querySelector('#attachmentFolderPicker')",12000,"GUI picker submitted");
+    }
+    const evidence=[];
+    try {
+      await rpc("initialize",{protocolVersion:"2025-06-18",capabilities:{},clientInfo:{name:"IPSys S5",version:"1"}});
+      const p1=idOf(await tool("create_project",{workspace:"company",name:tag+"P1",project_type:"科研项目"}));
+      const p2=idOf(await tool("create_project",{workspace:"company",name:tag+"P2",project_type:"科研项目"}));
+      need(p1>0&&p2>0,"MCP creates P1 and P2");
+      const d1=idOf(await tool("create_folder",{workspace:"company",section:"project",parent_id:p1,name:tag+"D1"}));
+      const d2=idOf(await tool("create_folder",{workspace:"company",section:"project",parent_id:d1,name:tag+"D2"}));
+      need(d1>0&&d2>0,"MCP creates nested D1/D2");
+      evidence.push("MCP P1="+p1+" P2="+p2+" D1="+d1+" D2="+d2);
+      const one=Buffer.from(tag+" first"),two=Buffer.from(tag+" second-version");
+      const upload=await L.upload(d2,tag+"F.txt",one);
+      const fileId=Number(upload.fileId);
+      await L.addVersion("company",fileId,tag+"F.txt",two);
+      const original=(await links(d2)).find(x=>Number(x.fileId)===fileId);
+      const linkId=Number(original?.id??original?.linkId);
+      need(fileId>0&&linkId>0,"FileId and LinkId");
+      const download=async(id,v)=>{
+        const r=await L.call("GET","/api/v2/files/company/"+id+"/versions/"+v+"/download",{raw:true});
+        need(r.ok,"version download v"+v);
+        return Buffer.from(await r.arrayBuffer());
+      };
+      need(sha(await download(fileId,1))===sha(one)&&sha(await download(fileId,2))===sha(two),"two version bytes");
+      evidence.push("FileId="+fileId+" LinkId="+linkId+" SHA1="+sha(one)+" SHA2="+sha(two));
+      await evalJs("Drive.resetSearch();refreshCurrent()");
+      await waitFor("!!findById('af:"+d2+"')",12000,"GUI sees MCP directory");
+      const view=await evalJs("(() => {const a=findById('af:"+d1+"'),b=findById('af:"+d2+"');return {a:a?.biz?.parentId,b:b?.biz?.parentId,hasFile:!!b?.children?.some(n=>n.type==='file'&&Number(VaultStore.metaOf(n.id)?.fileId)==="+fileId+")};})()");
+      need(Number(view.a)===p1&&Number(view.b)===d1&&view.hasFile,"GUI sees exact MCP IDs and FileId");
+      evidence.push("Explorer same FolderId/FileId visible");
+      await evalJs("moveSelectedItems([findById('af:"+d1+"')])");
+      await pickGeneral();
+      await waitFor("findById('af:"+d1+"')?.biz?.section==='general'",12000,"GUI in-place move");
+      const shifted=(await folders()).find(x=>Number(x.id)===d1);
+      need(shifted?.section==="general"&&shifted.parentId==null,"GUI move preserves FolderId");
+      need((await links(d2)).some(x=>Number(x.fileId)===fileId&&Number(x.id??x.linkId)===linkId),"GUI move preserves LinkId");
+      evidence.push("GUI move project → general preserves IDs");
+      const returned=await tool("move_folder",{workspace:"company",section:"general",folder_id:d1,target_section:"project",parent_id:p2,request_id:tag+"moveBack"});
+      need(idOf(returned)===d1,"MCP original FolderId after move back");
+      await evalJs("refreshCurrent()");
+      await waitFor("findById('af:"+d1+"')?.biz?.section==='project'",12000,"GUI sees MCP move");
+      evidence.push("MCP moved to P2; GUI sees original FolderId");
+      await evalJs("transferFolderBatch([findById('af:"+d1+"')],false)");
+      await pickGeneral();
+      let all=await folders();
+      const shared=all.find(x=>x.section==="general"&&x.name===tag+"D1"&&Number(x.id)!==d1&&x.parentId==null);
+      need(shared?.id>0,"GUI sharing creates new FolderId");
+      const sharedD2=all.find(x=>Number(x.parentId)===Number(shared.id)&&x.name===tag+"D2");
+      need(sharedD2?.id>0,"GUI sharing nested FolderIds");
+      need((await links(sharedD2.id)).some(x=>Number(x.fileId)===fileId&&Number(x.id??x.linkId)!==linkId),"share same FileId new LinkId");
+      evidence.push("GUI shared tree new FolderIds and LinkId, same FileId");
+      const clone=await tool("transfer_folder",{workspace:"company",section:"project",folder_id:d1,target_workspace:"company",target_section:"project",target_folder_id:p1,move:false});
+      const copiedId=idOf(clone);
+      need(copiedId>0&&copiedId!==d1,"MCP independent new FolderId");
+      all=await folders();
+      const copiedD2=all.find(x=>Number(x.parentId)===copiedId&&x.name===tag+"D2");
+      need(copiedD2?.id>0,"independent full tree");
+      const copiedFile=Number((await links(copiedD2.id))[0]?.fileId);
+      need(copiedFile>0&&copiedFile!==fileId,"independent new FileId");
+      need(sha(await download(copiedFile,1))===sha(one)&&sha(await download(copiedFile,2))===sha(two),"independent copies both bytes");
+      await evalJs("refreshCurrent()");
+      await waitFor("!!findById('af:"+copiedId+"')",12000,"GUI sees MCP copied tree");
+      evidence.push("MCP independent copy new FileId with both versions visible to GUI");
+      const extra=idOf(await tool("create_folder",{workspace:"company",section:"project",parent_id:p2,name:tag+"sort"}));
+      const getOrder=async()=> (await tool("list_folder_entries",{workspace:"company",section:"project",parent_id:p2})).map(x=>Number(x?.folder?.ref?.id));
+      const oldOrder=await getOrder();
+      need(oldOrder.includes(d1)&&oldOrder.includes(extra),"MCP sibling set");
+      const ordered=[...oldOrder].reverse();
+      await tool("reorder_entries",{workspace:"company",section:"project",parent_id:p2,items:ordered.map(id=>({kind:"folder",id})),request_id:tag+"sort"});
+      need(JSON.stringify(await getOrder())===JSON.stringify(ordered),"MCP persisted order");
+      await evalJs("refreshCurrent()");
+      const guiOrder=await evalJs("(() => {Drive.openFolder('p:"+p2+"');Drive.state.sortBy='position';Drive.state.sortDir='asc';Drive.render();return Drive.sortedItems.filter(n=>n.biz?.kind==='archive_folder').map(n=>Number(n.biz.id));})()");
+      need(JSON.stringify(guiOrder)===JSON.stringify(ordered),"GUI same custom sibling order");
+      evidence.push("MCP reorder persisted in GUI");
+      await evalJs("(() => {deleteArchiveFolder(findById('af:"+d1+"'));return true;})()");
+      await waitFor("!!document.querySelector('#confirmMask.show')",10000,"GUI delete confirmation");
+      await evalJs("document.querySelector('#confirmOk').click()");
+      await waitFor("!findById('af:"+d1+"')",12000,"GUI delete result");
+      const trash=await tool("list_trash",{workspace:"company"});
+      const row=trash.find(x=>Number(x.id)===d1);
+      need(row?.kind==="v2_archive_folder","MCP sees GUI trash");
+      await tool("restore_trash",{workspace:"company",kind:row.kind,id:d1,section:row.section});
+      await evalJs("refreshCurrent()");
+      await waitFor("!!findById('af:"+d2+"')",12000,"MCP restore visible in GUI");
+      need((await links(d2)).some(x=>Number(x.fileId)===fileId&&Number(x.id??x.linkId)===linkId),"restored same link");
+      evidence.push("GUI delete → MCP restore, same FileId/LinkId");
+      await tool("delete_folder",{workspace:"company",section:"general",folder_id:Number(shared.id)});
+      const gone=(await tool("list_trash",{workspace:"company"})).find(x=>Number(x.id)===Number(shared.id));
+      need(!!gone,"disposable shared tree in trash");
+      await tool("purge_trash",{workspace:"company",kind:gone.kind,id:Number(shared.id),section:gone.section,confirm:true,request_id:tag+"purge"});
+      need(sha(await download(fileId,1))===sha(one)&&sha(await download(fileId,2))===sha(two),"purge shared tree keeps original versions");
+      evidence.push("MCP purge disposable shared tree preserves both source versions");
+      ev("S5-E2E",evidence.join("\n"));
+      await shot("S5-E2E-mcp-gui");
+      rec("S5-E2E","MCP/EDGE/SQLCIPHER","PASS",evidence.join("；"),"同批对象双向 GUI/MCP 目录移动、共享和独立复制、排序、回收恢复、共享清理与两版本字节一致");
+    } finally {
+      cp.stdin.end();
+      cp.kill();
+    }
   })();
 
   fs.writeFileSync(path.join(EVID, "browser-results.json"), JSON.stringify(results, null, 2), "utf8");

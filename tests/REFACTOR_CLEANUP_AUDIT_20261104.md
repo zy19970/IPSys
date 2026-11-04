@@ -735,3 +735,7 @@ K01—K12 在当前自动 Smoke 可覆盖的断言均执行通过：K01 旧 MCP 
 ### 2026-11-04 S5-3 文档同步
 
 S5-3 文档同步：实际检查 `ExcelLedger.cs` 确认所有 archive_folder（含 general）使用六列 FolderColumns，项目11列、知产19列；数据库 `ResourceSchemaV2.Version=3`；当前 stdio MCP 43 项，合同退出独立类型。统一 README、DESIGN、DEVELOPMENT_PLAN、REQUIREMENTS、M0、MCP_CODEX、USER_GUIDE、UI_BASELINE、TESTING、证据索引、Wiki 与 AgentGuidance 的现行说明，保留 dated 历史内容。S5-1 代码提交 44203ab 与 CI #533 已核验通过；S5-2 新 Edge 脚本 CI #534 以及第16.4节同一批 MCP→GUI→MCP E2E 尚需真实结果。一次大批量文档提交脚本因工具调用上限失败，main 没有发生半提交；改为分组生成 blobs 再一次原子提交。
+
+### 2026-11-04 S5 同一批对象 E2E 测试候选
+
+S5 综合验收新增到活跃 Windows Edge 测试：同一临时 SQLCipher 库开启真实 MCP stdio，MCP 新建 P1/P2/D1/D2、双版本文件，Explorer 使用实际选择器移动/共享，MCP 原位返回/独立复制/排序，GUI 删除后 MCP 恢复、隔离共享副本永久清理，并核对 FileId/LinkId/所有版本 SHA；PDF 改为按 fixture FileId 在真实树中查找。此为待运行测试，不是已通过结论。
