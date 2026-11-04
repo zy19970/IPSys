@@ -51,14 +51,14 @@ assert.ok(!store.includes("node.mtime = toTs(p.endDate || p.startDate)"),
 assert.ok(!store.includes("node.mtime = toTs(a.year)"),
   "archive business year must not be a modification timestamp");
 
-assert.match(schema,/public const long Version = 3;/,
-  "resource schema must be V3 rather than an in-place V2 migration");
+assert.match(schema,/public const long Version = 4;/,
+  "resource schema must be V4 rather than migrating an older vault");
 assert.match(schema,/modified_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP/,
-  "new V3 folders have real update time from first creation");
+  "new V4 folders have real update time from first creation");
 assert.doesNotMatch(schema,/ALTER TABLE folders ADD COLUMN modified_at TEXT/,
-  "new V3 should not patch old databases on open");
+  "new V4 should not patch old databases on open");
 assert.match(schema,/CREATE TRIGGER folder_modified_business/,
-  "new V3 record edits must touch the modification time");
+  "new V4 record edits must touch the modification time");
 assert.match(schema,/CREATE TRIGGER folder_modified_link_insert/,
   "file associations must touch the owning folder");
 assert.match(schema,/CREATE TRIGGER folder_modified_version_insert/,
@@ -69,7 +69,7 @@ assert.match(schema,/CREATE TRIGGER folder_modified_insert/,
   "new directory timestamps are installed in initial DDL");
 assert.match(vault,/ResourceSchemaV2\.Validate\(db\)/);
 assert.doesNotMatch(vault,/ResourceSchemaV2\.Ensure\w+\(db\)/,
-  "opening existing V3 vault must not repair DDL or migrate user data");
+  "opening existing V4 vault must not repair DDL or migrate user data");
 assert.ok(apis.every(s=>s.includes("modifiedAt=version.CreatedAt")),
   "all three business view APIs must return version created_at");
 assert.ok(apis.every(s=>s.includes("modifiedAt=")),
@@ -80,4 +80,4 @@ const archive=apis[0];
 assert.ok(archive.includes("modifiedAt=row.ModifiedAt") &&
           archive.includes("createdAt=row.CreatedAt"),
   "archive/general records and recursive directories require timestamps");
-console.log("MODIFICATION TIME SMOKE PASS: V3 creation-only triggers, latest version timestamps, UTC, all business views");
+console.log("MODIFICATION TIME SMOKE PASS: V4 creation-only triggers, latest version timestamps, UTC, all business views");
