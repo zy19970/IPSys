@@ -747,3 +747,9 @@ Windows CI #535（SHA 6b1fe8a）completed/failure，Debug 构建 0 warning / 0 e
 ### 2026-11-04 S5 #536 真实日志复核与 16.4 补充
 
 [CI #536](https://github.com/zy19970/IPSys/actions/runs/41836771902)（`head_sha=ee667f9db72768092370045a6894089829abcd99`）Windows 工作流 completed/success，包括 Debug/MCP/Node/Edge/SQLCipher/两类 EXE。但浏览器分项日志为 `S5-E2E PASS`、`T-P2-02 PASS`、`T-P2-09 FAIL`；后者不是 PDF Viewer 渲染失败，而是 T-P2-02 将 FileId=8 的 PDF 移到了 IP-B，PDF 用例在项目旧位置查找导致未执行。当前 CI 仅列出分项 FAIL 而未终止，须修复假绿验收。后续将 PDF 按完整业务树的稳定 FileId 与最新归属查找并实际渲染，`T-P2-02/T-P2-09/S5-E2E` 不为 PASS 时工作流必须失败。同时 16.4 对照检查发现第一版 S5-E2E 使用 MCP 独立复制而非 GUI 发起，且未对同批 F 执行 UI 搜索定位；本次补真实 Explorer 搜索及独立复制表单/目标选择器，再由 MCP 和 SHA 检验。新增断言需要下次 Windows CI，未通过前不得声称 S5 自动验收已完成。
+
+### 2026-11-04 S5 #537 强制门禁验收与历史 HTTP 判据纠正
+
+提交 `0d31a52dd638f1d1711a35958b2b91a3082c502c` [Windows CI #537](https://github.com/zy19970/IPSys/actions/runs/41838384362) completed/success（26 success、0 failed、2 可选 ZIP64 skipped）。Browser 14/14 PASS，`T-P2-02` 内部拖放实际关联移动 PASS、`T-P2-09` 连续滚动两页真实 Canvas PASS、`S5-E2E` 同一批 MCP/Explorer 数据闭环 PASS。已核实两版 SHA、GUI 搜索 FileId=13 关联 D2、GUI 独立复制 FolderId=35/FileId=14、共享 FileId=13、MCP 排序、删除恢复和共享副本永久清理后的原件仍能下载。Windows 构建、MCP、SQLCipher 与两类单 EXE 均通过。
+
+原 HTTP t-http.cjs 在上述 CI 仍报告 `T-P0-05/T-P1-03 IMPLEMENTATION_GAP` 与 `T-P1-07 BLOCKED`，检查脚本发现前两者在后端成功时也直接输出旧标签且声称无 GUI 入口，已与现行功能及 S5-E2E 证据冲突；下一提交按实际 HTTP 200/LinkId/移动恢复结果标 PASS/FAIL，不改写历史输出证据。T-P1-07 小样本 VACUUM 过快不能稳定抓拍，仍 BLOCKED，但若 info API 异常改为 FAIL。以上测试脚本调整必须另跑对应 SHA CI；不宣称本机视觉或 GA 事故注入已完成。

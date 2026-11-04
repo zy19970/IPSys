@@ -141,10 +141,10 @@ async function must(label, p, body) {
       "",
       `IP-A linkIds=${J([...aIds])}  IP-B linkIds=${J([...bIds])}  互不重叠=${distinct}`,
       "后端 POST /api/v2/files/{ws}/{fileId}/associate 已返回 {ok:true,moved:false}，说明同一 FileId 可复用到另一条记录。",
-      "UI 只有一个『共享到目标知识产权』特例（bridge.js associateOriginal），项目/合同/档案/综合资料无入口。",
+      "当前 GUI 已统一提供附件共享/移动入口；本 HTTP 用例核验独立 LinkId，Explorer 真实跨入口行为由 t-browser.cjs 的 T-P2-02/S5-E2E 另行验证。",
     ].join("\n"));
-    rec("T-P0-05", "MIXED", distinct && onB.length === 1 ? "IMPLEMENTATION_GAP" : "FAIL",
-      `同一 fileId 在 IP-A/IP-B 各有独立 link（${[...aIds]} / ${[...bIds]}）；UI 仅 IP 特例有入口`,
+    rec("T-P0-05", "DYNAMIC-HTTP", distinct && onB.length === 1 ? "PASS" : "FAIL",
+      `同一 fileId 在 IP-A/IP-B 各有独立 link（${[...aIds]} / ${[...bIds]}），当前 GUI 入口由真实 Edge 专项独立验证`,
       "FileId 可跨记录复用且 LinkId 按目标独立；UI 提供通用入口");
   }
 
@@ -198,10 +198,10 @@ async function must(label, p, body) {
       `再移回 -> ${back.status}`,
       `POST /ui/archive/company/achievement/${fx.archive.records[2]}/transfer {TargetWorkspace:personal,Move:false} -> ${xfer.status} ${J(xfer.data)}`,
       "",
-      "结论：后端具备记录移动与跨工作区转移能力；前端无任何复制/转移入口（grep transfer 零命中）。",
+      "结论：后端具备目录移动及跨工作区转移能力。GUI 现在具备 folder-picker / transferBusinessRecord / transferFolderBatch，实际 GUI↔MCP 由 S5-E2E 验证。",
     ].join("\n"));
-    rec("T-P1-03", "MIXED", mv.ok && moved && moved.parentId === fx.archive.lvl2 ? "IMPLEMENTATION_GAP" : "FAIL",
-      `后端 move -> ${mv.status}，parentId 变为 ${moved && moved.parentId}；transfer -> ${xfer.status}；前端零入口`,
+    rec("T-P1-03", "DYNAMIC-HTTP", mv.ok && back.ok && xfer.ok && moved && moved.parentId === fx.archive.lvl2 ? "PASS" : "FAIL",
+      `后端 move -> ${mv.status}，parentId 变为 ${moved && moved.parentId}；移回 -> ${back.status}；transfer -> ${xfer.status}；GUI 入口见 Edge S5-E2E`,
       "复制/转移有 UI 入口；后端可用不能当 UI 通过");
   }
 
@@ -291,7 +291,7 @@ async function must(label, p, body) {
       "说明：本库为合成小库，reusableBytes 太小，VACUUM 在毫秒级结束，无法稳定抓拍『压缩中』窗口。",
       "关库被拒一侧已由 T-P0-04 用真实 409 复现，不重复。",
     ].join("\n"));
-    rec("T-P1-07", "DYNAMIC-HTTP", (info && info.reusableBytes >= 0) ? "BLOCKED" : "BLOCKED",
+    rec("T-P1-07", "DYNAMIC-HTTP", (info && Number.isFinite(Number(info.reusableBytes)) && typeof info.canCompact === "boolean") ? "BLOCKED" : "FAIL",
       `compact/info reusableBytes=${info && info.reusableBytes}, canCompact=${info && info.canCompact}；窗口过短无法抓拍`,
       "压缩运行期间切工作区/关库有明确反馈");
   }
