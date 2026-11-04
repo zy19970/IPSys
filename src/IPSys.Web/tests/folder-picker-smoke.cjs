@@ -272,5 +272,100 @@ function open(move=false) {
   await get("submit").emit("click");
   assert.deepEqual(folderTargets.at(-1),{target:"90003",targetSection:"project"},
     "Nested ordinary project folder can receive moved subtree");
-  console.log("FOLDER PICKER PASS: 75 levels, 1230 siblings, project destinations, search, security");
+  // Regression: start from the real Explorer movement entry, not only the
+  // picker in isolation. This previously closed the right-click menu without
+  // displaying anything because bridge.js omitted "project" from its scopes.
+  const projectSource=folder("af:90004","项目待移动","archive_folder",[],
+    {section:"project",parentId:90002});
+  const anotherProject=folder("p:90005","另一项目","project",[]);
+  project.children.push(projectSource);
+  projectCat.children.push(anotherProject);
+  const locate=(id,node=root)=>{
+    if(node.id===id)return node;
+    for(const child of node.children||[]) {
+      const found=locate(id,child);
+      if(found)return found;
+    }
+    return null;
+  };
+  const locatePath=(id,node=root,ancestry=[])=>{
+    if(node.id===id)return [...ancestry,node];
+    for(const child of node.children||[]) {
+      const found=locatePath(id,child,[...ancestry,node]);
+      if(found)return found;
+    }
+    return null;
+  };
+  const commands=[],errors=[];
+  sandbox.ROOT=root;
+  sandbox.findById=id=>locate(id);
+  sandbox.pathTo=id=>locatePath(id);
+  sandbox.catsOf=()=>[
+    {id:"achievement"},{id:"certificate"},{id:"project"}];
+  sandbox.catIsDir=id=>["achievement","certificate"].includes(id);
+  sandbox.fileTaskBusy=()=>false;
+  sandbox.toast=msg=>errors.push(String(msg));
+  sandbox.Drive={clearSelection(){}};
+  sandbox.refreshCurrent=async()=>{};
+  sandbox.VaultStore.api=async(url,opts)=>{
+    commands.push({url,request:JSON.parse(JSON.stringify(opts.json))});
+    return {ids:opts.json.items};
+  };
+  const bridge=fs.readFileSync(path.resolve(__dirname,
+    "../wwwroot/js/bridge.js"),"utf8");
+  const entryStart=bridge.indexOf("/* Ordinary-folder sharing and moving");
+  const entryEnd=bridge.indexOf("/* F2-04:",entryStart);
+  assert.ok(entryStart>=0 && entryEnd>entryStart,
+    "Explorer folder transfer entry must be loaded for integration coverage");
+  vm.runInContext(bridge.slice(entryStart,entryEnd),sandbox,
+    {filename:"bridge-project-folder-move.js"});
+  const moveFromMenu=vm.runInContext("moveSelectedItems",sandbox);
+  const shareFromMenu=vm.runInContext("transferFolderBatch",sandbox);
+  moveFromMenu([projectSource]);
+  assert.ok(mask && !mask.removed,
+    "Clicking move on a project child must open the destination dialog");
+  assert.match(mask.innerHTML,/移动文件夹/);
+  pickClick(get("crumb"),"go","root");
+  assert.match(get("list").innerHTML,/公司项目/);
+  pickClick(get("list"),"enter","k:achievement");
+  get("current").emit("click");
+  await get("submit").emit("click");
+  assert.deepEqual(commands.at(-1),{
+    url:"/api/v2/ui/folders/company/project/transfer-batch",
+    request:{targetFolderId:0,targetSection:"achievement",
+      move:true,items:[90004]}
+  },"Moving a project subfolder to ordinary materials uses the project source scope");
+
+  moveFromMenu([projectSource]);
+  pickClick(get("crumb"),"go","root");
+  pickClick(get("list"),"enter","k:project");
+  assert.equal(get("current").disabled,true,
+    "The virtual company-project category cannot own a folder");
+  pickClick(get("list"),"choose","p:90005");
+  await get("submit").emit("click");
+  assert.deepEqual(commands.at(-1).request,{
+    targetFolderId:90005,targetSection:"project",
+    move:true,items:[90004]
+  },"Project business records accept folders as direct children");
+
+  shareFromMenu([projectSource],false);
+  pickClick(get("crumb"),"go","root");
+  pickClick(get("list"),"enter","k:certificate");
+  pickClick(get("list"),"choose","af:90001");
+  await get("submit").emit("click");
+  assert.deepEqual(commands.at(-1).request,{
+    targetFolderId:90001,targetSection:"certificate",
+    move:false,items:[90004]
+  },"Project folders share to other modules without changing their originals");
+
+  const invalid=folder("af:90006","非法来源","archive_folder",[],
+    {section:"invalid_section",parentId:90002});
+  project.children.push(invalid);
+  const countBefore=commands.length;
+  moveFromMenu([invalid]);
+  assert.equal(commands.length,countBefore);
+  assert.match(errors.at(-1),/无法打开目标目录选择器/,
+    "Synchronous picker rejection must be visible instead of a silent no-op");
+  project.children.pop();
+  console.log("FOLDER PICKER PASS: 75 levels, 1230 siblings, project-entry move/share, project destinations, search, security");
 })().catch(e=>{console.error(e);process.exitCode=1;});

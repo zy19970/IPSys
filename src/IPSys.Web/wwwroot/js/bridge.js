@@ -343,8 +343,10 @@ function transferFolderBatch(nodes,move=false) {
   try { items=selectedArchiveFolders(nodes); }
   catch(e){return toast(e.message,{tone:"error",ms:6000});}
   const workspace=VaultStore.ws,section=items[0].biz.section;
-  const folderSections=catsOf(workspace).filter(c=>catIsDir(c.id,workspace))
-    .map(c=>c.id);
+  // The project module is not a free-standing directory module: its real
+  // project records own ordinary archive_folder trees and are valid targets.
+  const folderSections=catsOf(workspace).filter(c=>
+    catIsDir(c.id,workspace)||c.id==="project").map(c=>c.id);
   const sourceIds=items.map(n=>Number(n.biz.id));
   const index=AttachmentFolderPicker.index(ROOT,sourceIds[0],sourceIds);
   if(!index.source)return toast("来源文件夹已不存在，请刷新重试",{tone:"error"});
@@ -353,14 +355,18 @@ function transferFolderBatch(nodes,move=false) {
     if(fileTaskBusy())throw new Error("当前有文件任务，请完成后再操作");
     const targetId=Number(data.target),targetSection=String(data.targetSection||"");
     if(!Number.isSafeInteger(targetId)||targetId<0 ||
-       !folderSections.includes(targetSection))
-      throw new Error("目标文件夹或资料模块无效，请重新选择");
+       !folderSections.includes(targetSection)||
+       (targetSection==="project" && targetId===0))
+      throw new Error("目标文件夹或项目无效，请重新选择");
     if(targetId>0) {
       const dest=index.byFolderId.get(targetId),current=dest&&findById(dest.id);
+      const validFolder=current?.biz?.kind==="archive_folder" &&
+        current.biz.section===targetSection;
+      const validProject=targetSection==="project" &&
+        current?.biz?.kind==="project";
       if(!dest||!current||current.type!=="folder"||
-         current.biz?.kind!=="archive_folder"||
-         current.biz.section!==targetSection||Number(current.biz.id)!==targetId)
-        throw new Error("目标文件夹已失效或不属于普通资料模块");
+         !(validFolder||validProject)||Number(current.biz.id)!==targetId)
+        throw new Error("目标文件夹或项目已失效，请重新选择");
       // No nested destination, including deep descendants.
       let cur=dest;
       while(cur) {
@@ -383,13 +389,18 @@ function transferFolderBatch(nodes,move=false) {
     catch {toast("操作已完成，但页面刷新失败；请手动刷新核对",{tone:"error",ms:6000});return;}
     toast((move?"已移动 ":"已共享 ")+items.length+" 个文件夹");
   };
-  AttachmentFolderPicker.open({
-    root:ROOT,workspace,sourceFolderId:sourceIds[0],sourceFolderIds:sourceIds,
-    fileName:items.length===1?items[0].name:"已选择 "+items.length+" 个文件夹",
-    sourceDescription:items.length===1?index.path(index.source.id):
-      "来自 "+items.length+" 个已选文件夹",
-    folderMode:true,folderSection:section,folderSections,move,onSubmit,
-  });
+  try {
+    AttachmentFolderPicker.open({
+      root:ROOT,workspace,sourceFolderId:sourceIds[0],sourceFolderIds:sourceIds,
+      fileName:items.length===1?items[0].name:"已选择 "+items.length+" 个文件夹",
+      sourceDescription:items.length===1?index.path(index.source.id):
+        "来自 "+items.length+" 个已选文件夹",
+      folderMode:true,folderSection:section,folderSections,move,onSubmit,
+    });
+  } catch(e) {
+    toast("无法打开目标目录选择器："+(e.message||String(e)),
+      {tone:"error",ms:6000});
+  }
 }
 
 /* Same front-end movement entry for one/many attachments and ordinary folders.

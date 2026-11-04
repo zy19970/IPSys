@@ -610,3 +610,14 @@ CI #517 (`41777836030`)因旧合同时间戳断言失败，CI #518 (`41780006022
 ## 2026-11-04 第十五轮：用户实机在旧数据库中新建项目文件夹被拒绝——旧V2库约束未升级
 用户前一条消息上传本机Explorer截图：公司项目「固定式破碎机远程遥控与自主作业系统」中使用新版“新建文件夹”，创建时返回红字“资料结构约束不允许此操作，请检查名称、父级目录和文件关联。”本轮原话：“是因为我用旧的数据库的原因吗”。
 本轮只读核查当前main=98c48cd6fc743845cde07c2f1e73ad05259f9681。从`ResourceSchemaV2.cs`证实新数据库建表允许`archive_folder, section=project, parent_id=真实project`及其嵌套；此前旧版已存在的SQLCipher库`folders` CHECK 不含`project` section，旧版parent_insert也只准archive_folder→archive_folder，不准project→archive_folder。新EXE打开现有库时，`Vault.ValidateSchema`的`EnsurePartyArchiveSection`对已有`'certificate','achievement','party','general'`约束提前return，`EnsureArchiveFolderSectionRelocation`只刷新identity guard而非建表CHECK及parent trigger，所以旧库未获得新约束。报错文本来自`NativeFolderEndpoints.FolderConstraintMessage`捕获`SqliteException` 409，完全吻合截图。结论：**旧数据库是高度确定的直接原因**；仅凭截图无法直接检查用户数据库DDL，仍可用真正全新路径新建数据库验证。用户已明确项目未上线、全部测试数据可舍弃、不需开发旧库数据迁移；推荐在程序登录/资料库创建流程以全新文件路径新建SQLCipher库，然后在新项目内建多级文件夹进行对照，不是仅改数据库文件名或复用旧库。已下载新版自包含EXE不代表旧数据库自动转换。考虑是否将来添加明确“旧库结构不兼容”提示可待用户授权；本轮不修改程序和用户真实资料库，只更新MEMORY和会话。任务通知#2198。当前会话`memory/sessions/2026-11-03-IPSys项目整体认知复盘.md`第十五轮。
+
+
+## 2026-11-04 第十六轮：项目内右键“移动文件夹到其它目录”不弹窗，前端范围遗漏修正
+
+**用户原话：**“我点击以后没有任何反应”。用户截图显示公司项目「固定式破碎机远程遥控与自主作业系统」下已新建普通文件夹“123456”，右键菜单高亮“移动文件夹到其它目录”，点击后没有对话框和报错；因此这不是此前旧库创建约束的问题，而是项目文件夹移动/共享入口缺陷。当前main=8bb4e945205afd53a4edc3f5b4d578f6aa3a2a12，按AIGT重读三基础规则、项目Memory/会话，确认rulesets=[]。
+
+**确定根因：**`src/IPSys.Web/wwwroot/js/interactions.js`菜单 `move-folder`→`moveSelectedItems`→`transferFolderBatch`；`bridge.js`的`folderSections=catsOf(workspace).filter(catIsDir)`只含资料模块，**未包含`project`**，使`AttachmentFolderPicker.open`以`folderMode:true,folderSection:"project"`被`folder-picker.js`的allowedSections校验同步拒绝并抛错。同时旧`bridge.js onSubmit`只允许目标`biz.kind=="archive_folder"`，即使选择器打开也不允许以真实`project`记录为目标。异常从右键`showCtx` handler冒出，缺少错误toast，因此用户只见菜单消失/没反应。之前CI #519测试覆盖picker单元和菜单路由，但缺少项目源节点实际触发入口到picker的集成验证。
+
+**本轮修改**：`bridge.js`把project加入`folderSections`，验证project目标不得选虚拟模块根0，允许真实`project`或`archive_folder(section project)`作为目标，保留禁止本身及后代选取；对`AttachmentFolderPicker.open`同步异常捕获并显示用户可见错误Toast。源项目文件夹可以按同一移动/共享入口跨类别转到业务档案/综合资料，也可选另一个项目或其子目录。扩展`tests/folder-picker-smoke.cjs`：利用真实bridge.js`selectedArchiveFolders/transferFolderBatch/moveSelectedItems`配合真实picker DOM模拟，覆盖项目源文件夹→其他资料模块根的移动、→另一真实项目的移动、跨模块共享、错误选择器弹出提示；确保以后不会仅通过picker单测却遗漏产品入口。
+
+**验收边界**：本轮先提交业务代码/回归测试+Memory，推送触发Windows CI后按真实同SHA结果更新；本机用户数据库未操作。任务开始通知GitHub创建issue时遭平台安全检查阻断，未得到issue，不能声称通知成功；如后续仍无法使用，按实情说明。最近会话`memory/sessions/2026-11-03-IPSys项目整体认知复盘.md`第十六轮。
