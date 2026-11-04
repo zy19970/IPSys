@@ -148,30 +148,41 @@ async function must(label, p, body) {
       "FileId 可跨记录复用且 LinkId 按目标独立；UI 提供通用入口");
   }
 
-  /* ---------------- T-P1-02 ① 项目整体删除 → 合同随项目 ---------------- */
+  /* ---------------- T-P1-02 项目普通目录级联删除/恢复 ---------------- */
   {
-    const pC = await must("create 项目C", "/api/v2/folders/company/project", { Project: { Name: "项目C", ProjectType: "科研项目", ProjectNo: "P-C", StartDate: "2026-04-01" } });
-    const c3 = await must("create 合同C3", "/api/v2/folders/company/contract", { Contract: { Name: "合同C3", ContractNo: "HT-03" }, ProjectId: pC.id });
+    const pC = await must("create 项目C", "/api/v2/folders/company/project",
+      { Project: { Name: "项目C", ProjectType: "科研项目", ProjectNo: "P-C", StartDate: "2026-04-01" } });
+    const c3 = await must("create 项目普通目录C3", "/api/v2/folders/company/archive_folder",
+      { ArchiveFolder: { Name: "合同资料C3", ParentId: pC.id, Remarks: "HT-03" }, Section: "project" });
+    const old = await L.post("/api/v2/folders/company/contract",
+      { Contract: { Name: "旧合同独立业务", ContractNo: "HT-03" }, ProjectId: pC.id });
     const del = await L.del(`/api/v2/folders/company/project/${pC.id}`);
-    const trash = (await L.get("/api/trash/company")).data;
+    const trashReply = await L.get("/api/trash/company");
+    const trash = trashReply.data;
     const hasProject = trash.some((r) => r.kind === "project" && r.id === pC.id);
-    const hasContract = trash.some((r) => r.kind === "contract" && r.id === c3.id);
-    const restore = await L.post("/api/trash/company/restore", { items: [{ kind: "project", id: pC.id, section: "" }] });
-    const contracts = (await L.get("/api/v2/ui/contracts/company")).data;
-    const back = contracts.some((c) => c.id === c3.id);
+    const noDuplicateFolder = trash.every((r) => !(r.kind === "v2_archive_folder" && r.id === c3.id));
+    const hidden = await L.get(`/api/v2/folders/company/archive_folder/${c3.id}?section=project`);
+    const restore = await L.post("/api/trash/company/restore",
+      { items: [{ kind: "project", id: pC.id, section: "" }] });
+    const restored = await L.get(`/api/v2/folders/company/archive_folder/${c3.id}?section=project`);
+    const back = restored.ok && restored.data?.folder?.ref?.id === c3.id &&
+      restored.data?.folder?.parent?.id === pC.id;
+    const ok = old.status === 400 && del.ok && hasProject && noDuplicateFolder &&
+      hidden.status === 404 && restore.ok && back;
     evFile("T-P1-02", [
-      `项目C=${pC.id} 合同C3=${c3.id}`,
+      `项目C=${pC.id} 项目普通目录C3=${c3.id}`,
+      `旧 contract POST -> ${old.status} (期望400)`,
       `DELETE 项目C -> ${del.status}`,
-      `回收站含 project=${hasProject}, 含 contract=${hasContract}（期望 false）`,
+      `回收站含项目=${hasProject}, 子目录不重复出现=${noDuplicateFolder}`,
+      `项目删除后子目录 GET -> ${hidden.status} (期望404)`,
       `POST restore 项目C -> ${restore.status}`,
-      `恢复后 /api/v2/ui/contracts 含 C3=${back}`,
+      `恢复后目录 FolderId/父级一致=${back}`,
       "",
-      "①②必须分开判：①整体删项目时合同不单列是 RecycleStore 的 p.deleted=0 语义，正确；",
-      "②单独删合同（父项目仍在）时后端确实返回 kind=contract，前端是否展示见 T-P1-02#ui。",
+      "项目子级是 archive_folder(section=project)；删除项目后其后代不应孤立可见，恢复项目保留原有目录身份。",
     ].join("\n"));
-    rec("T-P1-02#cascade", "DYNAMIC-HTTP", hasProject && !hasContract && back ? "PASS" : "FAIL",
-      `整体删项目：回收站 project=${hasProject} contract=${hasContract}；恢复后合同回来=${back}`,
-      "①项目整体删除后循环站不单列合同，恢复时合同一并回来");
+    rec("T-P1-02#cascade", "DYNAMIC-HTTP", ok ? "PASS" : "FAIL",
+      `旧合同创建拒绝=${old.status===400}，项目回收=${hasProject}，目录隐藏=${hidden.status===404}，原FolderId恢复=${back}`,
+      "旧合同接口400；项目删除/恢复使后代目录一同隐藏/恢复，FolderId与父项目关系不变");
   }
 
   /* ---------------- T-P1-03 后端移动/转移可用性 ---------------- */

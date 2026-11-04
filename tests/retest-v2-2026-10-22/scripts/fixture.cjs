@@ -112,16 +112,22 @@ function makeTwoPagePdf() {
   }
   fx.archive.records = recIds;
 
-  /* ---------- 项目 / 合同 ---------- */
+  /* ---------- 项目及项目内普通目录 ---------- */
   const pA = { id: await create("project", { Project: { Name: "项目A", ProjectType: "科研项目", ProjectNo: "P-A", StartDate: "2026-01-01" } }) };
   const pB = { id: await create("project", { Project: { Name: "项目B", ProjectType: "横向项目", ProjectNo: "P-B" } }) };
   fx.company.projectA = pA.id; fx.company.projectB = pB.id;
   log.add(`项目A=${pA.id} 项目B=${pB.id}`);
 
-  const c1 = { id: await create("contract", { Contract: { Name: "合同C1", ContractNo: "HT-01", SignDate: "2026-02-01", Amount: "100000" }, ProjectId: pA.id }) };
-  const c2 = { id: await create("contract", { Contract: { Name: "合同C2", ContractNo: "HT-02", SignDate: "2026-02-02" }, ProjectId: pA.id }) };
-  fx.company.contractC1 = c1.id; fx.company.contractC2 = c2.id;
-  log.add(`合同C1=${c1.id} 合同C2=${c2.id}（均挂项目A）`);
+  const c1 = { id: await create("archive_folder", {
+    ArchiveFolder: { Name: "合同资料C1", ParentId: pA.id, Remarks: "HT-01；2026-02-01；金额100000" },
+    Section: "project"
+  }) };
+  const c2 = { id: await create("archive_folder", {
+    ArchiveFolder: { Name: "合同资料C2", ParentId: pA.id, Remarks: "HT-02；2026-02-02" },
+    Section: "project"
+  }) };
+  fx.company.projectFolderC1 = c1.id; fx.company.projectFolderC2 = c2.id;
+  log.add(`项目普通目录C1=${c1.id} C2=${c2.id}（section=project，均挂项目A）`);
 
   /* ---------- IP / 综合资料 ---------- */
   const ipA = { id: await create("ip", { Ip: { Name: "IP-A", IpType: "发明专利", Status: "已授权", Number: "CN-A" } }) };
@@ -143,7 +149,7 @@ function makeTwoPagePdf() {
 
   const upC1 = await L.upload(c1.id, "合同C1扫描.txt", txt("合同C1扫描件正文"));
   upC1.linkId = await linkIdOf("company", c1.id, upC1.fileId);
-  fx.files.contractC1 = upC1;
+  fx.files.projectFolderC1 = upC1;
   log.add("合同C1附件 -> " + JSON.stringify(upC1));
 
   const upIp = await L.upload(ipA.id, "专利说明书.txt", txt("专利说明书 v1 短"));
@@ -214,13 +220,14 @@ function makeTwoPagePdf() {
   log.add(`33MiB -> fileId=${upBig.fileId} size=${big.length}`);
 
   /* ---------- 回收站 fixture ----------
-     ① 单独删合同 C1（父项目 A 仍在）
+     ① 单独删项目普通目录 C1（父项目 A 仍在）
      ② 单独删项目 A 的一个附件 link
      ③ 整体删项目 B
      ④ 单独删档案-05
   */
-  const dC1 = await L.del(`/api/v2/folders/company/contract/${c1.id}`);
-  log.add(`delete 合同C1 -> ${dC1.status} ${JSON.stringify(dC1.data)}`);
+  const dC1 = await L.del(`/api/v2/folders/company/archive_folder/${c1.id}?section=project`);
+  if (!dC1.ok) throw new Error("删除项目普通目录C1失败: "+dC1.status+" "+JSON.stringify(dC1.data));
+  log.add(`delete 项目普通目录C1 -> ${dC1.status} ${JSON.stringify(dC1.data)}`);
 
   const dLink = await L.del(`/api/v2/files/company/${upProj.fileId}/links/${upProj.linkId}`);
   log.add(`delete 项目A附件 link -> ${dLink.status} ${JSON.stringify(dLink.data)}`);
@@ -241,7 +248,7 @@ function makeTwoPagePdf() {
 
   /* ---------- 记录回读，确认 fixture 真的落库 ---------- */
   const views = {};
-  for (const p of ["folders", "projects", "ip", "contracts", "project-files"]) {
+  for (const p of ["folders", "projects", "ip", "project-files"]) {
     const r = await L.get(`/api/v2/ui/${p}/company`);
     views[p] = Array.isArray(r.data) ? r.data.length : Object.keys(r.data || {});
     log.add(`GET /api/v2/ui/${p}/company -> ${r.status} (${Array.isArray(r.data) ? r.data.length + " rows" : JSON.stringify(views[p])})`);
