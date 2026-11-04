@@ -93,7 +93,8 @@ static class NativeFolderBatchTransferEndpoints
                     if(input.Move)
                     {
                         // Moving to the existing parent is not a useful operation.
-                        if(ids.Any(id=>all[id].Folder.Parent?.Id==parent))
+                        if(targetSection==section &&
+                            ids.Any(id=>all[id].Folder.Parent?.Id==parent))
                             return fail("所选文件夹中有文件夹已经位于目标目录，请选择其它位置。",409);
                         // A rename on move must never happen silently.
                         var existing=targetFolders.Values.Where(item=>item.Folder.Parent?.Id==parent)

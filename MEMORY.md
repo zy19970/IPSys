@@ -646,3 +646,16 @@ CI #517 (`41777836030`)因旧合同时间戳断言失败，CI #518 (`41780006022
 **面向用户的实际可见回复核心（归档拟交付）：**解释产品架构、文件与提交规模、主要重构转折和源码冲突；指出方案方向正确但必须按 S0→S5 逐批施工；说明 CI #520 只是旧产品基线；当前状态为整改未开始、用户数据库未动。详细文档在 tests/REFACTOR_CLEANUP_AUDIT_20261104.md。未把方案中未复现的测试结论写成运行期事实。
 
 **后续执行入口：**以当前 main 和本任务书为准，S0 先定基线和收集失败实证；首个产品提交从 S1 开始。最近会话路径：`memory/sessions/2026-11-04-IPSys重构清理方案实施前核查.md`。
+
+
+## 2026-11-04：重构清理第一阶段 S0+S1 产品提交（CI 待核验）
+
+用户原话：“进行第一阶段的任务”。沿用上一轮已确认的 `tests/REFACTOR_CLEANUP_AUDIT_20261104.md`，本轮明确为 S0 当前基线复核和 S1 修复 C02 跨模块顶层目录移动误判，不扩大到 S2—S5。
+
+**现行基线：** main 提交 `1cc17fe94832cec29a454309815cd36bc4ffcbd7`；读取了 AIGT 基础三规则、最新 MEMORY 和上一轮会话、任务书、NativeFolderBatchTransferEndpoints、NativeFolderTreeTransferSmoke、WebSmoke、当前 Windows workflow。rulesets 返回 []；branch protection 读取被 GitHub 集成权限 403 拒绝，不能据此断言无保护。S0 从真实源码确认 C02 具体缺陷：`input.Move` 的“already in place”只判断 `Parent.Id`，没有 `targetSection == section`。MCP、合同、数据库旧架构等其他 C01—C08 现有事实保持上一轮审查结论。
+
+**S1 产品修改：** 在原来防误操作 if 下增加 `targetSection==section` 条件；当来源/目标属于不同 section 时允许两个顶层 parent 都为 null 的合法跨模块原位移动；同模块同父级仍返回 409；保留同名、防循环、批量事务和共享行为。仅触及 `src/IPSys.Web/NativeFolderBatchTransferEndpoints.cs`。
+
+**S1 回归：** 扩展 `src/IPSys.Web/NativeFolderTreeTransferSmoke.cs`，由现有 WebSmoke 调用，新方法 `VerifyCrossModuleRootMovesAsync` 通过真实 `/transfer-batch` 覆盖：M01 certificate 顶层→general 顶层，父级为空、FolderId/LinkId/FileId/两版字节不变；M02 general 顶层→原位置409；M03 achievement 嵌套→general 顶层，子树和共享文件版本一致；M04 两顶层批量进入 general 根；M05 目标顶层同名冲突，来源目标均未修改；M06 故障注入第二个根更新，检查真正触发 SQL 回滚和两根均无变化；M07 project 虚拟根0拒绝；M08 移到自身/子孙拒绝。原定更广泛的 C# + SQLCipher + Edge + Node 仍需等待本批 Windows CI，不能从静态阅读宣称动态通过。
+
+**实施范围与状态：** 本轮同时更新 `tests/REFACTOR_CLEANUP_AUDIT_20261104.md` 的 S0/S1 进度，且按 Memory 协议新建本轮会话档案。产品提交不带 skip ci，发出后须核验同 SHA Windows CI。无本地 .NET 编译环境，GitHub 连接不提供本地工作区；未修改用户实际数据库，未发布 Release，未开始 S2 的合同/schema 重构。通知开始：office-renderer/wechat-webhook#2213。新会话路径 `memory/sessions/2026-11-04-IPSys重构清理第一阶段.md`。

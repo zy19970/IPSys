@@ -287,6 +287,202 @@ static class NativeFolderTreeTransferSmoke
                 "folder move cannot change workspaces through section endpoint");
     }
 
+
+    // M01-M08: move a top-level ordinary folder to a DIFFERENT module's
+    // virtual root. Different sections may both have parent_id NULL.
+    private static async Task VerifyCrossModuleRootMovesAsync(HttpClient client,
+        Vault vault)
+    {
+        string mark="ROOT-MOVE-"+Guid.NewGuid().ToString("N")[..8];
+        const string cert="/api/v2/ui/folders/company/certificate/transfer-batch";
+        const string general="/api/v2/ui/folders/company/general/transfer-batch";
+        const string achievement="/api/v2/ui/folders/company/achievement/transfer-batch";
+
+        // M01: source and target have NULL parents, but different sections.
+        long root=await Folder(client,"company","certificate",mark+"证书根");
+        long child=await Folder(client,"company","certificate",mark+"证书子",root);
+        byte[] v1=[1,4,9,2],v2=[9,1,3,7];
+        long file;
+        using(var upload=new HttpRequestMessage(HttpMethod.Post,
+            $"/api/v2/files/company/upload?folderId={child}")
+            {Content=new ByteArrayContent(v1)})
+        {
+            upload.Headers.Add("X-File-Name",Uri.EscapeDataString(mark+".dat"));
+            file=(await Read(await client.SendAsync(upload)))
+                .GetProperty("fileId").GetInt64();
+        }
+        using(var version=new HttpRequestMessage(HttpMethod.Post,
+            $"/api/v2/files/company/{file}/versions")
+            {Content=new ByteArrayContent(v2)})
+        {
+            version.Headers.Add("X-File-Name",Uri.EscapeDataString(mark+"-v2.dat"));
+            await Read(await client.SendAsync(version));
+        }
+        long link=(await Links(client,"company",child))[0].GetProperty("id").GetInt64();
+        var m01=await Read(await client.PostAsJsonAsync(cert,new {
+            targetFolderId=0,targetSection="general",move=true,items=new[]{root}}));
+        Check(m01.GetProperty("ids")[0].GetInt64()==root &&
+              m01.GetProperty("targetSection").GetString()=="general" &&
+              m01.GetProperty("folders").GetInt32()==2,
+            "M01 cross-module root move preserves root identity and subtree");
+        var inGeneral=await Flat(client,"company","general");
+        var movedRoot=inGeneral.EnumerateArray().Single(x=>Id(x)==root);
+        var movedChild=inGeneral.EnumerateArray().Single(x=>Id(x)==child);
+        Check(movedRoot.GetProperty("folder").GetProperty("parent")
+                  .ValueKind==JsonValueKind.Null &&
+              movedChild.GetProperty("folder").GetProperty("parent")
+                  .GetProperty("id").GetInt64()==root &&
+              !(await Flat(client,"company","certificate"))
+                  .EnumerateArray().Any(x=>Id(x)==root||Id(x)==child),
+            "M01 root remains at NULL parent and all children change section");
+        var rootLink=(await Links(client,"company",child))[0];
+        Check(rootLink.GetProperty("id").GetInt64()==link &&
+              rootLink.GetProperty("fileId").GetInt64()==file,
+            "M01 FolderId, LinkId and FileId do not change");
+        for(int version=1;version<=2;version++)
+            Check((await client.GetByteArrayAsync(
+                $"/api/v2/files/company/{file}/versions/{version}/download"))
+                .SequenceEqual(version==1?v1:v2),
+                "M01 full version history remains byte-for-byte identical");
+
+        // M02: the exact same module and parent still reject a no-op move.
+        using(var same=await client.PostAsJsonAsync(general,new {
+            targetFolderId=0,targetSection="general",move=true,items=new[]{root}}))
+            Check(same.StatusCode==HttpStatusCode.Conflict,
+                "M02 unchanged module/root must reject a no-op move");
+        Check(Named(await Flat(client,"company","general"),mark+"证书根")
+                .GetProperty("folder").GetProperty("parent")
+                .ValueKind==JsonValueKind.Null,
+            "M02 rejected move must leave the root unchanged");
+
+        // M03: moving a nested source to another module root must move all
+        // descendants and retain an existing shared file's version history.
+        long achRoot=await Folder(client,"company","achievement",mark+"档案根");
+        long branch=await Folder(client,"company","achievement",mark+"档案枝",achRoot);
+        long leaf=await Folder(client,"company","achievement",mark+"档案叶",branch);
+        using(var attach=await client.PostAsJsonAsync(
+            $"/api/v2/files/company/{file}/associate",
+            new NativeFileAssociateInput(link,branch,false)))
+            attach.EnsureSuccessStatusCode();
+        long branchLink=(await Links(client,"company",branch))[0]
+            .GetProperty("id").GetInt64();
+        var m03=await Read(await client.PostAsJsonAsync(achievement,new {
+            targetFolderId=0,targetSection="general",move=true,items=new[]{branch}}));
+        Check(m03.GetProperty("ids")[0].GetInt64()==branch &&
+              m03.GetProperty("folders").GetInt32()==2,
+            "M03 nested source moves to a different module root");
+        inGeneral=await Flat(client,"company","general");
+        Check(inGeneral.EnumerateArray().Single(x=>Id(x)==branch)
+                  .GetProperty("folder").GetProperty("parent")
+                  .ValueKind==JsonValueKind.Null &&
+              inGeneral.EnumerateArray().Single(x=>Id(x)==leaf)
+                  .GetProperty("folder").GetProperty("parent")
+                  .GetProperty("id").GetInt64()==branch &&
+              (await Flat(client,"company","achievement"))
+                  .EnumerateArray().Any(x=>Id(x)==achRoot) &&
+              (await Links(client,"company",branch))[0]
+                  .GetProperty("id").GetInt64()==branchLink,
+            "M03 child hierarchy, original parent and LinkId are correct");
+        Check((await client.GetByteArrayAsync(
+                $"/api/v2/files/company/{file}/versions/1/download")).SequenceEqual(v1) &&
+              (await client.GetByteArrayAsync(
+                $"/api/v2/files/company/{file}/versions/2/download")).SequenceEqual(v2),
+            "M03 historical file contents remain readable");
+
+        // M04: two top-level roots transfer atomically to another module root.
+        long batchA=await Folder(client,"company","certificate",mark+"批量甲");
+        long batchChild=await Folder(client,"company","certificate",mark+"批量子",batchA);
+        long batchB=await Folder(client,"company","certificate",mark+"批量乙");
+        var m04=await Read(await client.PostAsJsonAsync(cert,new {
+            targetFolderId=0,targetSection="general",move=true,
+            items=new[]{batchA,batchB}}));
+        Check(m04.GetProperty("ids").EnumerateArray().Select(x=>x.GetInt64())
+                  .SequenceEqual(new[]{batchA,batchB}) &&
+              m04.GetProperty("folders").GetInt32()==3,
+            "M04 two roots and nested child move in one batch");
+        inGeneral=await Flat(client,"company","general");
+        Check(new[]{batchA,batchB}.All(id=>inGeneral.EnumerateArray()
+                  .Single(x=>Id(x)==id).GetProperty("folder")
+                  .GetProperty("parent").ValueKind==JsonValueKind.Null) &&
+              inGeneral.EnumerateArray().Single(x=>Id(x)==batchChild)
+                  .GetProperty("folder").GetProperty("parent")
+                  .GetProperty("id").GetInt64()==batchA,
+            "M04 both roots and descendant appear in target section");
+
+        // M05: actual same-name collision at the destination root rejects.
+        long conflictSource=await Folder(client,"company","certificate",mark+"冲突");
+        long conflictTarget=await Folder(client,"company","general",mark+"冲突");
+        using(var clash=await client.PostAsJsonAsync(cert,new {
+            targetFolderId=0,targetSection="general",move=true,
+            items=new[]{conflictSource}}))
+            Check(clash.StatusCode==HttpStatusCode.Conflict,
+                "M05 target root same-name collision must reject");
+        Check((await Flat(client,"company","certificate")).EnumerateArray()
+                  .Any(x=>Id(x)==conflictSource) &&
+              (await Flat(client,"company","general")).EnumerateArray()
+                  .Any(x=>Id(x)==conflictTarget),
+            "M05 both original folders remain after collision");
+
+        // M06: fail on the SECOND root update after the first root update.
+        // Checking the rollback-specific error also proves the trigger fired,
+        // rather than accidentally treating the old false no-op as a pass.
+        long failA=await Folder(client,"company","certificate",mark+"故障甲");
+        long failB=await Folder(client,"company","certificate",mark+"故障乙");
+        using(var create=vault.Db.CreateCommand())
+        {
+            create.CommandText=$"""
+                CREATE TEMP TRIGGER fail_root_batch
+                BEFORE UPDATE OF section ON folders
+                WHEN OLD.id={failB} AND NEW.section='general'
+                BEGIN SELECT RAISE(ABORT,'injected second root failure'); END;
+                """;
+            create.ExecuteNonQuery();
+        }
+        try
+        {
+            using var failure=await client.PostAsJsonAsync(cert,new {
+                targetFolderId=0,targetSection="general",move=true,
+                items=new[]{failA,failB}});
+            string detail=await failure.Content.ReadAsStringAsync();
+            Check(failure.StatusCode==HttpStatusCode.Conflict &&
+                  detail.Contains("事务已回滚",StringComparison.Ordinal),
+                "M06 injected second update reached SQL transaction rollback");
+            var stillSource=await Flat(client,"company","certificate");
+            var noDestination=await Flat(client,"company","general");
+            Check(new[]{failA,failB}.All(id=>stillSource.EnumerateArray()
+                  .Any(x=>Id(x)==id)),
+                "M06 both roots remain in source after rollback");
+            Check(!new[]{failA,failB}.Any(id=>noDestination.EnumerateArray()
+                  .Any(x=>Id(x)==id)),
+                "M06 neither root persists in destination after rollback");
+        }
+        finally
+        {
+            using var drop=vault.Db.CreateCommand();
+            drop.CommandText="DROP TRIGGER IF EXISTS fail_root_batch;";
+            drop.ExecuteNonQuery();
+        }
+
+        // M07 and M08 preserve existing invalid-target and cycle guards.
+        using(var noProject=await client.PostAsJsonAsync(general,new {
+            targetFolderId=0,targetSection="project",move=true,items=new[]{root}}))
+            Check(noProject.StatusCode==HttpStatusCode.BadRequest,
+                "M07 virtual project root is never a folder target");
+        using(var self=await client.PostAsJsonAsync(general,new {
+            targetFolderId=root,targetSection="general",move=true,items=new[]{root}}))
+            Check(self.StatusCode==HttpStatusCode.BadRequest,
+                "M08 a folder cannot move into itself");
+        using(var descendant=await client.PostAsJsonAsync(general,new {
+            targetFolderId=child,targetSection="general",move=true,items=new[]{root}}))
+            Check(descendant.StatusCode==HttpStatusCode.BadRequest,
+                "M08 a folder cannot move into a descendant");
+        Check((await Flat(client,"company","general")).EnumerateArray()
+                  .Single(x=>Id(x)==root).GetProperty("folder")
+                  .GetProperty("parent").ValueKind==JsonValueKind.Null,
+            "M08 rejected self/descendant moves leave source unchanged");
+        Console.WriteLine("S1 M01-M08 ROOT MOVE SQLCIPHER HTTP PASS");
+    }
+
     private static async Task VerifyProjectDirectoriesAsync(HttpClient client,Vault vault)
     {
         string mark="PROJECT-DIR-"+Guid.NewGuid().ToString("N")[..8];
@@ -570,6 +766,7 @@ static class NativeFolderTreeTransferSmoke
             "source descendants are hidden with deleted ancestor");
         await VerifyFolderBatchAsync(client,vault);
         await VerifyCrossSectionFolderMoveAsync(client,vault);
+        await VerifyCrossModuleRootMovesAsync(client,vault);
         await VerifyProjectDirectoriesAsync(client,vault);
         Console.WriteLine("FOLDER TREE TRANSFER SMOKE PASS");
     }
