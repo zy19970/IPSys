@@ -597,3 +597,7 @@ CI #506 run41623186950首次通过编译、MCP和早期UI检查，但新测试�
 **用户本轮原话**：“继续推进”。接续第十二轮确认的方向，读取AIGT三份必读、主分支3ede1c74、Memory和最近会话；通知已发送 office-renderer/wechat-webhook#2190（restarted）。
 **产品设计与修改**：项目继续kind=project；项目直属和所有下级普通文件夹统一kind=archive_folder、section=project，必须指定真实项目或同区子目录parent_id。数据库schema、父级触发器（包含section变更校验）、ResourceRef、NativeArchiveStore/Order、Explorer快照、JS目录树和右键新建统一，保留项目直接上传附件。跨目录选择器可选项目节点或其内部目录，不允许虚拟k:project根；单/多文件夹移动共享仍使用单SQLCipher事务并保留FolderId/LinkId/FileId/版本。MCP list/create/update/move/transfer_folder支持project范围和必填父级。跨工作区项目复制递归克隆project子树及附件所有版本（独立物理内容），项目永久删除递归清理项目archive_folder子树同时保护外部共享FileId；ZIP路径包含项目与嵌套普通目录。更新资料、Agent与开发者wiki和前端/SQLCipher/HTTP测试，既有旧业务合同接口不作为前端子目录，旧测试数据无需迁移，未动用户本地数据库和正式Release。
 **本轮代码交付状态**：此提交为首轮产品变更，将由同SHA Windows CI编译、Node/UI、SQLCipher/HTTP、MCP、双EXE检查。提交前静态JS语法检查通过；此时不能宣称完整测试通过，如CI失败应按实证修复并补记，保证最终产品SHA有成功CI。最近会话路径 `memory/sessions/2026-11-03-IPSys项目整体认知复盘.md`，第十三轮。
+
+
+## 2026-11-04 第十四轮：Windows CI #517 前端时间戳旧断言修复与验收继续
+用户本轮原话：“继续推进”。继续第十三轮提交的项目内普通文件夹重构。已重读AIGT三项规则及最新MEMORY/会话，确认main产品SHA=7af79a58a0201e116efd33d2895b70f9f5f44f81、rulesets=[]。Windows CI #517 (run 41777836030) 的 Debug、SQLCipher/HTTP综合烟测、前置Release构建通过，Verify UI and capability smoke tests阶段失败；从实际日志看到第一个失败是`modification-time-smoke.cjs:42`查找旧合同子节点`c.modifiedAt`，该合同已不再作为项目目录树节点。目标修复仅更改对应测试循环，保留项目p、知识产权row与文件f的真实更新时间检查，未恢复已废弃的旧合同树。任务重新开始通知office-renderer/wechat-webhook#2194。本轮首次产品修复提交后必须继续核查新SHA的Windows CI并按结果收敛；尚不能宣称整套CI通过。当前用户本机数据库与正式Release未操作。当前会话`memory/sessions/2026-11-03-IPSys项目整体认知复盘.md`第十四轮。

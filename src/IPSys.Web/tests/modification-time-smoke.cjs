@@ -38,7 +38,7 @@ assert.ok(!app.includes("isFolder && it.dateLabel"),
 assert.match(store,/mtime:\s*toTs\(f\.modifiedAt\)/,
   "file nodes should take per-version backend time");
 /* A02/N2：资料/综合资料已是普通文件夹，只保留真实存在的映射来源。 */
-for(const symbol of ["c","p","row","f"]){
+for(const symbol of ["p","row","f"]){
   assert.ok(store.includes("toTs("+symbol+".modifiedAt)"),
     "missing folder/record timestamp mapping "+symbol);
 }
