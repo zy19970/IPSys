@@ -1,9 +1,9 @@
 using Microsoft.Data.Sqlite;
 
-// SQLCipher V3: project, IP and ordinary folders; no legacy migrations.
+// SQLCipher V4: safe section migration of tombstoned descendants; no legacy migrations.
 static class ResourceSchemaV2
 {
-    public const long Version = 3;
+    public const long Version = 4;
 
     public static void Create(SqliteConnection db)
     {
@@ -12,8 +12,8 @@ static class ResourceSchemaV2
         cmd.Transaction = tx;
         cmd.CommandText = """
             CREATE TABLE resource_schema_version(
-              id INTEGER PRIMARY KEY CHECK(id=1),version INTEGER NOT NULL CHECK(version=3));
-            INSERT INTO resource_schema_version VALUES(1,3);
+              id INTEGER PRIMARY KEY CHECK(id=1),version INTEGER NOT NULL CHECK(version=4));
+            INSERT INTO resource_schema_version VALUES(1,4);
 
             CREATE TABLE folders(
               id INTEGER PRIMARY KEY,
@@ -60,7 +60,13 @@ static class ResourceSchemaV2
             WHEN NEW.parent_id IS NOT NULL BEGIN
               SELECT RAISE(ABORT,'invalid folder parent') WHERE NOT EXISTS(
                 SELECT 1 FROM folders p
-                WHERE p.id=NEW.parent_id AND p.workspace=NEW.workspace AND p.deleted=0
+                WHERE p.id=NEW.parent_id AND p.workspace=NEW.workspace
+                  AND (p.deleted=0 OR
+                       (p.deleted=1 AND p.kind='archive_folder'
+                        AND NEW.kind='archive_folder'
+                        AND NEW.parent_id IS OLD.parent_id
+                        AND NEW.section<>OLD.section
+                        AND NEW.deleted=OLD.deleted))
                   AND (NEW.kind='archive_folder' AND
                         ((p.kind='archive_folder' AND p.section=NEW.section)
                          OR (p.kind='project' AND NEW.section='project')))
@@ -299,7 +305,9 @@ static class ResourceSchemaV2
             string parent=Definition("trigger","folder_parent_update");
             if(!parent.Contains("NEW.section",StringComparison.Ordinal) ||
                !parent.Contains("p.kind='project'",StringComparison.Ordinal) ||
-               !parent.Contains("folder cycle",StringComparison.Ordinal))
+               !parent.Contains("folder cycle",StringComparison.Ordinal) ||
+               !parent.Contains("NEW.parent_id IS OLD.parent_id",StringComparison.Ordinal) ||
+               !parent.Contains("p.deleted=1",StringComparison.Ordinal))
                 throw new IOException("资料库结构不完整：项目目录父级约束无效。");
             if(!Definition("trigger","folder_modified_business")
                 .Contains("NEW.section",StringComparison.Ordinal))

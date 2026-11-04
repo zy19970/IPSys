@@ -5,7 +5,7 @@ const fs=require("node:fs");
 const EXPECTED=Object.freeze({
   http:Object.freeze([
     "T-P0-01#backend","T-P0-02#api","T-P0-03","T-P0-05",
-    "T-P1-02#cascade","T-P1-03","T-P1-04","T-P1-05","T-P1-07",
+    "T-P1-02#cascade","T-P1-03","R1-HTTP","R1-PURGE","T-P1-04","T-P1-05","T-P1-07",
     "T-P2-07","T-P2-12","R-03","R-05"
   ]),
   browser:Object.freeze([

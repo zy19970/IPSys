@@ -12,6 +12,46 @@ static class NativeFolderBatchTransferEndpoints
     private sealed record TreeEntry(FolderSnapshot Snapshot,
         IReadOnlyList<NativeFolderFileLink> Links);
 
+    // Move uses the complete owned subtree, including recycled directories.
+    // Share/copy intentionally continues to operate on active content only.
+    private static IReadOnlyList<long> PhysicalMoveTree(SqliteConnection db,
+        string workspace,string section,long root,CancellationToken stop)
+    {
+        using var cmd=db.CreateCommand();
+        cmd.CommandText="""
+            WITH RECURSIVE owned(id,depth) AS (
+              SELECT id,0 FROM folders WHERE id=$root AND workspace=$w
+              UNION ALL
+              SELECT child.id,owned.depth+1 FROM folders child
+                JOIN owned ON child.parent_id=owned.id
+              WHERE child.workspace=$w AND owned.depth<10000
+            )
+            SELECT f.id,f.kind,f.section FROM owned
+            JOIN folders f ON f.id=owned.id AND f.workspace=$w
+            ORDER BY owned.depth,f.id;
+            """;
+        cmd.Parameters.AddWithValue("$root",root);
+        cmd.Parameters.AddWithValue("$w",workspace);
+        var result=new List<long>();
+        var seen=new HashSet<long>();
+        using var rd=cmd.ExecuteReader();
+        while(rd.Read())
+        {
+            stop.ThrowIfCancellationRequested();
+            long id=rd.GetInt64(0);
+            if(!seen.Add(id) || rd.GetString(1)!=FolderKinds.ArchiveFolder ||
+               rd.GetString(2)!=section)
+                throw new TransferRejection(
+                    "来源文件夹物理子树归属异常，全部移动已取消。",409);
+            result.Add(id);
+            if(result.Count>10000)
+                throw new TransferRejection("单次操作最多包含10000个文件夹。",400);
+        }
+        if(result.Count==0 || result[0]!=root)
+            throw new TransferRejection("来源文件夹已发生变化，请刷新重试。",409);
+        return result;
+    }
+
     internal sealed record BatchOutcome(bool Moved,string SourceSection,
         string TargetSection,int Count,int Folders,int Links,long[] Ids);
     internal sealed class TransferRejection(string message,int status):Exception(message)
@@ -86,33 +126,25 @@ static class NativeFolderBatchTransferEndpoints
                 trees.Add(entries);
             }
 
-            // Tombstoned children are intentionally absent from ListAll.
-            // Moving an active ancestor to another section without them would
-            // strand those children and prevent later restore or purge.
-            // Until a section-aware tombstone migration is supported, reject
-            // the whole operation before opening a write transaction.
+            // Complete physical descendants are required for cross-section
+            // moves so that restored tombstones remain inside their ancestor.
+            // Read and validate every selected subtree before any mutation.
+            var physicalMoves=new List<IReadOnlyList<long>>();
             if(input.Move && targetSection!=section)
             {
-                using var count=db.CreateCommand();
-                count.CommandText="""
-                    WITH RECURSIVE owned(id) AS (
-                      SELECT id FROM folders WHERE workspace=$w AND id=$root
-                      UNION
-                      SELECT child.id FROM folders child JOIN owned
-                        ON child.parent_id=owned.id AND child.workspace=$w
-                    )
-                    SELECT COUNT(*) FROM owned;
-                    """;
-                count.Parameters.AddWithValue("$w",workspace);
-                var rootParam=count.Parameters.Add("$root",SqliteType.Integer);
-                for(int i=0;i<trees.Count;i++)
+                var acrossAllRoots=new HashSet<long>();
+                foreach(long root in ids)
                 {
-                    stop.ThrowIfCancellationRequested();
-                    rootParam.Value=ids[i];
-                    long physical=Convert.ToInt64(count.ExecuteScalar());
-                    if(physical!=trees[i].Count)
-                        throw new TransferRejection(
-                            "所选文件夹包含回收站中的子目录，请先恢复或永久清理后再跨模块移动。",409);
+                    var full=PhysicalMoveTree(db,workspace,section,root,stop);
+                    foreach(long node in full)
+                    {
+                        if(!acrossAllRoots.Add(node))
+                            throw new TransferRejection(
+                                "所选目录的完整子树互相包含，请只选最上层文件夹。",400);
+                        if(acrossAllRoots.Count>10000)
+                            throw new TransferRejection("单次操作最多包含10000个文件夹。",400);
+                    }
+                    physicalMoves.Add(full);
                 }
             }
 
@@ -175,22 +207,21 @@ static class NativeFolderBatchTransferEndpoints
                         childUpdate.CommandText="""
                             UPDATE folders SET section=$targetSection
                             WHERE id=$id AND workspace=$w
-                              AND kind='archive_folder' AND section=$sourceSection
-                              AND deleted=0;
+                              AND kind='archive_folder' AND section=$sourceSection;
                             """;
                         childUpdate.Parameters.AddWithValue("$targetSection",targetSection);
                         childUpdate.Parameters.AddWithValue("$sourceSection",section);
                         childUpdate.Parameters.AddWithValue("$w",workspace);
                         var childId=childUpdate.Parameters.Add("$id",SqliteType.Integer);
-                        foreach(var entry in tree.Skip(1))
+                        foreach(long descendant in physicalMoves[groupIndex].Skip(1))
                         {
                             stop.ThrowIfCancellationRequested();
-                            childId.Value=entry.Snapshot.Folder.Ref.Id;
+                            childId.Value=descendant;
                             if(childUpdate.ExecuteNonQuery()!=1)
                                 throw new InvalidOperationException("子目录已发生变化，全部移动已回滚。");
                         }
                     }
-                    folders+=tree.Count;
+                    folders+=targetSection==section?tree.Count:physicalMoves[groupIndex].Count;
                     targets.Add(root);
                     continue;
                 }

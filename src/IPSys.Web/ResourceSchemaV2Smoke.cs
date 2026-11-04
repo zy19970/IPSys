@@ -1,13 +1,13 @@
 using Microsoft.Data.Sqlite;
 
-// Disposable encrypted V3 vault only; open validation must not mutate an older vault.
+// Disposable encrypted V4 vault only; open validation must not mutate an older vault.
 static class ResourceSchemaV2Smoke
 {
     public static void Run()
     {
         static void Check(bool ok,string message)
         {
-            if(!ok)throw new IOException("RESOURCE V3 SQLCIPHER SMOKE: "+message);
+            if(!ok)throw new IOException("RESOURCE V4 SQLCIPHER SMOKE: "+message);
         }
         static long Scalar(SqliteConnection db,string sql)
         {
@@ -48,22 +48,22 @@ static class ResourceSchemaV2Smoke
         }
 
         string path=Path.Combine(Path.GetTempPath(),
-            "ipsys-schema3-"+Guid.NewGuid().ToString("N")+".db");
+            "ipsys-schema4-"+Guid.NewGuid().ToString("N")+".db");
         try
         {
             long project,projectDir,child,file,objectId,link;
-            using(var db=Vault.Connect(path,"schema3-test-key",create:true))
+            using(var db=Vault.Connect(path,"schema4-test-key",create:true))
             {
                 Vault.CreateSchema(db);
                 Vault.ValidateSchema(db);
-                Check(Scalar(db,"SELECT version FROM resource_schema_version WHERE id=1;")==3,
-                    "new vault schema version is exactly 3");
+                Check(Scalar(db,"SELECT version FROM resource_schema_version WHERE id=1;")==4,
+                    "new vault schema version is exactly 4");
                 Check(Scalar(db,"SELECT count(*) FROM folders WHERE kind='archive_folder' AND is_system=0;")==7,
                     "seven ordinary editable initial folders");
                 Check(Scalar(db,"SELECT count(*) FROM folders WHERE kind='contract';")==0,
-                    "new V3 vault has no independent contract rows");
+                    "new V4 vault has no independent contract rows");
                 Check(Sql(db,"table","folders")?.Contains("'contract'")==false,
-                    "V3 CHECK cannot admit retired contract kind");
+                    "V4 CHECK cannot admit retired contract kind");
                 Check(Sql(db,"trigger","folder_modified_business")?.Contains("section") == true,
                     "new creation transaction already installs section-aware modified timestamp");
                 Check(Sql(db,"trigger","chunk_delete_ready")?.Contains("file_versions")==true,
@@ -121,7 +121,7 @@ static class ResourceSchemaV2Smoke
                 Vault.ValidateSchema(db);
                 Check(Scalar(db,"SELECT total_changes();")==before &&
                       Sql(db,"table","folders")==schemaBefore,
-                    "V3 validation has no writes or DDL changes");
+                    "V4 validation has no writes or DDL changes");
                 using(var cmd=db.CreateCommand())
                 {
                     cmd.CommandText="DELETE FROM folders WHERE workspace='company' AND kind='archive_folder' AND name='其他业务资料';";
@@ -143,8 +143,9 @@ static class ResourceSchemaV2Smoke
                 Check(Scalar(db,$"SELECT count(*) FROM folders WHERE id={root} AND section='general' AND modified_at IS NOT NULL;")==1,
                     "cross-module root modification timestamp is available");
 
-                // R1: a tombstoned child and its hidden active descendant
-                // must never be orphaned by cross-section moving the ancestor.
+
+                // R1: move the complete physical tree, even when a recycled
+                // middle folder hides an otherwise active grandchild.
                 long r1Project=Id(db,"INSERT INTO folders(workspace,kind,name) VALUES('company','project','R1 测试项目')");
                 long d1=Id(db,$"INSERT INTO folders(workspace,kind,section,parent_id,name) VALUES('company','archive_folder','project',{r1Project},'R1 一级')");
                 long d2=Id(db,$"INSERT INTO folders(workspace,kind,section,parent_id,name) VALUES('company','archive_folder','project',{d1},'R1 二级')");
@@ -152,69 +153,97 @@ static class ResourceSchemaV2Smoke
                 long r1Link=Id(db,$"INSERT INTO folder_file_links(workspace,folder_id,file_id) VALUES('company',{d3},{file})");
                 Check(NativeArchiveStore.SetDeleted(db,ResourceRef.Create("company",
                     FolderKinds.ArchiveFolder,d2,"project"),true),
-                    "R1 tombstone only the middle folder");
-                bool refused=false;
+                    "R1 tombstone only middle folder (grandchild remains active)");
+                // The new parent trigger must not permit arbitrary edits
+                // beneath a recycled ancestor; it only allows section migration.
+                Reject(db,$"UPDATE folders SET parent_id={d2} WHERE id={d3}",
+                    "R1 deleted parent cannot be used for ordinary reparenting");
+
+                // Fail precisely on the third node, after root and recycled D2
+                // have been updated: transaction must roll back all three.
+                using(var fault=db.CreateCommand())
+                {
+                    fault.CommandText=$"""
+                        CREATE TEMP TRIGGER r1_fail_third BEFORE UPDATE OF section
+                        ON main.folders WHEN NEW.id={d3} BEGIN
+                          SELECT RAISE(ABORT,'R1 fault injection');
+                        END;
+                        """;
+                    fault.ExecuteNonQuery();
+                }
+                bool rolledBack=false;
                 try
                 {
                     NativeFolderBatchTransferEndpoints.Execute(db,"company","project",
                         new FolderBatchTransferInput(0,true,new[]{d1},"general"),
                         CancellationToken.None);
                 }
-                catch(NativeFolderBatchTransferEndpoints.TransferRejection ex)
-                    when(ex.Status==409){refused=true;}
-                Check(refused,"R1 cross-section move with hidden descendants refused");
-                Check(Scalar(db,$"SELECT count(*) FROM folders WHERE id IN ({d1},{d2},{d3}) AND section='project';")==3 &&
-                      Scalar(db,$"SELECT count(*) FROM folders WHERE id={d2} AND deleted=1;")==1 &&
-                      Scalar(db,$"SELECT count(*) FROM folders WHERE id={d3} AND deleted=0;")==1,
-                    "R1 rejected move leaves complete lineage and tombstone unchanged");
+                catch(SqliteException){rolledBack=true;}
+                finally
+                {
+                    using var drop=db.CreateCommand();
+                    drop.CommandText="DROP TRIGGER IF EXISTS temp.r1_fail_third;";
+                    drop.ExecuteNonQuery();
+                }
+                Check(rolledBack &&
+                      Scalar(db,$"SELECT count(*) FROM folders WHERE id IN ({d1},{d2},{d3}) AND section='project';")==3 &&
+                      Scalar(db,$"SELECT count(*) FROM folders WHERE id={d2} AND deleted=1;")==1,
+                    "R1 injected failure rolls back root, recycled child and grandchild");
                 Check(Scalar(db,$"SELECT count(*) FROM folder_file_links WHERE id={r1Link} AND folder_id={d3} AND file_id={file};")==1 &&
                       Scalar(db,$"SELECT count(*) FROM file_versions WHERE file_id={file};")==2,
-                    "R1 rejection keeps FileId, LinkId and both history versions");
-                Check(RecycleStore.Change(db,"company",
-                    new[]{new RecycleKey("v2_archive_folder",d2,"project")},false),
-                    "R1 restore still works at original project");
+                    "R1 rollback preserves LinkId/FileId and both historical versions");
+
                 var accepted=NativeFolderBatchTransferEndpoints.Execute(db,
                     "company","project",
                     new FolderBatchTransferInput(0,true,new[]{d1},"general"),
                     CancellationToken.None);
-                Check(accepted.Moved && Scalar(db,$"SELECT count(*) FROM folders WHERE id IN ({d1},{d2},{d3}) AND section='general' AND deleted=0;")==3,
-                    "R1 restored complete subtree can move to general");
-                Check(NativeArchiveStore.ListAll(db,"company","general")
-                    .Any(x=>x.Folder.Ref.Id==d3),
-                    "R1 third-level directory remains visible after safe move");
+                Check(accepted.Moved && accepted.Folders==3 &&
+                      Scalar(db,$"SELECT count(*) FROM folders WHERE id IN ({d1},{d2},{d3}) AND section='general';")==3 &&
+                      Scalar(db,$"SELECT count(*) FROM folders WHERE id={d2} AND deleted=1;")==1 &&
+                      Scalar(db,$"SELECT count(*) FROM folders WHERE id={d3} AND deleted=0;")==1,
+                    "R1 project-to-general moves tombstoned and hidden descendants without restoring");
+                Check(RecycleStore.List(db,"company").Any(x=>
+                    x.Kind=="v2_archive_folder" && x.Id==d2 && x.Section=="general"),
+                    "R1 recycled child appears in destination module trash");
+                Check(Scalar(db,$"SELECT count(*) FROM folder_file_links WHERE id={r1Link} AND folder_id={d3} AND file_id={file};")==1 &&
+                      Scalar(db,$"SELECT count(*) FROM file_versions WHERE file_id={file};")==2,
+                    "R1 successful move retains original attachment identity and version history");
+                Check(RecycleStore.Change(db,"company",
+                    new[]{new RecycleKey("v2_archive_folder",d2,"general")},false),
+                    "R1 restore recycled child in destination module");
+                Check(Scalar(db,$"SELECT count(*) FROM folders WHERE id IN ({d1},{d2},{d3}) AND section='general' AND deleted=0;")==3 &&
+                      NativeArchiveStore.ListAll(db,"company","general")
+                        .Any(x=>x.Folder.Ref.Id==d3),
+                    "R1 restored third-level child is visible in destination tree");
 
                 long g1=Id(db,"INSERT INTO folders(workspace,kind,section,name) VALUES('company','archive_folder','general','R1 清理一级')");
                 long g2=Id(db,$"INSERT INTO folders(workspace,kind,section,parent_id,name) VALUES('company','archive_folder','general',{g1},'R1 清理二级')");
                 long g3=Id(db,$"INSERT INTO folders(workspace,kind,section,parent_id,name) VALUES('company','archive_folder','general',{g2},'R1 清理三级')");
                 Check(NativeArchiveStore.SetDeleted(db,ResourceRef.Create("company",
                     FolderKinds.ArchiveFolder,g2,"general"),true),
-                    "R1 general tombstone setup");
-                refused=false;
-                try
-                {
-                    NativeFolderBatchTransferEndpoints.Execute(db,"company","general",
-                        new FolderBatchTransferInput(0,true,new[]{g1},"achievement"),
-                        CancellationToken.None);
-                }
-                catch(NativeFolderBatchTransferEndpoints.TransferRejection ex)
-                    when(ex.Status==409){refused=true;}
-                Check(refused &&
-                      Scalar(db,$"SELECT count(*) FROM folders WHERE id IN ({g1},{g2},{g3}) AND section='general';")==3,
-                    "R1 general-to-achievement protected from hidden lineage");
+                    "R1 tombstone general child before second cross-section move");
+                var moved=NativeFolderBatchTransferEndpoints.Execute(db,"company","general",
+                    new FolderBatchTransferInput(0,true,new[]{g1},"achievement"),
+                    CancellationToken.None);
+                Check(moved.Moved && moved.Folders==3 &&
+                      Scalar(db,$"SELECT count(*) FROM folders WHERE id IN ({g1},{g2},{g3}) AND section='achievement';")==3 &&
+                      Scalar(db,$"SELECT count(*) FROM folders WHERE id={g2} AND deleted=1;")==1,
+                    "R1 general-to-achievement preserves all physical descendants");
                 Check(NativeArchiveStore.SetDeleted(db,ResourceRef.Create("company",
-                    FolderKinds.ArchiveFolder,g1,"general"),true),
-                    "R1 delete ancestor after refused move");
+                    FolderKinds.ArchiveFolder,g1,"achievement"),true),
+                    "R1 recycle destination root");
                 Check(RecycleStore.Change(db,"company",
-                    new[]{new RecycleKey("v2_archive_folder",g1,"general")},true) &&
+                    new[]{new RecycleKey("v2_archive_folder",g1,"achievement")},true) &&
                       Scalar(db,$"SELECT count(*) FROM folders WHERE id IN ({g1},{g2},{g3});")==0,
-                    "R1 permanent purge still cleans complete original subtree");
+                    "R1 permanent purge removes entire destination subtree");
+
             }
 
-            using(var reopened=Vault.Connect(path,"schema3-test-key",create:false))
+            using(var reopened=Vault.Connect(path,"schema4-test-key",create:false))
             {
                 Vault.ValidateSchema(reopened);
-                Check(Scalar(reopened,"SELECT version FROM resource_schema_version;")==3,
-                    "reopen preserves V3 schema version");
+                Check(Scalar(reopened,"SELECT version FROM resource_schema_version;")==4,
+                    "reopen preserves V4 schema version");
                 Check(Scalar(reopened,$"SELECT count(*) FROM file_versions WHERE file_id={file};")==2 &&
                       Scalar(reopened,$"SELECT count(*) FROM folder_file_links WHERE id={link};")==1,
                     "both file versions and stable LinkId survive reopened validation");
@@ -226,21 +255,21 @@ static class ResourceSchemaV2Smoke
         }
         finally{Clean(path);}
 
-        // Two distinct V2-style schemas: an older ordinary-folder scope and
-        // a legacy contract-per-project schema. Both are refused untouched.
-        for(int fixture=0;fixture<2;fixture++)
+        // Legacy V2 directory/contract schema and prior V3 directory schema
+        // must be refused without any automatic migration or repair.
+        for(int fixture=0;fixture<3;fixture++)
         {
             string legacyPath=Path.Combine(Path.GetTempPath(),
-                "ipsys-v2-refuse-"+Guid.NewGuid().ToString("N")+".db");
+                "ipsys-prior-schema-refuse-"+Guid.NewGuid().ToString("N")+".db");
             try
             {
                 using var db=Vault.Connect(legacyPath,"old-schema-test-key",create:true);
                 using var setup=db.CreateCommand();
                 setup.CommandText=$"""
                     CREATE TABLE resource_schema_version(id INTEGER PRIMARY KEY,version INTEGER);
-                    INSERT INTO resource_schema_version VALUES(1,2);
+                    INSERT INTO resource_schema_version VALUES(1,{(fixture==2?3:2)});
                     CREATE TABLE folders(id INTEGER PRIMARY KEY,kind TEXT,section TEXT,deleted INTEGER);
-                    INSERT INTO folders(kind,section,deleted) VALUES('{(fixture==0?"archive_folder":"contract")}','{(fixture==0?"achievement":"")}',1);
+                    INSERT INTO folders(kind,section,deleted) VALUES('{(fixture==1?"contract":"archive_folder")}','{(fixture==1?"":"achievement")}',1);
                     """;
                 setup.ExecuteNonQuery();
                 long before=Scalar(db,"SELECT total_changes();");
@@ -249,7 +278,7 @@ static class ResourceSchemaV2Smoke
                 try{Vault.ValidateSchema(db);}
                 catch(IOException ex)when(ex.Message.Contains("新建资料库",StringComparison.Ordinal))
                 {blocked=true;}
-                Check(blocked,"both legacy V2 structures are explicitly rejected");
+                Check(blocked,"both legacy V2 structures and prior V3 are explicitly rejected");
                 Check(Scalar(db,"SELECT total_changes();")==before &&
                       Sql(db,"table","folders")==definition &&
                       Scalar(db,"SELECT count(*) FROM folders WHERE deleted=1;")==1,
@@ -259,7 +288,7 @@ static class ResourceSchemaV2Smoke
         }
 
         string brokenPath=Path.Combine(Path.GetTempPath(),
-            "ipsys-v3-invalid-"+Guid.NewGuid().ToString("N")+".db");
+            "ipsys-v4-invalid-"+Guid.NewGuid().ToString("N")+".db");
         try
         {
             using var db=Vault.Connect(brokenPath,"broken-schema-key",create:true);
@@ -274,12 +303,12 @@ static class ResourceSchemaV2Smoke
             try{Vault.ValidateSchema(db);}
             catch(IOException ex)when(ex.Message.Contains("结构不完整",StringComparison.Ordinal))
             {blocked=true;}
-            Check(blocked,"V3 missing a required timestamp trigger is rejected");
+            Check(blocked,"V4 missing a required timestamp trigger is rejected");
             Check(Scalar(db,"SELECT total_changes();")==before &&
                   Sql(db,"trigger","folder_modified_business") is null,
                 "validation does not silently recreate a missing trigger");
         }
         finally{Clean(brokenPath);}
-        Console.WriteLine("RESOURCE V3 SQLCIPHER SMOKE PASS");
+        Console.WriteLine("RESOURCE V4 SQLCIPHER SMOKE PASS");
     }
 }

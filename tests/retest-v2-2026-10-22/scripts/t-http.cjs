@@ -205,6 +205,96 @@ async function must(label, p, body) {
       "复制/转移有 UI 入口；后端可用不能当 UI 通过");
   }
 
+  /* ---------------- R1-HTTP 跨模块完整墓碑子树 ---------------- */
+  {
+    const section = "project";
+    const root = await must("R1 create D1", "/api/v2/folders/company/archive_folder", {
+      Section: section, ArchiveFolder: { Name: "R1_HTTP_D1_" + RUNID, ParentId: fx.company.projectA }
+    });
+    const mid = await must("R1 create D2", "/api/v2/folders/company/archive_folder", {
+      Section: section, ArchiveFolder: { Name: "R1_HTTP_D2_" + RUNID, ParentId: root.id }
+    });
+    const leaf = await must("R1 create D3", "/api/v2/folders/company/archive_folder", {
+      Section: section, ArchiveFolder: { Name: "R1_HTTP_D3_" + RUNID, ParentId: mid.id }
+    });
+    const one=Buffer.from("R1 first "+RUNID),two=Buffer.from("R1 second "+RUNID);
+    const link=await L.upload(leaf.id,"R1_HTTP.txt",one);
+    const beforeLinks=await L.get(`/api/v2/files/company/folders/${leaf.id}/links?includeDeleted=false`);
+    const beforeList=Array.isArray(beforeLinks.data)?beforeLinks.data:beforeLinks.data?.items||[];
+    const originalLink=beforeList.find(x=>Number(x.fileId)===Number(link.fileId));
+    const originalLinkId=originalLink?.id??originalLink?.linkId;
+    if(!originalLinkId)throw Error("R1 original LinkId missing");
+    await L.addVersion("company",link.fileId,"R1_HTTP_v2.txt",two);
+    const tombstone=await L.del(`/api/v2/folders/company/archive_folder/${mid.id}?section=project`);
+    const moved=await L.post("/api/v2/ui/folders/company/project/transfer-batch",{
+      TargetFolderId:0,TargetSection:"general",Move:true,Items:[root.id]
+    });
+    const trash=(await L.get("/api/trash/company")).data;
+    const inTrash=Array.isArray(trash) && trash.some(x=>
+      x.kind==="v2_archive_folder"&&x.id===mid.id&&x.section==="general");
+    const restore=await L.post("/api/trash/company/restore",{
+      items:[{kind:"v2_archive_folder",id:mid.id,section:"general"}]
+    });
+    const ar=(await L.get("/api/v2/ui/folders/company")).data;
+    const ids=[root.id,mid.id,leaf.id];
+    const found=ids.map(id=>ar.folders.find(f=>f.id===id));
+    const parents=found[0]?.parentId==null &&
+      found[1]?.parentId===root.id && found[2]?.parentId===mid.id;
+    const allGeneral=found.every(f=>f?.section==="general");
+    const links=await L.get(`/api/v2/files/company/folders/${leaf.id}/links`);
+    const fileLinks=Array.isArray(links.data)?links.data:links.data?.items||[];
+    const sameFile=fileLinks.some(x=>Number(x.fileId)===Number(link.fileId) &&
+      Number(x.id??x.linkId)===Number(originalLinkId));
+    const v1=await L.call("GET",`/api/v2/files/company/${link.fileId}/versions/1/download`,{raw:true});
+    const v2=await L.call("GET",`/api/v2/files/company/${link.fileId}/versions/2/download`,{raw:true});
+    const bytes1=v1.ok?Buffer.from(await v1.arrayBuffer()):Buffer.alloc(0);
+    const bytes2=v2.ok?Buffer.from(await v2.arrayBuffer()):Buffer.alloc(0);
+    const ok=tombstone.ok && moved.ok && moved.data?.folders===3 &&
+      inTrash && restore.ok && allGeneral && parents && sameFile &&
+      bytes1.equals(one)&&bytes2.equals(two);
+    evFile("R1-HTTP",[
+      `D1=${root.id} D2(deleted)=${mid.id} D3(active)=${leaf.id}, FileId=${link.fileId}, LinkId=${originalLinkId}`,
+      `delete D2 ${tombstone.status}; move project->general ${moved.status}, moved physical folders=${moved.data?.folders}`,
+      `trash under general=${inTrash}; restore D2 ${restore.status}`,
+      `parent chain consistent=${parents}; all three section=general: ${allGeneral}`,
+      `FileId/LinkId preserved=${sameFile}; version bytes 1=${bytes1.equals(one)} 2=${bytes2.equals(two)}`
+    ].join("\n"));
+    rec("R1-HTTP","DYNAMIC-HTTP",ok?"PASS":"FAIL",
+      `move=${moved.status}, 3 descendants=${moved.data?.folders}, general trash=${inTrash}, restore=${restore.status}, allGeneral=${allGeneral}, versions match=${bytes1.equals(one)&&bytes2.equals(two)}`,
+      "带已删除中层目录与隐藏后代跨模块原位移动、恢复后仍可见且两历史版本及 FileId/LinkId 不变");
+
+    const g1=await must("R1 create general G1","/api/v2/folders/company/archive_folder",{
+      Section:"general",ArchiveFolder:{Name:"R1_HTTP_G1_"+RUNID}
+    });
+    const g2=await must("R1 create general G2","/api/v2/folders/company/archive_folder",{
+      Section:"general",ArchiveFolder:{Name:"R1_HTTP_G2_"+RUNID,ParentId:g1.id}
+    });
+    const g3=await must("R1 create general G3","/api/v2/folders/company/archive_folder",{
+      Section:"general",ArchiveFolder:{Name:"R1_HTTP_G3_"+RUNID,ParentId:g2.id}
+    });
+    const deletedG2=await L.del(`/api/v2/folders/company/archive_folder/${g2.id}?section=general`);
+    const toAchievement=await L.post("/api/v2/ui/folders/company/general/transfer-batch",{
+      TargetFolderId:0,TargetSection:"achievement",Move:true,Items:[g1.id]
+    });
+    const deletedG1=await L.del(`/api/v2/folders/company/archive_folder/${g1.id}?section=achievement`);
+    const purged=await L.post("/api/trash/company/purge",{
+      items:[{kind:"v2_archive_folder",id:g1.id,section:"achievement"}]
+    });
+    const after=(await L.get("/api/trash/company")).data;
+    const absent=Array.isArray(after)&&![g1.id,g2.id,g3.id].some(id=>
+      after.some(x=>x.kind==="v2_archive_folder"&&x.id===id));
+    const clean=deletedG2.ok&&toAchievement.ok&&toAchievement.data?.folders===3&&
+      deletedG1.ok&&purged.ok&&absent;
+    evFile("R1-PURGE",[
+      `general G1=${g1.id}, deleted G2=${g2.id}, hidden G3=${g3.id}`,
+      `move general->achievement ${toAchievement.status}, physical folders=${toAchievement.data?.folders}`,
+      `delete G1 ${deletedG1.status}, purge ${purged.status}, trash entries absent=${absent}`
+    ].join("\n"));
+    rec("R1-PURGE","DYNAMIC-HTTP",clean?"PASS":"FAIL",
+      `move=${toAchievement.status}, folders=${toAchievement.data?.folders}, purge=${purged.status}, trashed descendants absent=${absent}`,
+      "回收站子树跨模块移动之后，永久清理新的根目录不因旧 section 而失败");
+  }
+
   /* ---------------- T-P1-04 目录 CRUD：可恢复整树删除 ---------------- */
   {
     const sec = "achievement";
