@@ -1,6 +1,6 @@
 # IPSys 现行测试与验收规则
 
-> **2026-11-04 最新有效口径**：SQLCipher 新库 schema=3（旧版数据库不迁移），`project/ip/archive_folder` 三类 Folder；合同资料是项目内普通目录，不提供合同独立业务记录。所有普通资料模块（包括 general）Excel 六列，项目 11、知识产权 19。MCP stdio 当前 43 项。S1–S4 CI #521/#526/#529/#532 与 S5-1 [CI #533](https://github.com/zy19970/IPSys/actions/runs/41831428604) 已成功；S5-2 Edge 和 MCP↔GUI 同批对象总闭环及用户本机复验仍待独立结论。旧版文档中合同专用操作、旧 CI #473、V2 增量修补是历史口径。
+> **最新现行状态（2026-11-04，S5 自动化已完成）**：SQLCipher 新库 schema **3**，Folder 仅 `project`、`ip`、`archive_folder`；项目可包含多层普通目录，合同资料不再是独立对象。普通资料模块（含综合资料）Excel **6 列**，项目 11 列，知识产权 19 列；MCP **43** 工具。最终代码/测试提交 `cc7c1262eac0c2aaa36a0cd3107823320627e774` 的 [Windows CI #538](https://github.com/zy19970/IPSys/actions/runs/41839841405) `completed/success`（26 success、0 failure、2 optional ZIP64 skipped），Edge **14 PASS**、HTTP **12 PASS + T-P1-07 1 BLOCKED**（小库 VACUUM 进度抓拍）。第16.4节同批 MCP↔GUI 跨入口闭环 S5-E2E PASS；两类单 EXE 启动通过。**用户本机 GUI 人工复验及正式 Release 未进行**。详见 [S5 结案报告](tests/S5_FINAL_ACCEPTANCE_20261104.md)；下文较早日期的 CI 与历史决策原文仅用于追溯。
 
 > **更新至 2026-11-02**：已核验产品/测试提交 `4567ae96b7` 的 Windows [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 为 completed/success（26 步成功、0 失败，两项可选 ZIP64 步骤跳过）。目前正式 Release 仍为 `v0.9.1-rc1`；自动 CI 不等于全部本地 GUI/第三方 Agent 验收。 原始测试报告与此前 FAIL/BLOCKED 事实保留原文，后续修复另列证据。
 

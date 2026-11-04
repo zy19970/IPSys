@@ -1,6 +1,6 @@
 # IPSys — 资料管理系统
 
-> **现行基线（2026-11-04，S5）**：SQLCipher 新库结构版本 **3**，Folder 类型仅 `project`、`ip`、`archive_folder`；项目内可任意层创建普通文件夹，合同资料不再是独立业务对象。所有普通资料模块（含综合资料）Excel **6 列**，项目 11 列、知识产权 19 列；MCP stdio **43 项工具**。S1/S2/S3/S4 CI #521/#526/#529/#532 通过，S5-1 [CI #533](https://github.com/zy19970/IPSys/actions/runs/41831428604) 通过。S5-2 Edge 脚本 CI #534 与第16.4节跨入口闭环仍需单独核实。旧 `v0.9.1-rc1` Release 不包含最新 main。历史正文与 CI 记录仅供追溯，以本段和当前源码为准。
+> **最新现行状态（2026-11-04，S5 自动化已完成）**：SQLCipher 新库 schema **3**，Folder 仅 `project`、`ip`、`archive_folder`；项目可包含多层普通目录，合同资料不再是独立对象。普通资料模块（含综合资料）Excel **6 列**，项目 11 列，知识产权 19 列；MCP **43** 工具。最终代码/测试提交 `cc7c1262eac0c2aaa36a0cd3107823320627e774` 的 [Windows CI #538](https://github.com/zy19970/IPSys/actions/runs/41839841405) `completed/success`（26 success、0 failure、2 optional ZIP64 skipped），Edge **14 PASS**、HTTP **12 PASS + T-P1-07 1 BLOCKED**（小库 VACUUM 进度抓拍）。第16.4节同批 MCP↔GUI 跨入口闭环 S5-E2E PASS；两类单 EXE 启动通过。**用户本机 GUI 人工复验及正式 Release 未进行**。详见 [S5 结案报告](tests/S5_FINAL_ACCEPTANCE_20261104.md)；下文较早日期的 CI 与历史决策原文仅用于追溯。
 
 ## 普通用户先看：这个软件究竟怎么运行？
 

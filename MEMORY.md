@@ -1,5 +1,7 @@
 # IPSys 项目持续记忆
 
+> **当前进度（2026-11-04 S5 结案）**：C01—C08 自动化验收完成；main 产品/测试基线 `cc7c1262eac0c2aaa36a0cd3107823320627e774` 的 Windows [CI #538](https://github.com/zy19970/IPSys/actions/runs/41839841405) completed/success（26 成功、0 失败、2 可选 ZIP64 跳过）。Edge 14/14 PASS；HTTP 12 PASS、T-P1-07（短时 VACUUM 进度抓拍）1 BLOCKED；真实 MCP↔GUI 同批 S5-E2E PASS。SQLCipher schema=3、Folder=project/ip/archive_folder、MCP 43 项、普通资料 Excel 六列。正式 Release 仍旧预发布 v0.9.1-rc1；用户本机人工复验未执行。证据与最后人工清单：[S5 结案报告](tests/S5_FINAL_ACCEPTANCE_20261104.md)。最近会话：`memory/sessions/2026-11-04-IPSys-S5最终清理前仓库梳理.md`。
+
 ## 项目定位与当前阶段
 
 IPSys 是 Windows WinForms 启动器 + 本地 Web Explorer 界面 + SQLCipher/SQLite 文件与业务档案管理系统，带本机 MCP 和按需加载的 Agent 工作规范。核心模块包括企业资质、业务档案、公司项目、知识产权、综合资料、个人资料及党团建设等。文件用 FileId/LinkId/版本区分，可共享关联并经 MCP 操作。
@@ -747,3 +749,7 @@ S5 综合验收新增到活跃 Windows Edge 测试：同一临时 SQLCipher 库�
 ## 2026-11-04：S5 #537 真实最终跨入口验证已通过，清理两项活跃 HTTP 旧判据
 
 产品/脚本提交 `0d31a52dd638f1d1711a35958b2b91a3082c502c` 的 Windows [CI #537](https://github.com/zy19970/IPSys/actions/runs/41838384362)（run 41838384362）completed/success，26 success、0 failed、2 optional ZIP64 skipped；Browser 14 PASS，关键 `T-P2-02 PASS`、`T-P2-09 PASS`（两页 Canvas 真正渲染）、`S5-E2E PASS`（同批 FileId=13/LinkId=15，GUI 搜索、移动/共享/独立复制至 P1 后新 FileId=14、MCP 排序、回收恢复及两版本 SHA 完整一致）；两种单 EXE 启动和 SQLCipher 也通过。CI artifacts self-contained 13328330554、framework-dependent 13328245627、Edge 证据 13325944906。原活跃 HTTP `t-http.cjs` 尚给 T-P0-05/T-P1-03 两个历史 IMPLEMENTATION_GAP，脚本是按后端成功也无条件打标签，且误称 UI 无通用共享/转移。另 T-P1-07 无条件 BLOCKED，即使 info API 不可用。现将前两者按真实 HTTP 返回标 PASS/FAIL 并由独立真实 S5-E2E 覆盖 GUI；压缩信息仍保留短窗口无法观察的 BLOCKED，但 API 信息缺失改 FAIL。原始历史报告仍不重写，当前测试脚本变更需新 Windows CI 核验，用户真实数据库未动、正式 Release 未触发。最近会话仍为 memory/sessions/2026-11-04-IPSys-S5最终清理前仓库梳理.md。
+
+## 2026-11-04：用户再次续接，S5 CI #538 完成最终自动化验收归档
+
+用户原话：“为什么中断了，继续推进”。恢复读取 AIGT 三规范、项目 Memory/会话和最新 main；核实最终产品/测试提交 `cc7c1262eac0c2aaa36a0cd3107823320627e774`，Windows #538（run 41839841405、job 126608189136）是对应 SHA 的 `completed/success`，26 successful/0 failed/2 optional ZIP64 skipped。原日志 Debug 0 warnings/errors，browser 14 PASS（T-P2-02、T-P2-09、S5-E2E），HTTP 12 PASS/1 BLOCKED（T-P1-07 合成小库 VACUUM 极短窗口不可抓拍）；旧 T-P0-05/T-P1-03 的 IMPLEMENTATION_GAP 已改成根据真实 HTTP 结果 PASS 且 GUI 由 S5-E2E 验证。双模式单 EXE 启动 PASS；自包含 artifact 13328532212、framework-dependent 13328592196、Edge evidence 13328352297。报告 `tests/S5_FINAL_ACCEPTANCE_20261104.md` 正式区分 C01—C08 自动完成、用户本机 GUI/压缩进度视觉/大型故障注入及正式发布未进行；更新 S5 进度表与完成勾选、README/设计/测试/手册/字典等现行摘要。以前 CI #535/#536 的失败与假绿日志保留为历史证据。未触碰用户真实库或发布 Release。本轮会话记录仍为 `memory/sessions/2026-11-04-IPSys-S5最终清理前仓库梳理.md`；最后归档轮次为本轮“为什么中断了，继续推进”。

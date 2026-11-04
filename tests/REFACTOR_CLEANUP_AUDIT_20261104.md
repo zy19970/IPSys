@@ -1,5 +1,7 @@
 # IPSys 重构后一致性审查与统一清理实施任务书
 
+> **S5 结案状态（2026-11-04）**：已在提交 `cc7c1262eac0c2aaa36a0cd3107823320627e774` 的 [Windows CI #538](https://github.com/zy19970/IPSys/actions/runs/41839841405) 完成自动化验收（26 success、0 fail、2 可选 ZIP64 skipped；Edge 14 PASS；HTTP 12 PASS、1 项压缩进度视觉 BLOCKED）。该页第1—6节与下方多批说明保留当时审计和执行过程，最终状态与待人工范围见 [S5 最终验收报告](S5_FINAL_ACCEPTANCE_20261104.md)。
+
 审查日期：2026-11-04（UTC+8）。源码基线：`dab08a74f18f87a63a484d9dee63680b56b953fe`；最近产品提交：`de7222e313cb0c9b95285f25fd758d435f09040f`。本轮为审查和清理建议，没有修改产品代码。下列建议尚未视为用户确认的实施决定。
 
 **执行版补充日期：2026-11-04。** 用户本轮明确要求将方案写到其他 Agent 可以据此修改，并推送仓库。本次交付仍为任务书，不代表已经实施代码清理。第 1—6 节保留审查证据；第 7—18 节给出执行契约、顺序、逐文件清单和验收方法。后续收到“按本任务书执行”的指令后，执行 Agent 应从第 7 节开始，依次完成各批次。原第 5 节为粗分组，实际施工顺序以第 9 节为准。
@@ -631,7 +633,7 @@ Get-Content $env:IPSYS_SMOKE_REPORT
 | S2 合同/数据库 | 已完成本批自动化验收；跨入口总闭环待 S5 | `d74baf2`；修复至 `5c555d2` | 新建 schema 3／旧库只读拒绝／项目普通目录／版本共享／回收站／44 项 MCP／Node 和 Edge 回归 | [Windows CI #526](https://github.com/zy19970/IPSys/actions/runs/41802424444)：26 success，0 failure，2 可选 ZIP64 skipped；head_sha=`5c555d2` | 真实用户本机尚未复核；K03 跨入口同批对象闭环及 S3—S5 待推进，旧 Edge 观察脚本仍有已存在告警 |
 | S3 复制/移动/MCP | 本批自动化验收完成；历史 Edge 观察缺口另列 | `c719810` → `39305f2` → `e040afb` | 同区原位 move、目录共享与独立复制、跨区物理隔离、项目真实父级、MCP 目标/幂等、Node/SQLCipher/HTTP/Edge 复验 | [Windows CI #529](https://github.com/zy19970/IPSys/actions/runs/41816669123) `completed/success`、26 success/0 failed/2 optional ZIP64 skipped；`head_sha=e040afb` | 第16.4节同批对象跨入口闭环、本机 GUI 人工复验和既有拖拽/分页问题待跟踪 |
 | S4 统一排序 | 本批自动化验收完成（残留 Edge 观察问题单列） | `eedb9f0` → `899969c` → `a2000e1` | 两工作区全部合法普通模块、project 真父级、多层目录、附件版本不变、全量同层校验、SQLCipher 回滚、MCP 43 项、GUI 显示顺序；O01—O07 | [Windows CI #532](https://github.com/zy19970/IPSys/actions/runs/41822426599) `completed/success`，26 success/0 failed/2 可选 ZIP64 skipped；`head_sha=a2000e1`；Edge T-P1-05 PASS | S5 旧端点源文件与历史文档引用清理、16.4 跨入口同一批对象闭环、用户本机人工复核及历史拖拽/分页观察未完成 |
-| S5 清理与收尾 | 待实施 | — | — | — | 文档、引用、跨入口闭环 |
+| S5 清理与收尾 | **自动化验收完成；本机人工待验** | `44203ab`、`4d3e233`、`ee667f9`、`0d31a52`、最终 `cc7c126` | 活跃旧函数/端点引用迁移、Edge 拖拽/PDF 门禁、真实 MCP↔GUI 同批对象、现行文档、HTTP 旧判据修复 | [Windows CI #538](https://github.com/zy19970/IPSys/actions/runs/41839841405) `completed/success`；26 success/0 failed/2 optional ZIP64 skipped，Edge 14 PASS，HTTP 12 PASS/1 BLOCKED | 用户本机 DPI/压缩进度、正式 Release 与极端故障注入另验 |
 
 最终完成检查：
 
@@ -641,9 +643,9 @@ Get-Content $env:IPSYS_SMOKE_REPORT
 4. [x] 项目内普通文件夹独立复制、共享、移动、合法跨区转移均可从真实菜单进入。
 5. [x] GUI/MCP 对同区移动保持同一身份语义。
 6. [x] 普通目录排序覆盖所有合法模块和父级，拒绝不完整兄弟集合。
-7. [ ] 旧长下拉无生产残留，测试保护迁移到实际入口。
-8. [ ] 现行手册、Wiki、Agent 提示和工具 schema 一致；历史证据仍可追溯。
-9. [ ] 跨入口闭环通过，文件字节、版本、共享和跨区隔离有证据。
+7. [x] 旧长下拉无生产残留，测试保护迁移到实际入口。
+8. [x] 现行手册、Wiki、Agent 提示和工具 schema 一致；历史证据仍可追溯。
+9. [x] 跨入口闭环通过，文件字节、版本、共享和跨区隔离有证据。
 10. [x] 最新产品 SHA 的完整 Windows CI 成功，未验证事项明确列出。
 
 ### 2026-11-04 S0+S1 第一阶段自动验收补记
@@ -753,3 +755,8 @@ Windows CI #535（SHA 6b1fe8a）completed/failure，Debug 构建 0 warning / 0 e
 提交 `0d31a52dd638f1d1711a35958b2b91a3082c502c` [Windows CI #537](https://github.com/zy19970/IPSys/actions/runs/41838384362) completed/success（26 success、0 failed、2 可选 ZIP64 skipped）。Browser 14/14 PASS，`T-P2-02` 内部拖放实际关联移动 PASS、`T-P2-09` 连续滚动两页真实 Canvas PASS、`S5-E2E` 同一批 MCP/Explorer 数据闭环 PASS。已核实两版 SHA、GUI 搜索 FileId=13 关联 D2、GUI 独立复制 FolderId=35/FileId=14、共享 FileId=13、MCP 排序、删除恢复和共享副本永久清理后的原件仍能下载。Windows 构建、MCP、SQLCipher 与两类单 EXE 均通过。
 
 原 HTTP t-http.cjs 在上述 CI 仍报告 `T-P0-05/T-P1-03 IMPLEMENTATION_GAP` 与 `T-P1-07 BLOCKED`，检查脚本发现前两者在后端成功时也直接输出旧标签且声称无 GUI 入口，已与现行功能及 S5-E2E 证据冲突；下一提交按实际 HTTP 200/LinkId/移动恢复结果标 PASS/FAIL，不改写历史输出证据。T-P1-07 小样本 VACUUM 过快不能稳定抓拍，仍 BLOCKED，但若 info API 异常改为 FAIL。以上测试脚本调整必须另跑对应 SHA CI；不宣称本机视觉或 GA 事故注入已完成。
+
+
+### 2026-11-04 S5 #538 自动验收结案
+
+本次最终生产与测试提交 `cc7c1262eac0c2aaa36a0cd3107823320627e774`，Windows [CI #538](https://github.com/zy19970/IPSys/actions/runs/41839841405) `completed/success`，26 成功、0 失败、2 个可选 ZIP64 步骤跳过。真实 Edge 14/14 PASS，HTTP 12/13 PASS；`T-P1-07 BLOCKED` 是小测试库 VACUUM 进度窗口太短，`compact/info` 本身成功。C01—C08 的执行与对应代码证据、真实 MCP/Explorer 的 FolderId/FileId/LinkId 和两版 SHA、产物 Artifact ID、本机验收步骤均统一记录于 [S5_FINAL_ACCEPTANCE_20261104.md](S5_FINAL_ACCEPTANCE_20261104.md)。此条为当前总状态，前文各日期的“待实施/待 CI”均为历史进度快照，不再代表当前状态。

@@ -1,6 +1,6 @@
 # IPSys M0 统一字段、状态与实体字典（设计定稿 V1.0）
 
-> **2026-11-04 现行覆盖规则**：SQLCipher schema 3；Folder 类型只有 `project/ip/archive_folder`；合同资料是项目下普通目录；所有普通资料（包括 general）六列 Excel，项目 11 列、知产 19 列；MCP 43 项工具；旧结构库只读拒绝不迁移。S1—S4 CI #521/#526/#529/#532、S5-1 CI #533 已通过；S5-2 真实 Edge 和同批 MCP↔GUI 端到端仍需核验。原先合同模型、历史工具数量和旧数据库迁移建议仅供追溯，不指导当前开发。
+> **2026-11-04 当前有效口径**：SQLCipher schema 3，Folder 类型为 project、ip、archive_folder；合同资料是普通项目目录。现行固定 Excel：项目 11 列、知识产权 19 列、所有普通资料 6 列。MCP 共 43 工具。S5 同 SHA [CI #538](https://github.com/zy19970/IPSys/actions/runs/41839841405) 已成功（Edge 14 PASS，HTTP 12 PASS/1 压缩进度观察 BLOCKED）；用户人工验证及 Release 未执行。参见 [S5 结案报告](tests/S5_FINAL_ACCEPTANCE_20261104.md)，其余较早记录保留历史属性。
 
 > **历史适用口径（2026-11-02，已由页首 2026-11-04 覆盖）**：本文件保留 M0 字段来源，物理模型以 `ResourceSchemaV2.cs`、运行时 Excel 以 `ExcelLedger.cs` 为准。项目 11 列、知识产权 19 列、档案/资质/党团 6 列、综合资料 3 列；合同无独立 Excel。普通资料 UI 新建统一文件夹，可直接存附件和子目录。现行 [Windows CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 已通过，历史旧测试建议不应替代最新接口。
 

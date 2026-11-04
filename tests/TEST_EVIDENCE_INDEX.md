@@ -1,11 +1,11 @@
-# IPSys 测试证据索引（更新至 2026-11-02）
+# IPSys 测试证据索引（现行结论更新至 2026-11-04；旧报告保留）
 
-> **2026-11-04 当前产品验收（下表 2026-11-02 数据为历史快照）**：S1 #521、S2 #526、S3 #529、S4 #532 均为对应产品 SHA 的 completed/success。S5-1 清理产品 `44203ab` 对应 [Windows CI #533](https://github.com/zy19970/IPSys/actions/runs/41831428604) completed/success，自包含 EXE artifact `13322799929`、依赖版 `13324245019`、Edge 复测证据 `13323219620`。schema=3，当前 43 MCP 工具，所有普通资料模块六列 Excel；S5-2 的 Edge 新判据提交 `69da6b7` 仍待完整 CI 与同批 MCP↔GUI E2E。历史 64/51 工具、Excel 3 列及原始 FAIL 均只能按原始日期解释。
+> **最新现行状态（2026-11-04，S5 自动化已完成）**：SQLCipher 新库 schema **3**，Folder 仅 `project`、`ip`、`archive_folder`；项目可包含多层普通目录，合同资料不再是独立对象。普通资料模块（含综合资料）Excel **6 列**，项目 11 列，知识产权 19 列；MCP **43** 工具。最终代码/测试提交 `cc7c1262eac0c2aaa36a0cd3107823320627e774` 的 [Windows CI #538](https://github.com/zy19970/IPSys/actions/runs/41839841405) `completed/success`（26 success、0 failure、2 optional ZIP64 skipped），Edge **14 PASS**、HTTP **12 PASS + T-P1-07 1 BLOCKED**（小库 VACUUM 进度抓拍）。第16.4节同批 MCP↔GUI 跨入口闭环 S5-E2E PASS；两类单 EXE 启动通过。**用户本机 GUI 人工复验及正式 Release 未进行**。详见 [S5 结案报告](S5_FINAL_ACCEPTANCE_20261104.md)；下文较早日期的 CI 与历史决策原文仅用于追溯。
 
 
 > 本索引区分最新产品自动化、历史运行、原始 Agent 报告与人工反馈，不改写旧报告原始失败或阻塞。最近产品代码 `4567ae96b7` 对应 [Windows CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) completed/success，文档更新后的主分支 SHA 不应冒充产品已重新验证。
 
-## 最新操作细节收敛证据（2026-11-02）
+## 2026-11-02 历史操作细节收敛证据（当时产品 SHA）
 
 | 内容 | 核验状态与证据 |
 | --- | --- |

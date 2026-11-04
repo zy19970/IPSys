@@ -1,6 +1,6 @@
 # IPSys 本机 Codex MCP
 
-> **2026-11-04 现行覆盖规则**：SQLCipher schema 3；Folder 类型只有 `project/ip/archive_folder`；合同资料是项目下普通目录；所有普通资料（包括 general）六列 Excel，项目 11 列、知产 19 列；MCP 43 项工具；旧结构库只读拒绝不迁移。S1—S4 CI #521/#526/#529/#532、S5-1 CI #533 已通过；S5-2 真实 Edge 和同批 MCP↔GUI 端到端仍需核验。原先合同模型、历史工具数量和旧数据库迁移建议仅供追溯，不指导当前开发。
+> **2026-11-04 最新验收状态**：现行 schema 3、MCP 43 项、项目内普通目录；本阶段最终测试提交 `cc7c1262` 的 [Windows CI #538](https://github.com/zy19970/IPSys/actions/runs/41839841405) 已完成成功，MCP↔GUI 同一批对象全链路验证通过。人工本机 GUI 尚待验证，旧库不迁移，发布未触发。详见 [S5 结案报告](tests/S5_FINAL_ACCEPTANCE_20261104.md)。
 
 ## 当前有效的项目／普通目录 MCP 契约（2026-11-04，S4）
 

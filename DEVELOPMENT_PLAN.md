@@ -1,6 +1,6 @@
 # IPSys 开发计划与当前执行状态
 
-> **现行基线（2026-11-04，S5）**：SQLCipher 新库结构版本 **3**，Folder 类型仅 `project`、`ip`、`archive_folder`；项目内可任意层创建普通文件夹，合同资料不再是独立业务对象。所有普通资料模块（含综合资料）Excel **6 列**，项目 11 列、知识产权 19 列；MCP stdio **43 项工具**。S1/S2/S3/S4 CI #521/#526/#529/#532 通过，S5-1 [CI #533](https://github.com/zy19970/IPSys/actions/runs/41831428604) 通过。S5-2 Edge 脚本 CI #534 与第16.4节跨入口闭环仍需单独核实。旧 `v0.9.1-rc1` Release 不包含最新 main。历史正文与 CI 记录仅供追溯，以本段和当前源码为准。
+> **最新现行状态（2026-11-04，S5 自动化已完成）**：SQLCipher 新库 schema **3**，Folder 仅 `project`、`ip`、`archive_folder`；项目可包含多层普通目录，合同资料不再是独立对象。普通资料模块（含综合资料）Excel **6 列**，项目 11 列，知识产权 19 列；MCP **43** 工具。最终代码/测试提交 `cc7c1262eac0c2aaa36a0cd3107823320627e774` 的 [Windows CI #538](https://github.com/zy19970/IPSys/actions/runs/41839841405) `completed/success`（26 success、0 failure、2 optional ZIP64 skipped），Edge **14 PASS**、HTTP **12 PASS + T-P1-07 1 BLOCKED**（小库 VACUUM 进度抓拍）。第16.4节同批 MCP↔GUI 跨入口闭环 S5-E2E PASS；两类单 EXE 启动通过。**用户本机 GUI 人工复验及正式 Release 未进行**。详见 [S5 结案报告](tests/S5_FINAL_ACCEPTANCE_20261104.md)；下文较早日期的 CI 与历史决策原文仅用于追溯。
 
 > **2026-11-02 状态**：已核验产品/测试提交 `4567ae96b7` 的 Windows [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 为 completed/success（26 步成功、0 失败，两项可选 ZIP64 步骤跳过）。目前正式 Release 仍为 `v0.9.1-rc1`；自动 CI 不等于全部本地 GUI/第三方 Agent 验收。 项目现阶段以真实使用反馈驱动操作细节和一致性精修，不重复已经完成的 Explorer 合并与 N1～N4 重构。
 
@@ -22,7 +22,7 @@ IPSys 是 WinForms 启动器、仅本机访问的 Web Explorer、单 SQLCipher s
 | S2 合同退出及 schema 3 | [CI #526](https://github.com/zy19970/IPSys/actions/runs/41802424444) 同 SHA success |
 | S3 目录共享/复制/移动 | [CI #529](https://github.com/zy19970/IPSys/actions/runs/41816669123) 同 SHA success |
 | S4 同层目录排序 | [CI #532](https://github.com/zy19970/IPSys/actions/runs/41822426599) 同 SHA success；43 工具 |
-| S5 收尾 | [CI #533](https://github.com/zy19970/IPSys/actions/runs/41831428604) 已验证第一批清理，后续完整闭环与真实本机人工验收未结束 |
+| S5 最终清理与自动验收 | [CI #538](https://github.com/zy19970/IPSys/actions/runs/41839841405) 对应 `cc7c1262` completed/success；C07/C08、真实 MCP↔GUI S5-E2E、PDF 双页与拖拽均已自动验证；本机 GUI 和 GA 另验 |
 | 操作细节 | 右键批量下载、侧栏默认展开、表头全选、真实更新时间、菜单图标、成功删除面板 4 秒隐藏、单一“新建”直达；最新 [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 成功 |
 | 大文件与 ZIP64 | [大库及 VACUUM](https://github.com/zy19970/IPSys/actions/runs/39943364663) 通过；[4 GiB+ ZIP64 生成](https://github.com/zy19970/IPSys/actions/runs/39944440866) 通过，但只是生成验证 |
 
