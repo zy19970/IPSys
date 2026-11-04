@@ -61,6 +61,15 @@ internal static class NativeFolderTreeTransfer
         if(sourceWorkspace==targetWorkspace && parentId is long destination &&
            tree.Any(node=>node.Folder.Folder.Ref.Id==destination))
             throw new ArgumentException("不能复制到来源文件夹自身或它的子目录。");
+        // A move never silently renames the source root, even when copying
+        // its content across workspaces. Ordinary independent copies/shares
+        // may still allocate a conflict-free name through UniqueName.
+        if(move && NativeArchiveStore.List(db,targetWorkspace,
+            FolderKinds.ArchiveFolder,targetSection,parentId).Any(x=>
+            string.Equals(x.Folder.Name,tree[0].Folder.Folder.Name,
+                StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidOperationException(
+                "目标目录存在同名文件夹，转移未执行。");
         var files=tree.SelectMany(x=>x.Links).Select(x=>x.FileId)
             .Distinct().ToArray();
         long required=0;

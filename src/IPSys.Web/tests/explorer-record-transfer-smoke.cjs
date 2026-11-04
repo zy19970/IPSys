@@ -157,16 +157,19 @@ const choices=n=>Array.from(opt(n,true),x=>x.value);
  // X09: cancellation from picker must send no write; workspace switch
  // after a chooser was opened must be rejected before submitting.
  invoke(current.source,false);
- await dialogs.at(-1).onSubmit({target:"personal/general"});
+ // The cross-workspace project target is another real project, not
+ // personal/general (which the matrix must reject).
+ assert.ok(!choices(current.source).includes("personal/general"));
+ await dialogs.at(-1).onSubmit({target:"personal/project"});
  picker=pickers.at(-1);
  const beforeSwitch=calls.length;
  vault.ws="personal";
- await assert.rejects(picker.onSubmit({target:"103",targetSection:"general"}),
+ await assert.rejects(picker.onSubmit({target:"70",targetSection:"project"}),
   /工作区已变化/);
  assert.equal(calls.length,beforeSwitch);
  vault.ws="company";
  busy=true;
- await assert.rejects(picker.onSubmit({target:"103",targetSection:"general"}),
+ await assert.rejects(picker.onSubmit({target:"70",targetSection:"project"}),
   /文件任务/);
  assert.equal(calls.length,beforeSwitch);
  busy=false;
@@ -174,7 +177,7 @@ const choices=n=>Array.from(opt(n,true),x=>x.value);
   /目标项目或目录无效/);
  assert.equal(calls.length,beforeSwitch);
  failWrite=true;
- await assert.rejects(picker.onSubmit({target:"103",targetSection:"general"}),/409/);
+ await assert.rejects(picker.onSubmit({target:"70",targetSection:"project"}),/409/);
  failWrite=false;
  assert.equal(calls.length,beforeSwitch+1);
 

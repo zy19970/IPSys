@@ -844,6 +844,22 @@ static class NativeFolderTreeTransferSmoke
         // X06: cross-workspace move is independent copy followed by a source
         // soft-delete, and restoring source leaves two physically separate trees.
         long moveRoot=await Folder(client,"company","general",key+"跨区移动");
+        long blockedHolder=await Folder(client,"personal","general",key+"同名冲突容器");
+        await Folder(client,"personal","general",
+            key+"跨区移动",blockedHolder);
+        using(var blocked=await client.PostAsJsonAsync(
+            $"/api/v2/ui/folders/company/general/{moveRoot}/transfer",
+            new{targetWorkspace="personal",targetSection="general",
+                targetFolderId=blockedHolder,move=true}))
+            Check(blocked.StatusCode==HttpStatusCode.Conflict &&
+                (await Flat(client,"company","general")).EnumerateArray()
+                  .Any(x=>Id(x)==moveRoot) &&
+                (await Flat(client,"personal","general")).EnumerateArray()
+                  .Count(x=>x.GetProperty("folder")
+                      .GetProperty("parent").ValueKind!=JsonValueKind.Null &&
+                    x.GetProperty("folder").GetProperty("parent")
+                      .GetProperty("id").GetInt64()==blockedHolder)==1,
+                "X06 cross-workspace move rejects root name conflicts atomically");
         long targetHolder=await Folder(client,"personal","general",key+"跨区目标目录");
         var moved=await Read(await client.PostAsJsonAsync(
             $"/api/v2/ui/folders/company/general/{moveRoot}/transfer",
