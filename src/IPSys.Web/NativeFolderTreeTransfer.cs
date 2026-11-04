@@ -50,10 +50,17 @@ internal static class NativeFolderTreeTransfer
     {
         if(!Vault.WorkspaceValid(sourceWorkspace) ||
            !Vault.WorkspaceValid(targetWorkspace) ||
-           !ArchiveDirectoryScopes.Allowed(sourceWorkspace,sourceSection) ||
-           !ArchiveDirectoryScopes.Allowed(targetWorkspace,targetSection))
-            throw new ArgumentException("转移的工作区或资料类别无效。");
+           !FolderTransferPolicy.Allowed(sourceWorkspace,sourceSection,
+               targetWorkspace,targetSection))
+            throw new ArgumentException("目标工作区或资料类别不在允许的转移范围。");
+        if(parentId is <=0 || (targetSection=="project" && parentId is null))
+            throw new ArgumentException("目标项目必须提供真实项目或目录 FolderId。");
+        if(!NativeFileStore.FolderActive(db,sourceWorkspace,rootId))
+            throw new InvalidOperationException("来源目录或其父目录已被删除。");
         var tree=Snapshot(db,sourceWorkspace,sourceSection,rootId);
+        if(sourceWorkspace==targetWorkspace && parentId is long destination &&
+           tree.Any(node=>node.Folder.Folder.Ref.Id==destination))
+            throw new ArgumentException("不能复制到来源文件夹自身或它的子目录。");
         var files=tree.SelectMany(x=>x.Links).Select(x=>x.FileId)
             .Distinct().ToArray();
         long required=0;

@@ -3,6 +3,36 @@ using Microsoft.Data.Sqlite;
 
 // Native archive operations needed by the frozen card/table UI.
 // Whole-file-history copy is always transactional.
+// The same scope matrix is enforced for GUI transfer and MCP adapters.
+// Same-workspace project targets require an actual parent; cross-workspace
+// copies only follow explicit existing archive mappings.
+static class FolderTransferPolicy
+{
+    public static bool Allowed(string sourceWorkspace,string sourceSection,
+        string targetWorkspace,string targetSection)
+    {
+        if(!ArchiveDirectoryScopes.Allowed(sourceWorkspace,sourceSection) ||
+           !ArchiveDirectoryScopes.Allowed(targetWorkspace,targetSection))
+            return false;
+        if(sourceWorkspace==targetWorkspace)return true;
+        if(sourceWorkspace=="company" && targetWorkspace=="personal")
+            return sourceSection switch {
+                "achievement" => targetSection is "achievement" or "academic",
+                "general" => targetSection=="general",
+                "project" => targetSection=="project",
+                _ => false
+            };
+        if(sourceWorkspace=="personal" && targetWorkspace=="company")
+            return sourceSection switch {
+                "achievement" or "academic" => targetSection=="achievement",
+                "general" => targetSection=="general",
+                "project" => targetSection=="project",
+                _ => false
+            };
+        return false;
+    }
+}
+
 static class NativeArchiveActionsEndpoints
 {
     private static ResourceRef Folder(string w,string section,long id)=>
@@ -40,16 +70,9 @@ static class NativeArchiveActionsEndpoints
             FolderTransfer input)=>
         {
             if(!v.Allowed(ctx))return (IResult)Results.Unauthorized();
-            if(!ArchiveDirectoryScopes.Allowed(workspace,section) ||
-               !ArchiveDirectoryScopes.Allowed(input.TargetWorkspace,input.TargetSection))
-                return fail("资料模块与工作区不匹配。",400);
-            var from=section=="general"?"general":ArchiveRules.Module(workspace,section);
-            var to=input.TargetSection=="general"?"general":ArchiveRules.Module(input.TargetWorkspace,input.TargetSection);
-            if(from is null||from!=to)return fail(
-                "目标资料类别不兼容，请确认来源与目标模块的允许转移范围。",400);
-            if(input.Move&&workspace==input.TargetWorkspace&&
-                section==input.TargetSection)
-                return fail("同一工作区同类别无需转移。",400);
+            if(!FolderTransferPolicy.Allowed(workspace,section,
+                input.TargetWorkspace,input.TargetSection))
+                return fail("目标工作区或资料模块不在允许的转移范围。",400);
             if(!v.TryBeginFileTask(ctx,out var aborted))
                 return fail("文件任务正在执行或程序正在退出。",409);
             try
@@ -71,13 +94,30 @@ static class NativeArchiveActionsEndpoints
                         return fail("转入项目内部必须指定目标项目或其下级文件夹。",400);
                     if(input.TargetFolderId is long explicitTarget)
                     {
-                        if(explicitTarget<=0)return fail("目标目录编号无效。",400);
-                        if(explicitTarget==id&&workspace==input.TargetWorkspace)
-                            return fail("不能把资料转移到它自己。",400);
-                        var (status,message)=TargetFolderError(v.Db,input.TargetWorkspace,
-                            input.TargetSection,explicitTarget);
-                        if(status!=0)return fail(message,status);
-                        parent=explicitTarget;
+                        if(explicitTarget<0 ||
+                           (input.TargetSection=="project" && explicitTarget==0))
+                            return fail("目标目录编号无效。",400);
+                        if(explicitTarget>0)
+                        {
+                            var (status,message)=TargetFolderError(v.Db,input.TargetWorkspace,
+                                input.TargetSection,explicitTarget);
+                            if(status!=0)return fail(message,status);
+                            if(!NativeFileStore.FolderActive(v.Db,input.TargetWorkspace,
+                                explicitTarget))
+                                return fail("目标目录或其上级已删除，请刷新后重试。",409);
+                            parent=explicitTarget;
+                        }
+                    }
+                    if(input.Move && workspace==input.TargetWorkspace)
+                    {
+                        // A move within one workspace is always an in-place
+                        // FolderId/LinkId/FileId-preserving batch operation.
+                        var moved=NativeFolderBatchTransferEndpoints.Execute(v.Db,
+                            workspace,section,new FolderBatchTransferInput(
+                                parent??0,true,[id],input.TargetSection),linked.Token);
+                        return Results.Json(new{id=moved.Ids[0],folders=moved.Folders,
+                            files=0,versions=0,newObjects=0,moved=true,
+                            sourceSection=section,targetSection=input.TargetSection});
                     }
                     var copied=await NativeFolderTreeTransfer.CopyAsync(v.Db,v.Path,
                         workspace,section,id,input.TargetWorkspace,
@@ -86,10 +126,13 @@ static class NativeArchiveActionsEndpoints
                         files=copied.Files,versions=copied.Versions,
                         newObjects=copied.NewObjects});
                 }
+                catch(NativeFolderBatchTransferEndpoints.TransferRejection ex)
+                    {return fail(ex.Message,ex.Status);}
                 catch(ArgumentException ex){return fail(ex.Message,400);}
                 catch(InvalidOperationException ex){return fail(ex.Message,409);}
                 catch(InvalidDataException ex){return fail(ex.Message,409);}
                 catch(IOException ex){return fail(ex.Message,409);}
+                catch(OperationCanceledException){return fail("转移已取消，未提交。",409);}
                 catch(OverflowException){return fail("原件大小超限。",409);}
                 catch(SqliteException){return fail("事务执行失败，资料未发生部分转移。",409);}
                 finally{v.Gate.Release();}

@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 
-record NativeFolderMoveInput(long? ParentId);
+record NativeFolderMoveInput(long? ParentId,string? TargetSection=null);
 
 // N2-01/N2-02: native v2 endpoints; keep existing UI attachment routes on the old path
 // until the File service and business endpoints can switch together.
@@ -231,25 +231,52 @@ static class NativeFolderEndpoints
             string? section,NativeFolderMoveInput input)=>
         {
             if(!v.Allowed(ctx))return (IResult)Results.Unauthorized();
-            if(v.FileTaskActive||v.ExitRequested)return Bad("文件任务或退出中不可移动。",409);
-            await v.Gate.WaitAsync(ctx.RequestAborted);
+            if(kind!=FolderKinds.ArchiveFolder ||
+               !ArchiveDirectoryScopes.Allowed(workspace,section??""))
+                return Bad("仅允许普通资料文件夹执行移动。");
+            string sourceSection=section!;
+            string targetSection=input.TargetSection??sourceSection;
+            if(input.ParentId is <0 ||
+               !ArchiveDirectoryScopes.Allowed(workspace,targetSection))
+                return Bad("目标资料模块或父级无效。");
+            if(!v.TryBeginFileTask(ctx,out var aborted))
+                return Bad("文件任务或退出中不可移动。",409);
             try
             {
-                if(!v.Allowed(ctx))return Results.Unauthorized();
-                if(v.FileTaskActive||v.ExitRequested)return Bad("文件任务或退出中不可移动。",409);
+                using var linked=CancellationTokenSource.CreateLinkedTokenSource(
+                    ctx.RequestAborted,aborted);
+                if(!await v.Gate.WaitAsync(0,linked.Token))
+                    return Bad("当前数据库有文件任务。",409);
                 try
                 {
-                    return NativeArchiveOrder.Move(v.Db,Ref(workspace,kind,id,section),
-                        input.ParentId)
-                        ?Results.Ok(new{ok=true}):Results.NotFound();
+                    if(!v.Allowed(ctx))return Results.Unauthorized();
+                    var result=NativeFolderBatchTransferEndpoints.Execute(v.Db,
+                        workspace,sourceSection,new FolderBatchTransferInput(
+                            input.ParentId??0,true,[id],targetSection),linked.Token);
+                    return Results.Json(new{ok=true,id=result.Ids[0],
+                        moved=true,sourceSection,targetSection,
+                        folders=result.Folders,links=result.Links});
                 }
+                catch(NativeFolderBatchTransferEndpoints.TransferRejection ex)
+                    {
+                        // The legacy single-folder endpoint historically
+                        // reports a cycle as 409; the canonical batch API
+                        // retains its explicit 400 invalid-target result.
+                        int status=ex.Message.Contains("它的子文件夹",
+                            StringComparison.Ordinal)?409:ex.Status;
+                        return Bad(ex.Message,status);
+                    }
                 catch(ArgumentException ex){return Bad(ex.Message);}
                 catch(KeyNotFoundException){return Results.NotFound();}
                 catch(InvalidOperationException ex){return Bad(ex.Message,409);}
+                catch(InvalidDataException ex){return Bad(ex.Message,409);}
+                catch(IOException ex){return Bad(ex.Message,409);}
+                catch(OperationCanceledException){return Bad("操作已取消。",409);}
                 catch(Microsoft.Data.Sqlite.SqliteException)
                     {return Bad("目录层级不合法、目标不可用或发生名称冲突，请重新检查目标目录。",409);}
+                finally{v.Gate.Release();}
             }
-            finally{v.Gate.Release();}
+            finally{v.CompleteFileTask();}
         });
     }
 }

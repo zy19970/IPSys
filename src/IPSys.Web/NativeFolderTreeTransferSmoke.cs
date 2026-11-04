@@ -632,6 +632,238 @@ static class NativeFolderTreeTransferSmoke
             "project purge does not delete files shared to another module");
     }
 
+    // S3 X01-X06/X08/X12: real HTTP calls backed by a disposable SQLCipher
+    // database. Every identity and version assertion uses actual return IDs.
+    private static async Task VerifyS3ContractAsync(HttpClient client,Vault vault)
+    {
+        string key="S3-"+Guid.NewGuid().ToString("N")[..8];
+        async Task<long> Project(string workspace,string name)
+        {
+            var response=await Read(await client.PostAsJsonAsync(
+                $"/api/v2/folders/{workspace}/project",
+                new{project=new{name=key+name,projectType="科研项目"}}));
+            return response.GetProperty("id").GetInt64();
+        }
+        long first=await Project("company","原项目");
+        long second=await Project("company","复制目标");
+        long third=await Project("company","移动目标");
+        long personalProject=await Project("personal","跨区目标");
+        long original=await Folder(client,"company","project",key+"源目录",first);
+        long child=await Folder(client,"company","project",key+"深层",original);
+        byte[] a=[10,20,30,40],b=[50,60,70,80],c=[90,100,110,120];
+        long file;
+        using(var upload=new HttpRequestMessage(HttpMethod.Post,
+            $"/api/v2/files/company/upload?folderId={child}")
+            {Content=new ByteArrayContent(a)})
+        {
+            upload.Headers.Add("X-File-Name",Uri.EscapeDataString(key+".txt"));
+            file=(await Read(await client.SendAsync(upload)))
+                .GetProperty("fileId").GetInt64();
+        }
+        using(var version=new HttpRequestMessage(HttpMethod.Post,
+            $"/api/v2/files/company/{file}/versions")
+            {Content=new ByteArrayContent(b)})
+        {
+            version.Headers.Add("X-File-Name",Uri.EscapeDataString(key+"-v2.txt"));
+            await Read(await client.SendAsync(version));
+        }
+        long link=(await Links(client,"company",child))[0]
+            .GetProperty("id").GetInt64();
+        using(var sharedLink=await client.PostAsJsonAsync(
+            $"/api/v2/files/company/{file}/associate",
+            new NativeFileAssociateInput(link,original,false)))
+            sharedLink.EnsureSuccessStatusCode();
+
+        // X01: independent copy inside the same workspace to a real project.
+        const string sourceRoute="/api/v2/ui/folders/company/project/";
+        var localCopy=await Read(await client.PostAsJsonAsync(
+            sourceRoute+original+"/transfer",
+            new{targetWorkspace="company",targetSection="project",
+                targetFolderId=second,move=false}));
+        long copyId=localCopy.GetProperty("id").GetInt64();
+        var localTree=await Flat(client,"company","project");
+        long copyChild=Id(localTree.EnumerateArray().Single(x=>
+            x.GetProperty("folder").GetProperty("name").GetString()==key+"深层" &&
+            x.GetProperty("folder").GetProperty("parent").GetProperty("id")
+              .GetInt64()==copyId));
+        long copyFile=(await Links(client,"company",copyId))[0]
+            .GetProperty("fileId").GetInt64();
+        var copiedChildLink=(await Links(client,"company",copyChild))[0];
+        Check(copyId!=original && copyChild!=child && copyFile!=file &&
+              copiedChildLink.GetProperty("id").GetInt64()!=link &&
+              copiedChildLink.GetProperty("fileId").GetInt64()==copyFile &&
+              localCopy.GetProperty("versions").GetInt32()==2,
+            "X01 independent project copy remaps all folders/links/one logical file");
+        for(int v=1;v<=2;v++)
+            Check((await client.GetByteArrayAsync(
+                $"/api/v2/files/company/{copyFile}/versions/{v}/download"))
+                    .SequenceEqual(v==1?a:b),
+                "X01 same-workspace independent copy preserves both file versions");
+
+        long shareContainer=await Folder(client,"company","general",key+"共享父级");
+        var shared=await Read(await client.PostAsJsonAsync(
+            "/api/v2/ui/folders/company/project/transfer-batch",new{
+                targetFolderId=shareContainer,targetSection="general",
+                move=false,items=new[]{original}}));
+        long sharedRoot=shared.GetProperty("ids")[0].GetInt64();
+        var generalFolders=await Flat(client,"company","general");
+        long sharedChild=Id(generalFolders.EnumerateArray().Single(x=>
+            x.GetProperty("folder").GetProperty("parent").ValueKind!=
+                JsonValueKind.Null &&
+            x.GetProperty("folder").GetProperty("parent").GetProperty("id")
+                .GetInt64()==sharedRoot));
+        Check((await Links(client,"company",sharedChild))[0]
+                .GetProperty("fileId").GetInt64()==file,
+            "X04 shared subtree keeps source FileId and historical versions");
+
+        // X03: cross-workspace independent copy under a real target project.
+        var cross=await Read(await client.PostAsJsonAsync(
+            sourceRoute+original+"/transfer",
+            new{targetWorkspace="personal",targetSection="project",
+                targetFolderId=personalProject,move=false}));
+        long crossId=cross.GetProperty("id").GetInt64();
+        var crossFlat=await Flat(client,"personal","project");
+        long crossChild=Id(crossFlat.EnumerateArray().Single(x=>
+            x.GetProperty("folder").GetProperty("parent").ValueKind!=JsonValueKind.Null &&
+            x.GetProperty("folder").GetProperty("parent")
+                .GetProperty("id").GetInt64()==crossId));
+        long crossFile=(await Links(client,"personal",crossChild))[0]
+            .GetProperty("fileId").GetInt64();
+        Check(crossId!=original && crossFile!=file &&
+              cross.GetProperty("newObjects").GetInt32()==2 &&
+              cross.GetProperty("versions").GetInt32()==2,
+            "X03 cross-workspace copy creates separate FileId and two FileObjects");
+
+        // Physical FileObjects must not cross workspace boundaries.
+        static long ObjectId(Microsoft.Data.Sqlite.SqliteConnection db,
+            string workspace,long fileId)
+        {
+            using var cmd=db.CreateCommand();
+            cmd.CommandText="""
+                SELECT object_id FROM file_versions
+                WHERE workspace=$w AND file_id=$f AND version=1;
+                """;
+            cmd.Parameters.AddWithValue("$w",workspace);
+            cmd.Parameters.AddWithValue("$f",fileId);
+            return (long)(cmd.ExecuteScalar()
+                ??throw new IOException("缺少原件文件对象。"));
+        }
+        Check(ObjectId(vault.Db,"company",file)!=
+              ObjectId(vault.Db,"personal",crossFile),
+            "X03 source/target FileObjects are physically different");
+
+        // X04: new source version is visible via shared FileId, but not in
+        // either independent copy, including the cross-workspace clone.
+        using(var version=new HttpRequestMessage(HttpMethod.Post,
+            $"/api/v2/files/company/{file}/versions")
+            {Content=new ByteArrayContent(c)})
+        {
+            version.Headers.Add("X-File-Name",Uri.EscapeDataString(key+"-v3.txt"));
+            await Read(await client.SendAsync(version));
+        }
+        Check((await client.GetByteArrayAsync(
+            $"/api/v2/files/company/{file}/versions/3/download")).SequenceEqual(c),
+            "X04 source can append third historical version");
+        Check((await Links(client,"company",sharedChild))[0]
+                .GetProperty("fileId").GetInt64()==file,
+            "X04 shared folder still points to updated source FileId");
+        using(var localThird=await client.GetAsync(
+            $"/api/v2/files/company/{copyFile}/versions/3/download"))
+            Check(localThird.StatusCode==HttpStatusCode.NotFound,
+                "X04 independent same-workspace copy never receives source v3");
+        using(var remoteThird=await client.GetAsync(
+            $"/api/v2/files/personal/{crossFile}/versions/3/download"))
+            Check(remoteThird.StatusCode==HttpStatusCode.NotFound,
+                "X03 independent cross-workspace copy never receives source v3");
+        for(int v=1;v<=2;v++)
+            Check((await client.GetByteArrayAsync(
+                $"/api/v2/files/personal/{crossFile}/versions/{v}/download"))
+                    .SequenceEqual(v==1?a:b),
+                "X03 physically independent copy retains exact version bytes");
+
+        // X08/X12: prevent copies into own tree, project virtual root and
+        // unsupported cross-workspace module mappings before writing.
+        using(var self=await client.PostAsJsonAsync(
+            sourceRoute+original+"/transfer",new{
+                targetWorkspace="company",targetSection="project",
+                targetFolderId=original,move=false}))
+            Check(self.StatusCode==HttpStatusCode.BadRequest,
+                "X08 independent copy into itself must be rejected");
+        using(var descendant=await client.PostAsJsonAsync(
+            sourceRoute+original+"/transfer",new{
+                targetWorkspace="company",targetSection="project",
+                targetFolderId=child,move=false}))
+            Check(descendant.StatusCode==HttpStatusCode.BadRequest,
+                "X08 independent copy into descendant must be rejected");
+        using(var virtualRoot=await client.PostAsJsonAsync(
+            sourceRoute+original+"/transfer",new{
+                targetWorkspace="company",targetSection="project",move=false}))
+            Check(virtualRoot.StatusCode==HttpStatusCode.BadRequest,
+                "X08 project virtual root never receives a folder");
+        using(var forbidden=await client.PostAsJsonAsync(
+            sourceRoute+original+"/transfer",new{
+                targetWorkspace="personal",targetSection="general",move=false}))
+            Check(forbidden.StatusCode==HttpStatusCode.BadRequest,
+                "X12 cross-workspace project-to-general mapping is forbidden");
+
+        // X02: GUI batch move to a non-project root leaves all identities,
+        // while the legacy /move endpoint delegates to the exact same core.
+        var batch=await Read(await client.PostAsJsonAsync(
+            "/api/v2/ui/folders/company/project/transfer-batch",
+            new{targetFolderId=0,targetSection="general",
+                move=true,items=new[]{original}}));
+        Check(batch.GetProperty("ids")[0].GetInt64()==original,
+            "X02 project-to-general batch move retains FolderId");
+        Check((await Links(client,"company",child))[0]
+            .GetProperty("id").GetInt64()==link &&
+            (await Links(client,"company",child))[0]
+            .GetProperty("fileId").GetInt64()==file,
+            "X02 project-to-general move preserves link and logical FileId");
+        var legacy=await Read(await client.PostAsJsonAsync(
+            $"/api/v2/folders/company/archive_folder/{original}/move?section=general",
+            new{parentId=third,targetSection="project"}));
+        Check(legacy.GetProperty("id").GetInt64()==original &&
+              (await Flat(client,"company","project")).EnumerateArray()
+                .Any(x=>Id(x)==original && x.GetProperty("folder")
+                    .GetProperty("parent").GetProperty("id").GetInt64()==third),
+            "X02 legacy move thin adapter retains the original project-folder ID");
+        // X05: the single-record transfer endpoint must likewise perform an
+        // in-place same-workspace move (no soft-deleted source duplicate).
+        var single=await Read(await client.PostAsJsonAsync(
+            sourceRoute+original+"/transfer",new{
+                targetWorkspace="company",targetSection="project",
+                targetFolderId=first,move=true}));
+        Check(single.GetProperty("id").GetInt64()==original &&
+              single.GetProperty("moved").GetBoolean() &&
+              (await Links(client,"company",child))[0]
+                  .GetProperty("id").GetInt64()==link &&
+              !RecycleStore.List(vault.Db,"company").Any(x=>
+                  x.Kind=="v2_archive_folder" && x.Id==original),
+            "X05 same-workspace transfer move preserves all identities and no tombstone");
+
+        // X06: cross-workspace move is independent copy followed by a source
+        // soft-delete, and restoring source leaves two physically separate trees.
+        long moveRoot=await Folder(client,"company","general",key+"跨区移动");
+        long targetHolder=await Folder(client,"personal","general",key+"跨区目标目录");
+        var moved=await Read(await client.PostAsJsonAsync(
+            $"/api/v2/ui/folders/company/general/{moveRoot}/transfer",
+            new{targetWorkspace="personal",targetSection="general",
+                targetFolderId=targetHolder,move=true}));
+        long newRoot=moved.GetProperty("id").GetInt64();
+        Check(newRoot!=moveRoot &&
+              (await Flat(client,"personal","general")).EnumerateArray()
+                .Any(x=>Id(x)==newRoot) &&
+              !(await Flat(client,"company","general")).EnumerateArray()
+                .Any(x=>Id(x)==moveRoot),
+            "X06 cross-workspace move creates new root and tombstones source");
+        Check(RecycleStore.Change(vault.Db,"company",
+            [new RecycleKey("v2_archive_folder",moveRoot,"general")],false) &&
+              (await Flat(client,"company","general")).EnumerateArray()
+                .Any(x=>Id(x)==moveRoot),
+            "X06 restoring source creates two independent, active trees");
+        Console.WriteLine("S3 X01-X06/X08/X12 SQLCIPHER HTTP PASS");
+    }
+
     public static async Task VerifyAsync(HttpClient client,Vault vault)
     {
         string mark="TREE-"+Guid.NewGuid().ToString("N")[..8];
@@ -768,6 +1000,7 @@ static class NativeFolderTreeTransferSmoke
         await VerifyCrossSectionFolderMoveAsync(client,vault);
         await VerifyCrossModuleRootMovesAsync(client,vault);
         await VerifyProjectDirectoriesAsync(client,vault);
+        await VerifyS3ContractAsync(client,vault);
         Console.WriteLine("FOLDER TREE TRANSFER SMOKE PASS");
     }
 }

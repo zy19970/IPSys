@@ -57,11 +57,12 @@ static partial class McpLocal
             ["section"]=Field("string","资料模块"),
             ["folder_id"]=Field("integer","待删除 FolderId")
         },["workspace","section","folder_id"]),
-        Tool("move_folder","同模块移动普通文件夹；section=project 时 parent_id 必填，必须归属于一个项目或其子目录。",new(){
+        Tool("move_folder","同工作区将普通文件夹原位移动到任意合法资料模块，保留 FolderId/FileId/LinkId；目标为 project 必须提供真实项目或目录 FolderId。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
-            ["section"]=Field("string","资料模块"),
+            ["section"]=Field("string","来源资料模块"),
             ["folder_id"]=Field("integer","待移动 FolderId"),
-            ["parent_id"]=Field("integer","可选目标父 FolderId")
+            ["parent_id"]=Field("integer","目标父 FolderId；非 project 模块可省略或传0表示根目录"),
+            ["target_section"]=Field("string","可选目标资料模块，省略则与来源 section 相同")
         },["workspace","section","folder_id"]),
         Tool("transfer_folder","跨工作区或允许的模块间复制/移动完整目录树及附件版本；目标为 project 时必须指定目标项目或子目录。",new(){
             ["workspace"]=Field("string","来源工作区",Workspaces),
@@ -122,33 +123,38 @@ static partial class McpLocal
                     MaterialUrl(workspace,section,FolderId()));
             case "move_folder":
             {
-                long? parent=null;
-                if(args.TryGetProperty("parent_id",out var target) &&
-                   target.ValueKind!=JsonValueKind.Null)
-                    parent=FolderIdFrom("parent_id");
-                if(section=="project" && parent is null)
-                    throw new McpKnownRejectionException("项目内移动必须指定目标项目或目录。");
+                string targetSection=ReadString(args,"target_section",section);
+                if(!ArchiveDirectoryScopes.Allowed(workspace,targetSection))
+                    throw new McpKnownRejectionException("目标 section 不属于当前工作区。");
+                long parent=RootOrFolderId("parent_id");
+                if(targetSection=="project" && parent==0)
+                    throw new McpKnownRejectionException("目标项目必须指定真实项目或目录 FolderId。");
+                long id=FolderId();
+                var body=new JsonObject{
+                    ["targetFolderId"]=parent,["targetSection"]=targetSection,
+                    ["move"]=true,["items"]=new JsonArray(JsonValue.Create(id))
+                };
+                // The GUI batch move and both MCP move routes share one
+                // transaction; same-workspace moves never clone FileIds.
                 return await RequestAsync(client,HttpMethod.Post,
-                    V2Url(workspace,"archive_folder",FolderId())+
-                    "/move?section="+Uri.EscapeDataString(section),
-                    new JsonObject{["parentId"]=parent is long n?JsonValue.Create(n):null});
+                    "/api/v2/ui/folders/"+workspace+"/"+Uri.EscapeDataString(section)+
+                    "/transfer-batch",body);
             }
             case "transfer_folder":
             {
                 string targetWorkspace=RequiredFolderText("target_workspace");
                 string targetSection=RequiredFolderText("target_section");
-                if(!ArchiveDirectoryScopes.Allowed(targetWorkspace,targetSection))
-                    throw new McpKnownRejectionException("目标工作区或 section 无效。");
+                if(!FolderTransferPolicy.Allowed(workspace,section,targetWorkspace,targetSection))
+                    throw new McpKnownRejectionException("工作区与资料模块不在合法转移范围。");
                 var body=new JsonObject{
                     ["targetWorkspace"]=targetWorkspace,
                     ["targetSection"]=targetSection,
                     ["move"]=Bool(args,"move")
                 };
-                if(args.TryGetProperty("target_folder_id",out var target) &&
-                   target.ValueKind!=JsonValueKind.Null)
-                    body["targetFolderId"]=FolderIdFrom("target_folder_id");
-                if(targetSection=="project" && body["targetFolderId"] is null)
+                long target=RootOrFolderId("target_folder_id");
+                if(targetSection=="project" && target==0)
                     throw new McpKnownRejectionException("目标为项目时必须指定 target_folder_id。");
+                if(target>0)body["targetFolderId"]=target;
                 return await RequestAsync(client,HttpMethod.Post,
                     "/api/v2/ui/folders/"+workspace+"/"+Uri.EscapeDataString(section)+
                     "/"+FolderId()+"/transfer",body);
@@ -158,6 +164,15 @@ static partial class McpLocal
 
         // Invalid local arguments have a definite outcome: no HTTP write was
         // issued. Record them as done/businessOk=false, never uncertain.
+        long RootOrFolderId(string key)
+        {
+            if(!args.TryGetProperty(key,out var value) ||
+               value.ValueKind==JsonValueKind.Null)return 0;
+            if(value.ValueKind!=JsonValueKind.Number ||
+               !value.TryGetInt64(out long id) || id<0)
+                throw new McpKnownRejectionException(key+" 必须是非负整数 FolderId（0 表示非项目模块根目录）。");
+            return id;
+        }
         long FolderIdFrom(string key)
         {
             try { return ReadId(args,key); }

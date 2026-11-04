@@ -1,146 +1,205 @@
-/* F2-04: use the real Explorer record-transfer functions with mock HTTP. */
+/* S3: exercise the real Explorer record transfer UI handler, not just a map.
+   Detached target trees must never replace the current VaultStore workspace. */
 "use strict";
 const assert=require("node:assert/strict");
-const fs=require("node:fs");
-const path=require("node:path");
-const vm=require("node:vm");
+const fs=require("node:fs"),path=require("node:path"),vm=require("node:vm");
 const root=path.resolve(__dirname,"../wwwroot");
 const bridge=fs.readFileSync(path.join(root,"js/bridge.js"),"utf8");
 const interactions=fs.readFileSync(path.join(root,"js/interactions.js"),"utf8");
-// 普通文件夹的独立复制/跨区转移与新的同FileId共享/同模块移动语义分开。
-assert.ok(interactions.includes('MI("copy-record","copy",recordKind==="archive_folder" ? "复制文件夹（独立副本）" : "复制整条记录")'));
-assert.ok(interactions.includes('MI("transfer-record","move",recordKind==="archive_folder" ? "跨工作区或类别转移" : "移动或跨区转移")'));
 assert.match(interactions,/"copy-record": inWorkspace\(\(\) => transferBusinessRecord\(item, false\)\)/);
 assert.match(interactions,/"transfer-record": inWorkspace\(\(\) => transferBusinessRecord\(item, true\)\)/);
-const from=bridge.indexOf("function recordTransferOptions(node, move) {");
-const until=bridge.indexOf("/* 遍历当前已加载的整棵树",from);
-assert.ok(from>=0&&until>from);
-const calls=[],dialogs=[],msgs=[],clear=[];
-let refresh=0,busy=false,failed=false;
+const from=bridge.indexOf("/* Mirrors server FolderTransferPolicy");
+const end=bridge.indexOf("/* 遍历当前已加载的整棵树",from);
+assert.ok(from>0&&end>from,"S3 Explorer handler and chooser builder loaded");
+
 const projects={
- company:[{id:8,name:"目标公司项目"},{id:15,name:"其它公司项目"}],
- personal:[{id:70,name:"个人科研项目"}]
+ company:[{id:8,name:"公司源项目"},{id:15,name:"目标公司项目"}],
+ personal:[{id:70,name:"个人目标科研项目"},{id:90,name:"另一目标项目"}]
 };
-/* B02：资料转移必须落到用户指定的目录，转移前会读目标工作区的目录快照。 */
 const archiveFolders={
- company:[{id:70,name:"申报与认定",parentId:null,section:"achievement"},
-          {id:71,name:"其他业务资料",parentId:null,section:"achievement"}],
- personal:[{id:80,name:"个人成果",parentId:null,section:"achievement"},
-           {id:81,name:"个人学术",parentId:null,section:"academic"}]
+ company:[
+ {id:71,name:"公司业务档案",parentId:null,section:"achievement"},
+ {id:12,name:"公司综合资料",parentId:null,section:"general"},
+ {id:81,name:"公司源项目下资料",parentId:8,section:"project"},
+ {id:82,name:"另一项目内同名目录",parentId:15,section:"project"},
+ {id:83,name:"另一个深层目录",parentId:82,section:"project"}
+ ],
+ personal:[
+ {id:101,name:"个人成果",parentId:null,section:"achievement"},
+ {id:102,name:"个人学术",parentId:null,section:"academic"},
+ {id:103,name:"个人其他资料",parentId:null,section:"general"},
+ {id:104,name:"个人项目的三级目录",parentId:70,section:"project"},
+ {id:105,name:"再下一层",parentId:104,section:"project"}
+ ]
 };
+const calls=[],dialogs=[],pickers=[],msgs=[],readUrls=[],clear=[];
+const view=new Map();
+const node=(kind,id,extra={})=>{
+ const n={id:(kind==="archive_folder"?"af:":kind+":")+id,
+  type:"folder",name:extra.name||kind+id,biz:{kind,id,...extra}};
+ view.set(n.id,n);return n;
+};
+const current={project:node("project",8),ip:node("ip",9),
+ source:node("archive_folder",81,{section:"project",name:"公司源项目下资料"}),
+ general:node("archive_folder",12,{section:"general",name:"公司综合资料"}),
+ achievement:node("archive_folder",71,{section:"achievement"}),
+ certificate:node("archive_folder",77,{section:"certificate"})};
+let busy=false,failWrite=false,failRead=false,failRefresh=false,refresh=0;
 const vault={
  ws:"company",
  async api(url,opts){
-  calls.push({url,opts});
-  if(failed)throw Error("HTTP 409 测试拒绝");
-  return {id:10};
+  calls.push({url,payload:JSON.parse(JSON.stringify(opts.json))});
+  if(failWrite)throw Error("HTTP 409 测试拒绝");
+  return {id:777};
  },
  async getJson(url){
+  readUrls.push(url);
+  if(failRead)throw Error("HTTP 500 获取目录失败");
   const ws=url.split("/").at(-1);
-  if(url.includes("/api/v2/ui/folders/"))
-   return {folders:archiveFolders[ws]||[],orders:{},files:[]};
-  assert.ok(url.includes("/api/v2/ui/projects/"));
-  return projects[ws];
+  if(url.includes("/api/v2/ui/projects/"))return projects[ws]||[];
+  assert.match(url,/\/api\/v2\/ui\/folders\//);
+  return {folders:archiveFolders[ws]||[],orders:{},files:[]};
  }
 };
 const context=vm.createContext({
  VaultStore:vault,
  RecordForms:{open:form=>dialogs.push(form)},
  Drive:{clearSelection:()=>clear.push(true)},
- toast:m=>msgs.push(m),
- /* 打包后 catLabel 是全局函数，这里按同一口径提供类别名。 */
- catLabel:id=>({achievement:"成果资料",academic:"学术资料"})[id]||id,
+ toast:(msg)=>msgs.push(String(msg)),
+ catLabel:section=>section,
  fileTaskBusy:()=>busy,
- refreshCurrent:async()=>{refresh++;},
+ refreshCurrent:async()=>{refresh++;if(failRefresh)throw Error("refresh failed");},
+ findById:id=>view.get(id)
 });
-vm.runInContext(bridge.slice(from,until),context);
+const pickerContext=vm.createContext({});
+const index=vm.runInContext(fs.readFileSync(path.join(root,"js/folder-picker.js"),"utf8")+"\nAttachmentFolderPicker.index.bind(AttachmentFolderPicker)",pickerContext);
+context.AttachmentFolderPicker={index,open:opts=>{pickers.push(opts);return opts;}};
+vm.runInContext(bridge.slice(from,end),context,{filename:"s3-real-bridge-transfer.js"});
 const invoke=vm.runInContext("transferBusinessRecord",context);
 const opt=vm.runInContext("recordTransferOptions",context);
-const node=(kind,id,extra={})=>({id:kind+":"+id,type:"folder",name:kind+id,biz:{kind,id,...extra}});
+const choices=n=>Array.from(opt(n,true),x=>x.value);
+
 (async()=>{
- const project=node("project",5);
- assert.deepEqual(Array.from(opt(project,true),x=>x.value),["personal"]);
- invoke(project,false);
- assert.equal(dialogs.at(-1).title,"复制项目（含全部文件夹）");
+ // Keep project/IP business record transfers separate and unchanged.
+ assert.deepEqual(choices(current.project),["personal"]);
+ invoke(current.project,false);
  await dialogs.at(-1).onSubmit({target:"company"});
- assert.equal(calls.at(-1).url,"/api/v2/projects/company/5/transfer");
- assert.deepEqual(JSON.parse(JSON.stringify(calls.at(-1).opts.json)),
-  {targetWorkspace:"company",move:false});
- invoke(project,true);
+ assert.deepEqual(calls.at(-1),{
+  url:"/api/v2/projects/company/8/transfer",
+  payload:{targetWorkspace:"company",move:false}
+ });
+ invoke(current.ip,true);
  await dialogs.at(-1).onSubmit({target:"personal"});
- assert.deepEqual(JSON.parse(JSON.stringify(calls.at(-1).opts.json)),
-  {targetWorkspace:"personal",move:true});
- assert.equal(clear.length,2);
+ assert.equal(calls.at(-1).url,"/api/v2/ip/company/9/transfer");
 
- const ip=node("ip",17);
- invoke(ip,true);
- await dialogs.at(-1).onSubmit({target:"personal"});
- assert.equal(calls.at(-1).url,"/api/v2/ip/company/17/transfer");
+ // X01: a project subdirectory now has copy targets in the same real project
+ // and across workspaces. No copy is written before a real FolderId is chosen.
+ assert.ok(choices(current.source).includes("company/project"));
+ assert.ok(choices(current.source).includes("personal/project"));
+ assert.ok(choices(current.source).includes("company/general"));
+ assert.ok(choices(current.source).includes("company/certificate"));
+ invoke(current.source,false);
+ const before=calls.length;
+ await dialogs.at(-1).onSubmit({target:"company/project"});
+ assert.equal(calls.length,before,"opening picker never writes");
+ let picker=pickers.at(-1);
+ const model=index(picker.root,81,[81]);
+ assert.ok(model.byFolderId.has(15),"actual project node can be destination");
+ assert.ok(model.byFolderId.has(83),"deep project directory is browsable");
+ assert.ok(model.path(model.byFolderId.get(83).id).includes("另一个深层目录"));
+ await picker.onSubmit({target:"15",targetSection:"project"});
+ assert.equal(calls.at(-1).url,
+  "/api/v2/ui/folders/company/project/81/transfer");
+ assert.deepEqual(calls.at(-1).payload,{
+  targetWorkspace:"company",targetSection:"project",move:false,targetFolderId:15
+ });
 
- const general=node("archive_folder",12,{section:"general"});
- invoke(general,false);
+ // Same-section move to another physical parent preserves IDs on server.
+ invoke(current.source,true);
+ await dialogs.at(-1).onSubmit({target:"company/project"});
+ picker=pickers.at(-1);
+ await picker.onSubmit({target:"83",targetSection:"project"});
+ assert.equal(calls.at(-1).payload.move,true);
+ assert.equal(calls.at(-1).payload.targetFolderId,83);
+ // X02: cross-module root is represented by 0, never a pretend project root.
+ invoke(current.source,true);
+ await dialogs.at(-1).onSubmit({target:"company/general"});
+ picker=pickers.at(-1);
+ await picker.onSubmit({target:"0",targetSection:"general"});
+ assert.deepEqual(calls.at(-1).payload,{
+  targetWorkspace:"company",targetSection:"general",move:true
+ });
+
+ // X03/X08: same numeric FolderId in another workspace is not a descendant.
+ invoke(current.source,false);
+ await dialogs.at(-1).onSubmit({target:"personal/project"});
+ picker=pickers.at(-1);
+ assert.equal(picker.originWorkspace,"company");
+ assert.equal(picker.workspace,"personal");
+ assert.deepEqual(picker.sourceFolderIds,[]);
+ assert.ok(index(picker.root,null,[]).byFolderId.has(70));
+ await picker.onSubmit({target:"70",targetSection:"project"});
+ assert.deepEqual(calls.at(-1).payload,{
+  targetWorkspace:"personal",targetSection:"project",move:false,targetFolderId:70
+ });
+ assert.equal(vault.ws,"company","loading target snapshot never switches current workspace");
+ assert.ok(readUrls.includes("/api/v2/ui/projects/personal"));
+
+ // X12: unauthorized target matrix values cannot open a picker.
+ assert.deepEqual(choices(current.certificate),[
+  "company/certificate","company/achievement","company/party",
+  "company/general","company/project"]);
+ assert.ok(!choices(current.certificate).includes("personal/certificate"));
+ assert.ok(!choices(current.achievement).includes("personal/general"));
+ assert.ok(choices(current.achievement).includes("personal/academic"));
+
+ // X09: cancellation from picker must send no write; workspace switch
+ // after a chooser was opened must be rejected before submitting.
+ invoke(current.source,false);
  await dialogs.at(-1).onSubmit({target:"personal/general"});
- let generalDialog=dialogs.at(-1);
- assert.deepEqual(Array.from(generalDialog.fields[0].options,x=>x.value),["0"]);
- await generalDialog.onSubmit({folderId:"0"});
- assert.equal(calls.at(-1).url,"/api/v2/ui/folders/company/general/12/transfer");
- assert.deepEqual(JSON.parse(JSON.stringify(calls.at(-1).opts.json)),
-  {targetWorkspace:"personal",move:false,targetSection:"general"});
-
- const archive=node("archive_folder",6,{section:"achievement"});
- assert.deepEqual(Array.from(opt(archive,true),x=>x.value),
-  ["personal/achievement","personal/academic"]);
- invoke(archive,false);
- await dialogs.at(-1).onSubmit({target:"personal/academic"});
- /* 只有选定目录后才提交：顶层是 0，具体目录是它的 FolderId。 */
- let archiveDialog=dialogs.at(-1);
- assert.equal(archiveDialog.title,"选择目标分类目录");
- assert.deepEqual(Array.from(archiveDialog.fields[0].options,x=>x.value),["0","81"]);
- await archiveDialog.onSubmit({folderId:"81"});
- assert.equal(calls.at(-1).url,"/api/v2/ui/folders/company/achievement/6/transfer");
- assert.deepEqual(JSON.parse(JSON.stringify(calls.at(-1).opts.json)),
-  {targetWorkspace:"personal",move:false,targetSection:"academic",targetFolderId:81});
-
- /* 公司业务档案也是普通文件夹，目标可直接选顶层。 */
- invoke(archive,false);
- await dialogs.at(-1).onSubmit({target:"company/achievement"});
- archiveDialog=dialogs.at(-1);
- assert.deepEqual(Array.from(archiveDialog.fields[0].options,x=>x.value),["0","70","71"]);
- await archiveDialog.onSubmit({folderId:"71"});
- assert.deepEqual(JSON.parse(JSON.stringify(calls.at(-1).opts.json)),
-  {targetWorkspace:"company",move:false,targetSection:"achievement",targetFolderId:71});
- const certificate=node("archive_folder",10,{section:"certificate"});
- assert.equal(opt(certificate,true).length,0,
-  "Certificate transfer cannot bypass module compatibility constraints");
- const beforeDialogs=dialogs.length;
- invoke(certificate,true);
- // No new modal for an unsupported target; the caller only sees a toast.
- assert.equal(dialogs.length,beforeDialogs);
- assert.match(msgs.at(-1),/没有受支持的目标/);
- const retired=node("contract",30,{projectId:8});
- assert.equal(opt(retired,true).length,0);
- const beforeRetired=dialogs.length;
- invoke(retired,true);
- assert.equal(dialogs.length,beforeRetired,"No retired contract transfer modal");
-
- const previousCalls=calls.length;
- invoke(project,false);
- const lockedDialog=dialogs.at(-1);
+ picker=pickers.at(-1);
+ const beforeSwitch=calls.length;
  vault.ws="personal";
- await assert.rejects(lockedDialog.onSubmit({target:"personal"}),/工作区已经切换/);
- assert.equal(calls.length,previousCalls);
+ await assert.rejects(picker.onSubmit({target:"103",targetSection:"general"}),
+  /工作区已变化/);
+ assert.equal(calls.length,beforeSwitch);
  vault.ws="company";
  busy=true;
- await assert.rejects(lockedDialog.onSubmit({target:"personal"}),/其它文件任务/);
- assert.equal(calls.length,previousCalls);
+ await assert.rejects(picker.onSubmit({target:"103",targetSection:"general"}),
+  /文件任务/);
+ assert.equal(calls.length,beforeSwitch);
  busy=false;
+ await assert.rejects(picker.onSubmit({target:"0",targetSection:"project"}),
+  /目标项目或目录无效/);
+ assert.equal(calls.length,beforeSwitch);
+ failWrite=true;
+ await assert.rejects(picker.onSubmit({target:"103",targetSection:"general"}),/409/);
+ failWrite=false;
+ assert.equal(calls.length,beforeSwitch+1);
 
- failed=true;
- await assert.rejects(lockedDialog.onSubmit({target:"personal"}),/409/);
- assert.equal(calls.length,previousCalls+1);
- failed=false;
+ // X11: server commits once; failed UI refresh is not a retry.
+ invoke(current.source,false);
+ await dialogs.at(-1).onSubmit({target:"company/achievement"});
+ picker=pickers.at(-1);
+ const previous=calls.length;
+ failRefresh=true;
+ await picker.onSubmit({target:"71",targetSection:"achievement"});
+ failRefresh=false;
+ assert.equal(calls.length,previous+1);
+ assert.match(msgs.at(-1),/事务已提交.*刷新失败/);
 
- await assert.rejects(lockedDialog.onSubmit({target:"invalid"}),/无效/);
- assert.equal(calls.length,previousCalls+1);
- console.log("EXPLORER F2-04 PASS: project/IP/archive_folder transfers, sections, project target and busy/409");
+ // Failed snapshot retrieval is visible and never creates a write.
+ failRead=true;
+ invoke(current.source,false);
+ const previousPickers=pickers.length,previousCalls=calls.length;
+ await dialogs.at(-1).onSubmit({target:"personal/project"});
+ failRead=false;
+ assert.equal(pickers.length,previousPickers);
+ assert.equal(calls.length,previousCalls);
+ assert.match(msgs.at(-1),/无法读取目标目录/);
+
+ // No hidden record-specific contract transfer fallback.
+ const retired=node("contract",301);
+ assert.equal(opt(retired,false).length,0);
+ console.log("EXPLORER S3 RECORD TRANSFER PASS: project picker, modules, cross-workspace, validation, refresh, no native huge select");
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -367,5 +367,40 @@ function open(move=false) {
   assert.match(errors.at(-1),/无法打开目标目录选择器/,
     "Synchronous picker rejection must be visible instead of a silent no-op");
   project.children.pop();
+  // S3: detached destination-tree picker for a different workspace. The
+  // originating workspace remains company, even though the target is personal.
+  const isolated=[];
+  const personalTarget=folder("p:90009","对侧独立项目","project",[]);
+  projectCat.children.push(personalTarget);
+  const openDetached=()=>picker.open({
+    root,workspace:"personal",originWorkspace:"company",
+    sourceFolderId:null,sourceFolderIds:[],allowDetached:true,
+    independentCopy:true,folderMode:true,
+    folderSection:"project",folderSections:["project"],
+    fileName:"独立副本",sourceDescription:"公司项目 / 来源目录",
+    move:false,onSubmit:async value=>isolated.push(JSON.parse(JSON.stringify(value)))
+  });
+  openDetached();
+  assert.match(mask.innerHTML,/复制文件夹（独立副本）/);
+  assert.equal(get("current").disabled,true,
+    "S3 project category root is not a real project");
+  pickClick(get("list"),"choose","p:90009");
+  await get("submit").emit("click");
+  assert.deepEqual(isolated.at(-1),{target:"90009",targetSection:"project"},
+    "S3 cross-workspace project chooser returns the real target ProjectId");
+  openDetached();
+  pickClick(get("list"),"choose","p:90009");
+  const detachedBefore=isolated.length;
+  sandbox.VaultStore.ws="personal";
+  await get("submit").emit("click");
+  assert.equal(isolated.length,detachedBefore,
+    "S3 switching originating workspace during target selection never writes");
+  assert.match(get("error").textContent,/工作区已变化/);
+  sandbox.VaultStore.ws="company";
+  mask.cancel[0].emit("click");
+  assert.equal(mask.removed,true);
+  assert.equal(isolated.length,detachedBefore,
+    "S3 cancelling detached project chooser does not write");
+  projectCat.children.pop();
   console.log("FOLDER PICKER PASS: 75 levels, 1230 siblings, project-entry move/share, project destinations, search, security");
 })().catch(e=>{console.error(e);process.exitCode=1;});

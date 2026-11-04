@@ -105,10 +105,10 @@ static class NativeMcpArchiveSmoke
             workspace="company",request_id=reject409Id
         });
         Check(reject409["status"]?.GetValue<string>()=="failed" &&
-              reject409["httpStatus"]?.GetValue<int>()==409 &&
+              reject409["httpStatus"]?.GetValue<int>()==400 &&
               reject409Log["state"]?.GetValue<string>()=="done" &&
               reject409Log["businessOk"]?.GetValue<bool>()==false,
-              "ISS-002 known 409 validation rejection is durable, not uncertain");
+              "ISS-002 invalid self-target (400) is durable, not uncertain");
         // Seed every optional field through HTTP; MCP renaming must not
         // erase anything in the unified archive_folder attributes JSON.
         using(var seeded=await client.PutAsJsonAsync(
@@ -551,6 +551,65 @@ static class NativeMcpArchiveSmoke
         try{await Run("list_folders",new{workspace="personal",section="party"});}
         catch(IOException){personalDenied=true;}
         Check(personalDenied,"no company archive folders in personal workspace");
+        // S3: same-workspace move_folder/transfer_folder share original
+        // FolderId; changing the destination section never clones an archive.
+        string s3="S3MCP-"+Guid.NewGuid().ToString("N")[..8];
+        using var projectA=await client.PostAsJsonAsync(
+            "/api/v2/folders/company/project",
+            new{project=new{name=s3+"项目A",projectType="科研项目"}});
+        projectA.EnsureSuccessStatusCode();
+        long projectAId=(await projectA.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("id").GetInt64();
+        using var projectB=await client.PostAsJsonAsync(
+            "/api/v2/folders/company/project",
+            new{project=new{name=s3+"项目B",projectType="科研项目"}});
+        projectB.EnsureSuccessStatusCode();
+        long projectBId=(await projectB.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("id").GetInt64();
+        long s3Folder=Id(await Run("create_folder",new{
+            workspace="company",section="project",parent_id=projectAId,
+            name=s3+"目录"
+        }));
+        string s3Request=Guid.NewGuid().ToString("N");
+        var s3Move=await Run("move_folder",new{
+            workspace="company",section="project",folder_id=s3Folder,
+            target_section="general",parent_id=0,request_id=s3Request
+        });
+        Check(Id(s3Move)==s3Folder &&
+              Has(await Run("list_folders",new{
+                  workspace="company",section="general"
+              }),s3Folder),"S3 X02 project-to-general MCP move preserves FolderId");
+        var s3Replay=await Run("move_folder",new{
+            workspace="company",section="project",folder_id=s3Folder,
+            target_section="general",parent_id=0,request_id=s3Request
+        });
+        Check(Id(s3Replay)==s3Folder,"S3 X07 move request_id replays one result");
+        var s3Return=await Run("move_folder",new{
+            workspace="company",section="general",folder_id=s3Folder,
+            target_section="project",parent_id=projectAId
+        });
+        Check(Id(s3Return)==s3Folder,"S3 X02 MCP returns folder to a real project");
+        var s3Transfer=await Run("transfer_folder",new{
+            workspace="company",section="project",folder_id=s3Folder,
+            target_workspace="company",target_section="project",
+            target_folder_id=projectBId,move=true
+        });
+        Check(Id(s3Transfer)==s3Folder &&
+              Has(await Run("list_folders",new{
+                  workspace="company",section="project",parent_id=projectBId
+              }),s3Folder),"S3 X05 same-workspace transfer_folder is in-place");
+        string s3BadRequest=Guid.NewGuid().ToString("N");
+        var s3Bad=await Run("transfer_folder",new{
+            workspace="company",section="project",folder_id=s3Folder,
+            target_workspace="personal",target_section="general",
+            move=false,request_id=s3BadRequest
+        });
+        Check(s3Bad["status"]?.GetValue<string>()=="failed" &&
+              (await Run("get_operation_result",new{
+                  workspace="company",request_id=s3BadRequest
+              }))["businessOk"]?.GetValue<bool>()==false,
+            "S3 X12 unsupported project-to-personal-general is a known rejection");
+        Console.WriteLine("S3 X02/X05/X07/X12 MCP SQLCIPHER PASS");
         Console.WriteLine("N2-04 ARCHIVE GENERAL MCP V2 SQLCIPHER PASS");
     }
 }

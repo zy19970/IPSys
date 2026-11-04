@@ -43,9 +43,10 @@ const AttachmentFolderPicker = {
 
   open({root,workspace,sourceFolderId,sourceFolderIds=[sourceFolderId],fileName,fileId,fileIds,
     sourceDescription,move,onSubmit,folderMode=false,folderSection="",
-    folderSections=[folderSection]}) {
+    folderSections=[folderSection],allowDetached=false,originWorkspace=workspace,
+    independentCopy=false}) {
     const model=this.index(root,sourceFolderId,sourceFolderIds);
-    if(!model.source) throw new Error("当前"+(folderMode?"文件夹":"附件")+"的来源目录已失效，请刷新重试");
+    if(!model.source && !allowDetached) throw new Error("当前"+(folderMode?"文件夹":"附件")+"的来源目录已失效，请刷新重试");
     const categoryId="k:"+folderSection;
     const allowedSections=new Set(folderSections.length?folderSections:[folderSection]);
     const crossSectionPicker=folderMode && allowedSections.size>1;
@@ -56,9 +57,10 @@ const AttachmentFolderPicker = {
     const destinationSection=record=>isAllowedCategory(record)
       ? record.id.slice(2) : isProjectTarget(record)
       ? "project" : record?.node?.biz?.section;
-    if(folderMode && (model.source.node.biz?.kind!=="archive_folder" ||
-       model.source.node.biz?.section!==folderSection || !model.nodes.has(categoryId) ||
-       !allowedSections.has(folderSection) ||
+    if(folderMode && ((!allowDetached &&
+       (model.source.node.biz?.kind!=="archive_folder" ||
+        model.source.node.biz?.section!==folderSection)) ||
+       !model.nodes.has(categoryId) || !allowedSections.has(folderSection) ||
        [...allowedSections].some(section=>!model.nodes.has("k:"+section))))
       throw new Error("当前文件夹不属于有效的目标资料模块");
     document.querySelector("#attachmentFolderPicker")?.remove();
@@ -66,7 +68,8 @@ const AttachmentFolderPicker = {
     const mask=document.createElement("div");
     mask.id="attachmentFolderPicker";
     mask.className="mask show folder-picker-mask";
-    const label=folderMode?(move?"移动文件夹":"共享文件夹"):
+    const label=folderMode?(independentCopy?"复制文件夹（独立副本）":
+      move?"移动文件夹":"共享文件夹"):
       (move?"移动附件":"共享附件原件");
     mask.innerHTML=`
       <div class="dialog folder-picker-dialog" role="dialog" aria-modal="true" aria-label="${esc(label)}">
@@ -74,9 +77,9 @@ const AttachmentFolderPicker = {
           <button type="button" class="icon-btn sm" data-picker-close aria-label="关闭">${icon("close",15)}</button>
         </div>
         <div class="folder-picker-source">
-          <small>${folderMode?"选中的文件夹":"当前附件"} · ${esc(workspace==="company"?"企业工作区":"个人工作区")}</small>
+          <small>${folderMode?"选中的文件夹":"当前附件"} · ${esc(originWorkspace==="company"?"企业工作区":"个人工作区")}</small>
           <b title="${esc(fileName)}">${esc(fileName)}</b>
-          <small title="${esc(model.path(model.source.id))}">来源：${esc(sourceDescription || model.path(model.source.id))}</small>
+          <small title="${esc((model.source?model.path(model.source.id):""))}">来源：${esc(sourceDescription || (model.source?model.path(model.source.id):""))}</small>
         </div>
         <div class="folder-picker-search">
           <input type="search" data-picker-search placeholder="筛选当前目录的子文件夹…" aria-label="搜索目标文件夹" autocomplete="off">
@@ -88,7 +91,8 @@ const AttachmentFolderPicker = {
           <small>已选择目标</small>
           <b data-picker-target>尚未选择文件夹</b>
           <small>${folderMode
-            ? move?"保留原文件夹编号及完整层级，原位置不再显示该文件夹。":
+            ? independentCopy?"复制完整目录及原件历史，每个原件获得独立 FileId；来源保留。":
+              move?"原位移动保留 FolderId/FileId/LinkId；跨工作区转移复制全部原件历史。":
               "目标新建目录结构，附件共享原件及全部版本；以后新增子目录不会自动同步。"
             : move?"确认后来源将不再显示此附件；原件、版本及其它共享关联保持不变。":
               "来源保持不变；目标新增共享关联，所有历史版本仍共用。"}</small>
@@ -98,7 +102,7 @@ const AttachmentFolderPicker = {
           <button type="button" class="btn" data-picker-current disabled>选择当前文件夹</button>
           <span class="spacer"></span>
           <button type="button" class="btn" data-picker-close>取消</button>
-          <button type="button" class="btn solid" data-picker-submit disabled>${esc(move?"确认移动":"确认共享")}</button>
+          <button type="button" class="btn solid" data-picker-submit disabled>${esc(independentCopy?"确认复制":move?"确认移动":"确认共享")}</button>
         </div>
       </div>`;
     document.body.append(mask);
@@ -110,7 +114,8 @@ const AttachmentFolderPicker = {
     const currentButton=mask.querySelector("[data-picker-current]");
     const targetLabel=mask.querySelector("[data-picker-target]");
     const error=mask.querySelector("[data-picker-error]");
-    let cursor=model.initialId,selected=null,globalSearch=false,shown=this.pageSize;
+    let cursor=(folderMode&&allowDetached?categoryId:model.initialId),
+      selected=null,globalSearch=false,shown=this.pageSize;
     let saving=false,closed=false;
     const pageSize=this.pageSize;
     const forbiddenFolders=new Set(sourceFolderIds.map(Number));
@@ -232,7 +237,7 @@ const AttachmentFolderPicker = {
     currentButton.addEventListener("click",()=>choose(cursor));
     submit.addEventListener("click",async()=>{
       if(!selected||saving) return;
-      if(VaultStore.ws!==workspace) {
+      if(VaultStore.ws!==originWorkspace) {
         error.textContent="工作区已变化，请取消后重新选择";
         return;
       }

@@ -422,118 +422,197 @@ function moveSelectedItems(nodes) {
 /* F2-04: entire business folders; not the F2-03 attachment LinkId action.
    Whole-record copies duplicate logical FileIds and all versions; the backend
    refuses cross-workspace physical FileObject sharing. */
-function recordTransferOptions(node, move) {
-  const kind=node?.biz?.kind;
-  const ws=VaultStore.ws;
-  if(!["project","ip","archive_folder"].includes(kind)) return [];
-  if(kind==="archive_folder") {
-    const section=node.biz.section;
-    const modules={
-      achievement:["company/achievement","personal/achievement","personal/academic"],
-      academic:["company/achievement","personal/achievement","personal/academic"],
-      certificate:[ws+"/certificate"],
-      party:["company/party"],
-      general:["company/general","personal/general"],
-    };
-    const options=(modules[section]||[]).filter(item =>
-      item===ws+"/"+section || section!=="certificate");
-    return options.filter(item => !move || item!==ws+"/"+section).map(item=>({
-      value:item,label:({ "company/achievement":"公司 · 业务档案",
-        "personal/achievement":"个人 · 成果资料",
-        "personal/academic":"个人 · 学术资料",
-        "company/certificate":"公司 · 企业资质",
-        "personal/certificate":"个人 · 资质证书",
-        "company/party":"公司 · 党团建设",
-        "company/general":"公司 · 综合资料",
-        "personal/general":"个人 · 其他资料" })[item]||item,
-    }));
-  }
-  return ["company","personal"].filter(w=>!move || w!==ws)
+/* Mirrors server FolderTransferPolicy for menu targets; the final HTTP
+   handler revalidates the workspace, module, real parent and tree scope. */
+function recordTransferOptions(node,move) {
+  const kind=node?.biz?.kind,ws=VaultStore.ws;
+  if(!["project","ip","archive_folder"].includes(kind))return [];
+  if(kind!=="archive_folder")return ["company","personal"]
+    .filter(w=>!move||w!==ws)
     .map(w=>({value:w,label:w==="company"?"公司工作区":"个人工作区"}));
+  const section=node.biz.section;
+  const available=ws==="company"
+    ? ["certificate","achievement","party","general","project"]
+    : ["certificate","achievement","academic","general","project"];
+  const cross=ws==="company" ? {
+    achievement:["personal/achievement","personal/academic"],
+    general:["personal/general"],project:["personal/project"]
+  } : {
+    achievement:["company/achievement"],academic:["company/achievement"],
+    general:["company/general"],project:["company/project"]
+  };
+  const values=[...available.map(x=>ws+"/"+x),...(cross[section]||[])];
+  const labels={
+    "company/achievement":"公司 · 业务档案",
+    "personal/achievement":"个人 · 成果资料",
+    "personal/academic":"个人 · 学术资料",
+    "company/certificate":"公司 · 企业资质",
+    "personal/certificate":"个人 · 资质证书",
+    "company/party":"公司 · 党团建设",
+    "company/general":"公司 · 综合资料",
+    "personal/general":"个人 · 其他资料",
+    "company/project":"公司 · 项目目录",
+    "personal/project":"个人 · 项目目录"
+  };
+  return [...new Set(values)].map(value=>({value,label:labels[value]||value}));
 }
 
-function transferBusinessRecord(node, move=false) {
-  const kind=node?.biz?.kind;
-  const id=Number(node?.biz?.id);
-  if(node?.type!=="folder" || !Number.isSafeInteger(id) || id<=0) return;
-  if(fileTaskBusy()) return toast("当前有文件任务，请完成后再操作");
+/* Construct a detached read-only target tree. Never assign ROOT or
+   VaultStore.ws while inspecting the other workspace: navigation and search
+   operate entirely inside the picker model, without one giant native select. */
+function recordTransferTargetTree(workspace,section,snapshot,projects=[]) {
+  const root={id:"root",name:"我的文件",type:"folder",children:[]};
+  const category={id:"k:"+section,name:catLabel(section,workspace),
+    type:"folder",synthetic:true,children:[]};
+  root.children.push(category);
+  const byId=new Map();
+  if(section==="project") {
+    for(const project of projects||[]) {
+      const id=Number(project?.id);
+      if(!Number.isSafeInteger(id)||id<=0)continue;
+      const node={id:"p:"+id,name:project.name||("项目 "+id),
+        type:"folder",biz:{kind:"project",id},children:[]};
+      byId.set(id,node);
+      category.children.push(node);
+    }
+  }
+  const folders=(snapshot?.folders||[]).filter(x=>x.section===section);
+  for(const row of folders) {
+    const id=Number(row.id);
+    if(!Number.isSafeInteger(id)||id<=0||byId.has(id))continue;
+    byId.set(id,{id:"af:"+id,name:row.name||("目录 "+id),type:"folder",
+      biz:{kind:"archive_folder",id,section,parentId:row.parentId??null},
+      children:[]});
+  }
+  for(const row of folders) {
+    const node=byId.get(Number(row.id));
+    if(!node||node.biz?.kind!=="archive_folder")continue;
+    const parent=row.parentId==null?null:byId.get(Number(row.parentId));
+    if(parent && parent!==node && parent.biz?.kind!=="ip")
+      parent.children.push(node);
+    else if(section!=="project")category.children.push(node);
+    // A project child cannot be attached to the virtual category root.
+  }
+  return root;
+}
+
+function transferBusinessRecord(node,move=false) {
+  const kind=node?.biz?.kind,id=Number(node?.biz?.id);
+  if(node?.type!=="folder"||!Number.isSafeInteger(id)||id<=0)return;
+  if(fileTaskBusy())return toast("当前有文件任务，请完成后再操作");
   const sourceWorkspace=VaultStore.ws;
   const choices=recordTransferOptions(node,move);
-  if(!choices.length) return toast("当前记录没有受支持的目标工作区或类别");
-  const typeLabel={project:"项目（含全部文件夹）",
-    ip:"知识产权",archive_folder:node.biz.section==="general"?"综合资料":"资料文件夹"}[kind]||"记录";
+  if(!choices.length)return toast("当前记录没有受支持的目标工作区或类别");
+  const label={project:"项目（含全部文件夹）",
+    ip:"知识产权",archive_folder:"资料文件夹"}[kind]||"记录";
   RecordForms.open({
-    title:(move?"移动/转移":"复制")+typeLabel,
-    submitText:move?"继续转移":"确认复制",
-    fields:[{key:"target",type:"select",label:"目标位置",required:true,
-      options:choices,hint:move
-        ?"跨工作区转移会复制完整原件历史并保留物理隔离，成功后原记录进入回收站。"
-        :"复制整个记录和全部原件历史，不删除来源记录。"}],
+    title:(move?"移动/转移":"复制")+label,
+    submitText:move?"继续选择目标":"继续选择目标",
+    fields:[{key:"target",type:"select",label:"目标工作区与资料模块",required:true,
+      options:choices,hint:kind==="archive_folder"
+        ?"下一步在目录浏览器中逐级查找目标，项目需要选择真实项目或子目录。"
+        :"跨工作区转移保留原件历史，复制成功后来源移入回收站。"}],
     onSubmit:async data=>{
-      if(VaultStore.ws!==sourceWorkspace) throw new Error("工作区已经切换，请重新选择");
-      if(fileTaskBusy()) throw new Error("有其它文件任务正在执行");
+      if(VaultStore.ws!==sourceWorkspace)
+        throw new Error("工作区已经切换，请重新选择");
+      if(fileTaskBusy())throw new Error("有其它文件任务正在执行");
       if(!choices.some(opt=>opt.value===data.target))
         throw new Error("所选位置无效，请重新选择");
-      const targetWorkspace=data.target.split("/")[0];
-      const targetSection=kind==="archive_folder"?data.target.split("/")[1]:null;
+      const [targetWorkspace,targetSection]=data.target.split("/");
       const route={
         project:"/api/v2/projects/",ip:"/api/v2/ip/",
-        archive_folder:"/api/v2/ui/folders/",
+        archive_folder:"/api/v2/ui/folders/"
       };
       let endpoint=route[kind]+sourceWorkspace+"/";
-      if(kind==="archive_folder") endpoint+=node.biz.section+"/"+id+"/transfer";
+      if(kind==="archive_folder")endpoint+=node.biz.section+"/"+id+"/transfer";
       else endpoint+=id+"/transfer";
       const payload={targetWorkspace,move:!!move};
-      if(kind==="archive_folder") payload.targetSection=targetSection;
-      const finish=async ()=>{
-        // Response is an authoritative transaction result: never auto-retry
-        // after successful remote commit even if local refresh fails.
+      if(kind==="archive_folder")payload.targetSection=targetSection;
+      const commit=async()=>{
+        if(VaultStore.ws!==sourceWorkspace)
+          throw new Error("工作区已经切换，请重新选择目标");
+        if(fileTaskBusy())throw new Error("当前有文件任务，请完成后再操作");
+        const current=findById(node.id);
+        if(!current||current.biz?.kind!==kind||Number(current.biz?.id)!==id ||
+           (kind==="archive_folder" && current.biz?.section!==node.biz.section))
+          throw new Error("来源记录已经变化，请刷新后重试");
+        // A successful HTTP response is authoritative. Refresh is best effort,
+        // and a failed refresh must not send the write a second time.
         await VaultStore.api(endpoint,{method:"POST",json:payload});
-        try {
-          await refreshCurrent();
-          Drive.clearSelection();
+        try {await refreshCurrent();Drive.clearSelection();
           toast(move?"记录已转移":"记录已复制");
-        } catch {
-          toast("事务已提交，界面刷新失败；请手动刷新验证目标记录",
-            {tone:"error",ms:6000});
-        }
+        } catch {toast("事务已提交，界面刷新失败；请手动刷新验证目标记录",
+          {tone:"error",ms:6000});}
       };
-      /* All ordinary folders may be placed at the module root. */
-      if(kind==="archive_folder"){
-        const snapshot=await VaultStore.getJson("/api/v2/ui/folders/"+targetWorkspace);
-        const rows=(snapshot?.folders||[]).filter(x=>x.section===targetSection);
-        const byId=new Map(rows.map(x=>[String(x.id),x]));
-        const pathOf=row=>{
-          const parts=[];
-          let cur=row, guard=0;
-          while(cur && guard++<50){
-            parts.unshift(cur.name||("目录 "+cur.id));
-            cur=cur.parentId==null?null:byId.get(String(cur.parentId));
-          }
-          return parts.join(" › ");
-        };
-        const options=rows
-          .filter(x=>!(sourceWorkspace===targetWorkspace && Number(x.id)===id))
-          .map(x=>({value:String(x.id),label:pathOf(x)}));
-        options.unshift({value:"0",label:catLabel(targetSection)+"（顶层）"});
-        if(!options.length) throw new Error("目标位置没有可用的目录");
-        RecordForms.open({
-          title:"选择目标分类目录",submitText:move?"确认转移":"确认复制",
-          fields:[{key:"folderId",type:"select",label:"目标目录",required:true,
-            options,hint:"选择「顶层」表示直接放在该类别下。"}],
-          onSubmit:async next=>{
-            if(VaultStore.ws!==sourceWorkspace)
-              throw new Error("工作区已经切换，请重新选择");
-            if(!options.some(x=>x.value===next.folderId))
-              throw new Error("目标目录无效，请重新选择");
-            const folderId=Number(next.folderId);
-            if(folderId>0) payload.targetFolderId=folderId;
-            await finish();
-          },
-        });
+      if(kind!=="archive_folder")return commit();
+      let targetRoot;
+      try {
+        const [snapshot,projects]=await Promise.all([
+          VaultStore.getJson("/api/v2/ui/folders/"+targetWorkspace),
+          targetSection==="project"
+            ? VaultStore.getJson("/api/v2/ui/projects/"+targetWorkspace)
+            : Promise.resolve([])
+        ]);
+        if(VaultStore.ws!==sourceWorkspace)
+          throw new Error("选择目标期间工作区已变化，请重新操作");
+        targetRoot=recordTransferTargetTree(targetWorkspace,targetSection,
+          snapshot,projects);
+        if(!targetRoot.children[0])
+          throw new Error("目标目录快照不可用");
+      }catch(e) {
+        toast("无法读取目标目录："+(e.message||String(e)),
+          {tone:"error",ms:6000});
         return;
       }
-      return finish();
+      try {
+        AttachmentFolderPicker.open({
+          root:targetRoot,workspace:targetWorkspace,
+          originWorkspace:sourceWorkspace,
+          sourceFolderId:sourceWorkspace===targetWorkspace?id:null,
+          sourceFolderIds:sourceWorkspace===targetWorkspace?[id]:[],
+          allowDetached:true,
+          independentCopy:!move,folderMode:true,
+          folderSection:targetSection,folderSections:[targetSection],
+          fileName:node.name,sourceDescription:node.name,
+          move,onSubmit:async choice=>{
+            if(VaultStore.ws!==sourceWorkspace)
+              throw new Error("工作区已变化，请重新选择");
+            const folderId=Number(choice.target);
+            if(choice.targetSection!==targetSection ||
+               !Number.isSafeInteger(folderId)||folderId<0 ||
+               (targetSection==="project" && folderId===0))
+              throw new Error("目标项目或目录无效");
+            const target=AttachmentFolderPicker.index(targetRoot,
+              sourceWorkspace===targetWorkspace?id:null,
+              sourceWorkspace===targetWorkspace?[id]:[]);
+            const chosen=target.byFolderId.get(folderId);
+            if(folderId>0 && (!chosen||!target.isTarget(chosen)||
+               (chosen.node.biz?.kind!=="archive_folder" &&
+                !(targetSection==="project"&&chosen.node.biz?.kind==="project"))))
+              throw new Error("目标目录已经改变，请重新选择");
+            // A direct handler invocation must obey the same self/descendant
+            // prohibition as the visible picker. Scope the guard to the
+            // originating workspace, not the other workspace's numeric IDs.
+            if(targetWorkspace===sourceWorkspace && chosen) {
+              let ancestor=chosen;
+              while(ancestor) {
+                if(Number(ancestor.folderId)===id)
+                  throw new Error("不能复制或移动到来源文件夹自身或其下级目录");
+                ancestor=target.nodes.get(ancestor.parent);
+              }
+            }
+            if(folderId===0 && targetSection!=="project") {
+              delete payload.targetFolderId;
+            } else payload.targetFolderId=folderId;
+            // The server independently validates the same-workspace
+            // self/descendant guard and the cross-workspace module matrix.
+            await commit();
+          }
+        });
+      }catch(e){
+        toast("无法打开目标选择器："+(e.message||String(e)),
+          {tone:"error",ms:6000});
+      }
     },
   });
 }
