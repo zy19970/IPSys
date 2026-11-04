@@ -1,6 +1,8 @@
 # IPSys 本机 Codex MCP
 
-> **2026-11-04 最新验收状态**：现行 schema 3、MCP 43 项、项目内普通目录；本阶段最终测试提交 `cc7c1262` 的 [Windows CI #538](https://github.com/zy19970/IPSys/actions/runs/41839841405) 已完成成功，MCP↔GUI 同一批对象全链路验证通过。人工本机 GUI 尚待验证，旧库不迁移，发布未触发。详见 [S5 结案报告](tests/S5_FINAL_ACCEPTANCE_20261104.md)。
+> **现行 MCP 与资料库契约（2026-11-04）**：MCP 仍是 **43 项**；目录与项目接口名称、权限及 FolderId/FileId/LinkId 语义未变。新建 SQLCipher 数据库已升级为 **schema 4**，同工作区原位移动目录会连同软删后代及其隐藏子目录转移模块，历史版本和 deleted 状态保留；旧 schema 2/3 数据库不会自动迁移。产品代码 [`8a2780e`](https://github.com/zy19970/IPSys/commit/8a2780e7a8c18a5017e27e0e22c03aac1f078fae)，对应 [Windows CI #541](https://github.com/zy19970/IPSys/actions/runs/41862168722) 是否通过须以最终运行状态为准。正式 Release 尚未触发。
+
+> **历史 S5 验收状态（2026-11-04，#538）**：现行 schema 3、MCP 43 项、项目内普通目录；本阶段最终测试提交 `cc7c1262` 的 [Windows CI #538](https://github.com/zy19970/IPSys/actions/runs/41839841405) 已完成成功，MCP↔GUI 同一批对象全链路验证通过。人工本机 GUI 尚待验证，旧库不迁移，发布未触发。详见 [S5 结案报告](tests/S5_FINAL_ACCEPTANCE_20261104.md)。
 
 ## 当前有效的项目／普通目录 MCP 契约（2026-11-04，S4）
 
@@ -10,7 +12,7 @@
 
 普通目录使用 `list_folders/create_folder/update_folder/delete_folder/move_folder/transfer_folder` 及 `list_files_page/upload_files/list_file_links/associate_file` 等共享能力。上传项目目录附件时使用 `upload_files(workspace="company",kind="archive_folder",section="project",owner_id=实际目录FolderId,paths=[...])`。项目直属附件仍使用 `kind="project"`。统一搜索仅接受 `project/ip/archive_folder/file`；回收站记录类型使用 `list_trash` 实际返回的 `project/ip/v2_archive_folder/v2_file/v2_ip_file`。文件共享保持 FileId，不同位置拥有 LinkId；追加版本属于 FileId；跨工作区的项目整树复制含全部版本且物理 FileObject 隔离。
 
-新建加密资料库的资源结构版本固定为 **3**，旧 v2、缺失版本表或结构不完整的库在打开阶段拒绝，不作自动迁移和写入修补。HTTP 保留 `/api/v2` 路由命名：HTTP 路由版本与数据库 schema 版本不是同一个概念。请用新的空白资料库测试，旧测试库需自行保留或独立备份；不要以重新输入旧密码方式触发重建。更换 EXE 后重新连接 MCP 客户端，刷新 `tools/list`。
+新建加密资料库的资源结构版本固定为 **4**，旧 v2、缺失版本表或结构不完整的库在打开阶段拒绝，不作自动迁移和写入修补。HTTP 保留 `/api/v2` 路由命名：HTTP 路由版本与数据库 schema 版本不是同一个概念。请用新的空白资料库测试，旧测试库需自行保留或独立备份；不要以重新输入旧密码方式触发重建。更换 EXE 后重新连接 MCP 客户端，刷新 `tools/list`。
 
 ## S4 普通目录同层排序：现行 MCP 契约（Windows CI #532 已通过）
 

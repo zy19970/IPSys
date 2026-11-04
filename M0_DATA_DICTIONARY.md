@@ -1,6 +1,8 @@
 # IPSys M0 统一字段、状态与实体字典（设计定稿 V1.0）
 
-> **2026-11-04 当前有效口径**：SQLCipher schema 3，Folder 类型为 project、ip、archive_folder；合同资料是普通项目目录。现行固定 Excel：项目 11 列、知识产权 19 列、所有普通资料 6 列。MCP 共 43 工具。S5 同 SHA [CI #538](https://github.com/zy19970/IPSys/actions/runs/41839841405) 已成功（Edge 14 PASS，HTTP 12 PASS/1 压缩进度观察 BLOCKED）；用户人工验证及 Release 未执行。参见 [S5 结案报告](tests/S5_FINAL_ACCEPTANCE_20261104.md)，其余较早记录保留历史属性。
+> **现行后续整改（2026-11-04）**：资料库新建结构改为 SQLCipher **schema 4**（源码 `ResourceSchemaV2.cs` 沿用历史名称），不迁移旧 schema 2/3 测试库；完整物理子目录含回收站已删除后代可跨模块原位移动，FolderId/FileId/LinkId/版本和 deleted 状态保持稳定，恢复与永久清理按照新 section 执行。Excel 当前仍为项目 11 列、知产 19 列、普通资料 6 列；MCP 43 项。源代码 [`8a2780e`](https://github.com/zy19970/IPSys/commit/8a2780e7a8c18a5017e27e0e22c03aac1f078fae)，[Windows CI #541](https://github.com/zy19970/IPSys/actions/runs/41862168722) 为本轮验收入口（结果以实际状态为准）。旧版本的记录保留历史属性，正式 Release 和用户本机人工验收待做。
+
+> **历史 S5 口径（2026-11-04，#538）**：SQLCipher schema 3，Folder 类型为 project、ip、archive_folder；合同资料是普通项目目录。现行固定 Excel：项目 11 列、知识产权 19 列、所有普通资料 6 列。MCP 共 43 工具。S5 同 SHA [CI #538](https://github.com/zy19970/IPSys/actions/runs/41839841405) 已成功（Edge 14 PASS，HTTP 12 PASS/1 压缩进度观察 BLOCKED）；用户人工验证及 Release 未执行。参见 [S5 结案报告](tests/S5_FINAL_ACCEPTANCE_20261104.md)，其余较早记录保留历史属性。
 
 > **历史适用口径（2026-11-02，已由页首 2026-11-04 覆盖）**：本文件保留 M0 字段来源，物理模型以 `ResourceSchemaV2.cs`、运行时 Excel 以 `ExcelLedger.cs` 为准。项目 11 列、知识产权 19 列、档案/资质/党团 6 列、综合资料 3 列；合同无独立 Excel。普通资料 UI 新建统一文件夹，可直接存附件和子目录。现行 [Windows CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 已通过，历史旧测试建议不应替代最新接口。
 

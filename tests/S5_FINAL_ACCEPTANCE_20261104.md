@@ -1,5 +1,7 @@
 # IPSys S5 最终清理与自动化验收结案报告
 
+> **后续 R1 完整移动验收（2026-11-04）**：当前产品/测试源码 [`8a2780e`](https://github.com/zy19970/IPSys/commit/8a2780e7a8c18a5017e27e0e22c03aac1f078fae) 已实现 schema **4** 的墓碑/隐藏后代跨模块原位事务迁移，新增第三层故障回滚、恢复、永久清理、两个文件历史版本字节验证；HTTP 现行门禁已扩展至 **15 项**（含 R1-HTTP/R1-PURGE），Edge 为 14 项。历史 [#539](https://github.com/zy19970/IPSys/actions/runs/41856540366) 是 schema 3 临时拒绝方案通过；[#540](https://github.com/zy19970/IPSys/actions/runs/41861283022) 因静态版本断言过期失败；新 [#541](https://github.com/zy19970/IPSys/actions/runs/41862168722) 的实际运行结果待核对，不能把代码提交等同通过。用户本机人工验收和正式 Release 未执行。下面 #538 等历史证据保持原样。
+
 验收日期：2026-11-04（UTC+8）。验收对象：[main 提交 cc7c1262eac0c2aaa36a0cd3107823320627e774](https://github.com/zy19970/IPSys/commit/cc7c1262eac0c2aaa36a0cd3107823320627e774)。
 
 ## 一、结论

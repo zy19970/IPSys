@@ -1,12 +1,14 @@
 # IPSys 开发计划与当前执行状态
 
-> **最新现行状态（2026-11-04，S5 自动化已完成）**：SQLCipher 新库 schema **3**，Folder 仅 `project`、`ip`、`archive_folder`；项目可包含多层普通目录，合同资料不再是独立对象。普通资料模块（含综合资料）Excel **6 列**，项目 11 列，知识产权 19 列；MCP **43** 工具。最终代码/测试提交 `cc7c1262eac0c2aaa36a0cd3107823320627e774` 的 [Windows CI #538](https://github.com/zy19970/IPSys/actions/runs/41839841405) `completed/success`（26 success、0 failure、2 optional ZIP64 skipped），Edge **14 PASS**、HTTP **12 PASS + T-P1-07 1 BLOCKED**（小库 VACUUM 进度抓拍）。第16.4节同批 MCP↔GUI 跨入口闭环 S5-E2E PASS；两类单 EXE 启动通过。**用户本机 GUI 人工复验及正式 Release 未进行**。详见 [S5 结案报告](tests/S5_FINAL_ACCEPTANCE_20261104.md)；下文较早日期的 CI 与历史决策原文仅用于追溯。
+> **现行代码基线（2026-11-04）**：SQLCipher **schema 4**（`ResourceSchemaV2.cs` 文件名沿用；旧 schema 2/3 资料库拒绝打开，不迁移）。同工作区跨模块原位移动将已删除目录和隐藏的物理后代连同有效目录按父先子后在单一事务中更新 section，保留 FolderId/FileId/LinkId、文件版本与 deleted 状态；恢复后目录仍在目标模块，永久清理不会因旧 section 受阻。现行 MCP **43** 工具，普通资料 Excel **6** 列。产品实现见 [`8a2780e`](https://github.com/zy19970/IPSys/commit/8a2780e7a8c18a5017e27e0e22c03aac1f078fae)，对应 [Windows CI #541](https://github.com/zy19970/IPSys/actions/runs/41862168722) 的最终验收状态须以运行结果为准；上一基线 [#539](https://github.com/zy19970/IPSys/actions/runs/41856540366) 曾完成成功但仅验证了 R1 临时拒绝防护。用户本机人工验收与正式 Release 仍未执行。详见 [R1 修复核查](tests/REFACTOR_CLEANUP_REVIEW_20261104.md)，下方先前 S5 和较早 CI 叙述作为历史记录。
+
+> **历史 S5 自动化基线（2026-11-04，#538）**：SQLCipher 新库 schema **3**，Folder 仅 `project`、`ip`、`archive_folder`；项目可包含多层普通目录，合同资料不再是独立对象。普通资料模块（含综合资料）Excel **6 列**，项目 11 列，知识产权 19 列；MCP **43** 工具。最终代码/测试提交 `cc7c1262eac0c2aaa36a0cd3107823320627e774` 的 [Windows CI #538](https://github.com/zy19970/IPSys/actions/runs/41839841405) `completed/success`（26 success、0 failure、2 optional ZIP64 skipped），Edge **14 PASS**、HTTP **12 PASS + T-P1-07 1 BLOCKED**（小库 VACUUM 进度抓拍）。第16.4节同批 MCP↔GUI 跨入口闭环 S5-E2E PASS；两类单 EXE 启动通过。**用户本机 GUI 人工复验及正式 Release 未进行**。详见 [S5 结案报告](tests/S5_FINAL_ACCEPTANCE_20261104.md)；下文较早日期的 CI 与历史决策原文仅用于追溯。
 
 > **2026-11-02 状态**：已核验产品/测试提交 `4567ae96b7` 的 Windows [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 为 completed/success（26 步成功、0 失败，两项可选 ZIP64 步骤跳过）。目前正式 Release 仍为 `v0.9.1-rc1`；自动 CI 不等于全部本地 GUI/第三方 Agent 验收。 项目现阶段以真实使用反馈驱动操作细节和一致性精修，不重复已经完成的 Explorer 合并与 N1～N4 重构。
 
 ## 1. 当前范围与数据边界
 
-IPSys 是 WinForms 启动器、仅本机访问的 Web Explorer、单 SQLCipher schema 3 加密库和 MCP 的一体化程序。一个数据库包含个人/公司隔离工作区。普通文件夹、项目和知识产权使用 Folder 身份，**Folder 无版本，附件 File 才有版本**。同工作区可显式共享 FileId 或复用物理 FileObject，跨工作区不共享物理原件。
+IPSys 是 WinForms 启动器、仅本机访问的 Web Explorer、单 SQLCipher schema 4 加密库和 MCP 的一体化程序。一个数据库包含个人/公司隔离工作区。普通文件夹、项目和知识产权使用 Folder 身份，**Folder 无版本，附件 File 才有版本**。同工作区可显式共享 FileId 或复用物理 FileObject，跨工作区不共享物理原件。
 
 资料类模块统一“新建文件夹”，文件夹既可直接上传附件又可无限级嵌套；名称必填，类别、年度、标签和备注选填。项目和知识产权保留专用业务表单与关系约束；项目子项是普通目录。
 

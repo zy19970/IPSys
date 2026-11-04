@@ -1,6 +1,8 @@
 # IPSys V1.0 需求基线（范围冻结版）
 
-> **2026-11-04 当前状态**：schema 3；合同资料作为项目内普通目录；MCP 43 项；普通资料 Excel 六列。S5 最终 Windows [CI #538](https://github.com/zy19970/IPSys/actions/runs/41839841405) 同 SHA 成功，含 S5-E2E、Edge 14 PASS；HTTP 12 PASS/1 BLOCKED（压缩进度视觉观察）。本机人工复验及正式发布另行进行。详情见 [S5 最终验收](tests/S5_FINAL_ACCEPTANCE_20261104.md)。
+> **现行后续整改（2026-11-04）**：最新源码使用 SQLCipher schema **4**，普通文件夹支持跨模块原位移动完整物理子树（含已软删除后代及其隐藏子目录），并保持稳定的 FolderId/LinkId/FileId、删除状态和历史版本；新建库直接采用 schema 4，旧版本库明确拒绝，不迁移。产品实现 [`8a2780e`](https://github.com/zy19970/IPSys/commit/8a2780e7a8c18a5017e27e0e22c03aac1f078fae)，完整回归见 [Windows #541](https://github.com/zy19970/IPSys/actions/runs/41862168722)（以实际结束状态为准）。现行 MCP 43 项，普通资料 Excel 六列。早期下文关于 schema 3、S5/#538 的记载是当时的有效基线，不覆盖本段；用户本机 GUI 验收和正式 Release 尚未执行。
+
+> **历史 S5 状态（2026-11-04，#538）**：schema 3；合同资料作为项目内普通目录；MCP 43 项；普通资料 Excel 六列。S5 最终 Windows [CI #538](https://github.com/zy19970/IPSys/actions/runs/41839841405) 同 SHA 成功，含 S5-E2E、Edge 14 PASS；HTTP 12 PASS/1 BLOCKED（压缩进度视觉观察）。本机人工复验及正式发布另行进行。详情见 [S5 最终验收](tests/S5_FINAL_ACCEPTANCE_20261104.md)。
 
 > **历史覆盖规则（2026-11-02，已由页首 2026-11-04 覆盖）**：资料类模块的普通文件夹统一使用“新建文件夹”，名称必填，类别、年度、标签、备注可选；文件夹可同时直接关联附件和无限嵌套子文件夹。只有一种新建操作时直接打开表单，不再出现仅一项的二级菜单。普通删除目录整树进入回收站，恢复保留目录层级，永久删除才安全解绑共享关联。列表“更新时间”来自有效数据库更改和附件版本，而非申请、签约等业务日期。资料档案固定 Excel **6 列**、综合资料 **3 列**；旧 4 列与 1/2 列是历史兼容导入。项目、知识产权与合同保留各自专用属性。产品提交 `4567ae96b7` 的 [Windows CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 已完成 26 项成功、0 失败；第三方 Agent/用户本机 GUI 仍需另验。
 
