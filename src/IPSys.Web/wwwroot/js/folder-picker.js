@@ -42,12 +42,21 @@ const AttachmentFolderPicker = {
   },
 
   open({root,workspace,sourceFolderId,sourceFolderIds=[sourceFolderId],fileName,fileId,fileIds,
-    sourceDescription,move,onSubmit,folderMode=false,folderSection=""}) {
+    sourceDescription,move,onSubmit,folderMode=false,folderSection="",
+    folderSections=[folderSection]}) {
     const model=this.index(root,sourceFolderId,sourceFolderIds);
     if(!model.source) throw new Error("当前"+(folderMode?"文件夹":"附件")+"的来源目录已失效，请刷新重试");
     const categoryId="k:"+folderSection;
+    const allowedSections=new Set(folderSections.length?folderSections:[folderSection]);
+    const crossSectionPicker=folderMode && allowedSections.size>1;
+    const isAllowedCategory=record=>folderMode &&
+      record?.id?.startsWith("k:") && allowedSections.has(record.id.slice(2));
+    const destinationSection=record=>isAllowedCategory(record)
+      ? record.id.slice(2) : record?.node.biz?.section;
     if(folderMode && (model.source.node.biz?.kind!=="archive_folder" ||
-       model.source.node.biz?.section!==folderSection || !model.nodes.has(categoryId)))
+       model.source.node.biz?.section!==folderSection || !model.nodes.has(categoryId) ||
+       !allowedSections.has(folderSection) ||
+       [...allowedSections].some(section=>!model.nodes.has("k:"+section))))
       throw new Error("当前文件夹不属于有效的目标资料模块");
     document.querySelector("#attachmentFolderPicker")?.remove();
     const protectedFiles = new Set((fileIds || [fileId]).map(Number));
@@ -104,9 +113,9 @@ const AttachmentFolderPicker = {
     const forbiddenFolders=new Set(sourceFolderIds.map(Number));
     function unavailable(record) {
       if(folderMode) {
-        if(record?.id===categoryId) return false; // module top level
+        if(isAllowedCategory(record))return false; // module top level
         if(record?.node.biz?.kind!=="archive_folder" ||
-           record.node.biz.section!==folderSection || !record.selectable) return true;
+           !allowedSections.has(record.node.biz.section) || !record.selectable) return true;
         // A folder cannot be moved/shared inside itself or any descendant.
         let current=record;
         while(current) {
@@ -128,9 +137,12 @@ const AttachmentFolderPicker = {
     function navigate(id) {
       id=String(id);
       if(!model.nodes.has(id)) return;
-      // Folder operations must stay in the source module, not the global root.
+      // Folder moves can browse permitted ordinary-data modules, never
+      // project/IP business containers or another workspace.
       if(folderMode && id!==categoryId &&
-         !model.chain(id).some(n=>n.id===categoryId)) return;
+         !(crossSectionPicker && id===model.rootId) &&
+         !isAllowedCategory(model.nodes.get(id)) &&
+         !model.chain(id).some(n=>isAllowedCategory(n))) return;
       cursor=id;selected=null;shown=pageSize;search.value="";render();
     }
     function choose(id) {
@@ -143,24 +155,27 @@ const AttachmentFolderPicker = {
       if(globalSearch&&q) {
         const rows=[];
         for(const record of model.nodes.values()) {
-          if(record.selectable && (!folderMode ||
-              record.node.biz?.kind==="archive_folder" && record.node.biz?.section===folderSection) &&
-            (record.node.name.toLocaleLowerCase().includes(q) ||
-            model.path(record.id).toLocaleLowerCase().includes(q))) rows.push(record);
+          if((record.selectable || isAllowedCategory(record)) &&
+             (!folderMode || isAllowedCategory(record) ||
+               record.node.biz?.kind==="archive_folder" &&
+               allowedSections.has(record.node.biz?.section)) &&
+             (record.node.name.toLocaleLowerCase().includes(q) ||
+               model.path(record.id).toLocaleLowerCase().includes(q))) rows.push(record);
         }
         return rows.sort((a,b)=>model.path(a.id).localeCompare(model.path(b.id),"zh-CN"));
       }
       const children=(model.nodes.get(cursor)?.children||[])
         .map(id=>model.nodes.get(id)).filter(n=>!folderMode ||
-          n.node.biz?.kind==="archive_folder" && n.node.biz?.section===folderSection);
+          isAllowedCategory(n) || n.node.biz?.kind==="archive_folder" &&
+          allowedSections.has(n.node.biz?.section));
       return children.filter(n=>!q||n.node.name.toLocaleLowerCase().includes(q))
         .sort((a,b)=>a.node.name.localeCompare(b.node.name,"zh-CN"));
     }
     function render() {
-      crumb.innerHTML=(folderMode
+      crumb.innerHTML=(folderMode && !crossSectionPicker
         ? `<button type="button" class="folder-picker-crumb" data-picker-go="${esc(categoryId)}">${esc(model.nodes.get(categoryId).node.name)}</button>`
         : `<button type="button" class="folder-picker-crumb" data-picker-go="${esc(model.rootId)}">我的文件</button>`)+
-        model.chain(cursor).filter(r=>!folderMode || r.id!==categoryId)
+        model.chain(cursor).filter(r=>!folderMode || crossSectionPicker || r.id!==categoryId)
           .map(r=>`<span aria-hidden="true">›</span>
           <button type="button" class="folder-picker-crumb" data-picker-go="${esc(r.id)}">${esc(r.node.name)}</button>`).join("");
       const rows=matches();
@@ -174,7 +189,7 @@ const AttachmentFolderPicker = {
             ${icon("folder",18)}<span class="folder-picker-row-name">${esc(r.node.name)}
               ${isResult?`<small title="${esc(namePath)}">${esc(namePath)}</small>`:""}</span>
             ${icon("chevronDown",16)}</button>
-          ${r.selectable?`<button type="button" class="btn folder-picker-pick"
+          ${r.selectable||isAllowedCategory(r)?`<button type="button" class="btn folder-picker-pick"
             data-picker-choose="${esc(r.id)}" ${disabled?"disabled":""}
             title="${disabled?(folderMode?"不能将文件夹放入自身或其子目录":"来源目录不可选或目标已关联相同原件"):"设为目标文件夹"}">选择</button>`:""}
         </div>`;
@@ -222,7 +237,10 @@ const AttachmentFolderPicker = {
       }
       saving=true;submit.disabled=true;currentButton.disabled=true;error.textContent="";
       try {
-        await onSubmit({target:String(folderMode && selected.id===categoryId ? 0 : selected.folderId)});
+        await onSubmit(folderMode ? {
+          target:String(isAllowedCategory(selected) ? 0 : selected.folderId),
+          targetSection:destinationSection(selected)
+        } : {target:String(selected.folderId)});
         saving=false;close();
       }catch(e){saving=false;error.textContent=e.message||"操作失败";render();}
     });

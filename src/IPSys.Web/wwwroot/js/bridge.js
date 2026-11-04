@@ -343,21 +343,24 @@ function transferFolderBatch(nodes,move=false) {
   try { items=selectedArchiveFolders(nodes); }
   catch(e){return toast(e.message,{tone:"error",ms:6000});}
   const workspace=VaultStore.ws,section=items[0].biz.section;
+  const folderSections=catsOf(workspace).filter(c=>catIsDir(c.id,workspace))
+    .map(c=>c.id);
   const sourceIds=items.map(n=>Number(n.biz.id));
   const index=AttachmentFolderPicker.index(ROOT,sourceIds[0],sourceIds);
   if(!index.source)return toast("来源文件夹已不存在，请刷新重试",{tone:"error"});
   const onSubmit=async data=>{
     if(VaultStore.ws!==workspace)throw new Error("工作区已切换，请重新选择文件夹");
     if(fileTaskBusy())throw new Error("当前有文件任务，请完成后再操作");
-    const targetId=Number(data.target);
-    if(!Number.isSafeInteger(targetId)||targetId<0)
-      throw new Error("目标文件夹无效，请重新选择");
+    const targetId=Number(data.target),targetSection=String(data.targetSection||"");
+    if(!Number.isSafeInteger(targetId)||targetId<0 ||
+       !folderSections.includes(targetSection))
+      throw new Error("目标文件夹或资料模块无效，请重新选择");
     if(targetId>0) {
       const dest=index.byFolderId.get(targetId),current=dest&&findById(dest.id);
       if(!dest||!current||current.type!=="folder"||
          current.biz?.kind!=="archive_folder"||
-         current.biz.section!==section||Number(current.biz.id)!==targetId)
-        throw new Error("目标文件夹已失效或不属于本模块");
+         current.biz.section!==targetSection||Number(current.biz.id)!==targetId)
+        throw new Error("目标文件夹已失效或不属于普通资料模块");
       // No nested destination, including deep descendants.
       let cur=dest;
       while(cur) {
@@ -373,7 +376,8 @@ function transferFolderBatch(nodes,move=false) {
         throw new Error("部分来源文件夹已变化，请刷新后重试");
     }
     await VaultStore.api("/api/v2/ui/folders/"+workspace+"/"+section+"/transfer-batch",{
-      method:"POST",json:{targetFolderId:targetId,move:!!move,items:sourceIds}
+      method:"POST",json:{targetFolderId:targetId,targetSection,
+        move:!!move,items:sourceIds}
     });
     try {await refreshCurrent();Drive.clearSelection();}
     catch {toast("操作已完成，但页面刷新失败；请手动刷新核对",{tone:"error",ms:6000});return;}
@@ -384,8 +388,24 @@ function transferFolderBatch(nodes,move=false) {
     fileName:items.length===1?items[0].name:"已选择 "+items.length+" 个文件夹",
     sourceDescription:items.length===1?index.path(index.source.id):
       "来自 "+items.length+" 个已选文件夹",
-    folderMode:true,folderSection:section,move,onSubmit,
+    folderMode:true,folderSection:section,folderSections,move,onSubmit,
   });
+}
+
+/* Same front-end movement entry for one/many attachments and ordinary folders.
+   The shared picker supplies a target; the backend keeps its separate,
+   transaction-safe LinkId and folder parent/section operations. */
+function moveSelectedItems(nodes) {
+  const items=Array.isArray(nodes)?nodes:[nodes];
+  if(!items.length)return toast("请先选择要移动的内容");
+  if(items.every(n=>n?.type==="file"))
+    return items.length===1
+      ? associateOriginal(items[0],true) : associateOriginalBatch(items,true);
+  if(items.every(n=>n?.type==="folder" && !n.synthetic &&
+      n.biz?.kind==="archive_folder"))
+    return transferFolderBatch(items,true);
+  return toast("请分别选择附件或普通资料文件夹进行移动",
+    {tone:"error",ms:6000});
 }
 
 /* F2-04: entire business folders; not the F2-03 attachment LinkId action.

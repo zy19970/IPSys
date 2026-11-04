@@ -1,7 +1,8 @@
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 
-record FolderBatchTransferInput(long TargetFolderId,bool Move,long[]? Items);
+record FolderBatchTransferInput(long TargetFolderId,bool Move,long[]? Items,
+    string? TargetSection=null);
 
 // Share = clone folder hierarchy and link the SAME logical FileIds (versions remain shared).
 // Move = change parent_id in place, preserving every FolderId and attachment link.
@@ -19,7 +20,9 @@ static class NativeFolderBatchTransferEndpoints
         {
             if(!vault.Allowed(ctx))return (IResult)Results.Unauthorized();
             var ids=input.Items;
+            var targetSection=input.TargetSection??section;
             if(!ArchiveDirectoryScopes.Allowed(workspace,section) ||
+               !ArchiveDirectoryScopes.Allowed(workspace,targetSection) ||
                input.TargetFolderId<0 || ids is null || ids.Length is 0 or >100 ||
                ids.Any(id=>id<=0) || ids.Distinct().Count()!=ids.Length)
                 return fail("批量文件夹参数无效，单次最多100个不同的普通文件夹。",400);
@@ -37,9 +40,12 @@ static class NativeFolderBatchTransferEndpoints
                     var db=vault.Db;
                     var all=NativeArchiveStore.ListAll(db,workspace,section)
                         .ToDictionary(item=>item.Folder.Ref.Id);
+                    var targetFolders=targetSection==section?all:
+                        NativeArchiveStore.ListAll(db,workspace,targetSection)
+                            .ToDictionary(item=>item.Folder.Ref.Id);
                     long? parent=input.TargetFolderId==0?null:input.TargetFolderId;
                     if(parent is long target &&
-                       (!all.ContainsKey(target) ||
+                       (!targetFolders.ContainsKey(target) ||
                         !NativeFileStore.FolderActive(db,workspace,target)))
                         return fail("目标文件夹不存在或不属于此资料模块。",404);
                     foreach(long id in ids)
@@ -86,7 +92,7 @@ static class NativeFolderBatchTransferEndpoints
                         if(ids.Any(id=>all[id].Folder.Parent?.Id==parent))
                             return fail("所选文件夹中有文件夹已经位于目标目录，请选择其它位置。",409);
                         // A rename on move must never happen silently.
-                        var existing=all.Values.Where(item=>item.Folder.Parent?.Id==parent)
+                        var existing=targetFolders.Values.Where(item=>item.Folder.Parent?.Id==parent)
                             .Select(item=>item.Folder.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
                         if(ids.Any(id=>existing.Contains(all[id].Folder.Name)) ||
                            ids.Select(id=>all[id].Folder.Name)
@@ -111,21 +117,48 @@ static class NativeFolderBatchTransferEndpoints
                             using var cmd=db.CreateCommand();
                             cmd.Transaction=tx;
                             cmd.CommandText="""
-                                UPDATE folders SET parent_id=$parent,attributes_json=$json,
+                                UPDATE folders SET parent_id=$parent,section=$targetSection,
+                                  attributes_json=$json,
                                   position=(SELECT COALESCE(MAX(position),-1)+1 FROM folders
-                                    WHERE workspace=$w AND section=$section
+                                    WHERE workspace=$w AND section=$targetSection
                                       AND kind='archive_folder' AND deleted=0
                                       AND COALESCE(parent_id,0)=COALESCE($parent,0))
-                                WHERE id=$id AND workspace=$w AND section=$section
+                                WHERE id=$id AND workspace=$w AND section=$sourceSection
                                   AND kind='archive_folder' AND deleted=0;
                                 """;
                             cmd.Parameters.AddWithValue("$parent",(object?)parent??DBNull.Value);
                             cmd.Parameters.AddWithValue("$json",json);
                             cmd.Parameters.AddWithValue("$w",workspace);
-                            cmd.Parameters.AddWithValue("$section",section);
+                            cmd.Parameters.AddWithValue("$sourceSection",section);
+                            cmd.Parameters.AddWithValue("$targetSection",targetSection);
                             cmd.Parameters.AddWithValue("$id",root);
                             if(cmd.ExecuteNonQuery()!=1)
                                 throw new InvalidOperationException("来源文件夹已发生变化，全部移动已回滚。");
+                            // Parent is moved before descendants, so the final
+                            // tree keeps the same IDs, parent links and FileIds.
+                            // Only ordinary archive_folder.section changes.
+                            if(targetSection!=section)
+                            {
+                                using var childUpdate=db.CreateCommand();
+                                childUpdate.Transaction=tx;
+                                childUpdate.CommandText="""
+                                    UPDATE folders SET section=$targetSection
+                                    WHERE id=$id AND workspace=$w
+                                      AND kind='archive_folder' AND section=$sourceSection
+                                      AND deleted=0;
+                                    """;
+                                childUpdate.Parameters.AddWithValue("$targetSection",targetSection);
+                                childUpdate.Parameters.AddWithValue("$sourceSection",section);
+                                childUpdate.Parameters.AddWithValue("$w",workspace);
+                                var childId=childUpdate.Parameters.Add("$id",SqliteType.Integer);
+                                foreach(var entry in tree.Skip(1))
+                                {
+                                    linked.Token.ThrowIfCancellationRequested();
+                                    childId.Value=entry.Snapshot.Folder.Ref.Id;
+                                    if(childUpdate.ExecuteNonQuery()!=1)
+                                        throw new InvalidOperationException("子目录已发生变化，全部移动已回滚。");
+                                }
+                            }
                             folders+=tree.Count;
                             targets.Add(root);
                             continue;
@@ -140,7 +173,7 @@ static class NativeFolderBatchTransferEndpoints
                                 folder.Parent is ResourceRef ancestor?folderIds[ancestor.Id]:
                                 throw new InvalidDataException("来源文件夹的父级结构无效。");
                             string name=NativeArchiveStore.UniqueName(db,tx,
-                                workspace,section,targetParent,folder.Name);
+                                workspace,targetSection,targetParent,folder.Name);
                             var metadata=((ArchiveFolderInput)entry.Snapshot.BusinessData) with {
                                 Name=name,ParentId=targetParent
                             };
@@ -159,7 +192,7 @@ static class NativeFolderBatchTransferEndpoints
                                     SELECT last_insert_rowid();
                                     """;
                                 insert.Parameters.AddWithValue("$w",workspace);
-                                insert.Parameters.AddWithValue("$section",section);
+                                insert.Parameters.AddWithValue("$section",targetSection);
                                 insert.Parameters.AddWithValue("$parent",
                                     (object?)targetParent??DBNull.Value);
                                 insert.Parameters.AddWithValue("$name",name);
@@ -195,6 +228,7 @@ static class NativeFolderBatchTransferEndpoints
                     linked.Token.ThrowIfCancellationRequested();
                     tx.Commit();
                     return Results.Json(new {ok=true,moved=input.Move,
+                        sourceSection=section,targetSection,
                         count=ids.Length,folders,links=linksCount,ids=targets});
                 }
                 catch(ArgumentException ex){return fail(ex.Message,400);}

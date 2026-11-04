@@ -538,3 +538,14 @@ CI #506 run41623186950首次通过编译、MCP和早期UI检查，但新测试�
 结论：**移动的用户交互应进一步共用，而底层写入方式必须按对象分流。** 附件移动本质上保持FileId与全部版本，目标新增LinkId并解除来源LinkId（单附件现用`/api/v2/files/{workspace}/{fileId}/associate`，多附件现用`/api/v2/files/{workspace}/associate-batch`）；普通文件夹移动本质上只更新父级parent_id，保持FolderId、子文件夹和附件LinkId（当前`/api/v2/ui/folders/{workspace}/{section}/transfer-batch`）。选择器可以参数化`targetPolicy`并统一一个`moveSelectedItems(items)`用户操作入口、选择集合规范化、确认与忙碌校验、刷新与提示；文件和文件夹校验分别执行（附件目标允许可接收附件的真实业务文件夹、禁止重复FileId与来源，文件夹限同工作区同section，可选模块顶级parent=0、禁止祖先环及同名冲突）。单项与同类批量共用前端，后端保持两个受测事务端点，不强制统一SQL或改变FileId/FolderId模型；跨区/类别专用业务转移仍走既有独立路径。混选文件+文件夹若要一次性移动，需要新原子组合事务协议，否则有部分成功风险；**本轮建议暂不扩大到混选操作**，须单独确定原子性后再实现。后续仅在用户授权修改时落地，勿把本轮分析当作代码实现。
 
 另外核实最新产品Windows CI **#515** run41762187712对业务SHA d2a8a149...已`completed/success`，26步骤success、2可选ZIP64 skipped；Edge/HTTP、SQLCipher、前端测试及双EXE构建均通过，但用户本机实际GUI尚未手动验证，正式Release未触发。记录在当前会话`memory/sessions/2026-11-03-IPSys项目整体认知复盘.md`第六轮。本轮仅追加项目Memory/会话档案；任务开始通知office-renderer/wechat-webhook#2175。
+
+
+## 2026-11-04 第七轮：统一前端“移动到”并开放普通文件夹跨资料模块移动
+
+**用户原话**：“你的建议没问题，我想的就是前端的交互要统一，并且有一个问题，目前单个文件可以实现跨文件夹移动，但是文件夹不能，你把这个功能也加上”。在用户认可上轮统一前端、区分后端的方案后，明确授权代码修改。重新读取AIGT三份规则、仓库MEMORY及本会话；基线main=9076a49ea7eee59079df27c1af18c57edb706df5；任务开始通知office-renderer/wechat-webhook#2177。
+
+**实际限制核对**：附件的`associateOriginal/associateOriginalBatch`已可目标任意有效业务文件夹；普通`transferFolderBatch`与`AttachmentFolderPicker`将目标锁定同`section`；SQLCipher V2中的`folder_immutable_scope`禁止所有folder的`section`变化，导致仅放宽UI不可能跨模块持久移动。为保留FolderId及版本，选择同一工作区普通资料模块间真实整树迁移，不将project/contract/ip专用业务记录冒充普通文件夹，也不允许跨工作区原地变更identity。
+
+**本轮代码**：`ResourceSchemaV2.cs`两处新建/老测试库identity trigger均允许仅`archive_folder`改变section，workspace/kind/is_system仍不可变；新增`EnsureArchiveFolderSectionRelocation`在既有V2库启动时原位刷新trigger，不迁移内容/文件对象。`Vault.cs`调用该增量guard更新。`NativeFolderBatchTransferEndpoints.cs`加入可选TargetSection（旧API不提供仍使用来源section），跨模块在单个SQLCipher事务中更新根parent_id/section及所有子目录section，保持FolderId、LinkId、FileId、版本；share也可在其他普通资料section复制目录结构并复用附件FileId；检查目标模块合法性、真实目标ID属于该section、重名、后代循环、批量整体回滚。`folder-picker.js`采用允许模块清单，让文件夹在同工作区所有普通资料模块的真实目录和分类顶层之间导航/搜索，项目与知识产权等业务记录不可选；附件的既有宽范围保持原样。 `bridge.js`增加统一`moveSelectedItems`入口分派单/多附件与单/多文件夹（底层仍两个事务API），调用picker传目标section，`interactions.js`右键、底部和详情改统一移动入口。混选附件和文件夹仍要求分别操作，以避免跨两API部分成功。新增真实SQLCipher/HTTP烟测跨模块移动/分享、LinkId/版本一致、第二根失败整体回滚、错误目标/跨工作区保护，扩展Node picker深层跨模块导航和前端单/多选统一菜单回归。
+
+**当前提交阶段**：本轮将修改代码+测试+记忆组成一个原子main提交。V8 new Function对已修改前端/测试静态语法验证通过；Windows CI完整执行与真机可视化尚未核验，不能提前宣称成功，不触发正式Release或触碰用户真实数据库。最近会话`memory/sessions/2026-11-03-IPSys项目整体认知复盘.md`第七轮。

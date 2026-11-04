@@ -186,7 +186,8 @@ function open(move=false) {
   assert.equal(get("current").disabled,false,"Category top is a valid destination");
   get("current").emit("click");
   await get("submit").emit("click");
-  assert.deepEqual(folderTargets.at(-1),{target:"0"},"Module root is sent as parent 0");
+  assert.deepEqual(folderTargets.at(-1),{target:"0",targetSection:"achievement"},
+    "Module root is sent as parent 0 with its module section");
   openFolder();
   assert.match(mask.innerHTML,/共享文件夹/);
   get("search").value="来源";
@@ -202,6 +203,44 @@ function open(move=false) {
   assert.match(get("list").innerHTML,/最深目标/);
   pickClick(get("list"),"choose","af:8888");
   await get("submit").emit("click");
-  assert.deepEqual(folderTargets.at(-1),{target:"8888"});
+  assert.deepEqual(folderTargets.at(-1),{target:"8888",targetSection:"achievement"});
+  // Cross-module moves expose only ordinary-data module categories.
+  const another={id:"k:certificate",name:"企业资质",type:"folder",synthetic:true,
+    children:[folder("af:90001","跨模块目标","archive_folder",[],
+      {section:"certificate"})]};
+  const projectCat={id:"k:project",name:"公司项目",type:"folder",synthetic:true,
+    children:[folder("p:90002","项目容器","project",[])]};
+  root.children.push(another,projectCat);
+  const cross=()=>picker.open({
+    root,workspace:"company",sourceFolderId:1,sourceFolderIds:[1],
+    folderMode:true,folderSection:"achievement",
+    folderSections:["achievement","certificate"],fileName:"来源",
+    move:true,onSubmit:async data=>folderTargets.push(JSON.parse(JSON.stringify(data)))
+  });
+  cross();
+  assert.match(get("crumb").innerHTML,/data-picker-go="root"/);
+  pickClick(get("crumb"),"go","root");
+  assert.equal(get("current").disabled,true,"Global root cannot be target");
+  assert.match(get("list").innerHTML,/企业资质/);
+  assert.doesNotMatch(get("list").innerHTML,/公司项目/);
+  pickClick(get("list"),"enter","k:certificate");
+  get("current").emit("click");
+  await get("submit").emit("click");
+  assert.deepEqual(folderTargets.at(-1),{target:"0",targetSection:"certificate"},
+    "A different archive module top level is a valid target");
+  cross();
+  pickClick(get("crumb"),"go","root");
+  pickClick(get("list"),"enter","k:certificate");
+  pickClick(get("list"),"choose","af:90001");
+  await get("submit").emit("click");
+  assert.deepEqual(folderTargets.at(-1),{target:"90001",targetSection:"certificate"},
+    "A folder under another archive module can receive an entire folder tree");
+  cross();
+  get("scope").emit("click");
+  get("search").value="公司项目";
+  get("search").emit("input");
+  assert.doesNotMatch(get("list").innerHTML,/项目容器/,
+    "Project business records remain forbidden as ordinary folder parents");
+  mask.cancel[0].emit("click");
   console.log("FOLDER PICKER PASS: 75 levels, 1230 siblings, search, breadcrumb, selection, security");
 })().catch(e=>{console.error(e);process.exitCode=1;});

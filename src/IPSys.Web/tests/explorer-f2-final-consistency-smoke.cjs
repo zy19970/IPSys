@@ -35,7 +35,7 @@ const drive={
  select(id,mode){if(mode==="single"){this.state.selection=new Set([id]);}},
  render(){},resetSearch(){},clearSelection(){this.state.selection.clear();},
 };
-const menus=[],deleted=[],recycled=[],dialogs=[],bulkAssociations=[],folderTransfers=[];
+const menus=[],deleted=[],recycled=[],dialogs=[],bulkAssociations=[],folderTransfers=[],moves=[];
 const sandbox=vm.createContext({
  Drive:drive,VaultStore:{ws:"company",metaOf:id=>({
   "f:12:1":{linkId:12,fileId:12},"f:13:1":{linkId:13,fileId:13},
@@ -58,6 +58,7 @@ const sandbox=vm.createContext({
   ids:Array.from(items,i=>i.id),move}),
  transferFolderBatch:(items,move)=>folderTransfers.push({
   ids:Array.from(items,i=>i.id),move}),
+ moveSelectedItems:items=>moves.push(Array.from(items,i=>i.id)),
  recycleAction:(items,op)=>recycled.push({ids:Array.from(items,i=>i.id),op}),
  askConfirm:async()=>true,
 });
@@ -102,6 +103,9 @@ const act=cmd=>vm.runInContext(cmd,sandbox);
  assert.match(menus.at(-1).markup,/data-act="(?:open|props|newver|assoc|assoc-move)"/);
  assert.match(menus.at(-1).markup,/data-act="newver"/);
  assert.match(menus.at(-1).markup,/data-act="assoc-move"/);
+ menus.at(-1).handlers["assoc-move"]();
+ assert.deepEqual(moves.at(-1),["f:12:1"],
+  "Single-file move also routes through the shared movement entry");
 
  // Two checked files must offer only full-selection actions, never a hidden
  // write to the last right-clicked file.
@@ -119,7 +123,7 @@ const act=cmd=>vm.runInContext(cmd,sandbox);
  menu.handlers["assoc-batch"]();
  assert.deepEqual(bulkAssociations.at(-1),{ids:["f:12:1","f:13:1"],move:false});
  menu.handlers["assoc-move-batch"]();
- assert.deepEqual(bulkAssociations.at(-1),{ids:["f:12:1","f:13:1"],move:true});
+ assert.deepEqual(moves.at(-1),["f:12:1","f:13:1"]);
  menu.handlers.download();
  assert.deepEqual(exportedCalls.at(-1),["f:12:1","f:13:1"]);
  menu.handlers.delete();
@@ -148,7 +152,7 @@ const act=cmd=>vm.runInContext(cmd,sandbox);
  menu.handlers["share-folder-batch"]();
  assert.deepEqual(folderTransfers.at(-1),{ids:["af:31","af:32"],move:false});
  menu.handlers["move-folder-batch"]();
- assert.deepEqual(folderTransfers.at(-1),{ids:["af:31","af:32"],move:true});
+ assert.deepEqual(moves.at(-1),["af:31","af:32"]);
  drive.state.selection=new Set(["af:31"]);
  act("showItemMenu('af:31',10,20)");
  menu=menus.at(-1);
@@ -158,7 +162,7 @@ const act=cmd=>vm.runInContext(cmd,sandbox);
  menu.handlers["share-folder"]();
  assert.deepEqual(folderTransfers.at(-1),{ids:["af:31"],move:false});
  menu.handlers["move-folder"]();
- assert.deepEqual(folderTransfers.at(-1),{ids:["af:31"],move:true});
+ assert.deepEqual(moves.at(-1),["af:31"]);
  drive.state.selection=new Set(["af:31","f:12:1"]);
  act("showItemMenu('af:31',10,20)");
  menu=menus.at(-1);

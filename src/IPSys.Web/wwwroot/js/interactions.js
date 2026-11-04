@@ -1751,11 +1751,11 @@ function showItemMenu(id, x, y) {
       download: inWorkspace(() => downloadNodes(downloads)),
       ...(allFiles ? {
         "assoc-batch": inWorkspace(() => associateOriginalBatch(selected, false)),
-        "assoc-move-batch": inWorkspace(() => associateOriginalBatch(selected, true)),
+        "assoc-move-batch": inWorkspace(() => moveSelectedItems(selected)),
       } : {}),
       ...(allOrdinaryFolders ? {
         "share-folder-batch": inWorkspace(() => transferFolderBatch(selected,false)),
-        "move-folder-batch": inWorkspace(() => transferFolderBatch(selected,true)),
+        "move-folder-batch": inWorkspace(() => moveSelectedItems(selected)),
       } : {}),
       delete: inWorkspace(() => deleteNodes(deletions)),
     });
@@ -1799,9 +1799,9 @@ function showItemMenu(id, x, y) {
     download: inWorkspace(() => downloadNodes(downloads)),
     newver: inWorkspace(() => uploadNewVersion(item)),
     assoc: inWorkspace(() => associateOriginal(item, false)),
-    "assoc-move": inWorkspace(() => associateOriginal(item, true)),
+    "assoc-move": inWorkspace(() => moveSelectedItems([item])),
     "share-folder": inWorkspace(() => transferFolderBatch([item],false)),
-    "move-folder": inWorkspace(() => transferFolderBatch([item],true)),
+    "move-folder": inWorkspace(() => moveSelectedItems([item])),
     "copy-record": inWorkspace(() => transferBusinessRecord(item, false)),
     "transfer-record": inWorkspace(() => transferBusinessRecord(item, true)),
     rename: inWorkspace(() => renameNode(item)),
@@ -1889,12 +1889,8 @@ function bindSelectionBar() {
       return transferFolderBatch(items,false);
     return associateOriginalBatch(items,false);
   });
-  $("#selMove").addEventListener("click", () => {
-    const items=Drive.selectedItems;
-    if(items.length && items.every(n=>n.type==="folder" && n.biz?.kind==="archive_folder"))
-      return transferFolderBatch(items,true);
-    return associateOriginalBatch(items,true);
-  });
+  $("#selMove").addEventListener("click", () =>
+    moveSelectedItems(Drive.selectedItems));
 
   $("#selDelete").addEventListener("click", () => {
     const items = Drive.selectedItems;
@@ -1925,7 +1921,7 @@ function bindDetail() {
         if(one) transferFolderBatch([one],false);
         break;
       case "move-folder":
-        if(one) transferFolderBatch([one],true);
+        if(one) moveSelectedItems([one]);
         break;
       case "preview":
         if (one) previewFile(one.id);
@@ -1937,13 +1933,13 @@ function bindDetail() {
         associateOriginalBatch(items, false);
         break;
       case "assoc-move-batch":
-        associateOriginalBatch(items, true);
+        moveSelectedItems(items);
         break;
       case "share-folder-batch":
         transferFolderBatch(items,false);
         break;
       case "move-folder-batch":
-        transferFolderBatch(items,true);
+        moveSelectedItems(items);
         break;
       case "delete":
         if (Drive.state.view === "recycle") recycleAction(items, "purge");

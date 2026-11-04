@@ -73,7 +73,10 @@ static class ResourceSchemaV2
                 ) SELECT 1 FROM ancestors WHERE id=NEW.id);
             END;
             CREATE TRIGGER folder_immutable_scope BEFORE UPDATE OF
-              workspace,kind,section,is_system ON folders BEGIN
+              workspace,kind,section,is_system ON folders
+            WHEN NEW.workspace<>OLD.workspace OR NEW.kind<>OLD.kind
+              OR NEW.is_system<>OLD.is_system
+              OR (NEW.section<>OLD.section AND OLD.kind<>'archive_folder') BEGIN
               SELECT RAISE(ABORT,'folder identity immutable');
             END;
             CREATE TABLE files(
@@ -267,6 +270,39 @@ static class ResourceSchemaV2
         }
     }
 
+    // In-place trigger refresh for existing V2 vaults: ordinary archive_folder
+    // records may change section only through validated move operations.
+    // Workspace, kind and system identity remain immutable for every folder.
+    public static void EnsureArchiveFolderSectionRelocation(SqliteConnection db)
+    {
+        using var inspect=db.CreateCommand();
+        inspect.CommandText="""
+            SELECT sql FROM sqlite_master
+            WHERE type='trigger' AND name='folder_immutable_scope';
+            """;
+        string definition=inspect.ExecuteScalar() as string
+            ?? throw new IOException("资料库缺少文件夹身份保护触发器。");
+        if(definition.Contains("NEW.section<>OLD.section AND OLD.kind<>'archive_folder'",
+              StringComparison.Ordinal))return;
+        if(!definition.Contains("folder identity immutable",StringComparison.Ordinal))
+            throw new IOException("未知文件夹身份触发器，拒绝自动更新。");
+        using var tx=db.BeginTransaction();
+        using var cmd=db.CreateCommand();
+        cmd.Transaction=tx;
+        cmd.CommandText="""
+            DROP TRIGGER folder_immutable_scope;
+            CREATE TRIGGER folder_immutable_scope BEFORE UPDATE OF
+              workspace,kind,section,is_system ON folders
+            WHEN NEW.workspace<>OLD.workspace OR NEW.kind<>OLD.kind
+              OR NEW.is_system<>OLD.is_system
+              OR (NEW.section<>OLD.section AND OLD.kind<>'archive_folder') BEGIN
+              SELECT RAISE(ABORT,'folder identity immutable');
+            END;
+            """;
+        cmd.ExecuteNonQuery();
+        tx.Commit();
+    }
+
     // An additive, in-place V2 upgrade: preserve every FolderId, LinkId,
     // version and encrypted file object. Unknown pre-upgrade edit times stay NULL.
     // Newly created folders have a real write timestamp; later mutations update it.
@@ -371,7 +407,10 @@ static class ResourceSchemaV2
             DROP TRIGGER IF EXISTS folder_immutable_scope;
             UPDATE folders SET is_system=0 WHERE is_system<>0;
             CREATE TRIGGER folder_immutable_scope BEFORE UPDATE OF
-              workspace,kind,section,is_system ON folders BEGIN
+              workspace,kind,section,is_system ON folders
+            WHEN NEW.workspace<>OLD.workspace OR NEW.kind<>OLD.kind
+              OR NEW.is_system<>OLD.is_system
+              OR (NEW.section<>OLD.section AND OLD.kind<>'archive_folder') BEGIN
               SELECT RAISE(ABORT,'folder identity immutable');
             END;
             """;

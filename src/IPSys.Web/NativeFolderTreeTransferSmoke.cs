@@ -161,6 +161,132 @@ static class NativeFolderTreeTransferSmoke
             "moving preserves descendant and original attachment identity");
     }
 
+    // Cross-module relocation keeps folder/attachment identity and history;
+    // the section change, descendant updates and parent change are atomic.
+    private static async Task VerifyCrossSectionFolderMoveAsync(HttpClient client,Vault vault)
+    {
+        string mark="CROSS-"+Guid.NewGuid().ToString("N")[..8];
+        long first=await Folder(client,"company","certificate",mark+"甲");
+        long child=await Folder(client,"company","certificate",mark+"子",first);
+        long second=await Folder(client,"company","certificate",mark+"乙");
+        long target=await Folder(client,"company","achievement",mark+"目标");
+        long shareTarget=await Folder(client,"company","general",mark+"共享目标");
+        byte[] version1=[3,2,1],version2=[8,7,6];
+        long file;
+        using(var req=new HttpRequestMessage(HttpMethod.Post,
+            $"/api/v2/files/company/upload?folderId={child}")
+            {Content=new ByteArrayContent(version1)})
+        {
+            req.Headers.Add("X-File-Name",Uri.EscapeDataString(mark+".pdf"));
+            file=(await Read(await client.SendAsync(req))).GetProperty("fileId").GetInt64();
+        }
+        using(var req=new HttpRequestMessage(HttpMethod.Post,
+            $"/api/v2/files/company/{file}/versions")
+            {Content=new ByteArrayContent(version2)})
+        {
+            req.Headers.Add("X-File-Name",Uri.EscapeDataString(mark+"-v2.pdf"));
+            await Read(await client.SendAsync(req));
+        }
+        var oldLink=(await Links(client,"company",child))[0].GetProperty("id").GetInt64();
+        const string endpoint="/api/v2/ui/folders/company/certificate/transfer-batch";
+
+        using(var wrong=await client.PostAsJsonAsync(endpoint,new {
+            targetFolderId=target,targetSection="project",move=true,items=new[]{first}}))
+            Check(wrong.StatusCode==HttpStatusCode.BadRequest,
+                "business modules are not ordinary folder destinations");
+        using(var wrong=await client.PostAsJsonAsync(endpoint,new {
+            targetFolderId=target,targetSection="certificate",move=true,items=new[]{first}}))
+            Check(wrong.StatusCode==HttpStatusCode.NotFound,
+                "destination's module must match its actual database section");
+
+        // Induce failure during the second root after first root + child move.
+        using(var trigger=vault.Db.CreateCommand())
+        {
+            trigger.CommandText=$"""
+                CREATE TEMP TRIGGER fail_cross_move BEFORE UPDATE OF section ON folders
+                WHEN OLD.name='{mark}乙' AND NEW.section='achievement'
+                BEGIN SELECT RAISE(ABORT,'cross move rollback'); END;
+                """;
+            trigger.ExecuteNonQuery();
+        }
+        try
+        {
+            using var failed=await client.PostAsJsonAsync(endpoint,new {
+                targetFolderId=target,targetSection="achievement",
+                move=true,items=new[]{first,second}});
+            Check(failed.StatusCode==HttpStatusCode.Conflict,
+                "cross-module second-root failure must abort entire transaction");
+            var stillSource=await Flat(client,"company","certificate");
+            Check(new[]{first,child,second}.All(id=>
+                stillSource.EnumerateArray().Any(x=>Id(x)==id)),
+                "rollback restores the complete original source subtree");
+            var notMoved=await Flat(client,"company","achievement");
+            Check(!notMoved.EnumerateArray().Any(x=>
+                new[]{first,child,second}.Contains(Id(x))),
+                "rollback creates no orphan destination record");
+        }
+        finally
+        {
+            using var drop=vault.Db.CreateCommand();
+            drop.CommandText="DROP TRIGGER IF EXISTS fail_cross_move;";
+            drop.ExecuteNonQuery();
+        }
+
+        var moved=await Read(await client.PostAsJsonAsync(endpoint,new {
+            targetFolderId=target,targetSection="achievement",
+            move=true,items=new[]{first,second}}));
+        Check(moved.GetProperty("ids").EnumerateArray().Select(x=>x.GetInt64())
+              .SequenceEqual(new[]{first,second}) &&
+              moved.GetProperty("targetSection").GetString()=="achievement",
+            "cross-section move preserves both original FolderIds");
+        var inTarget=await Flat(client,"company","achievement");
+        Check(new[]{first,child,second}.All(id=>
+            inTarget.EnumerateArray().Any(x=>Id(x)==id)),
+            "every folder in the subtree now belongs to destination module");
+        Check(inTarget.EnumerateArray().Single(x=>Id(x)==first)
+            .GetProperty("folder").GetProperty("parent")
+            .GetProperty("id").GetInt64()==target &&
+          inTarget.EnumerateArray().Single(x=>Id(x)==child)
+            .GetProperty("folder").GetProperty("parent")
+            .GetProperty("id").GetInt64()==first,
+            "root parent changed while nested parent relationships stay intact");
+        var noSource=await Flat(client,"company","certificate");
+        Check(!noSource.EnumerateArray().Any(x=>
+            new[]{first,child,second}.Contains(Id(x))),
+            "moved folder tree no longer appears in original module");
+        var links=await Links(client,"company",child);
+        Check(links[0].GetProperty("id").GetInt64()==oldLink &&
+              links[0].GetProperty("fileId").GetInt64()==file,
+            "cross-module move must not recreate FileId or LinkId");
+        for(int v=1;v<=2;v++)
+            Check((await client.GetByteArrayAsync(
+                $"/api/v2/files/company/{file}/versions/{v}/download"))
+                  .SequenceEqual(v==1?version1:version2),
+                "cross-module moved attachment retains original history bytes");
+
+        // Cross-module sharing uses distinct folder IDs but shared file IDs.
+        var shared=await Read(await client.PostAsJsonAsync(
+            "/api/v2/ui/folders/company/achievement/transfer-batch",new {
+                targetFolderId=shareTarget,targetSection="general",
+                move=false,items=new[]{first}}));
+        long shareRoot=shared.GetProperty("ids")[0].GetInt64();
+        var inGeneral=await Flat(client,"company","general");
+        long shareChild=Id(inGeneral.EnumerateArray().Single(x=>
+            x.GetProperty("folder").GetProperty("parent").ValueKind!=JsonValueKind.Null &&
+            x.GetProperty("folder").GetProperty("parent")
+              .GetProperty("id").GetInt64()==shareRoot));
+        Check(shareRoot!=first && shareChild!=child &&
+              (await Links(client,"company",shareChild))[0]
+                .GetProperty("fileId").GetInt64()==file,
+            "cross-section share clones folder structure and keeps FileId shared");
+        using(var crossWorkspace=await client.PostAsJsonAsync(
+            "/api/v2/ui/folders/personal/certificate/transfer-batch",new {
+                targetFolderId=target,targetSection="achievement",
+                move=true,items=new[]{first}}))
+            Check(crossWorkspace.StatusCode!=HttpStatusCode.OK,
+                "folder move cannot change workspaces through section endpoint");
+    }
+
     public static async Task VerifyAsync(HttpClient client,Vault vault)
     {
         string mark="TREE-"+Guid.NewGuid().ToString("N")[..8];
@@ -294,6 +420,7 @@ static class NativeFolderTreeTransferSmoke
             .EnumerateArray().Any(x=>Id(x)==generalChild),
             "source descendants are hidden with deleted ancestor");
         await VerifyFolderBatchAsync(client,vault);
+        await VerifyCrossSectionFolderMoveAsync(client,vault);
         Console.WriteLine("FOLDER TREE TRANSFER SMOKE PASS");
     }
 }

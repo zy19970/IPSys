@@ -14,8 +14,8 @@ assert.ok(from>=0&&to>from,"Unified attachment association routine must exist");
 const assoc=bridge.slice(from,to);
 assert.match(interactions,/MI\("assoc",\s*"copy",\s*"共享原件到其它记录"\)/);
 assert.match(interactions,/MI\("assoc-move",\s*"move",\s*"移动附件到其它记录"\)/);
-assert.match(interactions,/"assoc-move": inWorkspace\(\(\) => associateOriginal\(item, true\)\)/,
- "Single-file move remains wired behind workspace validation");
+assert.match(interactions,/"assoc-move": inWorkspace\(\(\) => moveSelectedItems\(\[item\]\)\)/,
+ "Single-file move uses the common dispatcher with workspace validation");
 // Verify the real shared icon and context-menu renderer, not just the "move" key.
 const icons=fs.readFileSync(path.join(explorer,"js/icons.js"),"utf8");
 const iconEnd=icons.indexOf("/* ---------- OneDrive brand mark");
