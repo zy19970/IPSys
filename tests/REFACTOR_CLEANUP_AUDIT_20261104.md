@@ -630,7 +630,7 @@ Get-Content $env:IPSYS_SMOKE_REPORT
 | S1 根目录移动 | 已完成（自动化验收） | `13596b973941` | M01—M08 真实 HTTP+SQLCipher、原有目录移动/共享/版本回归均通过 | [Windows CI #521](https://github.com/zy19970/IPSys/actions/runs/41793618031) completed/success，同 SHA，26 success/0 failure/2 可选 ZIP64 skipped | 用户本机操作未复验；S2—S5 尚未实施 |
 | S2 合同/数据库 | 已完成本批自动化验收；跨入口总闭环待 S5 | `d74baf2`；修复至 `5c555d2` | 新建 schema 3／旧库只读拒绝／项目普通目录／版本共享／回收站／44 项 MCP／Node 和 Edge 回归 | [Windows CI #526](https://github.com/zy19970/IPSys/actions/runs/41802424444)：26 success，0 failure，2 可选 ZIP64 skipped；head_sha=`5c555d2` | 真实用户本机尚未复核；K03 跨入口同批对象闭环及 S3—S5 待推进，旧 Edge 观察脚本仍有已存在告警 |
 | S3 复制/移动/MCP | 本批自动化验收完成；历史 Edge 观察缺口另列 | `c719810` → `39305f2` → `e040afb` | 同区原位 move、目录共享与独立复制、跨区物理隔离、项目真实父级、MCP 目标/幂等、Node/SQLCipher/HTTP/Edge 复验 | [Windows CI #529](https://github.com/zy19970/IPSys/actions/runs/41816669123) `completed/success`、26 success/0 failed/2 optional ZIP64 skipped；`head_sha=e040afb` | 第16.4节同批对象跨入口闭环、本机 GUI 人工复验和既有拖拽/分页问题待跟踪 |
-| S4 统一排序 | 待实施 | — | — | — | O01—O07 |
+| S4 统一排序 | 本批自动化验收完成（残留 Edge 观察问题单列） | `eedb9f0` → `899969c` → `a2000e1` | 两工作区全部合法普通模块、project 真父级、多层目录、附件版本不变、全量同层校验、SQLCipher 回滚、MCP 43 项、GUI 显示顺序；O01—O07 | [Windows CI #532](https://github.com/zy19970/IPSys/actions/runs/41822426599) `completed/success`，26 success/0 failed/2 可选 ZIP64 skipped；`head_sha=a2000e1`；Edge T-P1-05 PASS | S5 旧端点源文件与历史文档引用清理、16.4 跨入口同一批对象闭环、用户本机人工复核及历史拖拽/分页观察未完成 |
 | S5 清理与收尾 | 待实施 | — | — | — | 文档、引用、跨入口闭环 |
 
 最终完成检查：
@@ -640,7 +640,7 @@ Get-Content $env:IPSYS_SMOKE_REPORT
 3. [x] 两个不同模块的虚拟根不会再误判同一位置。
 4. [x] 项目内普通文件夹独立复制、共享、移动、合法跨区转移均可从真实菜单进入。
 5. [x] GUI/MCP 对同区移动保持同一身份语义。
-6. [ ] 普通目录排序覆盖所有合法模块和父级，拒绝不完整兄弟集合。
+6. [x] 普通目录排序覆盖所有合法模块和父级，拒绝不完整兄弟集合。
 7. [ ] 旧长下拉无生产残留，测试保护迁移到实际入口。
 8. [ ] 现行手册、Wiki、Agent 提示和工具 schema 一致；历史证据仍可追溯。
 9. [ ] 跨入口闭环通过，文件字节、版本、共享和跨区隔离有证据。
@@ -701,3 +701,25 @@ K01—K12 在当前自动 Smoke 可覆盖的断言均执行通过：K01 旧 MCP 
 #529 Artifacts：`IPSys-Web-win-x64-self-contained` ID **13315755805**，`IPSys-Web-win-x64` ID **13315661040**，`IPSys-Explorer-V2-Retest-41816669123-1` ID **13315231876**。
 
 **已知限制，不能被绿色 CI 掩盖：**同次真实 Edge 观察脚本仍输出 `T-P2-02 CONFIRMED_BUG`（内部附件拖拽）和 `T-P2-09 FAIL`（分页状态）；两项此前基线已有，S3 不是其修复批次。其他 `T-P0-05/T-P1-03/T-P1-05` 仍为历史观察脚本的 `IMPLEMENTATION_GAP` 记录，不能直接当成当前真实 GUI 最终结论。完整 MCP 创建→同 ID GUI 显示及修改→MCP 核对→版本/共享/跨区/回收站的同一批对象闭环留在第16.4节 S5；用户本机手工 UI 验证也未进行。下一批 **S4 O01—O07 同层排序** 尚未实施，S5 的死代码清理和全套现行文档统一亦未完成。S3 自动验收不意味着 C01—C08 全部清零。本轮未操作用户真实数据库、旧库迁移或正式 Release。
+
+
+### 2026-11-04 S4 C05 同层排序统一：产品代码与 Windows CI #532 自动验收
+
+用户先提出“继续推进吧”，后提出“为什么中断了，继续推进”。两次对话中的工具曾返回 GitHub `ReadTimeout` 和内部错误，但**实际聊天连接中断的确切原因没有独立错误日志**，不能推断为软件卡死。恢复时发现 `main` 已推进到 `a2000e1749c77b3d55930e55315bac32b5ecce8a`，而先前保留的旧 Git Data 草稿树 `d2b7d867e0d6ed403768a7f05c8262c86945d6af` 属于**未提交旧基线**；没有用其覆盖或重复提交已有产品代码。
+
+产品提交与失败核对：
+
+| 提交 | Windows CI | 核对结果 |
+| --- | --- | --- |
+| [`eedb9f0`](https://github.com/zy19970/IPSys/commit/eedb9f0bc41cfc26252a61a42232a7c1b5db7a24) | [#530](https://github.com/zy19970/IPSys/actions/runs/41820584855) | failed：新增排序 Smoke 的 DTO 构造传入数组，但实际参数要求 List；产品提交与失败均保留供追溯 |
+| [`899969c`](https://github.com/zy19970/IPSys/commit/899969c1a88227385e98d8850e109505faa1e125) | [#531](https://github.com/zy19970/IPSys/actions/runs/41820987832) | completed/success，26 success；Edge 活跃 T-P1-05 仍访问已退休排序 URL，旧测试对合法 404 错误误报 FAIL，不能仅以绿色 CI 认为观察项通过 |
+| [`a2000e1`](https://github.com/zy19970/IPSys/commit/a2000e1749c77b3d55930e55315bac32b5ecce8a) | [#532](https://github.com/zy19970/IPSys/actions/runs/41822426599) | **completed/success、26 success、0 failed、2 个可选 >4 GiB ZIP64 skipped**；Edge T-P1-05 使用现行 `entries/reorder` 接口验证，实测 PASS，响应包含排序持久化、缺项 409、非法 ID 409、失败后顺序不变 |
+
+**实施结论与 O01—O07 映射：**
+
+1. `list_folder_entries(workspace,section,parent_id)` / `reorder_entries(workspace,section,parent_id,items,request_id?)` 现支持 company 的 certificate/achievement/party/general/project 和 personal 的 certificate/achievement/academic/general/project；普通模块 `parent_id=0` 表示根，project 必须使用真实项目或子目录的正整数 FolderId。MCP `reorder_folders` 退休，不再出现在 tools/list 或 tools/call；真实 stdio 验证当前工具总数 **43**，无重复。项目台账 `reorder_records(kind=project)` 保持原来的选中记录占槽位排序含义，知识产权原有台账排序未改。
+2. `reorder_entries.items` 只接受完整且互不重复的 `[{kind:"folder",id:FolderId}]`，只含目标父级的全部有效普通子目录，不允许附件、后代、跨模块、其他父级、旧 `kind=record`、缺项、多项或重复项。SQL 仅修改同一工作区/模块/父级的 `folders.position`，事务失败整次回滚，不影响 FolderId、FileId、LinkId、版本字节或目录位置；O02/O03/O04/O05/O07 使用临时 SQLCipher/HTTP 专项 Smoke，含人为注入第二次 SQL UPDATE 失败的回滚断言。所有普通模块根/嵌套以及项目真实父级的 O01 也覆盖。
+3. GUI `reorderArchiveEntry` 从真实 `Drive.sortedItems` 的可见自定义排序构造完整同层目录队列，不再直接使用名称/初始数组顺序；混排附件不参与该列表；过滤、搜索、非自定义排序或清单不一致时禁止写入。项目直属目录的 `p:真实项目 ID` 已纳入自定义排序和 `archive.orders` 快照；O06 的 Node 真实入口测试验证名称顺序与持久化 position 不一致时仍操作正确节点。项目虚拟 `project:0` 不再发起不合法的快照查询。
+4. 旧 `/api/v2/ui/folders/{workspace}/{section}/order` 已不注册，活跃 `NativeArchiveUiHttpSmoke`、MCP/CI/Edge T-P1-05 已迁到 `/api/v2/folders/{workspace}/entries/reorder?section=...`。旧实现源文件 `NativeArchiveUiOrderEndpoints.cs` 仍保留但无生产 Map 注册，按第15节在 S5 进一步做无调用证明后清理，不为减少文件数提前误删。
+
+**真实验收范围：** [#532](https://github.com/zy19970/IPSys/actions/runs/41822426599) 已包含 Windows Debug+临时 SQLCipher/HTTP、MCP stdio 43 项、Node/UI、真实 Edge/HTTP、独立 SQLCipher/HTTP 往返、Windows 两种单 EXE 构建启动与图标。构建产物：自包含 EXE `13318595193`；需 .NET 运行时 EXE `13317089888`；Edge 报告 `13317913804`。Edge 原始日志明确 `T-P1-05 PASS`，而 `T-P2-02 CONFIRMED_BUG`（内部附件拖拽）及 `T-P2-09 FAIL`（分页状态）仍保留，这两项在 S4 前已经存在，不能报成已修复。用户真实数据库、旧库迁移、正式 Release 和本机 GUI 人工验收均未执行；第16.4节完整的**同一批对象** MCP→GUI→MCP 端到端闭环尚未执行，留在 S5。S4 本批自动验收完成**不等于** S5 清理及总验收完成。

@@ -698,3 +698,14 @@ S2 主要结果：SQLCipher schema 3 新建直接具备完整保护触发器，�
 限制必须保留：CI Edge **历史观察脚本**仍给 `T-P2-02 CONFIRMED_BUG`（内部附件拖拽）和 `T-P2-09 FAIL`（分页状态），并保留 `T-P0-05/T-P1-03/T-P1-05 IMPLEMENTATION_GAP` 旧脚本标签；没有因 CI 绿色就声称这些已修复。用户本机 GUI 手动点击未验收；任务书第16.4节**MCP 创建→同一批对象 GUI 使用→MCP 核对**完整闭环尚未实际执行，留在 S5。S4 O01—O07 同层排序和 S5 旧代码及全套现行文档统一尚待开展，不能将 S3 完成当作 C01—C08 已全部清理。
 
 本轮恢复后核对 main 仍为 `e040afb`、#529 success，重新完成 `tests/REFACTOR_CLEANUP_AUDIT_20261104.md` 的 S3 状态/验收证据、`MCP_CODEX.md` 顶部现行 move/transfer 语义与示例，以及本 `MEMORY.md` 和会话记录的归档，文档内容不改业务代码。最新会话路径 `memory/sessions/2026-11-04-IPSys重构清理S3连接续接.md`；最后归档轮次：用户“为什么中断了，继续推进”。下一步按任务书进入 S4（只处理目录同层排序），之后 S5（遗留清理、跨入口闭环和文档总验收）。
+
+
+## 2026-11-04：S4 #532 已完成自动验收，文档归档；S5 待推进
+
+用户上一轮原话“继续推进吧”确定进入 S4，同一阶段本轮原话“为什么中断了，继续推进”。开始前均依 AIGT 通用规范读取仓库规则、项目 Memory 和任务书第14节。S4 实际产品已由三个提交完成：`eedb9f0bc41cfc26252a61a42232a7c1b5db7a24`（第一版；CI #530 因 Smoke DTO 数组/List 类型不符失败）；`899969c1a88227385e98d8850e109505faa1e125`（修正编译；CI #531 总体成功，但 Edge T-P1-05 使用退休路由造成观察项错误）；`a2000e1749c77b3d55930e55315bac32b5ecce8a`（活跃 HTTP/Edge T-P1-05 迁到现行排序路由；CI #532 最终成功）。恢复会话时 `main=a2000e1` 已有上述 3 次产品提交，**早期 Git Data 未提交 S4 草稿树 d2b7d867e0d6ed403768a7f05c8262c86945d6af 不能覆盖已推进的 main**，故不重复提交业务源码。
+
+S4 C05 O01—O07 实施与验收：MCP `list_folder_entries(workspace,section,parent_id)`、`reorder_entries(workspace,section,parent_id,items,request_id?)` 支持公司 certificate/achievement/party/general/project 和个人 certificate/achievement/academic/general/project；非 project 根 `parent_id=0`，project 只能使用真实项目或普通目录 FolderId。items 严格是完整同层普通目录 `{kind:"folder",id}` 列表，缺少、重复、额外、其他父/模块、旧 record 标签和过期快照均拒绝，SQL 仅写同层 `folders.position`，SQLCipher 触发器模拟中途失败回滚。GUI 改为以当前 `Drive.sortedItems` 可视自定义顺序而非原始名称排序建队列，项目直属目录有真实父级位置快照。目录排序 MCP 旧 `reorder_folders` 退休，旧 UI 模块级 HTTP order 路由不再注册；项目台账 `reorder_records(kind=project)` 独立保留。MCP stdio 真实清单=**43** 无重复工具。单个未使用的旧端点文件 `NativeArchiveUiOrderEndpoints.cs` 尚在仓库，留 S5 在引用检查后删除。
+
+最终 Windows CI **#532** run `41822426599`，`head_sha=a2000e1749c77b3d55930e55315bac32b5ecce8a`，`completed/success`、**26 success/0 failed/2 optional ZIP64 skipped**。含 Windows Debug+SQLCipher/HTTP、Node/UI/MCP stdio、Edge/HTTP、独立 SQLCipher HTTP、双模式单 EXE 构建运行与图标。Artifacts self-contained `13318595193`、framework-dependent `13317089888`、Edge 报告 `13317913804`。#532 Edge 日志 `T-P1-05 PASS`（现行排序 200；持久结果正确；缺项 409；非法 ID 409；失败后顺序不变），但仍有此前存在的 `T-P2-02 CONFIRMED_BUG` 内部拖拽、`T-P2-09 FAIL` 分页观察，两者不能伪称已修复。
+
+本轮已将 `tests/REFACTOR_CLEANUP_AUDIT_20261104.md` 任务书 S4 状态和 O01—O07/CI #530-#532 证据同步，`MCP_CODEX.md` 最前加入 S4 现行参数和 retired 接口说明，更新本 MEMORY 并新建 `memory/sessions/2026-11-04-IPSys重构清理S4排序续接.md`。工具端曾出现 `ReadTimeout` 和 `internal error`，但具体聊天连接中断根因无专门错误日志，不能确认为程序卡死；先前 S4 开始通知 #2246、失败通知 #2247，本轮恢复通知 #2252。用户个人正式库未操作，旧库不迁移，未发布 Release，本机人工验收未做，第16.4节 MCP→GUI 同批对象完整闭环留在 **S5**。此归档提交只改 Markdown，不重新触发产品 CI。下一轮应推进 S5 代码清理／文档统一／跨入口总验收。

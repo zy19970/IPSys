@@ -1,14 +1,33 @@
 # IPSys 本机 Codex MCP
 
-## 当前有效的项目／普通目录 MCP 契约（2026-11-04，S3）
+## 当前有效的项目／普通目录 MCP 契约（2026-11-04，S4）
 
-现行 `tools/list` 注册 **44 项 MCP 工具**，已完全退出独立的 `contract` 业务类型。原 `list_contracts`、`create_contract`、`update_contract`、`delete_contract`、`copy_contract`、`list_contract_files`、`delete_contract_file` 均不可调用；旧 `tools/call` 直接调用也会返回未知工具。项目下的合同资料只是一层或多层普通文件夹，不再单独维护合同对象或专有属性。
+现行 `tools/list` 注册 **43 项 MCP 工具**，已完全退出独立的 `contract` 业务类型。原 `list_contracts`、`create_contract`、`update_contract`、`delete_contract`、`copy_contract`、`list_contract_files`、`delete_contract_file` 均不可调用；旧 `tools/call` 直接调用也会返回未知工具。项目下的合同资料只是一层或多层普通文件夹，不再单独维护合同对象或专有属性。
 
 业务记录类型为 `project`、`ip`，普通目录类型为 `archive_folder`。业务模块由 `section` 标识；公司支持 `certificate/achievement/party/general/project`，个人支持 `certificate/achievement/academic/general/project`。创建项目子目录须设置 `section="project"` 且提供 `parent_id`，该 ID 必须指向工作区内真实存在的项目或项目子目录。例如先调用 `create_project(workspace="company",name="项目A",project_type="科研项目")` 获得项目 FolderId=123（示例），再调用 `create_folder(workspace="company",section="project",parent_id=123,name="合同资料")`，实际调用以返回 ID 为准。目录可继续嵌套，不能将虚拟模块根视为项目父级。
 
 普通目录使用 `list_folders/create_folder/update_folder/delete_folder/move_folder/transfer_folder` 及 `list_files_page/upload_files/list_file_links/associate_file` 等共享能力。上传项目目录附件时使用 `upload_files(workspace="company",kind="archive_folder",section="project",owner_id=实际目录FolderId,paths=[...])`。项目直属附件仍使用 `kind="project"`。统一搜索仅接受 `project/ip/archive_folder/file`；回收站记录类型使用 `list_trash` 实际返回的 `project/ip/v2_archive_folder/v2_file/v2_ip_file`。文件共享保持 FileId，不同位置拥有 LinkId；追加版本属于 FileId；跨工作区的项目整树复制含全部版本且物理 FileObject 隔离。
 
 新建加密资料库的资源结构版本固定为 **3**，旧 v2、缺失版本表或结构不完整的库在打开阶段拒绝，不作自动迁移和写入修补。HTTP 保留 `/api/v2` 路由命名：HTTP 路由版本与数据库 schema 版本不是同一个概念。请用新的空白资料库测试，旧测试库需自行保留或独立备份；不要以重新输入旧密码方式触发重建。更换 EXE 后重新连接 MCP 客户端，刷新 `tools/list`。
+
+## S4 普通目录同层排序：现行 MCP 契约（Windows CI #532 已通过）
+
+**普通目录列表与排序统一为两个工具**：
+
+1. `list_folder_entries(workspace,section,parent_id)`：返回**指定父级的全部有效普通子文件夹**，按数据库 `position` 顺序排列。workspace 为 `company` 或 `personal`；section 为当前工作区支持的普通目录模块。非 project 模块的 `parent_id=0` 是该模块根目录；`section=project` 时 `parent_id` 必须是实际项目或其普通子目录的正整数 FolderId。目录拥有附件不改变目录同层列表的粒度。
+2. `reorder_entries(workspace,section,parent_id,items,request_id?)`：items **必须精确包含指定父级下的全部有效普通子文件夹**，每项且仅有 `{kind:"folder",id:正整数FolderId}`。不得包含附件、其他项目或模块、后代、重复项、旧 `record` 种类，也不能少一个或多一个。缺项、错项、过期列表返回确定的拒绝，不写入部分顺序；若刚有目录新增/删除，应重新执行 `list_folder_entries` 构造新列表，不能盲目重试旧 items。
+
+两工作区的合法 section：`company: certificate, achievement, party, general, project`；`personal: certificate, achievement, academic, general, project`。实际提交只更新同父级 `folders.position`，不修改 FolderId、FileId、LinkId、历史版本、目录名或层级。
+
+示意：将公司项目 FolderId 为 101 的三个直属普通目录调整为 `303,301,302` 的顺序（ID 均为示例，必须先查询真实值）：
+
+```json
+{"workspace":"company","section":"project","parent_id":101,"items":[{"kind":"folder","id":303},{"kind":"folder","id":301},{"kind":"folder","id":302}],"request_id":"s4-project-siblings-001"}
+```
+
+**退出接口**：原 `reorder_folders` 已从注册与调度删除；旧模块级 HTTP `/api/v2/ui/folders/{workspace}/{section}/order` 不再注册。不能继续发送旧 URL 或使用旧参数 `ids` 代替 items。 `reorder_records(workspace,kind=project,ids)` 仍是**项目台账**“所选项目占用原有槽位”排序，不是普通目录全量同层排序；知识产权台账排序不在本阶段调整范围。
+
+MCP stdio tools/list 当前验证为 **43 项无重复工具**，产品代码基线 [`a2000e1`](https://github.com/zy19970/IPSys/commit/a2000e1749c77b3d55930e55315bac32b5ecce8a)，[Windows CI #532](https://github.com/zy19970/IPSys/actions/runs/41822426599) completed/success（26 success/0 failure/2 optional ZIP64 skipped）。之后旧章节中的 `44`、`reorder_folders` 及 `kind=record` 等**历史接口示例**不代表现行工具；实际调用以本节、当前程序及 tools/list 为准。S5 将对其余现行文档和旧实现做完整清理。
 
 ## S3 目录复制、共享与原位移动：现行工具参数（Windows CI #529 已通过）
 
