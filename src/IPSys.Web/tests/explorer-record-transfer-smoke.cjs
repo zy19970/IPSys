@@ -136,7 +136,8 @@ const choices=n=>Array.from(opt(n,true),x=>x.value);
  picker=pickers.at(-1);
  assert.equal(picker.originWorkspace,"company");
  assert.equal(picker.workspace,"personal");
- assert.deepEqual(picker.sourceFolderIds,[]);
+ assert.deepEqual(Array.from(picker.sourceFolderIds),[],
+  "Cross-workspace picker must not inherit source FolderIds");
  assert.ok(index(picker.root,null,[]).byFolderId.has(70));
  await picker.onSubmit({target:"70",targetSection:"project"});
  assert.deepEqual(calls.at(-1).payload,{
