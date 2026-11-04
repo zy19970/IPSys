@@ -142,6 +142,72 @@ static class ResourceSchemaV2Smoke
                 }
                 Check(Scalar(db,$"SELECT count(*) FROM folders WHERE id={root} AND section='general' AND modified_at IS NOT NULL;")==1,
                     "cross-module root modification timestamp is available");
+
+                // R1: a tombstoned child and its hidden active descendant
+                // must never be orphaned by cross-section moving the ancestor.
+                long r1Project=Id(db,"INSERT INTO folders(workspace,kind,name) VALUES('company','project','R1 测试项目')");
+                long d1=Id(db,$"INSERT INTO folders(workspace,kind,section,parent_id,name) VALUES('company','archive_folder','project',{r1Project},'R1 一级')");
+                long d2=Id(db,$"INSERT INTO folders(workspace,kind,section,parent_id,name) VALUES('company','archive_folder','project',{d1},'R1 二级')");
+                long d3=Id(db,$"INSERT INTO folders(workspace,kind,section,parent_id,name) VALUES('company','archive_folder','project',{d2},'R1 三级')");
+                long r1Link=Id(db,$"INSERT INTO folder_file_links(workspace,folder_id,file_id) VALUES('company',{d3},{file})");
+                Check(NativeArchiveStore.SetDeleted(db,ResourceRef.Create("company",
+                    FolderKinds.ArchiveFolder,d2,"project"),true),
+                    "R1 tombstone only the middle folder");
+                bool refused=false;
+                try
+                {
+                    NativeFolderBatchTransferEndpoints.Execute(db,"company","project",
+                        new FolderBatchTransferInput(0,true,new[]{d1},"general"),
+                        CancellationToken.None);
+                }
+                catch(NativeFolderBatchTransferEndpoints.TransferRejection ex)
+                    when(ex.Status==409){refused=true;}
+                Check(refused,"R1 cross-section move with hidden descendants refused");
+                Check(Scalar(db,$"SELECT count(*) FROM folders WHERE id IN ({d1},{d2},{d3}) AND section='project';")==3 &&
+                      Scalar(db,$"SELECT count(*) FROM folders WHERE id={d2} AND deleted=1;")==1 &&
+                      Scalar(db,$"SELECT count(*) FROM folders WHERE id={d3} AND deleted=0;")==1,
+                    "R1 rejected move leaves complete lineage and tombstone unchanged");
+                Check(Scalar(db,$"SELECT count(*) FROM folder_file_links WHERE id={r1Link} AND folder_id={d3} AND file_id={file};")==1 &&
+                      Scalar(db,$"SELECT count(*) FROM file_versions WHERE file_id={file};")==2,
+                    "R1 rejection keeps FileId, LinkId and both history versions");
+                Check(RecycleStore.Change(db,"company",
+                    new[]{new RecycleKey("v2_archive_folder",d2,"project")},false),
+                    "R1 restore still works at original project");
+                var accepted=NativeFolderBatchTransferEndpoints.Execute(db,
+                    "company","project",
+                    new FolderBatchTransferInput(0,true,new[]{d1},"general"),
+                    CancellationToken.None);
+                Check(accepted.Moved && Scalar(db,$"SELECT count(*) FROM folders WHERE id IN ({d1},{d2},{d3}) AND section='general' AND deleted=0;")==3,
+                    "R1 restored complete subtree can move to general");
+                Check(NativeArchiveStore.ListAll(db,"company","general")
+                    .Any(x=>x.Folder.Ref.Id==d3),
+                    "R1 third-level directory remains visible after safe move");
+
+                long g1=Id(db,"INSERT INTO folders(workspace,kind,section,name) VALUES('company','archive_folder','general','R1 清理一级')");
+                long g2=Id(db,$"INSERT INTO folders(workspace,kind,section,parent_id,name) VALUES('company','archive_folder','general',{g1},'R1 清理二级')");
+                long g3=Id(db,$"INSERT INTO folders(workspace,kind,section,parent_id,name) VALUES('company','archive_folder','general',{g2},'R1 清理三级')");
+                Check(NativeArchiveStore.SetDeleted(db,ResourceRef.Create("company",
+                    FolderKinds.ArchiveFolder,g2,"general"),true),
+                    "R1 general tombstone setup");
+                refused=false;
+                try
+                {
+                    NativeFolderBatchTransferEndpoints.Execute(db,"company","general",
+                        new FolderBatchTransferInput(0,true,new[]{g1},"achievement"),
+                        CancellationToken.None);
+                }
+                catch(NativeFolderBatchTransferEndpoints.TransferRejection ex)
+                    when(ex.Status==409){refused=true;}
+                Check(refused &&
+                      Scalar(db,$"SELECT count(*) FROM folders WHERE id IN ({g1},{g2},{g3}) AND section='general';")==3,
+                    "R1 general-to-achievement protected from hidden lineage");
+                Check(NativeArchiveStore.SetDeleted(db,ResourceRef.Create("company",
+                    FolderKinds.ArchiveFolder,g1,"general"),true),
+                    "R1 delete ancestor after refused move");
+                Check(RecycleStore.Change(db,"company",
+                    new[]{new RecycleKey("v2_archive_folder",g1,"general")},true) &&
+                      Scalar(db,$"SELECT count(*) FROM folders WHERE id IN ({g1},{g2},{g3});")==0,
+                    "R1 permanent purge still cleans complete original subtree");
             }
 
             using(var reopened=Vault.Connect(path,"schema3-test-key",create:false))

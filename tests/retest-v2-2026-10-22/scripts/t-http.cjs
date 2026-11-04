@@ -396,4 +396,5 @@ async function must(label, p, body) {
   fs.writeFileSync(path.join(EVID, "http-results.json"), JSON.stringify(results, null, 2), "utf8");
   console.log("\n=== 汇总 ===");
   for (const r of results) console.log(`${r.id}\t${r.result}\t${r.observed}`);
+  require("./result-gate.cjs").assertResults("http",results);
 })().catch((e) => { console.error("FAILED:", e); process.exit(1); });

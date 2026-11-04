@@ -26,7 +26,7 @@ Agent MCP 子进程需要与图形宿主运行在同一个 Windows 用户登录�
 | 回收站 | `list_trash`、`restore_trash`、`purge_trash` |
 | 读取 Agent 规范 | `get_agent_guidance` |
 
-普通文件夹统一为 `archive_folder`，必须明确工作区与 `section`（公司支持 certificate/achievement/party/general/project，个人支持 certificate/achievement/academic/general/project）。其中 `section=project` 时，`parent_id` **必须是具体项目 FolderId 或项目内另一文件夹 FolderId**，不能直接创建在虚拟“公司项目”分类根目录；跨模块共享/移动到项目也必须选择真实的项目或其子目录；当前 MCP 注册 51 项工具。实际工具名称、参数和授权条件应通过连接后的 `tools/list` 与仓库 [MCP_CODEX.md](https://github.com/zy19970/IPSys/blob/main/MCP_CODEX.md) 核对，不建议使用早期已下线的 `v2_*` 历史别名。
+普通文件夹统一为 `archive_folder`，必须明确工作区与 `section`（公司支持 certificate/achievement/party/general/project，个人支持 certificate/achievement/academic/general/project）。其中 `section=project` 时，`parent_id` **必须是具体项目 FolderId 或项目内另一文件夹 FolderId**，不能直接创建在虚拟“公司项目”分类根目录；跨模块共享/移动到项目也必须选择真实的项目或其子目录；当前 MCP 注册 43 项工具。实际工具名称、参数和授权条件应通过连接后的 `tools/list` 与仓库 [MCP_CODEX.md](https://github.com/zy19970/IPSys/blob/main/MCP_CODEX.md) 核对，不建议使用早期已下线的 `v2_*` 历史别名。
 
 ## 示例任务
 

@@ -338,6 +338,8 @@ jobs:
             }
             Write-Host "Isolated test host ready: $base"
             $env:IPSYS_BASE = $base
+            node tests/retest-v2-2026-10-22/scripts/result-gate-smoke.cjs
+            if ($LASTEXITCODE -ne 0) { throw 'Result gate failure injection smoke failed' }
             node tests/retest-v2-2026-10-22/scripts/fixture.cjs $env:IPSYS_RETEST_RUN_ID
             if ($LASTEXITCODE -ne 0) { throw 'Disposable V2 fixture setup failed' }
             node tests/retest-v2-2026-10-22/scripts/t-http.cjs $env:IPSYS_RETEST_RUN_ID
@@ -353,6 +355,9 @@ jobs:
               $items = @(Get-Content -LiteralPath $resultPath -Raw | ConvertFrom-Json)
               Write-Host "=== $name ($($items.Count) results) ==="
               $items | Group-Object result | Sort-Object Name | ForEach-Object { Write-Host "$($_.Name)=$($_.Count)" }
+              $scope = if ($name -eq 'http-results.json') { 'http' } else { 'browser' }
+              node tests/retest-v2-2026-10-22/scripts/result-gate.cjs $scope $resultPath
+              if ($LASTEXITCODE -ne 0) { throw "Mandatory result gate failed: $name" }
             }
           }
           finally {

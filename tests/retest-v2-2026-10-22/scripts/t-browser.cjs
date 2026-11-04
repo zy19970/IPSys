@@ -810,11 +810,8 @@ async function main() {
   fs.writeFileSync(path.join(EVID, "browser-results.json"), JSON.stringify(results, null, 2), "utf8");
   console.log("\n=== 浏览器层汇总 ===");
   for (const r of results) console.log(`${r.id}\t${r.result}\t${r.observed}`);
-  // S5 acceptance must fail the workflow if a critical observation is
-  // FAIL/BLOCKED/missing. Historical non-gated cases retain dated evidence.
-  const required=["T-P2-02","T-P2-09","S5-E2E"];
-  const incomplete=required.filter(id=>!results.some(r=>r.id===id&&r.result==="PASS"));
-  if(incomplete.length) throw Error("S5 mandatory Edge cases not PASS: "+incomplete.join(", "));
+  // Every mandatory browser result is a CI gate, including nonheadline cases.
+  require("./result-gate.cjs").assertResults("browser",results);
 }
 
 main().catch((e) => { console.error("FAILED:", e.message); process.exitCode = 1; })

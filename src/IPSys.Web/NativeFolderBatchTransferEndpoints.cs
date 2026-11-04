@@ -86,6 +86,36 @@ static class NativeFolderBatchTransferEndpoints
                 trees.Add(entries);
             }
 
+            // Tombstoned children are intentionally absent from ListAll.
+            // Moving an active ancestor to another section without them would
+            // strand those children and prevent later restore or purge.
+            // Until a section-aware tombstone migration is supported, reject
+            // the whole operation before opening a write transaction.
+            if(input.Move && targetSection!=section)
+            {
+                using var count=db.CreateCommand();
+                count.CommandText="""
+                    WITH RECURSIVE owned(id) AS (
+                      SELECT id FROM folders WHERE workspace=$w AND id=$root
+                      UNION
+                      SELECT child.id FROM folders child JOIN owned
+                        ON child.parent_id=owned.id AND child.workspace=$w
+                    )
+                    SELECT COUNT(*) FROM owned;
+                    """;
+                count.Parameters.AddWithValue("$w",workspace);
+                var rootParam=count.Parameters.Add("$root",SqliteType.Integer);
+                for(int i=0;i<trees.Count;i++)
+                {
+                    stop.ThrowIfCancellationRequested();
+                    rootParam.Value=ids[i];
+                    long physical=Convert.ToInt64(count.ExecuteScalar());
+                    if(physical!=trees[i].Count)
+                        throw new TransferRejection(
+                            "所选文件夹包含回收站中的子目录，请先恢复或永久清理后再跨模块移动。",409);
+                }
+            }
+
             if(input.Move)
             {
                 // Moving to the existing parent is not a useful operation.
