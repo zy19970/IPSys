@@ -552,3 +552,14 @@ CI #506 run41623186950首次通过编译、MCP和早期UI检查，但新测试�
 
 
 **第七轮最终 CI 实证（2026-11-04）**：跨模块目录树移动、统一移动入口产品提交`0f741a9249227d23bed8ac6e6144cec96ba2608f`的Windows Actions **#516**（run`41765165422`）已`completed/success`，**26项success、0失败、2项按默认配置跳过（可选超4GiB ZIP64）**。日志所对应的`head_sha`与产品提交精确一致。通过.NET Debug/Release、UI/Node、MCP握手、真实Edge/HTTP、独立SQLCipher/HTTP（含跨模块普通文件夹整树移动、ID/版本、非法目标、整批回滚）、双Windows单文件EXE发布/启动及图标校验。未过期artifact`IPSys-Web-win-x64-self-contained` ID13292597209（推荐）、`IPSys-Web-win-x64` ID13292607201、`IPSys-Explorer-V2-Retest-41765165422-1` ID13292278253。验收页面：https://github.com/zy19970/IPSys/actions/runs/41765165422 。**正式Release及用户实际电脑GUI验收尚未进行**，本轮代码交付与Windows自动化验收已完成。最近会话`memory/sessions/2026-11-03-IPSys项目整体认知复盘.md`第七轮最终收敛。
+
+
+## 2026-11-04 第八轮：评估本地Agent将普通资料误归为项目条目后的分类纠错
+
+**用户原话**：“我让本地的agent帮我整理文件，但是有些不是项目的内容，给我整理到项目的条目中了，现在比较棘手，我在想从项目中转移文件夹是不是会很麻烦，先评估一下这个事情”。本轮指令为**先评估，不改业务代码或用户实际资料库**。按AIGT基础三规则重新读取、检查main=5e6298b3abd47d420113334771528cb4325697cc与MEMORY/会话，任务开始通知office-renderer/wechat-webhook#2179。
+
+**源码事实**：SQLCipher V2`folders.kind`分为`project`、`contract`、`ip`、`archive_folder`；普通资料下可无限嵌套`archive_folder`，但`project`下**只允许`contract`**子记录，普通archive_folder不能直接挂在project下面，`folder_immutable_scope`保护`kind`不可原位修改。前端`store.js`项目子项只有直属附件和合同记录，普通资料使用`archive_folder`且`section`表示模块。现有`moveSelectedItems`和`NativeFolderBatchTransferEndpoints`解决单/多附件及普通文件夹跨模块移动，但**不支持把kind=project或kind=contract转换成普通资料文件夹**；`transferBusinessRecord/NativeProjectTransferStore`项目只复制/跨工作区转移为项目，不能改类别。MCP存在`list_projects`、`list_project_files`、`list_contracts`、`list_contract_files`、`create_folder`、`associate_file`、`delete_project`等，可实现人工预审的一次性“创建普通文件夹→迁移附件→比对→回收误建项目”流程。现有附件同工作区移动保留原`FileId`及全部版本，旧`LinkId`是源位置关联，目标会创建新`LinkId`；不需搬运原件二进制。项目→资料转换新建`archive_folder`会获得新`FolderId`；不能宣称同ID直接变种。
+
+**评估结论**：须区分A误放入真实项目的附件（低复杂度，现有GUI/MCP移动即可）、B AI误建`project`条目以代表普通目录（中等复杂度，现有接口可谨慎手工/Agent分步纠正，建议未来专用“项目转普通文件夹”原子API及右键入口）、C有真合同子记录/混合真项目与误分类资料（中高复杂度，需保留合同业务元数据、核实映射而不能自动整项转换）。永久功能建议右键“转为普通文件夹”，共用现有选择器；提交前预览源项目、直属附件、合同子项、目的模块、同名/共享冲突、元数据映射；在**同一工作区SQLCipher单事务**创建新archive_folder（如原project下含非业务合同类条目，按显式选择再建子文件夹）、迁移原FileId/版本的关联、核对项目及合同链接数量和冲突，成功后原错误project软删除进回收站而非永久清理，失败整体回滚。项目/合同原业务属性在转换前存快照/审计记录；含真实项目、合同或其他误归类附件时优先选择性移动而非强转全部。原项目FolderId变新，原附件FileId和版本不变，目标LinkId可能变化；大量附件不能简单按500条批次调用导致非原子半完成。用户Agent后续入库建议“默认不把不确定资料建成项目；需要项目明确依据，先输出归类预览供确认，避免再次误建”；此为本轮建议，**尚未获用户授权实施**。一时补救可先用现有MCP把附件共享到正确资料目录、核验后移除来源链接/回收误建项目，禁止未经核对直接`delete_project`（连合同一起移回收站）。本轮只需评估技术成本与风险，未直接访问/核实用户本机实际错分数据库，也未运行新CI或发布。
+
+**用户可见答复（归档拟交付核心）**：说明当前kind分层、四种典型情况的难度，现有附件直接移动与新建文件夹足以修正多数场景，真正新增开发的是项目记录转换；推荐安全的“转为普通文件夹”功能，原子关联迁移与回收站保护，不复制几GB二进制，合同需要预览确认。最近会话`memory/sessions/2026-11-03-IPSys项目整体认知复盘.md`第八轮。
