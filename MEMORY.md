@@ -513,3 +513,6 @@ CI #506 run41623186950首次通过编译、MCP和早期UI检查，但新测试�
 前端复用并增强`AttachmentFolderPicker`，普通文件夹mode允许选择本模块虚拟顶层为parent=0、禁止进入无关模块及选择来源/后代。新增`transferFolderBatch`；右键单选、批量多选、底部选择栏、右侧详情支持“共享文件夹”“移动文件夹”，混选文件与文件夹不提供危险组合操作。原独立复制逻辑标签明确为“复制文件夹（独立副本）”，旧跨区移动入口改文字“跨工作区或类别转移”。保留附件现有单/批量共享移动路径。增补真实SQLCipher/HTTP测试到`NativeFolderTreeTransferSmoke`（双根/子树共享FileId和版本、故障回滚、父子重复、环、移动保留ID），并扩展前端`folder-picker-smoke.cjs`和`explorer-f2-final-consistency-smoke.cjs`。用远端V8 Function构造对六份JS及测试进行了静态语法检查通过，**这不代替Windows完整CI。** 新产品提交后检查workflow结论，用户尚未在本机新版exe手动试用，不触发正式Release。
 
 任务范围未改变用户实际数据库，未申请迁移或清理旧数据。本轮项目Memory和会话均按规范归档，最近会话仍为 memory/sessions/2026-11-03-IPSys项目整体认知复盘.md，第四轮；此前上轮未落地的草稿状态将以本轮实际提交和CI记录更新。
+
+
+**首轮CI失败与精确修复（2026-11-04）**：产品提交`86af5a82`触发Windows CI #511 run41760417410 completed/failure；从真实job日志确认.NET Debug编译**0 warning、0 error，编译成功**，故障发生在新增真实SQLCipher/HTTP smoke 的`NativeFolderTreeTransferSmoke.VerifyFolderBatchAsync`第134行：测试先把两个文件夹共享到目标，再将同名源文件夹移动到该目标，后端按设计正确返回409防止同名覆盖，而测试错误地把此操作当成功移动，致`Read(...).EnsureSuccessStatusCode`失败。不是已证实的产品缺陷。修正测试为显式验证409且两个源保持原位，然后新建独立目标移动，检查FolderId、后代/附件不变。产品逻辑无需改动。失败通知office-renderer/wechat-webhook#2169、重新开始通知#2170。此次修复只变更NativeFolderTreeTransferSmoke.cs与两份记忆，重新触发CI后按实际结果收敛。

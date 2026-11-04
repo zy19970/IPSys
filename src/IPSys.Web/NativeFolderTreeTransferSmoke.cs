@@ -131,8 +131,19 @@ static class NativeFolderTreeTransferSmoke
             targetFolderId=target,move=false,items=new[]{a,child}}))
             Check(overlap.StatusCode==HttpStatusCode.BadRequest,
                 "parent and child double-selection must be rejected");
+        // Existing shared clones have the same names, so moving originals
+        // into that target must be refused without modifying either source.
+        using(var collision=await client.PostAsJsonAsync(endpoint,new{
+            targetFolderId=target,move=true,items=new[]{a,b}}))
+            Check(collision.StatusCode==HttpStatusCode.Conflict,
+                "moving into a folder already containing same-name clones must fail");
+        var afterConflict=await Flat(client,"company","certificate");
+        Check(new[]{a,b}.All(id=>afterConflict.EnumerateArray().Single(x=>Id(x)==id)
+                .GetProperty("folder").GetProperty("parent").ValueKind==JsonValueKind.Null),
+            "name conflict must preserve both original folder locations");
+        long moveTarget=await Folder(client,"company","certificate",mark+"移动位置");
         var moved=await Read(await client.PostAsJsonAsync(endpoint,new{
-            targetFolderId=target,move=true,items=new[]{a,b}}));
+            targetFolderId=moveTarget,move=true,items=new[]{a,b}}));
         Check(moved.GetProperty("ids").EnumerateArray()
             .Select(x=>x.GetInt64()).SequenceEqual(new[]{a,b}),
             "move preserves stable original FolderIds");
@@ -140,7 +151,7 @@ static class NativeFolderTreeTransferSmoke
         foreach(long id in new[]{a,b})
             Check(flat.EnumerateArray().Single(x=>Id(x)==id)
                 .GetProperty("folder").GetProperty("parent")
-                .GetProperty("id").GetInt64()==target,
+                .GetProperty("id").GetInt64()==moveTarget,
                 "each original folder moved under target");
         Check(flat.EnumerateArray().Single(x=>Id(x)==child)
                 .GetProperty("folder").GetProperty("parent")
