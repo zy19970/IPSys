@@ -626,8 +626,8 @@ Get-Content $env:IPSYS_SMOKE_REPORT
 
 | 批次 | 状态 | 产品提交 | 本地验证 | 同 SHA Windows CI | 剩余问题 |
 | --- | --- | --- | --- | --- | --- |
-| S0 基线与范围 | 已完成远端复核 | 本批代码提交同次归档 | 已核对主分支、权限、C01—C08 调用链与现有 Smoke；当前环境无 .NET，未在本地运行 Windows Smoke | 历史产品 #520 成功，非整改验收 | S2—S5 依原顺序等待 |
-| S1 根目录移动 | 已提交待 CI 核验 | 以本批提交 SHA 为准 | 新增 M01—M08 真实 HTTP+SQLCipher 用例，修复原位置模块比较；Windows Smoke 运行状态待验 | 待本批产品 SHA 的 Actions 验收 | 不等同于已通过实机测试 |
+| S0 基线与范围 | 已完成 | 随 S1 提交 `13596b973941` 归档 | 已复核当前接口、SQLCipher 资源关系、旧合同/排序调用链及现有 Smoke | 历史基线 #520 与本轮产品 #521 均 success；后者非 S2—S5 验收 | 当前环境无本地 Windows/.NET，实机交互由现有 Edge/HTTP CI 覆盖，用户本机未验 |
+| S1 根目录移动 | 已完成（自动化验收） | `13596b973941` | M01—M08 真实 HTTP+SQLCipher、原有目录移动/共享/版本回归均通过 | [Windows CI #521](https://github.com/zy19970/IPSys/actions/runs/41793618031) completed/success，同 SHA，26 success/0 failure/2 可选 ZIP64 skipped | 用户本机操作未复验；S2—S5 尚未实施 |
 | S2 合同/数据库 | 待实施 | — | — | — | K01—K12 |
 | S3 复制/移动/MCP | 待实施 | — | — | — | X01—X12 |
 | S4 统一排序 | 待实施 | — | — | — | O01—O07 |
@@ -645,3 +645,11 @@ Get-Content $env:IPSYS_SMOKE_REPORT
 8. [ ] 现行手册、Wiki、Agent 提示和工具 schema 一致；历史证据仍可追溯。
 9. [ ] 跨入口闭环通过，文件字节、版本、共享和跨区隔离有证据。
 10. [ ] 最新产品 SHA 的完整 Windows CI 成功，未验证事项明确列出。
+
+### 2026-11-04 S0+S1 第一阶段自动验收补记
+
+本阶段产品提交为 [`13596b973941`](https://github.com/zy19970/IPSys/commit/13596b9739419ba9bd427b5b52e5c2d36ba31245)。源码修复仅在 `NativeFolderBatchTransferEndpoints.cs` 增加来源与目标 section 同一性判断；`NativeFolderTreeTransferSmoke.cs` 新增 M01—M08，使用真实 `/transfer-batch` 与临时 SQLCipher 数据库，核对跨模块顶层移动、原位拒绝、嵌套后代、批量事务、同名、第二根故障回滚、project 虚拟根和子孙循环，同时断言 FileId/LinkId/两个历史版本的字节内容。
+
+GitHub Actions Windows CI #521（run `41793618031`）的 `head_sha=13596b9739419ba9bd427b5b52e5c2d36ba31245`，状态 `completed/success`，**26 个步骤成功、0 个失败、2 个可选 >4GiB ZIP64 步骤跳过**。包含 Debug 编译及业务 SQLCipher/HTTP 综合 Smoke、Node/UI、真实 Edge/HTTP Explorer、独立 SQLCipher/HTTP、MCP stdio、Release、自包含和框架依赖两种单文件 EXE 及图标验证。生成的构建产物有 `IPSys-Web-win-x64-self-contained`（artifact `13304304812`）、`IPSys-Web-win-x64`（artifact `13304414609`）以及 `IPSys-Explorer-V2-Retest-41793618031-1`（artifact `13305445116`）。可在上述 Actions run 页面下载。
+
+本批没有执行旧数据库迁移、用户本机真实数据库操作或正式 Release 发布。下一批 S2 合同对象退出和 schema 升级仍处于待实施；不能把此次成功写成全套 C01—C08 已清理。
