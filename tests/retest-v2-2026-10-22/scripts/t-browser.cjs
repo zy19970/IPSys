@@ -371,40 +371,68 @@ async function main() {
       "右键与F2真实提交更新，并在测试结束后恢复原名");
   })();
 
-  /* ---------- T-P2-02 拖放 ---------- */
+  /* ---------- T-P2-02 真实 Explorer 拖放 + 关联持久验证 ---------- */
   await (async function T_P2_02() {
-    await evalJs(`Drive.openFolder('p:${fx.company.projectA}')`);
+    await evalJs("Drive.openFolder('p:" + fx.company.projectA + "')");
     await sleep(600);
-    const fileId = (await evalJs(`[...document.querySelectorAll('#viewRoot .row')].map(r=>r.dataset.id)`)).find((x) => /^f:/.test(x));
-    const moved = await evalJs(`(async () => {
-      const src = findById(${JSON.stringify(fileId)});
-      const target = findById('i:${fx.company.ipB}');
-      if (!src || !target) return { err: '节点缺失' };
-      const dt = new DataTransfer();
-      dt.setData('text/plain', ${JSON.stringify(fileId)});
-      const row = document.querySelector('#viewRoot .row');
-      Drive.openFolder('k:ip');
-      await new Promise(r => setTimeout(r, 300));
-      const targetRow = [...document.querySelectorAll('#viewRoot .row')].find(r => r.dataset.id === 'i:${fx.company.ipB}');
-      if (!targetRow) return { err: '目标行不在当前视图' };
-      targetRow.dispatchEvent(new DragEvent('dragover', { bubbles: true, dataTransfer: dt }));
-      document.querySelectorAll('.toast').forEach(t=>t.remove());
-      targetRow.dispatchEvent(new DragEvent('drop', { bubbles: true, dataTransfer: dt }));
-      await new Promise(r => setTimeout(r, 400));
-      return { toast: [...document.querySelectorAll('.toast')].map(t=>t.innerText.trim()).join(' | ') };
-    })()`);
-    ev("T-P2-02", [
-      "拖动源：项目A中的附件行 " + fileId,
-      "放置目标：IP-B 记录行",
-      `结果：${JSON.stringify(moved)}`,
-      "",
-      "interactions.js:985-1004 的 drop 处理器只弹「附件移动需要后端支持 link 迁移」。",
-      "但后端 POST /api/v2/files/{ws}/{fileId}/associate {linkId,targetFolderId,move:true} 已经可用（T-P1-03 实测 move 200）。",
-      "所以这句提示本身是错的：不是后端缺能力，是前端没调用。",
+    const fileId=(await evalJs("[...document.querySelectorAll('#viewRoot .row')].map(r=>r.dataset.id)"))
+      .find(x=>/^f:/.test(x));
+    if(!fileId) {
+      rec("T-P2-02","DYNAMIC-BROWSER","BLOCKED","没有可拖动的项目附件","项目附件拖到 IP-B 后真实迁移");
+      return;
+    }
+    const drag=await evalJs([
+      "(async () => {",
+      "const sourceId="+JSON.stringify(fileId)+";",
+      "const targetId='i:"+fx.company.ipB+"';",
+      "const source=findById(sourceId);",
+      "const meta=VaultStore.metaOf(sourceId);",
+      "const sourceRow=[...document.querySelectorAll('#viewRoot .row')].find(r=>r.dataset.id===sourceId);",
+      "if(!sourceRow||!source||!meta?.fileId)return {err:'缺少来源附件或 FileId'};",
+      "const dt=new DataTransfer();",
+      "sourceRow.dispatchEvent(new DragEvent('dragstart',{bubbles:true,cancelable:true,dataTransfer:dt}));",
+      "const prepared=dt.getData('application/x-ipsys-link')===sourceId;",
+      "Drive.openFolder('k:ip');",
+      "await new Promise(r=>setTimeout(r,350));",
+      "const row=[...document.querySelectorAll('#viewRoot .row')].find(r=>r.dataset.id===targetId);",
+      "if(!row)return {err:'目标 IP-B 行不存在',prepared,fileId:meta.fileId};",
+      "row.dispatchEvent(new DragEvent('dragover',{bubbles:true,cancelable:true,dataTransfer:dt}));",
+      "const drop=new DragEvent('drop',{bubbles:true,cancelable:true,dataTransfer:dt});",
+      "row.dispatchEvent(drop);",
+      "await new Promise(r=>setTimeout(r,150));",
+      "const confirmed=document.querySelector('#confirmMask')?.classList.contains('show')===true;",
+      "if(confirmed)settleConfirm(true);",
+      "await new Promise(r=>setTimeout(r,900));",
+      "return {prepared,confirmed,dropPrevented:drop.defaultPrevented,fileId:meta.fileId,",
+      "toast:[...document.querySelectorAll('.toast')].map(t=>t.innerText.trim()).join(' | ')};",
+      "})()"
     ].join("\n"));
-    rec("T-P2-02", "DYNAMIC-BROWSER", moved && moved.toast ? "CONFIRMED_BUG" : "BLOCKED",
-      `内部拖拽后提示「${moved && moved.toast}」，文件未移动`,
-      "内部移动真正执行，或明确说明不支持而不谎称后端缺失");
+    if(drag?.fileId) {
+      const targetCheck="(() => {const target=findById('i:"+fx.company.ipB+"'); return !!target?.children?.some(n=>n.type==='file'&&Number(VaultStore.metaOf(n.id)?.fileId)==="+Number(drag.fileId)+");})()";
+      await waitFor(targetCheck,9000,"拖放后目标 FileId 关联可见").catch(()=>{});
+    }
+    const after=await evalJs([
+      "(() => {",
+      "const fileId="+Number(drag?.fileId||0)+";",
+      "const contains=id=>!!findById(id)?.children?.some(n=>n.type==='file'&&Number(VaultStore.metaOf(n.id)?.fileId)===fileId);",
+      "return {source:contains('p:"+fx.company.projectA+"'),target:contains('i:"+fx.company.ipB+"')};",
+      "})()"
+    ].join("\n"));
+    await shot("T-P2-02-drop-verified");
+    const ok=drag?.prepared&&drag.confirmed&&drag.dropPrevented&&after.target&&!after.source;
+    ev("T-P2-02",[
+      "真实来源附件节点="+fileId,
+      "dragstart 已产生应用专用 DataTransfer 类型="+!!drag?.prepared,
+      "确认弹窗已出现并点击确认="+!!drag?.confirmed,
+      "drop 已消费事件="+!!drag?.dropPrevented,
+      "原件 FileId="+(drag?.fileId||"未知"),
+      "移动后来源仍有同 FileId="+after.source,
+      "移动后目标含同 FileId="+after.target,
+      "动态状态="+JSON.stringify(drag),
+      "判据为 FileId 关联真实迁移，而不是只要出现 toast 就判缺陷。"
+    ].join("\n"));
+    rec("T-P2-02","DYNAMIC-BROWSER",ok?"PASS":"FAIL",
+      JSON.stringify({drag,after}),"实际 dragstart/drop/确认，来源解除关联、目标新增相同 FileId");
   })();
 
   /* ---------- T-P2-03 虚假快捷访问按钮不存在 ---------- */
@@ -516,39 +544,55 @@ async function main() {
     await evalJs("Drive.resetSearch(); Drive.render();").catch(()=>{});
   })();
 
-  /* ---------- T-P2-09 PDF 预览 ---------- */
+  /* ---------- T-P2-09 连续滚动 PDF 实际渲染 ---------- */
   await (async function T_P2_09() {
     await evalJs("Drive.openFolder('p:" + fx.company.projectA + "')");
     await sleep(800);
     const rows=await evalJs("[...document.querySelectorAll('#viewRoot .row')].map(r=>({id:r.dataset.id,name:r.innerText.replace(/\\s+/g,' ').trim()}))");
     const pdfRow=rows.find(r=>/pdf/i.test(r.name));
-    if(!pdfRow)return rec("T-P2-09","DYNAMIC-BROWSER","BLOCKED","列表里找不到 PDF 行","有效两页 PDF 的第 1、2 页均渲染");
-    await evalJs("previewFile(" + JSON.stringify(pdfRow.id) + ")");
-    await sleep(300);
-    async function pageState(expectedPage) {
-      const expected=JSON.stringify(expectedPage);
-      const readyExpr="(() => { const box=document.querySelector('.preview-mask'); const count=box?.querySelector('.pdf-count')?.textContent.trim(); const status=box?.querySelector('.pdf-render-status')?.textContent.trim(); const canvas=box?.querySelector('canvas.pdf-canvas'); return count===" + expected + "&&status===''&&!!canvas&&canvas.width>0&&canvas.height>0; })()";
-      try { await waitFor(readyExpr,15000,"PDF page " + expectedPage + " rendered"); } catch {}
-      const stateExpr="(() => { const box=document.querySelector('.preview-mask'); const canvas=box?.querySelector('canvas.pdf-canvas'); return {pageCount:box?.querySelector('.pdf-count')?.textContent.trim()||'',status:box?.querySelector('.pdf-render-status')?.textContent.trim()||'',canvasWidth:canvas?.width||0,canvasHeight:canvas?.height||0,ready:!!box&&box.querySelector('.pdf-count')?.textContent.trim()===" + expected + "&&box.querySelector('.pdf-render-status')?.textContent.trim()===''&&!!canvas&&canvas.width>0&&canvas.height>0}; })()";
-      return await evalJs(stateExpr);
+    if(!pdfRow)return rec("T-P2-09","DYNAMIC-BROWSER","BLOCKED","未找到 PDF 附件行","有效两页 PDF 在连续滚动容器中依次真实渲染");
+    await evalJs("previewFile("+JSON.stringify(pdfRow.id)+")");
+    await waitFor("document.querySelectorAll('.preview-mask .pdf-page').length===2",15000,"连续 PDF 两个页面容器").catch(()=>{});
+    async function pageState(page) {
+      const idx=page-1;
+      const stateExpr=[
+        "(() => {",
+        "const box=document.querySelector('.preview-mask');",
+        "const slots=box?.querySelectorAll('.pdf-page')||[];",
+        "const canvas=slots["+idx+"]?.querySelector('canvas.pdf-canvas');",
+        "const status=box?.querySelector('.pdf-render-status')?.textContent.trim()||'';",
+        "const label=box?.querySelector('.pdf-count')?.textContent.trim()||'';",
+        "return {page:"+page+",slots:slots.length,canvasWidth:canvas?.width||0,",
+        "canvasHeight:canvas?.height||0,status,label,",
+        "ready:slots.length===2&&!!canvas&&canvas.width>0&&canvas.height>0&&status===''};",
+        "})()"
+      ].join("\n");
+      return evalJs(stateExpr);
     }
-    const first=await pageState("1 / 2");
+    async function readyPage(page) {
+      const idx=page-1;
+      const condition="(() => {const box=document.querySelector('.preview-mask');const slot=box?.querySelectorAll('.pdf-page')["+idx+"];const c=slot?.querySelector('canvas.pdf-canvas');return !!c&&c.width>0&&c.height>0&&box?.querySelector('.pdf-render-status')?.textContent.trim()==='';})()";
+      await waitFor(condition,15000,"PDF 第"+page+"页真实渲染").catch(()=>{});
+      return pageState(page);
+    }
+    const first=await readyPage(1);
     await shot("T-P2-09-pdf-page1");
-    if(first.ready)await evalJs("[...document.querySelectorAll('.preview-mask .pdf-toolbar button')].find(b=>b.textContent.trim()==='下一页')?.click()");
-    const second=first.ready?await pageState("2 / 2"):{pageCount:"",status:"第一页未完成渲染，未继续翻页",canvasWidth:0,canvasHeight:0,ready:false};
+    await evalJs("(() => {const area=document.querySelector('.preview-mask .pdf-canvas-area');const page=area?.querySelectorAll('.pdf-page')[1];if(!area||!page)return false;area.scrollTop=page.offsetTop;area.dispatchEvent(new Event('scroll'));return true;})()");
+    const second=await readyPage(2);
     await shot("T-P2-09-pdf-page2");
+    const ok=first.ready&&second.ready&&first.slots===2&&second.slots===2&&
+      /\/ 2 页/.test(first.label)&&/\/ 2 页/.test(second.label);
     ev("T-P2-09",[
-      "PDF 行：" + JSON.stringify(pdfRow),
-      "第 1 页状态：" + JSON.stringify(first),
-      "第 2 页状态：" + JSON.stringify(second),
-      "",
-      "判定要求：页码依次为 1 / 2、2 / 2；每页 Canvas 尺寸大于 0；渲染状态为空。",
-      "fixture.cjs 使用带有效 xref、字体资源和准确 stream Length 的两页 PDF。",
+      "PDF 行："+JSON.stringify(pdfRow),
+      "第 1 页状态："+JSON.stringify(first),
+      "滚动后第 2 页状态："+JSON.stringify(second),
+      "判据：连续滚动容器含两个页面槽位，两页独立 Canvas 已实际绘制；",
+      "status 清空；页码总页数为 2。现行设计没有“下一页”按钮。",
+      "fixture.cjs 使用带有效 xref、字体资源和准确 stream Length 的两页 PDF。"
     ].join("\n"));
-    const ok=first.ready&&second.ready;
     rec("T-P2-09","DYNAMIC-BROWSER",ok?"PASS":"FAIL",
-      "page1=" + first.ready + "(" + first.pageCount + "; " + (first.status||"status empty") + ")；page2=" + second.ready + "(" + second.pageCount + "; " + (second.status||"status empty") + ")",
-      "两页 PDF 都真实完成 Canvas 渲染，页码正确，状态清空");
+      "page1="+first.ready+"("+first.label+")；page2="+second.ready+"("+second.label+")",
+      "连续滚动模式两页 Canvas 分别完成渲染并显示总页数 2");
   })();
 
   /* ---------- T-P2-11 响应式 ---------- */

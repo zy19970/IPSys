@@ -727,3 +727,7 @@ K01—K12 在当前自动 Smoke 可覆盖的断言均执行通过：K01 旧 MCP 
 ### 2026-11-04 S5 第一批清理进行中
 
 用户已授权正式推进 S5。第一批采取最小清理：删除未注册的 `NativeArchiveUiOrderEndpoints.cs`，去掉没有生产调用的 `moveArchiveEntry` 旧长下拉，并把原脚本的目标安全性检查迁入正在运行的真实 `moveSelectedItems→transferFolderBatch→AttachmentFolderPicker` 测试。保留 `NativeArchiveOrder.cs` 与所有项目共用服务、合同退休接口负面回归、历史证据。清理代码提交的 Windows CI 以及第16.4节跨入口完整闭环尚待独立核验；不得仅因删除成功标记整个 S5 结束。
+
+### 2026-11-04 S5 第二批：活跃 Edge 观察判据修订（待 CI 证实）
+
+活跃 `tests/retest-v2-2026-10-22/scripts/t-browser.cjs` 的 T-P2-02 原来未派发 dragstart、未点击移动确认，也没有核对 FileId 的真实关联变化，反而按任何 toast 直接判定 bug。本批改为从项目附件真实事件分发、项目到 IP 目录、confirm、原件 FileId 的 source/target 树状态校验。T-P2-09 原断言仍寻找“下一页”按钮，而实际 PDF 阅读器已经连续滚动；改为第1/2页槽位与 canvas 按需渲染、滚动第2页和渲染状态检查。新判据仍可能真实失败，不能为了消除历史 FAIL 改为无条件 PASS。此为测试工具更新；Windows Edge 实测及整体验收以本提交对应 CI 输出为准。

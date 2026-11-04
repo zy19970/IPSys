@@ -721,3 +721,7 @@ S4 C05 O01—O07 实施与验收：MCP `list_folder_entries(workspace,section,pa
 ## 2026-11-04：S5 第一批遗留代码清理（产品提交待 Windows CI）
 
 用户授权“好的，按照思路推进吧”，正式按 S5 任务书实施。已再次读取 AIGT 基础三规范，核查本轮开始时 `main=c5fb676f6b047512ee5ee311555d9bea5307a311`、43 工具、schema=3、S4 CI #532，以及本仓最新会话。先迁移仍在 `explorer-archive-operations-smoke.cjs` 调用的旧 `moveArchiveEntry` 测试，将“自身/后代不可选”断言强化到已执行的 `folder-picker-smoke.cjs` 真实 `moveSelectedItems→transferFolderBatch→FolderPicker` 路由；移除 `interactions.js` 中仅保留旧长下拉的 `moveArchiveEntry`；删除已无 Program Map 的 `NativeArchiveUiOrderEndpoints.cs`，保留仍被调用的 NativeArchiveOrder.cs、项目复用功能和负面测试。本批代码不更改 FileId/LinkId/FileObject/数据库/HTTP 有效接口。具体工作与 CI 结果见 `memory/sessions/2026-11-04-IPSys-S5最终清理前仓库梳理.md` 后续记录。用户实际库、正式 Release 不触碰；本提交需按同 SHA Windows CI 核验，不能提前宣称全阶段完成。
+
+## 2026-11-04：S5 Edge 旧观察判据更新（待同 SHA CI）
+
+在 S5-1 提交 `44203ab50966c5e6b1e2f84038e54a09347482bc` 后，其对应 Windows CI #533 已 completed/success。接续本轮 S5-2 更新活跃 Edge t-browser 的 T-P2-02/T-P2-09：拖拽补真正 dragstart/drop/确认与关联迁移核验；PDF 改成连续滚动双页 Canvas+render status 的真实观察，不再依赖不存在的“下一页”。没有改生产功能和用户实际库；新真实 Edge 运行结论待同 SHA CI，不能提前宣称观察通过。第16.4节 MCP↔GUI 跨入口全链路仍待做。
