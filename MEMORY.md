@@ -709,3 +709,11 @@ S4 C05 O01—O07 实施与验收：MCP `list_folder_entries(workspace,section,pa
 最终 Windows CI **#532** run `41822426599`，`head_sha=a2000e1749c77b3d55930e55315bac32b5ecce8a`，`completed/success`、**26 success/0 failed/2 optional ZIP64 skipped**。含 Windows Debug+SQLCipher/HTTP、Node/UI/MCP stdio、Edge/HTTP、独立 SQLCipher HTTP、双模式单 EXE 构建运行与图标。Artifacts self-contained `13318595193`、framework-dependent `13317089888`、Edge 报告 `13317913804`。#532 Edge 日志 `T-P1-05 PASS`（现行排序 200；持久结果正确；缺项 409；非法 ID 409；失败后顺序不变），但仍有此前存在的 `T-P2-02 CONFIRMED_BUG` 内部拖拽、`T-P2-09 FAIL` 分页观察，两者不能伪称已修复。
 
 本轮已将 `tests/REFACTOR_CLEANUP_AUDIT_20261104.md` 任务书 S4 状态和 O01—O07/CI #530-#532 证据同步，`MCP_CODEX.md` 最前加入 S4 现行参数和 retired 接口说明，更新本 MEMORY 并新建 `memory/sessions/2026-11-04-IPSys重构清理S4排序续接.md`。工具端曾出现 `ReadTimeout` 和 `internal error`，但具体聊天连接中断根因无专门错误日志，不能确认为程序卡死；先前 S4 开始通知 #2246、失败通知 #2247，本轮恢复通知 #2252。用户个人正式库未操作，旧库不迁移，未发布 Release，本机人工验收未做，第16.4节 MCP→GUI 同批对象完整闭环留在 **S5**。此归档提交只改 Markdown，不重新触发产品 CI。下一轮应推进 S5 代码清理／文档统一／跨入口总验收。
+
+## 2026-11-04：S5 最终清理前仓库梳理（本会话第一轮）
+
+本轮用户要求先梳理仓库文件、提交记录和项目定位，准备下一阶段 S5：最终清理和整体验收。已遵守 AIGT 三项基础规范并核查当时 main=`666eff8cd9e9e9db340be847785d148518e5b460`；S1 #521、S2 #526、S3 #529、S4 #532 均为对应产品 SHA 的 Windows completed/success，最新产品为 `a2000e1749c7`，MCP 当前 43 项、schema 3；S5 尚未实施。
+
+重点确认旧 `NativeArchiveUiOrderEndpoints.cs` 未注册但文件留存、`moveArchiveEntry` 生产调用未检出但活跃 Node Smoke 仍直接引用；`NativeArchiveOrder` 与旧 Contract 文件名所含有效项目功能不可误删。多份根部文档仍引用 CI #473、51 工具、合同独立 Folder 或综合资料 Excel 3/6 列冲突；需要同步当前事实并保留历史。Edge T-P2-02/T-P2-09 旧观察报告仍有异常，但测试分别把任何 toast 当 bug、要求已被连续滚动 PDF 替换的“下一页”按钮，应重新核验真实现行 UI。第16.4节同批对象 MCP→GUI→MCP 完整闭环没有实测，是 S5 的关键验收缺口。只作审查，未改产品代码、未运行新 CI 或用户本机 GUI，也未发 Release；建议按“引用证据→最小清理与测试迁移→端到端闭环→现行文档统一→同 SHA Windows CI→用户手工核验”执行。
+
+会话记录：`memory/sessions/2026-11-04-IPSys-S5最终清理前仓库梳理.md`；本会话已归档轮次：第一轮。关于本轮实际 Git 提交的 SHA，以此条之后的仓库历史为准。
