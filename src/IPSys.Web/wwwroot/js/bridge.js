@@ -449,7 +449,7 @@ function transferBusinessRecord(node, move=false) {
   const sourceWorkspace=VaultStore.ws;
   const choices=recordTransferOptions(node,move);
   if(!choices.length) return toast("当前记录没有受支持的目标工作区或类别");
-  const typeLabel={project:"项目（含全部合同）",contract:"合同",
+  const typeLabel={project:"项目（含全部文件夹）",contract:"合同",
     ip:"知识产权",archive_folder:node.biz.section==="general"?"综合资料":"资料文件夹"}[kind]||"记录";
   RecordForms.open({
     title:(move?"移动/转移":"复制")+typeLabel,
