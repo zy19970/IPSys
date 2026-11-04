@@ -176,6 +176,32 @@ static class ResourceSchemaV2Smoke
                 Reject(db,"INSERT INTO folders(workspace,kind,section,name) VALUES('company','general','general','废弃综合资料类型')",
                     "new schema refuses retired general kind");
                 ResourceSchemaV2.EnsurePartyArchiveSection(db); // idempotent on new V2 vaults
+
+                // New project-directory model: project is the business record;
+                // ordinary archive_folder rows form its arbitrarily deep tree.
+                long projectId=ExecuteId(db,
+                    "INSERT INTO folders(workspace,kind,name,attributes_json) VALUES('company','project','项目目录架构校验','{}')");
+                long projectChild=ExecuteId(db,
+                    $"INSERT INTO folders(workspace,kind,section,parent_id,name) VALUES('company','archive_folder','project',{projectId},'项目直属文件夹')");
+                long projectGrandchild=ExecuteId(db,
+                    $"INSERT INTO folders(workspace,kind,section,parent_id,name) VALUES('company','archive_folder','project',{projectChild},'项目二级文件夹')");
+                Check(projectChild>0 && projectGrandchild>0,
+                    "project archive folders nest under project and under each other");
+                Reject(db,"INSERT INTO folders(workspace,kind,section,name) VALUES('company','archive_folder','project','游离项目目录')",
+                    "project directory must have a project owner");
+                Reject(db,$"INSERT INTO folders(workspace,kind,section,parent_id,name) VALUES('company','archive_folder','project',{linkFolder},'错误父目录')",
+                    "project directory cannot have an achievement parent");
+                Reject(db,$"INSERT INTO folders(workspace,kind,section,parent_id,name) VALUES('company','archive_folder','general',{projectId},'错误跨模块目录')",
+                    "general directory cannot be placed inside a project");
+                Reject(db,$"UPDATE folders SET section='general' WHERE id={projectGrandchild}",
+                    "changing section without parent change must check its current parent");
+                using(var verifyProject=db.CreateCommand())
+                {
+                    verifyProject.CommandText=$"SELECT count(*) FROM folders WHERE id={projectGrandchild} AND parent_id={projectChild} AND section='project';";
+                    Check((long)verifyProject.ExecuteScalar()! == 1,
+                        "rejected update preserves nested project directory");
+                }
+
                 fileId=ExecuteId(db,"INSERT INTO files(workspace,name) VALUES('company','原件.pdf')");
                 objectId=ExecuteId(db,
                     "INSERT INTO file_objects(workspace,state,expected_size) VALUES('company','writing',3)");

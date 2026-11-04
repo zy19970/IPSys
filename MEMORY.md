@@ -590,3 +590,10 @@ CI #506 run41623186950首次通过编译、MCP和早期UI检查，但新测试�
 ## 2026-11-04 第十二轮：澄清GitHub写入拦截不等于无法提交
 
 用户原话：“之前能提交现在就不能提交了？” 本轮核实main仍为`1ac16fcb640e208cb2b61606969c405254f6b41a`，读取AIGT基础三规范及当前Memory和会话。前两次项目目录重构在新增草稿Git Blob时曾有多项写入成功，但对个别文件的具体`create_blob`调用返回“此工具调用被 OpenAI 的安全检查屏蔽”，不属于GitHub权限、Ruleset、主分支保护或`create_commit`/`update_ref`被拒绝。本轮之前没有真正执行完整业务改造的提交：因为源码未完整整合、MCP/回收站/项目整树转移等尚待实现，不允许把半成品写入main。当前状态：产品main未变，草稿对象未链接到主分支、Windows CI未运行、用户数据库未动。用户质疑时应准确区分“某次写入工具安全检查拒绝”和“GitHub提交不可用”，不得推断写入限制原因或声称仓库不能提交。此轮只提交纠正说明及项目记忆，不修改产品源码。
+
+
+
+## 2026-11-04 第十三轮：实施项目内无限层级普通文件夹（产品提交待CI）
+**用户本轮原话**：“继续推进”。接续第十二轮确认的方向，读取AIGT三份必读、主分支3ede1c74、Memory和最近会话；通知已发送 office-renderer/wechat-webhook#2190（restarted）。
+**产品设计与修改**：项目继续kind=project；项目直属和所有下级普通文件夹统一kind=archive_folder、section=project，必须指定真实项目或同区子目录parent_id。数据库schema、父级触发器（包含section变更校验）、ResourceRef、NativeArchiveStore/Order、Explorer快照、JS目录树和右键新建统一，保留项目直接上传附件。跨目录选择器可选项目节点或其内部目录，不允许虚拟k:project根；单/多文件夹移动共享仍使用单SQLCipher事务并保留FolderId/LinkId/FileId/版本。MCP list/create/update/move/transfer_folder支持project范围和必填父级。跨工作区项目复制递归克隆project子树及附件所有版本（独立物理内容），项目永久删除递归清理项目archive_folder子树同时保护外部共享FileId；ZIP路径包含项目与嵌套普通目录。更新资料、Agent与开发者wiki和前端/SQLCipher/HTTP测试，既有旧业务合同接口不作为前端子目录，旧测试数据无需迁移，未动用户本地数据库和正式Release。
+**本轮代码交付状态**：此提交为首轮产品变更，将由同SHA Windows CI编译、Node/UI、SQLCipher/HTTP、MCP、双EXE检查。提交前静态JS语法检查通过；此时不能宣称完整测试通过，如CI失败应按实证修复并补记，保证最终产品SHA有成功CI。最近会话路径 `memory/sessions/2026-11-03-IPSys项目整体认知复盘.md`，第十三轮。

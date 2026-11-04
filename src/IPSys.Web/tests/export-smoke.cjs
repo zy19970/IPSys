@@ -173,29 +173,27 @@ assert.deepEqual(JSON.parse(JSON.stringify(exporter.makePlan(projectEntries).map
  '研发项目/报告.pdf','研发项目/报告 (2).pdf','横向项目/报告.pdf',
 ],'Same-named files inside one record must be suffixed, not merged');
 
-// Contracts live inside their project, so a project export must reproduce the
-// three levels 项目 / 合同 / 原件 instead of flattening the contract away.
-const withContract=folder('k:project','公司项目',{kind:'k'},[
+// Whole-project exports retain project / ordinary folder / file paths.
+const withProjectFolder=folder('k:project','公司项目',{kind:'k'},[
  folder('p:1','研发项目',{kind:'project',id:1},[
   attachment('f:1:1','报告.pdf',3,'project',{fileId:101,version:1}),
-  folder('c:11','合同A',{kind:'contract',id:11,projectId:1,projectName:'研发项目'},[
-   attachment('f:11:1','附件.pdf',7,'contract',{fileId:201,version:1}),
+  folder('af:11','合同资料',{kind:'archive_folder',id:11,section:'project'},[
+   attachment('f:11:1','附件.pdf',7,'archive_folder',{fileId:201,version:1}),
   ]),
  ]),
 ]);
-const contractEntries=Array.from(shellCtx.collect(withContract));
-assert.deepEqual(Array.from(contractEntries,x=>x.fileId),[101,201],
- 'A project export must include the originals inside its contracts');
-const contractEntry=contractEntries.find(x=>x.fileId===201);
-assert.equal(contractEntry.kind,'contract','The contract must stay a contract, not be relabelled as its project');
-assert.equal(contractEntry.ownerId,11);
-assert.equal(contractEntry.ownerName,'合同A');
-assert.equal(contractEntry.projectId,1,'export.js needs projectId to nest the contract under its project');
-assert.equal(contractEntry.projectName,'研发项目');
-assert.equal(contractEntry.source,'v2file','Contract originals download through the plain file route');
-assert.deepEqual(JSON.parse(JSON.stringify(exporter.makePlan(contractEntries).map(x=>x.path))),[
- '研发项目/报告.pdf','研发项目/合同A/附件.pdf',
-],'ZIP must keep the project / contract / file hierarchy');
+const directoryEntries=Array.from(shellCtx.collect(withProjectFolder));
+assert.deepEqual(Array.from(directoryEntries,x=>x.fileId),[101,201],
+ 'Whole-project export includes direct and nested ordinary folder originals');
+const nestedEntry=directoryEntries.find(x=>x.fileId===201);
+assert.equal(nestedEntry.kind,'archive_folder');
+assert.equal(nestedEntry.ownerId,11);
+assert.equal(nestedEntry.source,'v2file');
+assert.deepEqual(JSON.parse(JSON.stringify(directoryEntries[1].archiveFolderPath.map(x=>x.name))),
+ ['研发项目','合同资料']);
+assert.deepEqual(JSON.parse(JSON.stringify(exporter.makePlan(directoryEntries).map(x=>x.path))),[
+ '研发项目/报告.pdf','研发项目/合同资料/附件.pdf'
+],'ZIP preserves project and nested ordinary folder hierarchy');
 
 // IP attachments download through their own route.
 const ip=folder('k:ip','知识产权',{kind:'k'},[

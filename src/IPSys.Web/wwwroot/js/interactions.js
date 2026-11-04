@@ -1295,6 +1295,7 @@ function archiveScopeSection() {
     const section=id.slice(2);
     return catIsDir(section,VaultStore.ws)?section:null;
   }
+  if(id.startsWith("p:"))return "project";
   if(id.startsWith("af:"))
     return findById(id)?.biz?.section ||
       (VaultStore.ws==="company"?"achievement":null);
@@ -1307,7 +1308,8 @@ function archiveScope() {
 
 function archiveParentId() {
   const id = String(Drive.state.folderId || "");
-  return id.startsWith("af:") ? Number(id.slice(3)) : null;
+  return id.startsWith("af:") ? Number(id.slice(3))
+    : id.startsWith("p:") ? Number(id.slice(2)) : null;
 }
 
 function createArchiveFolder(parentId = archiveParentId()) {
@@ -1459,11 +1461,8 @@ function openNewMenu(anchor) {
     return { id: c.id, label, can: onHome || c.id === here, dir };
   });
 
-  /* 合同不是顶层分类,它只能挂在项目下,所以不进分类表 —— 只有站在项目里
-     才出现,而且带着这个项目的 id 走。首页不算"站在项目里":即便 folderId
-     还留着上一次的 p:<id>(例如刚返回首页),也不能把新建绑到那个目录上。 */
+  /* 项目内的创建操作已由 archiveScope() 直接打开普通文件夹表单。 */
   const inProject = !onHome && tag === "p" ? s.folderId.slice(2) : "";
-  if (inProject) rows.push({ id: "contract", label: "新建合同", can: true, dir: false });
 
   const handlers = {
     upload: () => pickFiles(),
@@ -1473,28 +1472,19 @@ function openNewMenu(anchor) {
       ? () => RecordForms.archiveFolder(m.id, null, parentId)
       : m.id === "project"
       ? () => RecordForms.project()
-      : m.id === "contract"
-      ? () => RecordForms.contract(null, Number(inProject))
       : m.id === "ip"
       ? () => RecordForms.ip()
       : () => RecordForms.archiveFolder(m.id, null, parentId);
   }
 
-  /* 站在分类里,分类已经决定了子项类型,只留这一项 —— 不让用户再选一次。
-     站在项目里,唯一能建的是合同(顶层分类在这里都建不了,列出置灰项只会
-     让人以为点错了)。根目录 / 其它记录内部仍然全列出来但置灰。 */
-  const items = inProject
-    ? rows.filter((m) => m.id === "contract")
-    : !onHome && here
-    ? rows.filter((m) => m.can)
-    : rows;
+  const items = !onHome && here ? rows.filter(m=>m.can) : rows;
 
   showCtx(
     r.left,
     r.bottom + 6,
     items
       .map((m) =>
-        MI(`new-${m.id}`, m.id === "contract" ? "folder" : `cat:${m.id}`, m.label, "", false, !m.can)
+        MI(`new-${m.id}`, `cat:${m.id}`, m.label, "", false, !m.can)
       )
       .join("") +
       (canUploadFiles(findById(s.folderId))
@@ -1767,7 +1757,7 @@ function showItemMenu(id, x, y) {
   const recordKind = b.kind;
   const html = [
     isFolder ? MI("open", "folder", "打开") : MI("open", "eye", "预览"),
-    b.kind === "project" ? MI("newcontract", "folder", "新建合同") : "",
+    b.kind === "project" ? MI("newprojectfolder", "folder", "新建文件夹") : "",
     MI("props", "info", "属性"),
     MI("download", "download", isFolder ? "打包下载" : "下载"),
     !isFolder ? MI("newver", "upload", "上传新版本") : "",
@@ -1792,7 +1782,7 @@ function showItemMenu(id, x, y) {
 
   showCtx(x, y, html, {
     open: inWorkspace(() => isFolder ? Drive.openFolder(id) : previewFile(id)),
-    newcontract: inWorkspace(() => RecordForms.contract(null, b.id)),
+    newprojectfolder: inWorkspace(() => RecordForms.archiveFolder("project",null,b.id)),
     props: inWorkspace(() => b.kind === "archive_folder"
       ? RecordForms.archiveFolder(b.section,item,b.parentId)
       : RecordForms.edit(item)),

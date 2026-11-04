@@ -34,9 +34,10 @@ static class ResourceSchemaV2
               CHECK(kind!='contract' OR parent_id IS NOT NULL),
               CHECK(kind NOT IN ('project','contract','ip') OR section=''),
               CHECK(kind!='archive_folder' OR
-                (workspace='company' AND section IN ('certificate','achievement','party','general') OR
-                 workspace='personal' AND section IN ('certificate','achievement','academic','general'))),
+                (workspace='company' AND section IN ('certificate','achievement','party','general','project') OR
+                 workspace='personal' AND section IN ('certificate','achievement','academic','general','project'))),
               CHECK(parent_id IS NULL OR kind IN ('contract','archive_folder')),
+              CHECK(kind!='archive_folder' OR section!='project' OR parent_id IS NOT NULL),
               CHECK(is_system=0 OR
                 (kind='archive_folder' AND parent_id IS NULL AND workspace='company')));
             CREATE INDEX idx_folder_children ON folders(workspace,parent_id,position,id)
@@ -52,18 +53,20 @@ static class ResourceSchemaV2
                 SELECT 1 FROM folders p
                 WHERE p.id=NEW.parent_id AND p.workspace=NEW.workspace AND p.deleted=0
                   AND ((NEW.kind='contract' AND p.kind='project')
-                    OR (NEW.kind='archive_folder' AND p.kind='archive_folder'
-                        AND p.section=NEW.section)
+                    OR (NEW.kind='archive_folder' AND
+                        ((p.kind='archive_folder' AND p.section=NEW.section)
+                         OR (p.kind='project' AND NEW.section='project')))
                   ));
             END;
-            CREATE TRIGGER folder_parent_update BEFORE UPDATE OF parent_id ON folders
+            CREATE TRIGGER folder_parent_update BEFORE UPDATE OF parent_id,section ON folders
             WHEN NEW.parent_id IS NOT NULL BEGIN
               SELECT RAISE(ABORT,'invalid folder parent') WHERE NOT EXISTS(
                 SELECT 1 FROM folders p
                 WHERE p.id=NEW.parent_id AND p.workspace=NEW.workspace AND p.deleted=0
                   AND ((NEW.kind='contract' AND p.kind='project')
-                    OR (NEW.kind='archive_folder' AND p.kind='archive_folder'
-                        AND p.section=NEW.section)
+                    OR (NEW.kind='archive_folder' AND
+                        ((p.kind='archive_folder' AND p.section=NEW.section)
+                         OR (p.kind='project' AND NEW.section='project')))
                   ));
               SELECT RAISE(ABORT,'folder cycle') WHERE NEW.parent_id=NEW.id
                 OR EXISTS(WITH RECURSIVE ancestors(id,parent_id) AS (
@@ -214,7 +217,9 @@ static class ResourceSchemaV2
         // retired archive kind no longer leaves the older 'after' signature
         // in freshly created V2 vaults; do not mistake them for old schemas.
         const string unified="workspace='company' AND section IN ('certificate','achievement','party','general')";
-        if(definition.Contains(unified,StringComparison.Ordinal) ||
+        const string projectUnified="workspace='company' AND section IN ('certificate','achievement','party','general','project')";
+        if(definition.Contains(projectUnified,StringComparison.Ordinal) ||
+           definition.Contains(unified,StringComparison.Ordinal) ||
            definition.Contains(after,StringComparison.Ordinal))return;
         if(!definition.Contains(before,StringComparison.Ordinal))
             throw new IOException("资料库文件夹约束未知，拒绝自动更新。");

@@ -242,5 +242,35 @@ function open(move=false) {
   assert.doesNotMatch(get("list").innerHTML,/项目容器/,
     "Project business records remain forbidden as ordinary folder parents");
   mask.cancel[0].emit("click");
-  console.log("FOLDER PICKER PASS: 75 levels, 1230 siblings, search, breadcrumb, selection, security");
+  // Project is a real destination parent, but the virtual project category
+  // root is not: project-owned folders must always have a real project ancestor.
+  const project=projectCat.children[0];
+  const owned=folder("af:90003","项目内部目标","archive_folder",[],
+    {section:"project",parentId:90002});
+  project.children.push(owned);
+  const crossProject=()=>picker.open({
+    root,workspace:"company",sourceFolderId:1,sourceFolderIds:[1],
+    folderMode:true,folderSection:"achievement",
+    folderSections:["achievement","certificate","project"],fileName:"来源",
+    move:true,onSubmit:async data=>folderTargets.push(JSON.parse(JSON.stringify(data)))
+  });
+  crossProject();
+  pickClick(get("crumb"),"go","root");
+  pickClick(get("list"),"enter","k:project");
+  assert.equal(get("current").disabled,true,
+    "Project module root is not a real destination");
+  assert.match(get("list").innerHTML,/项目容器/);
+  pickClick(get("list"),"choose","p:90002");
+  await get("submit").emit("click");
+  assert.deepEqual(folderTargets.at(-1),{target:"90002",targetSection:"project"},
+    "Project record can receive ordinary folder tree as direct child");
+  crossProject();
+  pickClick(get("crumb"),"go","root");
+  pickClick(get("list"),"enter","k:project");
+  pickClick(get("list"),"enter","p:90002");
+  pickClick(get("list"),"choose","af:90003");
+  await get("submit").emit("click");
+  assert.deepEqual(folderTargets.at(-1),{target:"90003",targetSection:"project"},
+    "Nested ordinary project folder can receive moved subtree");
+  console.log("FOLDER PICKER PASS: 75 levels, 1230 siblings, project destinations, search, security");
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -171,6 +171,8 @@ static class ArchiveRules
         ("company","party") => "company_party",
         ("personal","achievement") => "research_output",
         ("personal","academic") => "research_output",
+        ("company","project") => "project_directory",
+        ("personal","project") => "project_directory",
         _ => null
     };
 }

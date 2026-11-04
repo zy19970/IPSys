@@ -61,7 +61,7 @@ const node=(kind,id,extra={})=>({id:kind+":"+id,type:"folder",name:kind+id,biz:{
  const project=node("project",5);
  assert.deepEqual(Array.from(opt(project,true),x=>x.value),["personal"]);
  invoke(project,false);
- assert.equal(dialogs.at(-1).title,"复制项目（含全部合同）");
+ assert.equal(dialogs.at(-1).title,"复制项目（含全部文件夹）");
  await dialogs.at(-1).onSubmit({target:"company"});
  assert.equal(calls.at(-1).url,"/api/v2/projects/company/5/transfer");
  assert.deepEqual(JSON.parse(JSON.stringify(calls.at(-1).opts.json)),

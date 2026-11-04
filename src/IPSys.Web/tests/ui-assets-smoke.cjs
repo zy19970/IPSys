@@ -102,25 +102,20 @@ for(const [rel,name] of Object.entries(GLOBALS)){
   rel+' must still expose '+name);
 }
 
-/* Contracts hang off a project, which makes them an export owner and an upload
-   target. Dropping "contract" from either list does not fail loudly: the node
-   still renders, but its originals quietly disappear from every download and
-   every upload silently refuses. The detail panel also offers 修改 on any
-   record carrying a biz id, so a kind without a form is a dead button. */
-assert.match(bridge,/EXPORTABLE_KINDS\s*=\s*new Set\(\[[^\]]*"contract"/,'Contracts must stay exportable');
-assert.match(bridge,/UPLOADABLE_KINDS\s*=\s*\[[^\]]*"contract"/,'Contracts must accept attachments');
- assert.ok(bridge.includes('"archive_folder"'), 'Folder kind must be available to the capability bridge');
- assert.match(bridge,/UPLOADABLE_KINDS[^\n]*archive_folder/,'Folders must accept direct attachments');
- assert.match(bridge,/EXPORTABLE_KINDS[^\n]*archive_folder/,'Folder attachments must be downloadable');
- assert.ok(read('js/interactions.js').includes('if (archiveScope()) return createArchiveFolder();'),
-  'Single-action archive creation must bypass the one-item dropdown');
- assert.ok(read('js/forms.js').includes('archiveFolder(section, node = null'),
-  'An ordinary folder needs a unified property editor');
-assert.match(read('js/forms.js'),/if \(kind === "contract"\) return this\.contract\(node\)/,
- 'Contracts need an edit form: 修改 is offered on every record with a biz id');
+/* Projects are business records, but their children are ordinary
+   archive_folder rows, not contract-only containers. Upload, export, form,
+   and tree assembly must use the common ordinary-folder capability. */
+assert.match(bridge,/UPLOADABLE_KINDS[^\n]*archive_folder/,'Project folders accept attachments');
+assert.match(bridge,/EXPORTABLE_KINDS[^\n]*archive_folder/,'Project folder attachments can be exported');
+assert.ok(read('js/interactions.js').includes('if (archiveScope()) return createArchiveFolder();'),
+ 'Project new-folder action reuses the common creation form');
+assert.ok(read('js/forms.js').includes('archiveFolder(section, node = null'),
+ 'Project folder uses ordinary folder property editor');
 const store=read('js/store.js');
-assert.ok(store.includes('contracts/${w}'),'The tree must load contracts, otherwise none of this is reachable');
-assert.ok(store.includes('contractsByProject'),'Contracts must be attached to their project, not left loose');
+assert.ok(store.includes('projectDirectories=buildArchiveDirs("project")'),
+ 'Project tree must include ordinary folders');
+assert.ok(!store.includes('contractsByProject'),
+ 'Project tree must not assume contract records are directory nodes');
 
 /* ---------------- C. freshness ---------------- */
 

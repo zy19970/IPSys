@@ -383,8 +383,9 @@ static class RecycleStore
                 {
                     bool contract=item.Kind=="project" && depth==0 &&
                         child.Kind=="contract";
-                    bool directory=item.Kind=="v2_archive_folder" &&
-                        child.Kind=="archive_folder" && child.Section==item.Section;
+                    bool directory=child.Kind=="archive_folder" &&
+                        (item.Kind=="v2_archive_folder" && child.Section==item.Section ||
+                         item.Kind=="project" && child.Section=="project");
                     if(!contract && !directory)
                         throw new InvalidOperationException(
                             "待删除目录包含不属于本目录的子项，永久删除已取消。");

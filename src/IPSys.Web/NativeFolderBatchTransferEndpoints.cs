@@ -23,7 +23,8 @@ static class NativeFolderBatchTransferEndpoints
             var targetSection=input.TargetSection??section;
             if(!ArchiveDirectoryScopes.Allowed(workspace,section) ||
                !ArchiveDirectoryScopes.Allowed(workspace,targetSection) ||
-               input.TargetFolderId<0 || ids is null || ids.Length is 0 or >100 ||
+               input.TargetFolderId<0 || (targetSection=="project" && input.TargetFolderId==0) ||
+               ids is null || ids.Length is 0 or >100 ||
                ids.Any(id=>id<=0) || ids.Distinct().Count()!=ids.Length)
                 return fail("批量文件夹参数无效，单次最多100个不同的普通文件夹。",400);
             if(!vault.TryBeginFileTask(ctx,out var aborted))
@@ -45,9 +46,12 @@ static class NativeFolderBatchTransferEndpoints
                             .ToDictionary(item=>item.Folder.Ref.Id);
                     long? parent=input.TargetFolderId==0?null:input.TargetFolderId;
                     if(parent is long target &&
-                       (!targetFolders.ContainsKey(target) ||
+                       (!(targetFolders.ContainsKey(target) ||
+                          (targetSection=="project" &&
+                           NativeFolderStore.Get(db,ResourceRef.Create(
+                               workspace,FolderKinds.Project,target)) is not null)) ||
                         !NativeFileStore.FolderActive(db,workspace,target)))
-                        return fail("目标文件夹不存在或不属于此资料模块。",404);
+                        return fail("目标文件夹或项目不存在或不属于目标模块。",404);
                     foreach(long id in ids)
                         if(!all.ContainsKey(id) ||
                            !NativeFileStore.FolderActive(db,workspace,id))

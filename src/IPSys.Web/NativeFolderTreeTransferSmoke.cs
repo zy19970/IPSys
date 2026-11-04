@@ -192,8 +192,8 @@ static class NativeFolderTreeTransferSmoke
 
         using(var wrong=await client.PostAsJsonAsync(endpoint,new {
             targetFolderId=target,targetSection="project",move=true,items=new[]{first}}))
-            Check(wrong.StatusCode==HttpStatusCode.BadRequest,
-                "business modules are not ordinary folder destinations");
+            Check(wrong.StatusCode==HttpStatusCode.NotFound,
+                "destination section must match the real target");
         using(var wrong=await client.PostAsJsonAsync(endpoint,new {
             targetFolderId=target,targetSection="certificate",move=true,items=new[]{first}}))
             Check(wrong.StatusCode==HttpStatusCode.NotFound,
@@ -285,6 +285,155 @@ static class NativeFolderTreeTransferSmoke
                 move=true,items=new[]{first}}))
             Check(crossWorkspace.StatusCode!=HttpStatusCode.OK,
                 "folder move cannot change workspaces through section endpoint");
+    }
+
+    private static async Task VerifyProjectDirectoriesAsync(HttpClient client,Vault vault)
+    {
+        string mark="PROJECT-DIR-"+Guid.NewGuid().ToString("N")[..8];
+        async Task<long> Project(string workspace,string suffix)
+        {
+            var response=await Read(await client.PostAsJsonAsync(
+                $"/api/v2/folders/{workspace}/project",
+                new{project=new{name=mark+suffix,projectType="科研项目"}}));
+            return response.GetProperty("id").GetInt64();
+        }
+        long firstProject=await Project("company","甲");
+        long secondProject=await Project("company","乙");
+        long root=await Folder(client,"company","project",mark+"项目目录",firstProject);
+        long child=await Folder(client,"company","project",mark+"多级子目录",root);
+        byte[] original=[11,21,31],updated=[41,51,61];
+        long file;
+        using(var upload=new HttpRequestMessage(HttpMethod.Post,
+            $"/api/v2/files/company/upload?folderId={child}")
+            {Content=new ByteArrayContent(original)})
+        {
+            upload.Headers.Add("X-File-Name",Uri.EscapeDataString(mark+".txt"));
+            file=(await Read(await client.SendAsync(upload)))
+                .GetProperty("fileId").GetInt64();
+        }
+        using(var newer=new HttpRequestMessage(HttpMethod.Post,
+            $"/api/v2/files/company/{file}/versions")
+            {Content=new ByteArrayContent(updated)})
+        {
+            newer.Headers.Add("X-File-Name",Uri.EscapeDataString(mark+"-2.txt"));
+            await Read(await client.SendAsync(newer));
+        }
+        long sourceLink=(await Links(client,"company",child))[0]
+            .GetProperty("id").GetInt64();
+        var flat=await Flat(client,"company","project");
+        var projectRoot=flat.EnumerateArray().Single(x=>Id(x)==root);
+        Check(projectRoot.GetProperty("folder").GetProperty("parent")
+                .GetProperty("kind").GetString()=="project" &&
+              projectRoot.GetProperty("folder").GetProperty("parent")
+                .GetProperty("id").GetInt64()==firstProject,
+            "ordinary folder root has a real project as parent");
+        Check(flat.EnumerateArray().Single(x=>Id(x)==child)
+                .GetProperty("folder").GetProperty("parent")
+                .GetProperty("id").GetInt64()==root,
+            "project folders support nested ordinary directory trees");
+        var browser=await client.GetFromJsonAsync<JsonElement>(
+            "/api/v2/ui/folders/company");
+        Check(browser.GetProperty("folders").EnumerateArray().Any(x=>
+            x.GetProperty("id").GetInt64()==child &&
+            x.GetProperty("section").GetString()=="project"),
+            "Explorer snapshot contains ordinary project directories");
+        using(var invalid=await client.PostAsJsonAsync(
+            "/api/v2/folders/company/archive_folder",new {
+              section="project",archiveFolder=new{name=mark+"没有所属项目"}}))
+            Check(invalid.StatusCode==HttpStatusCode.BadRequest,
+                "project section cannot have a virtual top-level directory");
+        using(var invalid=await client.PostAsJsonAsync(
+            "/api/v2/ui/folders/company/project/transfer-batch",new {
+              targetFolderId=0,targetSection="project",move=true,items=new[]{root}}))
+            Check(invalid.StatusCode==HttpStatusCode.BadRequest,
+                "project tree may not be moved to virtual project section root");
+
+        // Same-section cross-project movement changes only the root parent.
+        var transferred=await Read(await client.PostAsJsonAsync(
+            "/api/v2/ui/folders/company/project/transfer-batch",new {
+                targetFolderId=secondProject,targetSection="project",
+                move=true,items=new[]{root}}));
+        Check(transferred.GetProperty("ids")[0].GetInt64()==root,
+            "cross-project move retains source FolderId");
+        flat=await Flat(client,"company","project");
+        Check(flat.EnumerateArray().Single(x=>Id(x)==root)
+              .GetProperty("folder").GetProperty("parent")
+              .GetProperty("id").GetInt64()==secondProject &&
+              flat.EnumerateArray().Single(x=>Id(x)==child)
+              .GetProperty("folder").GetProperty("parent")
+              .GetProperty("id").GetInt64()==root,
+            "cross-project move keeps the complete original subtree");
+        Check((await Links(client,"company",child))[0]
+               .GetProperty("id").GetInt64()==sourceLink,
+            "cross-project move preserves existing attachment LinkId");
+
+        // Folder in another archive module can be moved into a project.
+        long incoming=await Folder(client,"company","general",mark+"待归档");
+        var intoProject=await Read(await client.PostAsJsonAsync(
+            "/api/v2/ui/folders/company/general/transfer-batch",new {
+                targetFolderId=firstProject,targetSection="project",
+                move=true,items=new[]{incoming}}));
+        Check(intoProject.GetProperty("ids")[0].GetInt64()==incoming &&
+              (await Flat(client,"company","project")).EnumerateArray().Any(x=>
+                Id(x)==incoming && x.GetProperty("folder").GetProperty("parent")
+                  .GetProperty("id").GetInt64()==firstProject),
+            "ordinary folder may move from general materials into a project");
+
+        // Whole project cross-workspace copy must include all levels and versions.
+        var copy=await Read(await client.PostAsJsonAsync(
+            $"/api/v2/projects/company/{secondProject}/transfer",new {
+                targetWorkspace="personal",move=false}));
+        Check(copy.GetProperty("directories").GetInt32()==2,
+            "whole-project copy traverses both nested ordinary folders");
+        long projectCopy=copy.GetProperty("id").GetInt64();
+        var personalFolders=await Flat(client,"personal","project");
+        var rootCopy=personalFolders.EnumerateArray().Single(x=>
+            x.GetProperty("folder").GetProperty("name").GetString()==mark+"项目目录");
+        var childCopy=personalFolders.EnumerateArray().Single(x=>
+            x.GetProperty("folder").GetProperty("name").GetString()==mark+"多级子目录");
+        Check(rootCopy.GetProperty("folder").GetProperty("parent")
+                .GetProperty("id").GetInt64()==projectCopy &&
+              childCopy.GetProperty("folder").GetProperty("parent")
+                .GetProperty("id").GetInt64()==Id(rootCopy),
+            "cross-workspace project copy retains all parent relationships");
+        long copiedFile=(await Links(client,"personal",Id(childCopy)))[0]
+            .GetProperty("fileId").GetInt64();
+        Check(copiedFile!=file,
+            "cross-workspace project copy creates an independent FileId");
+        for(int i=1;i<=2;i++)
+            Check((await client.GetByteArrayAsync(
+                $"/api/v2/files/personal/{copiedFile}/versions/{i}/download"))
+                 .SequenceEqual(i==1?original:updated),
+                "project clone preserves every complete version");
+
+        // Sharing an entire project subfolder to general materials preserves
+        // FileId and must survive permanent deletion of the source project.
+        var shared=await Read(await client.PostAsJsonAsync(
+            "/api/v2/ui/folders/company/project/transfer-batch",new {
+                targetFolderId=0,targetSection="general",
+                move=false,items=new[]{root}}));
+        long sharedRoot=shared.GetProperty("ids")[0].GetInt64();
+        var general=await Flat(client,"company","general");
+        var sharedChild=general.EnumerateArray().Single(x=>
+            x.GetProperty("folder").GetProperty("parent").ValueKind!=JsonValueKind.Null &&
+            x.GetProperty("folder").GetProperty("parent")
+              .GetProperty("id").GetInt64()==sharedRoot);
+        Check((await Links(client,"company",Id(sharedChild)))[0]
+            .GetProperty("fileId").GetInt64()==file,
+            "cross-module share keeps same FileId and complete history");
+        using(var deletion=await client.DeleteAsync(
+            $"/api/v2/folders/company/project/{secondProject}"))
+            deletion.EnsureSuccessStatusCode();
+        Check(RecycleStore.Change(vault.Db,"company",
+            [new RecycleKey("project",secondProject,"")],true),
+            "permanent project purge traverses arbitrarily nested subfolders");
+        Check(!(await Flat(client,"company","project")).EnumerateArray()
+            .Any(x=>Id(x)==root||Id(x)==child),
+            "purged project tree cannot reappear in project listings");
+        Check((await client.GetByteArrayAsync(
+            $"/api/v2/files/company/{file}/versions/2/download"))
+            .SequenceEqual(updated),
+            "project purge does not delete files shared to another module");
     }
 
     public static async Task VerifyAsync(HttpClient client,Vault vault)
@@ -421,6 +570,7 @@ static class NativeFolderTreeTransferSmoke
             "source descendants are hidden with deleted ancestor");
         await VerifyFolderBatchAsync(client,vault);
         await VerifyCrossSectionFolderMoveAsync(client,vault);
+        await VerifyProjectDirectoriesAsync(client,vault);
         Console.WriteLine("FOLDER TREE TRANSFER SMOKE PASS");
     }
 }

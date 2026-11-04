@@ -51,8 +51,11 @@ const AttachmentFolderPicker = {
     const crossSectionPicker=folderMode && allowedSections.size>1;
     const isAllowedCategory=record=>folderMode &&
       record?.id?.startsWith("k:") && allowedSections.has(record.id.slice(2));
+    const isProjectTarget=record=>folderMode && allowedSections.has("project") &&
+      record?.node?.biz?.kind==="project" && record.selectable;
     const destinationSection=record=>isAllowedCategory(record)
-      ? record.id.slice(2) : record?.node.biz?.section;
+      ? record.id.slice(2) : isProjectTarget(record)
+      ? "project" : record?.node?.biz?.section;
     if(folderMode && (model.source.node.biz?.kind!=="archive_folder" ||
        model.source.node.biz?.section!==folderSection || !model.nodes.has(categoryId) ||
        !allowedSections.has(folderSection) ||
@@ -113,7 +116,8 @@ const AttachmentFolderPicker = {
     const forbiddenFolders=new Set(sourceFolderIds.map(Number));
     function unavailable(record) {
       if(folderMode) {
-        if(isAllowedCategory(record))return false; // module top level
+        if(isAllowedCategory(record))return record.id==="k:project";
+        if(isProjectTarget(record))return false;
         if(record?.node.biz?.kind!=="archive_folder" ||
            !allowedSections.has(record.node.biz.section) || !record.selectable) return true;
         // A folder cannot be moved/shared inside itself or any descendant.
@@ -156,7 +160,7 @@ const AttachmentFolderPicker = {
         const rows=[];
         for(const record of model.nodes.values()) {
           if((record.selectable || isAllowedCategory(record)) &&
-             (!folderMode || isAllowedCategory(record) ||
+             (!folderMode || isAllowedCategory(record) || isProjectTarget(record) ||
                record.node.biz?.kind==="archive_folder" &&
                allowedSections.has(record.node.biz?.section)) &&
              (record.node.name.toLocaleLowerCase().includes(q) ||
@@ -166,7 +170,8 @@ const AttachmentFolderPicker = {
       }
       const children=(model.nodes.get(cursor)?.children||[])
         .map(id=>model.nodes.get(id)).filter(n=>!folderMode ||
-          isAllowedCategory(n) || n.node.biz?.kind==="archive_folder" &&
+          isAllowedCategory(n) || isProjectTarget(n) ||
+          n.node.biz?.kind==="archive_folder" &&
           allowedSections.has(n.node.biz?.section));
       return children.filter(n=>!q||n.node.name.toLocaleLowerCase().includes(q))
         .sort((a,b)=>a.node.name.localeCompare(b.node.name,"zh-CN"));

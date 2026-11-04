@@ -25,10 +25,13 @@ static class NativeArchiveUiEndpoints
                    directory table already returns the whole module - there is no
                    second "record" collection to merge any more. */
                 foreach(string scope in workspace=="company"
-                    ?new[]{"certificate","achievement","party","general"}
-                    :new[]{"certificate","achievement","academic","general"})
+                    ?new[]{"certificate","achievement","party","general","project"}
+                    :new[]{"certificate","achievement","academic","general","project"})
                 {
                     var parentIds=new List<long>{0};
+                    if(scope=="project")
+                        parentIds.AddRange(NativeFolderStore.List(v.Db,workspace,
+                            FolderKinds.Project).Select(x=>x.Folder.Ref.Id));
                     var directoryRows=new List<(long Id,long? Parent,string Name,
                         int Position,bool IsSystem,string? ModifiedAt,string? CreatedAt,string Metadata)>();
                     using(var cmd=v.Db.CreateCommand())

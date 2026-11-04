@@ -572,6 +572,8 @@ function archivePathOf(node) {
     chain.unshift({ id: cur.biz.id, name: cur.name });
     cur = findParent(cur.id);
   }
+  if(chain.length && cur?.biz?.kind==="project")
+    chain.unshift({id:"project:"+cur.biz.id,name:cur.name});
   return chain;
 }
 
@@ -627,6 +629,9 @@ function collectExportEntries(node) {
     let nextPath = path;
     if (kind === "archive_folder") {
       nextPath = [...path, { id: cur.biz.id, name: cur.name }];
+      nextOwner = cur;
+    } else if (kind === "project") {
+      nextPath = [...path, {id:"project:"+cur.biz.id,name:cur.name}];
       nextOwner = cur;
     } else if (EXPORTABLE_KINDS.has(kind)) {
       nextOwner = cur;

@@ -40,7 +40,7 @@ IPSys.Web.exe
 
 Folder 表达目录与业务记录；FileId 表达逻辑文件；LinkId 表达文件在一个归属位置的关联；FileVersion 是版本；FileObject/Chunk 表达加密物理内容。只有 File 有版本，Folder 无版本。
 
-七个资料类模块使用统一的 workspace + scope 多级目录模型，项目/合同、知识产权和特定资质维持业务专用规则。数据库校验目录归属和父级关系，防止循环、跨工作区错误关联。
+普通目录统一使用 `kind=archive_folder` 并通过 `workspace + section` 划分资料范围。**项目本身仍为 `kind=project` 的业务记录，项目内任何层级的普通子目录均为 `archive_folder, section=project`，其最上级 `parent_id` 指向真实项目**，深层子目录指向上级普通文件夹。项目根业务属性与内部目录结构分别管理。知识产权仍是专门业务对象。整树移动、跨工作区复制、MCP、ZIP 导出与回收站永久删除均须递归处理项目子目录、附件关联及 FileVersion；数据库校验目录归属和父级关系，阻止游离项目文件夹、循环与跨工作区错误关联。
 
 ## 一致性原则
 

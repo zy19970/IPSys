@@ -407,37 +407,7 @@ const VaultStore = {
       return node;
     };
 
-    /* ---- 合同 ----
-       合同跟着项目走:合同节点是所属项目的一个子节点,合同自己的附件再挂在
-       合同下面,于是「项目 / 合同 / 原件」三层在树里是真实层级,不用另外拼。
-       后端 project-files 里合同附件的 folderId 就是合同 folder 自己的 id,
-       所以附件照样由 attach() 按 ownerId 挂载,这里只负责把合同节点建出来。 */
-    const contractsByProject = new Map();
-    for (const c of contracts || []) {
-      const node = F(c.name || `合同 ${c.id}`, { id: `c:${c.id}` });
-      node.mtime = toTs(c.modifiedAt);
-      node.biz = {
-        kind: "contract",
-        typeName: "合同",
-        status: "",
-        code: c.contractNo || "",
-        owner: c.signingParties || "",
-        amount: c.amount || "",
-        start: c.signDate || "",
-        category: c.category || "",
-        remarks: c.remarks || "",
-        tags: c.tags || "",
-        projectId: c.projectId,
-        projectName: c.projectName || "",
-        raw: c,
-        id: c.id,
-      };
-      this.biz.set(node.id, node.biz);
-      attach(node, c.id);
-      if (!contractsByProject.has(c.projectId)) contractsByProject.set(c.projectId, []);
-      contractsByProject.get(c.projectId).push(node);
-    }
-
+    /* 项目内部的目录统一为 archive_folder，合同记录不作为子文件夹。 */
     /* ---- 各分类的对象 ----
        分类的顺序、名称、有无全部由 WS_CATS 决定,这里只负责把数据装进去。
        普通资料（资质 / 业务档案 / 党团 / 学术 / 综合资料）不再是单独的记录
@@ -468,9 +438,9 @@ const VaultStore = {
           };
           this.biz.set(node.id, node.biz);
           const own = attach(node, p.id);
-          /* 合同和项目自己的附件同层。合同节点已由上面建好并 attach 过,
-             这里只做合并与统一排序,避免两段各自的排序规则不一致。 */
-          const subs = contractsByProject.get(p.id);
+          /* 项目直属附件与普通文件夹同层。 */
+          const subs=projectDirectories.filter(dir=>
+            Number(dir.biz.parentId)===Number(p.id));
           if (subs?.length) {
             node.children = [...own.children, ...subs].sort((a, b) => cmpName(a, b));
             node.size = node.children.reduce((s, k) => s + (k.size || 0), 0);
@@ -573,6 +543,7 @@ const VaultStore = {
       return rootItems;
     };
 
+    const projectDirectories=buildArchiveDirs("project");
     root.children = catsOf(ws).map(({ id, label }, i) => {
       const k = F(label, { id: `k:${id}`, synthetic: true });
       /* 分类的先后由 WS_CATS 决定,不参与拼音排序(见 app.js sortedItems) */

@@ -22,9 +22,12 @@ static class NativeArchiveOrder
         if(parent is <=0)throw new ArgumentException("无效的目录。");
         if(parent is long id)
         {
-            var r=ResourceRef.Create(workspace,FolderKinds.ArchiveFolder,id,section);
-            if(NativeArchiveStore.Get(db,r) is null)
-                throw new KeyNotFoundException("目录不存在。");
+            var folder=NativeArchiveStore.Get(db,
+                ResourceRef.Create(workspace,FolderKinds.ArchiveFolder,id,section));
+            var project=section=="project"?
+                NativeFolderStore.Get(db,ResourceRef.Create(workspace,FolderKinds.Project,id)):null;
+            if(folder is null && project is null)
+                throw new KeyNotFoundException("目标目录或项目不存在。");
         }
     }
 
@@ -72,7 +75,8 @@ static class NativeArchiveOrder
         r=NativeArchiveStore.Unify(r);
         if(!ArchiveDirectoryScopes.Allowed(r.Workspace,r.Section))
             throw new ArgumentException("该资料类型不支持目录移动。");
-        if(targetParent is <=0)throw new ArgumentException("无效的目标目录。");
+        if(targetParent is <=0 || (r.Section=="project" && targetParent is null))
+            throw new ArgumentException("项目内部文件夹必须属于一个项目。");
         using var tx=db.BeginTransaction();
         using var select=db.CreateCommand();
         select.Transaction=tx;
@@ -93,8 +97,10 @@ static class NativeArchiveOrder
         }
         if(oldParent==targetParent)return true;
         if(targetParent is long p && NativeArchiveStore.Get(db,
-            ResourceRef.Create(r.Workspace,FolderKinds.ArchiveFolder,p,r.Section)) is null)
-            throw new KeyNotFoundException("目标目录不存在。");
+            ResourceRef.Create(r.Workspace,FolderKinds.ArchiveFolder,p,r.Section)) is null &&
+            (r.Section!="project" || NativeFolderStore.Get(db,
+              ResourceRef.Create(r.Workspace,FolderKinds.Project,p)) is null))
+            throw new KeyNotFoundException("目标目录或项目不存在。");
 
         var data=JsonSerializer.Deserialize<ArchiveFolderInput>(json)
             ?? new ArchiveFolderInput(name,oldParent);

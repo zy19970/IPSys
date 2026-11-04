@@ -6,7 +6,7 @@ using Microsoft.Data.Sqlite;
 record NativeProjectTransferInput(string TargetWorkspace,bool Move=false);
 record NativeProjectTransferResult(long SourceId,long Id,string SourceWorkspace,
     string TargetWorkspace,bool Moved,int Contracts,int Links,int Files,
-    int Versions,int NewObjects);
+    int Versions,int NewObjects,int Directories);
 static class NativeProjectTransferStore
 {
     private sealed record SourceLink(long FolderId,NativeFolderFileLink Link);
@@ -15,10 +15,43 @@ static class NativeProjectTransferStore
         NativeFolderStore.List(db,w,FolderKinds.Contract)
             .Where(x=>x.Folder.Parent is ResourceRef p&&p.Id==project).ToArray();
 
-    private static List<SourceLink> Links(SqliteConnection db,string w,
-        long project,IReadOnlyList<FolderSnapshot> contracts)
+    // Project is the business record; everything underneath is a normal
+    // archive_folder subtree. Walk from this project only, never other projects.
+    private static IReadOnlyList<FolderSnapshot> Directories(
+        SqliteConnection db,string w,long project)
     {
-        var folders=new[]{project}.Concat(contracts.Select(c=>c.Folder.Ref.Id));
+        var all=NativeArchiveStore.ListAll(db,w,"project");
+        var children=all.Where(x=>x.Folder.Parent is not null)
+            .GroupBy(x=>x.Folder.Parent!.Value.Id)
+            .ToDictionary(g=>g.Key,g=>g.OrderBy(x=>x.Folder.Position)
+                .ThenBy(x=>x.Folder.Ref.Id).ToArray());
+        var result=new List<FolderSnapshot>();
+        var visited=new HashSet<long>();
+        var queue=new Queue<long>();
+        queue.Enqueue(project);
+        while(queue.TryDequeue(out long parent))
+        {
+            if(!children.TryGetValue(parent,out var nested))continue;
+            foreach(var child in nested)
+            {
+                long childId=child.Folder.Ref.Id;
+                if(!visited.Add(childId))
+                    throw new InvalidDataException("项目文件夹存在循环。");
+                if(visited.Count>10000)
+                    throw new InvalidDataException("项目目录超过10000个文件夹。");
+                result.Add(child);
+                queue.Enqueue(childId);
+            }
+        }
+        return result;
+    }
+
+    private static List<SourceLink> Links(SqliteConnection db,string w,
+        long project,IReadOnlyList<FolderSnapshot> contracts,
+        IReadOnlyList<FolderSnapshot> directories)
+    {
+        var folders=new[]{project}.Concat(contracts.Select(c=>c.Folder.Ref.Id))
+            .Concat(directories.Select(c=>c.Folder.Ref.Id));
         var result=new List<SourceLink>();
         foreach(var folder in folders)
             foreach(var link in NativeFileLinkStore.ListFolder(db,w,folder,false)??[])
@@ -32,25 +65,26 @@ static class NativeProjectTransferStore
         if(NativeFolderStore.Get(db,ResourceRef.Create(w,FolderKinds.Project,id)) is null)
             throw new KeyNotFoundException("来源项目不存在。");
         if(w==target)return 0;
-        var links=Links(db,w,id,Contracts(db,w,id));
+        var links=Links(db,w,id,Contracts(db,w,id),Directories(db,w,id));
         long total=0;
         foreach(long file in links.Select(x=>x.Link.FileId).Distinct())
             total=checked(total+NativeFileCopyStore.EstimateIndependentBytes(db,w,file));
         return total;
     }
     private static long InsertFolder(SqliteConnection db,SqliteTransaction tx,string workspace,
-        string kind,string name,string json,long? parent)
+        string kind,string name,string json,long? parent,string section="")
     {
         using var cmd=db.CreateCommand();cmd.Transaction=tx;
         cmd.CommandText="""
-            INSERT INTO folders(workspace,kind,name,attributes_json,parent_id,position)
-            VALUES($w,$kind,$name,$json,$parent,
+            INSERT INTO folders(workspace,kind,section,name,attributes_json,parent_id,position)
+            VALUES($w,$kind,$section,$name,$json,$parent,
                 (SELECT COALESCE(MAX(position),-1)+1 FROM folders
                  WHERE workspace=$w AND kind=$kind AND deleted=0));
             SELECT last_insert_rowid();
             """;
         cmd.Parameters.AddWithValue("$w",workspace);
         cmd.Parameters.AddWithValue("$kind",kind);
+        cmd.Parameters.AddWithValue("$section",section);
         cmd.Parameters.AddWithValue("$name",name);
         cmd.Parameters.AddWithValue("$json",json);
         cmd.Parameters.AddWithValue("$parent",(object?)parent??DBNull.Value);
@@ -68,7 +102,8 @@ static class NativeProjectTransferStore
         var project=NativeFolderStore.Get(db,ResourceRef.Create(w,FolderKinds.Project,id))
             ??throw new KeyNotFoundException("来源项目已删除或不存在。");
         var contracts=Contracts(db,w,id);
-        var links=Links(db,w,id,contracts);
+        var directories=Directories(db,w,id);
+        var links=Links(db,w,id,contracts,directories);
         stop.ThrowIfCancellationRequested();
         using var tx=db.BeginTransaction();
         long target=InsertFolder(db,tx,input.TargetWorkspace,FolderKinds.Project,
@@ -80,6 +115,20 @@ static class NativeProjectTransferStore
             folderMap[child.Folder.Ref.Id]=InsertFolder(db,tx,input.TargetWorkspace,
                 FolderKinds.Contract,child.Folder.Name,
                 JsonSerializer.Serialize((ContractInput)child.BusinessData),target);
+        }
+        foreach(var child in directories)
+        {
+            stop.ThrowIfCancellationRequested();
+            long parent=child.Folder.Parent?.Id
+                ??throw new InvalidDataException("项目目录缺少上级项目。");
+            if(!folderMap.TryGetValue(parent,out long targetParent))
+                throw new InvalidDataException("项目目录树缺少上级文件夹。");
+            long targetChild=InsertFolder(db,tx,input.TargetWorkspace,
+                FolderKinds.ArchiveFolder,child.Folder.Name,
+                JsonSerializer.Serialize(((ArchiveFolderInput)child.BusinessData) with {
+                    ParentId=targetParent
+                }),targetParent,"project");
+            folderMap.Add(child.Folder.Ref.Id,targetChild);
         }
         var mappedFiles=new Dictionary<long,long>();
         int versions=0,objects=0;
@@ -148,7 +197,8 @@ static class NativeProjectTransferStore
         stop.ThrowIfCancellationRequested();
         tx.Commit();
         return new(id,target,w,input.TargetWorkspace,input.Move,
-            contracts.Count,links.Count,mappedFiles.Count,versions,objects);
+            contracts.Count,links.Count,mappedFiles.Count,versions,objects,
+            directories.Count);
     }
 }
 
@@ -181,7 +231,7 @@ static class NativeProjectTransferEndpoints
                         {
                             long free=new DriveInfo(Path.GetPathRoot(v.Path)!).AvailableFreeSpace;
                             if(free<checked(required+Math.Max(128L*1024*1024,required/3)))
-                                return fail("空间不足以复制项目与合同的全部原件。",507);
+                                return fail("空间不足以复制项目及其目录内的全部原件。",507);
                         }
                         return Results.Json(await NativeProjectTransferStore.TransferAsync(
                             v.Db,workspace,id,input,linked.Token));

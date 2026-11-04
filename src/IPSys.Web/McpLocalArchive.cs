@@ -27,16 +27,16 @@ static partial class McpLocal
 
     private static object[] ArchiveTools() =>
     [
-        Tool("list_folders","按工作区和 section 列出普通资料文件夹，默认遍历全层级；指定 parent_id 时仅列直属子文件夹。",new(){
+        Tool("list_folders","按工作区和 section 列出普通文件夹。section=project 时，parent_id 可以是项目 FolderId（直属目录）或子文件夹 FolderId。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
             ["section"]=Field("string","必须明确的资料模块，含 general"),
             ["parent_id"]=Field("integer","可选父文件夹 FolderId")
         },["workspace","section"]),
-        Tool("create_folder","创建普通资料文件夹，可在模块根目录或任意同模块目录下创建。",new(){
+        Tool("create_folder","创建普通文件夹；section=project 时必须传入所属项目或项目子目录的 parent_id，其它模块可在根目录创建。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
             ["section"]=Field("string","资料模块"),
             ["name"]=Field("string","文件夹名称"),
-            ["parent_id"]=Field("integer","可选父文件夹 FolderId，不填表示模块根目录"),
+            ["parent_id"]=Field("integer","section=project 时必填，传项目 FolderId 或上级文件夹 FolderId；其它模块可省略"),
             ["category"]=Field("string","可选类别"),
             ["year"]=Field("string","可选年度"),
             ["tags"]=Field("string","可选分号分隔标签"),
@@ -57,13 +57,13 @@ static partial class McpLocal
             ["section"]=Field("string","资料模块"),
             ["folder_id"]=Field("integer","待删除 FolderId")
         },["workspace","section","folder_id"]),
-        Tool("move_folder","调整普通文件夹在同工作区同模块内的父目录，省略 parent_id 表示模块根目录。",new(){
+        Tool("move_folder","同模块移动普通文件夹；section=project 时 parent_id 必填，必须归属于一个项目或其子目录。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
             ["section"]=Field("string","资料模块"),
             ["folder_id"]=Field("integer","待移动 FolderId"),
             ["parent_id"]=Field("integer","可选目标父 FolderId")
         },["workspace","section","folder_id"]),
-        Tool("transfer_folder","跨工作区或允许的模块间复制/移动完整目录树及其附件所有版本，根目录可作为目标。",new(){
+        Tool("transfer_folder","跨工作区或允许的模块间复制/移动完整目录树及附件版本；目标为 project 时必须指定目标项目或子目录。",new(){
             ["workspace"]=Field("string","来源工作区",Workspaces),
             ["section"]=Field("string","来源资料模块"),
             ["folder_id"]=Field("integer","来源 FolderId"),
@@ -99,6 +99,9 @@ static partial class McpLocal
                 if(args.TryGetProperty("parent_id",out var parent) &&
                    parent.ValueKind!=JsonValueKind.Null)
                     fields["parentId"]=FolderIdFrom("parent_id");
+                else if(section=="project")
+                    throw new McpKnownRejectionException(
+                        "项目内部创建目录必须指定 parent_id（项目或上级文件夹）。");
                 return await RequestAsync(client,HttpMethod.Post,
                     V2Url(workspace,"archive_folder"),MaterialPayload(fields,section));
             }
@@ -123,6 +126,8 @@ static partial class McpLocal
                 if(args.TryGetProperty("parent_id",out var target) &&
                    target.ValueKind!=JsonValueKind.Null)
                     parent=FolderIdFrom("parent_id");
+                if(section=="project" && parent is null)
+                    throw new McpKnownRejectionException("项目内移动必须指定目标项目或目录。");
                 return await RequestAsync(client,HttpMethod.Post,
                     V2Url(workspace,"archive_folder",FolderId())+
                     "/move?section="+Uri.EscapeDataString(section),
@@ -142,6 +147,8 @@ static partial class McpLocal
                 if(args.TryGetProperty("target_folder_id",out var target) &&
                    target.ValueKind!=JsonValueKind.Null)
                     body["targetFolderId"]=FolderIdFrom("target_folder_id");
+                if(targetSection=="project" && body["targetFolderId"] is null)
+                    throw new McpKnownRejectionException("目标为项目时必须指定 target_folder_id。");
                 return await RequestAsync(client,HttpMethod.Post,
                     "/api/v2/ui/folders/"+workspace+"/"+Uri.EscapeDataString(section)+
                     "/"+FolderId()+"/transfer",body);

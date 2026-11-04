@@ -22,10 +22,12 @@ static class NativeArchiveActionsEndpoints
         string actualWorkspace=reader.GetString(0),kind=reader.GetString(1);
         string actualSection=reader.IsDBNull(2)?"":reader.GetString(2);
         bool deleted=reader.GetInt64(3)==1;
-        if(kind!=FolderKinds.ArchiveFolder)return (400,"目标不是普通资料文件夹。");
+        if(kind!=FolderKinds.ArchiveFolder &&
+           !(kind==FolderKinds.Project && section=="project"))
+            return (400,"目标不是普通资料文件夹或项目。");
         if(actualWorkspace!=workspace)
             return (400,"目标目录不属于目标工作区（实际属于 "+actualWorkspace+"）。");
-        if(actualSection!=section)
+        if(kind==FolderKinds.ArchiveFolder && actualSection!=section)
             return (400,"目标目录不属于目标资料类别（实际为 "+actualSection+"）。");
         if(deleted)return (409,"目标目录已在回收站，请先恢复后再转移。");
         return (0,"");
@@ -65,6 +67,8 @@ static class NativeArchiveActionsEndpoints
                     // write. The shared helper snapshots the full subtree and
                     // commits all folders, links and versions atomically.
                     long? parent=null;
+                    if(input.TargetSection=="project" && input.TargetFolderId is null)
+                        return fail("转入项目内部必须指定目标项目或其下级文件夹。",400);
                     if(input.TargetFolderId is long explicitTarget)
                     {
                         if(explicitTarget<=0)return fail("目标目录编号无效。",400);

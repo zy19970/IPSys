@@ -1,5 +1,5 @@
 /* 回首页后残留的 folderId 不能再被当成"当前所在项目"。
-   缺陷表现:项目内 → 点品牌回首页 → 点「新建」,菜单只剩「新建合同」,
+   缺陷表现:项目内 → 点品牌回首页 → 点「新建」,误把创建绑在隐藏的项目,
    且真的建进了那个看不见的项目。这里跑真实的 navigate / goBack 与
    openNewMenu 构造段,断言首页状态下既清了目录、也不认旧项目前缀。 */
 'use strict';
@@ -90,11 +90,14 @@ function freshDrive(){
   assert.ok(stale.items.some(m=>m.id==='project'),'home still offers the normal categories');
   assert.ok(stale.items.length>=3,'home offers every category, not a single entry');
 
-  /* 同一份 folderId 在 files 下必须照旧只给合同 */
+  /* 项目内部实际走 archiveScope()→普通文件夹表单，
+     因此这里不能再构造旧的“新建合同”专用选项。 */
   const inside=menu({view:'files',folderId:'p:9'});
   assert.equal(inside.onHome,false,'files view is not home');
   assert.equal(inside.inProject,'9','inside a project the prefix is still used');
-  assert.deepEqual(inside.items.map(m=>m.id),['contract'],'inside a project only the contract entry survives');
+  assert.ok(!inside.items.some(m=>m.id==='contract'),
+    'project-specific contract creation entry is retired');
+  assert.match(inter,/if \(archiveScope\(\)\) return createArchiveFolder\(\);/);
 
   /* 首页搜索态不算首页:查询词在时仍按分类筛选 */
   const searching=menu({view:'home',folderId:'p:9',query:'选矿'});

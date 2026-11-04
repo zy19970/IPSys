@@ -42,8 +42,11 @@ static class FolderTypePolicy
         if(child.Kind == FolderKinds.Contract)
             return parent is ResourceRef project && project.Kind == FolderKinds.Project;
         if(child.Kind == FolderKinds.ArchiveFolder)
-            return parent is null || parent is ResourceRef folder &&
-                folder.Kind == FolderKinds.ArchiveFolder && folder.Section == child.Section;
+            return child.Section=="project"
+                ? parent is ResourceRef owner && (owner.Kind==FolderKinds.Project ||
+                    owner.Kind==FolderKinds.ArchiveFolder && owner.Section=="project")
+                : parent is null || parent is ResourceRef folder &&
+                    folder.Kind == FolderKinds.ArchiveFolder && folder.Section == child.Section;
         return true;
     }
 }
@@ -51,6 +54,6 @@ static class FolderTypePolicy
 static class ArchiveDirectoryScopes
 {
     public static bool Allowed(string workspace,string section) =>
-        workspace=="company" && section is ("certificate" or "achievement" or "party" or "general") ||
-        workspace=="personal" && section is ("certificate" or "achievement" or "academic" or "general");
+        workspace=="company" && section is ("certificate" or "achievement" or "party" or "general" or "project") ||
+        workspace=="personal" && section is ("certificate" or "achievement" or "academic" or "general" or "project");
 }

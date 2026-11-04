@@ -70,6 +70,7 @@ ctx.__fixtures={
  archive:{
   /* A02/N2：资料与目录同表，分类下直接挂普通文件夹。 */
   folders:[
+   {id:11,name:'合同资料目录',section:'project',parentId:1,position:0},
    {id:70,name:'申报与认定',section:'achievement',parentId:null,position:1,isSystem:true},
    {id:31,name:'资质证书甲',section:'certificate',parentId:null,position:0,year:'2025'},
    {id:32,name:'成果乙',section:'achievement',parentId:70,position:0,year:'2024'},
@@ -77,6 +78,7 @@ ctx.__fixtures={
    {id:41,name:'杂项资料',section:'general',parentId:null,position:0},
   ],
   files:[
+   {linkId:2,fileId:201,version:1,ownerId:11,kind:'archive_folder',section:'project',name:'合同正文.pdf',size:200},
    {linkId:5,fileId:501,version:1,ownerId:31,kind:'archive_folder',section:'certificate',name:'证书扫描件.pdf',size:70},
    {linkId:6,fileId:601,version:1,ownerId:41,kind:'archive_folder',section:'general',name:'说明.txt',size:9},
   ],
@@ -87,7 +89,6 @@ ctx.__fixtures={
  },
  projectFiles:[
   {linkId:1,fileId:101,version:1,folderId:1,kind:'project',name:'立项报告.pdf',size:100},
-  {linkId:2,fileId:201,version:1,folderId:11,kind:'contract',name:'合同正文.pdf',size:200},
  ],
 };
 
@@ -104,13 +105,14 @@ assert.equal(run('catsOf("personal").some(c=>c.id==="party")'),false,
 
 const hits=[
  {kind:'project',id:1},
+ {kind:'archive_folder',id:11,section:'project'},
  {kind:'contract',id:11},
  {kind:'ip',id:21},
  /* A02/N2：资料与综合资料都是 archive_folder，模块由 section 区分。 */
  {kind:'archive_folder',id:31,section:'certificate'},
  {kind:'archive_folder',id:41,section:'general'},
  {kind:'file',id:101,ownerKind:'project',ownerId:1},
- {kind:'file',id:201,ownerKind:'contract',ownerId:11},
+ {kind:'file',id:201,ownerKind:'archive_folder',ownerId:11,section:'project'},
  {kind:'file',id:501,ownerKind:'archive_folder',ownerId:31,section:'certificate'},
  {kind:'file',id:701,ownerKind:'ip',ownerId:21},
  {kind:'file',id:601,ownerKind:'archive_folder',ownerId:41,section:'general'},
@@ -123,7 +125,7 @@ const hits=[
 const resolved=run('VaultStore.resolveHits({results:__hits})'.replace('__hits',JSON.stringify(hits)));
 const ids=Array.from(resolved,x=>x.id);
 assert.deepEqual(ids,[
- 'p:1','c:11','i:21','af:31','af:41',
+ 'p:1','af:11','i:21','af:31','af:41',
  'f:1:1','f:2:1','f:5:1','f:7:1','f:6:1',
 ],'Every search kind must map onto its real tree node; stale hits must be dropped, not guessed');
 

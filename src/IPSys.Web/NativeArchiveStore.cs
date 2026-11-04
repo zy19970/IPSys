@@ -88,8 +88,9 @@ static class NativeArchiveStore
         using var cmd=db.CreateCommand();
         cmd.CommandText="""
             SELECT count(*) FROM folders
-            WHERE id=$id AND workspace=$w AND kind='archive_folder'
-              AND section=$scope AND deleted=0;
+            WHERE id=$id AND workspace=$w AND deleted=0
+              AND (kind='archive_folder' AND section=$scope
+                   OR kind='project' AND $scope='project');
             """;
         cmd.Parameters.AddWithValue("$id",id);
         cmd.Parameters.AddWithValue("$w",workspace);
@@ -125,6 +126,8 @@ static class NativeArchiveStore
     {
         if(!Handles(kind))throw new ArgumentException("不支持的资料类型。");
         var data=Prepare(workspace,FolderKinds.ArchiveFolder,input,true,null);
+        if(data.Section=="project" && data.Parent is null)
+            throw new ArgumentException("项目内部文件夹必须指定所属项目或上级目录。");
         if(data.Parent is long parent && !ActiveDirectory(db,workspace,
             data.Section,parent))
             throw new KeyNotFoundException("上级目录不存在或不属于当前模块。");
@@ -210,7 +213,10 @@ static class NativeArchiveStore
         r=Unify(r);
         using var cmd=db.CreateCommand();
         cmd.CommandText="""
-            SELECT id,workspace,kind,section,name,parent_id,position,attributes_json,modified_at,created_at
+            SELECT id,workspace,kind,section,name,parent_id,position,attributes_json,modified_at,created_at,
+              CASE WHEN section='project' AND parent_id IN
+                (SELECT id FROM folders WHERE kind='project')
+                THEN 'project' ELSE 'archive_folder' END AS parent_kind
             FROM folders f WHERE id=$id AND workspace=$w AND kind=$kind
               AND section=$section AND deleted=0 AND (parent_id IS NULL OR EXISTS(
                 SELECT 1 FROM folders p WHERE p.id=f.parent_id
@@ -239,8 +245,9 @@ static class NativeArchiveStore
         };
         return new FolderSnapshot(new FolderDescriptor(
             ResourceRef.Create(w,kind,id,section),name,
-            parent is long p ? ResourceRef.Create(w,FolderKinds.ArchiveFolder,p,
-                section):null,
+            parent is long p ? (rd.GetString(10)=="project"
+                ? ResourceRef.Create(w,FolderKinds.Project,p)
+                : ResourceRef.Create(w,FolderKinds.ArchiveFolder,p,section)):null,
             rd.GetInt32(6),ModifiedAt:rd.IsDBNull(8)?null:rd.GetString(8),
             CreatedAt:rd.IsDBNull(9)?null:rd.GetString(9)),metadata);
     }
@@ -255,7 +262,10 @@ static class NativeArchiveStore
             throw new KeyNotFoundException("上级目录不存在或不属于当前模块。");
         using var cmd=db.CreateCommand();
         cmd.CommandText="""
-            SELECT id,workspace,kind,section,name,parent_id,position,attributes_json,modified_at,created_at
+            SELECT id,workspace,kind,section,name,parent_id,position,attributes_json,modified_at,created_at,
+              CASE WHEN section='project' AND parent_id IN
+                (SELECT id FROM folders WHERE kind='project')
+                THEN 'project' ELSE 'archive_folder' END AS parent_kind
             FROM folders WHERE workspace=$w AND kind='archive_folder' AND section=$section
               AND deleted=0 AND COALESCE(parent_id,0)=COALESCE($parent,0)
               AND (parent_id IS NULL OR EXISTS(
@@ -284,7 +294,10 @@ static class NativeArchiveStore
             throw new ArgumentException("目录与工作区或模块不匹配。");
         using var cmd=db.CreateCommand();
         cmd.CommandText="""
-            SELECT id,workspace,kind,section,name,parent_id,position,attributes_json,modified_at,created_at
+            SELECT id,workspace,kind,section,name,parent_id,position,attributes_json,modified_at,created_at,
+              CASE WHEN section='project' AND parent_id IN
+                (SELECT id FROM folders WHERE kind='project')
+                THEN 'project' ELSE 'archive_folder' END AS parent_kind
             FROM folders WHERE workspace=$w AND kind='archive_folder' AND section=$section
               AND deleted=0 AND (parent_id IS NULL OR EXISTS(
                 SELECT 1 FROM folders p WHERE p.id=folders.parent_id
