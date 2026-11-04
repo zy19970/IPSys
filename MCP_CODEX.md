@@ -1,5 +1,7 @@
 # IPSys 本机 Codex MCP
 
+> **2026-11-04 现行覆盖规则**：SQLCipher schema 3；Folder 类型只有 `project/ip/archive_folder`；合同资料是项目下普通目录；所有普通资料（包括 general）六列 Excel，项目 11 列、知产 19 列；MCP 43 项工具；旧结构库只读拒绝不迁移。S1—S4 CI #521/#526/#529/#532、S5-1 CI #533 已通过；S5-2 真实 Edge 和同批 MCP↔GUI 端到端仍需核验。原先合同模型、历史工具数量和旧数据库迁移建议仅供追溯，不指导当前开发。
+
 ## 当前有效的项目／普通目录 MCP 契约（2026-11-04，S4）
 
 现行 `tools/list` 注册 **43 项 MCP 工具**，已完全退出独立的 `contract` 业务类型。原 `list_contracts`、`create_contract`、`update_contract`、`delete_contract`、`copy_contract`、`list_contract_files`、`delete_contract_file` 均不可调用；旧 `tools/call` 直接调用也会返回未知工具。项目下的合同资料只是一层或多层普通文件夹，不再单独维护合同对象或专有属性。

@@ -1,5 +1,7 @@
 # IPSys — 资料管理系统
 
+> **现行基线（2026-11-04，S5）**：SQLCipher 新库结构版本 **3**，Folder 类型仅 `project`、`ip`、`archive_folder`；项目内可任意层创建普通文件夹，合同资料不再是独立业务对象。所有普通资料模块（含综合资料）Excel **6 列**，项目 11 列、知识产权 19 列；MCP stdio **43 项工具**。S1/S2/S3/S4 CI #521/#526/#529/#532 通过，S5-1 [CI #533](https://github.com/zy19970/IPSys/actions/runs/41831428604) 通过。S5-2 Edge 脚本 CI #534 与第16.4节跨入口闭环仍需单独核实。旧 `v0.9.1-rc1` Release 不包含最新 main。历史正文与 CI 记录仅供追溯，以本段和当前源码为准。
+
 ## 普通用户先看：这个软件究竟怎么运行？
 
 **资料管理系统是一款在自己 Windows 电脑上运行的软件，不需要购买服务器，也不需要把资料上传到网站。** 它看起来像 OneDrive，因为操作界面使用浏览器打开；但资料实际保存在你指定的本机加密数据库文件中，不是保存在 OneDrive 或某个网页里。
@@ -30,7 +32,7 @@
 
 1. 在 Windows 电脑上准备一个**自己有写入权限**的文件夹，例如 `D:\资料管理系统\`，把 EXE 放进去并双击运行。第一次使用可以选择创建新的资料库。
 2. 点击启动器里的**“打开管理界面”**，浏览器会打开登录页面。选择**“创建新资料库”**，在路径栏填写保存位置，或点击旁边的**文件夹图标**，使用 Windows 窗口选择新数据库的保存路径；输入并确认密码，再点击创建。
-3. 创建成功后进入资料工作台。按需要使用个人或公司工作区，建立资料、项目、合同、知识产权记录，再向对应位置上传附件。**记录和上传后的附件会写入加密 DB 文件**；原先电脑上的上传源文件不会因为上传操作自动被删除。
+3. 创建成功后进入资料工作台。按需要使用个人或公司工作区，建立资料文件夹、项目与知识产权记录，再向对应位置上传附件。**记录和上传后的附件会写入加密 DB 文件**；原先电脑上的上传源文件不会因为上传操作自动被删除。
 
 如果 EXE 和 DB 放在同一个目录，一般会看到这样的结构：
 
@@ -65,13 +67,13 @@ D:\资料管理系统\
 
 ## 产品及技术现状
 
-IPSys 是离线、单用户的 Windows 资料管理系统。一个 SQLCipher V2 加密库内区分**个人资料与公司资料**工作区。使用 WinForms 窗口控制进程生命周期，ASP.NET Core 服务只监听 `127.0.0.1`，用户在 Edge/Chrome 访问 Explorer 界面。网页“关闭数据库”锁库并返回登录页；WinForms 标题栏“×”会隐藏窗口到 Windows 系统托盘（通知区域），不占用任务栏窗口按钮；双击托盘图标恢复窗口，右键可打开主窗口或选择“退出程序”进行安全关闭。点击桌面窗口的“退出程序”同样终止宿主。资料库登录页默认使用 EXE 所在目录的数据库路径，并可通过文件夹按钮调用 Windows 原生文件选择器（已存在数据库使用“打开”，新建数据库使用“保存”）；选择成功后启动器自动隐藏到系统托盘，网页登录页保持可见。
+IPSys 是离线、单用户的 Windows 资料管理系统。一个 SQLCipher schema 3 加密库内区分**个人资料与公司资料**工作区。使用 WinForms 窗口控制进程生命周期，ASP.NET Core 服务只监听 `127.0.0.1`，用户在 Edge/Chrome 访问 Explorer 界面。网页“关闭数据库”锁库并返回登录页；WinForms 标题栏“×”会隐藏窗口到 Windows 系统托盘（通知区域），不占用任务栏窗口按钮；双击托盘图标恢复窗口，右键可打开主窗口或选择“退出程序”进行安全关闭。点击桌面窗口的“退出程序”同样终止宿主。资料库登录页默认使用 EXE 所在目录的数据库路径，并可通过文件夹按钮调用 Windows 原生文件选择器（已存在数据库使用“打开”，新建数据库使用“保存”）；选择成功后启动器自动隐藏到系统托盘，网页登录页保持可见。
 
 程序的**唯一正式前端**集中于 [`src/IPSys.Web/wwwroot/`](./src/IPSys.Web/wwwroot/README.md)。页面源码是 `index.html`、`css/app.css` 和 `js/*.js`，文件管理、ZIP64、PDF、上传等能力模块也位于同一目录。Node 在编译期间生成 `wwwroot/dist/`，全部作为内嵌资源打包进 `IPSys.Web.exe`；不存在独立运行的第二套 UI。
 
-所有业务分类、项目、合同、知识产权及档案以 **Folder** 表示（Folder 无版本），真实附件以 **File / FileVersion** 表示，`folder_file_links` 保存归属，同工作区可按明确操作共享 FileId 或复用 FileObject 内容；跨公司/个人工作区**不得共享物理 FileObject**，须独立复制。合同必须属于有效项目，项目可以单独存在。原件和文件版本存储于加密 SQLCipher 库；不维护磁盘明文镜像。
+项目、知识产权与普通资料文件夹以 **Folder** 表示（Folder 无版本），真实附件以 **File / FileVersion** 表示，`folder_file_links` 保存归属，同工作区可按明确操作共享 FileId 或复用 FileObject 内容；跨公司/个人工作区**不得共享物理 FileObject**，须独立复制。项目可以单独存在；合同资料只是项目下的普通文件夹，不再是独立业务对象。原件和文件版本存储于加密 SQLCipher 库；不维护磁盘明文镜像。
 
-**当前业务细节**：知识产权分十种类型，以三个可选编号字段（统一编号、公开号、授权公告号）表示；固定 XLSX 模板为 19 列。适用业务模块的 Excel 导出可选择**当前筛选结果**或**本模块全部记录**，筛选在服务端覆盖完整匹配记录，不受搜索页每组 60 条展示上限限制；**合同不提供独立的 Excel 导入或导出**，仅在所属项目中管理。公司业务档案七个预置目录创建后就是普通目录；公司还具有独立党团建设分类。MCP 在现行源码对外为 **64 个无 `v2_*` 别名的工具**。普通资料文件夹既能直接放附件，又能继续创建子文件夹，名称必填而其他属性选填。PDF 预览支持多页连续滚动和按需渲染，启动器显示本程序/整机 CPU 占用。
+**当前业务细节**：知识产权分十种类型，以三个可选编号字段（统一编号、公开号、授权公告号）表示；固定 XLSX 模板为 19 列。适用业务模块的 Excel 导出可选择**当前筛选结果**或**本模块全部记录**，筛选在服务端覆盖完整匹配记录，不受搜索页每组 60 条展示上限限制；**合同不提供独立的 Excel 导入或导出**，仅在所属项目中管理。公司业务档案七个预置目录创建后就是普通目录；公司还具有独立党团建设分类。MCP 在现行源码对外为 **43 个无 `v2_*` 别名的工具**。普通资料文件夹既能直接放附件，又能继续创建子文件夹，名称必填而其他属性选填。PDF 预览支持多页连续滚动和按需渲染，启动器显示本程序/整机 CPU 占用。
 
 ## 使用与开发
 
@@ -96,8 +98,9 @@ IPSys 的正式发布由 [Publish IPSys Release](https://github.com/zy19970/IPSy
 
 | 验证范围 | 当前结论与证据 |
 | --- | --- |
+| S0—S4 与 S5-1 统一业务阶段 | [CI #521](https://github.com/zy19970/IPSys/actions/runs/41793618031)、[#526](https://github.com/zy19970/IPSys/actions/runs/41802424444)、[#529](https://github.com/zy19970/IPSys/actions/runs/41816669123)、[#532](https://github.com/zy19970/IPSys/actions/runs/41822426599)、[#533](https://github.com/zy19970/IPSys/actions/runs/41831428604) 分别通过对应提交自动验收；跨入口总闭环仍待核验 |
 | Explorer F2-01～F2-06 核心业务、三批缺陷修复 | 功能与对应自动回归已完成，历史合并 CI [#39947975625](https://github.com/zy19970/IPSys/actions/runs/39947975625) 成功 |
-| Excel、知识产权、启动器与 MCP | 现行固定 Excel：项目 11 列、知识产权 19 列，所有普通资料模块（档案、资质、党团、综合资料）统一六列；本机 MCP 为 51 个工具，普通文件夹操作统一使用 archive_folder 与 section；[CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 仅为旧接口历史证据 |
+| Excel、知识产权、启动器与 MCP | 现行固定 Excel：项目 11 列、知识产权 19 列，所有普通资料模块（档案、资质、党团、综合资料）统一六列；本机 MCP 为 43 个工具，普通文件夹操作统一使用 archive_folder 与 section；[CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 仅为旧接口历史证据 |
 | 统一文件夹、新建直达与操作细节 | [统一文件夹 CI](https://github.com/zy19970/IPSys/actions/runs/41406914227) 和 [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 成功，本机 GUI 仍需实测 |
 | 运行期 401 重新登录、拖放与待确认上传、跨工作区关联/物理隔离 | 已修复；专项 Node/HTTP 与 Agent 取证见 [验收证据索引](./tests/TEST_EVIDENCE_INDEX.md) |
 | 超过 2 GiB SQLCipher/HTTP 原件及大库 VACUUM | 专项 [#39943364663](https://github.com/zy19970/IPSys/actions/runs/39943364663) 通过（未跳过压缩或完整性检查） |
@@ -111,10 +114,10 @@ IPSys 的正式发布由 [Publish IPSys Release](https://github.com/zy19970/IPSy
 | --- | --- |
 | [REQUIREMENTS.md](./REQUIREMENTS.md) | 当前有效业务需求及历史覆盖决策 |
 | [M0_DATA_DICTIONARY.md](./M0_DATA_DICTIONARY.md) | 已确认的业务字段、字典及 Excel 字段逻辑 |
-| [DESIGN.md](./DESIGN.md) | 现行系统架构、SQLCipher V2 资源与安全边界 |
+| [DESIGN.md](./DESIGN.md) | 现行系统架构、SQLCipher schema 3 资源与安全边界 |
 | [UI_BASELINE.md](./UI_BASELINE.md) | 当前业务导航和交互原则；实际 Explorer 入口以源码为准 |
 | [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md) | 当前完成状态、可继续开发的事项和验收门槛 |
-| [MCP_CODEX.md](./MCP_CODEX.md) | 本机 MCP 接入、51 个工具（含统一的普通文件夹操作）与安全规则 |
+| [MCP_CODEX.md](./MCP_CODEX.md) | 本机 MCP 接入、43 个工具（含统一的普通文件夹操作）与安全规则 |
 | [USER_GUIDE.md](./USER_GUIDE.md) | Excel、搜索、附件/ZIP 与用户操作 |
 | [TESTING.md](./TESTING.md) 与 [测试证据索引](./tests/TEST_EVIDENCE_INDEX.md) | 现行验证方法与各次独立原始证据 |
 | [正式前端源码说明](./src/IPSys.Web/wwwroot/README.md) | Explorer 前端源码、打包和代码契约 |

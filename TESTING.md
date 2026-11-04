@@ -1,5 +1,7 @@
 # IPSys 现行测试与验收规则
 
+> **2026-11-04 最新有效口径**：SQLCipher 新库 schema=3（旧版数据库不迁移），`project/ip/archive_folder` 三类 Folder；合同资料是项目内普通目录，不提供合同独立业务记录。所有普通资料模块（包括 general）Excel 六列，项目 11、知识产权 19。MCP stdio 当前 43 项。S1–S4 CI #521/#526/#529/#532 与 S5-1 [CI #533](https://github.com/zy19970/IPSys/actions/runs/41831428604) 已成功；S5-2 Edge 和 MCP↔GUI 同批对象总闭环及用户本机复验仍待独立结论。旧版文档中合同专用操作、旧 CI #473、V2 增量修补是历史口径。
+
 > **更新至 2026-11-02**：已核验产品/测试提交 `4567ae96b7` 的 Windows [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 为 completed/success（26 步成功、0 失败，两项可选 ZIP64 步骤跳过）。目前正式 Release 仍为 `v0.9.1-rc1`；自动 CI 不等于全部本地 GUI/第三方 Agent 验收。 原始测试报告与此前 FAIL/BLOCKED 事实保留原文，后续修复另列证据。
 
 ## 测试结果必须分层
@@ -14,13 +16,13 @@
 
 ## 主分支 Windows CI
 
-主工作流 `.github/workflows/web-windows.yml` 由 Windows runner 执行 Debug/Release、内嵌 Web、现行 **51 项 MCP**、Node/Explorer、真实 Edge/HTTP、SQLCipher/HTTP 与两种单文件 EXE 启动。[CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 为 26 success、0 failure、2 项可选 ZIP64 skipped；旧合并 CI 只作历史记录。
+主工作流 `.github/workflows/web-windows.yml` 由 Windows runner 执行 Debug/Release、内嵌 Web、现行 **43 项 MCP**、Node/Explorer、真实 Edge/HTTP、SQLCipher/HTTP 与两种单文件 EXE 启动。[CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 为 26 success、0 failure、2 项可选 ZIP64 skipped；旧合并 CI 只作历史记录。
 
 `tests/retest-v2-2026-10-22/scripts/` 和相应 fixture **仍被 CI 调用**，即使路径包含历史日期，也不是可随意删除的废弃文件。测试实际入口以工作流和 `src/IPSys.Web/tests/` 中的现行引用为准。
 
 ## Excel 和知识产权现行回归
 
-当前固定 XLSX：项目 **11 列**、知识产权 **19 列**、资料档案/资质/党团 **6 列**、综合资料 **6 列**（同名称/类别/备注/标签/年度/所属目录六列）；旧 4 列档案与旧 1/2/3 列综合资料不再作为兼容输入。合同无独立 Excel。`excel-scope-smoke.cjs` 与 `NativeIpExcelHttpSmoke.cs` 检查完整服务端筛选、三编号和工作区，不能沿用交互搜索 60 条上限。最新 [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 已通过相关自动回归。
+当前固定 XLSX：项目 **11 列**、知识产权 **19 列**、资料档案/资质/党团 **6 列**、综合资料 **6 列**（同名称/类别/备注/标签/年度/所属目录六列）；旧 4 列档案与旧 1/2/3 列综合资料不再作为兼容输入。合同资料作为普通项目目录，无独立合同 Excel。`excel-scope-smoke.cjs` 与 `NativeIpExcelHttpSmoke.cs` 检查完整服务端筛选、三编号和工作区，不能沿用交互搜索 60 条上限。最新 [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 已通过相关自动回归。
 
 ## 普通文件夹和操作细节专项
 

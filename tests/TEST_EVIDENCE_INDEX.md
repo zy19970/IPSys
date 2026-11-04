@@ -1,5 +1,8 @@
 # IPSys 测试证据索引（更新至 2026-11-02）
 
+> **2026-11-04 当前产品验收（下表 2026-11-02 数据为历史快照）**：S1 #521、S2 #526、S3 #529、S4 #532 均为对应产品 SHA 的 completed/success。S5-1 清理产品 `44203ab` 对应 [Windows CI #533](https://github.com/zy19970/IPSys/actions/runs/41831428604) completed/success，自包含 EXE artifact `13322799929`、依赖版 `13324245019`、Edge 复测证据 `13323219620`。schema=3，当前 43 MCP 工具，所有普通资料模块六列 Excel；S5-2 的 Edge 新判据提交 `69da6b7` 仍待完整 CI 与同批 MCP↔GUI E2E。历史 64/51 工具、Excel 3 列及原始 FAIL 均只能按原始日期解释。
+
+
 > 本索引区分最新产品自动化、历史运行、原始 Agent 报告与人工反馈，不改写旧报告原始失败或阻塞。最近产品代码 `4567ae96b7` 对应 [Windows CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) completed/success，文档更新后的主分支 SHA 不应冒充产品已重新验证。
 
 ## 最新操作细节收敛证据（2026-11-02）

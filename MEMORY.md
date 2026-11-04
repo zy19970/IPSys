@@ -725,3 +725,9 @@ S4 C05 O01—O07 实施与验收：MCP `list_folder_entries(workspace,section,pa
 ## 2026-11-04：S5 Edge 旧观察判据更新（待同 SHA CI）
 
 在 S5-1 提交 `44203ab50966c5e6b1e2f84038e54a09347482bc` 后，其对应 Windows CI #533 已 completed/success。接续本轮 S5-2 更新活跃 Edge t-browser 的 T-P2-02/T-P2-09：拖拽补真正 dragstart/drop/确认与关联迁移核验；PDF 改成连续滚动双页 Canvas+render status 的真实观察，不再依赖不存在的“下一页”。没有改生产功能和用户实际库；新真实 Edge 运行结论待同 SHA CI，不能提前宣称观察通过。第16.4节 MCP↔GUI 跨入口全链路仍待做。
+
+## 2026-11-04：S5-3 现行文档统一（批量提交记录）
+
+S5-3 文档同步：实际检查 `ExcelLedger.cs` 确认所有 archive_folder（含 general）使用六列 FolderColumns，项目11列、知产19列；数据库 `ResourceSchemaV2.Version=3`；当前 stdio MCP 43 项，合同退出独立类型。统一 README、DESIGN、DEVELOPMENT_PLAN、REQUIREMENTS、M0、MCP_CODEX、USER_GUIDE、UI_BASELINE、TESTING、证据索引、Wiki 与 AgentGuidance 的现行说明，保留 dated 历史内容。S5-1 代码提交 44203ab 与 CI #533 已核验通过；S5-2 新 Edge 脚本 CI #534 以及第16.4节同一批 MCP→GUI→MCP E2E 尚需真实结果。一次大批量文档提交脚本因工具调用上限失败，main 没有发生半提交；改为分组生成 blobs 再一次原子提交。
+
+最近会话：`memory/sessions/2026-11-04-IPSys-S5最终清理前仓库梳理.md`，本轮进度第三项。

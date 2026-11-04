@@ -731,3 +731,7 @@ K01—K12 在当前自动 Smoke 可覆盖的断言均执行通过：K01 旧 MCP 
 ### 2026-11-04 S5 第二批：活跃 Edge 观察判据修订（待 CI 证实）
 
 活跃 `tests/retest-v2-2026-10-22/scripts/t-browser.cjs` 的 T-P2-02 原来未派发 dragstart、未点击移动确认，也没有核对 FileId 的真实关联变化，反而按任何 toast 直接判定 bug。本批改为从项目附件真实事件分发、项目到 IP 目录、confirm、原件 FileId 的 source/target 树状态校验。T-P2-09 原断言仍寻找“下一页”按钮，而实际 PDF 阅读器已经连续滚动；改为第1/2页槽位与 canvas 按需渲染、滚动第2页和渲染状态检查。新判据仍可能真实失败，不能为了消除历史 FAIL 改为无条件 PASS。此为测试工具更新；Windows Edge 实测及整体验收以本提交对应 CI 输出为准。
+
+### 2026-11-04 S5-3 文档同步
+
+S5-3 文档同步：实际检查 `ExcelLedger.cs` 确认所有 archive_folder（含 general）使用六列 FolderColumns，项目11列、知产19列；数据库 `ResourceSchemaV2.Version=3`；当前 stdio MCP 43 项，合同退出独立类型。统一 README、DESIGN、DEVELOPMENT_PLAN、REQUIREMENTS、M0、MCP_CODEX、USER_GUIDE、UI_BASELINE、TESTING、证据索引、Wiki 与 AgentGuidance 的现行说明，保留 dated 历史内容。S5-1 代码提交 44203ab 与 CI #533 已核验通过；S5-2 新 Edge 脚本 CI #534 以及第16.4节同一批 MCP→GUI→MCP E2E 尚需真实结果。一次大批量文档提交脚本因工具调用上限失败，main 没有发生半提交；改为分组生成 blobs 再一次原子提交。

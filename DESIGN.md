@@ -1,5 +1,7 @@
 # IPSys 现行技术设计（SQLCipher V2 + Explorer）
 
+> **现行基线（2026-11-04，S5）**：SQLCipher 新库结构版本 **3**，Folder 类型仅 `project`、`ip`、`archive_folder`；项目内可任意层创建普通文件夹，合同资料不再是独立业务对象。所有普通资料模块（含综合资料）Excel **6 列**，项目 11 列、知识产权 19 列；MCP stdio **43 项工具**。S1/S2/S3/S4 CI #521/#526/#529/#532 通过，S5-1 [CI #533](https://github.com/zy19970/IPSys/actions/runs/41831428604) 通过。S5-2 Edge 脚本 CI #534 与第16.4节跨入口闭环仍需单独核实。旧 `v0.9.1-rc1` Release 不包含最新 main。历史正文与 CI 记录仅供追溯，以本段和当前源码为准。
+
 > **现行技术基线（2026-11-02）**：已核验产品/测试提交 `4567ae96b7` 的 Windows [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 为 completed/success（26 步成功、0 失败，两项可选 ZIP64 步骤跳过）。目前正式 Release 仍为 `v0.9.1-rc1`；自动 CI 不等于全部本地 GUI/第三方 Agent 验收。 N1～N4、R0～R4 和早期 OneDrive 方案属于历史记录。
 
 ## 1. 进程与界面架构
@@ -8,9 +10,9 @@
 
 正式前端全部位于 `src/IPSys.Web/wwwroot/`：页面源码 `index.html`、`css/app.css`、`js/*.js` 与上传、下载、ZIP64、PDF.js 等能力模块共享这一目录；`tools/bundle.cjs` 在构建时生成 `wwwroot/dist/index.html`、`style.css`、`app.js`，由 MSBuild 按固定逻辑资源名嵌入 EXE。运行时由 `EmbeddedWebAssets` 读取内嵌资源，不向外输出物理 `wwwroot` 文件夹。只修改前端源码，不在 Git 中维护生成的 `dist/`。
 
-本地默认 Windows Release 以 `win-x64` / `PublishSingleFile=true` / `SelfContained=false` 构建为依赖环境的单一 EXE，目标机需 .NET 8 Windows Desktop 与 ASP.NET Core 两种运行时；手动 GitHub Release 同时生成自包含版与依赖环境版。MCP 由同一个 EXE 的 `--mcp` stdio 模式、受授权的同用户命名管道和宿主会话运行，现行源码清单为 **64 项无 `v2_*` 别名的工具**；详情见 [MCP_CODEX.md](./MCP_CODEX.md)。
+本地默认 Windows Release 以 `win-x64` / `PublishSingleFile=true` / `SelfContained=false` 构建为依赖环境的单一 EXE，目标机需 .NET 8 Windows Desktop 与 ASP.NET Core 两种运行时；手动 GitHub Release 同时生成自包含版与依赖环境版。MCP 由同一个 EXE 的 `--mcp` stdio 模式、受授权的同用户命名管道和宿主会话运行，现行 stdio 清单为 **43 项无 `v2_*` 别名的工具**；详情见 [MCP_CODEX.md](./MCP_CODEX.md)。
 
-## 2. SQLCipher V2 数据身份
+## 2. SQLCipher schema 3 数据身份
 
 一个加密库划分 `company` / `personal` 工作区，后端验证 SQLCipher 加密、工作区、认证 Token、loopback Host/Origin，前端不能代替服务端授权。使用 `ResourceSchemaV2.cs` 定义的 `folders`、`files`、`file_versions`、`file_objects`、`file_chunks`、`folder_file_links` 等真实结构：
 
@@ -22,15 +24,15 @@
 | FolderFileLink | 记录/分类与 File 的具体归属，可同工作区多位置关联 |
 | FileObject / FileChunk | SQLCipher 加密字节与分块；同区可按显式选择复用物理对象 |
 
-合同的父级必须是项目，项目可以无合同；业务整记录复制/跨区转移必须保持合同归属、版本顺序和所有原件；公司/个人**不能共享相同物理 FileObjectId**。同区共享 FileId 意味着共享版本链；独立 FileId 复用物理字节不共享逻辑版本。查重依据 SHA-256，但是否关联、复用字节或独立保存由用户操作决定，不能静默合并。业务字段见 [M0_DATA_DICTIONARY.md](./M0_DATA_DICTIONARY.md)。
+项目可以直接存放附件、在内部建立任意层普通目录；业务整记录复制/跨区转移必须保持真实目录层级、版本顺序和全部原件；公司/个人**不能共享相同物理 FileObjectId**。同区共享 FileId 意味着共享版本链；独立 FileId 复用物理字节不共享逻辑版本。查重依据 SHA-256，但是否关联、复用字节或独立保存由用户操作决定，不能静默合并。业务字段见 [M0_DATA_DICTIONARY.md](./M0_DATA_DICTIONARY.md)。
 
-普通资料目录统一为 `archive_folder`，可直接关联附件、继续嵌套子文件夹，类别、年度、标签、备注选填。项目/知识产权/合同保留各自业务属性。普通删除目录整树入回收站，永久删除按共享 LinkId 引用清理。普通列表的“更新时间”来自数据库有效更改、附件版本和子目录变更，而非申请日或签约日。
+普通资料目录统一为 `archive_folder`，可直接关联附件、继续嵌套子文件夹，类别、年度、标签、备注选填。项目/知识产权保留各自业务属性；合同资料只有普通目录属性。普通删除目录整树入回收站，永久删除按共享 LinkId 引用清理。普通列表的“更新时间”来自数据库有效更改、附件版本和子目录变更，而非申请日或签约日。
 
 用户当前仍在开发阶段，不安排旧 V1 测试数据库迁移；这一决定**不允许**自动删除、重置或覆盖用户已创建的实际资料库。
 
 ## 3. 服务、接口与任务安全
 
-正式业务网页、MCP、固定 Excel、统一搜索、回收站、PDF 预览与导出统一 V2 Folder/File/Link/Version 身份。已有历史 `--smoke` 兼容断言不表示正式程序继续开放旧 V1 业务接口。MCP 的 64 个工具、同用户授权和会话撤销规则独立于 Explorer 外观。
+正式业务网页、MCP、固定 Excel、统一搜索、回收站、PDF 预览与导出统一 V2 Folder/File/Link/Version 身份。已有历史 `--smoke` 兼容断言不表示正式程序继续开放旧 V1 业务接口。MCP 的 43 个工具、同用户授权和会话撤销规则独立于 Explorer 外观。
 
 Agent 工作规范配置位于当前 Windows 用户的 LocalApplicationData/IPSys/agent-guidance.json，独立于数据库与前端 localStorage；内置资源 + 用户覆盖由 AgentGuidance/AgentGuidanceStore 为同一权威来源。GET/PUT/POST 管理接口必须通过现有浏览器会话授权，MCP 工具读取还需本机授权；配置版本与正文哈希供客户端识别旧内容。第三阶段已通过标准 Windows 自动化回归，真实第三方 Agent 的端到端任务仍需另验。
 
@@ -40,7 +42,7 @@ ZIP 与文件夹式导出支持 ZIP64；正式 ZIP 生成代码在 `src/IPSys.We
 
 ## 4. 当前业务接口与导出一致性
 
-Excel 模板由 `ExcelLedger.cs` 统一维护：项目 **11 列**、知识产权 **19 列**、档案/资质/党团 **6 列**（名称、类别、备注、标签、年度、所属目录）、综合资料 **3 列**（名称、备注、所属目录）；旧档案 4 列及综合资料 1/2 列为兼容导入格式。导出按 `all|filtered` 在服务端完整数据集筛选，知识产权支持业务类型筛选，不以页面搜索 60 条显示上限截断。合同没有独立 Excel。
+Excel 模板由 `ExcelLedger.cs` 统一维护：项目 **11 列**、知识产权 **19 列**、档案/资质/党团 **6 列**（名称、类别、备注、标签、年度、所属目录）、综合资料 **6 列**（名称、类别、备注、标签、年度、所属目录）；旧档案 4 列及综合资料 1/2/3 列不再作为现行导入格式。导出按 `all|filtered` 在服务端完整数据集筛选，知识产权支持业务类型筛选，不以页面搜索 60 条显示上限截断。合同没有独立 Excel。
 
 知识产权现行为十种固定类型：全部类型使用统一编号 `number`，公开号与授权公告号仅专利按实际选填。公司党团建设有独立分类和 4 个 MCP 专用工具；公司业务档案预置七个目录创建后是普通可管理目录。PDF 使用多页连续滚动与按需渲染；WinForms 关闭按钮隐藏到系统托盘，显式“退出程序”才结束宿主，资源监控含本程序和整机 CPU。
 
