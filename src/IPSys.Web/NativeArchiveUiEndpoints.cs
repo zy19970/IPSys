@@ -28,7 +28,9 @@ static class NativeArchiveUiEndpoints
                     ?new[]{"certificate","achievement","party","general","project"}
                     :new[]{"certificate","achievement","academic","general","project"})
                 {
-                    var parentIds=new List<long>{0};
+                    // project:0 is a virtual category, never a valid parent.
+                    var parentIds=scope=="project"?new List<long>()
+                        :new List<long>{0};
                     if(scope=="project")
                         parentIds.AddRange(NativeFolderStore.List(v.Db,workspace,
                             FolderKinds.Project).Select(x=>x.Folder.Ref.Id));

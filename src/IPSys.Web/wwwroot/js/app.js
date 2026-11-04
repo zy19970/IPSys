@@ -380,6 +380,7 @@ const Drive = {
     const s = this.state;
     return s.view === "files" && !s.query.trim() &&
       (String(s.folderId).startsWith("af:") ||
+       String(s.folderId).startsWith("p:") ||
        (String(s.folderId).startsWith("k:") &&
         catIsDir(String(s.folderId).slice(2),VaultStore.ws)));
   },

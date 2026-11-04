@@ -1349,23 +1349,33 @@ function archiveSortAllowed(node) {
 
 async function reorderArchiveEntry(node, direction) {
   if (!archiveSortAllowed(node)) {
-    toast("先返回业务档案目录并切换到「自定义顺序」，再调整顺序");
+    toast("请进入资料或项目子目录，切换到「自定义顺序」后再调整");
     return;
   }
   const parent = Drive.currentFolder;
-  const peers = (parent.children || []).filter(n =>
+  // Use the currently rendered custom order instead of the underlying
+  // name-sorted children. Mixed attachments do not participate.
+  const allPeers=(parent.children || []).filter(n=>
     n.biz?.kind === "archive_folder");
+  const peers=Drive.sortedItems.filter(n=>n.biz?.kind==="archive_folder");
+  const ids=new Set(allPeers.map(n=>n.id));
+  if(peers.length!==ids.size ||
+     new Set(peers.map(n=>n.id)).size!==ids.size ||
+     peers.some(n=>!ids.has(n.id))) {
+    toast("目录列表与当前排序快照不一致，请刷新后重试");
+    return;
+  }
   const index = peers.findIndex(n => n.id === node.id);
   const next = index + direction;
   if (next < 0 || next >= peers.length) return;
   [peers[index], peers[next]] = [peers[next], peers[index]];
   const section=archiveScopeSection();
   const parentId = parent.id === "k:" + section ? 0 : Number(parent.biz?.id);
-  const items = peers.map(n => ({
-    /* 同层兄弟现在全是普通文件夹；后端仍接受 record 作为旧写法。 */
-    kind: "folder",
-    id: Number(n.biz?.id),
-  }));
+  if(!section || (section==="project" && (!Number.isSafeInteger(parentId)||parentId<=0))) {
+    toast("项目目录排序需要真实的项目或上级目录");
+    return;
+  }
+  const items = peers.map(n => ({kind:"folder",id:Number(n.biz.id)}));
   try {
     await VaultStore.api("/api/v2/folders/" + VaultStore.ws +
       "/entries/reorder?section=" + encodeURIComponent(section), {

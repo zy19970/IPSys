@@ -434,7 +434,7 @@ const VaultStore = {
           const subs=projectDirectories.filter(dir=>
             Number(dir.biz.parentId)===Number(p.id));
           if (subs?.length) {
-            node.children = [...own.children, ...subs].sort((a, b) => cmpName(a, b));
+            node.children = [...own.children, ...subs];
             node.size = node.children.reduce((s, k) => s + (k.size || 0), 0);
             const times = [node.mtime,...node.children.map(x => x.mtime)].filter(Number.isFinite);
             node.mtime = times.length ? Math.max(...times) : null;

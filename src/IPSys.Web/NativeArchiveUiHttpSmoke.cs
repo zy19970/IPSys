@@ -260,9 +260,15 @@ static class NativeArchiveUiHttpSmoke
                 x.GetProperty("parentId").ValueKind==JsonValueKind.Null)
             .Select(x=>x.GetProperty("id").GetInt64()).Reverse().ToArray();
         using(var order=await client.PostAsJsonAsync(
+            "/api/v2/folders/company/entries/reorder?section=certificate",
+            new ArchiveEntryReorder(0,certificateIds
+                .Select(id=>new ArchiveEntryOrderItem("folder",id)).ToArray())))
+            order.EnsureSuccessStatusCode();
+        using(var retired=await client.PostAsJsonAsync(
             "/api/v2/ui/folders/company/certificate/order",
             new NativeIpUiOrderInput(certificateIds)))
-            order.EnsureSuccessStatusCode();
+            Assert(retired.StatusCode==System.Net.HttpStatusCode.NotFound,
+                "S4 retired module-wide reorder endpoint is absent");
         Console.WriteLine("N2-04 NATIVE ARCHIVE BROWSER SQLCIPHER PASS");
     }
 }

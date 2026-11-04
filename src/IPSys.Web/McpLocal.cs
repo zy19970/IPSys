@@ -803,7 +803,7 @@ static partial class McpLocal
            "update_file_metadata" or "download_file_version" or
            "associate_file" or "copy_file" or "restore_file_link" or
            "transfer_project" or "transfer_ip" or "list_folder_entries" or
-           "reorder_entries" or "reorder_records" or "reorder_folders" or
+           "reorder_entries" or "reorder_records" or
            "search_records" or "list_trash" or "restore_trash" or "purge_trash")
             return await ExecuteExtraAsync(client,workspace,name,args,stop);
         if(name is "list_folders" or "create_folder" or "update_folder" or

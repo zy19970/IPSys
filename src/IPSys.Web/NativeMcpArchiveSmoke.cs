@@ -212,18 +212,18 @@ static class NativeMcpArchiveSmoke
             workspace="company",section="achievement",parent_id=folder,name=tag+"混排目录"
         }));
         var entries=await Run("list_folder_entries",new{
-            workspace="company",parent_id=folder
+            workspace="company",section="achievement",parent_id=folder
         });
         Check(entries is JsonArray before &&
             before.Count==2,"list_folder_entries returns mixed direct children");
         await Run("reorder_entries",new{
-            workspace="company",parent_id=folder,
+            workspace="company",section="achievement",parent_id=folder,
             items=new object[]{new {kind="folder",id=archive},
                 new {kind="folder",id=peer}},
             request_id=Guid.NewGuid().ToString("N")
         });
         var ordered=await Run("list_folder_entries",new{
-            workspace="company",parent_id=folder
+            workspace="company",section="achievement",parent_id=folder
         });
         Check(ordered is JsonArray arr && arr.Count==2 &&
               arr[0]?["folder"]?["ref"]?["id"]?.GetValue<long>()==archive &&
@@ -231,7 +231,7 @@ static class NativeMcpArchiveSmoke
               "reorder_entries persists mixed folder/record order");
         bool staleRejected=false;
         try{await Run("reorder_entries",new{
-            workspace="company",parent_id=folder,
+            workspace="company",section="achievement",parent_id=folder,
             items=new object[]{new {kind="folder",id=archive}}
         });}catch(IOException ex)when(ex.Message.Contains("409")){
             staleRejected=true;
@@ -428,15 +428,17 @@ static class NativeMcpArchiveSmoke
             x?["folder"]?["ref"]?["id"]?.GetValue<long>()??0).ToArray();
         Check(ids.Length>0&&ids.All(x=>x>0),
             "personal archive ordering input comes from current V2 folders");
-        await Run("reorder_folders",new{
-            workspace="personal",section="achievement",ids,
+        await Run("reorder_entries",new{
+            workspace="personal",section="achievement",parent_id=0,
+            items=ids.Select(id=>new {kind="folder",id}).ToArray(),
             request_id=Guid.NewGuid().ToString("N")
         });
-        bool wrongSectionOrder=false;
-        try{await Run("reorder_folders",new{
-            workspace="company",section="achievement",ids=new[]{archive}
-        });}catch(IOException){wrongSectionOrder=true;}
-        Check(wrongSectionOrder,"company achievement must use mixed-entry reorder");
+        Check(!names.Contains("reorder_folders"),
+            "S4 retired module-wide directory reorder must be absent");
+        var retiredSort=await McpLocal.RunSmokeProtocolToolAsync(
+            "reorder_folders",Args(new{workspace="company",section="achievement",ids}));
+        Check(retiredSort["error"]?["code"]?.GetValue<int>()==-32602,
+            "S4 retired reorder_folders tools/call returns unknown tool");
         await Run("delete_folder",new{
             workspace="personal",section="achievement",folder_id=newArchive
         });
@@ -610,6 +612,45 @@ static class NativeMcpArchiveSmoke
               }))["businessOk"]?.GetValue<bool>()==false,
             "S3 X12 unsupported project-to-personal-general is a known rejection");
         Console.WriteLine("S3 X02/X05/X07/X12 MCP SQLCIPHER PASS");
+        // S4: MCP must enumerate and reorder real project children using
+        // section + project FolderId, then refuse virtual project root=0.
+        long sortOne=Id(await Run("create_folder",new{
+            workspace="company",section="project",parent_id=projectBId,
+            name=s3+"排序甲"
+        }));
+        long sortTwo=Id(await Run("create_folder",new{
+            workspace="company",section="project",parent_id=projectBId,
+            name=s3+"排序乙"
+        }));
+        var projectEntries=(await Run("list_folder_entries",new{
+            workspace="company",section="project",parent_id=projectBId
+        })).AsArray().Select(x=>x?["folder"]?["ref"]?["id"]?.GetValue<long>()??0)
+            .ToArray();
+        Check(projectEntries.Contains(sortOne)&&projectEntries.Contains(sortTwo),
+            "O01 MCP project siblings are listed under a real project parent");
+        var reverse=projectEntries.Reverse().ToArray();
+        await Run("reorder_entries",new{
+            workspace="company",section="project",parent_id=projectBId,
+            items=reverse.Select(id=>new {kind="folder",id}).ToArray(),
+            request_id=Guid.NewGuid().ToString("N")
+        });
+        var reordered=(await Run("list_folder_entries",new{
+            workspace="company",section="project",parent_id=projectBId
+        })).AsArray().Select(x=>x?["folder"]?["ref"]?["id"]?.GetValue<long>()??0)
+            .ToArray();
+        Check(reordered.SequenceEqual(reverse),
+            "O01 MCP project sibling order is persisted and reloaded");
+        string badProjectSort=Guid.NewGuid().ToString("N");
+        var badProject=await Run("reorder_entries",new{
+            workspace="company",section="project",parent_id=0,
+            items=new[]{new {kind="folder",id=sortOne}},request_id=badProjectSort
+        });
+        Check(badProject["status"]?.GetValue<string>()=="failed" &&
+            (await Run("get_operation_result",new{
+                workspace="company",request_id=badProjectSort
+            }))["businessOk"]?.GetValue<bool>()==false,
+            "O04 project virtual root rejects definitely, not uncertain");
+        Console.WriteLine("S4 O01/O04 MCP SQLCIPHER PASS");
         Console.WriteLine("N2-04 ARCHIVE GENERAL MCP V2 SQLCIPHER PASS");
     }
 }

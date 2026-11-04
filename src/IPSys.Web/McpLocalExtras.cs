@@ -81,28 +81,24 @@ static partial class McpLocal
             ["target_workspace"]=Field("string","目标工作区",Workspaces),
             ["move"]=new Dictionary<string,object>{{"type","boolean"},{"description","true 移动，false 复制"}}
         },["workspace","ip_id","target_workspace"]),
-        Tool("list_folder_entries","获取公司业务档案 achievement 指定父目录下的目录与资料混排列表，供 reorder_entries 使用。parent_id=0 表示根。",new(){
-            ["workspace"]=Field("string","必须为 company",["company"]),
-            ["parent_id"]=Field("integer","目录 FolderId；0 表示根目录")
-        },["workspace","parent_id"]),
-        Tool("reorder_entries","按当前父目录下全部目录和资料的精确排列持久化排序；须提供完整 items，每项为 kind=folder 和 id；parent_id=0 为根。",new(){
-            ["workspace"]=Field("string","必须为 company",["company"]),
-            ["parent_id"]=Field("integer","父目录 FolderId；0 为根"),
+        Tool("list_folder_entries","列举指定工作区、模块和实际父目录下的全部有效普通子文件夹，按持久 position 返回；非 project 模块根 parent_id=0，project 必须使用真实项目/子目录 FolderId。",new(){
+            ["workspace"]=Field("string","工作区",Workspaces),
+            ["section"]=Field("string","普通目录模块：company certificate/achievement/party/general/project，personal certificate/achievement/academic/general/project"),
+            ["parent_id"]=Field("integer","同层父 FolderId；仅非 project 模块可传0表示根")
+        },["workspace","section","parent_id"]),
+        Tool("reorder_entries","仅重排指定父级的全部有效普通子文件夹；items 必须完整、唯一且仅含 kind=folder,id=FolderId，不包含附件或后代；project 的 parent_id 必须是真实项目/目录 ID。",new(){
+            ["workspace"]=Field("string","工作区",Workspaces),
+            ["section"]=Field("string","普通目录模块，与 list_folder_entries 保持一致"),
+            ["parent_id"]=Field("integer","同层父 FolderId；仅非 project 模块可用0"),
             ["items"]=new {type="array",minItems=1,maxItems=1000,
-                items=Field("object","按顺序排列的 {kind:folder/record,id:FolderId}")}
-        },["workspace","parent_id","items"]),
+                items=Field("object","严格仅含 {kind:folder,id:正整数 FolderId}")}
+        },["workspace","section","parent_id","items"]),
         Tool("reorder_records","调整同工作区项目列表中选中记录的相对顺序；ids 按目标顺序提供，未选择的记录保持原有槽位。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
             ["kind"]=Field("string","仅 project",["project"]),
             ["ids"]=new {type="array",minItems=1,maxItems=1000,
                 items=Field("integer","待排序记录 FolderId")}
         },["workspace","kind","ids"]),
-        Tool("reorder_folders","调整证书、科研成果、个人履历等非混排档案模块的全部记录顺序；ids 必须包含该模块当前全部有效 FolderId。公司 achievement 混排应使用 reorder_entries。",new(){
-            ["workspace"]=Field("string","工作区",Workspaces),
-            ["section"]=Field("string","archive 资料类别"),
-            ["ids"]=new {type="array",minItems=1,maxItems=1000,
-                items=Field("integer","全量档案 FolderId")}
-        },["workspace","section","ids"]),
         Tool("search_records","工作区统一搜索；文件命中 kind=file 只是搜索结果种类，不等于回收站 kind=v2_file/v2_ip_file。恢复前必须 list_trash。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
             ["query"]=Field("string","检索词，最长 100 字；匹配记录名称、附件说明、分号标签、文件编号及路径。返回命中字段和明确的文件/关联 ID。"),
@@ -130,7 +126,7 @@ static partial class McpLocal
 
     private static bool ExtraWrite(string name) => name is
         "move_folder" or "transfer_folder" or "reorder_entries" or
-        "reorder_records" or "reorder_folders" or
+        "reorder_records" or
         "associate_file" or "copy_file" or "restore_file_link" or
         "transfer_project" or "transfer_ip" or "restore_trash" or "purge_trash";
 
@@ -187,7 +183,7 @@ static partial class McpLocal
                kind.GetString()!="folder" ||
                id.ValueKind!=JsonValueKind.Number ||
                !id.TryGetInt64(out long number)||number<=0||!seen.Add(number))
-                throw new IOException("items 每项必须仅含 kind=folder/record 与唯一正整数 id。");
+                throw new McpKnownRejectionException("items 每项必须仅含 kind=folder 与唯一正整数 id。");
             result.Add(new JsonObject{["kind"]=kind.GetString(),["id"]=number});
         }
         if(result.Count==0)throw new McpKnownRejectionException("items 不能为空。");
@@ -319,19 +315,24 @@ static partial class McpLocal
                     $"/api/v2/ip/{workspace}/{Positive(args,"ip_id")}/transfer",
                     TransferBody());
             case "list_folder_entries":
-            {
-                if(workspace!="company")throw new IOException("仅支持公司业务档案混排列举。");
-                long parent=Nonnegative(args,"parent_id");
-                return await RequestAsync(client,HttpMethod.Get,
-                    "/api/v2/folders/company/entries?section=achievement"+
-                    (parent==0?"":"&parentId="+parent));
-            }
             case "reorder_entries":
             {
-                if(workspace!="company")throw new McpKnownRejectionException("仅支持公司业务档案混排。");
-                long parent=Nonnegative(args,"parent_id");
+                string section=RequiredText(args,"section");
+                if(!ArchiveDirectoryScopes.Allowed(workspace,section))
+                    throw new McpKnownRejectionException("工作区不支持该普通目录模块。");
+                long parent;
+                try{parent=Nonnegative(args,"parent_id");}
+                catch(IOException ex){throw new McpKnownRejectionException(ex.Message);}
+                if(section=="project" && parent==0)
+                    throw new McpKnownRejectionException("项目目录必须指定真实项目或子目录的 parent_id。");
+                string endpoint="/api/v2/folders/"+workspace+"/entries?section="+
+                    Uri.EscapeDataString(section);
+                if(name=="list_folder_entries")
+                    return await RequestAsync(client,HttpMethod.Get,
+                        endpoint+(parent==0?"":"&parentId="+parent));
                 return await RequestAsync(client,HttpMethod.Post,
-                    "/api/v2/folders/company/entries/reorder?section=achievement",
+                    "/api/v2/folders/"+workspace+"/entries/reorder?section="+
+                        Uri.EscapeDataString(section),
                     new JsonObject{["parentId"]=parent,
                         ["items"]=ReorderItems(args)});
             }
@@ -345,18 +346,7 @@ static partial class McpLocal
                     $"/api/v2/ui/order/{workspace}/{kind}",
                     JsonSerializer.SerializeToNode(new {ids})!);
             }
-            case "reorder_folders":
-            {
-                string section=RequiredText(args,"section");
-                if(ArchiveRules.Module(workspace,section)==null)
-                    throw new McpKnownRejectionException("工作区不支持此资料类别。");
-                if(workspace=="company"&&section=="achievement")
-                    throw new McpKnownRejectionException("公司业务档案请使用 reorder_entries 保证目录混排。");
-                long[] ids=ReorderIds(args);
-                return await RequestAsync(client,HttpMethod.Post,
-                    $"/api/v2/ui/folders/{workspace}/{Uri.EscapeDataString(section)}/order",
-                    JsonSerializer.SerializeToNode(new {ids})!);
-            }
+
             case "search_records":
             {
                 string url="/api/v2/search/"+workspace+"?q="+

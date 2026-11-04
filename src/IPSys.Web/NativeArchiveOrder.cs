@@ -20,6 +20,8 @@ static class NativeArchiveOrder
         if(!ArchiveDirectoryScopes.Allowed(workspace,section))
             throw new ArgumentException("当前模块不支持目录混排。");
         if(parent is <=0)throw new ArgumentException("无效的目录。");
+        if(section=="project" && parent is null)
+            throw new ArgumentException("项目目录排序必须指定真实项目或其子目录 FolderId。");
         if(parent is long id)
         {
             var folder=NativeArchiveStore.Get(db,

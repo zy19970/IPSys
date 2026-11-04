@@ -880,6 +880,164 @@ static class NativeFolderTreeTransferSmoke
         Console.WriteLine("S3 X01-X06/X08/X12 SQLCIPHER HTTP PASS");
     }
 
+    private static async Task VerifyS4OrderAsync(HttpClient client,Vault vault)
+    {
+        string tag="S4-"+Guid.NewGuid().ToString("N")[..8];
+        async Task<long[]> Ids(string ws,string sec,long parent)
+        {
+            var result=await client.GetFromJsonAsync<JsonElement>(
+                $"/api/v2/folders/{ws}/entries?section={sec}"+
+                (parent==0?"":"&parentId="+parent));
+            return result.EnumerateArray().Select(x=>
+                x.GetProperty("folder").GetProperty("ref")
+                .GetProperty("id").GetInt64()).ToArray();
+        }
+        static ArchiveEntryReorder Payload(long parent,long[] ids)=>
+            new(parent,ids.Select(x=>new ArchiveEntryOrderItem("folder",x)).ToArray());
+        Task<HttpResponseMessage> Send(string ws,string sec,ArchiveEntryReorder payload)=>
+            client.PostAsJsonAsync(
+                $"/api/v2/folders/{ws}/entries/reorder?section={sec}",payload);
+        foreach(var (ws,sec) in new[]{
+            ("company","certificate"),("company","achievement"),
+            ("company","party"),("company","general"),("company","project"),
+            ("personal","certificate"),("personal","achievement"),
+            ("personal","academic"),("personal","general"),("personal","project")})
+        {
+            long parent=0;
+            if(sec=="project")
+            {
+                var p=await Read(await client.PostAsJsonAsync(
+                    $"/api/v2/folders/{ws}/project",
+                    new{project=new{name=tag+"项目",projectType="科研项目"}}));
+                parent=p.GetProperty("id").GetInt64();
+            }
+            long a=await Folder(client,ws,sec,tag+"甲"+sec,parent==0?null:parent);
+            long b=await Folder(client,ws,sec,tag+"乙"+sec,parent==0?null:parent);
+            var previous=await Ids(ws,sec,parent);
+            Check(previous.Contains(a)&&previous.Contains(b),
+                "O01 eligible direct siblings visible in "+ws+"/"+sec);
+            var reversed=previous.Reverse().ToArray();
+            using(var response=await Send(ws,sec,Payload(parent,reversed)))
+                response.EnsureSuccessStatusCode();
+            Check((await Ids(ws,sec,parent)).SequenceEqual(reversed),
+                "O01 same-parent order persists across HTTP reload");
+
+            long d=await Folder(client,ws,sec,tag+"深层甲",a);
+            long e=await Folder(client,ws,sec,tag+"深层乙",a);
+            using(var response=await Send(ws,sec,Payload(a,[e,d])))
+                response.EnsureSuccessStatusCode();
+            Check((await Ids(ws,sec,a)).SequenceEqual(new[]{e,d}) &&
+                  (await Ids(ws,sec,parent)).SequenceEqual(reversed),
+                "O01 nested reorder isolated from neighboring parents");
+            foreach(var wrong in new[]{
+                new long[]{e},new long[]{e,e},new long[]{e,d,b}})
+            {
+                using var response=await Send(ws,sec,Payload(a,wrong));
+                Check(response.StatusCode==HttpStatusCode.Conflict &&
+                     (await Ids(ws,sec,a)).SequenceEqual(new[]{e,d}),
+                    "O03 missing, duplicated or foreign ID must rollback");
+            }
+            using(var invalid=await Send(ws,sec,
+                new ArchiveEntryReorder(a,[new ArchiveEntryOrderItem("record",d),
+                    new ArchiveEntryOrderItem("folder",e)])))
+                Check(invalid.StatusCode==HttpStatusCode.BadRequest,
+                    "O04 kind=record must be rejected");
+        }
+        using(var invalid=await Send("company","project",Payload(0,[1])))
+            Check(invalid.StatusCode==HttpStatusCode.BadRequest,
+                "O04 project virtual root cannot be sorted");
+        using(var invalid=await Send("company","general",Payload(999999999,[1])))
+            Check(invalid.StatusCode==HttpStatusCode.NotFound,
+                "O04 nonexistent parent must be rejected");
+        // O02: folder position changes cannot touch file links or versions.
+        long mixed=await Folder(client,"company","general",tag+"混排父");
+        long mixedA=await Folder(client,"company","general",tag+"混排甲",mixed);
+        long mixedB=await Folder(client,"company","general",tag+"混排乙",mixed);
+        byte[] firstBytes=[2,4,6,8],secondBytes=[1,3,5,7];
+        long fileId;
+        using(var upload=new HttpRequestMessage(HttpMethod.Post,
+            $"/api/v2/files/company/upload?folderId={mixedA}")
+            {Content=new ByteArrayContent(firstBytes)})
+        {
+            upload.Headers.Add("X-File-Name",Uri.EscapeDataString(tag+"-first.txt"));
+            fileId=(await Read(await client.SendAsync(upload)))
+                .GetProperty("fileId").GetInt64();
+        }
+        using(var version=new HttpRequestMessage(HttpMethod.Post,
+            $"/api/v2/files/company/{fileId}/versions")
+            {Content=new ByteArrayContent(secondBytes)})
+        {
+            version.Headers.Add("X-File-Name",Uri.EscapeDataString(tag+"-second.txt"));
+            await Read(await client.SendAsync(version));
+        }
+        long linkId=(await Links(client,"company",mixedA))[0]
+            .GetProperty("id").GetInt64();
+        using(var response=await Send("company","general",Payload(mixed,[mixedB,mixedA])))
+            response.EnsureSuccessStatusCode();
+        Check((await Links(client,"company",mixedA))[0]
+                .GetProperty("id").GetInt64()==linkId &&
+              (await Links(client,"company",mixedA))[0]
+                .GetProperty("fileId").GetInt64()==fileId,
+            "O02 mixed-level folder reorder never rewrites FileId/LinkId");
+        for(int v=1;v<=2;v++)
+            Check((await client.GetByteArrayAsync(
+                $"/api/v2/files/company/{fileId}/versions/{v}/download"))
+                    .SequenceEqual(v==1?firstBytes:secondBytes),
+                "O02 mixed attachments retain exact version bytes");
+        // O05: a stale complete-sibling request cannot overwrite newly
+        // inserted or soft-deleted entries.
+        long stale=await Folder(client,"company","general",tag+"过期父");
+        await Folder(client,"company","general",tag+"过期甲",stale);
+        await Folder(client,"company","general",tag+"过期乙",stale);
+        var snapshot=await Ids("company","general",stale);
+        long added=await Folder(client,"company","general",tag+"过期丙",stale);
+        using(var response=await Send("company","general",Payload(stale,snapshot)))
+            Check(response.StatusCode==HttpStatusCode.Conflict,
+                "O05 inserting a sibling invalidates previous complete-set input");
+        var withNew=await Ids("company","general",stale);
+        using(var deleted=await client.DeleteAsync(
+            $"/api/v2/folders/company/archive_folder/{added}?section=general"))
+            deleted.EnsureSuccessStatusCode();
+        using(var response=await Send("company","general",Payload(stale,withNew)))
+            Check(response.StatusCode==HttpStatusCode.Conflict,
+                "O05 deleting a sibling invalidates previous complete-set input");
+        Check((await Ids("company","general",stale)).SequenceEqual(snapshot),
+            "O05 rejected reorder did not mutate any active sibling");
+        // O07: force an error on the SECOND row update. The first update
+        // must roll back atomically, rather than persist partial ordering.
+        long holder=await Folder(client,"company","general",tag+"事务父");
+        long first=await Folder(client,"company","general",tag+"事务甲",holder);
+        long second=await Folder(client,"company","general",tag+"事务乙",holder);
+        long third=await Folder(client,"company","general",tag+"事务丙",holder);
+        var baseline=await Ids("company","general",holder);
+        using(var trigger=vault.Db.CreateCommand())
+        {
+            trigger.CommandText=$"""
+                CREATE TEMP TRIGGER s4_reorder_failure
+                BEFORE UPDATE OF position ON main.folders
+                WHEN NEW.id={second}
+                BEGIN SELECT RAISE(FAIL,'s4 test rollback'); END;
+                """;
+            trigger.ExecuteNonQuery();
+        }
+        try
+        {
+            using var response=await Send("company","general",
+                Payload(holder,[third,second,first]));
+            Check((int)response.StatusCode>=500,
+                "O07 injected second-row SQL error fails the HTTP write");
+            Check((await Ids("company","general",holder)).SequenceEqual(baseline),
+                "O07 all positions roll back after second-row failure");
+        }
+        finally
+        {
+            using var drop=vault.Db.CreateCommand();
+            drop.CommandText="DROP TRIGGER IF EXISTS temp.s4_reorder_failure;";
+            drop.ExecuteNonQuery();
+        }
+        Console.WriteLine("S4 O01/O03/O04/O05/O07 SQLCIPHER HTTP PASS");
+    }
+
     public static async Task VerifyAsync(HttpClient client,Vault vault)
     {
         string mark="TREE-"+Guid.NewGuid().ToString("N")[..8];
@@ -1017,6 +1175,7 @@ static class NativeFolderTreeTransferSmoke
         await VerifyCrossModuleRootMovesAsync(client,vault);
         await VerifyProjectDirectoriesAsync(client,vault);
         await VerifyS3ContractAsync(client,vault);
+        await VerifyS4OrderAsync(client,vault);
         Console.WriteLine("FOLDER TREE TRANSFER SMOKE PASS");
     }
 }

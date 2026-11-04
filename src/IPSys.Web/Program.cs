@@ -113,7 +113,7 @@ NativeArchiveGeneralExcelEndpoints.Map(app, Fail);
 NativeIpUiEndpoints.Map(app, Fail);
 NativeProjectContractUiEndpoints.Map(app, Fail);
 NativeArchiveUiEndpoints.Map(app, Fail);
-NativeArchiveUiOrderEndpoints.Map(app, Fail);
+// S4: legacy module-wide directory reorder removed from API registration.
 NativeArchiveActionsEndpoints.Map(app, Fail);
 NativeFolderBatchTransferEndpoints.Map(app, Fail);
 

@@ -47,6 +47,11 @@ const Drive={
  state:{view:"files",folderId:"af:70",query:"",ready:true,sortBy:"position",sortDir:"asc",
   statusFilter:null,extFilter:null},
  get currentFolder(){return nodes.get(this.state.folderId);},
+ // The actual Explorer sorts a copy of sourceItems by persisted position.
+ // Keep its display order independent of raw parent.children insertion order.
+ get sortedItems(){return [...(this.currentFolder?.children||[])].sort((a,b)=>
+    (Number.isFinite(a.order)?a.order:Infinity)-
+    (Number.isFinite(b.order)?b.order:Infinity));},
  clearSelection(){clearCount++;}
 };
 const VaultStore={ws:"company",async api(url,opts){
@@ -125,6 +130,38 @@ const fn=name=>vm.runInContext(name,context);
   parentId:70,items:[{kind:"folder",id:71},{kind:"folder",id:91},
    {kind:"folder",id:90}]
  });
+ // O06: when the underlying node array is name/insertion sorted in
+ // another order, the payload must follow the real visible custom order.
+ parent.children=[rec2,child,rec1];
+ rec1.order=0; child.order=1; rec2.order=2;
+ await fn("reorderArchiveEntry")(rec2,-1);
+ assert.deepEqual(JSON.parse(JSON.stringify(calls.at(-1).opts.json)),{
+   parentId:70,items:[{kind:"folder",id:91},{kind:"folder",id:90},
+     {kind:"folder",id:71}]
+ },"O06 writes displayed custom order instead of underlying array order");
+ parent.children=[rec1,child,rec2];
+ rec1.order=0; child.order=1; rec2.order=2;
+ // O06: a real project is a valid parent even though the project category
+ // virtual root is not a normal archive directory.
+ const projectParent={id:"p:900",name:"真实项目",type:"folder",
+   biz:{kind:"project",id:900},children:[]};
+ const projectOne=folder(901,"后排",[],900);
+ const projectTwo=folder(902,"前排",[],900);
+ for(const d of [projectOne,projectTwo])d.biz.section="project";
+ projectParent.children=[projectOne,projectTwo];
+ projectOne.order=1; projectTwo.order=0;
+ nodes.set(projectParent.id,projectParent);
+ Drive.state.folderId="p:900";
+ await fn("reorderArchiveEntry")(projectOne,-1);
+ assert.deepEqual(JSON.parse(JSON.stringify(calls.at(-1).opts.json)),{
+   parentId:900,items:[{kind:"folder",id:901},{kind:"folder",id:902}]
+ },"O06 project direct children use their real project FolderId");
+ assert.equal(calls.at(-1).url,
+  "/api/v2/folders/company/entries/reorder?section=project");
+ Drive.state.folderId="af:70";
+ const appJs=fs.readFileSync(path.join(root,"js/app.js"),"utf8");
+ assert.match(appJs,/String\(s\.folderId\)\.startsWith\("p:"\)/,
+   "S4 project folder view offers the custom-position sort");
  const count=calls.length;
  Drive.state.query="search";
  await fn("reorderArchiveEntry")(child,1);

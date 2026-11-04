@@ -64,12 +64,12 @@ static class NativeMcpSmoke
               new[]{"list_project_files","delete_project_file"}.All(names.Contains),
               "project file MCP actions are available");
         Check(new[]{"move_folder","list_folder_entries",
-            "reorder_entries","reorder_records","reorder_folders",
+            "reorder_entries","reorder_records",
             "list_file_links"}.All(names.Contains),
             "second batch of V2 MCP endpoint adapters registered");
         Check(new[]{"start_upload_task","get_task_status","cancel_task","purge_trash"}
             .All(names.Contains) && names.Distinct().Count()==names.Length &&
-            names.Length>=44 && names.Contains("get_agent_guidance") &&
+            names.Length>=43 && names.Contains("get_agent_guidance") &&
             new[]{"list_folders","create_folder","update_folder",
                 "delete_folder","move_folder","transfer_folder"}.All(names.Contains) &&
             !names.Contains("create_archive") && !names.Contains("create_general"),
@@ -358,7 +358,7 @@ static class NativeMcpSmoke
         await CheckArrayRpc("list_folders",new{workspace="company",section="achievement"});
         await CheckArrayRpc("list_trash",new{workspace="company"});
         await CheckArrayRpc("list_files",new{workspace="company"});
-        await CheckArrayRpc("list_folder_entries",new{workspace="company",parent_id=0});
+        await CheckArrayRpc("list_folder_entries",new{workspace="company",section="achievement",parent_id=0});
         await CheckArrayRpc("list_project_files",new{workspace="company",project_id=project});
         var list=await Call("list_projects",new{workspace="company"});
         var item=Find(list,project);
