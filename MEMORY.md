@@ -678,3 +678,12 @@ CI #517 (`41777836030`)因旧合同时间戳断言失败，CI #518 (`41780006022
 S2 主要结果：SQLCipher schema 3 新建直接具备完整保护触发器，旧库／结构缺陷只读拒绝不迁移；业务仅 project/ip/archive_folder，项目内部任意多级 `archive_folder(section=project)`；七个合同 MCP 工具、旧合同 GUI/HTTP 专用入口退休；stdio tools/list 精确验证 **44** 项，旧工具直接 tools/call 拒绝；项目/普通目录、搜索/回收/版本/共享/跨区独立 FileObject 的 Smoke 继续有效。最终 Windows CI **#526** run `41802424444`、head SHA `5c555d2...`，`completed/success`，26 success/0 failure/2 optional ZIP64 skipped；含 Debug、MCP、Node/UI、Edge/HTTP、独立 SQLCipher/HTTP、Windows 两版单 EXE 启动和图标验证。产物 ID 自包含 13309141140、框架依赖 13307999994、浏览器复验报告 13307984991。链接 https://github.com/zy19970/IPSys/actions/runs/41802424444 。
 
 验收边界：Edge 历史观察脚本仍记录 `T-P2-02 CONFIRMED_BUG` 内部拖拽与 `T-P2-09 FAIL` 分页，这两项与 CI #521 的原始输出相同，属于整改前已存在的问题，不能被“CI success”掩盖。`T-P0-05/T-P1-03/T-P1-05` 观察脚本还保留旧 `IMPLEMENTATION_GAP` 口径，S3/S4 要按当前 UI 重新核对。K01—K12 自动 Smoke 范围通过，但第16.4节 MCP→GUI 使用同一批对象串接的完整闭环尚未执行；本机用户 GUI 手工复验、S3（复制／移动／MCP）、S4（排序）、S5（遗留／文档／完整闭环）继续待做。未接触用户真实数据库、未迁移旧库、未发布正式 Release。最近会话档案：`memory/sessions/2026-11-04-IPSys重构清理S2合同退出.md`，本轮已归档。
+
+
+## 2026-11-04：S3 统一目录转移续接与连接中断核查（代码草稿，未提交产品）
+
+用户先提出“推进下一阶段”，本轮追问“为什么连接中断了”。依据 `tests/REFACTOR_CLEANUP_AUDIT_20261104.md` 进入 S3（C03+C04），已按 AIGT 基础三项规则读取真实仓库、最近 S2 会话和目标代码；本轮再次检查远端 `main=c77a5321ef3c3798866916ad8e16f2ee1f1d4100`，未发现残缺推送。中断的具体网络/平台原因没有日志，**不得认定为软件卡死、GitHub 失败或已提交半成品**。
+
+当前 GitHub Git Data 未提交树 `eadb097e898c4ffc251092403a9fd2bff91b3382` 相对上述 main 包含 **8 个 S3 草稿文件**：`NativeFolderBatchTransferEndpoints.cs` 抽出 GUI/MCP 共同事务服务；`NativeArchiveActionsEndpoints.cs` 共享目标矩阵及 /transfer 同区原位 move；`NativeFolderTreeTransfer.cs` 独立复制防自身/后代及目标矩阵；`NativeFolderEndpoints.cs` 旧 /move 薄适配；`McpLocalArchive.cs` 新增 target_section 与统一 root 参数；`wwwroot/js/bridge.js` 独立复制与跨区目标快照构造和真实 picker；`wwwroot/js/folder-picker.js` 支持独立目标树、来源工作区绑定和独立复制说明；`tests/explorer-record-transfer-smoke.cjs` 新增真实菜单/跨区树与写入保护测试。**所有文件仍是草稿；未编译、未运行 Node/SQLCipher/Edge CI、未提交到 main，因此不能宣称 S3 已完成。**
+
+草稿生成过程中一次工具脚本抛 `ReferenceError: folderMode is not defined`（嵌入前端模板未转义），另一次抛 `ReferenceError: path is not defined`（临时脚本对象变量名）；二者均发生在 tree 创建前，重试后远端草稿树成功。该错误与用户所说的先前连接中断原因没有证据关联。通知 office-renderer/wechat-webhook #2230 开始，#2231 中断核查，#2232 脚本失败，#2233 重试。现有 S3 草稿尚未验证，应在下一轮检查 C# 逻辑/Node 断言，补齐 X01—X12 回归，运行真实同 SHA Windows CI 后再推进到 S4。旧 S2 CI #526 仍是最近已核验的产品成功版本。未访问用户实际数据库、未作旧库迁移、未发布 Release。对应会话记录 `memory/sessions/2026-11-04-IPSys重构清理S3连接续接.md`。
