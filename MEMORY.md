@@ -669,3 +669,12 @@ CI #517 (`41777836030`)因旧合同时间戳断言失败，CI #518 (`41780006022
 用户先指令“继续推进”，随后追问“为什么卡住了？继续推进”。本轮继续按 `tests/REFACTOR_CLEANUP_AUDIT_20261104.md` 的 S2 执行。S2 开始通知 #2215；初次脚本定位失败 #2216，重启通知 #2217；因对话中断恢复 #2218。**此前只创建了远端 Git Data 草稿树，没有修改 main**。基线仍为 `d97dd3b25175`，rulesets 返回 []，branch protection 不能因权限 403 而声称不存在。
 
 本批拟一体化提交：新库 schema 版本 3、kind 限 project/ip/archive_folder；建立项目父级约束、时间戳触发器及原件引用清理保护的完整新建 DDL；现有库打开时只读校验，不自动 Ensure 更新；旧 v2 和结构损坏库明确拒绝。退休七项独立合同 MCP 工具（发现与直接调用双拒绝）、旧合同 HTTP 路由与专属表单/搜索/回收站分支，保留项目 Excel/查询/递归目录、FileId/LinkId/历史版本/共享。项目整树复制只遍历项目内普通目录，不再遍历合同类型。同步更新 Windows MCP 预期工具数 51→44、现行 MCP 手册及 Schema/HTTP/MCP/Node 回归。产品与测试已经构造为 Git Data 草稿树，**仍须原子提交、同 SHA Windows CI、缺陷修复后才能声称 S2 完成**。用户本机旧数据库未经修改，S3—S5 未启动。本轮会话 `memory/sessions/2026-11-04-IPSys重构清理S2合同退出.md`，记录内容仅覆盖当前可见消息与已核对事实。
+
+
+## 2026-11-04：重构清理第二阶段 S2 已通过自动化验收（本次连接中断后恢复）
+
+用户本轮原话：“为什么连接又中断了，继续推进”。按既定 S2 任务恢复：重新读取 AIGT 三基础规则、当前 MEMORY 与第一阶段事实，确认上一轮 Git Data 草稿树 `9dd3143fbed2ca6d8bf6880cbcb292a032b58098` 完好、`main` 未被不完整更新后，非强制提交 S2 产品 `d74baf2557db8a209646c442b17dce32b72afc1e`，随后依真实 Windows CI 逐次修复测试代码、结构拒绝断言、静态旧迁移检查以及真实浏览器测试夹具，最终产品 SHA 为 `5c555d2e0294c6c28068465d72b2b713ffd772db`。修复节点：`e593d56`（MCP Smoke C# 变量名）、`0f12825`（RecyclePurgeSmoke 只读拒绝）、`c5789f8`（modification-time Node static V3）、`5c555d2`（Edge fixture/t-http 从独立 contract 迁往普通项目文件夹）。各次失败通知和重启通知在 office-renderer/wechat-webhook #2219—#2228。
+
+S2 主要结果：SQLCipher schema 3 新建直接具备完整保护触发器，旧库／结构缺陷只读拒绝不迁移；业务仅 project/ip/archive_folder，项目内部任意多级 `archive_folder(section=project)`；七个合同 MCP 工具、旧合同 GUI/HTTP 专用入口退休；stdio tools/list 精确验证 **44** 项，旧工具直接 tools/call 拒绝；项目/普通目录、搜索/回收/版本/共享/跨区独立 FileObject 的 Smoke 继续有效。最终 Windows CI **#526** run `41802424444`、head SHA `5c555d2...`，`completed/success`，26 success/0 failure/2 optional ZIP64 skipped；含 Debug、MCP、Node/UI、Edge/HTTP、独立 SQLCipher/HTTP、Windows 两版单 EXE 启动和图标验证。产物 ID 自包含 13309141140、框架依赖 13307999994、浏览器复验报告 13307984991。链接 https://github.com/zy19970/IPSys/actions/runs/41802424444 。
+
+验收边界：Edge 历史观察脚本仍记录 `T-P2-02 CONFIRMED_BUG` 内部拖拽与 `T-P2-09 FAIL` 分页，这两项与 CI #521 的原始输出相同，属于整改前已存在的问题，不能被“CI success”掩盖。`T-P0-05/T-P1-03/T-P1-05` 观察脚本还保留旧 `IMPLEMENTATION_GAP` 口径，S3/S4 要按当前 UI 重新核对。K01—K12 自动 Smoke 范围通过，但第16.4节 MCP→GUI 使用同一批对象串接的完整闭环尚未执行；本机用户 GUI 手工复验、S3（复制／移动／MCP）、S4（排序）、S5（遗留／文档／完整闭环）继续待做。未接触用户真实数据库、未迁移旧库、未发布正式 Release。最近会话档案：`memory/sessions/2026-11-04-IPSys重构清理S2合同退出.md`，本轮已归档。

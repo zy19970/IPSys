@@ -628,23 +628,23 @@ Get-Content $env:IPSYS_SMOKE_REPORT
 | --- | --- | --- | --- | --- | --- |
 | S0 基线与范围 | 已完成 | 随 S1 提交 `13596b973941` 归档 | 已复核当前接口、SQLCipher 资源关系、旧合同/排序调用链及现有 Smoke | 历史基线 #520 与本轮产品 #521 均 success；后者非 S2—S5 验收 | 当前环境无本地 Windows/.NET，实机交互由现有 Edge/HTTP CI 覆盖，用户本机未验 |
 | S1 根目录移动 | 已完成（自动化验收） | `13596b973941` | M01—M08 真实 HTTP+SQLCipher、原有目录移动/共享/版本回归均通过 | [Windows CI #521](https://github.com/zy19970/IPSys/actions/runs/41793618031) completed/success，同 SHA，26 success/0 failure/2 可选 ZIP64 skipped | 用户本机操作未复验；S2—S5 尚未实施 |
-| S2 合同/数据库 | 代码与测试已提交候选，CI 待核验 | 本批产品提交见最新 main 提交历史 | schema=3、新库 DDL/只读校验、合同 MCP/HTTP 退休、项目目录/文件历史/搜索/回收站自动回归待跑 | 尚未核验，禁止按通过汇报 | K01—K12 需按真实 CI 和用户本机复核逐项判定 |
+| S2 合同/数据库 | 已完成本批自动化验收；跨入口总闭环待 S5 | `d74baf2`；修复至 `5c555d2` | 新建 schema 3／旧库只读拒绝／项目普通目录／版本共享／回收站／44 项 MCP／Node 和 Edge 回归 | [Windows CI #526](https://github.com/zy19970/IPSys/actions/runs/41802424444)：26 success，0 failure，2 可选 ZIP64 skipped；head_sha=`5c555d2` | 真实用户本机尚未复核；K03 跨入口同批对象闭环及 S3—S5 待推进，旧 Edge 观察脚本仍有已存在告警 |
 | S3 复制/移动/MCP | 待实施 | — | — | — | X01—X12 |
 | S4 统一排序 | 待实施 | — | — | — | O01—O07 |
 | S5 清理与收尾 | 待实施 | — | — | — | 文档、引用、跨入口闭环 |
 
 最终完成检查：
 
-1. [ ] 所有生产路径只接受目标三类 Folder kind，旧合同工具直调也失败。
-2. [ ] 新库第一次使用即具备全部保护与更新时间能力；旧库明确拒绝且不迁移。
-3. [ ] 两个不同模块的虚拟根不会再误判同一位置。
+1. [x] 所有生产路径只接受目标三类 Folder kind，旧合同工具直调也失败。
+2. [x] 新库第一次使用即具备全部保护与更新时间能力；旧库明确拒绝且不迁移。
+3. [x] 两个不同模块的虚拟根不会再误判同一位置。
 4. [ ] 项目内普通文件夹独立复制、共享、移动、合法跨区转移均可从真实菜单进入。
 5. [ ] GUI/MCP 对同区移动保持同一身份语义。
 6. [ ] 普通目录排序覆盖所有合法模块和父级，拒绝不完整兄弟集合。
 7. [ ] 旧长下拉无生产残留，测试保护迁移到实际入口。
 8. [ ] 现行手册、Wiki、Agent 提示和工具 schema 一致；历史证据仍可追溯。
 9. [ ] 跨入口闭环通过，文件字节、版本、共享和跨区隔离有证据。
-10. [ ] 最新产品 SHA 的完整 Windows CI 成功，未验证事项明确列出。
+10. [x] 最新产品 SHA 的完整 Windows CI 成功，未验证事项明确列出。
 
 ### 2026-11-04 S0+S1 第一阶段自动验收补记
 
@@ -662,3 +662,18 @@ GitHub Actions Windows CI #521（run `41793618031`）的 `head_sha=13596b9739419
 Smoke 迁移涉及 Schema、FolderModel、HTTP、MCP tools/list/tools/call、Search、RecyclePurge、ProjectMilestone、文件列表/共享/版本、Node 目录/导出/拖拽与 Windows workflow MCP 44 项检查。原历史合同成功用例改为项目目录正向行为及旧工具/URL 拒绝，未直接删除项目查询、项目 Excel、版本与跨区物理隔离断言。当前环境没有 Windows .NET 编译器，**此处只记录已编写代码，不把静态核对或上一批成功 CI 写成 S2 成功**；接下来必须读取本批产品提交 SHA 的完整 Windows CI 结果，失败时修正并重复验证。
 
 本次未操作真实用户资料库，也未发布 Release。S3—S5 不在本次产品提交范围；S2 的具体 K01—K12 分项结果在 CI 核验后补记。
+
+
+### 2026-11-04 S2 结案核验补记：代码已提交、Windows CI #526 完成
+
+本阶段产品基线是 [`d74baf2557db8a209646c442b17dce32b72afc1e`](https://github.com/zy19970/IPSys/commit/d74baf2557db8a209646c442b17dce32b72afc1e)，最终产品修复提交为 [`5c555d2e0294c6c28068465d72b2b713ffd772db`](https://github.com/zy19970/IPSys/commit/5c555d2e0294c6c28068465d72b2b713ffd772db)。所有提交均通过非强制 fast-forward 更新 `main`，未替换历史、未触碰本机用户资料库或正式 Release。
+
+整改主体：统一资源 `kind=project/ip/archive_folder`，项目下文件夹使用 `section=project` 和真实项目／普通目录 parentId，可多级；旧合同专属业务记录、字段、表单、搜索／回收分支、独立 HTTP 查询／复制／转移端点以及七个 MCP 工具已退出；直接发起 `kind=contract` HTTP 创建得到明确 400。SQLCipher 新建结构版本=3，首次新建包含父级约束、时间戳和共享原件保护，旧 V2／缺失关键结构在打开时只读拒绝，不执行迁移或 Ensure 自动修复；项目整树复制仍保留所有版本并验证跨工作区独立物理对象。MCP stdio 的真实 `tools/list` 已验证恰有 **44 个无重复工具**，历史七个合同工具既不列出也不能 `tools/call`。
+
+实施中 CI 失败均已明确定位并修正，没有通过跳过测试换取成功：#522（`d74baf2`）测试两个 C# 变量名冲突；#523（`e593d56`）永久清理 Smoke 仍要求旧 V2 开库修补；#524（`0f12825`）修改时间 Node Smoke 仍要求 V2 ALTER TABLE；#525（`c5789f8`）旧 Windows Edge fixture 仍创建 `contract`，已连同 `t-http.cjs` 改为项目内普通目录测试。#526（`5c555d2`）最终 `completed/success`，**26 successful、0 failed、2 skipped（可选大于 4 GiB ZIP64）**，包含 Debug+SQLCipher HTTP、Node/UI、MCP stdio、Edge/HTTP 真浏览器、独立 SQLCipher/HTTP、自包含与框架依赖单 EXE 发布及启动和应用图标。证据：[GitHub Actions #526](https://github.com/zy19970/IPSys/actions/runs/41802424444)，run `41802424444`，head SHA 严格等于 `5c555d2e0294c6c28068465d72b2b713ffd772db`。Artifacts：`IPSys-Web-win-x64-self-contained`（13309141140）、`IPSys-Web-win-x64`（13307999994）、`IPSys-Explorer-V2-Retest-41802424444-1`（13307984991）。
+
+K01—K12 在当前自动 Smoke 可覆盖的断言均执行通过：K01 旧 MCP tools/list/tools/call 拒绝、K02 旧 HTTP 拒绝、K03 新项目及多级普通目录和搜索、K04 项目及目录原件版本/共享/跨区字节验证、K05 项目/目录回收恢复、K06 共享引用清理保护、K07 首次创建完整 DDL 与立即使用、K08 重开验证无迁移、K09 初始目录删除后不重建、K10 两类旧 V2 测试库拒绝且数据不变、K11 缺触发器拒绝、K12 无效父级和循环拒绝。**K03 “同一批 MCP 新建对象→GUI 可见→操作→MCP 再读”的完整跨入口闭环仍属第16.4节后续 S5 验收，不能仅因上述单项 Smoke 成功宣称完成。** 用户本机对新版 EXE 的人工点击未执行。
+
+特别注意：旧 Edge 观察脚本将独立用例状态写入报告，但**其 `FAIL` 并不会自动使整个 CI job 失败**。本次 #526 的 `T-P1-02#cascade` 实测为 PASS（旧合同创建拒绝、项目删除/后代隐藏/原 FolderId 恢复）；历史脚本仍报告 `T-P2-02 CONFIRMED_BUG`（内部拖拽）与 `T-P2-09 FAIL`（分页状态抓取），同样的两项在整改前的 CI #521 中已存在，不能视为本次新引入，亦不能宣称已修复。另外 `T-P0-05/T-P1-03/T-P1-05` 保留旧 `IMPLEMENTATION_GAP` 观察口径，需在 S3/S4 或 S5 结合实际新 GUI 复核其有效性。这些既有缺口与本批 **S2 核心自动化验收完成** 是不同结论。
+
+后续仍按任务书推进 S3（独立复制、原位移动、MCP 合法目标矩阵和统一选择器）、S4（目录同层排序）、S5（去残留／现行文档统一／完整跨入口闭环）。S2 仅完成本阶段自动化验收，不代表所有 C01—C08 或完整 E2E 已收敛。
