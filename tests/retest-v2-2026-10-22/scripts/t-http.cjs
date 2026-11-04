@@ -258,20 +258,29 @@ async function must(label, p, body) {
     const after = (await L.get(`/api/v2/folders/company/entries?section=${sec}&parentId=${parent}`)).data;
     const afterIds = after.map((e) => e.folder.ref.id);
     const r2 = await L.post(`/api/v2/folders/company/entries/reorder?section=${sec}`, { ParentId: parent, Items: reversed.slice(0, Math.max(1, reversed.length - 1)) });
-    const r3 = await L.post(`/api/v2/ui/folders/company/${sec}/order`, { Ids: [fx.archive.records[0], 999999] });
+    const wrongId = reversed.map((item, index) => index === 0
+      ? { Kind: "folder", Id: 999999 } : item);
+    const r3 = await L.post(`/api/v2/folders/company/entries/reorder?section=${sec}`,
+      { ParentId: parent, Items: wrongId });
+    const finalEntries = (await L.get(`/api/v2/folders/company/entries?section=${sec}&parentId=${parent}`)).data;
+    const finalIds = finalEntries.map((e) => e.folder.ref.id);
     evFile("T-P1-05", [
       `父目录 ${parent} 当前混排条目：${J((entries || []).map((e) => ({ kind: e.folder.ref.kind, id: e.folder.ref.id, name: e.folder.name, position: e.folder.position })))}`,
       `倒序 reorder -> ${r1.status} ${J(r1.data)}`,
       `回读顺序：${J(afterIds)}（期望 ${J(reversed.map((x) => x.Id))}）`,
       `少一条的 reorder -> ${r2.status} ${J(r2.data)}（期望 409）`,
-      `archive ids 排序塞入不存在 id -> ${r3.status} ${J(r3.data)}（期望 409）`,
+      `同一现行接口中替换为不存在的 FolderId -> ${r3.status} ${J(r3.data)}（期望 409）`,
+      `错误输入后的顺序仍为：${J(finalIds)}（与首次成功排序结果相同）`,
       "",
-      "结论：后端只支持 company/achievement 的混排与持久化；IP/项目台账没有端点。",
-      "前端无手工排序入口（无拖拽、无上移下移），临时点列头排序不写回。",
+      "本项只检验当前 HTTP 普通目录同层完整性与持久 position；",
+      "Explorer 自定义顺序和上移/下移由运行中的 Node/UI Smoke 独立验证，不以本脚本模拟真实鼠标。",
     ].join("\n"));
-    rec("T-P1-05", "MIXED", r1.ok && J(afterIds) === J(reversed.map((x) => x.Id)) && r2.status === 409 && r3.status === 409 ? "IMPLEMENTATION_GAP" : "FAIL",
-      `后端 reorder ${r1.status} 且顺序生效；缺项 ${r2.status}；非法 id ${r3.status}；前端无入口`,
-      "用户可调整 position 且重启保持；临时排序不算");
+    const actualOrder = J(reversed.map((x) => x.Id));
+    const accepted = r1.ok && J(afterIds) === actualOrder &&
+      r2.status === 409 && r3.status === 409 && J(finalIds) === actualOrder;
+    rec("T-P1-05", "DYNAMIC-HTTP", accepted ? "PASS" : "FAIL",
+      `现行目录排序 ${r1.status}；持久顺序符合=${J(afterIds) === actualOrder}；缺项 ${r2.status}；非法 ID ${r3.status}；拒绝后顺序不变=${J(finalIds) === actualOrder}`,
+      "现行同层文件夹排序可持久化；缺项与无效ID均拒绝且无部分提交。GUI入口另验");
   }
 
   /* ---------------- T-P1-07 压缩信息 ---------------- */
