@@ -717,3 +717,7 @@ S4 C05 O01—O07 实施与验收：MCP `list_folder_entries(workspace,section,pa
 重点确认旧 `NativeArchiveUiOrderEndpoints.cs` 未注册但文件留存、`moveArchiveEntry` 生产调用未检出但活跃 Node Smoke 仍直接引用；`NativeArchiveOrder` 与旧 Contract 文件名所含有效项目功能不可误删。多份根部文档仍引用 CI #473、51 工具、合同独立 Folder 或综合资料 Excel 3/6 列冲突；需要同步当前事实并保留历史。Edge T-P2-02/T-P2-09 旧观察报告仍有异常，但测试分别把任何 toast 当 bug、要求已被连续滚动 PDF 替换的“下一页”按钮，应重新核验真实现行 UI。第16.4节同批对象 MCP→GUI→MCP 完整闭环没有实测，是 S5 的关键验收缺口。只作审查，未改产品代码、未运行新 CI 或用户本机 GUI，也未发 Release；建议按“引用证据→最小清理与测试迁移→端到端闭环→现行文档统一→同 SHA Windows CI→用户手工核验”执行。
 
 会话记录：`memory/sessions/2026-11-04-IPSys-S5最终清理前仓库梳理.md`；本会话已归档轮次：第一轮。关于本轮实际 Git 提交的 SHA，以此条之后的仓库历史为准。
+
+## 2026-11-04：S5 第一批遗留代码清理（产品提交待 Windows CI）
+
+用户授权“好的，按照思路推进吧”，正式按 S5 任务书实施。已再次读取 AIGT 基础三规范，核查本轮开始时 `main=c5fb676f6b047512ee5ee311555d9bea5307a311`、43 工具、schema=3、S4 CI #532，以及本仓最新会话。先迁移仍在 `explorer-archive-operations-smoke.cjs` 调用的旧 `moveArchiveEntry` 测试，将“自身/后代不可选”断言强化到已执行的 `folder-picker-smoke.cjs` 真实 `moveSelectedItems→transferFolderBatch→FolderPicker` 路由；移除 `interactions.js` 中仅保留旧长下拉的 `moveArchiveEntry`；删除已无 Program Map 的 `NativeArchiveUiOrderEndpoints.cs`，保留仍被调用的 NativeArchiveOrder.cs、项目复用功能和负面测试。本批代码不更改 FileId/LinkId/FileObject/数据库/HTTP 有效接口。具体工作与 CI 结果见 `memory/sessions/2026-11-04-IPSys-S5最终清理前仓库梳理.md` 后续记录。用户实际库、正式 Release 不触碰；本提交需按同 SHA Windows CI 核验，不能提前宣称全阶段完成。

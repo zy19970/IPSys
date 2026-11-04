@@ -1389,56 +1389,6 @@ async function reorderArchiveEntry(node, direction) {
   }
 }
 
-function moveArchiveEntry(node) {
-  const biz = node?.biz || {};
-  /* A02/N2：普通资料就是文件夹，移动走同一条文件夹移动通道。 */
-  const folder = biz.kind === "archive_folder";
-  const section = biz.section || "achievement";
-  if (!folder || !section || !catIsDir(section, VaultStore.ws)) return;
-  const archiveRoot = findById("k:" + section);
-  const dirs = [];
-  const visit = n => {
-    if (n?.biz?.kind === "archive_folder") {
-      // Never offer oneself or descendants as targets: they would create a cycle.
-      const ancestry = pathTo(n.id) || [];
-      if (folder && ancestry.some(p => p.id === node.id)) return;
-      dirs.push(n);
-    }
-    for (const child of n?.children || [])
-      if (child.biz?.kind === "archive_folder") visit(child);
-  };
-  visit(archiveRoot);
-  /* 顶层就是分类层本身；既然资料也是文件夹，任何节点都能回到顶层。 */
-  const choices = [
-    {value:"0",label:catLabel(section) + "（顶层）"},
-    ...dirs.map(n => ({
-      value:String(n.biz.id),
-      label:(pathTo(n.id)||[]).filter(p => p.id.startsWith("af:"))
-        .map(p => p.name).join(" › "),
-    })),
-  ];
-  const oldParent = biz.parentId ?? null;
-  const targetChoices = choices.filter(x => Number(x.value) !== (oldParent ?? 0));
-  if (!targetChoices.length) return toast("没有其它可以移动到的目录");
-  RecordForms.open({
-    title:"移动目录",
-    submitText:"移动",
-    fields:[{key:"target",label:"目标目录",type:"select",required:true,options:targetChoices}],
-    onSubmit:async data => {
-      const target = Number(data.target);
-      if (!Number.isSafeInteger(target) || target < 0)
-        throw new Error("请选择有效目标目录");
-      await VaultStore.api("/api/v2/folders/" + VaultStore.ws +
-        "/archive_folder/" + biz.id +
-        "/move?section=" + encodeURIComponent(section), {
-          method:"POST",json:{parentId:target || null},
-        });
-      await refreshCurrent();
-      toast("已移动至目标目录");
-    },
-  });
-}
-
 /* ---------------- 新建菜单 ---------------- */
 
 function openNewMenu(anchor) {

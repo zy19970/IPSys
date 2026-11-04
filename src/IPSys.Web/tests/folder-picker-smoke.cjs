@@ -321,10 +321,26 @@ function open(move=false) {
     {filename:"bridge-project-folder-move.js"});
   const moveFromMenu=vm.runInContext("moveSelectedItems",sandbox);
   const shareFromMenu=vm.runInContext("transferFolderBatch",sandbox);
+  // S5-1: exercise legacy move protection through the actual Explorer
+  // handler/picker instead of the retired moveArchiveEntry long selector.
+  const childOfSource=folder("af:90007","来源目录后代","archive_folder",[],
+    {section:"project",parentId:90004});
+  projectSource.children.push(childOfSource);
+  assert.doesNotMatch(fs.readFileSync(path.resolve(__dirname,
+    "../wwwroot/js/interactions.js"),"utf8"),/function moveArchiveEntry\s*\(/);
   moveFromMenu([projectSource]);
   assert.ok(mask && !mask.removed,
     "Clicking move on a project child must open the destination dialog");
   assert.match(mask.innerHTML,/移动文件夹/);
+  pickClick(get("crumb"),"go","root");
+  pickClick(get("list"),"enter","k:project");
+  pickClick(get("list"),"enter","p:90002");
+  pickClick(get("list"),"enter","af:90004");
+  assert.match(get("list").innerHTML,/来源目录后代/);
+  assert.match(get("list").innerHTML,/data-picker-choose="af:90007" disabled/,
+    "The current actual move entry must reject its descendants as targets");
+  assert.equal(get("current").disabled,true,
+    "The source folder itself cannot become its own destination");
   pickClick(get("crumb"),"go","root");
   assert.match(get("list").innerHTML,/公司项目/);
   pickClick(get("list"),"enter","k:achievement");

@@ -723,3 +723,7 @@ K01—K12 在当前自动 Smoke 可覆盖的断言均执行通过：K01 旧 MCP 
 4. 旧 `/api/v2/ui/folders/{workspace}/{section}/order` 已不注册，活跃 `NativeArchiveUiHttpSmoke`、MCP/CI/Edge T-P1-05 已迁到 `/api/v2/folders/{workspace}/entries/reorder?section=...`。旧实现源文件 `NativeArchiveUiOrderEndpoints.cs` 仍保留但无生产 Map 注册，按第15节在 S5 进一步做无调用证明后清理，不为减少文件数提前误删。
 
 **真实验收范围：** [#532](https://github.com/zy19970/IPSys/actions/runs/41822426599) 已包含 Windows Debug+临时 SQLCipher/HTTP、MCP stdio 43 项、Node/UI、真实 Edge/HTTP、独立 SQLCipher/HTTP 往返、Windows 两种单 EXE 构建启动与图标。构建产物：自包含 EXE `13318595193`；需 .NET 运行时 EXE `13317089888`；Edge 报告 `13317913804`。Edge 原始日志明确 `T-P1-05 PASS`，而 `T-P2-02 CONFIRMED_BUG`（内部附件拖拽）及 `T-P2-09 FAIL`（分页状态）仍保留，这两项在 S4 前已经存在，不能报成已修复。用户真实数据库、旧库迁移、正式 Release 和本机 GUI 人工验收均未执行；第16.4节完整的**同一批对象** MCP→GUI→MCP 端到端闭环尚未执行，留在 S5。S4 本批自动验收完成**不等于** S5 清理及总验收完成。
+
+### 2026-11-04 S5 第一批清理进行中
+
+用户已授权正式推进 S5。第一批采取最小清理：删除未注册的 `NativeArchiveUiOrderEndpoints.cs`，去掉没有生产调用的 `moveArchiveEntry` 旧长下拉，并把原脚本的目标安全性检查迁入正在运行的真实 `moveSelectedItems→transferFolderBatch→AttachmentFolderPicker` 测试。保留 `NativeArchiveOrder.cs` 与所有项目共用服务、合同退休接口负面回归、历史证据。清理代码提交的 Windows CI 以及第16.4节跨入口完整闭环尚待独立核验；不得仅因删除成功标记整个 S5 结束。

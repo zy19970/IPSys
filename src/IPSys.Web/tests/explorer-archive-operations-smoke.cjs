@@ -171,43 +171,11 @@ const fn=name=>vm.runInContext(name,context);
  Drive.state.sortBy="position";
  assert.equal(calls.length,count,"Filtered/manual sort must not reorder hidden siblings");
 
- fn("moveArchiveEntry")(rec1);
- /* A02/N2：只有一种对象，标题不再分「资料 / 目录」。 */
- assert.equal(modals.at(-1).title,"移动目录");
- const choices=modals.at(-1).fields[0].options;
- assert.ok(choices.some(x=>x.value==="71"));
- /* 顶层=分类层；资料也是文件夹，所以回到顶层同样可选。 */
- assert.ok(choices.some(x=>x.value==="0"));
- assert.ok(!choices.some(x=>x.value==="70"));
- await modals.at(-1).onSubmit({target:"71"});
- assert.equal(calls.at(-1).url,
-  "/api/v2/folders/company/archive_folder/91/move?section=achievement");
- assert.equal(calls.at(-1).opts.json.parentId,71);
-
- const descendant=folder(73,"下级子目录",[],72);
- other.children.push(descendant);
- nodes.set(descendant.id,descendant);
- parents.set(descendant.id,other);
- fn("moveArchiveEntry")(other);
- const candidates=modals.at(-1).fields[0].options;
- assert.ok(!candidates.some(x=>x.value==="73"),
-  "A folder cannot be moved into its own descendant");
- assert.ok(candidates.some(x=>x.value==="70"));
- assert.ok(!candidates.some(x=>x.value==="0"),
-  "A folder already at root should not offer a no-op root target");
- await modals.at(-1).onSubmit({target:"70"});
- assert.equal(calls.at(-1).url,
-  "/api/v2/folders/company/archive_folder/72/move?section=achievement");
- assert.equal(calls.at(-1).opts.json.parentId,70);
- const beforeSystem=modals.length;
- fn("moveArchiveEntry")(child);
- assert.ok(modals.at(-1).fields[0].options.some(x=>x.value==="0"),
-  "A nested folder may move to archive root");
- const beforeInitial=modals.length;
- fn("moveArchiveEntry")(parent);
- assert.equal(modals.length,beforeInitial+1,
-  "An initially seeded folder opens the same move dialog as a user folder");
- assert.equal(modals.at(-1).title,"移动目录");
+ // S5-1: legacy long-select moveArchiveEntry has retired; the real
+ // moveSelectedItems -> transferFolderBatch -> FolderPicker path, including
+ // root/descendant/section guards, is exercised in folder-picker-smoke.cjs.
+ assert.doesNotMatch(code,/function moveArchiveEntry\s*\(/,
+   "Removed legacy long-select movement entry must not return");
 
  const last=calls.length;
  await fn("deleteArchiveFolder")(parent);
@@ -300,5 +268,5 @@ const fn=name=>vm.runInContext(name,context);
  assert.equal(calls.at(-1).url,"/api/v2/folders/company/archive_folder/81?section=general");
  assert.equal(calls.at(-1).opts.json.archiveFolder.category,"类别");
  assert.equal(calls.at(-1).opts.json.archiveFolder.year,"2025");
- console.log("EXPLORER ARCHIVE F2-02 PASS: create, true parentId, mixed position, safe moves, deletion");
+ console.log("EXPLORER ARCHIVE F2-02 PASS: create, true parentId, mixed position, recycle and menu scope");
 })().catch(err=>{console.error(err);process.exitCode=1;});
