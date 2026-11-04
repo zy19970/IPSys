@@ -1737,10 +1737,14 @@ function showItemMenu(id, x, y) {
   /* 批量菜单的每个命令都作用于整个选择集合；单项命令绝不混入。 */
   if (multiple) {
     const allFiles = selected.every(n => n.type === "file");
+    const allOrdinaryFolders = selected.every(n => n.type === "folder" &&
+      !n.synthetic && n.biz?.kind === "archive_folder");
     showCtx(x, y, [
       MI("download", "download", "打包下载选中的 " + downloads.length + " 项"),
       allFiles ? MI("assoc-batch", "copy", "共享选中的 " + selected.length + " 个附件") : "",
       allFiles ? MI("assoc-move-batch", "move", "移动选中的 " + selected.length + " 个附件") : "",
+      allOrdinaryFolders ? MI("share-folder-batch", "copy", "共享选中的 " + selected.length + " 个文件夹") : "",
+      allOrdinaryFolders ? MI("move-folder-batch", "move", "移动选中的 " + selected.length + " 个文件夹") : "",
       '<div class="ctx-sep"></div>',
       MI("delete", "trash", "删除选中的 " + deletions.length + " 项", "", true),
     ].filter(Boolean).join(""), {
@@ -1748,6 +1752,10 @@ function showItemMenu(id, x, y) {
       ...(allFiles ? {
         "assoc-batch": inWorkspace(() => associateOriginalBatch(selected, false)),
         "assoc-move-batch": inWorkspace(() => associateOriginalBatch(selected, true)),
+      } : {}),
+      ...(allOrdinaryFolders ? {
+        "share-folder-batch": inWorkspace(() => transferFolderBatch(selected,false)),
+        "move-folder-batch": inWorkspace(() => transferFolderBatch(selected,true)),
       } : {}),
       delete: inWorkspace(() => deleteNodes(deletions)),
     });
@@ -1765,16 +1773,18 @@ function showItemMenu(id, x, y) {
     !isFolder ? MI("newver", "upload", "上传新版本") : "",
     !isFolder ? MI("assoc", "copy", "共享原件到其它记录") : "",
     !isFolder ? MI("assoc-move", "move", "移动附件到其它记录") : "",
+    isFolder && recordKind === "archive_folder"
+      ? MI("share-folder", "copy", "共享文件夹到其它目录") : "",
+    isFolder && recordKind === "archive_folder"
+      ? MI("move-folder", "move", "移动文件夹到其它目录") : "",
     isFolder && ["project","contract","ip","archive_folder"].includes(recordKind)
-      ? MI("copy-record","copy","复制整条记录") : "",
+      ? MI("copy-record","copy",recordKind==="archive_folder" ? "复制文件夹（独立副本）" : "复制整条记录") : "",
     isFolder && ["project","contract","ip","archive_folder"].includes(recordKind)
-      ? MI("transfer-record","move","移动或跨区转移") : "",
+      ? MI("transfer-record","move",recordKind==="archive_folder" ? "跨工作区或类别转移" : "移动或跨区转移") : "",
     '<div class="ctx-sep"></div>',
     isFolder ? MI("rename", "rename", "重命名", "F2") : "",
     archiveSortAllowed(item) ? MI("sort-up", "arrow-up", "上移") : "",
     archiveSortAllowed(item) ? MI("sort-down", "arrow-down", "下移") : "",
-    b.kind === "archive_folder"
-      ? MI("move-archive", "move", "移动至其他目录") : "",
     b.kind === "archive_folder"
       ? MI("delete-folder","trash","删除文件夹","",true)
       : MI("delete", "trash", "删除", "Del", true),
@@ -1790,12 +1800,13 @@ function showItemMenu(id, x, y) {
     newver: inWorkspace(() => uploadNewVersion(item)),
     assoc: inWorkspace(() => associateOriginal(item, false)),
     "assoc-move": inWorkspace(() => associateOriginal(item, true)),
+    "share-folder": inWorkspace(() => transferFolderBatch([item],false)),
+    "move-folder": inWorkspace(() => transferFolderBatch([item],true)),
     "copy-record": inWorkspace(() => transferBusinessRecord(item, false)),
     "transfer-record": inWorkspace(() => transferBusinessRecord(item, true)),
     rename: inWorkspace(() => renameNode(item)),
     "sort-up": inWorkspace(() => reorderArchiveEntry(item,-1)),
     "sort-down": inWorkspace(() => reorderArchiveEntry(item,1)),
-    "move-archive": inWorkspace(() => moveArchiveEntry(item)),
     "delete-folder": inWorkspace(() => deleteNodes(deletions)),
     delete: inWorkspace(() => deleteNodes(deletions)),
   });
@@ -1872,10 +1883,18 @@ function bindSelectionBar() {
   $("#selClear").addEventListener("click", () => Drive.clearSelection());
 
   $("#selDownload").addEventListener("click", () => downloadNodes(Drive.selectedItems));
-  $("#selShare").addEventListener("click", () =>
-    associateOriginalBatch(Drive.selectedItems, false));
-  $("#selMove").addEventListener("click", () =>
-    associateOriginalBatch(Drive.selectedItems, true));
+  $("#selShare").addEventListener("click", () => {
+    const items=Drive.selectedItems;
+    if(items.length && items.every(n=>n.type==="folder" && n.biz?.kind==="archive_folder"))
+      return transferFolderBatch(items,false);
+    return associateOriginalBatch(items,false);
+  });
+  $("#selMove").addEventListener("click", () => {
+    const items=Drive.selectedItems;
+    if(items.length && items.every(n=>n.type==="folder" && n.biz?.kind==="archive_folder"))
+      return transferFolderBatch(items,true);
+    return associateOriginalBatch(items,true);
+  });
 
   $("#selDelete").addEventListener("click", () => {
     const items = Drive.selectedItems;
@@ -1902,6 +1921,12 @@ function bindDetail() {
       case "open":
         if (one?.type === "folder") Drive.openFolder(one.id);
         break;
+      case "share-folder":
+        if(one) transferFolderBatch([one],false);
+        break;
+      case "move-folder":
+        if(one) transferFolderBatch([one],true);
+        break;
       case "preview":
         if (one) previewFile(one.id);
         break;
@@ -1913,6 +1938,12 @@ function bindDetail() {
         break;
       case "assoc-move-batch":
         associateOriginalBatch(items, true);
+        break;
+      case "share-folder-batch":
+        transferFolderBatch(items,false);
+        break;
+      case "move-folder-batch":
+        transferFolderBatch(items,true);
         break;
       case "delete":
         if (Drive.state.view === "recycle") recycleAction(items, "purge");

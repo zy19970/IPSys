@@ -42,22 +42,27 @@ const AttachmentFolderPicker = {
   },
 
   open({root,workspace,sourceFolderId,sourceFolderIds,fileName,fileId,fileIds,
-    sourceDescription,move,onSubmit}) {
+    sourceDescription,move,onSubmit,folderMode=false,folderSection=""}) {
     const model=this.index(root,sourceFolderId,sourceFolderIds);
-    if(!model.source) throw new Error("当前附件的来源目录已失效，请刷新重试");
+    if(!model.source) throw new Error("当前"+(folderMode?"文件夹":"附件")+"的来源目录已失效，请刷新重试");
+    const categoryId="k:"+folderSection;
+    if(folderMode && (model.source.node.biz?.kind!=="archive_folder" ||
+       model.source.node.biz?.section!==folderSection || !model.nodes.has(categoryId)))
+      throw new Error("当前文件夹不属于有效的目标资料模块");
     document.querySelector("#attachmentFolderPicker")?.remove();
     const protectedFiles = new Set((fileIds || [fileId]).map(Number));
     const mask=document.createElement("div");
     mask.id="attachmentFolderPicker";
     mask.className="mask show folder-picker-mask";
-    const label=move?"移动附件":"共享附件原件";
+    const label=folderMode?(move?"移动文件夹":"共享文件夹"):
+      (move?"移动附件":"共享附件原件");
     mask.innerHTML=`
       <div class="dialog folder-picker-dialog" role="dialog" aria-modal="true" aria-label="${esc(label)}">
         <div class="dlg-head"><h2>${esc(label)}</h2>
           <button type="button" class="icon-btn sm" data-picker-close aria-label="关闭">${icon("close",15)}</button>
         </div>
         <div class="folder-picker-source">
-          <small>当前附件 · ${esc(workspace==="company"?"企业工作区":"个人工作区")}</small>
+          <small>${folderMode?"选中的文件夹":"当前附件"} · ${esc(workspace==="company"?"企业工作区":"个人工作区")}</small>
           <b title="${esc(fileName)}">${esc(fileName)}</b>
           <small title="${esc(model.path(model.source.id))}">来源：${esc(sourceDescription || model.path(model.source.id))}</small>
         </div>
@@ -70,8 +75,11 @@ const AttachmentFolderPicker = {
         <div class="folder-picker-selection">
           <small>已选择目标</small>
           <b data-picker-target>尚未选择文件夹</b>
-          <small>${move?"确认后来源将不再显示此附件；原件、版本及其它共享关联保持不变。":
-            "来源保持不变；目标新增共享关联，所有历史版本仍共用。"}</small>
+          <small>${folderMode
+            ? move?"保留原文件夹编号及完整层级，原位置不再显示该文件夹。":
+              "目标新建目录结构，附件共享原件及全部版本；以后新增子目录不会自动同步。"
+            : move?"确认后来源将不再显示此附件；原件、版本及其它共享关联保持不变。":
+              "来源保持不变；目标新增共享关联，所有历史版本仍共用。"}</small>
           <span class="folder-picker-error" data-picker-error role="alert"></span>
         </div>
         <div class="dlg-foot">
@@ -93,7 +101,20 @@ const AttachmentFolderPicker = {
     let cursor=model.initialId,selected=null,globalSearch=false,shown=this.pageSize;
     let saving=false,closed=false;
     const pageSize=this.pageSize;
+    const forbiddenFolders=new Set(sourceFolderIds.map(Number));
     function unavailable(record) {
+      if(folderMode) {
+        if(record?.id===categoryId) return false; // module top level
+        if(record?.node.biz?.kind!=="archive_folder" ||
+           record.node.biz.section!==folderSection || !record.selectable) return true;
+        // A folder cannot be moved/shared inside itself or any descendant.
+        let current=record;
+        while(current) {
+          if(current.folderId && forbiddenFolders.has(current.folderId)) return true;
+          current=model.nodes.get(current.parent);
+        }
+        return false;
+      }
       if(!model.isTarget(record)) return true;
       return (record.node.children||[]).some(child=>child.type==="file" &&
         protectedFiles.has(Number(VaultStore.metaOf(child.id)?.fileId)));
@@ -105,8 +126,12 @@ const AttachmentFolderPicker = {
       mask.remove();
     }
     function navigate(id) {
-      if(!model.nodes.has(String(id))) return;
-      cursor=String(id);selected=null;shown=pageSize;search.value="";render();
+      id=String(id);
+      if(!model.nodes.has(id)) return;
+      // Folder operations must stay in the source module, not the global root.
+      if(folderMode && id!==categoryId &&
+         !model.chain(id).some(n=>n.id===categoryId)) return;
+      cursor=id;selected=null;shown=pageSize;search.value="";render();
     }
     function choose(id) {
       const record=model.nodes.get(String(id));
@@ -118,18 +143,25 @@ const AttachmentFolderPicker = {
       if(globalSearch&&q) {
         const rows=[];
         for(const record of model.nodes.values()) {
-          if(record.selectable && (record.node.name.toLocaleLowerCase().includes(q) ||
+          if(record.selectable && (!folderMode ||
+              record.node.biz?.kind==="archive_folder" && record.node.biz?.section===folderSection) &&
+            (record.node.name.toLocaleLowerCase().includes(q) ||
             model.path(record.id).toLocaleLowerCase().includes(q))) rows.push(record);
         }
         return rows.sort((a,b)=>model.path(a.id).localeCompare(model.path(b.id),"zh-CN"));
       }
-      const children=(model.nodes.get(cursor)?.children||[]).map(id=>model.nodes.get(id));
+      const children=(model.nodes.get(cursor)?.children||[])
+        .map(id=>model.nodes.get(id)).filter(n=>!folderMode ||
+          n.node.biz?.kind==="archive_folder" && n.node.biz?.section===folderSection);
       return children.filter(n=>!q||n.node.name.toLocaleLowerCase().includes(q))
         .sort((a,b)=>a.node.name.localeCompare(b.node.name,"zh-CN"));
     }
     function render() {
-      crumb.innerHTML=`<button type="button" class="folder-picker-crumb" data-picker-go="${esc(model.rootId)}">我的文件</button>`+
-        model.chain(cursor).map(r=>`<span aria-hidden="true">›</span>
+      crumb.innerHTML=(folderMode
+        ? `<button type="button" class="folder-picker-crumb" data-picker-go="${esc(categoryId)}">${esc(model.nodes.get(categoryId).node.name)}</button>`
+        : `<button type="button" class="folder-picker-crumb" data-picker-go="${esc(model.rootId)}">我的文件</button>`)+
+        model.chain(cursor).filter(r=>!folderMode || r.id!==categoryId)
+          .map(r=>`<span aria-hidden="true">›</span>
           <button type="button" class="folder-picker-crumb" data-picker-go="${esc(r.id)}">${esc(r.node.name)}</button>`).join("");
       const rows=matches();
       const isResult=globalSearch&&!!search.value.trim();
@@ -144,7 +176,7 @@ const AttachmentFolderPicker = {
             ${icon("chevronDown",16)}</button>
           ${r.selectable?`<button type="button" class="btn folder-picker-pick"
             data-picker-choose="${esc(r.id)}" ${disabled?"disabled":""}
-            title="${disabled?"来源目录不可选或目标已关联相同原件":"设为目标文件夹"}">选择</button>`:""}
+            title="${disabled?(folderMode?"不能将文件夹放入自身或其子目录":"来源目录不可选或目标已关联相同原件"):"设为目标文件夹"}">选择</button>`:""}
         </div>`;
       }).join("")||`<div class="folder-picker-empty">当前没有符合条件的子文件夹</div>`;
       if(rows.length>shown) list.insertAdjacentHTML("beforeend",
@@ -185,11 +217,12 @@ const AttachmentFolderPicker = {
         return;
       }
       if(unavailable(selected)) {
-        error.textContent="目标已无法接收此附件，请选择其它文件夹";render();return;
+        error.textContent=folderMode?"目标包含选中的文件夹或所属模块不一致，请重新选择":
+          "目标已无法接收此附件，请选择其它文件夹";render();return;
       }
       saving=true;submit.disabled=true;currentButton.disabled=true;error.textContent="";
       try {
-        await onSubmit({target:String(selected.folderId)});
+        await onSubmit({target:String(folderMode && selected.id===categoryId ? 0 : selected.folderId)});
         saving=false;close();
       }catch(e){saving=false;error.textContent=e.message||"操作失败";render();}
     });

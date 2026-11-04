@@ -20,6 +20,8 @@ const nodes=[
  {id:"f:99:1",name:"旧版本.pdf",type:"file",biz:{kind:"file"}},
  {id:"f:99:2",name:"新版本.pdf",type:"file",biz:{kind:"file"}},
  {id:"p:2",name:"其它项目",type:"folder",biz:{kind:"project",id:2}},
+ {id:"af:31",name:"资质甲",type:"folder",biz:{kind:"archive_folder",id:31,section:"certificate"}},
+ {id:"af:32",name:"资质乙",type:"folder",biz:{kind:"archive_folder",id:32,section:"certificate"}},
  {id:"t:8",name:"回收条目甲",type:"folder",biz:{kind:"trash",id:8}},
  {id:"t:9",name:"回收条目乙",type:"folder",biz:{kind:"trash",id:9}},
 ];
@@ -33,7 +35,7 @@ const drive={
  select(id,mode){if(mode==="single"){this.state.selection=new Set([id]);}},
  render(){},resetSearch(){},clearSelection(){this.state.selection.clear();},
 };
-const menus=[],deleted=[],recycled=[],dialogs=[],bulkAssociations=[];
+const menus=[],deleted=[],recycled=[],dialogs=[],bulkAssociations=[],folderTransfers=[];
 const sandbox=vm.createContext({
  Drive:drive,VaultStore:{ws:"company",metaOf:id=>({
   "f:12:1":{linkId:12,fileId:12},"f:13:1":{linkId:13,fileId:13},
@@ -53,6 +55,8 @@ const sandbox=vm.createContext({
  toast:msg=>notes.push(msg),
  deleteNodes:items=>deleted.push(Array.from(items,i=>i.id)),
  associateOriginalBatch:(items,move)=>bulkAssociations.push({
+  ids:Array.from(items,i=>i.id),move}),
+ transferFolderBatch:(items,move)=>folderTransfers.push({
   ids:Array.from(items,i=>i.id),move}),
  recycleAction:(items,op)=>recycled.push({ids:Array.from(items,i=>i.id),op}),
  askConfirm:async()=>true,
@@ -131,7 +135,37 @@ const act=cmd=>vm.runInContext(cmd,sandbox);
  assert.match(menu.markup,/打包下载选中的 2 项/);
  menu.handlers.delete();
  assert.deepEqual(deleted.at(-1),["p:1","p:2"]);
- drive.state.selection=new Set(["p:2","f:12:1"]);
+ // Two checked ordinary folders support full-selection share and move;
+ // a single folder keeps dedicated single-item commands.
+ drive.state.selection=new Set(["af:31","af:32"]);
+ act("showItemMenu('af:31',10,20)");
+ menu=menus.at(-1);
+ assert.match(menu.markup,/共享选中的 2 个文件夹/);
+ assert.match(menu.markup,/移动选中的 2 个文件夹/);
+ assert.doesNotMatch(menu.markup,/data-act="(?:rename|share-folder|move-folder|copy-record|transfer-record)"/);
+ assert.deepEqual(Object.keys(menu.handlers).sort(),
+  ["delete","download","move-folder-batch","share-folder-batch"]);
+ menu.handlers["share-folder-batch"]();
+ assert.deepEqual(folderTransfers.at(-1),{ids:["af:31","af:32"],move:false});
+ menu.handlers["move-folder-batch"]();
+ assert.deepEqual(folderTransfers.at(-1),{ids:["af:31","af:32"],move:true});
+ drive.state.selection=new Set(["af:31"]);
+ act("showItemMenu('af:31',10,20)");
+ menu=menus.at(-1);
+ assert.match(menu.markup,/data-act="share-folder"/);
+ assert.match(menu.markup,/data-act="move-folder"/);
+ assert.doesNotMatch(menu.markup,/data-act="move-archive"/);
+ menu.handlers["share-folder"]();
+ assert.deepEqual(folderTransfers.at(-1),{ids:["af:31"],move:false});
+ menu.handlers["move-folder"]();
+ assert.deepEqual(folderTransfers.at(-1),{ids:["af:31"],move:true});
+ drive.state.selection=new Set(["af:31","f:12:1"]);
+ act("showItemMenu('af:31',10,20)");
+ menu=menus.at(-1);
+ assert.deepEqual(Object.keys(menu.handlers).sort(),["delete","download"],
+  "Mixed folder and attachment selection cannot share or move in one action");
+ assert.doesNotMatch(menu.markup,/共享选中的|移动选中的/);
+  drive.state.selection=new Set(["p:2","f:12:1"]);
  act("showItemMenu('f:12:1',10,20)");
  menu=menus.at(-1);
  assert.deepEqual(Object.keys(menu.handlers).sort(),["delete","download"]);

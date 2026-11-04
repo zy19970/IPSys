@@ -779,13 +779,17 @@ const Drive = {
       ? selectionActionTargets(selected).length : selected.length;
     const deleteCount = typeof selectionActionTargets === "function"
       ? selectionActionTargets(selected, true).length : selected.length;
-    const canAssociateMultiple = !locked && selected.length > 1 &&
+    const selectedFiles = !locked && selected.length > 1 &&
       selected.every(n => n.type === "file");
+    const selectedFolders = !locked && selected.length > 1 &&
+      selected.every(n => n.type === "folder" && !n.synthetic &&
+        n.biz?.kind === "archive_folder");
     for (const [id,move] of [["#selShare",false],["#selMove",true]]) {
       const btn = $(id);
       if (btn) {
-        btn.classList.toggle("hidden", !canAssociateMultiple);
-        btn.textContent = (move ? "移动 " : "共享 ") + selected.length + " 个附件";
+        btn.classList.toggle("hidden", !(selectedFiles || selectedFolders));
+        btn.textContent = (move ? "移动 " : "共享 ") + selected.length +
+          (selectedFolders ? " 个文件夹" : " 个附件");
       }
     }
     const sdDownload = $("#selDownload");
@@ -1266,6 +1270,8 @@ const Drive = {
       const deleteCount = typeof selectionActionTargets === "function"
         ? selectionActionTargets(items, true).length : items.length;
       const canAssociateMultiple = !locked && items.every(n => n.type === "file");
+      const canTransferFolders = !locked && items.every(n => n.type === "folder" &&
+        !n.synthetic && n.biz?.kind === "archive_folder");
       const total = items.reduce((a, b) => a + (b.size || 0), 0);
       body.innerHTML = `
         <div class="detail-hero">
@@ -1277,6 +1283,8 @@ const Drive = {
           ${locked ? "" : `<button class="btn" data-detail-act="download">${icon("download", 16)}打包下载选中的 ${downloadCount} 项</button>`}
           ${canAssociateMultiple ? `<button class="btn" data-detail-act="assoc-batch">${icon("copy", 16)}共享 ${items.length} 个附件</button>
           <button class="btn" data-detail-act="assoc-move-batch">${icon("move", 16)}移动 ${items.length} 个附件</button>` : ""}
+          ${canTransferFolders ? `<button class="btn" data-detail-act="share-folder-batch">${icon("copy", 16)}共享 ${items.length} 个文件夹</button>
+          <button class="btn" data-detail-act="move-folder-batch">${icon("move", 16)}移动 ${items.length} 个文件夹</button>` : ""}
           <button class="btn" data-detail-act="delete">${icon(locked ? "trashForever" : "trash", 16)}${locked ? "彻底删除选中的 " : "删除选中的 "}${deleteCount} 项</button>
         </div>
         <div class="detail-section" style="border-bottom:0">
@@ -1323,6 +1331,10 @@ const Drive = {
             ? `<button class="btn" data-detail-act="restore">${icon("restore", 16)}还原</button>
                <button class="btn" data-detail-act="delete">${icon("trashForever", 16)}彻底删除</button>`
             : `<button class="btn" data-detail-act="download">${icon("download", 16)}下载</button>
+               ${isFolder && b.kind==="archive_folder"
+                 ? `<button class="btn" data-detail-act="share-folder">${icon("copy", 16)}共享文件夹</button>
+                    <button class="btn" data-detail-act="move-folder">${icon("move", 16)}移动文件夹</button>`
+                 : ""}
                <button class="btn" data-detail-act="delete">${icon("trash", 16)}删除</button>`
         }
       </div>`;

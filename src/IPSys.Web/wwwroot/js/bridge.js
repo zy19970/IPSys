@@ -316,6 +316,78 @@ async function associateOriginalBatch(nodes, move = false) {
   });
 }
 
+/* Ordinary-folder sharing and moving use one destination and one atomic batch.
+   Folder identities are single-parent. Sharing clones hierarchy while keeping
+   linked FileIds and versions shared; moving preserves existing FolderIds. */
+function selectedArchiveFolders(nodes) {
+  if(!Array.isArray(nodes)||!nodes.length||
+     nodes.some(n=>n?.type!=="folder"||n.synthetic||
+       n.biz?.kind!=="archive_folder"||!Number.isSafeInteger(Number(n.biz.id))||
+       Number(n.biz.id)<=0))
+    throw new Error("请只选择普通资料文件夹，不要混选附件或业务项目");
+  const section=nodes[0].biz.section;
+  if(!nodes.every(n=>n.biz.section===section))
+    throw new Error("批量文件夹必须属于同一资料模块");
+  const dedup=new Map(nodes.map(n=>[n.id,n]));
+  // Normalize selected descendants: one parent always covers its entire tree.
+  const selectedIds=new Set(dedup.keys());
+  const roots=[...dedup.values()].filter(node=>
+    !(pathTo(node.id)||[]).slice(0,-1).some(parent=>selectedIds.has(parent.id)));
+  if(roots.length>100)throw new Error("单次最多操作100个文件夹，请分批选择");
+  return roots;
+}
+
+function transferFolderBatch(nodes,move=false) {
+  if(fileTaskBusy())return toast("当前有文件任务，请完成后再操作");
+  let items;
+  try { items=selectedArchiveFolders(nodes); }
+  catch(e){return toast(e.message,{tone:"error",ms:6000});}
+  const workspace=VaultStore.ws,section=items[0].biz.section;
+  const sourceIds=items.map(n=>Number(n.biz.id));
+  const index=AttachmentFolderPicker.index(ROOT,sourceIds[0],sourceIds);
+  if(!index.source)return toast("来源文件夹已不存在，请刷新重试",{tone:"error"});
+  const onSubmit=async data=>{
+    if(VaultStore.ws!==workspace)throw new Error("工作区已切换，请重新选择文件夹");
+    if(fileTaskBusy())throw new Error("当前有文件任务，请完成后再操作");
+    const targetId=Number(data.target);
+    if(!Number.isSafeInteger(targetId)||targetId<0)
+      throw new Error("目标文件夹无效，请重新选择");
+    if(targetId>0) {
+      const dest=index.byFolderId.get(targetId),current=dest&&findById(dest.id);
+      if(!dest||!current||current.type!=="folder"||
+         current.biz?.kind!=="archive_folder"||
+         current.biz.section!==section||Number(current.biz.id)!==targetId)
+        throw new Error("目标文件夹已失效或不属于本模块");
+      // No nested destination, including deep descendants.
+      let cur=dest;
+      while(cur) {
+        if(sourceIds.includes(cur.folderId))
+          throw new Error("不能将文件夹放入自身或其子目录");
+        cur=index.nodes.get(cur.parent);
+      }
+    }
+    for(const item of items) {
+      const current=findById(item.id);
+      if(!current||current.biz?.kind!=="archive_folder"||
+        current.biz.section!==section||Number(current.biz.id)!==Number(item.biz.id))
+        throw new Error("部分来源文件夹已变化，请刷新后重试");
+    }
+    await VaultStore.api("/api/v2/ui/folders/"+workspace+"/"+section+"/transfer-batch",{
+      method:"POST",json:{targetFolderId:targetId,move:!!move,items:sourceIds}
+    });
+    try {await refreshCurrent();Drive.clearSelection();}
+    catch {toast("操作已完成，但页面刷新失败；请手动刷新核对",{tone:"error",ms:6000});return;}
+    toast((move?"已移动 ":"已共享 ")+items.length+" 个文件夹");
+  };
+  AttachmentFolderPicker.open({
+    root:ROOT,workspace,sourceFolderId:sourceIds[0],sourceFolderIds:sourceIds,
+    fileName:items.length===1?items[0].name:"已选择 "+items.length+" 个文件夹",
+    sourceDescription:items.length===1?index.path(index.source.id):
+      "来自 "+items.length+" 个已选文件夹",
+    folderMode:true,folderSection:section,move,onSubmit,
+  });
+}
+
 /* F2-04: entire business folders; not the F2-03 attachment LinkId action.
    Whole-record copies duplicate logical FileIds and all versions; the backend
    refuses cross-workspace physical FileObject sharing. */

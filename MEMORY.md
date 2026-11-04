@@ -502,3 +502,14 @@ CI #506 run41623186950首次通过编译、MCP和早期UI检查，但新测试�
 用户原话：“文件夹也要能共享和移动”（截图公司工作区企业资质，选中5个普通文件夹，右键只有下载/删除）。已重新读取AIGT-templates三份必读规范、IPSys现行Memory/会话及main=2bf4b3163f95ca1f8916bce6988194edfb73e497；源码现状：普通文件夹单项有复制/跨区转移入口，但批量菜单只支持下载删除，附件有批量LinkId关联；Folder在Schema V2只能有单一parent_id，普通资料kind=archive_folder、section分模块，附件FileId可同工作区多关联。决定在安全范围内将普通文件夹单/多选共享解释为“复制目录结构、附件沿用原FileId及版本链”，同一section内移动为“原位修改父级、FolderId稳定”；不改变项目/IP专属业务与跨工作区规则。目标为同工作区同资料模块、最多100个选中根文件夹，连同多级子目录单事务，拒绝父子混选、目标在自身子树及同名移动冲突。与附件共用多级目标选择器，允许模块根目录作为目标；右键/多选工具条/详情侧栏一致。
 
 **当前实际结果并非已实现。** 在GitHub连接器通过create_blob曾成功创建尚未关联main的临时对象：新后端NativeFolderBatchTransferEndpoints.cs blob 2061bead3e615ee608afead77bf98ca435e9a914；前端folder-picker.js 39a6d6f79c4ac29289821c8eb6c82dbd79657f6b；bridge.js 4f51d722e2163686a10edf1a3cfbaf1613d84928；interactions.js 1d8eb450fd6f3aaff57836af54eb9e24e48c9440；app.js 47b1d2d7704a0043b83d4a970c959fb7898134e2；Program.cs f2fb74d09e5ca0f18bdeb4330b8b284024cd3180。**这些均为未编译、未验证、不可视作已完成的草稿Git Blob，尚未创建Git Tree、Commit或更新main，不应投入使用。** 后续尝试创建专门的SQLCipher/HTTP完整验收测试Blob时被平台安全检查拦截，遵守AIGT安全限制停止继续写入产品仓库，不规避、不推送未集成代码。已重新核实main仍为2bf4b316；无新产品CI、无EXE/Release，未触碰用户DB。开始通知office-renderer/wechat-webhook#2166，失败通知#2167。以后必须在获允许的开发环境重新整合代码、补齐测试（尤其共享后版本一致、多选第二项失败全回滚、移动ID保持）、通过Windows CI后再向用户报告完成。最近会话 memory/sessions/2026-11-03-IPSys项目整体认知复盘.md，第三轮。
+
+
+## 2026-11-04 第四轮：继续完成普通文件夹共享与批量移动的代码集成
+
+用户原话：“继续推进”。本轮重新读取AIGT-templates的AGENTS、Git和Memory规范，恢复IPSys main=3cf702063e1d6f1d6959aee1ef2d7133bfe0ca0f、MEMORY以及最近会话，确认上轮安全检查前的草稿Git Blob未曾进入产品main。按AIGT发送重新开始通知 office-renderer/wechat-webhook#2168。已复查旧版UI与后台实现，确认用户目标是普通资料文件夹单项及批量共享/移动，不扩大到专有project/contract/IP业务和跨工作区版。
+
+本轮对草稿完成集成：新增`NativeFolderBatchTransferEndpoints.cs`（同工作区同section，最多100个选中根，合并选中子树总计不超过10000个文件夹，单SQLCipher事务）；share在目标复制完整递归结构与属性，并为附件新建Link但复用原FileId及全部版本，结构后续不自动同步；move原地更新各根的parent_id、position、attributes_json，保留FolderId与全部后代及原LinkId。拒绝自身/后代目标、父子根重复、同名冲突、跨模块目标、失效/回收站文件夹；复制时同名按照现有UniqueName生成带后缀名称；错误事务回滚。
+
+前端复用并增强`AttachmentFolderPicker`，普通文件夹mode允许选择本模块虚拟顶层为parent=0、禁止进入无关模块及选择来源/后代。新增`transferFolderBatch`；右键单选、批量多选、底部选择栏、右侧详情支持“共享文件夹”“移动文件夹”，混选文件与文件夹不提供危险组合操作。原独立复制逻辑标签明确为“复制文件夹（独立副本）”，旧跨区移动入口改文字“跨工作区或类别转移”。保留附件现有单/批量共享移动路径。增补真实SQLCipher/HTTP测试到`NativeFolderTreeTransferSmoke`（双根/子树共享FileId和版本、故障回滚、父子重复、环、移动保留ID），并扩展前端`folder-picker-smoke.cjs`和`explorer-f2-final-consistency-smoke.cjs`。用远端V8 Function构造对六份JS及测试进行了静态语法检查通过，**这不代替Windows完整CI。** 新产品提交后检查workflow结论，用户尚未在本机新版exe手动试用，不触发正式Release。
+
+任务范围未改变用户实际数据库，未申请迁移或清理旧数据。本轮项目Memory和会话均按规范归档，最近会话仍为 memory/sessions/2026-11-03-IPSys项目整体认知复盘.md，第四轮；此前上轮未落地的草稿状态将以本轮实际提交和CI记录更新。

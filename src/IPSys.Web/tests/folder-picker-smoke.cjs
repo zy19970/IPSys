@@ -163,5 +163,45 @@ function open(move=false) {
   mask.cancel[0].emit("click");
   assert.equal(mask.removed,true);
   assert.equal(submitted.length,before);
+  // Folder sharing/moving can select the module root, but never a source
+  // folder, its descendant, a different module or the global drive root.
+  const stack=[category];
+  while(stack.length) {
+    const n=stack.pop();
+    if(n.biz?.kind==="archive_folder")n.biz.section="achievement";
+    stack.push(...(n.children||[]).filter(x=>x.type==="folder"));
+  }
+  const nested=folder("af:90000","来源的下一级","archive_folder",[],{section:"achievement"});
+  source.children.push(nested);
+  const folderTargets=[];
+  const openFolder=(move=false)=>picker.open({
+    root,workspace:"company",sourceFolderId:1,sourceFolderIds:[1],
+    folderMode:true,folderSection:"achievement",fileName:"来源",
+    move,onSubmit:async data=>folderTargets.push(JSON.parse(JSON.stringify(data)))
+  });
+  openFolder(true);
+  assert.match(mask.innerHTML,/移动文件夹/);
+  assert.match(get("crumb").innerHTML,/业务档案/);
+  assert.doesNotMatch(get("crumb").innerHTML,/data-picker-go="root"/);
+  assert.equal(get("current").disabled,false,"Category top is a valid destination");
+  get("current").emit("click");
+  await get("submit").emit("click");
+  assert.deepEqual(folderTargets.at(-1),{target:"0"},"Module root is sent as parent 0");
+  openFolder();
+  assert.match(mask.innerHTML,/共享文件夹/);
+  get("search").value="来源";
+  get("search").emit("input");
+  assert.match(get("list").innerHTML,/disabled/,"Selected folder cannot target itself");
+  pickClick(get("list"),"enter","af:1");
+  assert.match(get("list").innerHTML,/来源的下一级/);
+  assert.match(get("list").innerHTML,/disabled/,"Descendant cannot be selected");
+  assert.equal(get("current").disabled,true,"Source folder cannot be destination");
+  get("scope").emit("click");
+  get("search").value="最深目标";
+  get("search").emit("input");
+  assert.match(get("list").innerHTML,/最深目标/);
+  pickClick(get("list"),"choose","af:8888");
+  await get("submit").emit("click");
+  assert.deepEqual(folderTargets.at(-1),{target:"8888"});
   console.log("FOLDER PICKER PASS: 75 levels, 1230 siblings, search, breadcrumb, selection, security");
 })().catch(e=>{console.error(e);process.exitCode=1;});

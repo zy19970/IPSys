@@ -39,6 +39,117 @@ static class NativeFolderTreeTransferSmoke
         string workspace,long folder)=>
         await client.GetFromJsonAsync<JsonElement>(
             $"/api/v2/files/{workspace}/folders/{folder}/links");
+
+    // A batch shares FileId history without copying bytes; moving retains
+    // original FolderIds. All roots are included in one SQLCipher transaction.
+    private static async Task VerifyFolderBatchAsync(HttpClient client,Vault vault)
+    {
+        string mark="FOLDER-BATCH-"+Guid.NewGuid().ToString("N")[..8];
+        long a=await Folder(client,"company","certificate",mark+"甲");
+        long child=await Folder(client,"company","certificate",mark+"子",a);
+        long b=await Folder(client,"company","certificate",mark+"乙");
+        long target=await Folder(client,"company","certificate",mark+"目标");
+        long rollbackTarget=await Folder(client,"company","certificate",mark+"回滚");
+        byte[] first=[2,4,6],second=[9,7,5];
+        long file;
+        using(var req=new HttpRequestMessage(HttpMethod.Post,
+            $"/api/v2/files/company/upload?folderId={child}")
+            {Content=new ByteArrayContent(first)})
+        {
+            req.Headers.Add("X-File-Name",Uri.EscapeDataString(mark+".pdf"));
+            file=(await Read(await client.SendAsync(req)))
+                .GetProperty("fileId").GetInt64();
+        }
+        using(var req=new HttpRequestMessage(HttpMethod.Post,
+            $"/api/v2/files/company/{file}/versions")
+            {Content=new ByteArrayContent(second)})
+        {
+            req.Headers.Add("X-File-Name",Uri.EscapeDataString(mark+"-v2.pdf"));
+            await Read(await client.SendAsync(req));
+        }
+        const string endpoint="/api/v2/ui/folders/company/certificate/transfer-batch";
+        var copied=await Read(await client.PostAsJsonAsync(endpoint,new{
+            targetFolderId=target,move=false,items=new[]{a,b}}));
+        var cloneIds=copied.GetProperty("ids").EnumerateArray()
+            .Select(x=>x.GetInt64()).ToArray();
+        Check(cloneIds.Length==2 &&
+              copied.GetProperty("folders").GetInt32()==3 &&
+              copied.GetProperty("links").GetInt32()==1,
+            "batch clone includes both roots, nested child and file");
+        var flat=await Flat(client,"company","certificate");
+        long childClone=Id(flat.EnumerateArray().Single(x=>
+            x.GetProperty("folder").GetProperty("parent").ValueKind!=JsonValueKind.Null &&
+            x.GetProperty("folder").GetProperty("parent")
+                .GetProperty("id").GetInt64()==cloneIds[0] &&
+            x.GetProperty("folder").GetProperty("name").GetString()==mark+"子"));
+        Check((await Links(client,"company",childClone))[0]
+                .GetProperty("fileId").GetInt64()==file &&
+              (await Links(client,"company",child))[0]
+                .GetProperty("fileId").GetInt64()==file,
+            "shared folders preserve the same live file identity");
+        for(int v=1;v<=2;v++)
+            Check((await client.GetByteArrayAsync(
+                $"/api/v2/files/company/{file}/versions/{v}/download"))
+                .SequenceEqual(v==1?first:second),"all versions remain readable");
+
+        // A database failure on the second selected root must roll back
+        // the first root and all its descendant attachment links.
+        using(var trigger=vault.Db.CreateCommand())
+        {
+            trigger.CommandText=$"""
+                CREATE TEMP TRIGGER fail_folder_batch BEFORE INSERT ON folders
+                WHEN NEW.workspace='company' AND NEW.section='certificate'
+                     AND NEW.parent_id={rollbackTarget} AND NEW.name='{mark}乙'
+                BEGIN SELECT RAISE(ABORT,'rollback batch'); END;
+                """;
+            trigger.ExecuteNonQuery();
+        }
+        try
+        {
+            using var fail=await client.PostAsJsonAsync(endpoint,new{
+                targetFolderId=rollbackTarget,move=false,items=new[]{a,b}});
+            Check(fail.StatusCode==HttpStatusCode.Conflict,
+                "second root insertion rejects whole shared batch");
+            flat=await Flat(client,"company","certificate");
+            Check(!flat.EnumerateArray().Any(x=>
+                  x.GetProperty("folder").GetProperty("parent").ValueKind!=JsonValueKind.Null &&
+                  x.GetProperty("folder").GetProperty("parent")
+                    .GetProperty("id").GetInt64()==rollbackTarget),
+                "rollback leaves no cloned root in target");
+        }
+        finally
+        {
+            using var drop=vault.Db.CreateCommand();
+            drop.CommandText="DROP TRIGGER IF EXISTS fail_folder_batch;";
+            drop.ExecuteNonQuery();
+        }
+        using(var cyclic=await client.PostAsJsonAsync(endpoint,new{
+            targetFolderId=child,move=true,items=new[]{a}}))
+            Check(cyclic.StatusCode==HttpStatusCode.BadRequest,
+                "move into own child must be rejected");
+        using(var overlap=await client.PostAsJsonAsync(endpoint,new{
+            targetFolderId=target,move=false,items=new[]{a,child}}))
+            Check(overlap.StatusCode==HttpStatusCode.BadRequest,
+                "parent and child double-selection must be rejected");
+        var moved=await Read(await client.PostAsJsonAsync(endpoint,new{
+            targetFolderId=target,move=true,items=new[]{a,b}}));
+        Check(moved.GetProperty("ids").EnumerateArray()
+            .Select(x=>x.GetInt64()).SequenceEqual(new[]{a,b}),
+            "move preserves stable original FolderIds");
+        flat=await Flat(client,"company","certificate");
+        foreach(long id in new[]{a,b})
+            Check(flat.EnumerateArray().Single(x=>Id(x)==id)
+                .GetProperty("folder").GetProperty("parent")
+                .GetProperty("id").GetInt64()==target,
+                "each original folder moved under target");
+        Check(flat.EnumerateArray().Single(x=>Id(x)==child)
+                .GetProperty("folder").GetProperty("parent")
+                .GetProperty("id").GetInt64()==a &&
+              (await Links(client,"company",child))[0]
+                .GetProperty("fileId").GetInt64()==file,
+            "moving preserves descendant and original attachment identity");
+    }
+
     public static async Task VerifyAsync(HttpClient client,Vault vault)
     {
         string mark="TREE-"+Guid.NewGuid().ToString("N")[..8];
@@ -171,6 +282,7 @@ static class NativeFolderTreeTransferSmoke
         Check(!(await Flat(client,"company","general"))
             .EnumerateArray().Any(x=>Id(x)==generalChild),
             "source descendants are hidden with deleted ancestor");
+        await VerifyFolderBatchAsync(client,vault);
         Console.WriteLine("FOLDER TREE TRANSFER SMOKE PASS");
     }
 }
