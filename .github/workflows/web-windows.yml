@@ -428,7 +428,7 @@ jobs:
                 $details.CompanyName -ne 'Joey@BGRIMM' -or
                 $details.LegalCopyright -notmatch '^Copyright \(C\) Joey@BGRIMM \d{4}-\d{2}-\d{2}$' -or
                 $details.ProductVersion -match '\+[0-9a-f]{40}$') {
-              throw "EXE VERSIONINFO mismatch in $($variant.mode): $($details.ProductName), $($details.ProductVersion), $($details.LegalCopyright)"
+              throw "EXE VERSIONINFO mismatch in $($variant.mode): description=$($details.FileDescription); product=$($details.ProductName); company=$($details.CompanyName); fileVersion=$($details.FileVersion); productVersion=$($details.ProductVersion); copyright=$($details.LegalCopyright)"
             }
             Write-Host "Windows PE VERSIONINFO: $($variant.mode), $($details.FileVersion), $($details.ProductVersion), $($details.LegalCopyright)"
             $report = Join-Path $env:RUNNER_TEMP ("ipsys-release-" + $variant.mode + ".txt")

@@ -115,7 +115,7 @@ jobs:
                 $details.LegalCopyright -ne $expectedCopyright -or
                 $details.FileVersion -ne $fileVersion -or
                 $details.ProductVersion -ne $productVersion) {
-              throw "Release EXE VERSIONINFO mismatch: $folder; got file=$($details.FileVersion), product=$($details.ProductVersion), copyright=$($details.LegalCopyright)"
+              throw "Release EXE VERSIONINFO mismatch: $folder; description=$($details.FileDescription); product=$($details.ProductName); company=$($details.CompanyName); fileVersion=$($details.FileVersion); productVersion=$($details.ProductVersion); copyright=$($details.LegalCopyright)"
             }
           }
           Write-Host "Windows EXE metadata PASS: $productVersion, $fileVersion, $expectedCopyright"
