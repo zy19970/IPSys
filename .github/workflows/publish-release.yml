@@ -72,11 +72,26 @@ jobs:
           package-manager-cache: false
       - name: Build both Windows x64 single EXEs
         shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
         run: |
           $ErrorActionPreference = 'Stop'
-          dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/IPSys-Web-win-x64
+          # e.g. v0.9.2-rc.1 -> FileVersion 0.9.2.0; ProductVersion 0.9.2-rc.1.
+          $productVersion = $env:RELEASE_VERSION.Substring(1)
+          $components = ($productVersion -split '-',2)[0].Split('.')
+          if ($components.Count -ne 3) { throw 'Invalid three-part release version' }
+          foreach ($part in $components) {
+            if ([long]$part -gt 65535) { throw 'Windows file version components must be <= 65535' }
+          }
+          $fileVersion = "$($components[0]).$($components[1]).$($components[2]).0"
+          # Freeze a complete calendar date in UTC+8 across both EXE builds.
+          $copyrightDate = [System.DateTime]::UtcNow.AddHours(8).ToString('yyyy-MM-dd')
+          $expectedCopyright = "Copyright (C) Joey@BGRIMM $copyrightDate"
+          $metadata = @("-p:Version=$productVersion", "-p:FileVersion=$fileVersion",
+                        "-p:InformationalVersion=$productVersion", "-p:IPSysCopyrightDate=$copyrightDate")
+          dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true @metadata -o artifacts/IPSys-Web-win-x64
           if ($LASTEXITCODE -ne 0) { throw 'Framework-dependent Release build failed' }
-          dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-contained true -p:SelfContained=true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/IPSys-Web-win-x64-self-contained
+          dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-contained true -p:SelfContained=true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true @metadata -o artifacts/IPSys-Web-win-x64-self-contained
           if ($LASTEXITCODE -ne 0) { throw 'Self-contained Release build failed' }
           # Packaging verification, not a smoke test: catch DLL/JSON/PDB
           # sidecars in either output folder before uploading only the EXE.
@@ -92,7 +107,18 @@ jobs:
               $unexpected | Select-Object Name,Length | Format-Table -AutoSize
               throw "Release output must contain only IPSys.Web.exe: $folder"
             }
+            # Inspect the actual Windows PE VERSIONINFO, without launching EXEs.
+            $details = [System.Diagnostics.FileVersionInfo]::GetVersionInfo((Resolve-Path -LiteralPath $exe).Path)
+            if ($details.FileDescription -ne 'IPSys 资料管理系统' -or
+                $details.ProductName -ne 'IPSys 资料管理系统' -or
+                $details.CompanyName -ne 'Joey@BGRIMM' -or
+                $details.LegalCopyright -ne $expectedCopyright -or
+                $details.FileVersion -ne $fileVersion -or
+                $details.ProductVersion -ne $productVersion) {
+              throw "Release EXE VERSIONINFO mismatch: $folder; got file=$($details.FileVersion), product=$($details.ProductVersion), copyright=$($details.LegalCopyright)"
+            }
           }
+          Write-Host "Windows EXE metadata PASS: $productVersion, $fileVersion, $expectedCopyright"
           Write-Host 'Two release single-EXE directories verified. No smoke was run.'
       - name: Upload framework-dependent EXE
         uses: actions/upload-artifact@v6

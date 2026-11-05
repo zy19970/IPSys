@@ -7,6 +7,15 @@
     <Nullable>enable</Nullable>
     <AssemblyName>IPSys.Web</AssemblyName>
     <RootNamespace>IPSys.Web</RootNamespace>
+    <!-- Windows Explorer Details of both published EXEs. Keep internal assembly identity. -->
+    <Product>IPSys 资料管理系统</Product>
+    <Description>IPSys 资料管理系统</Description>
+    <Company>Joey@BGRIMM</Company>
+    <!-- In UTC+8. Manual Release supplies one frozen date to both EXE variants. -->
+    <IPSysCopyrightDate Condition="'$(IPSysCopyrightDate)' == ''">$([System.DateTime]::UtcNow.AddHours(8).ToString('yyyy-MM-dd'))</IPSysCopyrightDate>
+    <Copyright>Copyright (C) Joey@BGRIMM $(IPSysCopyrightDate)</Copyright>
+    <!-- .NET 8 otherwise appends +GitSHA to the Windows Product version. -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <!-- The Windows PE executable and WinForms launcher share this application icon. -->
     <ApplicationIcon>assets\IPSys.ico</ApplicationIcon>
   </PropertyGroup>
