@@ -96,7 +96,7 @@ Windows EXE 应用图标为 [`src/IPSys.Web/assets/IPSys.ico`](./src/IPSys.Web/a
 
 IPSys 的正式发布由 [Publish IPSys Release](https://github.com/zy19970/IPSys/actions/workflows/publish-release.yml) 手动触发，不随普通代码提交自动发布。进入 Actions → Publish IPSys Release → Run workflow，分支选择 `main`，输入新的版本号（如 `v0.1.0-rc.1` 或 `v0.1.0`）。开发阶段建议保留默认勾选的「预发布版本」，准备正式交付时取消勾选。版本标签一旦使用，不允许重复发布覆盖。
 
-发布工作流**直接复用**当前完整的 Windows 构建与验收（`.github/workflows/web-windows.yml`）：全部成功后，从本次 CI 下载两份经过单独构建和启动验证的 Windows x64 EXE，并用该次被测的精确提交 SHA 创建 GitHub Release。每个 Release 同时包含 `IPSys-win-x64-SelfContained.exe`（自包含 .NET 8 运行时，电脑无需额外安装 .NET 8，体积较大）与 `IPSys-win-x64-FrameworkDependent.exe`（不打包 .NET 运行时，体积较小，需安装 .NET 8 Windows Desktop Runtime 和 ASP.NET Core Runtime），另有 `SHA256SUMS.txt` 对两份文件提供 SHA-256 校验。失败、标签重复或测试期间 `main` 更新都会阻止发布，不会以旧构建或未测构建充数。自包含版需 Windows x64，但无需单独安装 .NET 8；该版随 EXE 固定携带发布时的运行时，日后更新 .NET 安全补丁需重新发布 EXE。依赖环境版则使用电脑上安装的 .NET 8 运行时。完整验收方法见 [TESTING.md](./TESTING.md)。
+手动发布工作流**不再重复运行** `.github/workflows/web-windows.yml` 的 smoke/Edge/HTTP/SQLCipher 验收。发布者应先在独立的日常 Windows CI 和本机确认选定版本无误，然后手动触发发布。发布工作流只针对选中的 `main` 提交构建两份 Windows x64 单 EXE，检查两份产物的文件数量、体积关系及 SHA-256，并使用相同的提交 SHA 创建 GitHub Release；构建或产物校验失败、标签重复、发布前 `main` 更新都会阻止发布。**发布成功只代表构建与上传成功，不代表这次发布重新测试了软件功能。** 每个 Release 同时包含 `IPSys-win-x64-SelfContained.exe`（自包含 .NET 8 运行时，电脑无需额外安装 .NET 8，体积较大）与 `IPSys-win-x64-FrameworkDependent.exe`（不打包 .NET 运行时，体积较小，需安装 .NET 8 Windows Desktop Runtime 和 ASP.NET Core Runtime），另有 `SHA256SUMS.txt` 对两份文件提供 SHA-256 校验。自包含版需 Windows x64，但无需单独安装 .NET 8；该版随 EXE 固定携带发布时的运行时，日后更新 .NET 安全补丁需重新发布 EXE。依赖环境版则使用电脑上安装的 .NET 8 运行时。完整验收方法见 [TESTING.md](./TESTING.md)。
 
 ## 当前验收状态
 

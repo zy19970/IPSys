@@ -53,17 +53,48 @@ jobs:
           fi
           echo "发布前检查通过：$RELEASE_VERSION，源码 $GITHUB_SHA"
 
-  verify:
-    name: Complete Windows acceptance
+  build:
+    name: Build release EXEs (no smoke)
     needs: validate
-    # 复用现行 Windows CI：Debug、Release、MCP、Node、真实 Edge/HTTP、SQLCipher。
-    uses: ./.github/workflows/web-windows.yml
+    runs-on: windows-latest
+    timeout-minutes: 30
     permissions:
       contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "8.0.x"
+      # MSBuild embeds the Explorer frontend using Node during dotnet publish.
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          package-manager-cache: false
+      - name: Build both Windows x64 single EXEs
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/IPSys-Web-win-x64
+          if ($LASTEXITCODE -ne 0) { throw 'Framework-dependent Release build failed' }
+          dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-contained true -p:SelfContained=true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/IPSys-Web-win-x64-self-contained
+          if ($LASTEXITCODE -ne 0) { throw 'Self-contained Release build failed' }
+          Write-Host 'Two Release EXEs built. Smoke tests are deliberately not run by manual Release.'
+      - name: Upload framework-dependent EXE
+        uses: actions/upload-artifact@v6
+        with:
+          name: IPSys-Web-win-x64
+          path: artifacts/IPSys-Web-win-x64/IPSys.Web.exe
+          if-no-files-found: error
+      - name: Upload self-contained EXE
+        uses: actions/upload-artifact@v6
+        with:
+          name: IPSys-Web-win-x64-self-contained
+          path: artifacts/IPSys-Web-win-x64-self-contained/IPSys.Web.exe
+          if-no-files-found: error
 
   publish:
-    name: Publish both tested EXEs to GitHub Releases
-    needs: verify
+    name: Publish both built EXEs to GitHub Releases
+    needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -111,7 +142,7 @@ jobs:
           IS_PRERELEASE: ${{ inputs.prerelease }}
         run: |
           set -euo pipefail
-          # 测试期间有新提交就拒绝发布旧构建。
+          # 构建和发布期间有新提交就拒绝发布旧构建。
           current=$(gh api "repos/$GITHUB_REPOSITORY/branches/main" --jq '.commit.sha')
           if [[ "$current" != "$GITHUB_SHA" ]]; then
             echo '测试期间 main 有新提交；本次不发布旧构建。请重新从 main 触发。' >&2
@@ -131,14 +162,15 @@ jobs:
           IPSys Windows x64 资料管理系统（正式前端 / SQLCipher V2）。
 
           - 对应提交：$GITHUB_SHA
-          - 验收依据：本次发布工作流调用的完整 Windows CI 已通过（Debug、Release、MCP、Node、Edge/HTTP、SQLCipher）。
+          - 发布流程：手动触发，只构建两种 Windows EXE 并核验产物，不重复运行 smoke。
+          - 功能验收：发布人已在独立的 Windows CI 和本机确认；本次 Release 运行不重新执行测试。
           - IPSys-win-x64-SelfContained.exe：自包含版，已打包 .NET 8 Windows Desktop 和 ASP.NET Core 运行时，目标 Windows x64 机器无需另外安装 .NET 8；文件体积较大。
           - IPSys-win-x64-FrameworkDependent.exe：依赖环境版，体积较小，目标机器需自行安装 .NET 8 Windows Desktop Runtime (x64) 和 ASP.NET Core Runtime 8 (x64)。
           - SHA256SUMS.txt：同时记录这两份 EXE 的 SHA-256，用于下载后检查完整性。
           - 自包含版携带发布时的 .NET 运行时，更新 .NET 安全补丁需要重新构建发布新版 EXE。
           - 说明：2 GiB / 4 GiB 大文件专项压测不属于普通发布门禁，参阅仓库测试文档。
 
-          构建与验收：https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+          本次构建与发布：https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
           EOF
           args=()
           if [[ "$IS_PRERELEASE" == 'true' ]]; then args+=(--prerelease); fi
