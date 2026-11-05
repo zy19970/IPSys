@@ -1469,6 +1469,37 @@ function validAttachmentDrop(source, target, workspace) {
     canUploadFiles(owner) && Number(meta?.fileId) > 0 && Number(meta?.linkId) > 0;
 }
 
+/* Dragging a selected row moves the whole selected set. Dragging an
+   unselected row moves that row only. Parent+child selections are normalized
+   before dispatch to avoid duplicate or partial mutations. */
+function dragMoveItems(source) {
+  const selected=Drive.state.selection.has(source.id)
+    ? Drive.selectedItems : [source];
+  return selectionActionTargets(selected);
+}
+
+function validMoveDrag(items,target,workspace) {
+  if(workspace!==VaultStore.ws || fileTaskBusy() ||
+     !items?.length || target?.type!=="folder")return false;
+  if(items.every(n=>n.type==="file")) {
+    try {batchAssociationItems(items);}catch{return false;}
+    return items.every(n=>validAttachmentDrop(n,target,workspace));
+  }
+  if(items.every(n=>n.type==="folder" && !n.synthetic &&
+     n.biz?.kind==="archive_folder")) {
+    if(!["project","archive_folder"].includes(target.biz?.kind))return false;
+    if(target.biz.kind==="archive_folder" && !target.biz.section)return false;
+    let roots;
+    try{roots=selectedArchiveFolders(items);}catch{return false;}
+    if(roots.some(n=>n.id===target.id ||
+      (pathTo(target.id)||[]).slice(0,-1).some(a=>a.id===n.id) ||
+      (findParent(n.id)?.id===target.id && n.biz.section===
+        (target.biz.kind==="project"?"project":target.biz.section))))return false;
+    return true;
+  }
+  return false;
+}
+
 function bindContent() {
   const content = $("#content");
   let dragLink = null;
@@ -1533,37 +1564,75 @@ function bindContent() {
     startMarquee(e);
   });
 
-  /* 内部附件拖动沿用 F2-03 的 associate 事务；外部 Files 仍上传。 */
+  /* A single internal drag gesture owns one immutable selection snapshot.
+     All selected attachments use the atomic associate-batch endpoint; all
+     selected ordinary folders use the atomic folder transfer endpoint.
+     Mixed/unsupported selections are rejected, never moved one by one. */
   content.addEventListener("dragstart", (e) => {
-    const row = e.target.closest(".row, .tile");
-    const source = row && findById(row.dataset.id);
-    if (!source || source.type !== "file" || !VaultStore.metaOf(source.id)?.linkId) {
+    const row=e.target.closest(".row, .tile");
+    const source=row&&findById(row.dataset.id);
+    const selected=source&&dragMoveItems(source);
+    if(!selected?.length ||
+       !(selected.every(n=>n.type==="file") ||
+         selected.every(n=>n.type==="folder" && !n.synthetic &&
+           n.biz?.kind==="archive_folder")) ||
+       fileTaskBusy()) {
       e.preventDefault();
+      if(selected?.length)
+        toast("拖动仅支持全选附件或全选普通资料文件夹；混合选择请分开操作",
+          {tone:"error"});
       return;
     }
-    dragLink = {id:source.id,workspace:VaultStore.ws};
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData(internalType, source.id);
+    // Ensure an unselected row drag does not secretly include a different
+    // visible selection; the selected row case keeps all selected rows.
+    if(!Drive.state.selection.has(source.id))
+      Drive.select(source.id,"single");
+    const items=selected.map(n=>({
+      id:n.id,
+      parentId:findParent(n.id)?.id,
+      fileId:n.type==="file"?Number(VaultStore.metaOf(n.id)?.fileId):null,
+      linkId:n.type==="file"?Number(VaultStore.metaOf(n.id)?.linkId):null,
+      section:n.biz?.section||null,
+    }));
+    dragLink={anchor:source.id,items,workspace:VaultStore.ws};
+    e.dataTransfer.effectAllowed="move";
+    e.dataTransfer.setData(internalType,source.id);
     row.classList.add("is-dragging");
   });
 
   content.addEventListener("dragend", () => {
-    dragLink = null;
+    dragLink=null;
     clearDragHighlights();
   });
 
+  const currentDragItems=(drag)=>{
+    if(!drag?.items?.length)return null;
+    const items=[];
+    for(const item of drag.items){
+      const now=findById(item.id);
+      if(!now || findParent(now.id)?.id!==item.parentId ||
+         (now.type==="file" &&
+           (Number(VaultStore.metaOf(now.id)?.fileId)!==item.fileId ||
+            Number(VaultStore.metaOf(now.id)?.linkId)!==item.linkId)) ||
+         (now.type==="folder" && now.biz?.section!==item.section))
+        return null;
+      items.push(now);
+    }
+    return items;
+  };
+
   content.addEventListener("dragover", (e) => {
-    const row = e.target.closest(".row, .tile");
-    const target = row && findById(row.dataset.id);
-    if (!target || target.type !== "folder") return;
-    const external = e.dataTransfer?.types?.includes("Files");
-    const valid = external
+    const row=e.target.closest(".row, .tile");
+    const target=row&&findById(row.dataset.id);
+    if(!target || target.type!=="folder")return;
+    const external=e.dataTransfer?.types?.includes("Files");
+    const items=external?null:currentDragItems(dragLink);
+    const valid=external
       ? canUploadFiles(target)
-      : dragLink && validAttachmentDrop(
-          findById(dragLink.id),target,dragLink.workspace);
-    if (!valid) return;
+      : items&&validMoveDrag(items,target,dragLink.workspace);
+    if(!valid)return;
     e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
+    e.dataTransfer.dropEffect=external?"copy":"move";
     row.classList.add("is-drop");
   });
 
@@ -1572,54 +1641,58 @@ function bindContent() {
   });
 
   content.addEventListener("drop", async (e) => {
-    const row = e.target.closest(".row, .tile");
-    const target = row && findById(row.dataset.id);
+    const row=e.target.closest(".row, .tile");
+    const target=row&&findById(row.dataset.id);
     clearDragHighlights();
-    /* External files dropped on a row must be handled here exactly once:
-       invalid rows must not bubble and upload to the current folder. */
-    if (e.dataTransfer?.files?.length) {
-      dragLink = null;
-      if (row) {
+    // External multi-file upload keeps its original one-drop/one-task path.
+    if(e.dataTransfer?.files?.length){
+      dragLink=null;
+      if(row){
         e.preventDefault();
         e.stopPropagation();
-        if (!canUploadFiles(target))
+        if(!canUploadFiles(target))
           return toast("请将文件拖入可上传的文件夹");
-        if (fileTaskBusy()) return toast("已有文件任务，请完成后再上传");
-        return uploadFiles(e.dataTransfer.files, target);
+        if(fileTaskBusy())return toast("已有文件任务，请完成后再上传");
+        return uploadFiles(e.dataTransfer.files,target);
       }
-      return; // blank area: the document handler chooses the current folder
+      return;
     }
-    if (!target || target.type !== "folder") {
-      dragLink = null;
+    if(!target || target.type!=="folder"){
+      dragLink=null;
       return;
     }
     e.preventDefault();
-    e.stopPropagation(); // Internal link moves are never page uploads.
+    e.stopPropagation();
 
-    const sourceDrag = dragLink;
-    dragLink = null;
-    const sourceId = e.dataTransfer?.getData(internalType);
-    if (!sourceDrag || !sourceId || sourceDrag.id !== sourceId)
-      return toast("无法识别内部附件拖动，请重新操作");
-    const source = findById(sourceId);
-    if (!validAttachmentDrop(source,target,sourceDrag.workspace))
-      return toast("附件只能在同一工作区的不同业务记录间移动", {tone:"error"});
-
-    const confirmed = await askConfirm({
-      title:"移动附件",
-      text:"将「" + source.name + "」从当前记录移动到「" + target.name +
-        "」？移动会解除来源关联，但其它共享位置及文件历史版本不受影响。",
+    const drag=dragLink;
+    dragLink=null;
+    if(!drag || drag.anchor!==e.dataTransfer?.getData(internalType))
+      return toast("无法识别内部拖动，请重新操作");
+    const items=currentDragItems(drag);
+    if(!items || !validMoveDrag(items,target,drag.workspace))
+      return toast("目标、工作区或选中内容已变化，本次拖动未执行",
+        {tone:"error"});
+    const count=items.length;
+    const kind=items[0].type==="file"?"附件":"文件夹";
+    const confirmed=await askConfirm({
+      title:"移动"+kind,
+      text:count===1
+        ? "将「"+items[0].name+"」移动到「"+target.name+"」？"
+        : "将选中的 "+count+" 个"+kind+"全部移动到「"+target.name+
+          "」？本次将作为一个批次提交，不会只移动其中一项。",
       okText:"确认移动",
     });
-    if (!confirmed) return;
-    // The workspace, source, target and task lock may change while a modal
-    // is open. Revalidate before asking F2-03's shared action to commit.
-    if (!validAttachmentDrop(findById(sourceId),findById(target.id),sourceDrag.workspace))
-      return toast("工作区或记录状态已变化，移动已取消", {tone:"error"});
-    try {
-      await associateOriginal(findById(sourceId),true,findById(target.id));
-    } catch (err) {
-      toast("移动附件失败：" + err.message,{tone:"error",ms:6000});
+    if(!confirmed)return;
+    const current=currentDragItems(drag);
+    const destination=findById(target.id);
+    if(!current || !validMoveDrag(current,destination,drag.workspace))
+      return toast("确认期间目录或选中内容发生变化，移动已取消",
+        {tone:"error"});
+    try{
+      await moveSelectedItems(current,destination);
+    }catch(err){
+      toast("移动"+kind+"失败："+(err.message||String(err)),
+        {tone:"error",ms:6000});
       await refreshCurrent().catch(()=>{});
     }
   });

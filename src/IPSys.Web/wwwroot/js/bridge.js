@@ -253,7 +253,7 @@ function batchAssociationItems(nodes) {
   return [...links.values()];
 }
 
-async function associateOriginalBatch(nodes, move = false) {
+async function associateOriginalBatch(nodes, move = false, directTarget = null) {
   if (fileTaskBusy()) return toast("有文件任务正在执行，请完成后再操作");
   let items;
   try { items = batchAssociationItems(nodes); }
@@ -301,6 +301,14 @@ async function associateOriginalBatch(nodes, move = false) {
     toast((move?"已移动 ":"已共享 ")+items.length+" 个附件");
   };
 
+  // A drag uses exactly the same atomic batch endpoint as the picker.
+  // Never convert a multi-selection to multiple single-file requests.
+  if (directTarget) {
+    if (directTarget.type!=="folder" ||
+        !UPLOADABLE_KINDS.includes(directTarget.biz?.kind))
+      throw new Error("附件拖放目标不是有效业务文件夹");
+    return onSubmit({target:String(directTarget.biz.id)});
+  }
   const summary=items.length===nodes.length
     ? "已选 "+items.length+" 个附件"
     : "已选 "+nodes.length+" 个版本，共 "+items.length+" 条独立附件关联";
@@ -337,7 +345,7 @@ function selectedArchiveFolders(nodes) {
   return roots;
 }
 
-function transferFolderBatch(nodes,move=false) {
+function transferFolderBatch(nodes,move=false,directTarget=null) {
   if(fileTaskBusy())return toast("当前有文件任务，请完成后再操作");
   let items;
   try { items=selectedArchiveFolders(nodes); }
@@ -389,6 +397,13 @@ function transferFolderBatch(nodes,move=false) {
     catch {toast("操作已完成，但页面刷新失败；请手动刷新核对",{tone:"error",ms:6000});return;}
     toast((move?"已移动 ":"已共享 ")+items.length+" 个文件夹");
   };
+  if(directTarget) {
+    if(directTarget.type!=="folder" ||
+       !["archive_folder","project"].includes(directTarget.biz?.kind))
+      return Promise.reject(new Error("文件夹拖放目标无效"));
+    const section=directTarget.biz.kind==="project"?"project":directTarget.biz.section;
+    return onSubmit({target:String(directTarget.biz.id),targetSection:section});
+  }
   try {
     AttachmentFolderPicker.open({
       root:ROOT,workspace,sourceFolderId:sourceIds[0],sourceFolderIds:sourceIds,
@@ -406,15 +421,15 @@ function transferFolderBatch(nodes,move=false) {
 /* Same front-end movement entry for one/many attachments and ordinary folders.
    The shared picker supplies a target; the backend keeps its separate,
    transaction-safe LinkId and folder parent/section operations. */
-function moveSelectedItems(nodes) {
+function moveSelectedItems(nodes,directTarget=null) {
   const items=Array.isArray(nodes)?nodes:[nodes];
   if(!items.length)return toast("请先选择要移动的内容");
   if(items.every(n=>n?.type==="file"))
     return items.length===1
-      ? associateOriginal(items[0],true) : associateOriginalBatch(items,true);
+      ? associateOriginal(items[0],true,directTarget) : associateOriginalBatch(items,true,directTarget);
   if(items.every(n=>n?.type==="folder" && !n.synthetic &&
       n.biz?.kind==="archive_folder"))
-    return transferFolderBatch(items,true);
+    return transferFolderBatch(items,true,directTarget);
   return toast("请分别选择附件或普通资料文件夹进行移动",
     {tone:"error",ms:6000});
 }
