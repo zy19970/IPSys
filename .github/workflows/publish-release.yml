@@ -93,20 +93,14 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Framework-dependent Release build failed' }
           dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-contained true -p:SelfContained=true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true @metadata -o artifacts/IPSys-Web-win-x64-self-contained
           if ($LASTEXITCODE -ne 0) { throw 'Self-contained Release build failed' }
-          # Packaging verification, not a smoke test: catch DLL/JSON/PDB
-          # sidecars in either output folder before uploading only the EXE.
-          foreach ($folder in @('artifacts/IPSys-Web-win-x64',
-                                'artifacts/IPSys-Web-win-x64-self-contained')) {
+          # Cold Web SDK publish can leave an empty wwwroot directory.
+          # Shared packaging guard removes ONLY an empty tree, rejects real
+          # copied assets, and enforces exactly one EXE for each release mode.
+          $publishDirs = @('artifacts/IPSys-Web-win-x64',
+                           'artifacts/IPSys-Web-win-x64-self-contained')
+          & .\.github\scripts\verify-single-exe-output.ps1 -PublishDirectories $publishDirs
+          foreach ($folder in $publishDirs) {
             $exe = Join-Path $folder 'IPSys.Web.exe'
-            if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) {
-              throw "Release EXE missing: $exe"
-            }
-            $unexpected = @(Get-ChildItem -LiteralPath $folder -Force |
-              Where-Object { $_.Name -ne 'IPSys.Web.exe' })
-            if ($unexpected.Count -ne 0) {
-              $unexpected | Select-Object Name,Length | Format-Table -AutoSize
-              throw "Release output must contain only IPSys.Web.exe: $folder"
-            }
             # Inspect the actual Windows PE VERSIONINFO, without launching EXEs.
             $details = [System.Diagnostics.FileVersionInfo]::GetVersionInfo((Resolve-Path -LiteralPath $exe).Path)
             if ($details.FileDescription -ne 'IPSys 资料管理系统' -or

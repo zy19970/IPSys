@@ -11,6 +11,7 @@ on:
       - "tests/retest-v2-2026-10-22/evidence/fixture.json"
       - ".github/workflows/web-windows.yml"
       - ".github/workflows/publish-release.yml"
+      - ".github/scripts/verify-single-exe-output.ps1"
   workflow_dispatch:
     inputs:
       large_file_smoke:
@@ -42,6 +43,37 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+      - name: Verify cold Release packaging from clean checkout (no smoke)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # Reproduce manual Publish directly (without the prior Debug build).
+          # Use a non-default pre-release version to exercise PE VERSIONINFO.
+          $productVersion = '0.9.3-rc.1'
+          $fileVersion = '0.9.3.0'
+          $copyrightDate = [DateTime]::UtcNow.AddHours(8).ToString('yyyy-MM-dd')
+          $metadata = @("-p:Version=$productVersion", "-p:FileVersion=$fileVersion",
+                        "-p:InformationalVersion=$productVersion", "-p:IPSysCopyrightDate=$copyrightDate")
+          dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true @metadata -o artifacts/IPSys-Web-cold-framework
+          if ($LASTEXITCODE -ne 0) { throw 'Cold framework-dependent publish failed' }
+          dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-contained true -p:SelfContained=true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true @metadata -o artifacts/IPSys-Web-cold-self-contained
+          if ($LASTEXITCODE -ne 0) { throw 'Cold self-contained publish failed' }
+          $dirs = @('artifacts/IPSys-Web-cold-framework',
+                    'artifacts/IPSys-Web-cold-self-contained')
+          & .\.github\scripts\verify-single-exe-output.ps1 -PublishDirectories $dirs
+          foreach ($folder in $dirs) {
+            $exe = (Resolve-Path -LiteralPath (Join-Path $folder 'IPSys.Web.exe')).Path
+            $details = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($exe)
+            if ($details.FileDescription -ne 'IPSys 资料管理系统' -or
+                $details.ProductName -ne 'IPSys 资料管理系统' -or
+                $details.CompanyName -ne 'Joey@BGRIMM' -or
+                $details.LegalCopyright -ne "Copyright (C) Joey@BGRIMM $copyrightDate" -or
+                $details.FileVersion -ne $fileVersion -or
+                $details.ProductVersion -ne $productVersion) {
+              throw "Cold Release VERSIONINFO mismatch: $folder, file=$($details.FileVersion), product=$($details.ProductVersion), copyright=$($details.LegalCopyright)"
+            }
+          }
+          Write-Host 'Cold direct Release packaging and version metadata PASS; no smoke was run'
       - name: Verify Visual Studio Debug embedded web assets
         shell: pwsh
         run: |
