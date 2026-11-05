@@ -246,12 +246,17 @@ static class WebSmoke
             using(var denied=await client.PostAsync("/api/lock",null))
                 if(denied.StatusCode!=HttpStatusCode.Conflict)
                     throw new IOException("正在导入 V2 文件时禁止关库。");
+            using(var deniedRekey=await client.PostAsJsonAsync("/api/vault/change-password",
+                new VaultPasswordChangeInput(password,"NewPasswordStrong!","NewPasswordStrong!")))
+                if(deniedRekey.StatusCode!=HttpStatusCode.Conflict)
+                    throw new IOException("正在上传附件时禁止更换 SQLCipher 密钥。");
             using(var noExit=await client.PostAsync("/api/exit",null))
                 if(noExit.StatusCode!=HttpStatusCode.NotFound)
                     throw new IOException("网页不能退出 WinForms。");
             paused.Release();
             using(var done=await task.WaitAsync(TimeSpan.FromSeconds(15)))
                 done.EnsureSuccessStatusCode();
+            await VaultPasswordHttpSmoke.VerifyAsync(client,vault,dbPath,password,project,newToken);
             (await client.PostAsync("/api/lock",null)).EnsureSuccessStatusCode();
             var status=await client.GetFromJsonAsync<JsonElement>("/api/status");
             if(status.GetProperty("unlocked").GetBoolean())

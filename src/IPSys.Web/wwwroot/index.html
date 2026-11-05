@@ -309,6 +309,14 @@
 
         <div class="set-row">
           <div class="set-txt">
+            <b>修改资料库密码</b>
+            <small>重新加密整个资料库；个人和企业工作区共用密码</small>
+          </div>
+          <button type="button" class="btn" id="setChangePassword">修改密码</button>
+        </div>
+
+        <div class="set-row">
+          <div class="set-txt">
             <b>关闭资料库</b>
             <small>关闭后需要重新输入密码，程序继续运行</small>
           </div>
@@ -353,6 +361,38 @@
       <span class="spacer"></span>
       <button class="btn solid" id="settingsDone">完成</button>
     </div>
+  </div>
+</div>
+
+<!-- SQLCipher database key rotation: never expose passwords in URL/localStorage. -->
+<div class="mask" id="changePasswordMask">
+  <div class="dialog password-change-dialog" role="dialog" aria-modal="true"
+    aria-labelledby="changePasswordTitle">
+    <div class="dlg-head"><h2 id="changePasswordTitle">修改资料库密码</h2></div>
+    <form id="changePasswordForm" autocomplete="off">
+      <div class="dlg-body password-change-fields">
+        <p class="password-change-help">修改会重新加密整个资料库，文件越大耗时越长。建议先在关闭资料库后备份数据库文件，修改期间请勿退出程序。</p>
+        <label for="passwordCurrent">当前密码</label>
+        <input id="passwordCurrent" type="password" autocomplete="current-password"
+          required placeholder="输入原数据库密码">
+        <label for="passwordNew">新密码（至少 8 个字符）</label>
+        <input id="passwordNew" type="password" autocomplete="new-password"
+          minlength="8" maxlength="256" required placeholder="输入新密码">
+        <label for="passwordNewConfirm">确认新密码</label>
+        <input id="passwordNewConfirm" type="password" autocomplete="new-password"
+          minlength="8" maxlength="256" required placeholder="再次输入新密码">
+        <label class="password-change-ack">
+          <input id="passwordChangeAck" type="checkbox" required>
+          <span>已备份资料库，或已了解重新加密期间出现异常的风险</span>
+        </label>
+        <p class="password-change-msg" id="passwordChangeMsg" role="status" aria-live="polite"></p>
+      </div>
+      <div class="dlg-foot">
+        <span class="spacer"></span>
+        <button class="btn" type="button" id="passwordChangeCancel">取消</button>
+        <button class="btn solid" type="submit" id="passwordChangeSubmit">修改密码</button>
+      </div>
+    </form>
   </div>
 </div>
 

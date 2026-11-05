@@ -179,7 +179,11 @@ function showLogin(hint) {
   if (password) password.value = "";
   mask.classList.add("show");
   const hp = $("#lockHint");
-  if (hp) hp.textContent = hint || "";
+  if (hp) {
+    const changedNotice = sessionStorage.getItem("ipsys.passwordChangeNotice");
+    sessionStorage.removeItem("ipsys.passwordChangeNotice");
+    hp.textContent = hint || changedNotice || "";
+  }
 
   VaultStore.getJson("/api/status")
     .then((s) => {
@@ -754,6 +758,105 @@ async function pollCompact() {
   if (st.state === "succeeded") void VaultStore.refreshStorage();
 }
 
+/* Settings entry for SQLCipher rekey. Never store a passphrase in browser storage.
+   The server locks and revokes all tokens on success, then the user opens anew. */
+let passwordChangeBusy = false;
+
+function openChangePassword() {
+  if (passwordChangeBusy) return;
+  $("#changePasswordForm")?.reset();
+  const msg = $("#passwordChangeMsg");
+  if (msg) { msg.className = "password-change-msg"; msg.textContent = ""; }
+  $("#changePasswordMask")?.classList.add("show");
+  $("#passwordCurrent")?.focus();
+}
+
+function closeChangePassword() {
+  if (passwordChangeBusy) return;
+  $("#changePasswordMask")?.classList.remove("show");
+  $("#changePasswordForm")?.reset();
+  const msg = $("#passwordChangeMsg");
+  if (msg) msg.textContent = "";
+}
+
+async function submitChangePassword(event) {
+  event.preventDefault();
+  if (passwordChangeBusy) return;
+  const current = $("#passwordCurrent")?.value || "";
+  const next = $("#passwordNew")?.value || "";
+  const confirmed = $("#passwordNewConfirm")?.value || "";
+  const msg = $("#passwordChangeMsg");
+  if (!current || next.length < 8 || next.length > 256 || !next.trim()) {
+    if (msg) { msg.className = "password-change-msg is-bad"; msg.textContent = "请正确填写旧密码和至少 8 位的新密码。"; }
+    return;
+  }
+  if (next !== confirmed || current === next) {
+    if (msg) { msg.className = "password-change-msg is-bad"; msg.textContent = "两次新密码必须一致，且不能与旧密码相同。"; }
+    return;
+  }
+  if (!$("#passwordChangeAck")?.checked) {
+    if (msg) { msg.className = "password-change-msg is-bad"; msg.textContent = "请先确认数据库重新加密的注意事项。"; }
+    return;
+  }
+  passwordChangeBusy = true;
+  const submit = $("#passwordChangeSubmit");
+  const cancel = $("#passwordChangeCancel");
+  if (submit) submit.disabled = true;
+  if (cancel) cancel.disabled = true;
+  for (const id of ["passwordCurrent", "passwordNew", "passwordNewConfirm", "passwordChangeAck"]) {
+    const field = $("#" + id);
+    if (field) field.disabled = true;
+  }
+  if (msg) {
+    msg.className = "password-change-msg";
+    msg.textContent = "正在重新加密资料库并验证新密码，请保持程序运行…";
+  }
+  try {
+    const response = await VaultStore.api("/api/vault/change-password", {
+      method: "POST",
+      json: { currentPassword: current, newPassword: next, confirmPassword: confirmed },
+    });
+    const result = await response.json();
+    if (!result.ok || !result.locked) throw new Error("修改结果尚未得到服务端确认。");
+    // All other browser tabs and local MCP sessions have been revoked.
+    sessionStorage.removeItem("od-token");
+    sessionStorage.removeItem("od-db");
+    sessionStorage.setItem("ipsys.passwordChangeNotice", "资料库密码修改成功，请使用新密码重新打开。");
+    VaultStore.token = "";
+    location.reload();
+  } catch (error) {
+    if (msg) {
+      msg.className = "password-change-msg is-bad";
+      msg.textContent = error.message || "修改失败，请检查数据库状态。";
+    }
+    // When the server had already started rekeying but final verification
+    // failed, it may have closed the vault. Show the login screen, not a
+    // misleading still-authenticated interface.
+    try {
+      const st = await VaultStore.status();
+      if (!st.unlocked) {
+        sessionStorage.removeItem("od-token");
+        sessionStorage.removeItem("od-db");
+        sessionStorage.setItem("ipsys.passwordChangeNotice",
+          "密码修改未能确认，资料库已关闭。请根据提示尝试新旧密码或恢复备份。");
+        VaultStore.token = "";
+        location.reload();
+      }
+    } catch { /* Preserve the original error in the dialog. */ }
+  } finally {
+    $("#passwordCurrent").value = "";
+    $("#passwordNew").value = "";
+    $("#passwordNewConfirm").value = "";
+    passwordChangeBusy = false;
+    if (submit) submit.disabled = false;
+    if (cancel) cancel.disabled = false;
+    for (const id of ["passwordCurrent", "passwordNew", "passwordNewConfirm", "passwordChangeAck"]) {
+      const field = $("#" + id);
+      if (field) field.disabled = false;
+    }
+  }
+}
+
 /* 头像菜单和设置面板共用同一段关库逻辑 */
 async function lockVault() {
   const ok = await askConfirm({
@@ -789,6 +892,12 @@ function bindSettings() {
   $("#setCompact").addEventListener("click", () => startCompact());
   $("#setPendingUploadCancel")?.addEventListener("click", () => void cancelPendingUpload());
   $("#setLock").addEventListener("click", () => lockVault());
+  $("#setChangePassword").addEventListener("click", openChangePassword);
+  $("#passwordChangeCancel").addEventListener("click", closeChangePassword);
+  $("#changePasswordForm").addEventListener("submit", submitChangePassword);
+  $("#changePasswordMask").addEventListener("mousedown", (e) => {
+    if (e.target.id === "changePasswordMask") closeChangePassword();
+  });
 
   $("#setMcp").addEventListener("change", async (e) => {
     const box = e.currentTarget;
@@ -2037,6 +2146,11 @@ function bindSearch() {
 
 function bindKeyboard() {
   document.addEventListener("keydown", (e) => {
+    /* Password change is above Settings; Escape cannot dismiss it mid-rekey. */
+    if ($("#changePasswordMask")?.classList.contains("show")) {
+      if (e.key === "Escape") { e.preventDefault(); closeChangePassword(); }
+      return;
+    }
     /* 设置面板在最上层,先处理它 */
     if ($("#settingsMask")?.classList.contains("show")) {
       if (e.key === "Escape") {

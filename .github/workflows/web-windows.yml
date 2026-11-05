@@ -255,6 +255,7 @@ jobs:
             'ip-type-badge-smoke.cjs'           = 'IP type-specific badge tones and row-title font alignment failed'
             'modification-time-smoke.cjs'        = 'Real update timestamps, additive V2 upgrade and business view mapping failed'
             'agent-guidance-ui-smoke.cjs'      = 'Agent guidance settings editor, preview and restore regression failed'
+            'vault-password-ui-smoke.cjs'       = 'Vault SQLCipher password change UI and session invalidation regression failed'
             'storage-usage-smoke.cjs'           = 'Whole-vault page usage API and shared UI contract failed'
             'ui-tree-smoke.cjs'                = 'Drive tree (project / ordinary folder / original) smoke failed'
             'explorer-p0-interactions-smoke.cjs' = 'Explorer P0 deletion and lock regression failed'

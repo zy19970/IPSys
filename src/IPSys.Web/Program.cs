@@ -95,6 +95,7 @@ app.MapGet("/pdfjs/LICENSE.txt", () => Results.Bytes(pdfJsLicense, contentType: 
 app.MapGet("/markdown-licenses.txt", () => Results.Bytes(markdownLicenses, contentType: "text/plain; charset=utf-8"));
 
 SessionEndpoints.Map(app, Fail);
+VaultPasswordEndpoints.Map(app);
 AgentGuidanceEndpoints.Map(app);
 
 SearchLedgerEndpoints.Map(app, Fail);
