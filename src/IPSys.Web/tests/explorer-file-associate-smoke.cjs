@@ -165,5 +165,77 @@ const invoke=vm.runInContext("associateOriginal",sandbox);
    .map(r=>String(r.folderId));
  assert.ok(!destinations.includes("22"),"Source project must not be offered");
  assert.ok(destinations.includes("11"),"IP target allowed for normal project source");
+
+ // File right-click rename and F2 use the same dedicated one-field dialog.
+ // A FileId rename is deliberately different from a per-LinkId display alias.
+ assert.match(interactions,/!isFolder\s*\?\s*MI\("rename",\s*"rename",\s*"重命名",\s*"F2"\)/);
+ assert.match(interactions,/rename: inWorkspace\(\(\) => renameNode\(item\)\)/);
+ assert.match(interactions,/RecordForms\.renameFile\(node\)/);
+ assert.match(interactions,/node\?\.type === "folder" \|\| node\?\.type === "file"/);
+ const forms=fs.readFileSync(path.join(explorer,"js/forms.js"),"utf8");
+ const mcp=fs.readFileSync(path.join(explorer,"../McpLocalExtras.cs"),"utf8");
+ assert.match(mcp,/Tool\("update_file_metadata"/);
+ assert.match(mcp,/case "update_file_metadata":/);
+ assert.match(mcp,/Files\(file\)\+"\/metadata"/);
+ const fileRenameRequests=[],fileRenameNotes=[];
+ let details={name:"申请书.pdf",description:"原说明",tags:"科研;专利",
+   fileNumber:"IP-2026-1",fileDate:"2026-11-05"};
+ let renameDialog=null,renameRefreshes=0;
+ const renameStore={
+   ws:"company",
+   metaOf:()=>({fileId:101,linkId:201,version:2}),
+   async getJson(url){
+     assert.equal(url,"/api/v2/files/company/101");
+     return {...details};
+   },
+   async api(url,opts){
+     fileRenameRequests.push({url,opts:JSON.parse(JSON.stringify(opts))});
+     details={...details,...opts.json};
+     return {ok:true};
+   },
+ };
+ const renameNodeItem={id:attachment.id,type:"file",name:"申请书.pdf",biz:{kind:"file"}};
+ const renameCtx=vm.createContext({
+   VaultStore:renameStore,
+   node:renameNodeItem,
+   openRename:config=>{renameDialog=config;},
+   toast:msg=>fileRenameNotes.push(msg),
+   refreshCurrent:async()=>{renameRefreshes++;},
+ });
+ vm.runInContext(forms,renameCtx,{filename:"forms.js"});
+ vm.runInContext("RecordForms.open = openRename",renameCtx);
+ await vm.runInContext("RecordForms.renameFile(node)",renameCtx);
+ assert.equal(renameDialog.title,"重命名文件");
+ assert.equal(renameDialog.fields.length,1);
+ assert.equal(renameDialog.fields[0].key,"name");
+ assert.equal(renameDialog.values.name,"申请书.pdf");
+ assert.match(renameDialog.fields[0].hint,/共享文件.*FileId/);
+ // Another client may change file metadata while the dialog is open:
+ // the submit callback must fetch the latest values and preserve them.
+ details.description="MCP刚更新的说明";
+ await renameDialog.onSubmit({name:"新的申请书.pdf"});
+ assert.equal(fileRenameRequests.length,1);
+ assert.equal(fileRenameRequests[0].url,"/api/v2/files/company/101/metadata");
+ assert.equal(fileRenameRequests[0].opts.method,"PUT");
+ assert.deepEqual(fileRenameRequests[0].opts.json,{
+   name:"新的申请书.pdf",description:"MCP刚更新的说明",
+   tags:"科研;专利",fileNumber:"IP-2026-1",fileDate:"2026-11-05",
+ });
+ assert.equal(renameRefreshes,1);
+ assert.match(fileRenameNotes.at(-1),/重命名/);
+ const beforeRename=fileRenameRequests.length;
+ await renameDialog.onSubmit({name:"新的申请书.pdf"});
+ assert.equal(fileRenameRequests.length,beforeRename,"No-op rename must not write");
+ // Only the current association may have an independent display alias.
+ renameNodeItem.name="当前位置别名.pdf";
+ await vm.runInContext("RecordForms.renameFile(node)",renameCtx);
+ assert.match(renameDialog.fields[0].hint,/关联显示名.*LinkId/);
+ renameStore.ws="personal";
+ await assert.rejects(renameDialog.onSubmit({name:"改名.pdf"}),/工作区已切换/);
+ assert.equal(fileRenameRequests.length,beforeRename,
+   "A stale rename dialog cannot write into another workspace");
+ renameStore.ws="company";
+ console.log("EXPLORER FILE RENAME PASS: menu/F2, FileId rename, preserved metadata, shared alias and workspace guard");
+
  console.log("EXPLORER F2-03 PASS: shared/moved LinkId, target scopes, duplicate, 409, workspace and task locks");
 })().catch(e=>{console.error(e);process.exitCode=1;});

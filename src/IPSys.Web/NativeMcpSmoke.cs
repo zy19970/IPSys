@@ -861,6 +861,18 @@ static class NativeMcpSmoke
             Check(detail["description"]?.GetValue<string>()=="MCP选填说明" &&
                 detail["fileNumber"]?.GetValue<string>()=="FILE-"+suffix,
                 "MCP file metadata update retains FileId and stores optional properties");
+            string newFileName="MCP-重命名-"+suffix+".bin";
+            await Original("update_file_metadata",new{
+                workspace="company",file_id=file,name=newFileName
+            });
+            detail=await Original("get_file_details",new{
+                workspace="company",file_id=file
+            });
+            Check(detail["name"]?.GetValue<string>()==newFileName &&
+                detail["description"]?.GetValue<string>()=="MCP选填说明" &&
+                detail["fileNumber"]?.GetValue<string>()=="FILE-"+suffix &&
+                detail["versions"] is JsonArray namedVersions && namedVersions.Count==1,
+                "MCP FileId rename preserves optional metadata and version chain");
             string output=Path.Combine(Path.GetTempPath(),
                 "IPSys-MCP-out-"+suffix+".bin");
             try

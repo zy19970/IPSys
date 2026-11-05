@@ -4,6 +4,18 @@
 
 > **历史 S5 验收状态（2026-11-04，#538）**：现行 schema 3、MCP 43 项、项目内普通目录；本阶段最终测试提交 `cc7c1262` 的 [Windows CI #538](https://github.com/zy19970/IPSys/actions/runs/41839841405) 已完成成功，MCP↔GUI 同一批对象全链路验证通过。人工本机 GUI 尚待验证，旧库不迁移，发布未触发。详见 [S5 结案报告](tests/S5_FINAL_ACCEPTANCE_20261104.md)。
 
+## MCP 文件重命名契约（2026-11-05）
+
+**现有 MCP 已支持修改附件名称，不需要增加新工具。** 使用 `update_file_metadata`，传入 `workspace`（`company` 或 `personal`）、实际 **FileId** 的 `file_id` 和新文件名称 `name`。例如：
+
+```text
+update_file_metadata(workspace="company",file_id=实际FileId,name="新的附件名称.pdf")
+```
+
+它使用经过授权的 `PUT /api/v2/files/{workspace}/{fileId}/metadata`，修改的是**共享逻辑文件本体（FileId）名称**，不是某一 LinkId 的位置显示别名。其余说明、标签、编号和日期若不传则先从 `get_file_details` 对应后端记录读取并原样保留。通过 `list_file_links(workspace,file_id)` 可在操作前确认此 FileId 被共享到哪些业务记录。其它未设置独立 LinkId 显示名的位置将显示新名称；已有显示别名继续保留。**文件内容、SHA、FileId/LinkId、历史文件版本和历史版本原始文件名不变**。改名不会创建新 FileVersion；无权访问的文件或文件任务繁忙时服务器仍按原安全规则拒绝。
+
+Explorer 的单附件右键“重命名”和 F2 与此 `update_file_metadata` 操作使用同一文件本体命名语义。批量选择不提供单独的统一改名操作。
+
 ## 当前有效的项目／普通目录 MCP 契约（2026-11-04，S4）
 
 现行 `tools/list` 注册 **43 项 MCP 工具**，已完全退出独立的 `contract` 业务类型。原 `list_contracts`、`create_contract`、`update_contract`、`delete_contract`、`copy_contract`、`list_contract_files`、`delete_contract_file` 均不可调用；旧 `tools/call` 直接调用也会返回未知工具。项目下的合同资料只是一层或多层普通文件夹，不再单独维护合同对象或专有属性。

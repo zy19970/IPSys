@@ -1643,8 +1643,9 @@ function bindContent() {
   });
 }
 
-/* F2 与右键重命名共用目录更新接口；初始目录与后建目录同等处理。 */
+/* F2 与右键重命名共用入口；文件走 FileId 快速命名，目录走记录表单。 */
 function renameNode(node) {
+  if (node?.type === "file") return RecordForms.renameFile(node);
   if (!node || node.type !== "folder") return;
   const b = node.biz || {};
   if (b.kind === "archive_folder")
@@ -1719,6 +1720,7 @@ function showItemMenu(id, x, y) {
     isFolder ? MI("open", "folder", "打开") : MI("open", "eye", "预览"),
     b.kind === "project" ? MI("newprojectfolder", "folder", "新建文件夹") : "",
     MI("props", "info", "属性"),
+    !isFolder ? MI("rename", "rename", "重命名", "F2") : "",
     MI("download", "download", isFolder ? "打包下载" : "下载"),
     !isFolder ? MI("newver", "upload", "上传新版本") : "",
     !isFolder ? MI("assoc", "copy", "共享原件到其它记录") : "",
@@ -2002,7 +2004,7 @@ function bindKeyboard() {
 
     if (e.key === "F2" && s.selection.size === 1) {
       const node = Drive.selectedItems[0];
-      if (node?.type === "folder") {
+      if (node?.type === "folder" || node?.type === "file") {
         e.preventDefault();
         renameNode(node);
       }

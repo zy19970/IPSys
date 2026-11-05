@@ -400,6 +400,62 @@ const RecordForms = {
     }
   },
 
+  /* ---------------- 附件快速重命名（与 MCP 的 FileId 名称语义一致） ---------------- */
+
+  async renameFile(node) {
+    const meta = VaultStore.metaOf(node?.id);
+    if (node?.type !== "file" || !meta?.fileId)
+      return toast("请选择一条有效附件");
+    const workspace = VaultStore.ws;
+    const fileId = meta.fileId;
+    const url = `/api/v2/files/${encodeURIComponent(workspace)}/${fileId}`;
+    try {
+      const file = await VaultStore.getJson(url);
+      if (VaultStore.ws !== workspace || !file)
+        return toast("工作区已切换或文件已不存在，请刷新后重试", { tone: "error" });
+      const hasLocalAlias = node.name !== file.name;
+      this.open({
+        title: "重命名文件",
+        values: { name: file.name || "" },
+        fields: [{
+          key: "name", label: "文件名称", required: true, span: 2,
+          hint: hasLocalAlias
+            ? "此位置使用独立的关联显示名（LinkId）：" + node.name +
+              "。本操作修改 FileId 本体名称，不会覆盖该位置的显示别名。"
+            : "修改共享文件的本体名称（FileId）；其它共享位置会随之更新，设置了独立显示名的位置除外。历史版本原始文件名和内容不变。",
+        }],
+        onSubmit: async ({ name }) => {
+          if (VaultStore.ws !== workspace)
+            throw new Error("工作区已切换，请重新选择附件");
+          // Read the latest metadata at commit time: a rename must never
+          // overwrite description/tags/number/date edited by another client.
+          const latest = await VaultStore.getJson(url);
+          if (!latest) throw new Error("文件已不存在，请刷新后重试");
+          if (name === latest.name) {
+            toast("文件名称未变化");
+            return;
+          }
+          await VaultStore.api(url + "/metadata", {
+            method: "PUT",
+            json: {
+              name,
+              description: latest.description || "",
+              tags: latest.tags || "",
+              fileNumber: latest.fileNumber || "",
+              fileDate: latest.fileDate || "",
+            },
+          });
+          await refreshCurrent();
+          toast(hasLocalAlias
+            ? "文件本体已重命名；当前位置的独立显示名保持不变"
+            : "文件已重命名");
+        },
+      });
+    } catch (e) {
+      toast("无法重命名文件：" + (e.message || String(e)), { tone: "error" });
+    }
+  },
+
   /* ---------------- 分发 ---------------- */
 
   edit(node) {
