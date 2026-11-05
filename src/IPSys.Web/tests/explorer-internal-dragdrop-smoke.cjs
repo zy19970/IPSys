@@ -150,10 +150,12 @@ async function move(sourceNode,targetNode=dest){
 
  // Mixed file/folder selections must never partially move only the dragged row.
  drive.state.selection=new Set([a.id,sub.id]);
+ const warningStart=toasts.length;
  x=await move(a);
  assert.equal(x.startEvent.prevented(),true);
  assert.equal(transfers.length,movedSoFar);
- assert.match(toasts.at(-1),/混合选择/);
+ assert.ok(toasts.slice(warningStart).some(s=>s.includes("混合选择")),
+   "Invalid mixed drag must explain why it is refused");
 
  // Neither self nor descendant folders can be drop targets.
  drive.state.selection=new Set([sub.id]);
