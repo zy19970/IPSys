@@ -2528,3 +2528,57 @@ dialog h2 { font-size: 18px; margin-bottom: 10px; }
   .folder-picker-list { padding-inline: 6px; }
   .folder-picker-dialog .dlg-foot { padding: 10px 12px; flex-wrap: wrap; }
 }
+
+
+/* Inline offline Markdown and UTF-8 text reader (same shell as PDF/images). */
+.text-preview { display: flex; flex-direction: column; width: 100%; height: 100%; min-width: 0; min-height: 0; }
+.text-preview-toolbar {
+  display: flex; flex: none; align-items: center; gap: 4px;
+  min-height: 44px; padding: 6px 18px; border-bottom: 1px solid var(--stroke-1);
+  background: var(--surface);
+}
+.text-preview-tab { border-radius: var(--r-sm); padding: 6px 12px; font-size: 13px; color: var(--text-2); }
+.text-preview-tab:hover { background: var(--surface-hover); }
+.text-preview-tab.active { color: var(--brand); background: var(--brand-tint); font-weight: 600; }
+.text-preview-tab:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.text-preview-note { margin-left: auto; font-size: 12px; color: var(--text-3); }
+.text-preview-content { flex: 1; min-height: 0; min-width: 0; overflow: auto; background: var(--surface); }
+.text-preview-source, .markdown-view {
+  width: min(100%, 900px); margin: 0 auto; padding: 28px 34px 48px; overflow-wrap: anywhere;
+}
+.text-preview-source {
+  white-space: pre-wrap; tab-size: 4; line-height: 1.7; font-size: 13px;
+  font-family: Consolas, "Cascadia Code", "Microsoft YaHei UI", monospace; color: var(--text-1);
+}
+.markdown-view { color: var(--text-1); font-size: 14px; line-height: 1.75; }
+.markdown-view h1, .markdown-view h2, .markdown-view h3, .markdown-view h4,
+.markdown-view h5, .markdown-view h6 { margin: 1.35em 0 .55em; line-height: 1.35; font-weight: 650; }
+.markdown-view h1:first-child, .markdown-view h2:first-child { margin-top: 0; }
+.markdown-view h1 { font-size: 26px; padding-bottom: 10px; border-bottom: 1px solid var(--stroke-1); }
+.markdown-view h2 { font-size: 21px; padding-bottom: 7px; border-bottom: 1px solid var(--stroke-1); }
+.markdown-view h3 { font-size: 17px; }
+.markdown-view h4, .markdown-view h5, .markdown-view h6 { font-size: 14px; }
+.markdown-view p, .markdown-view ul, .markdown-view ol, .markdown-view table,
+.markdown-view blockquote, .markdown-view pre { margin: 0 0 16px; }
+.markdown-view ul, .markdown-view ol { padding-left: 26px; }
+.markdown-view li { margin: 3px 0; }
+.markdown-view li > p { margin-bottom: 6px; }
+.markdown-view input[type="checkbox"] { margin-right: 6px; vertical-align: middle; pointer-events: none; }
+.markdown-view blockquote { color: var(--text-2); padding: 4px 16px; border-left: 3px solid var(--stroke-3); background: var(--surface-alt); }
+.markdown-view a { color: var(--brand); text-decoration: underline; text-underline-offset: 2px; }
+.markdown-view code, .markdown-view pre {
+  font-family: Consolas, "Cascadia Code", "Microsoft YaHei UI", monospace; font-size: .92em;
+}
+.markdown-view :not(pre) > code { padding: 2px 4px; border-radius: 3px; background: var(--surface-hover); }
+.markdown-view pre { overflow: auto; padding: 14px 16px; background: var(--surface-alt); border: 1px solid var(--stroke-1); border-radius: var(--r-sm); }
+.markdown-view pre code { padding: 0; background: none; white-space: pre; overflow-wrap: normal; }
+.markdown-view table { border-collapse: collapse; width: max-content; min-width: 100%; max-width: 100%; display: block; overflow-x: auto; }
+.markdown-view th, .markdown-view td { padding: 7px 12px; border: 1px solid var(--stroke-2); text-align: left; }
+.markdown-view th { background: var(--surface-alt); font-weight: 600; }
+.markdown-view tr:nth-child(even) { background: var(--surface-subtle); }
+.markdown-view hr { border: 0; border-top: 1px solid var(--stroke-2); margin: 20px 0; }
+@media (max-width: 680px) {
+  .text-preview-source, .markdown-view { padding: 18px 15px 32px; }
+  .text-preview-note { font-size: 11px; }
+  .markdown-view h1 { font-size: 22px; }
+}

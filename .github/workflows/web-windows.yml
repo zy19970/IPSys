@@ -279,6 +279,7 @@ jobs:
             'upload-unique-autosave-smoke.cjs' = 'Unique original auto-save and duplicate confirmation smoke failed'
             'export-smoke.cjs'                 = 'Directory/ZIP export smoke failed'
             'zip64-smoke.cjs'                  = 'ZIP64 large-offset header smoke failed'
+            'markdown-preview-smoke.cjs'       = 'Offline Markdown preview, source and size guard failed'
             'pdf-canvas-smoke.cjs'             = 'PDF canvas rendering/zoom/pagination test failed'
           }
           foreach ($name in $tests.Keys) {

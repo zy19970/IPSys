@@ -130,6 +130,42 @@ async function main() {
   await goto(base + "/");
   await waitFor("!!document.querySelector('#lockForm')", 10000, "登录层");
 
+  /* Markdown is parsed inside the real Chromium DOM, not a simulated sanitizer.
+     No test record is written and no new result-gate category is introduced. */
+  const mdPreviewFixture = "# 标题\n\n| A | B |\n|---|---|\n| 1 | 2 |\n\n" +
+    "- [x] 完成\n\n[外部](https://example.com)\n\n" +
+    "[危险](javascript:alert(1))\n\n" +
+    "<img src=\"https://example.com/track.png\" onerror=\"alert(1)\">\n\n" +
+    "<script>window.__mdScriptRan=true</script>";
+  const markdownPreviewResult = await evalJs("(() => {" +
+    "const host=document.createElement('div'); document.body.append(host);" +
+    "try {" +
+    "showTextPreview(host," + JSON.stringify(mdPreviewFixture) + ",true);" +
+    "const article=host.querySelector('.markdown-view');" +
+    "const safe=article?.querySelector('a[href=\"https://example.com\"]');" +
+    "const malicious=[...article.querySelectorAll('a')].find(a=>a.textContent==='危险');" +
+    "const checks={" +
+    " heading:!!article?.querySelector('h1')," +
+    " table:!!article?.querySelector('table th')," +
+    " checkbox:!!article?.querySelector('input[type=checkbox][disabled]')," +
+    " noActive:!article?.querySelector('img,script,iframe,svg,form,style')," +
+    " noScript:window.__mdScriptRan!==true," +
+    " noUnsafeLink:!!malicious && !malicious.hasAttribute('href')," +
+    " safeLink:!!safe && safe.target==='_blank' && safe.rel.includes('noopener')," +
+    " tabs:host.querySelectorAll('.text-preview-tab').length===2" +
+    "};" +
+    "host.querySelectorAll('.text-preview-tab')[1].click();" +
+    "checks.source=host.querySelector('.text-preview-source')?.textContent===" + JSON.stringify(mdPreviewFixture) + ";" +
+    "showTextPreview(host,'<img src=x onerror=alert(1)>',false);" +
+    "checks.txt=host.querySelector('.text-preview-source')?.textContent==='<img src=x onerror=alert(1)>' && !host.querySelector('img');" +
+    "return checks;" +
+    "} finally {host.remove(); delete window.__mdScriptRan;}" +
+    "})()");
+  if (Object.values(markdownPreviewResult).some(x=>x!==true))
+    throw new Error("Markdown offline preview Edge smoke failed: "+JSON.stringify(markdownPreviewResult));
+  console.log("MARKDOWN EDGE PASS: GFM table/checklist, XSS blocked, no remote image, safe link, source/TXT");
+
+
   await (async function T_P1_01() {
     const info = await evalJs(`(() => {
       const txt = [...document.querySelectorAll('#lockScreen button, #lockScreen a, #lockScreen label')].map(b => (b.textContent||'').trim()).filter(Boolean);

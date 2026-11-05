@@ -43,6 +43,7 @@ byte[] pdfScript = EmbeddedWebAssets.Read("pdf.min.js");
 byte[] pdfWorker = EmbeddedWebAssets.Read("pdf.worker.min.js");
 byte[] pdfPreviewScript = EmbeddedWebAssets.Read("pdf-preview.js");
 byte[] pdfJsLicense = EmbeddedWebAssets.Read("pdfjs.LICENSE.txt");
+byte[] markdownLicenses = EmbeddedWebAssets.Read("markdown-licenses.txt");
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
     Args = Array.Empty<string>(),
@@ -91,6 +92,7 @@ app.MapGet("/pdfjs/pdf.min.js", () => Results.Bytes(pdfScript, contentType: "tex
 app.MapGet("/pdfjs/pdf.worker.min.js", () => Results.Bytes(pdfWorker, contentType: "text/javascript; charset=utf-8"));
 app.MapGet("/pdf-preview.js", () => Results.Bytes(pdfPreviewScript, contentType: "text/javascript; charset=utf-8"));
 app.MapGet("/pdfjs/LICENSE.txt", () => Results.Bytes(pdfJsLicense, contentType: "text/plain; charset=utf-8"));
+app.MapGet("/markdown-licenses.txt", () => Results.Bytes(markdownLicenses, contentType: "text/plain; charset=utf-8"));
 
 SessionEndpoints.Map(app, Fail);
 AgentGuidanceEndpoints.Map(app);

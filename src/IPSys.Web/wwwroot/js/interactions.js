@@ -2431,6 +2431,141 @@ function ensurePdfViewer() {
   return pdfLibPromise;
 }
 
+/* Markdown/TXT preview stays offline; only selected UTF-8 originals are read.
+   Do not allow HTML from the Markdown parser into the DOM before sanitizing it. */
+const MAX_TEXT_PREVIEW_BYTES = 2 * 1024 * 1024;
+
+async function readTextPreviewResponse(response) {
+  const declared = Number(response.headers?.get("content-length") || 0);
+  if (declared > MAX_TEXT_PREVIEW_BYTES)
+    throw new Error("文本超过 2 MiB 预览上限，请下载后阅读。");
+  let bytes;
+  if (!response.body?.getReader) {
+    bytes = new Uint8Array(await response.arrayBuffer());
+    if (bytes.byteLength > MAX_TEXT_PREVIEW_BYTES)
+      throw new Error("文本超过 2 MiB 预览上限，请下载后阅读。");
+  } else {
+    const reader = response.body.getReader();
+    const chunks = [];
+    let length = 0;
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        length += value.byteLength;
+        if (length > MAX_TEXT_PREVIEW_BYTES) {
+          await reader.cancel();
+          throw new Error("文本超过 2 MiB 预览上限，请下载后阅读。");
+        }
+        chunks.push(value);
+      }
+    } finally {
+      reader.releaseLock();
+    }
+    bytes = new Uint8Array(length);
+    let at = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, at);
+      at += chunk.byteLength;
+    }
+  }
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    throw new Error("只支持 UTF-8 编码的 Markdown/文本预览，请下载后阅读。");
+  }
+}
+
+function sanitizedMarkdownHtml(source) {
+  if (!window.marked?.parse || !window.DOMPurify?.sanitize)
+    throw new Error("离线 Markdown 阅读组件未能正确加载。");
+  const html = window.marked.parse(source, { gfm: true, breaks: false });
+  return window.DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: [
+      "h1", "h2", "h3", "h4", "h5", "h6", "p", "br", "hr", "strong",
+      "b", "em", "i", "del", "s", "blockquote", "pre", "code", "ul",
+      "ol", "li", "table", "thead", "tbody", "tr", "th", "td",
+      "a", "input", "sup", "sub"
+    ],
+    ALLOWED_ATTR: ["href", "title", "class", "align", "type", "checked", "disabled", "start"],
+    ALLOW_DATA_ATTR: false,
+    ALLOW_ARIA_ATTR: false,
+    FORBID_TAGS: [
+      "img", "picture", "source", "video", "audio", "iframe", "script",
+      "style", "svg", "math", "form", "object", "embed", "link", "meta"
+    ]
+  });
+}
+
+function showTextPreview(body, source, isMarkdown) {
+  body.replaceChildren();
+  const root = document.createElement("section");
+  root.className = "text-preview";
+  const toolbar = document.createElement("div");
+  toolbar.className = "text-preview-toolbar";
+  const viewport = document.createElement("div");
+  viewport.className = "text-preview-content";
+  root.append(toolbar, viewport);
+  body.append(root);
+
+  const controls = [];
+  function show(mode) {
+    viewport.replaceChildren();
+    if (mode === "source") {
+      const pre = document.createElement("pre");
+      pre.className = "text-preview-source";
+      pre.textContent = source;
+      viewport.append(pre);
+    } else {
+      const article = document.createElement("article");
+      article.className = "markdown-view";
+      article.innerHTML = sanitizedMarkdownHtml(source);
+      // No implicit network loads. Clicking a safe external link is an explicit action.
+      for (const link of article.querySelectorAll("a")) {
+        const href = (link.getAttribute("href") || "").trim();
+        if (!/^(https?:\/\/|mailto:|#)/i.test(href)) link.removeAttribute("href");
+        else if (/^https?:\/\//i.test(href)) {
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+        }
+      }
+      // GFM task checkboxes are read-only; arbitrary raw-HTML inputs are dropped.
+      for (const input of article.querySelectorAll("input")) {
+        if (input.type !== "checkbox") input.remove();
+        else input.disabled = true;
+      }
+      viewport.append(article);
+    }
+    for (const [name, button] of controls) {
+      button.classList.toggle("active", name === mode);
+      button.setAttribute("aria-pressed", String(name === mode));
+    }
+  }
+
+  if (isMarkdown) {
+    for (const [mode, label] of [["preview", "预览"], ["source", "源码"]]) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "text-preview-tab";
+      button.textContent = label;
+      button.addEventListener("click", () => show(mode));
+      toolbar.append(button);
+      controls.push([mode, button]);
+    }
+    const note = document.createElement("span");
+    note.className = "text-preview-note";
+    note.textContent = "外部及相对图片不自动加载";
+    toolbar.append(note);
+    show("preview");
+  } else {
+    const label = document.createElement("span");
+    label.className = "text-preview-note";
+    label.textContent = "纯文本 · UTF-8";
+    toolbar.append(label);
+    show("source");
+  }
+}
+
 function openPreviewShell(name) {
   const mask = document.createElement("div");
   mask.className = "mask show preview-mask";
@@ -2454,11 +2589,23 @@ async function previewFile(id) {
   const ext = extOf(node.name);
   const isPdf = ext === "pdf";
   const isImg = ["png", "jpg", "jpeg", "gif", "webp", "bmp"].includes(ext);
+  const isText = ["md", "markdown", "txt"].includes(ext);
+  const isMarkdown = ext === "md" || ext === "markdown";
 
-  if (!isPdf && !isImg) {
+  if (!isPdf && !isImg && !isText) {
     const ok = await askConfirm({
       title: "预览",
       text: `「${node.name}」无法在浏览器内预览,是否下载？`,
+      okText: "下载",
+    });
+    if (ok) downloadFile(id);
+    return;
+  }
+
+  if (isText && Number(node.size) > MAX_TEXT_PREVIEW_BYTES) {
+    const ok = await askConfirm({
+      title: "预览限制",
+      text: "文本超过 2 MiB 预览上限，是否下载后阅读？",
       okText: "下载",
     });
     if (ok) downloadFile(id);
@@ -2471,7 +2618,9 @@ async function previewFile(id) {
 
   let pdfViewer = null;
   let objectUrl = "";
+  const previewAbort = new AbortController();
   const close = () => {
+    previewAbort.abort();
     document.removeEventListener("keydown", onKey);
     pdfViewer?.destroy?.();
     pdfViewer = null;
@@ -2490,8 +2639,12 @@ async function previewFile(id) {
   document.addEventListener("keydown", onKey);
 
   try {
-    const res = await VaultStore.api(url);
-    if (isPdf) {
+    const res = await VaultStore.api(url, { signal: previewAbort.signal });
+    if (isText) {
+      const source = await readTextPreviewResponse(res);
+      if (!mask.isConnected || previewAbort.signal.aborted) return;
+      showTextPreview(body, source, isMarkdown);
+    } else if (isPdf) {
       const buffer = await res.arrayBuffer();
       if (!mask.isConnected) return;
       const viewer = await ensurePdfViewer();

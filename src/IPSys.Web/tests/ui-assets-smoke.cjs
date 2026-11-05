@@ -50,6 +50,10 @@ for(const asset of ['index.html','style.css','app.js'])
 for(const asset of ['ip-v2.js','upload-progress.js','export.js','pdf-preview.js'])
  assert.ok(csproj.includes('Include="wwwroot\\'+asset+'"'),
   'The capability script '+asset+' must stay embedded from wwwroot');
+assert.ok(csproj.includes('wwwroot\\markdown-licenses.txt') &&
+ csproj.includes('IPSys.Web.Embedded.markdown-licenses.txt') &&
+ fs.readFileSync(path.join(SHELL,'markdown-licenses.txt'),'utf8').includes('DOMPurify 3.4.17'),
+ 'Offline Markdown dependencies must ship their licenses in the EXE');
 assert.ok(csproj.includes('BundleExplorerShell')&&csproj.includes('BeforeTargets="BeforeBuild"'),
  'The bundle must run before the build, otherwise dist/ goes stale on the first edit');
 

@@ -14,7 +14,7 @@ const OUT = path.join(ROOT, "dist");
 
 /* bridge 是前端交互与同目录能力模块的接口适配，不引入额外业务状态。
    excel 负责 V2 台账，二者先于 interactions 加载。 */
-const ORDER = ["js/icons.js", "js/data.js", "js/store.js", "js/app.js", "js/forms.js", "js/folder-picker.js", "js/bridge.js", "js/excel.js", "js/interactions.js"];
+const ORDER = ["js/marked.umd.min.js", "js/purify.min.js", "js/icons.js", "js/data.js", "js/store.js", "js/app.js", "js/forms.js", "js/folder-picker.js", "js/bridge.js", "js/excel.js", "js/interactions.js"];
 
 fs.mkdirSync(OUT, { recursive: true });
 

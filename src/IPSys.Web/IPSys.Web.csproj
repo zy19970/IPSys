@@ -48,6 +48,7 @@
     <EmbeddedResource Include="wwwroot\pdfjs\pdf.worker.min.js" LogicalName="IPSys.Web.Embedded.pdf.worker.min.js" />
     <EmbeddedResource Include="wwwroot\pdf-preview.js" LogicalName="IPSys.Web.Embedded.pdf-preview.js" />
     <EmbeddedResource Include="wwwroot\pdfjs\LICENSE.txt" LogicalName="IPSys.Web.Embedded.pdfjs.LICENSE.txt" />
+    <EmbeddedResource Include="wwwroot\markdown-licenses.txt" LogicalName="IPSys.Web.Embedded.markdown-licenses.txt" />
     <PackageReference Include="System.IO.Pipes.AccessControl" Version="5.0.0" />
     <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="8.0.10" />
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlcipher" Version="2.1.11" />

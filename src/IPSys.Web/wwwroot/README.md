@@ -10,6 +10,7 @@ src/IPSys.Web/wwwroot/
 ├── favicon.ico           浏览器标签图标，与 assets/IPSys.ico 字节一致
 ├── css/app.css           正式界面样式
 ├── js/
+│   ├── marked.umd.min.js / purify.min.js  离线 Markdown 解析/安全净化
 │   ├── icons.js          图标与类别外观
 │   ├── data.js           文件夹数据及格式化
 │   ├── store.js          VaultStore、请求与工作区
@@ -23,6 +24,7 @@ src/IPSys.Web/wwwroot/
 ├── export.js             文件夹与 ZIP / ZIP64 导出
 ├── pdf-preview.js        PDF 预览
 ├── pdfjs/                离线 PDF.js 运行文件及许可证
+├── markdown-licenses.txt Markdown 第三方组件的发行许可
 ├── tools/bundle.cjs      前端打包工具（使用 Node 内置模块）
 └── dist/                 构建生成，Git 不跟踪
 ```
@@ -43,7 +45,7 @@ node src/IPSys.Web/wwwroot/tools/bundle.cjs
 
 `js/excel.js` 的导出 Excel 使用 `filtered`（服务端完整筛选）和 `all`（当前模块全部记录），知识产权还支持十种业务类型筛选。项目 11 列、知识产权 19 列、档案/资质/党团 6 列、综合资料 3 列；合同无独立 Excel。固定表头见 [字段字典](../../../M0_DATA_DICTIONARY.md)。
 
-PDF 预览支持连续滚动、按需渲染与缩放；启动器支持原生路径选择和托盘安全退出。资料 `archive_folder` 可同时拥有子文件夹和直接附件，`RecordForms.archiveFolder` 统一表单，`openNewMenu` 在只有一种创建动作时直接打开表单，列表“更新时间”取数据库有效修改时间。对应 [Windows CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 已成功。
+PDF 预览支持连续滚动、按需渲染与缩放；Markdown（.md/.markdown）支持本地离线排版预览、源码切换与安全链接，.txt 以 UTF-8 纯文本预览，单文件预览上限 2 MiB，组件与许可全部嵌入 EXE；启动器支持原生路径选择和托盘安全退出。资料 `archive_folder` 可同时拥有子文件夹和直接附件，`RecordForms.archiveFolder` 统一表单，`openNewMenu` 在只有一种创建动作时直接打开表单，列表“更新时间”取数据库有效修改时间。对应 [Windows CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 已成功。
 
 ## 维护约束
 
