@@ -20,6 +20,10 @@
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <!-- The Windows PE executable and WinForms launcher share this application icon. -->
     <ApplicationIcon>assets\IPSys.ico</ApplicationIcon>
+    <!-- Web SDK's default Content includes wwwroot/** and copies generated
+         dist files as loose publish assets in a direct cold Release. The UI
+         is served exclusively by explicit EmbeddedResource entries below. -->
+    <EnableDefaultContentItems>false</EnableDefaultContentItems>
   </PropertyGroup>
   <!-- Debug remains multi-file; Release Publish is framework-dependent and produces one EXE. -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
