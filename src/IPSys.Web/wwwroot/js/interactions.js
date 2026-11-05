@@ -2618,9 +2618,9 @@ async function previewFile(id) {
 
   let pdfViewer = null;
   let objectUrl = "";
-  const previewAbort = new AbortController();
+  const previewAbort = isText ? new AbortController() : null;
   const close = () => {
-    previewAbort.abort();
+    previewAbort?.abort();
     document.removeEventListener("keydown", onKey);
     pdfViewer?.destroy?.();
     pdfViewer = null;
@@ -2639,7 +2639,9 @@ async function previewFile(id) {
   document.addEventListener("keydown", onKey);
 
   try {
-    const res = await VaultStore.api(url, { signal: previewAbort.signal });
+    const res = isText
+      ? await VaultStore.api(url, { signal: previewAbort.signal })
+      : await VaultStore.api(url);
     if (isText) {
       const source = await readTextPreviewResponse(res);
       if (!mask.isConnected || previewAbort.signal.aborted) return;

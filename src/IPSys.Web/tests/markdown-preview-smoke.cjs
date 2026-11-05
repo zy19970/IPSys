@@ -14,7 +14,8 @@ assert.match(source,/const isText = \["md", "markdown", "txt"\]/);
 assert.match(source,/const isMarkdown = ext === "md" \|\| ext === "markdown"/);
 assert.match(source,/await VaultStore\.api\(url, \{ signal: previewAbort\.signal \}\)/);
 assert.match(source,/showTextPreview\(body, source, isMarkdown\)/);
-assert.match(source,/previewAbort\.abort\(\)/);
+assert.match(source,/const previewAbort = isText \? new AbortController\(\) : null/);
+assert.match(source,/previewAbort\?\.abort\(\)/);
 assert.match(source,/if \(!isPdf && !isImg && !isText\)/);
 
 const markedLib=fs.readFileSync(path.join(root,"js/marked.umd.min.js"),"utf8");
