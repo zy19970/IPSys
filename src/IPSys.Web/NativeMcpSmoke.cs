@@ -1014,7 +1014,7 @@ static class NativeMcpSmoke
                 "page offset advances by LinkId");
             var projectPage=await Original("list_files_page",new{
                 workspace="company",kind="project",owner_id=originalProject,
-                name=Path.GetFileName(path),offset=0,limit=10
+                name=newFileName,offset=0,limit=10
             });
             Check(projectPage["items"] is JsonArray projectFilteredItems &&
                   projectFilteredItems.Any(x=>x?["id"]?.GetValue<long>()==link &&
