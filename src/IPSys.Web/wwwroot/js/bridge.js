@@ -1005,11 +1005,10 @@ async function resumePurge() {
     return false;
   }
   if (!state) return false;
+  /* 服务端会保留最近一次任务的终态，不能因再次进入回收站/重载页面
+     就重新显示已关闭或已自动收起的历史进度。仅恢复尚未结束的任务。 */
+  if (PURGE_DONE.has(state.state)) return false;
   renderPurge(state);
-  if (PURGE_DONE.has(state.state)) {
-    if (state.state === "succeeded") schedulePurgeAutoHide();
-    return false;
-  }
   cancelPurgeAutoHide();
   void trackPurge(state.taskId, state.workspace);
   return true;

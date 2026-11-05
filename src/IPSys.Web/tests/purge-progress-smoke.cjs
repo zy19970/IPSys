@@ -85,6 +85,9 @@ const run=js=>vm.runInContext(js,sandbox);
   assert.equal(timers.size,1,'committed delete schedules a single hide');
   runTimer();
   assert.equal(panel.hidden,true,'success progress panel closes automatically');
+  assert.equal(await run('resumePurge()'),false);
+  assert.equal(panel.hidden,true,'clicking Recycle Bin must not reopen the last success');
+  assert.equal(timers.size,0,'no repeated auto-hide timer after navigation');
 
   // Cancellation/error must stay visible so users can read the failure.
   mode='failed';toastMessages=[];
@@ -109,6 +112,8 @@ const run=js=>vm.runInContext(js,sandbox);
   panel.querySelector('#trashPurgeClose').handlers.click();
   assert.equal(panel.hidden,true);
   assert.equal(timers.size,0);
+  assert.equal(await run('resumePurge()'),false);
+  assert.equal(panel.hidden,true,'manual close survives revisiting Recycle Bin');
 
   // A new operation cancels any old success callback, even if it races.
   await run('purgeTrash('+JSON.stringify(nodes(1))+')');
@@ -126,15 +131,32 @@ const run=js=>vm.runInContext(js,sandbox);
   assert.equal(panel.hidden,false,'failed newer operation remains visible');
   VaultStore.api=originalApi;
 
-  // Restoring a completed server job after page refresh also auto-hides.
-  mode='succeeded';
+  // The server retains terminal snapshots. Re-entering Recycle Bin or refreshing
+  // must never resurrect a completed (or manually dismissed failed) progress panel.
+  mode='succeeded';panel.hidden=true;
   assert.equal(await run('resumePurge()'),false);
-  assert.equal(timers.size,1);
-  runTimer();
-  assert.equal(panel.hidden,true);
+  assert.equal(panel.hidden,true,'previously hidden success must stay dismissed');
+  assert.equal(timers.size,0,'terminal snapshot must not schedule another timeout');
   mode='failed';
   assert.equal(await run('resumePurge()'),false);
-  assert.equal(panel.hidden,false);
+  assert.equal(panel.hidden,true,'dismissed failure must stay dismissed');
+  assert.equal(timers.size,0);
+
+  // Resuming a real running task still displays progress and tracks its terminal
+  // state; once it auto-hides, navigation must not show the same result again.
+  mode='running';panel.hidden=true;timerDelays.length=0;
+  assert.equal(await run('resumePurge()'),true);
+  await new Promise(r=>setImmediate(r));
+  assert.equal(panel.hidden,false,'active purge remains recoverable');
+  assert.ok(timerDelays.includes(550),'resumed task polls the server');
+  mode='succeeded';
+  runTimer();
+  await new Promise(r=>setImmediate(r));
+  assert.equal(timers.size,1,'resumed success auto-hides once');
+  runTimer();
+  assert.equal(panel.hidden,true);
+  assert.equal(await run('resumePurge()'),false);
+  assert.equal(panel.hidden,true,'auto-hidden resumed success cannot reopen');
   assert.equal(timers.size,0);
 
   /* B04: 轮询中会话变更 —— 停止跟踪、提示核对，绝不替用户宣告成功或失败。 */
@@ -166,5 +188,5 @@ const run=js=>vm.runInContext(js,sandbox);
   assert.equal(toastMessages.length,0,'silent tracking never toasts');
 
   assert.ok(refreshes>0&&selectedClears>0);
-  console.log('PURGE PROGRESS SMOKE PASS: auto-close on committed success, batch gating, failure/cancel visibility, stale timer and resume');
+  console.log('PURGE PROGRESS SMOKE PASS: terminal snapshots not replayed on navigation, running resume, auto-close, batch gating, failure/cancel visibility and stale timer');
 })().catch(e=>{console.error(e);process.exitCode=1;});
