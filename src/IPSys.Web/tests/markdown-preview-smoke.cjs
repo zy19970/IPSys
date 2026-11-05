@@ -7,7 +7,7 @@ const vm=require("node:vm");
 const {TextDecoder,TextEncoder}=require("node:util");
 const root=path.resolve(__dirname,"../wwwroot");
 const source=fs.readFileSync(path.join(root,"js/interactions.js"),"utf8");
-const start=source.indexOf("const MAX_TEXT_PREVIEW_BYTES = 2 * 1024 * 1024;");
+const start=source.indexOf("const MAX_TEXT_PREVIEW_BYTES = 10 * 1024 * 1024;");
 const end=source.indexOf("function openPreviewShell(name) {",start);
 assert.ok(start>0&&end>start,"Text preview helpers must be callable in isolation");
 assert.match(source,/const isText = \["md", "markdown", "txt"\]/);
@@ -101,14 +101,25 @@ async function decode(res){
  const fallback=await decode({headers:{get:()=>null},body:null,
    arrayBuffer:async()=>enc.encode("文字").buffer});
  assert.equal(fallback,"文字");
+ // Files larger than the old 2 MiB cap are now allowed.
+ const aboveOldLimit=new Uint8Array(2*1024*1024+1).fill(65);
+ assert.equal((await decode({headers:{get:()=>String(aboveOldLimit.length)},body:null,
+   arrayBuffer:async()=>aboveOldLimit.buffer})).length,aboveOldLimit.length);
+ // Exactly 10 MiB is accepted in streamed mode.
+ const atLimit=new Uint8Array(10*1024*1024).fill(66);
+ let reads=0;
+ const exact=await decode({headers:{get:()=>String(atLimit.length)},body:{
+   getReader:()=>({read:async()=>reads++===0?{done:false,value:atLimit}:{done:true},releaseLock(){}})
+ }});
+ assert.equal(exact.length,atLimit.length,"Exactly 10 MiB must preview");
  await assert.rejects(()=>decode({headers:{get:()=>"999999999"},body:null,
-   arrayBuffer(){throw Error("must not read oversized response")}}),/2 MiB/);
+   arrayBuffer(){throw Error("must not read oversized response")}}),/10 MiB/);
  let canceled=false;
- const oversized=new Uint8Array(2*1024*1024+1);
+ const oversized=new Uint8Array(10*1024*1024+1);
  await assert.rejects(()=>decode({headers:{get:()=>null},body:{
    getReader:()=>({read:async()=>({done:false,value:oversized}),
      cancel:async()=>{canceled=true;},releaseLock(){}})
- }}),/2 MiB/);
+ }}),/10 MiB/);
  assert.equal(canceled,true,"Reader must cancel after crossing limit");
  await assert.rejects(()=>decode({headers:{get:()=>null},body:null,
    arrayBuffer:async()=>new Uint8Array([0xff,0xfe]).buffer}),/UTF-8/);

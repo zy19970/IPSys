@@ -2311,7 +2311,7 @@ function fileUrlOf(id) {
   return `/api/v2/files/${VaultStore.ws}/${meta.fileId}/versions/${meta.version}/download`;
 }
 
-/* 大文件阈值:32 MiB 以下用 blob 更快,以上就必须边下边写盘 ——
+/* 大文件阈值:310 MiB 以下用 blob 更快,以上就必须边下边写盘 ——
    blob 会把整个文件读进内存,几百 MB 的原件会把标签页拖死。 */
 const STREAM_MIN_BYTES = 32 * 1024 * 1024;
 
@@ -2433,17 +2433,17 @@ function ensurePdfViewer() {
 
 /* Markdown/TXT preview stays offline; only selected UTF-8 originals are read.
    Do not allow HTML from the Markdown parser into the DOM before sanitizing it. */
-const MAX_TEXT_PREVIEW_BYTES = 2 * 1024 * 1024;
+const MAX_TEXT_PREVIEW_BYTES = 10 * 1024 * 1024;
 
 async function readTextPreviewResponse(response) {
   const declared = Number(response.headers?.get("content-length") || 0);
   if (declared > MAX_TEXT_PREVIEW_BYTES)
-    throw new Error("文本超过 2 MiB 预览上限，请下载后阅读。");
+    throw new Error("文本超过 10 MiB 预览上限，请下载后阅读。");
   let bytes;
   if (!response.body?.getReader) {
     bytes = new Uint8Array(await response.arrayBuffer());
     if (bytes.byteLength > MAX_TEXT_PREVIEW_BYTES)
-      throw new Error("文本超过 2 MiB 预览上限，请下载后阅读。");
+      throw new Error("文本超过 10 MiB 预览上限，请下载后阅读。");
   } else {
     const reader = response.body.getReader();
     const chunks = [];
@@ -2455,7 +2455,7 @@ async function readTextPreviewResponse(response) {
         length += value.byteLength;
         if (length > MAX_TEXT_PREVIEW_BYTES) {
           await reader.cancel();
-          throw new Error("文本超过 2 MiB 预览上限，请下载后阅读。");
+          throw new Error("文本超过 10 MiB 预览上限，请下载后阅读。");
         }
         chunks.push(value);
       }
@@ -2605,7 +2605,7 @@ async function previewFile(id) {
   if (isText && Number(node.size) > MAX_TEXT_PREVIEW_BYTES) {
     const ok = await askConfirm({
       title: "预览限制",
-      text: "文本超过 2 MiB 预览上限，是否下载后阅读？",
+      text: "文本超过 10 MiB 预览上限，是否下载后阅读？",
       okText: "下载",
     });
     if (ok) downloadFile(id);
