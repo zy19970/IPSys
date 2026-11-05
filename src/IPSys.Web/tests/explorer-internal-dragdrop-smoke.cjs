@@ -87,7 +87,7 @@ const sandbox=vm.createContext({
  askConfirm:async info=>{prompts.push(info);return confirm},
  moveSelectedItems:async(items,target)=>{
   if(failure)throw failure;
-  transfers.push({ids:items.map(n=>n.id),target:target.id,ws});
+  transfers.push({ids:Array.from(items,n=>n.id),target:target.id,ws});
  },
  toast:msg=>toasts.push(String(msg)),
  refreshCurrent:async()=>{refresh++},

@@ -1569,6 +1569,7 @@ function bindContent() {
      selected ordinary folders use the atomic folder transfer endpoint.
      Mixed/unsupported selections are rejected, never moved one by one. */
   content.addEventListener("dragstart", (e) => {
+    dragLink=null; // A cancelled/invalid new gesture must not reuse a prior snapshot.
     const row=e.target.closest(".row, .tile");
     const source=row&&findById(row.dataset.id);
     const selected=source&&dragMoveItems(source);
