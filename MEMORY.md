@@ -1,5 +1,9 @@
 # IPSys 项目持续记忆
 
+> **2026-11-06 第四轮第二次 CI 失败及规范入口长度修复**：第二次提交 [fcfb965](https://github.com/zy19970/IPSys/commit/fcfb9653b8a7427b8b28cc87030f1499a877de48) 已通过 Windows [#42143939726](https://github.com/zy19970/IPSys/actions/runs/42143939726) 的干净双 Release 编译/打包（证明首轮 C# 变量冲突已修），但在 Debug `--smoke` 中 `NativeMcpSmoke` 报 `initialize supplies a short useful root only`：内嵌 `AgentGuidance/index.md` 增长至 768 字，违反原有 `InitializeInstructions` 长度 **≤512** 的明确门禁，导致 workflow `completed/failure`，后续 Node/HTTP 回归未运行。解决方案：不放宽 CI 断言，将根入口精简为 428 字，仅保留关键 `company/certificate=企业资质` 与 `personal/certificate=人力资源` 等语义和索引指令；完整 10 映射仍保留在 tools/list、search 规范及上传/补录不可覆盖的文件读取附录，保留现有索引轻量职责。第二轮失败通知 [#2330](https://github.com/office-renderer/wechat-webhook/issues/2330)、重新开始通知 [#2331](https://github.com/office-renderer/wechat-webhook/issues/2331)。此处第三次提交的 CI **待检验**，不能声明通过。最新会话 `memory/sessions/2026-11-06-细节优化前仓库梳理.md` 第四轮。
+
+
+
 > **2026-11-06 第四轮首轮 CI 编译失败及修复（以新 CI 为准）**：候选提交 [b9356b8](https://github.com/zy19970/IPSys/commit/b9356b8e7dd434bdb0db353995c1e9ab60c090b5) 已进入 main，21 个文件范围核对无其它代码；Wiki 自动 [#42143564670](https://github.com/zy19970/IPSys/actions/runs/42143564670) completed/success。对应 Windows [#42143564576](https://github.com/zy19970/IPSys/actions/runs/42143564576) 在干净 Release 的 C# 编译阶段 **completed/failure**，日志证实新增 `NativeMcpSmoke.cs` 语义测试第61行使用了本方法中后续已有的同名局部变量 `schemas`，报 CS0128；使后续 `schemas.EnumerateArray` 类型从 JsonElement 误变 JsonArray，报 CS1061。这是测试变量命名冲突，不是软件运行、排序、MCP 业务契约已测试失败；后续 Node/SQLCipher/HTTP 尚未运行。已修复为 `toolSchemaNodes`（仅新的 JsonArray 局部变量及引用），保留后面现有 JsonElement `schemas` 和全部产品代码不变。AIGT 失败通知 [#2328](https://github.com/office-renderer/wechat-webhook/issues/2328)、重新开始 [#2329](https://github.com/office-renderer/wechat-webhook/issues/2329)。此处**不声称第二次 CI 已成功**，实际以新提交 Actions 结果补记。最新会话同文件第四轮。
 
 
