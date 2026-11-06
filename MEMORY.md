@@ -1,5 +1,9 @@
 # IPSys 项目持续记忆
 
+> **2026-11-06 第五轮（连接超时后状态复核）**：用户问“为什么超时了”。只能确认对话/工具连接在长时连续 GitHub 源码及测试链路中中断，不能依据对话判定准确的平台根因，**不把超时归因于产品代码或 Github 故障**。恢复后发现上一轮已成功提交 3 次到 main：功能提交 [b9356b8](https://github.com/zy19970/IPSys/commit/b9356b8e7dd434bdb0db353995c1e9ab60c090b5)、测试修正 [fcfb965](https://github.com/zy19970/IPSys/commit/fcfb9653b8a7427b8b28cc87030f1499a877de48)、Agent 指引长度修正 [ecfba0d](https://github.com/zy19970/IPSys/commit/ecfba0daae430e72781e6f49cee240bad79bea60)。用户可见的初次部分回复“尚未完成最终 Git 提交”在恢复后已**明确更正**为已提交。GitHub [Windows CI #42143564576](https://github.com/zy19970/IPSys/actions/runs/42143564576) 失败于 C# 新测试变量冲突；[#42143939726](https://github.com/zy19970/IPSys/actions/runs/42143939726) 失败于 initialize 短入口长度；最新 [#42144474533](https://github.com/zy19970/IPSys/actions/runs/42144474533)（head=`ecfba0d`）恢复查询时 `in_progress`，smoke job 正在 `Verify SQLCipher and local HTTP roundtrip`，**尚不能宣称当前修改完整 CI 已通过**。功能目标仍是个人排序、企业保持不变、MCP 中文映射不改 ID。此轮不新增产品改动、不重新发布；请以此后真实 CI 终态为最终验收依据。最近会话 `memory/sessions/2026-11-06-细节优化前仓库梳理.md` 第五轮。
+
+
+
 > **2026-11-06 第四轮第二次 CI 失败及规范入口长度修复**：第二次提交 [fcfb965](https://github.com/zy19970/IPSys/commit/fcfb9653b8a7427b8b28cc87030f1499a877de48) 已通过 Windows [#42143939726](https://github.com/zy19970/IPSys/actions/runs/42143939726) 的干净双 Release 编译/打包（证明首轮 C# 变量冲突已修），但在 Debug `--smoke` 中 `NativeMcpSmoke` 报 `initialize supplies a short useful root only`：内嵌 `AgentGuidance/index.md` 增长至 768 字，违反原有 `InitializeInstructions` 长度 **≤512** 的明确门禁，导致 workflow `completed/failure`，后续 Node/HTTP 回归未运行。解决方案：不放宽 CI 断言，将根入口精简为 428 字，仅保留关键 `company/certificate=企业资质` 与 `personal/certificate=人力资源` 等语义和索引指令；完整 10 映射仍保留在 tools/list、search 规范及上传/补录不可覆盖的文件读取附录，保留现有索引轻量职责。第二轮失败通知 [#2330](https://github.com/office-renderer/wechat-webhook/issues/2330)、重新开始通知 [#2331](https://github.com/office-renderer/wechat-webhook/issues/2331)。此处第三次提交的 CI **待检验**，不能声明通过。最新会话 `memory/sessions/2026-11-06-细节优化前仓库梳理.md` 第四轮。
 
 
