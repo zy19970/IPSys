@@ -276,24 +276,24 @@ const act=cmd=>vm.runInContext(cmd,sandbox);
  };
  let labels=renderBar([found.get("f:12:1"),found.get("f:13:1")]);
  assert.equal(labels.count,"已选择 2 项");
- assert.match(labels.download,/<span>打包下载<\\/span>/);
+ assert.match(labels.download,/<span>打包下载<\/span>/);
  assert.equal(labels.share,"共享");assert.equal(labels.move,"移动");
- assert.match(labels.delete,/<span>删除<\\/span>/);
+ assert.match(labels.delete,/<span>删除<\/span>/);
  assert.equal(labels.shareHidden,false);
  labels=renderBar([found.get("af:31"),found.get("af:32")]);
  assert.equal(labels.share,"共享");assert.equal(labels.move,"移动");
  assert.equal(labels.shareHidden,false);
  labels=renderBar([found.get("f:12:1")]);
- assert.match(labels.download,/<span>下载<\\/span>/);
+ assert.match(labels.download,/<span>下载<\/span>/);
  assert.equal(labels.shareHidden,true);
  labels=renderBar([found.get("t:8"),found.get("t:9")],true);
- assert.match(labels.delete,/<span>彻底删除<\\/span>/);
+ assert.match(labels.delete,/<span>彻底删除<\/span>/);
  const detailStart=app.indexOf("  renderDetail() {");
- const detailEnd=app.indexOf("\\n  },\\n};",detailStart);
+ const detailEnd=app.indexOf("\n  },\n};",detailStart);
  assert.ok(detailStart>=0&&detailEnd>detailStart,"Detail method exists");
  const detailPanel={classList:{toggle(){}}},detailBody={innerHTML:""};
  const detailMethod=vm.runInNewContext("({"+
-  app.slice(detailStart,detailEnd)+"\\n  }})",{
+  app.slice(detailStart,detailEnd)+"\n  }})",{
    $:id=>id==="#detail"?detailPanel:detailBody,
    icon:()=>"<svg/>",fmtSize:()=>"-",esc:x=>x,
   }).renderDetail;
@@ -312,7 +312,7 @@ const act=cmd=>vm.runInContext(cmd,sandbox);
   assert.match(detailHtml,new RegExp('data-detail-act="'+action+'">[^<]*<svg\\/>'
    +label+'<\\/button>'));
  detailHtml=renderSelectedDetail([found.get("t:8"),found.get("t:9")],"recycle");
- assert.match(detailHtml,/data-detail-act="delete"><svg\\/>彻底删除<\\/button>/);
+ assert.match(detailHtml,/data-detail-act="delete"><svg\/>彻底删除<\/button>/);
  assert.doesNotMatch(detailHtml,/data-detail-act="download"/);
 
  // Reload never changes home into a files view and prunes deleted selections.
