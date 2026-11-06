@@ -7,6 +7,11 @@ const vm=require("node:vm");
 const root=path.resolve(__dirname,"../wwwroot");
 const inter=fs.readFileSync(path.join(root,"js/interactions.js"),"utf8");
 const app=fs.readFileSync(path.join(root,"js/app.js"),"utf8");
+const css=fs.readFileSync(path.join(root,"css/app.css"),"utf8");
+// A fixed-width detail panel must not lay four action buttons in one line.
+assert.match(css,/\.detail-actions\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/s);
+assert.match(css,/\.detail-actions \.btn\s*\{[^}]*min-width:\s*0;[^}]*white-space:\s*normal;[^}]*overflow-wrap:\s*anywhere;/s);
+
 function part(code,begin,end) {
  const a=code.indexOf(begin),b=code.indexOf(end,a+begin.length);
  assert.ok(a>=0&&b>a,"Missing source range: "+begin);
