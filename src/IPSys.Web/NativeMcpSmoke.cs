@@ -58,10 +58,10 @@ static class NativeMcpSmoke
               "MCP exposes one unversioned name per V2 business action");
         // Verify the actual tools/list schema, not just the written guidance.
         // All 43 tool names, parameter keys, enums and IDs stay unchanged.
-        var schemas=JsonSerializer.SerializeToNode(McpLocal.Tools())!.AsArray();
+        var toolSchemaNodes=JsonSerializer.SerializeToNode(McpLocal.Tools())!.AsArray();
         string Help(string tool,string field)
         {
-            var entry=schemas.FirstOrDefault(node=>node?["name"]?.GetValue<string>()==tool);
+            var entry=toolSchemaNodes.FirstOrDefault(node=>node?["name"]?.GetValue<string>()==tool);
             return entry?["inputSchema"]?["properties"]?[field]?["description"]?.GetValue<string>()??"";
         }
         Check(names.Length==43 &&
