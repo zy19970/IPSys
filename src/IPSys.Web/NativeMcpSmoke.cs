@@ -56,6 +56,33 @@ static class NativeMcpSmoke
               names.All(name=>!name.StartsWith("v2_",StringComparison.Ordinal)) &&
               names.Distinct().Count()==names.Length,
               "MCP exposes one unversioned name per V2 business action");
+        // Verify the actual tools/list schema, not just the written guidance.
+        // All 43 tool names, parameter keys, enums and IDs stay unchanged.
+        var schemas=JsonSerializer.SerializeToNode(McpLocal.Tools())!.AsArray();
+        string Help(string tool,string field)
+        {
+            var entry=schemas.FirstOrDefault(node=>node?["name"]?.GetValue<string>()==tool);
+            return entry?["inputSchema"]?["properties"]?[field]?["description"]?.GetValue<string>()??"";
+        }
+        Check(names.Length==43 &&
+              Help("create_folder","section").Contains("personal/certificate=人力资源") &&
+              Help("list_folders","section").Contains("company/certificate=企业资质") &&
+              Help("upload_files","section").Contains("company/achievement=业务档案") &&
+              Help("start_upload_task","section").Contains("personal/achievement=成果与奖励") &&
+              Help("list_folder_entries","section").Contains("personal/general=其他资料") &&
+              Help("reorder_entries","section").Contains("company/project=公司项目内普通目录") &&
+              Help("transfer_folder","target_section").Contains("personal/certificate=人力资源") &&
+              Help("list_files_page","section").Contains("personal/certificate=人力资源") &&
+              Help("create_folder","workspace").Contains("company=企业工作区") &&
+              Help("copy_file","target_workspace").Contains("personal=个人工作区"),
+              "MCP tools/list must consistently explain workspace-qualified section names");
+        Check(Help("delete_file","owner_id").Contains("FolderId") &&
+              Help("delete_file","file_id").Contains("FileId") &&
+              Help("delete_file","link_id").Contains("LinkId") &&
+              Help("upload_files","kind").Contains("合同材料是项目内普通目录") &&
+              AgentGuidance.InitializeInstructions.Contains("personal/certificate=人力资源"),
+              "MCP IDs, retired contract type and immutable Agent guidance must be unambiguous");
+
         var retiredAlias=await McpLocal.RunSmokeProtocolToolAsync(
             "v2_list_projects",Args(new{workspace="company"}));
         Check(retiredAlias["error"]?["code"]?.GetValue<int>()==-32602,

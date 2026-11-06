@@ -1,5 +1,8 @@
 ## 文件内容读取共用规范（upload 与 metadata 共用）
 
+业务范围必须由 workspace + section 联合识别，不能根据英文 section 猜测中文模块：company/certificate=企业资质、company/achievement=业务档案、company/party=党团建设、company/general=综合资料、company/project=公司项目下普通目录；personal/certificate=人力资源、personal/achievement=成果与奖励、personal/academic=学术与社会活动、personal/general=其他资料、personal/project=科研与合作项目下普通目录。项目/知识产权本体分别使用 kind=project/ip（不使用 section=ip），所有目录使用 kind=archive_folder 并传明确 section；合同材料仅是项目下普通目录。先由用户业务名称确认 workspace 与业务模块，再查询真实 FolderId/FileId/LinkId，不把 section、kind、文件 ID 相互混用。
+
+
 1. 可提取文字的 PDF：根据目的读取标题、摘要、正文和关键表格。只读部分页时必须明确说明实际覆盖范围，不能声称通读。
 2. 扫描 PDF、图片：只有当前 Agent 确实具备图像理解或 OCR 工具时才识别；识别含混或不可用则报告限制并留空，不能假定 IPSys 自带 OCR。
 3. Word（DOC/DOCX）：阅读标题、正文段落、相关表格和必要文档属性，不能仅依靠文件名推断内容。

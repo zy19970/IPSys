@@ -47,9 +47,49 @@ static partial class McpLocal
         if(choices!=null)result["enum"]=choices;
         return result;
     }
+    // This is a human/Agent-facing contract only. Stable section IDs, routes
+    // and storage values MUST remain unchanged; the workspace is part of the key.
+    private const string WorkspaceSemantics =
+        "工作区必须与业务模块一起判断：company=企业工作区，personal=个人工作区；不能仅凭 certificate 等英文 ID 猜业务归属。";
+    private const string SectionSemantics =
+        "section 是普通文件夹所在模块，不是 kind/文件夹名称。完整映射："
+        +"company/certificate=企业资质、company/achievement=业务档案、"
+        +"company/party=党团建设、company/general=综合资料、"
+        +"company/project=公司项目内普通目录；"
+        +"personal/certificate=人力资源、personal/achievement=成果与奖励、"
+        +"personal/academic=学术与社会活动、personal/general=其他资料、"
+        +"personal/project=科研与合作项目内普通目录。"
+        +"知识产权使用 kind=ip，不是 section=ip；"
+        +"项目业务记录使用 kind=project，项目下文件夹使用 kind=archive_folder + section=project。"
+        +"只能提交英文 ID，不接受中文名称代替。";
+    private static void Explain(Dictionary<string,object> properties,string key,string help)
+    {
+        if(properties.TryGetValue(key,out var value) &&
+           value is Dictionary<string,object> field &&
+           field.TryGetValue("description",out var original) &&
+           original is string description)
+            field["description"]=description+"。"+help;
+    }
+
     private static object Tool(string name,string description,
         Dictionary<string,object> properties,string[] required)
     {
+        Explain(properties,"workspace",WorkspaceSemantics);
+        Explain(properties,"target_workspace",WorkspaceSemantics);
+        Explain(properties,"section",SectionSemantics);
+        Explain(properties,"target_section",SectionSemantics);
+        // FolderId is a folder/business-record identity, FileId is logical
+        // content with versions, LinkId is only one placement of that file.
+        foreach(string key in new[]{"folder_id","owner_id","project_id","ip_id","target_folder_id"})
+            Explain(properties,key,"这是所属工作区中的 FolderId，不是 FileId 或 LinkId；须先查询实际对象 ID。");
+        Explain(properties,"file_id","这是逻辑文件 FileId，关联和历史版本不得用 LinkId 代替。");
+        Explain(properties,"source_file_id","这是待复用/共享的逻辑文件 FileId，必须先核对 SHA-256 与工作区。");
+        Explain(properties,"link_id","这是关联位置的 LinkId；不能拿 FileId 或文件版本编号代替。");
+        Explain(properties,"kind","kind 是本工具定义的资源或回收站类别，而不是模块 section；合同材料是项目内普通目录，不能使用 kind=contract。恢复或永久删除须使用 list_trash 返回的原始 kind。");
+        if(properties.ContainsKey("section")||properties.ContainsKey("target_section"))
+            description+=" 必须依据 workspace+section 解析模块：personal/certificate=人力资源，company/certificate=企业资质；详见 section 参数的完整映射。";
+        if(properties.ContainsKey("kind"))
+            description+=" kind 表示本工具对应的资源/结果类型，不等于模块 section；合同材料是项目内普通目录，不存在独立 contract 类型。";
         if(IsWriteTool(name))
             properties["request_id"]=Field("string",
                 "写操作幂等请求编号（8–128 字符），重试必须复用原编号；强烈建议始终提供");
@@ -205,7 +245,7 @@ static partial class McpLocal
             ["file_id"]=Field("integer","原件 FileId"),
             ["link_id"]=Field("integer","关联 LinkId")
         },["workspace","ip_id","file_id","link_id"]),
-        Tool("upload_files","上传前默认应按需读取 upload 规范并分析原件、生成可靠属性；用户明确只上传则跳过分析。上传到 V2 项目/合同/知识产权/档案/综合资料 FolderId；同内容必须显式确认 duplicate_mode；追加版本需为本 Folder 已关联 FileId。每份上限 8 GiB；大文件建议使用 start_upload_task 异步上传并轮询状态。",new(){
+        Tool("upload_files","上传前按需读取 upload 规范并分析原件、生成有依据的属性；用户明确只上传则跳过分析。目标必须是实际项目/知识产权 FolderId，或指定 workspace+section 下的普通文件夹 FolderId；合同材料也上传到项目内普通文件夹，不存在 kind=contract。相同内容必须显式选择 duplicate_mode；追加版本仅可指向当前 FolderId 已关联的 FileId。每份上限 8 GiB；大文件使用 start_upload_task 并轮询状态。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
             ["kind"]=Field("string","原件归属类别",["project","ip","archive_folder"]),
             ["section"]=Field("string","kind=archive_folder 必填；公司可用 certificate、achievement、party、general，个人可用 certificate、achievement、academic、general"),

@@ -1,6 +1,6 @@
 # search：智能检索工作规范
 
-1. 先确认用户授权的 company 或 personal 工作区、资料范围、查询目标。调用 search_records 做结构化关键词包含匹配，IPSys 不提供语义、拼写纠错、OCR 或全文搜索。
+1. 先确认用户授权的 company 或 personal 工作区、资料范围、查询目标。业务范围必须由 workspace + section 联合识别，不能根据英文 section 猜测中文模块：company/certificate=企业资质、company/achievement=业务档案、company/party=党团建设、company/general=综合资料、company/project=公司项目下普通目录；personal/certificate=人力资源、personal/achievement=成果与奖励、personal/academic=学术与社会活动、personal/general=其他资料、personal/project=科研与合作项目下普通目录。项目/知识产权本体分别使用 kind=project/ip（不使用 section=ip），所有目录使用 kind=archive_folder 并传明确 section；合同材料仅是项目下普通目录。先由用户业务名称确认 workspace 与业务模块，再查询真实 FolderId/FileId/LinkId，不把 section、kind、文件 ID 相互混用。 调用 search_records 做结构化关键词包含匹配，IPSys 不提供语义、拼写纠错、OCR 或全文搜索。
 2. 从原始词和可靠候选开始，Agent 根据行业术语、英文缩写、错别字、上位/下位及相关概念逐轮扩展。例如“查运机”可核实“铲运机”“LHD”，但模糊扩展不是同义事实；矿山机器人可扩展为撬毛、破碎、凿岩、无人驾驶铲运机，需标出相关性等级。
 3. 完整性要求下使用 search_records(workspace,query,kind?,offset?,limit?) 逐页查询至 hasMore=false；不把无分页参数的每类最多 60 条视作全量。逐条核查时建议 limit=10–20，防止单页内容被客户端折叠成预览；如果出现 persisted-output/预览截断，必须读取完整响应或缩小 limit 重查该页，不得把预览当成已审阅全部结果。留意查询期间数据变动可能影响分页结果。
 4. 根据 matchedFields、description、ownerLabel、path、folderId、ownerKind/ownerId、fileId、linkId 判定命中依据和业务位置。文件的 description 是原件实际说明（可为空），ownerLabel 是所属位置展示摘要；matchedFields=description 时须以真实 description 核实。FileId 是逻辑文件，LinkId 是一次文件夹归属；同一 FileId 多个关联位置应保留位置，下载原件可去重。

@@ -14,7 +14,7 @@ static partial class McpLocal
     {
         string section=ReadString(args,"section");
         if(!ArchiveDirectoryScopes.Allowed(workspace,section))
-            throw new McpKnownRejectionException("必须明确指定当前工作区支持的 section。");
+            throw new McpKnownRejectionException("section 与 workspace="+workspace+" 不匹配；必须使用合法的英文模块 ID。"+SectionSemantics);
         return section;
     }
 
@@ -27,7 +27,7 @@ static partial class McpLocal
 
     private static object[] ArchiveTools() =>
     [
-        Tool("list_folders","按工作区和 section 列出普通文件夹。section=project 时，parent_id 可以是项目 FolderId（直属目录）或子文件夹 FolderId。",new(){
+        Tool("list_folders","按工作区和 section 列出普通文件夹；personal/certificate 是人力资源，company/certificate 才是企业资质。section=project 时，parent_id 可以是项目 FolderId（直属目录）或子文件夹 FolderId。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
             ["section"]=Field("string","必须明确的资料模块，含 general"),
             ["parent_id"]=Field("integer","可选父文件夹 FolderId")

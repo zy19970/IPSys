@@ -367,8 +367,14 @@ const Drive = {
 
   resetSort() {
     const s = this.state;
-    /* 项目按业务年度、知识产权只按申请日年份降序；
-       其他目录按创建时间降序。手动排序操作仍可覆盖当前视图。 */
+    /* 仅个人工作区的文件列表默认按名称升序；企业工作区保留原规则：
+       项目/知识产权按业务年份降序，其他目录按创建时间降序。
+       用户显式选择的排序方向仍可随时覆盖默认值。 */
+    if (VaultStore.ws === "personal" && s.view === "files") {
+      s.sortBy = "name";
+      s.sortDir = "asc";
+      return;
+    }
     const yearLedger = s.view === "files" && !s.query.trim() &&
       (s.folderId === "k:project" || s.folderId === "k:ip");
     s.sortBy = yearLedger ? "_year" : "ctime";
@@ -501,11 +507,15 @@ const Drive = {
       }
       let r = 0;
       if (sortBy === "name") {
-        /* 业务档案目录带 order(后端 position),按用户顺序排;
-           其余节点没有 order,照旧按拼音。 */
-        const ao = a.order ?? null;
-        const bo = b.order ?? null;
-        r = ao !== null && bo !== null ? ao - bo : cmpName(a, b);
+        if (VaultStore.ws === "personal") {
+          /* 仅个人工作区按真正的名称自然升序，不受后台 position 影响。 */
+          r = cmpPersonalName(a, b);
+        } else {
+          /* 企业原有“名称”行为保持不变，包括历史 position 优先规则。 */
+          const ao = a.order ?? null;
+          const bo = b.order ?? null;
+          r = ao !== null && bo !== null ? ao - bo : cmpName(a, b);
+        }
       } else if (sortBy === "mtime") r = (a.mtime || 0) - (b.mtime || 0);
       else if (sortBy === "size") r = (a.size || 0) - (b.size || 0);
       return r * dir;

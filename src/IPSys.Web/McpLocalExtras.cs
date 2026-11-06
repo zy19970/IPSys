@@ -69,7 +69,7 @@ static partial class McpLocal
             ["file_id"]=Field("integer","FileId"),
             ["link_id"]=Field("integer","待恢复的已删除 LinkId")
         },["workspace","owner_id","file_id","link_id"]),
-        Tool("transfer_project","复制/移动整个项目与合同及有效原件版本。move=true 会在目标工作区新建身份和 ID，源工作区旧记录软删除并进入回收站；恢复来源会形成并存副本。",new(){
+        Tool("transfer_project","复制/移动完整项目（含项目下普通目录树、合同材料与附件有效版本）；合同不是独立对象。跨工作区 move=true 将在目标工作区新建身份和 ID，并将来源软删入回收站；恢复来源会形成并存副本。",new(){
             ["workspace"]=Field("string","来源工作区",Workspaces),
             ["project_id"]=Field("integer","项目 FolderId"),
             ["target_workspace"]=Field("string","目标工作区",Workspaces),
@@ -86,7 +86,7 @@ static partial class McpLocal
             ["section"]=Field("string","普通目录模块：company certificate/achievement/party/general/project，personal certificate/achievement/academic/general/project"),
             ["parent_id"]=Field("integer","同层父 FolderId；仅非 project 模块可传0表示根")
         },["workspace","section","parent_id"]),
-        Tool("reorder_entries","仅重排指定父级的全部有效普通子文件夹；items 必须完整、唯一且仅含 kind=folder,id=FolderId，不包含附件或后代；project 的 parent_id 必须是真实项目/目录 ID。",new(){
+        Tool("reorder_entries","更改数据库持久 position 排列（不是浏览器的名称/时间显示排序）；只重排指定父级的全部有效普通子文件夹。items 必须完整、唯一且仅含 kind=folder,id=FolderId，不包含附件或后代；project 的 parent_id 必须是真实项目/目录 ID。",new(){
             ["workspace"]=Field("string","工作区",Workspaces),
             ["section"]=Field("string","普通目录模块，与 list_folder_entries 保持一致"),
             ["parent_id"]=Field("integer","同层父 FolderId；仅非 project 模块可用0"),
@@ -319,7 +319,7 @@ static partial class McpLocal
             {
                 string section=RequiredText(args,"section");
                 if(!ArchiveDirectoryScopes.Allowed(workspace,section))
-                    throw new McpKnownRejectionException("工作区不支持该普通目录模块。");
+                    throw new McpKnownRejectionException("section 与 workspace="+workspace+" 不匹配。"+SectionSemantics);
                 long parent;
                 try{parent=Nonnegative(args,"parent_id");}
                 catch(IOException ex){throw new McpKnownRejectionException(ex.Message);}

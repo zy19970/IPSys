@@ -200,6 +200,20 @@ function cmpName(a, b) {
   return a.name.localeCompare(b.name, "zh-Hans-CN", { numeric: true });
 }
 
+/* 仅个人工作区名称排序使用：数字前缀按自然数比较，
+   避免 1、10、2；企业现行 cmpName 规则保持原样。 */
+function cmpPersonalName(a, b) {
+  const an = String(a.name ?? "").match(/^\d+/)?.[0];
+  const bn = String(b.name ?? "").match(/^\d+/)?.[0];
+  if (an && bn) {
+    const ax = an.replace(/^0+(?=\d)/, "");
+    const bx = bn.replace(/^0+(?=\d)/, "");
+    if (ax.length !== bx.length) return ax.length < bx.length ? -1 : 1;
+    if (ax !== bx) return ax < bx ? -1 : 1;
+  }
+  return cmpName(a, b);
+}
+
 /* 类型名只按扩展名归类,不绑定任何 Office 产品名。 */
 function typeLabel(item) {
   if (item.type === "folder") return item.biz?.typeName || "文件夹";

@@ -13,6 +13,25 @@ Agent MCP 子进程需要与图形宿主运行在同一个 Windows 用户登录�
 
 具体客户端的配置文件路径和字段因 Codex、其他 MCP 客户端而异；不要把某个客户端的示例配置当作统一标准。
 
+## 工作区与模块名称不可混淆
+
+MCP 参数 `section` 必须结合 `workspace` 使用，同一个英文值在个人与公司工作区可能代表不同业务。下表是可直接用于工具调用的映射：
+
+| workspace | section | 中文业务 |
+| --- | --- | --- |
+| company | certificate | 企业资质 |
+| company | achievement | 业务档案 |
+| company | party | 党团建设 |
+| company | general | 综合资料 |
+| company | project | 公司项目的普通子目录 |
+| personal | certificate | 人力资源 |
+| personal | achievement | 成果与奖励 |
+| personal | academic | 学术与社会活动 |
+| personal | general | 其他资料 |
+| personal | project | 科研与合作项目的普通子目录 |
+
+例如查询个人“人力资源”应使用 `list_folders(workspace="personal", section="certificate")`；企业资质则使用 `workspace="company"` 与相同的 `section="certificate"`。项目、知识产权业务记录使用 `kind=project/ip`，不把 `ip` 当作目录 `section`。文件夹是 `archive_folder`，文件 `FileId` 和关联 `LinkId` 不可混用；详情和永久删除前先通过只读接口确认真实归属。要变更页面显示顺序，使用前端“排序”；MCP `reorder_entries` 改写的是持久 `position`，不等于浏览器临时名称排序。
+
 ## 支持的业务方向
 
 | 任务 | 常见工具或能力 |

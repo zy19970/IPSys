@@ -20,6 +20,10 @@ IPSys 是 Windows x64 本地资料管理系统，由 WinForms 启动器、本机
 4. PDF 支持连续滚动；Markdown `.md/.markdown` 与 UTF-8 `.txt` 支持离线只读预览，Markdown 支持排版/源码切换和安全净化；文本预览上限为 **10 MiB**，不限制正常上传或下载。
 5. 资料库设置可以修改 SQLCipher 加密密码（旧密码校验，新密码 8—256 字符，重新加密完成后旧会话撤销）；必须先备份并按真实任务终态操作。回收站永久删除的完成提示约 4 秒消失，不在重新进入回收站时重复展示历史已完成进度。
 
+## 2.1 个人排序与 MCP 模块语义（2026-11-06 后续修改）
+
+个人工作区的文件列表默认名称升序（数字前缀使用自然排序），公司工作区既有默认排序不变；只作用于 Explorer 视图，不重排数据库 `position`。MCP 的 `workspace+section` 是组合标识：`personal/certificate` 是人力资源，`company/certificate` 是企业资质，完整映射和操作安全约定见 [MCP_CODEX](../MCP_CODEX.md)。同名英文 `section` 在不同工作区的业务含义不可互换。此次仅增强 tools/list 描述和 Agent 指引，不更名旧 ID、不变更数据库结构与 MCP 工具清单。
+
 ## 3. 构建、发布与验收
 
 正式前端源代码位于 `src/IPSys.Web/wwwroot`；构建时生成的 `dist/` 仅用于嵌入 EXE。Web SDK 的默认 Content 外拷由 `EnableDefaultContentItems=false` 关闭，仍保留显式 `EmbeddedResource` 与严格双模式单 EXE 检查。

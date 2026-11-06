@@ -7,6 +7,29 @@
 
 > **历史 S5 验收状态（2026-11-04，#538）**：现行 schema 3、MCP 43 项、项目内普通目录；本阶段最终测试提交 `cc7c1262` 的 [Windows CI #538](https://github.com/zy19970/IPSys/actions/runs/41839841405) 已完成成功，MCP↔GUI 同一批对象全链路验证通过。人工本机 GUI 尚待验证，旧库不迁移，发布未触发。详见 [S5 结案报告](tests/S5_FINAL_ACCEPTANCE_20261104.md)。
 
+## MCP 模块语义映射（2026-11-06）
+
+MCP 的 `workspace` 和 `section` 是**组合业务标识**；`certificate` 不能脱离工作区直接翻译为“证书/资质”。下表同时对应现行 Explorer `WS_CATS`、数据库的 `archive_folder.section` 和 MCP 英文参数：
+
+| 工作区 `workspace` | 普通目录模块 `section` | 用户可见业务名称 |
+| --- | --- | --- |
+| `company` | `certificate` | 企业资质 |
+| `company` | `achievement` | 业务档案 |
+| `company` | `party` | 党团建设 |
+| `company` | `general` | 综合资料 |
+| `company` | `project` | 公司项目下普通目录（合同材料也属于此类） |
+| `personal` | `certificate` | 人力资源 |
+| `personal` | `achievement` | 成果与奖励 |
+| `personal` | `academic` | 学术与社会活动 |
+| `personal` | `general` | 其他资料 |
+| `personal` | `project` | 科研与合作项目下普通目录 |
+
+`project` 和 `ip` 记录本体采用各自的 `kind`、FolderId；`ip` **不是**普通目录 `section`。项目下目录使用 `kind="archive_folder", section="project"`，必须指定实际项目或子目录 FolderId；其它普通资料模块也是 `kind="archive_folder"`，不能把显示名称作为 `section` 参数值。工作区和模块必须由用户归属及查询到的记录共同确定，未知时先只读查询或向用户确认目标，不得因为“证书”“成果”等字面相近就跨工作区上传或改名。
+
+**MCP 对象与操作约定：** `FolderId` 是项目/知识产权/目录对象；`FileId` 是含版本的逻辑文件；`LinkId` 是它在某位置的一条关联。`kind` 表示资源或回收站种类，与 `section` 不同；搜索结果 `file` 不等于回收站 `v2_file/v2_ip_file`，恢复/永久删除前先用 `list_trash` 获取原始参数。写操作应提供 `request_id` 并在重试时复用原编号；状态 `done` 仍需核对实际业务成功字段。目录排序的 `list_folder_entries/reorder_entries` 操作的是**持久 position**，并非 Explorer 的临时“名称升序”；不要为改变界面显示调用重排接口。
+
+工具对外数量、名称、参数字段和 `section` 英文 ID 保持不变；新的解释同步放入 `tools/list` 参数描述、内嵌 Agent 指南及本手册。示例：个人“人力资源”须使用 `list_folders(workspace="personal",section="certificate")`；公司“企业资质”使用 `list_folders(workspace="company",section="certificate")`。本次变更不涉及数据库 schema 与旧库迁移。
+
 ## MCP 文件重命名契约（2026-11-05）
 
 **现有 MCP 已支持修改附件名称，不需要增加新工具。** 使用 `update_file_metadata`，传入 `workspace`（`company` 或 `personal`）、实际 **FileId** 的 `file_id` 和新文件名称 `name`。例如：

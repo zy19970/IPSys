@@ -1,6 +1,6 @@
 # metadata：已入库文件属性维护工作规范
 
-1. 这是已有文件的补录流程，不是再次上传。先确定用户授权的工作区、目录/项目、时间范围（如有可靠时间字段）以及要补录的字段：description、tags、file_number、file_date；未指定时检查四类可补录属性。
+1. 这是已有文件的补录流程，不是再次上传。先确定用户授权的工作区、目录/项目（应按 workspace+section 识别业务，personal/certificate 是人力资源而非公司资质）、时间范围（如有可靠时间字段）以及要补录的字段：description、tags、file_number、file_date；未指定时检查四类可补录属性。
 2. 通过现有 list_files_page(workspace, missing_fields, missing_mode, offset, limit) 服务端筛选。missing_fields=all 表示检查所有四项，也可用字段数组 [description,tags,file_number,file_date] 的任意子集；missing_mode=any（默认）匹配任一指定缺项，all 匹配所有指定缺项。后端先在 SQLCipher 判别 NULL、空串、纯空白，再按 FileId 去重和分页；每条返回 missingFields 列表（JSON 驼峰字段名），无筛选调用仍按 LinkId 列出关联。分页应持续至 hasMore=false。
 3. 检索/筛选结果按当前工作区 FileId 去重，保留每个 FolderId/LinkId 的实际归属信息。同一 FileId 只需阅读最新版原件一次、更新一次；历史版本仅在用户明确指定时处理。
 4. 仅对需要补录的文件按版本调用 download_file_version，使用 Agent 现有文档/图像工具读取原件，按文末的“文件内容读取共用规范”提取可信证据。只查询缺项时不下载、不 OCR、不更新。

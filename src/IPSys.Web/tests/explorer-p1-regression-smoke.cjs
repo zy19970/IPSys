@@ -128,6 +128,93 @@ assert.equal(run("Drive.yearOf({biz:{kind:'archive_folder',year:'2025'}})"),"202
 assert.equal(run("Drive.yearOf({biz:{kind:'project',start:'',end:'2022-12-31'}})"),"2022",
   "Project year fallback must remain unchanged");
 
+/* All workspace-qualified MCP sections must match the visible Explorer labels.
+   The descriptions are explicit so an Agent does not infer HR from English IDs. */
+const mcpSchemaSource = fs.readFileSync(path.resolve(__dirname, "../McpLocal.cs"), "utf8");
+const scopeLabels = [
+  ["company","certificate","企业资质","company/certificate=企业资质"],
+  ["company","achievement","业务档案","company/achievement=业务档案"],
+  ["company","party","党团建设","company/party=党团建设"],
+  ["company","general","综合资料","company/general=综合资料"],
+  ["company","project","公司项目","company/project=公司项目内普通目录"],
+  ["personal","certificate","人力资源","personal/certificate=人力资源"],
+  ["personal","achievement","成果与奖励","personal/achievement=成果与奖励"],
+  ["personal","academic","学术与社会活动","personal/academic=学术与社会活动"],
+  ["personal","general","其他资料","personal/general=其他资料"],
+  ["personal","project","科研与合作项目","personal/project=科研与合作项目内普通目录"],
+];
+for (const [ws,section,label,toolPhrase] of scopeLabels) {
+  assert.equal(run("catLabel("+JSON.stringify(section)+","+JSON.stringify(ws)+")"),label,
+    "Explorer workspace/section label: "+ws+"/"+section);
+  assert.ok(mcpSchemaSource.includes(toolPhrase),
+    "MCP tools/list must explain workspace-qualified module "+toolPhrase);
+}
+
+/* Personal-only default name sorting must not modify corporate ledgers.
+   A server-side position is a persistent custom order, not a name key. */
+const personalPayload = {
+  ...payload, ws: "personal",
+  projects: [
+    {id:401,name:"Z 个人项目",startDate:"2026-01-01"},
+    {id:402,name:"A 个人项目",startDate:"2021-01-01"},
+  ],
+  ip: {rows:[
+    {id:411,data:{name:"Z 个人知识产权",applicationDate:"2026-01-01"}},
+    {id:412,data:{name:"A 个人知识产权",applicationDate:"2021-01-01"}},
+  ],files:[]},
+  archive: {
+    folders: [
+      {id:201,section:"certificate",name:"02 职称考核",position:0},
+      {id:202,section:"certificate",name:"01 证件合同",position:4},
+      {id:203,section:"certificate",name:"05 日常工作",position:1},
+      {id:204,section:"certificate",name:"04 参与招聘与面试",position:2},
+      {id:205,section:"certificate",name:"03 培训与发展",position:3},
+      {id:211,section:"certificate",parentId:201,name:"10 十号",position:0},
+      {id:212,section:"certificate",parentId:201,name:"2 二号",position:1},
+    ],
+    files:[],orders:{},
+  },
+};
+run("VaultStore.ws='personal';ROOT=VaultStore.buildTree("+JSON.stringify(personalPayload)+")");
+run("Drive.state.view='files';Drive.state.folderId='k:certificate';Drive.enterContext();");
+assert.equal(run("Drive.state.sortBy"), "name");
+assert.equal(run("Drive.state.sortDir"), "asc");
+assert.deepEqual(Array.from(run("Drive.sortedItems"),x=>x.id),
+  ["af:202","af:201","af:205","af:204","af:203"],
+  "Personal human resources must start with 01,02,03,04,05 even if position differs");
+run("Drive.state.sortBy='position';Drive.state.sortDir='asc';");
+assert.deepEqual(Array.from(run("Drive.sortedItems"),x=>x.id),
+  ["af:201","af:203","af:204","af:205","af:202"],
+  "Explicit persistent folder order must still work in personal workspace");
+run("Drive.state.folderId='af:201';Drive.enterContext();");
+assert.deepEqual(Array.from(run("Drive.sortedItems"),x=>x.id),
+  ["af:212","af:211"],"Personal nested folder names use numeric natural ascending order");
+assert.ok(run("cmpPersonalName({name:'2 目录'},{name:'10 目录'})") < 0,
+  "Personal numeric names compare 2 before 10");
+run("Drive.state.folderId='k:project';Drive.enterContext();");
+assert.deepEqual(Array.from(run("Drive.sortedItems"),x=>x.id),["p:402","p:401"],
+  "Personal project list is name-ascending, not year-descending");
+run("Drive.state.folderId='k:ip';Drive.enterContext();");
+assert.deepEqual(Array.from(run("Drive.sortedItems"),x=>x.id),["i:412","i:411"],
+  "Personal IP list is name-ascending, not application-year-descending");
+run("Drive.state.query='测试';Drive.resetSort();");
+assert.equal(run("Drive.state.sortBy"),"name",
+  "Personal searches retain name-ascending default");
+run("Drive.state.query='';Drive.resetSort();");
+assert.equal(run("Drive.state.sortDir"),"asc",
+  "Clearing personal searches restores name ascending");
+run("VaultStore.ws='company';ROOT=VaultStore.buildTree("+JSON.stringify(payload)+")");
+run("Drive.state.folderId='af:70';Drive.enterContext();");
+assert.equal(run("Drive.state.sortBy"),"ctime");
+assert.equal(run("Drive.state.sortDir"),"desc");
+run("Drive.state.sortBy='name';Drive.state.sortDir='asc';");
+assert.deepEqual(Array.from(run("Drive.sortedItems"),x=>x.id),
+  ["af:91","af:71","af:90"],"Corporate explicit name mode retains existing position preference");
+run("Drive.state.folderId='k:project';Drive.enterContext();");
+assert.equal(run("Drive.state.sortBy"),"_year");
+assert.equal(run("Drive.state.sortDir"),"desc");
+run("Drive.state.folderId='af:70';Drive.enterContext();");
+
 (async () => {
   const oldRoot = run("ROOT");
   const vault = run("VaultStore");
