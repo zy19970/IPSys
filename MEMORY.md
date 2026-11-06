@@ -1,5 +1,9 @@
 # IPSys 项目持续记忆
 
+> **2026-11-06 第七轮实施验收已完成**：更新提醒代码提交 [`302292a8`](https://github.com/zy19970/IPSys/commit/302292a8a5b9f956ea0ded98cfef3de680814767) 已进入 main（14 个文件：C# 只读 GitHub Release 检查、Settings/UI、开发构建标记、C# Node 测试与 Windows CI 注册、现行文档、会话/Memory）。[Windows CI #42166727076](https://github.com/zy19970/IPSys/actions/runs/42166727076) 对同一 SHA **completed/success**，对应 smoke job **27 success、0 failed**；已验证冷双单 EXE、Debug、Node 更新 UI 用例、HTTP/Edge、SQLCipher/MCP、两种单 EXE 启动及工件输出。[Publish IPSys Wiki #42166726718](https://github.com/zy19970/IPSys/actions/runs/42166726718) 同 SHA completed/success。实际公网网络请求与手工点击官方页面属于非 CI 实测边界；没有新建 Release、不自动替换数据库或 EXE。当前已发布的最新可核实版本仍为 `v0.9.3-rc.1`，此新功能要在**下一次正式 Release 重新构建的 EXE** 中才会出现。最新会话 `memory/sessions/2026-11-06-细节优化前仓库梳理.md` 第七轮。
+
+
+
 > **2026-11-06 第七轮：按确认方案实施 GitHub 更新提示（待 CI 验证）**：用户明确“这个思路没问题，就按照这个思路进行修改”。在 `main` 起始 `80bd7dac2b` 上增加 `src/IPSys.Web/UpdateCheck.cs` 的只读 `/api/update/check`，会话授权后查询固定 `zy19970/IPSys` 的公开 Releases（4s 超时）；合法 tag 按版本语义比较、兼容历史 rc0/rc.1；忽略草稿、无双 Windows 单 EXE 的发布；只构造固定 GitHub 官方 release/tag 链接；网络异常人工显式报失败、自动安静退出，不改库/EXE。当前 Windows 用户注册表缓存成功的查询/提醒时间，24h 限频；手动强制即时查询。标记无版本的本机/CI 构建 `0.0.0-dev`，正式手动 Publish 已显式注入实际 Version，保留 Publish workflow 原样；UI 设置新增“软件更新/检查更新”，显示实际版本并取代 Web 0.9，成功打开资料库后非阻塞检测，复用 Toast 和官方链接（不自动下载/安装）。`WebSmoke.cs` 加入假 GitHub JSON/未授权接口纯离线测试，新增 Node update-check-ui-smoke.cjs 覆盖按钮/离线/更新/恶意链接/开发构建，并仅将其加入 Windows CI UI 用例列表；同步 README、USER_GUIDE、TESTING、Wiki Settings。用户任务开始通知 office-renderer/wechat-webhook#2334。**这些是准备提交的代码，当前尚未从 GitHub CI 得出编译或运行结论，不能提前称已通过。** 最近会话 `memory/sessions/2026-11-06-细节优化前仓库梳理.md` 第七轮。
 
 
