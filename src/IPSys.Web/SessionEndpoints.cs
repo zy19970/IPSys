@@ -8,7 +8,7 @@ static class SessionEndpoints
     public static void Map(WebApplication app,Func<string,int,IResult> fail)
     {
         IResult Fail(string message,int status=400)=>fail(message,status);
-        // MCP access is deliberately disabled for every new database session.
+        // MCP is enabled after unlocking by default; current-user pipe and vault session still enforce authorization.
         app.MapGet("/api/mcp", (HttpContext ctx,Vault v) =>
             !v.Allowed(ctx)?(IResult)Results.Unauthorized():Results.Json(new {enabled=v.McpEnabled}));
         app.MapPost("/api/mcp", (HttpContext ctx,Vault v,McpAccessInput input) =>

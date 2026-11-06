@@ -161,6 +161,19 @@ static class WebSmoke
                 new OpenInput(dbPath,password,true)));
             string token=first.GetProperty("token").GetString()!;
             client.DefaultRequestHeaders.Add("X-IPSys-Token",token);
+            // MCP starts enabled only for the currently unlocked vault, still
+            // behind the Windows-user pipe and explicit session authorization.
+            var mcpDefault=await Json(await client.GetAsync("/api/mcp"));
+            if(!mcpDefault.GetProperty("enabled").GetBoolean())
+                throw new IOException("新打开资料库后 MCP 应默认开启。");
+            var mcpDisabled=await Json(await client.PostAsJsonAsync(
+                "/api/mcp",new McpAccessInput(false)));
+            if(mcpDisabled.GetProperty("enabled").GetBoolean())
+                throw new IOException("用户必须能在本次会话中手动关闭 MCP。");
+            var mcpReenabled=await Json(await client.PostAsJsonAsync(
+                "/api/mcp",new McpAccessInput(true)));
+            if(!mcpReenabled.GetProperty("enabled").GetBoolean())
+                throw new IOException("用户必须能再次手动启用 MCP。");
             using(var duplicate=await client.PostAsJsonAsync("/api/open",
                 new OpenInput(dbPath,password,true)))
                 if(duplicate.IsSuccessStatusCode)
@@ -226,6 +239,7 @@ static class WebSmoke
             (await client.PostAsJsonAsync("/api/mcp",
                 new McpAccessInput(false))).EnsureSuccessStatusCode();
 
+            await VaultIntegrityHttpSmoke.VerifyAsync(client);
             var check=await Json(await client.GetAsync("/api/check"));
             if(check.GetProperty("result").GetString()!="ok"||
                check.GetProperty("incomplete").GetInt64()!=0)
@@ -248,6 +262,9 @@ static class WebSmoke
             string newToken=reopened.GetProperty("token").GetString()!;
             if(token==newToken)throw new IOException("重开资料库应重新生成会话令牌。");
             client.DefaultRequestHeaders.Add("X-IPSys-Token",newToken);
+            var mcpReopened=await Json(await client.GetAsync("/api/mcp"));
+            if(!mcpReopened.GetProperty("enabled").GetBoolean())
+                throw new IOException("资料库重新打开后 MCP 应恢复默认开启。");
             var stored=await Json(await client.GetAsync(
                 "/api/v2/folders/company/project/"+project));
             if(stored.GetProperty("folder").GetProperty("ref").GetProperty("id")

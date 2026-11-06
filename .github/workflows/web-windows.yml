@@ -290,6 +290,7 @@ jobs:
             'vault-password-ui-smoke.cjs'       = 'Vault SQLCipher password change UI and session invalidation regression failed'
             'update-check-ui-smoke.cjs'         = 'Nonmodal GitHub release update reminder, version and offline regression failed'
             'storage-usage-smoke.cjs'           = 'Whole-vault page usage API and shared UI contract failed'
+            'integrity-progress-ui-smoke.cjs'   = 'Asynchronous integrity scan and MCP default-on settings regression failed'
             'ui-tree-smoke.cjs'                = 'Drive tree (project / ordinary folder / original) smoke failed'
             'explorer-p0-interactions-smoke.cjs' = 'Explorer P0 deletion and lock regression failed'
             'explorer-p1-regression-smoke.cjs' = 'Explorer P1 archive ordering and API error handling regression failed'

@@ -1,5 +1,13 @@
 # IPSys 项目持续记忆
 
+> **2026-11-06 第八轮：设置页完整性检查进度、MCP 默认开启与 VACUUM 空间说明（待 CI）**：用户截图指出“完整性检查要有一个进度；MCP默认打开；为什么压缩数据库需要额外两倍的空间？”。核对 main `3ca34ea23a` 的 Vault、SessionEndpoints、Settings、VaultCompactStore，明确现有 `GET /api/check` 同步 PRAGMA 导致等待无进度；现有 `Vault.SetOpen` 明确把 MCP 关闭；现有 `VaultCompactStore.Inspect` 使用 `fileBytes*2+128MiB` 且同时要求数据库所在盘、Temp 盘满足，源自 SQLite VACUUM 临时副本/事务回滚日志理论上至多需要额外 2× 文件大小，属于保守安全前置判断（SQLite 官方 https://www.sqlite.org/lang_vacuum.html）。用户明确要求改第一二项，第三项回答原因，不降低安全空间门槛。
+
+新增 `VaultIntegrityEndpoints.cs` 与 `VaultIntegrityJob`，经授权 POST `/api/vault/integrity` 启动受排他文件任务锁及 SQLCipher Gate 保护的后台校验（`CommandTimeout=0`），GET `/api/vault/integrity/task` 无需 Gate，查询 taskId、queued/running/succeeded/failed/canceled、真实完成阶段 0/2、result/incomplete/error；旧 `GET /api/check` 保留兼容。前端 `setCheckProgress` 显示无百分比的动效与真实阶段，禁用重复点击、支持关闭设置后重进恢复轮询，最终显示真实结论；重新连接资料库时改用轻量 `/api/task` 验证 token，不再隐式运行昂贵的完整性检查。MCP 在 `Vault.SetOpen` 默认开启，仍仅限同 Windows 用户受限命名管道；手动关闭、关库、改密与退出撤销；`McpLocal`、AgentGuidance、设置文案及当前文档同步。压缩保持 `fileBytes*2+128MiB` 保护，界面确认/悬浮提示与用户指南/Wiki 说明为临时数据库与回滚日志、操作结束释放，不会自动备份。
+
+新增 `VaultIntegrityHttpSmoke.cs`（授权、任务状态与互斥、终态、释放锁，大库动态超时），`integrity-progress-ui-smoke.cjs`（运行状态、恢复、失败、MCP default on）、`WebSmoke.cs` 真实新开与再开库 MCP 默认及人工禁用/再启用断言，CI Windows UI 冒烟表注册，人工验收增加 F06-F08。同步现行 USER_GUIDE、TESTING、MCP_CODEX、Wiki/MCP/备份/设置、文档基线。本轮准备仅在 main 作原子提交；**尚未执行/通过新 Windows CI，本机人工未测；不得把准备好的代码当作通过或已发布新 EXE**。任务开始通知 office-renderer/wechat-webhook#2336。会话 `memory/sessions/2026-11-06-细节优化前仓库梳理.md` 第八轮。
+
+
+
 > **2026-11-06 第七轮实施验收已完成**：更新提醒代码提交 [`302292a8`](https://github.com/zy19970/IPSys/commit/302292a8a5b9f956ea0ded98cfef3de680814767) 已进入 main（14 个文件：C# 只读 GitHub Release 检查、Settings/UI、开发构建标记、C# Node 测试与 Windows CI 注册、现行文档、会话/Memory）。[Windows CI #42166727076](https://github.com/zy19970/IPSys/actions/runs/42166727076) 对同一 SHA **completed/success**，对应 smoke job **27 success、0 failed**；已验证冷双单 EXE、Debug、Node 更新 UI 用例、HTTP/Edge、SQLCipher/MCP、两种单 EXE 启动及工件输出。[Publish IPSys Wiki #42166726718](https://github.com/zy19970/IPSys/actions/runs/42166726718) 同 SHA completed/success。实际公网网络请求与手工点击官方页面属于非 CI 实测边界；没有新建 Release、不自动替换数据库或 EXE。当前已发布的最新可核实版本仍为 `v0.9.3-rc.1`，此新功能要在**下一次正式 Release 重新构建的 EXE** 中才会出现。最新会话 `memory/sessions/2026-11-06-细节优化前仓库梳理.md` 第七轮。
 
 

@@ -109,7 +109,7 @@ S3 证据：[最终产品提交 `e040afb`](https://github.com/zy19970/IPSys/comm
 
 在 IPSys 的「设置 → Agent 工作规范」中可按 index、search、upload、metadata 浏览。index 是不可编辑的轻量目录；其余三篇允许编辑内容、预览当前有效文本、单篇恢复内置默认、导出或导入用户覆盖配置。默认规范与 upload/metadata 共用的文件读取和权限安全规则仍随 EXE 内嵌且不能被覆盖。
 
-专项覆盖保存在当前 Windows 用户的 LocalApplicationData/IPSys/agent-guidance.json，**不是任何业务资料库文件**。浏览器必须解锁资料库并携带现有会话 token 才能使用管理 API；MCP 仍需要单独手动启用授权。POST/PUT 写配置不产生 FileId、LinkId 或 FileVersion，也不修改 SQLCipher 业务数据。配置按同用户范围生效，切换公司/个人工作区或资料库时不变；不同 Windows 用户彼此独立。配置属于用户本机文本文件，建议不要存密码、密钥、令牌或隐私全文。
+专项覆盖保存在当前 Windows 用户的 LocalApplicationData/IPSys/agent-guidance.json，**不是任何业务资料库文件**。浏览器必须解锁资料库并携带现有会话 token 才能使用管理 API；MCP 在资料库解锁后默认启用、可手动关闭；访问仍必须通过当前 Windows 用户的受限管道及宿主授权。POST/PUT 写配置不产生 FileId、LinkId 或 FileVersion，也不修改 SQLCipher 业务数据。配置按同用户范围生效，切换公司/个人工作区或资料库时不变；不同 Windows 用户彼此独立。配置属于用户本机文本文件，建议不要存密码、密钥、令牌或隐私全文。
 
 接口为 GET /api/agent-guidance（目录）、GET /api/agent-guidance/{topic}（含当前有效正文、原始编辑正文和版本）、PUT /api/agent-guidance/{topic}（content 和 expectedRevision）、POST /api/agent-guidance/{topic}/restore（expectedRevision）、GET /api/agent-guidance/export（默认完整有效规范）、GET /api/agent-guidance/export?mode=overrides（仅用户覆盖）、POST /api/agent-guidance/import（config 和 expectedRevision）。仅可覆盖 search/upload/metadata。保存、恢复、导入都检查配置版本，另一个标签页先更新会得到 409，应刷新后检查再操作。单篇规范不超过 48 KiB，配置文件不超过 256 KiB。
 
@@ -129,7 +129,7 @@ S3 证据：[最终产品提交 `e040afb`](https://github.com/zy19970/IPSys/comm
 
 S2 前历史记录曾为 **51 项**（含 **get_agent_guidance**），普通文件夹工具已统一；其余后续历史工具数量仅对应当时版本。调用 `get_agent_guidance()` 或 `get_agent_guidance(topic="index")` 只返回 search/upload/metadata 专项的 ID、标题、摘要、版本；分别调用 `topic="search"`、`topic="upload"`、`topic="metadata"` 才返回单篇正文。未知 topic 明确拒绝。用户仅要求读取规范时不会上传、下载原件、修改属性或删除资料。
 
-MCP initialize.instructions 只输出来自内嵌 index.md 的短入口，必须先在资料库中人工开启 MCP 授权；规范读取通过现行受限命名管道及宿主授权门禁，不依赖外网或额外本地服务。内嵌规范文件统一位于 src/IPSys.Web/AgentGuidance/，由 AgentGuidance.cs 注册并读取，upload/metadata 共享 file-reading.md 内容。用户换 Agent 或刷新工具清单时需重启或重新连接客户端。当前第二阶段源码已提供标准 MCP Prompts、通用缺失属性筛选；**真实智能入库和补录仍需本地 Agent 实测**，设置编辑/覆盖界面属于第三阶段。新增规范工具后的 [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 已成功；早期 63 工具 CI 仍只是历史证据，第三方 Agent 自动读取和批量补录继续独立验收。
+MCP initialize.instructions 只输出来自内嵌 index.md 的短入口，资料库必须已解锁且 MCP 当前处于允许状态（默认开启，可手动关闭）；规范读取通过现行受限命名管道及宿主授权门禁，不依赖外网或额外本地服务。内嵌规范文件统一位于 src/IPSys.Web/AgentGuidance/，由 AgentGuidance.cs 注册并读取，upload/metadata 共享 file-reading.md 内容。用户换 Agent 或刷新工具清单时需重启或重新连接客户端。当前第二阶段源码已提供标准 MCP Prompts、通用缺失属性筛选；**真实智能入库和补录仍需本地 Agent 实测**，设置编辑/覆盖界面属于第三阶段。新增规范工具后的 [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 已成功；早期 63 工具 CI 仍只是历史证据，第三方 Agent 自动读取和批量补录继续独立验收。
 
 
 ## Agent 轻量搜索（2026-10-25）
@@ -286,7 +286,7 @@ MCP 写操作（新增、修改、删除、上传，以及已有 `v2_*` 写操�
 
 现有 V2 HTTP 能力补齐至 MCP：`update_contract` 编辑合同；`get_file_details`、`update_file_metadata`、`download_file_version` 管理文件属性、版本和指定版本本机下载；`associate_file`、`restore_file_link`、`copy_file` 管理原件共享、关联恢复及完整历史复制；`transfer_project`、`transfer_ip`、`transfer_archive`、`transfer_general` 处理整份资料复制/移动；`search_records` 提供跨业务搜索；`list_trash` 与 `restore_trash` 查询及精确恢复回收站条目。
 
-写操作使用可选 `request_id` 幂等日志；回收站恢复必须提供 `list_trash` 原样返回的 kind/id/section。下载路径是 **运行 IPSys 的本机 Windows 电脑**上的绝对路径，仅新建文件、不覆盖已有文件。跨工作区复制文件必须使用 `independent-content`，共享关联只允许同工作区。单个文件当前代码上限为 8 GiB；所有操作需要当前数据库解锁和手动 MCP 授权。
+写操作使用可选 `request_id` 幂等日志；回收站恢复必须提供 `list_trash` 原样返回的 kind/id/section。下载路径是 **运行 IPSys 的本机 Windows 电脑**上的绝对路径，仅新建文件、不覆盖已有文件。跨工作区复制文件必须使用 `independent-content`，共享关联只允许同工作区。单个文件当前代码上限为 8 GiB；所有操作需要当前数据库解锁与本机 MCP 授权状态为开启（开库后默认开启，可手动关闭）。
 
 ## MCP 管道安全补强验收（2026-10-17）
 
@@ -306,7 +306,7 @@ stdio 初始化只声明真正支持的 `2025-06-18` 协议版本；空行静默
 ## 使用步骤
 
 1. 从 Actions 的最新成功构建解压 IPSys-Web-win-x64 到固定文件夹。
-2. 正常启动 IPSys.Web.exe，解锁数据库，在「系统设置」点击「开启 MCP」。每次打开数据库均默认关闭。
+2. 正常启动 IPSys.Web.exe，解锁数据库，在「系统设置」核对 MCP 是否开启（新开资料库默认开启）。每次打开资料库时 MCP 默认开启；可在设置中手动关闭当前会话。
 3. 在本机 PowerShell 运行以下命令，将 EXE 路径换成实际绝对路径：
 
    `codex mcp add ipsys -- "C:\IPSys\IPSys.Web.exe" --mcp`
@@ -365,7 +365,7 @@ stdio 初始化只声明真正支持的 `2025-06-18` 协议版本；空行静默
 
 ## 现行 MCP 安全操作示例
 
-所有命令必须在 IPSys 宿主已解锁、手动开启 MCP 且客户端刷新工具列表后执行。工作区 `workspace` 必须明确选择 `company` 或 `personal`。每项写操作建议使用独立 UUID 作为 `request_id`，重试相同请求时必须保留原请求编号与参数，绝不可更换编号盲目重做。只有 `get_operation_result` 返回 `done` 才能直接确认日志里记录的最终结果；`pending/uncertain` 必须人工核对。
+所有命令必须在 IPSys 宿主已解锁、MCP 当前开启（默认开启、可手动关闭）且客户端刷新工具列表后执行。工作区 `workspace` 必须明确选择 `company` 或 `personal`。每项写操作建议使用独立 UUID 作为 `request_id`，重试相同请求时必须保留原请求编号与参数，绝不可更换编号盲目重做。只有 `get_operation_result` 返回 `done` 才能直接确认日志里记录的最终结果；`pending/uncertain` 必须人工核对。
 
 合同修改：先 `list_contracts` 查找真实 `contract_id`，再使用 `update_contract` 提交明确字段；省略或传 `null` 表示不变，允许清空的字段传空字符串。
 
@@ -387,7 +387,7 @@ stdio 初始化只声明真正支持的 `2025-06-18` 协议版本；空行静默
 
 ## 安全边界
 
-Codex 通过 stdio 使用同一个 EXE 的 `--mcp` 模式，子进程仅通过当前 Windows 用户的本机命名管道向已运行的 IPSys 宿主提交操作；没有新 TCP 端口、不会向 Agent 暴露数据库密码或网页 Token。必须由用户在已解锁程序中手动授权开关，关库/退出即失效。Agent 操作属于用户明确委托，正式库建议预先手动备份，尤其删除前核对 ID。打开 MCP 后，当前 Windows 用户的本机 Agent 可以通过上述工具写入和软删除资料。同一用户交互会话中第二个 GUI 宿主会被程序拒绝启动。
+Codex 通过 stdio 使用同一个 EXE 的 `--mcp` 模式，子进程仅通过当前 Windows 用户的本机命名管道向已运行的 IPSys 宿主提交操作；没有新 TCP 端口、不会向 Agent 暴露数据库密码或网页 Token。打开资料库后 MCP 默认开启，但只能经当前 Windows 用户的本机命名管道访问；可手动关掉，关库/退出或改密即失效。Agent 操作属于用户明确委托，正式库建议预先手动备份，尤其删除前核对 ID。打开 MCP 后，当前 Windows 用户的本机 Agent 可以通过上述工具写入和软删除资料。同一用户交互会话中第二个 GUI 宿主会被程序拒绝启动。
 
 更多步骤见 `WEB_TESTING.md`。
 

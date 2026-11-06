@@ -1410,6 +1410,34 @@ svg { display: block; flex: none; }
   white-space: nowrap;
 }
 
+/* PRAGMA integrity_check has no honest percent-complete estimate.
+   Show an indeterminate moving indicator and the actual server stage. */
+.integrity-progress {
+  position: relative;
+  height: 4px;
+  width: min(100%, 280px);
+  margin-top: 6px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface-subtle);
+}
+.integrity-progress[hidden] { display: none; }
+.integrity-progress-bar {
+  position: absolute;
+  width: 35%;
+  height: 100%;
+  background: var(--brand);
+  border-radius: inherit;
+  animation: ipsys-integrity-scan 1.5s ease-in-out infinite alternate;
+}
+@keyframes ipsys-integrity-scan {
+  from { left: 0; }
+  to { left: 65%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .integrity-progress-bar { animation: none; left: 30%; }
+}
+
 /* 检查结果这类行内状态:默认灰,成功转绿,失败转红 */
 .set-txt small.is-ok { color: #107c10; }
 .set-txt small.is-bad { color: #c42b1c; }

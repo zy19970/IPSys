@@ -126,6 +126,7 @@ NativeProjectTransferEndpoints.Map(app, Fail);
 
 RecycleEndpoints.Map(app);
 VaultCompactEndpoints.Map(app);
+VaultIntegrityEndpoints.Map(app);
 VaultStorageEndpoints.Map(app);
 
 SessionEndpoints.MapDiagnostics(app);

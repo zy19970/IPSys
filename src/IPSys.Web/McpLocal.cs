@@ -260,7 +260,7 @@ static partial class McpLocal
         ];
         return [..tools,..ArchiveTools(),..ExtraTools(),
             Tool("get_agent_guidance",
-                "只读获取本机 IPSys Agent 工作规范。topic=index 只列专项目录；search/upload/metadata 每次只返回单篇。读取规范不触发业务操作，须先在宿主启用 MCP 授权。",
+                "只读获取本机 IPSys Agent 工作规范。topic=index 只列专项目录；search/upload/metadata 每次只返回单篇。读取规范不触发业务操作，宿主须已解锁且 MCP 当前开启（默认开启、可手动关闭）。",
                 new(){
                     ["topic"]=Field("string","规范 ID；省略时仅列目录",
                         ["index","search","upload","metadata"])
@@ -827,7 +827,7 @@ static partial class McpLocal
     private static async Task<JsonNode> ExecuteAsync(Vault vault,string address,
         string name,JsonElement args,CancellationToken stop,UploadTask? progress=null)
     {
-        if(!vault.McpEnabled)throw new IOException("MCP 未授权：请在 IPSys 的系统设置中手动开启本机 MCP。");
+        if(!vault.McpEnabled)throw new IOException("MCP 已关闭或资料库未解锁：请检查 IPSys 的资料库及本机 MCP 设置。");
         string workspace=Workspace(args);
         using var client=new HttpClient {BaseAddress=new Uri(address),
             Timeout=LongFileOperation(name)?TimeSpan.FromHours(3):TimeSpan.FromMinutes(10)};

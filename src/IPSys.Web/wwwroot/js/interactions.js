@@ -211,7 +211,9 @@ async function startSession() {
       VaultStore.token = sessionStorage.getItem("od-token");
       VaultStore.dbName = sessionStorage.getItem("od-db") || "";
       try {
-        await VaultStore.api("/api/check");
+        // Session verification is lightweight; run the expensive integrity scan
+        // only when the user explicitly requests it in Settings.
+        await VaultStore.api("/api/task");
         await enterWorkspace(defaultWorkspace());
         return;
       } catch {
@@ -571,6 +573,7 @@ function paintSettings() {
      写死在 HTML 里会立刻过期。 */
   void paintMcpRow();
   void paintCompactRow();
+  void resumeIntegrityCheck();
   void paintPendingUploadRow();
 }
 
@@ -688,8 +691,8 @@ async function paintCompactRow() {
       can: !!i.canCompact,
     });
     btn.title = i.canCompact
-      ? "永久删除释放的空间可被后续写入复用；压缩需额外磁盘空间，期间请勿关闭程序，不会自动备份"
-      : "磁盘或系统临时目录剩余空间不足";
+      ? `VACUUM 先建立临时数据库，再通过回滚日志保护原文件；安全预留约 ${fmtSize(Number(i.requiredFreeBytes)||0)}，完成后临时空间会释放，不会自动备份。`
+      : `压缩安全预留约 ${fmtSize(Number(i.requiredFreeBytes)||0)}；数据库磁盘和系统临时目录需有足够可用空间。`;
   } catch (e) {
     setCompactUi("无法读取空间信息：" + e.message);
   }
@@ -704,8 +707,8 @@ async function paintMcpRow() {
     const r = await VaultStore.getJson("/api/mcp");
     box.checked = !!r.enabled;
     msg.textContent = r.enabled
-      ? "已开启 · 本机可通过 MCP 操作资料库"
-      : "默认关闭 · 仅当前 Windows 用户可用";
+      ? "默认开启 · 仅当前 Windows 用户可通过 MCP 操作已解锁资料库"
+      : "已关闭（本次资料库会话）· 可在此重新开启";
     box.disabled = false;
   } catch (e) {
     box.checked = false;
@@ -713,28 +716,85 @@ async function paintMcpRow() {
   }
 }
 
-async function runIntegrityCheck(btn) {
+/* An integrity scan can hold the SQLite Gate for minutes on large vaults.
+   Poll the independent job snapshot; never invent numeric percentages. */
+let integrityTask = null;
+function paintIntegrityProgress(stage, running = false) {
+  const btn = $("#setCheck");
   const msg = $("#setCheckMsg");
-  if (!msg) return;
-  btn.disabled = true;
-  msg.className = "";
-  msg.textContent = "正在检查…";
+  const progress = $("#setCheckProgress");
+  if (btn) { btn.disabled = running; btn.textContent = running ? "检查中…" : "立即检查"; }
+  if (progress) {
+    progress.hidden = !running;
+    progress.setAttribute("aria-valuetext", stage || "正在检查");
+  }
+  if (msg && stage !== undefined) {
+    msg.textContent = stage;
+    if (running) msg.className = "";
+  }
+}
+async function resumeIntegrityCheck() {
+  if (integrityTask || !VaultStore.token) return;
   try {
-    const r = await VaultStore.getJson("/api/check");
-    /* 真实后端返回 { result, incomplete };预览服务早期只回了 { ok } */
-    const result = r.result || (r.ok ? "ok" : "error");
-    const ok = result === "ok";
-    const inc = Number(r.incomplete) || 0;
-    msg.className = ok ? "is-ok" : "is-bad";
-    msg.textContent = ok
-      ? `完整性正常，未完成附件 ${inc} 个`
-      : `完整性异常：${result}`;
-    if (ok) toast("数据库完整性检查通过");
-  } catch (e) {
-    msg.className = "is-bad";
-    msg.textContent = "检查失败：" + e.message;
-  } finally {
-    btn.disabled = false;
+    const status = await VaultStore.getJson("/api/vault/integrity/task");
+    if (!integrityTask && (status.state === "queued" || status.state === "running")) {
+      integrityTask = { id: status.taskId, timer: null };
+      paintIntegrityProgress(status.stage || "正在检查…", true);
+      void pollIntegrityCheck();
+    }
+  } catch { /* Missing task or unavailable status is not an error for Settings. */ }
+}
+async function runIntegrityCheck(btn) {
+  if (integrityTask) return;
+  paintIntegrityProgress("正在启动完整性检查…", true);
+  try {
+    const response = await VaultStore.api("/api/vault/integrity", { method: "POST" });
+    const data = await response.json();
+    integrityTask = { id: data.taskId, timer: null };
+    void pollIntegrityCheck();
+  } catch (error) {
+    const msg = $("#setCheckMsg");
+    paintIntegrityProgress("检查无法启动：" + error.message, false);
+    if (msg) msg.className = "is-bad";
+  }
+}
+async function pollIntegrityCheck() {
+  if (!integrityTask) return;
+  let status;
+  try {
+    status = await VaultStore.getJson("/api/vault/integrity/task");
+    if (status.taskId !== integrityTask.id) throw new Error("完整性任务身份发生变化");
+  } catch (error) {
+    if (!integrityTask) return;
+    if (!VaultStore.token) {
+      integrityTask = null;
+      paintIntegrityProgress("资料库会话已关闭", false);
+      return;
+    }
+    paintIntegrityProgress("暂时无法读取检查状态，正在重试…", true);
+    integrityTask.timer = setTimeout(pollIntegrityCheck, 1300);
+    return;
+  }
+  if (status.state === "queued" || status.state === "running") {
+    const step = Number(status.completedSteps) || 0;
+    paintIntegrityProgress(`${status.stage || "正在检查"} · 已完成 ${step}/2 阶段（当前阶段不提供百分比）`, true);
+    integrityTask.timer = setTimeout(pollIntegrityCheck, 650);
+    return;
+  }
+  clearTimeout(integrityTask.timer);
+  integrityTask = null;
+  const msg = $("#setCheckMsg");
+  if (status.state === "succeeded") {
+    const healthy = status.result === "ok";
+    const unfinished = Number(status.incomplete) || 0;
+    paintIntegrityProgress(healthy
+      ? `数据库完整性正常，未完成附件 ${unfinished} 个`
+      : `完整性异常：${status.result || "未知错误"}`, false);
+    if (msg) msg.className = healthy ? "is-ok" : "is-bad";
+    if (healthy) toast("数据库完整性检查通过");
+  } else {
+    paintIntegrityProgress("检查未完成：" + (status.error || status.stage || "未知错误"), false);
+    if (msg) msg.className = "is-bad";
   }
 }
 
@@ -768,7 +828,7 @@ async function startCompact() {
     title: "压缩数据库",
     text:
       `数据库文件 ${fmtSize(Number(info.fileBytes) || 0)}，其中约 ${fmtSize(Number(info.reusableBytes) || 0)} 可回收。` +
-      `压缩需要额外约 ${fmtSize(Number(info.requiredFreeBytes) || 0)} 磁盘空间，期间请勿关闭程序，也不会自动备份。`,
+      `VACUUM 会创建临时副本和回滚日志，安全预留额外空间约 ${fmtSize(Number(info.requiredFreeBytes) || 0)}（原文件大小的两倍加 128 MiB），操作结束后临时空间释放。压缩不会自动备份，期间请勿退出程序。`,
     okText: "开始压缩",
     danger: true,
   });
@@ -979,8 +1039,8 @@ function bindSettings() {
       if (msg) {
         msg.className = "";
         msg.textContent = r.enabled
-          ? "已开启 · 本机可通过 MCP 操作资料库"
-          : "默认关闭 · 仅当前 Windows 用户可用";
+          ? "默认开启 · 仅当前 Windows 用户可通过 MCP 操作已解锁资料库"
+          : "已关闭（本次资料库会话）· 可在此重新开启";
       }
       toast(r.enabled ? "已启用本机 MCP" : "已关闭本机 MCP");
     } catch (err) {

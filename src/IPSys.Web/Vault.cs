@@ -11,6 +11,15 @@ sealed class Vault : IDisposable
     private TaskCompletionSource<bool>? _fileTaskCompletion;
     private RecyclePurgeJob? _lastRecyclePurge;
     private VaultCompactJob? _lastVaultCompact;
+    private VaultIntegrityJob? _lastIntegrityCheck;
+    public VaultIntegrityJob? LastIntegrityCheck
+    {
+        get {lock(_taskSync)return _lastIntegrityCheck;}
+    }
+    public void SetIntegrityCheck(VaultIntegrityJob job)
+    {
+        lock(_taskSync)_lastIntegrityCheck=job;
+    }
     public VaultCompactJob? LastVaultCompact
     {
         get { lock(_taskSync)return _lastVaultCompact; }
@@ -182,7 +191,9 @@ sealed class Vault : IDisposable
         lock (_taskSync)
         {
             if (_db != null) throw new InvalidOperationException("已经打开另一数据库。");
-            _db = db; Path = path;_mcpEnabled=false;
+            // MCP access is enabled by default for the same Windows user while unlocked;
+            // Settings can revoke it for this session, and Close always revokes.
+            _db = db; Path = path;_mcpEnabled=true;
             _retiredMcpTokens.Add(_mcpCancellation);
             _mcpCancellation=new CancellationTokenSource();
             _token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
@@ -197,6 +208,7 @@ sealed class Vault : IDisposable
             PendingFile = null;
             _lastRecyclePurge = null;
             _lastVaultCompact = null;
+            _lastIntegrityCheck = null;
             // Keep the existing connection state if disposal fails so the caller
             // can report a close failure rather than silently treating it as safe.
             _db?.Dispose();

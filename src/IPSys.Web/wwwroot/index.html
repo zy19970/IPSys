@@ -286,6 +286,10 @@
           <div class="set-txt">
             <b>完整性检查</b>
             <small id="setCheckMsg">检查资料库结构是否完整，并统计未完成的附件</small>
+            <div class="integrity-progress" id="setCheckProgress" role="progressbar"
+                 aria-label="完整性检查正在进行" aria-valuetext="等待数据库检查" hidden>
+              <div class="integrity-progress-bar"></div>
+            </div>
           </div>
           <button type="button" class="btn" id="setCheck">立即检查</button>
         </div>
@@ -304,13 +308,13 @@
             <small id="setCompactMsg">正在读取空间信息…</small>
           </div>
           <button type="button" class="btn" id="setCompact" disabled
-            title="永久删除释放的空间可被后续写入复用；压缩需额外磁盘空间，期间请勿关闭程序，不会自动备份">压缩</button>
+            title="VACUUM 会创建临时数据库并使用回滚日志；预留额外空间最多约为数据库的两倍加 128 MiB。压缩完成后临时空间会释放，不会自动备份。">压缩</button>
         </div>
 
         <div class="set-row">
           <div class="set-txt">
             <b>本机 MCP 访问</b>
-            <small id="setMcpMsg">默认关闭</small>
+            <small id="setMcpMsg">默认开启 · 仅允许当前 Windows 用户访问已解锁资料库</small>
           </div>
           <label class="switch" title="仅允许当前 Windows 用户通过本机 MCP 操作已解锁的资料库；关闭资料库或退出程序即自动失效">
             <input type="checkbox" id="setMcp">

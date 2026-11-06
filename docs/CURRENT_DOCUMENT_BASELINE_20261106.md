@@ -24,6 +24,10 @@ IPSys 是 Windows x64 本地资料管理系统，由 WinForms 启动器、本机
 
 个人工作区的文件列表默认名称升序（数字前缀使用自然排序），公司工作区既有默认排序不变；只作用于 Explorer 视图，不重排数据库 `position`。MCP 的 `workspace+section` 是组合标识：`personal/certificate` 是人力资源，`company/certificate` 是企业资质，完整映射和操作安全约定见 [MCP_CODEX](../MCP_CODEX.md)。同名英文 `section` 在不同工作区的业务含义不可互换。此次仅增强 tools/list 描述和 Agent 指引，不更名旧 ID、不变更数据库结构与 MCP 工具清单。
 
+## 2.2 设置中的完整性检查与 MCP（2026-11-06）
+
+资料库解锁后本机 MCP 默认开启，仍受当前 Windows 用户命名管道、资料库会话和工具业务授权约束；可手动关闭、重新开启，关库、改密和退出程序会撤销授权。完整性检查为独立异步后台任务，显示真实服务器阶段与不确定进度条，不提供虚假百分比；等待期间不允许并发数据库文件任务，可在设置中重新查看运行状态。SQLite `VACUUM` 的额外空间预留为原 DB 大小的两倍加 128 MiB，并分别检查数据库磁盘和临时目录磁盘，属于保守的执行前检查；临时文件在操作结束后释放。
+
 ## 3. 构建、发布与验收
 
 正式前端源代码位于 `src/IPSys.Web/wwwroot`；构建时生成的 `dist/` 仅用于嵌入 EXE。Web SDK 的默认 Content 外拷由 `EnableDefaultContentItems=false` 关闭，仍保留显式 `EmbeddedResource` 与严格双模式单 EXE 检查。
