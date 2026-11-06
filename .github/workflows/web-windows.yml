@@ -90,6 +90,8 @@ jobs:
           }
           $report = Join-Path $env:RUNNER_TEMP 'ipsys-debug-smoke.txt'
           $env:IPSYS_SMOKE_REPORT = $report
+          $labReport = Join-Path $env:RUNNER_TEMP 'ipsys-incremental-lab-small.json'
+          $env:IPSYS_VACUUM_LAB_REPORT = $labReport
           $exe = Join-Path $debugFolder 'IPSys.Web.exe'
           $proc = Start-Process -FilePath $exe -ArgumentList '--smoke' -PassThru -Wait
           if ($proc.ExitCode -ne 0) {
@@ -98,7 +100,24 @@ jobs:
           }
           if (-not (Test-Path $report)) { throw "Debug smoke report missing" }
           if ((Get-Content $report -Raw) -notmatch 'WEB SMOKE PASS') { throw "Debug smoke assertions incomplete" }
+          if (-not (Test-Path -LiteralPath $labReport)) { throw 'Isolated SQLCipher vacuum small-lab report missing' }
+          $lab = Get-Content -LiteralPath $labReport -Raw | ConvertFrom-Json
+          if ($lab.status -ne 'PASS' -or
+              $lab.none.Mode -ne 'NONE' -or
+              $lab.incremental.Mode -ne 'INCREMENTAL' -or
+              [long]$lab.recoveredBytes -le 0) {
+            throw 'SQLCipher vacuum small-lab metrics missing or invalid'
+          }
+          Write-Host "Encrypted SQLCipher vacuum small-lab reclaimed $($lab.recoveredBytes) physical bytes"
           Write-Host 'Visual Studio Debug embedded HTML CSS JS and HTTP smoke: PASS'
+      - name: Upload small SQLCipher NONE vs INCREMENTAL lab metrics
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: IPSys-Vacuum-Small-Lab-${{ github.run_id }}
+          path: ${{ runner.temp }}/ipsys-incremental-lab-small.json
+          if-no-files-found: warn
+          retention-days: 30
       - name: Run isolated 64 MiB SQLCipher incremental-vacuum lab (opt-in)
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.incremental_vacuum_lab }}
         shell: pwsh

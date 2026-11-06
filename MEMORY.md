@@ -1,5 +1,9 @@
 # IPSys 项目持续记忆
 
+> **2026-11-06 第十一轮阶段 A 证据留存补充**：首次实验提交 [`8933511e`](https://github.com/zy19970/IPSys/commit/8933511e3c44652f0494558ecd03728404749028) 已核实进入 main（8 个文件），触发 [Windows CI #42180923684](https://github.com/zy19970/IPSys/actions/runs/42180923684)。截至本补充时，冷双 Release 编译及 Debug `--smoke`（包含新增 `IncrementalVacuumLabSmoke.Run(4)`）均通过，原有 HTTP/Edge 亦通过，但**CI 仍在进行单 EXE 部署等后续检查，整体未宣称成功**。为使 NONE/INCREMENTAL 实验的数据可检查，增补 Windows CI Debug smoke 的 `IPSYS_VACUUM_LAB_REPORT` JSON 输出与回收字节断言，并将小样本 JSON 作为 `IPSys-Vacuum-Small-Lab-<run_id>` 工件上传；同时将证据入口写进 TESTING.md。此补充会触发第二轮完整 CI；不可将第一轮某一步通过冒充后续提交完整通过，后续应读取最新 CI 和 JSON 实际数值。所有操作仍仅作用于临时加密实验库，不启用生产增量模式。会话 `memory/sessions/2026-11-06-细节优化前仓库梳理.md` 第十一轮。
+
+
+
 > **2026-11-06 第十一轮：批准增量回收专项方案并启动隔离实验（待 Windows CI 验证）**：用户原话“你做一个方案，然后就开始准备做这个”。按照 AIGT 三项基础规范和现行 IPSys schema4、SQLCipher、FileId/LinkId/FileObject/FileVersion 冻结模型，创建 `docs/INCREMENTAL_VACUUM_IMPLEMENTATION_PLAN_20261106.md` 五阶段实施方案（A 隔离实验、B 大样本与多轮、C 故障/性能、D 新库正式模式与手动回收、E 现有库迁移评估），用户已授权**开始准备实验**但未授权改变生产库默认、迁移或关闭加密。阶段 A 新增 `IncrementalVacuumLabSmoke.cs`，在随机 TEMP 临时目录基于真实 `Vault.Connect` + schema + `NativeFileStore.UploadAsync`、LinkStore、RecycleStore，分别测试 NONE/INCREMENTAL；新库建表前设置 pragma 并回读，上传保留文件及待删除两版本文件、共享到第二项目，先删一个 LinkId 验证版本与原件仍在，删最后引用后比较 `file length/page_count/freelist_count`，每批 256 页回收；保留文件逐字节/SHA-256、完整性、外键、关库重开、错密码均断言，输出对比 JSON。默认在 `Program --smoke` 中小样本 4 MiB；独立命令 `--vacuum-lab` 用 `IPSYS_VACUUM_LAB_MIB` 1–128 MiB，GitHub Windows CI 新增 workflow_dispatch opt-in 的 64 MiB 运行并上传 JSON，日常不会触发大实验；`TESTING.md` 与 `tests/README.md` 增补入口。所有测试不使用用户 DB。阶段 D/E 仅计划，暂未实施。提交前静态检查代码与配置，**新 CI 尚未成功，不能声称实验或性能已验证**。本轮通知开始 [#2345](https://github.com/office-renderer/wechat-webhook/issues/2345)。本项目最近会话 `memory/sessions/2026-11-06-细节优化前仓库梳理.md` 第十一轮。
 
 

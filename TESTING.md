@@ -56,7 +56,7 @@
 
 实施方案：[INCREMENTAL_VACUUM_IMPLEMENTATION_PLAN_20261106](docs/INCREMENTAL_VACUUM_IMPLEMENTATION_PLAN_20261106.md)。本阶段仅用**独立随机临时 SQLCipher DB**比较 `auto_vacuum=NONE` 与 `INCREMENTAL`，**不修改**正式新建资料库默认模式或用户正在使用的数据库，也不替换手动全库 VACUUM。
 
-`IncrementalVacuumLabSmoke.Run(4)` 已接入现行 `--smoke` 小样本，使用 `NativeFileStore` 上传、添加历史版本、两个目录共享相同 FileId、先删一个 LinkId 验证保护，最后永久清理第二个 LinkId；记录 `page_count/freelist_count`、物理文件大小、迭代批次、读取的 SHA-256、外键与完整性、重开加密库及错误密码拒绝。对 INC 按每次 256 页调用，NONE 对照执行相同语句但不回收。
+`IncrementalVacuumLabSmoke.Run(4)` 已接入现行 `--smoke` 小样本，CI 会验证该实验结果并上传 `IPSys-Vacuum-Small-Lab-<run id>` JSON 工件供检查真实物理回收量。使用 `NativeFileStore` 上传、添加历史版本、两个目录共享相同 FileId、先删一个 LinkId 验证保护，最后永久清理第二个 LinkId；记录 `page_count/freelist_count`、物理文件大小、迭代批次、读取的 SHA-256、外键与完整性、重开加密库及错误密码拒绝。对 INC 按每次 256 页调用，NONE 对照执行相同语句但不回收。
 
 需要更大的 **64 MiB** 独立实验时，通过 GitHub Actions **IPSys Windows build and smoke → Run workflow → incremental_vacuum_lab=true** 显式触发；产生仅含统计的 JSON 工件。也可以在 Windows 终端使用 `IPSYS_VACUUM_LAB_MIB=32` 与 `IPSys.Web.exe --vacuum-lab`（1～128 MiB）进行隔离测试。环境变量 `IPSYS_VACUUM_LAB_REPORT` 可指定 JSON 输出文件。**本地真实大库、模拟断电和 500 GB 性能尚待另行专项实验**，不能因小样本通过即判断全部阶段通过。
 
