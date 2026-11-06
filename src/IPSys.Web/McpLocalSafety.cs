@@ -178,6 +178,11 @@ static partial class McpLocal
         // It still traverses the same user-restricted pipe and MCP authorization gate.
         if(name=="get_agent_guidance")
             return AgentGuidance.Read(ReadString(args,"topic","index"));
+        // Vault-level maintenance tools carry no workspace: one encrypted file
+        // holds both workspaces. They must bypass Workspace(args), which throws
+        // when that parameter is absent.
+        if(IsVaultTool(name))
+            return await ExecuteVaultAsync(vault,address,name,stop);
         string workspace=Workspace(args);
         if(name=="get_operation_result")
             return await ReadOperationAsync(vault,workspace,

@@ -304,11 +304,12 @@
 
         <div class="set-row">
           <div class="set-txt">
-            <b>压缩数据库</b>
+            <b>空闲空间回收</b>
             <small id="setCompactMsg">正在读取空间信息…</small>
           </div>
+          <button type="button" class="btn" id="setCompactCancel" hidden>取消</button>
           <button type="button" class="btn" id="setCompact" disabled
-            title="VACUUM 会创建临时数据库并使用回滚日志；预留额外空间最多约为数据库的两倍加 128 MiB。压缩完成后临时空间会释放，不会自动备份。">压缩</button>
+            title="在原文件内搬移数据页并截断，不创建临时副本，不需要额外磁盘空间。">回收</button>
         </div>
 
         <div class="set-row">

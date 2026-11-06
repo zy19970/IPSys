@@ -97,6 +97,19 @@ sealed class Vault : IDisposable
         completion?.TrySetResult(true);
         cancellation?.Dispose();
     }
+    // Only the vault compact task is cancellable from the UI; uploads and purges
+    // have their own abort paths and must not be stopped by the reclaim button.
+    public bool CancelVaultCompact()
+    {
+        lock (_taskSync)
+        {
+            if (_fileTaskCompletion == null || _lastVaultCompact == null) return false;
+            var state = _lastVaultCompact.Snapshot().State;
+            if (state is not ("queued" or "running")) return false;
+            _fileTaskCancellation?.Cancel();
+            return true;
+        }
+    }
     public bool TryScheduleExit(string choice, IHostApplicationLifetime life, out string error)
     {
         Task pending;
@@ -255,7 +268,21 @@ sealed class Vault : IDisposable
         catch { db.Dispose(); throw; }
     }
     public static void CreateSchema(SqliteConnection db)
+        => CreateSchema(db, VaultFreeSpaceMode.Incremental);
+
+    // auto_vacuum 只在建表之前有效，静默失效会让这个库永远无法原地回收，
+    // 所以必须回读断言；此时库还是空的，失败重来没有任何损失。
+    public static void CreateSchema(SqliteConnection db, VaultFreeSpaceMode mode)
     {
+        using (var cmd = db.CreateCommand())
+        {
+            cmd.CommandText = $"PRAGMA auto_vacuum={(int)mode};";
+            cmd.ExecuteNonQuery();
+            cmd.CommandText = "PRAGMA auto_vacuum;";
+            int actual = Convert.ToInt32(cmd.ExecuteScalar());
+            if (actual != (int)mode)
+                throw new IOException($"无法为新资料库设定空间回收模式（期望 {(int)mode}，实际 {actual}）。");
+        }
         // New vaults use only the canonical resource model.
         ResourceSchemaV2.Create(db);
     }
@@ -263,4 +290,11 @@ sealed class Vault : IDisposable
     {
         ResourceSchemaV2.Validate(db);
     }
+}
+
+// 数值必须与 SQLite 的 PRAGMA auto_vacuum 取值一致，直接写进 PRAGMA 语句。
+enum VaultFreeSpaceMode
+{
+    None = 0,
+    Incremental = 2
 }

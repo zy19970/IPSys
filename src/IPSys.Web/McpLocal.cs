@@ -258,7 +258,7 @@ static partial class McpLocal
             ["file_id"]=Field("integer","on_conflict=update 指向已有 FileId，必须归属于 owner_id")
         },["workspace","kind","owner_id","paths"])
         ];
-        return [..tools,..ArchiveTools(),..ExtraTools(),
+        return [..tools,..ArchiveTools(),..ExtraTools(),..VaultTools(),
             Tool("get_agent_guidance",
                 "只读获取本机 IPSys Agent 工作规范。topic=index 只列专项目录；search/upload/metadata 每次只返回单篇。读取规范不触发业务操作，宿主须已解锁且 MCP 当前开启（默认开启、可手动关闭）。",
                 new(){

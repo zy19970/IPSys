@@ -1,5 +1,7 @@
 # IPSys SQLCipher 增量回收：阶段 A 小样本实测记录
 
+> **后续状态（2026-11-06 晚）**：本文保留为历史证据，不改写。生产接入以 [`INCREMENTAL_VACUUM_ROLLOUT_PLAN_20261106.md`](./INCREMENTAL_VACUUM_ROLLOUT_PLAN_20261106.md) 为准；该方案基于 2 GiB × 18 组实测，替代原任务书的阶段 B–E。
+
 > 实验日期：2026-11-06（UTC+8）  
 > 源码：[`c4decd9698`](https://github.com/zy19970/IPSys/commit/c4decd9698772f162ca8482c6b57078d96e4607e)  
 > 运行：[Windows CI #42181743548](https://github.com/zy19970/IPSys/actions/runs/42181743548)（Debug `--smoke` 中实验与 JSON 工件生成成功，整套 CI 状态另以 Actions 为准）  

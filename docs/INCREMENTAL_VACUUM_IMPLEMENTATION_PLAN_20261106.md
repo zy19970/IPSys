@@ -1,5 +1,7 @@
 # IPSys SQLCipher 增量空间回收专项实施方案
 
+> **后续状态（2026-11-06 晚）**：本方案已被 [`INCREMENTAL_VACUUM_ROLLOUT_PLAN_20261106.md`](./INCREMENTAL_VACUUM_ROLLOUT_PLAN_20261106.md) 取代。阶段 B–E 的合成实验不再执行：2 GiB 实测已覆盖机制可用性、freelist 复用、批次差异与完整性，剩余缺口是真实大库性能，合成样本无法回答。请勿按本文继续执行。
+
 > 日期：2026-11-06（UTC+8）  
 > 当前状态：**阶段一：方案与隔离实验准备**；尚未改变正式数据库默认模式、正式压缩入口与现有库数据。  
 > 范围：`zy19970/IPSys`，现行 SQLCipher schema 4，Windows x64 单 EXE。

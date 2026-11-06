@@ -381,7 +381,11 @@ static class IncrementalVacuumLabSmoke
                     : "PRAGMA auto_vacuum=NONE;");
                 Check(Scalar(db, "PRAGMA auto_vacuum;") == (incremental ? 2 : 0),
                     "mode must be set before schema creation");
-                Vault.CreateSchema(db);
+                // 必须显式传模式：CreateSchema 的默认值已是 INCREMENTAL，
+                // 若沿用默认，NONE 对照组会被悄悄改成增量，对照立即失效。
+                Vault.CreateSchema(db, incremental
+                    ? VaultFreeSpaceMode.Incremental
+                    : VaultFreeSpaceMode.None);
                 Vault.ValidateSchema(db);
                 Check(Scalar(db, "PRAGMA auto_vacuum;") == (incremental ? 2 : 0),
                     "mode must persist after IPSys schema creation");
@@ -528,7 +532,10 @@ static class IncrementalVacuumLabSmoke
                 : "PRAGMA auto_vacuum=NONE;");
             Check(Scalar(db, "PRAGMA auto_vacuum;") == (incremental ? 2 : 0),
                 "mode must be set before schema creation");
-            Vault.CreateSchema(db);
+            // 同 RunReclaim：对照组必须显式要 NONE，不能依赖默认值。
+            Vault.CreateSchema(db, incremental
+                ? VaultFreeSpaceMode.Incremental
+                : VaultFreeSpaceMode.None);
             Vault.ValidateSchema(db);
 
             (keepDigest, _) = HashContent(baseLength, 301);

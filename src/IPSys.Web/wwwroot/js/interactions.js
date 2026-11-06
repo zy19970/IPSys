@@ -661,25 +661,27 @@ async function cancelPendingUpload() {
   }
 }
 
-/* 压缩任务进行中时这个对象非空。对话框关掉再打开也要能接着显示,
+/* 回收任务进行中时这个对象非空。对话框关掉再打开也要能接着显示,
    所以状态放在模块级而不是 DOM 上。 */
 let compactTask = null;
 
-function setCompactUi(text, { busy = false, can = false, tone = "" } = {}) {
+function setCompactUi(text, { busy = false, can = false, tone = "", cancel = false } = {}) {
   const btn = $("#setCompact");
   const msg = $("#setCompactMsg");
+  const cancelBtn = $("#setCompactCancel");
   if (!btn || !msg) return;
   msg.textContent = text;
   msg.className = tone;
-  btn.textContent = busy ? "压缩中…" : "压缩";
+  btn.textContent = busy ? "回收中…" : "回收";
   btn.disabled = busy || !can;
+  if (cancelBtn) cancelBtn.hidden = !cancel;
 }
 
 async function paintCompactRow() {
   const btn = $("#setCompact");
   if (!btn) return;
   if (compactTask) {
-    setCompactUi("正在压缩，请保持程序运行…", { busy: true });
+    setCompactUi("正在回收空闲空间，请保持程序运行…", { busy: true, cancel: true });
     return;
   }
   setCompactUi("正在读取空间信息…");
@@ -687,12 +689,19 @@ async function paintCompactRow() {
     const i = await VaultStore.getJson("/api/vault/compact/info");
     const bytes = Number(i.fileBytes) || 0;
     const free = Number(i.reusableBytes) || 0;
-    setCompactUi(`当前 ${fmtSize(bytes) || "0 B"} · 空闲页约 ${fmtSize(free) || "0 B"}`, {
-      can: !!i.canCompact,
+    const pct = bytes > 0 ? Math.round((free / bytes) * 100) : 0;
+    if (i.mode !== "incremental") {
+      /* 旧库没有原地回收能力：直接说清楚,不留"点了才报错"的路径 */
+      setCompactUi(`当前 ${fmtSize(bytes) || "0 B"} · 此资料库创建于旧版本，不支持原地回收`);
+      btn.title = "只有新建的资料库支持原地回收；旧库需重建后才有此能力。";
+      return;
+    }
+    setCompactUi(`当前 ${fmtSize(bytes) || "0 B"} · 可回收 ${fmtSize(free) || "0 B"}（占 ${pct}%）`, {
+      can: !!i.canCompact && free > 0,
     });
     btn.title = i.canCompact
-      ? `VACUUM 先建立临时数据库，再通过回滚日志保护原文件；安全预留约 ${fmtSize(Number(i.requiredFreeBytes)||0)}，完成后临时空间会释放，不会自动备份。`
-      : `压缩安全预留约 ${fmtSize(Number(i.requiredFreeBytes)||0)}；数据库磁盘和系统临时目录需有足够可用空间。`;
+      ? "在原文件内搬移数据页并截断，不创建临时副本，不需要额外磁盘空间。"
+      : `原地回收至少需要 ${fmtSize(Number(i.requiredFreeBytes) || 0)} 可用空间。`;
   } catch (e) {
     setCompactUi("无法读取空间信息：" + e.message);
   }
@@ -810,30 +819,37 @@ async function startCompact() {
     toast("无法读取空间信息：" + e.message);
     return;
   }
+  if (info.mode !== "incremental") {
+    toast("此资料库创建于旧版本，不支持原地回收");
+    return;
+  }
   if (!info.canCompact) {
-    toast("磁盘或临时目录剩余空间不足，暂不能压缩");
+    toast(`磁盘剩余空间不足，原地回收至少需要 ${fmtSize(Number(info.requiredFreeBytes) || 0) || "65 MiB"}`);
+    return;
+  }
+  if (!(Number(info.reusableBytes) > 0)) {
+    toast("当前没有可回收的空闲空间");
     return;
   }
   try {
     const staged = await VaultStore.getJson("/api/v2/files/pending");
     if (staged.pending || Number(staged.writingCount) > 0) {
-      toast("存在未完成的原件暂存，请在设置中检查待确认上传，清理后再压缩", {
+      toast("存在未完成的原件暂存，请在设置中检查待确认上传，清理后再回收", {
         ms:8500,action:"查看",onAction:openSettings,
       });
       void paintPendingUploadRow();
       return;
     }
   } catch (e) {
-    toast("无法检查待确认上传，已取消压缩：" + e.message);
+    toast("无法检查待确认上传，已取消回收：" + e.message);
     return;
   }
   const ok = await askConfirm({
-    title: "压缩数据库",
+    title: "回收空闲空间",
     text:
       `数据库文件 ${fmtSize(Number(info.fileBytes) || 0)}，其中约 ${fmtSize(Number(info.reusableBytes) || 0)} 可回收。` +
-      `VACUUM 会创建临时副本和回滚日志，安全预留额外空间约 ${fmtSize(Number(info.requiredFreeBytes) || 0)}（原文件大小的两倍加 128 MiB），操作结束后临时空间释放。压缩不会自动备份，期间请勿退出程序。`,
-    okText: "开始压缩",
-    danger: true,
+      `回收会在原文件内搬移数据页并截断，不创建临时副本，不需要额外磁盘空间。期间资料库短暂独占，请勿退出程序。`,
+    okText: "开始回收",
   });
   if (!ok) return;
 
@@ -844,10 +860,26 @@ async function startCompact() {
     });
     const r = await res.json();
     compactTask = { id: r.taskId, timer: null };
-    setCompactUi("正在压缩，请保持程序运行…", { busy: true });
+    setCompactUi("正在回收空闲空间，请保持程序运行…", { busy: true, cancel: true });
     void pollCompact();
   } catch (e) {
-    toast("无法启动压缩：" + e.message);
+    toast("无法启动回收：" + e.message);
+  }
+}
+
+/* 取消是协作式的：服务端在当前批次结束后停下,已回收的部分保留。 */
+async function cancelCompact() {
+  if (!compactTask) return;
+  try {
+    const res = await VaultStore.api("/api/vault/compact/cancel", { method: "POST" });
+    const r = await res.json();
+    if (!r.requested) {
+      toast("回收任务已经结束");
+      return;
+    }
+    setCompactUi("正在取消，等待当前批次完成…", { busy: true });
+  } catch (e) {
+    toast("取消失败：" + e.message);
   }
 }
 
@@ -857,19 +889,25 @@ async function pollCompact() {
   try {
     st = await VaultStore.getJson("/api/vault/compact/task");
     if (compactTask && st.taskId && st.taskId !== compactTask.id) {
-      throw new Error("压缩任务身份已变化");
+      throw new Error("回收任务身份已变化");
     }
   } catch (e) {
     /* 读不到状态不等于任务失败,继续重试 */
     if (!compactTask) return;
-    setCompactUi("状态暂时无法获取，继续重试…", { busy: true });
+    setCompactUi("状态暂时无法获取，继续重试…", { busy: true, cancel: true });
     compactTask.timer = setTimeout(pollCompact, 1300);
     return;
   }
 
   const terminal = ["succeeded", "failed", "canceled"].includes(st.state);
   if (!terminal) {
-    setCompactUi(`${st.stage || "处理中"}…请保持程序运行`, { busy: true });
+    /* 进度用服务端真实页数,不编造百分比 */
+    const done = Number(st.pagesDone) || 0;
+    const total = Number(st.pagesTotal) || 0;
+    const step = total > 0
+      ? `已回收 ${done}/${total} 页（${Math.round((done / total) * 100)}%）· `
+      : "";
+    setCompactUi(`${step}${st.stage || "处理中"}…请保持程序运行`, { busy: true, cancel: true });
     compactTask.timer = setTimeout(pollCompact, 700);
     return;
   }
@@ -878,13 +916,15 @@ async function pollCompact() {
   compactTask = null;
   if (st.state === "succeeded") {
     toast(
-      `数据库压缩完成：${fmtSize(Number(st.bytesBefore) || 0)} → ${fmtSize(Number(st.bytesAfter) || 0)}`
+      `空间回收完成：${fmtSize(Number(st.bytesBefore) || 0)} → ${fmtSize(Number(st.bytesAfter) || 0)}`
     );
+  } else if (st.state === "canceled") {
+    toast(`空间回收已取消：${st.stage || "已停止"}`);
   } else {
-    toast(`压缩未完成：${st.error || st.stage || st.state}`);
+    toast(`空间回收未完成：${st.error || st.stage || st.state}`);
   }
   void paintCompactRow();
-  // VACUUM changes page allocations; refresh after it reports completion.
+  // 回收改变页分配;完成后刷新容量条。
   if (st.state === "succeeded") void VaultStore.refreshStorage();
 }
 
@@ -1021,6 +1061,7 @@ function bindSettings() {
   $("#setCheck").addEventListener("click", (e) => runIntegrityCheck(e.currentTarget));
   $("#setUpdate")?.addEventListener("click", () => void checkForUpdates(true));
   $("#setCompact").addEventListener("click", () => startCompact());
+  $("#setCompactCancel")?.addEventListener("click", () => void cancelCompact());
   $("#setPendingUploadCancel")?.addEventListener("click", () => void cancelPendingUpload());
   $("#setLock").addEventListener("click", () => lockVault());
   $("#setChangePassword").addEventListener("click", openChangePassword);

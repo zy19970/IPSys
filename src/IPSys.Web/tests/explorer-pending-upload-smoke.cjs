@@ -10,7 +10,7 @@ const html=fs.readFileSync(path.join(root,"index.html"),"utf8");
 for(const marker of ['id="setPendingUploadMsg"','id="setPendingUploadCancel"'])
  assert.ok(html.includes(marker),"Missing recovery UI element "+marker);
 const begin=src.indexOf("let pendingUpload = null;");
-const end=src.indexOf("/* 压缩任务进行中时",begin);
+const end=src.indexOf("/* 回收任务进行中时",begin);
 assert.ok(begin>0 && end>begin);
 const msg={textContent:""},btn={hidden:true,disabled:true};
 const toasts=[],deletes=[],statuses=[];

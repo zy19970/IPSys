@@ -57,14 +57,14 @@ static class NativeMcpSmoke
               names.Distinct().Count()==names.Length,
               "MCP exposes one unversioned name per V2 business action");
         // Verify the actual tools/list schema, not just the written guidance.
-        // All 43 tool names, parameter keys, enums and IDs stay unchanged.
+        // All 47 tool names, parameter keys, enums and IDs stay unchanged.
         var toolSchemaNodes=JsonSerializer.SerializeToNode(McpLocal.Tools())!.AsArray();
         string Help(string tool,string field)
         {
             var entry=toolSchemaNodes.FirstOrDefault(node=>node?["name"]?.GetValue<string>()==tool);
             return entry?["inputSchema"]?["properties"]?[field]?["description"]?.GetValue<string>()??"";
         }
-        Check(names.Length==43 &&
+        Check(names.Length==47 &&
               Help("create_folder","section").Contains("personal/certificate=人力资源") &&
               Help("list_folders","section").Contains("company/certificate=企业资质") &&
               Help("upload_files","section").Contains("company/achievement=业务档案") &&
@@ -96,11 +96,14 @@ static class NativeMcpSmoke
             "second batch of V2 MCP endpoint adapters registered");
         Check(new[]{"start_upload_task","get_task_status","cancel_task","purge_trash"}
             .All(names.Contains) && names.Distinct().Count()==names.Length &&
-            names.Length>=43 && names.Contains("get_agent_guidance") &&
+            names.Length>=47 && names.Contains("get_agent_guidance") &&
             new[]{"list_folders","create_folder","update_folder",
                 "delete_folder","move_folder","transfer_folder"}.All(names.Contains) &&
             !names.Contains("create_archive") && !names.Contains("create_general"),
             "MCP registry exposes one folder family without retired tools");
+        Check(new[]{"get_vault_storage","reclaim_vault_space",
+            "get_vault_reclaim_status","cancel_vault_reclaim"}.All(names.Contains),
+            "vault-level maintenance tools are registered");
         string[] retired=["list_contracts","create_contract","update_contract",
             "delete_contract","copy_contract","list_contract_files","delete_contract_file"];
         foreach(string tool in retired)
@@ -1106,6 +1109,40 @@ static class NativeMcpSmoke
             workspace="company",project_id=originalProject
         });
         await Call("delete_project",new{workspace="company",project_id=project});
+
+        // Vault-level maintenance takes no workspace and must bypass the workspace
+        // resolver, which throws when that parameter is absent.
+        // 语义是"当前或最近一次任务"：本套件前面已经跑过压缩 HTTP 冒烟，
+        // 因此这里只要求状态已收敛，而不是要求从未跑过。
+        var idleStatus=await Call("get_vault_reclaim_status",new{});
+        string priorState=idleStatus["state"]?.GetValue<string>()??"";
+        Check(priorState is "idle" or "succeeded" or "failed" or "canceled",
+            "vault reclaim status must report a settled state before a new run: "+priorState);
+        var idleCancel=await Call("cancel_vault_reclaim",new{});
+        Check(idleCancel["requested"]?.GetValue<bool>()==false,
+            "cancel must report false when no reclaim is running");
+        var storage=await Call("get_vault_storage",new{});
+        Check(storage["mode"]?.GetValue<string>()=="incremental" &&
+              storage["canReclaim"]?.GetValue<bool>()==true,
+            "vault storage must expose the incremental mode and a reclaim verdict");
+
+        var started=await Call("reclaim_vault_space",new{});
+        Check((started["taskId"]?.GetValue<string>()??"").Length>0,
+            "reclaim must return a task id immediately instead of blocking");
+        JsonNode? reclaimStatus=null;
+        for(int i=0;i<240;i++)
+        {
+            reclaimStatus=await Call("get_vault_reclaim_status",new{});
+            string state=reclaimStatus["state"]?.GetValue<string>()??"";
+            if(state is "succeeded" or "failed" or "canceled")break;
+            await Task.Delay(120);
+        }
+        Check(reclaimStatus?["state"]?.GetValue<string>()=="succeeded",
+            "in-place reclaim must reach a terminal success: "+reclaimStatus?.ToJsonString());
+        Check(reclaimStatus?["mode"]?.GetValue<string>()=="reclaim" &&
+              reclaimStatus?["pagesDone"]?.GetValue<long>()==
+              reclaimStatus?["pagesTotal"]?.GetValue<long>(),
+            "reclaim must report real page progress up to the total");
         Console.WriteLine("N2-03-01 V2 MCP NATIVE SQLCIPHER HTTP SMOKE PASS");
     }
 }
