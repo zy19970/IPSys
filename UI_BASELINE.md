@@ -1,5 +1,8 @@
 # IPSys 资料管理系统：现行 UI 与文件夹交互基线（2026-11-02）
 
+> **当前适用版本（2026-11-06）**：以 SQLCipher **schema 4**、项目/知识产权/普通资料 Excel **11/19/6 列**、MCP **43 项工具**、统一普通目录模型为准。11 月 5 日已实现文件重命名、多选拖拽、Markdown/TXT 10 MiB 预览、修改数据库密码和回收站进度去重；[Windows CI #558](https://github.com/zy19970/IPSys/actions/runs/42048982231) 自动化成功，[v0.9.3-rc.1](https://github.com/zy19970/IPSys/releases/tag/v0.9.3-rc.1) 经 [手动 Publish #6](https://github.com/zy19970/IPSys/actions/runs/42053785425) 成功发布（发布不重跑 smoke）。人工整体验收另行记录。后文注明旧日期的方案、提交和 CI 属历史证据，不代表最新现状。
+
+
 > **现行后续整改（2026-11-04）**：最新源码使用 SQLCipher schema **4**，普通文件夹支持跨模块原位移动完整物理子树（含已软删除后代及其隐藏子目录），并保持稳定的 FolderId/LinkId/FileId、删除状态和历史版本；新建库直接采用 schema 4，旧版本库明确拒绝，不迁移。产品实现 [`8a2780e`](https://github.com/zy19970/IPSys/commit/8a2780e7a8c18a5017e27e0e22c03aac1f078fae)，完整回归见 [Windows #541](https://github.com/zy19970/IPSys/actions/runs/41862168722)（以实际结束状态为准）。现行 MCP 43 项，普通资料 Excel 六列。早期下文关于 schema 3、S5/#538 的记载是当时的有效基线，不覆盖本段；用户本机 GUI 验收和正式 Release 尚未执行。
 
 > **历史 S5 自动化基线（2026-11-04，#538）**：SQLCipher schema **3**，Folder 仅 `project/ip/archive_folder`；项目合同资料是可嵌套普通目录；普通资料 Excel **6** 列、项目 **11** 列、知识产权 **19** 列，MCP **43** 项。提交 `cc7c1262eac0c2aaa36a0cd3107823320627e774` 的 [Windows CI #538](https://github.com/zy19970/IPSys/actions/runs/41839841405) 已 `completed/success`：26 成功、0 失败、2 可选 ZIP64 跳过；Edge **14 PASS**、HTTP **12 PASS/1 BLOCKED（小库 VACUUM 进度抓拍）**，MCP↔Explorer 同批 S5-E2E PASS，两类 EXE 启动成功。**本机用户人工 GUI 及正式 Release 未完成。** 详见 [S5 最终验收报告](tests/S5_FINAL_ACCEPTANCE_20261104.md)；以下历史日期的报告保持原始事实。

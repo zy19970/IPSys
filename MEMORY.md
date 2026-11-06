@@ -1,5 +1,9 @@
 # IPSys 项目持续记忆
 
+> **2026-11-06 第二轮：现行文档统一同步**：用户原话“根据当前代码和修改思路，统一同步一下所有文档”。遵循 AIGT-templates 的 AGENTS/GIT_OPERATIONS/MEMORY_PROTOCOL，核对 IPSys main 起点 `13f74e586b`、schema4 实际 DDL、43 项 MCP、ExcelLedger 11/19/6、手动 publish-release.yml 与 Web SDK 单 EXE 设置、Windows #558、Release #6。对现行用户/开发/测试文档统一当前口径：根目录 README、DESIGN、DEVELOPMENT_PLAN、M0、MCP_CODEX、REQUIREMENTS、TESTING、UI_BASELINE、USER_GUIDE；正式前端 README；docs 的 Wiki 发布说明和历史滚动整改总表；测试目录 README、人工验收、证据索引；Wiki 多篇与合同/目录、Excel、Markdown、附件 F2 重命名、回收站、改密、发布有关的使用/架构页面。新增 `docs/CURRENT_DOCUMENT_BASELINE_20261106.md` 提供统一现行索引；原有 `docs/archive`、历史 Agent 实测与 S5 验收报告及原始 FAIL/BLOCKED 原封保留，以当时日期/提交追溯。核心准确状态：SQLCipher schema4，新建库不迁移旧 2/3；43 MCP；普通资料 Excel6 列；文件夹无版本，合同为项目普通目录；MD/TXT 10MiB、UI F2、批量拖拽、回收站旧进度不复弹、修改 SQLCipher 密码；Windows #558 completed/success，手动 Publish #6 已成功生成 `v0.9.3-rc.1`，发布不跑 smoke；用户人工清单仍为未测。仅改 Markdown 文档与项目 Memory、会话档案，未修改 C#/JS/YAML 产品功能或数据库；`src/IPSys.Web/wwwroot/README.md` 文档路径可能触发既有 Windows CI，Wiki 源变更会触发独立 Publish Wiki；这两个新增 Actions 的真实结果须提交后核验，不得预先声称成功。最近会话 `memory/sessions/2026-11-06-细节优化前仓库梳理.md` 第二轮。对应正式文档入口见 `docs/CURRENT_DOCUMENT_BASELINE_20261106.md`。
+
+
+
 > **2026-11-06 细节优化前仓库复核（本会话第一轮）**：按 AIGT 三基础规则读取 IPSys MEMORY 与最近会话，核对 main `1c2642b6e8`、目录/853 个 tree 条目、近期约 65 次提交、关键文档及人工验收清单。本项目处于 S1—S5 / R1 schema4 模型收敛后的实际使用精修阶段；11 月 5 日已覆盖文件重命名、多选拖拽、回收站已完成进度去重、Markdown/TXT 10MiB 预览、数据库修改密码、双单 EXE Release 打包修复。Windows #558 对 `47b8fa3` 已 completed/success（26 成功/0 失败/2 可选跳过）。**新增核实**：昨天记忆写入后，用户手动 Publish #6 [42053785425](https://github.com/zy19970/IPSys/actions/runs/42053785425) 已成功创建 [v0.9.3-rc.1](https://github.com/zy19970/IPSys/releases/tag/v0.9.3-rc.1)，三项 Release 资产齐全，对应 `1c2642b6e8`；此前手动 #5 失败只是历史尝试。人工验收 `tests/MANUAL_ACCEPTANCE_20261105.md` 结果仍未填，不可称本机验收通过。README 历史段仍有 schema3、前端 README 综合资料 Excel 3 列等旧口径，现行应为 schema4/6 列。下一轮优先统一多选/右键/F2、任务提示、DPI/表格、目标选择器、预览大文本性能和手动 QA。本轮未更改业务代码、数据库或发布，仅归档审查结果。最近会话：`memory/sessions/2026-11-06-细节优化前仓库梳理.md` 第一轮。
 
 

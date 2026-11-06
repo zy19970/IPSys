@@ -1,6 +1,6 @@
 # 开发者指南：结构与数据模型
 
-IPSys 主源码位于 [zy19970/IPSys](https://github.com/zy19970/IPSys)。项目采用 Windows WinForms 启动器、ASP.NET Core/Kestrel、本机 Web Explorer、SQLCipher V2、MCP stdio 与嵌入式前端资源。
+IPSys 主源码位于 [zy19970/IPSys](https://github.com/zy19970/IPSys)。项目采用 Windows WinForms 启动器、ASP.NET Core/Kestrel、本机 Web Explorer、SQLCipher **schema 4**（源码中 `ResourceSchemaV2.cs` 保留历史文件名）、43 个 MCP 工具与内嵌前端资源。
 
 ## 应用组成
 
@@ -34,7 +34,7 @@ IPSys.Web.exe
 | `src/IPSys.Web/wwwroot/export.js` | ZIP/ZIP64 导出 |
 | `.github/workflows/web-windows.yml` | Windows 构建与回归 |
 
-前端的 `dist/` 是打包生成结果，不应作为唯一修改源。
+前端的 `dist/` 是打包生成结果，不应作为唯一修改源。Web SDK 默认 Content 外拷已通过 `EnableDefaultContentItems=false` 禁用，正式资源由显式 `EmbeddedResource` 嵌入 EXE；两种单 EXE 的干净 Release 输出检查已由 [Windows CI #558](https://github.com/zy19970/IPSys/actions/runs/42048982231) 验证。
 
 ## 核心数据身份
 
@@ -43,6 +43,9 @@ Folder 表达目录与业务记录；FileId 表达逻辑文件；LinkId 表达�
 普通目录统一使用 `kind=archive_folder` 并通过 `workspace + section` 划分资料范围。**项目本身仍为 `kind=project` 的业务记录，项目内任何层级的普通子目录均为 `archive_folder, section=project`，其最上级 `parent_id` 指向真实项目**，深层子目录指向上级普通文件夹。项目根业务属性与内部目录结构分别管理。知识产权仍是专门业务对象。整树移动、跨工作区复制、MCP、ZIP 导出与回收站永久删除均须递归处理项目子目录、附件关联及 FileVersion；数据库校验目录归属和父级关系，阻止游离项目文件夹、循环与跨工作区错误关联。
 
 ## 一致性原则
+
+同一工作区原位移动目录会将已删除后代和隐藏子目录的物理归属在单个事务内一并处理；跨工作区独立复制不得共用 FileObject。当前项目合同只作为 `section=project` 下的普通文件夹。外部可调用 MCP 工具以实际 `tools/list` 的 43 项为准。最新 [v0.9.3-rc.1](https://github.com/zy19970/IPSys/releases/tag/v0.9.3-rc.1) 由手动 Publish（不重跑 smoke）生成，人工 GUI 验收另行记录。
+
 
 1. 前端列表、详情表单、Excel、MCP 与搜索应使用一致的业务字段语义。
 2. FileId 与 LinkId 不可混用；同区共享与跨区物理复制是不同规则。

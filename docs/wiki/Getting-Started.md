@@ -4,7 +4,7 @@
 
 IPSys 面向 Windows x64，使用本地 WinForms 窗口和 Edge/Chrome 浏览器。程序不需要自行部署网站或购买服务器；网页地址只绑定到本机回环接口。
 
-从 [GitHub Releases](https://github.com/zy19970/IPSys/releases) 取得已发布版本，或从 [Actions](https://github.com/zy19970/IPSys/actions) 取得与指定源码提交对应的构建产物。下载前区分：
+可从 [v0.9.3-rc.1](https://github.com/zy19970/IPSys/releases/tag/v0.9.3-rc.1) 获取已核验的预发布版本，也可从 [GitHub Releases](https://github.com/zy19970/IPSys/releases) 查询其他已发布版本，或从 [Actions](https://github.com/zy19970/IPSys/actions) 取得与指定源码提交对应的构建产物。下载前区分：
 
 | 构建方式 | 使用条件 |
 | --- | --- |
@@ -25,6 +25,9 @@ IPSys 面向 Windows x64，使用本地 WinForms 窗口和 Edge/Chrome 浏览器
 
 ## 老用户打开已有资料库
 
+现行程序新建 SQLCipher schema 4 资料库；旧 schema 2/3 测试库不自动迁移。遇到旧库版本不兼容时先保留原件，不要通过新建流程覆盖旧文件。
+
+
 1. 启动 EXE 并打开管理界面。
 2. 在登录页选择既有 `.db`、`.sqlite` 或 `.sqlite3` 文件。
 3. 输入数据库密码进入工作台。
@@ -35,8 +38,8 @@ IPSys 面向 Windows x64，使用本地 WinForms 窗口和 Edge/Chrome 浏览器
 
 1. 选择“公司”工作区并进入“业务档案”。
 2. 打开适合的一级目录，例如“申报与认定”。
-3. 新建下级目录，或新建一条资料记录。
-4. 在资料记录中上传一个或多个附件，填写必要的名称及可选属性。
+3. 点击“新建”直接创建下级文件夹，名称必填、其余属性选填。
+4. 在该文件夹中直接上传一个或多个附件，可同时继续添加下级文件夹。
 5. 返回列表，检查资料名称、附件数量与实际归属。
 
 ## 退出与备份

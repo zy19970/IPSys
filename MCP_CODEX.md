@@ -1,5 +1,8 @@
 # IPSys 本机 Codex MCP
 
+> **当前适用版本（2026-11-06）**：以 SQLCipher **schema 4**、项目/知识产权/普通资料 Excel **11/19/6 列**、MCP **43 项工具**、统一普通目录模型为准。11 月 5 日已实现文件重命名、多选拖拽、Markdown/TXT 10 MiB 预览、修改数据库密码和回收站进度去重；[Windows CI #558](https://github.com/zy19970/IPSys/actions/runs/42048982231) 自动化成功，[v0.9.3-rc.1](https://github.com/zy19970/IPSys/releases/tag/v0.9.3-rc.1) 经 [手动 Publish #6](https://github.com/zy19970/IPSys/actions/runs/42053785425) 成功发布（发布不重跑 smoke）。人工整体验收另行记录。后文注明旧日期的方案、提交和 CI 属历史证据，不代表最新现状。
+
+
 > **现行 MCP 与资料库契约（2026-11-04）**：MCP 仍是 **43 项**；目录与项目接口名称、权限及 FolderId/FileId/LinkId 语义未变。新建 SQLCipher 数据库已升级为 **schema 4**，同工作区原位移动目录会连同软删后代及其隐藏子目录转移模块，历史版本和 deleted 状态保留；旧 schema 2/3 数据库不会自动迁移。产品代码 [`8a2780e`](https://github.com/zy19970/IPSys/commit/8a2780e7a8c18a5017e27e0e22c03aac1f078fae)，对应 [Windows CI #541](https://github.com/zy19970/IPSys/actions/runs/41862168722) 是否通过须以最终运行状态为准。正式 Release 尚未触发。
 
 > **历史 S5 验收状态（2026-11-04，#538）**：现行 schema 3、MCP 43 项、项目内普通目录；本阶段最终测试提交 `cc7c1262` 的 [Windows CI #538](https://github.com/zy19970/IPSys/actions/runs/41839841405) 已完成成功，MCP↔GUI 同一批对象全链路验证通过。人工本机 GUI 尚待验证，旧库不迁移，发布未触发。详见 [S5 结案报告](tests/S5_FINAL_ACCEPTANCE_20261104.md)。
@@ -18,7 +21,7 @@ Explorer 的单附件右键“重命名”和 F2 与此 `update_file_metadata` �
 
 ## 当前有效的项目／普通目录 MCP 契约（2026-11-04，S4）
 
-现行 `tools/list` 注册 **43 项 MCP 工具**，已完全退出独立的 `contract` 业务类型。原 `list_contracts`、`create_contract`、`update_contract`、`delete_contract`、`copy_contract`、`list_contract_files`、`delete_contract_file` 均不可调用；旧 `tools/call` 直接调用也会返回未知工具。项目下的合同资料只是一层或多层普通文件夹，不再单独维护合同对象或专有属性。
+当前 `tools/list` 注册 **43 项 MCP 工具**，已完全退出独立的 `contract` 业务类型。原 `list_contracts`、`create_contract`、`update_contract`、`delete_contract`、`copy_contract`、`list_contract_files`、`delete_contract_file` 均不可调用；旧 `tools/call` 直接调用也会返回未知工具。项目下的合同资料只是一层或多层普通文件夹，不再单独维护合同对象或专有属性。
 
 业务记录类型为 `project`、`ip`，普通目录类型为 `archive_folder`。业务模块由 `section` 标识；公司支持 `certificate/achievement/party/general/project`，个人支持 `certificate/achievement/academic/general/project`。创建项目子目录须设置 `section="project"` 且提供 `parent_id`，该 ID 必须指向工作区内真实存在的项目或项目子目录。例如先调用 `create_project(workspace="company",name="项目A",project_type="科研项目")` 获得项目 FolderId=123（示例），再调用 `create_folder(workspace="company",section="project",parent_id=123,name="合同资料")`，实际调用以返回 ID 为准。目录可继续嵌套，不能将虚拟模块根视为项目父级。
 

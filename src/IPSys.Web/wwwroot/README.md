@@ -31,6 +31,9 @@ src/IPSys.Web/wwwroot/
 
 ## 构建与部署
 
+.NET Web SDK 默认的 `wwwroot` Content 外拷通过 `EnableDefaultContentItems=false` 关闭；前端文件由显式 `EmbeddedResource` 嵌入 EXE。干净 checkout 直接 Release 的双模式单 EXE 严格目录与 Windows VERSIONINFO 校验已在 [Windows CI #558](https://github.com/zy19970/IPSys/actions/runs/42048982231) 通过；[Publish #6](https://github.com/zy19970/IPSys/actions/runs/42053785425) 已发布 [v0.9.3-rc.1](https://github.com/zy19970/IPSys/releases/tag/v0.9.3-rc.1)，手动发布不重新运行 smoke。
+
+
 打包命令（在仓库根目录执行）：
 
 ```powershell
@@ -43,7 +46,7 @@ node src/IPSys.Web/wwwroot/tools/bundle.cjs
 
 ## 当前 Explorer 功能契约（2026-11-02）
 
-`js/excel.js` 的导出 Excel 使用 `filtered`（服务端完整筛选）和 `all`（当前模块全部记录），知识产权还支持十种业务类型筛选。项目 11 列、知识产权 19 列、档案/资质/党团 6 列、综合资料 3 列；合同无独立 Excel。固定表头见 [字段字典](../../../M0_DATA_DICTIONARY.md)。
+`js/excel.js` 的导出 Excel 使用 `filtered`（服务端完整筛选）和 `all`（当前模块全部记录），知识产权还支持十种业务类型筛选。项目 11 列、知识产权 19 列、档案/资质/党团 6 列、综合资料 6 列；合同无独立 Excel。固定表头见 [字段字典](../../../M0_DATA_DICTIONARY.md)。
 
 PDF 预览支持连续滚动、按需渲染与缩放；Markdown（.md/.markdown）支持本地离线排版预览、源码切换与安全链接，.txt 以 UTF-8 纯文本预览，单文件预览上限 10 MiB，组件与许可全部嵌入 EXE；启动器支持原生路径选择和托盘安全退出。资料 `archive_folder` 可同时拥有子文件夹和直接附件，`RecordForms.archiveFolder` 统一表单，`openNewMenu` 在只有一种创建动作时直接打开表单，列表“更新时间”取数据库有效修改时间。对应 [Windows CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 已成功。
 

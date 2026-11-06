@@ -1,5 +1,8 @@
 # IPSys 测试资料与执行入口
 
+> **现行版本（2026-11-06）**：新库 SQLCipher schema 4，项目子项与普通资料统一多层目录；Excel 固定 11/19/6 列，MCP 43 项。现行预发布 [v0.9.3-rc.1](https://github.com/zy19970/IPSys/releases/tag/v0.9.3-rc.1) 已由 [手动 Publish #6](https://github.com/zy19970/IPSys/actions/runs/42053785425) 成功构建发布；[Windows CI #558](https://github.com/zy19970/IPSys/actions/runs/42048982231) 自动测试通过，用户本机人工验收独立进行。旧日期的测试与版本说明仅作历史参考。
+
+
 > **统一测试资料目录（状态更新至 2026-11-02）**：本目录保存 Explorer/Agent/MCP 的原始方案、报告、证据和回归脚本，当前阶段主要处理操作细节。产品/测试提交 `4567ae96b7` 的 [Windows CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 成功，26 项通过、0 失败，2 项可选 ZIP64 步骤跳过。历史结果不得倒写；现行执行状态见 [开发计划](../DEVELOPMENT_PLAN.md) 和 [测试证据索引](./TEST_EVIDENCE_INDEX.md)。
 
 ## 测试资料怎么找

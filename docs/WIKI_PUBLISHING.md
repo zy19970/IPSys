@@ -42,4 +42,4 @@ git -C .wiki-local push
 
 ## 本次 Wiki 基线
 
-截至 2026-11-02，Wiki 源文件随当前源码与根目录文档维护；早前已有 [实际成功 Wiki 同步记录](https://github.com/zy19970/IPSys/actions/runs/41306575033)，最近产品回归为 [Windows CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 成功。此次 `docs/wiki` 更新仍须单独核对 Publish Wiki 工作流完成并实际展示，不将主仓库内容变更等同于 Wiki 已发布。
+截至 2026-11-06，本轮统一以 SQLCipher schema 4、MCP 43 项、普通资料 Excel 6 列及 [v0.9.3-rc.1](https://github.com/zy19970/IPSys/releases/tag/v0.9.3-rc.1) 为准；[Windows CI #558](https://github.com/zy19970/IPSys/actions/runs/42048982231) 是现行产品代码自动验证，[手动 Publish #6](https://github.com/zy19970/IPSys/actions/runs/42053785425) 是独立 Release 成功记录。当前 `docs/wiki/` 修改仍须在提交后核对 `Publish IPSys Wiki` 的实际成功状态及线上页面，不得将源码已更新直接当作 Wiki 已发布。

@@ -1,5 +1,8 @@
 # IPSys M0 统一字段、状态与实体字典（设计定稿 V1.0）
 
+> **现行统一基线（2026-11-06）**：新建 SQLCipher 数据库为 **schema 4**（旧 schema 2/3 不迁移）；项目子级与普通资料统一为可嵌套文件夹，合同不再是独立业务对象；项目/知识产权/普通资料 XLSX 分别 **11/19/6 列**；本机 MCP 为 **43 项工具**。已实现多选拖拽、附件 F2/右键重命名、Markdown/TXT 10 MiB 安全预览、数据库密码修改与回收站完成进度去重。产品提交 `47b8fa3` 对应 [Windows CI #558](https://github.com/zy19970/IPSys/actions/runs/42048982231) 完成成功；[手动 Publish #6](https://github.com/zy19970/IPSys/actions/runs/42053785425) 已发布 [v0.9.3-rc.1](https://github.com/zy19970/IPSys/releases/tag/v0.9.3-rc.1)（两种单 EXE + SHA256），发布流程不重跑 smoke。人工整体验收表仍未填报，不能据 CI 冒称已在用户本机全部通过。文内更早日期的结论为历史阶段记录，以本段及实际代码为现行准则。
+
+
 > **现行后续整改（2026-11-04）**：资料库新建结构改为 SQLCipher **schema 4**（源码 `ResourceSchemaV2.cs` 沿用历史名称），不迁移旧 schema 2/3 测试库；完整物理子目录含回收站已删除后代可跨模块原位移动，FolderId/FileId/LinkId/版本和 deleted 状态保持稳定，恢复与永久清理按照新 section 执行。Excel 当前仍为项目 11 列、知产 19 列、普通资料 6 列；MCP 43 项。源代码 [`8a2780e`](https://github.com/zy19970/IPSys/commit/8a2780e7a8c18a5017e27e0e22c03aac1f078fae)，[Windows CI #541](https://github.com/zy19970/IPSys/actions/runs/41862168722) 为本轮验收入口（结果以实际状态为准）。旧版本的记录保留历史属性，正式 Release 和用户本机人工验收待做。
 
 > **历史 S5 口径（2026-11-04，#538）**：SQLCipher schema 3，Folder 类型为 project、ip、archive_folder；合同资料是普通项目目录。现行固定 Excel：项目 11 列、知识产权 19 列、所有普通资料 6 列。MCP 共 43 工具。S5 同 SHA [CI #538](https://github.com/zy19970/IPSys/actions/runs/41839841405) 已成功（Edge 14 PASS，HTTP 12 PASS/1 压缩进度观察 BLOCKED）；用户人工验证及 Release 未执行。参见 [S5 结案报告](tests/S5_FINAL_ACCEPTANCE_20261104.md)，其余较早记录保留历史属性。
@@ -186,7 +189,7 @@
 5. 当前 XLSX 以**纯文本单元格**保留日期、编号、金额相关字段的原始表示，避免申请号前导零丢失及等号公式执行；不把不合法日期静默改为当前日期。合同金额在业务界面按人民币 `0.00` 格式显示，合同无独立 Excel 模板。含多人的字段仍以一格文本保持输入顺序。导出只读当前工作区，不能混入另一工作区记录。
 6. 本节所载 M0 设计来源继续供追溯，现行运行时固定表头以第 5.2 节和 `ExcelLedger.cs` 为准；三种专利与其它知识产权共用同一套 19 列模板，不按类型另创建多个模板。
 
-### 5.2 现行固定 XLSX 模板及列映射（SQLCipher schema 3）
+### 5.2 现行固定 XLSX 模板及列映射（SQLCipher schema 4）
 
 当前 Excel 模块为 **项目 11 列、知识产权 19 列、所有普通资料模块 6 列**；旧档案四列及旧综合资料一至三列不再作为现行导入格式。下表为实际 `ExcelLedger.cs` 字段及顺序。
 
