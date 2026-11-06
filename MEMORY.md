@@ -1,5 +1,11 @@
 # IPSys 项目持续记忆
 
+> **2026-11-06 第三轮：个人 certificate 语义及名称升序分析（不改业务代码）**：用户截图显示个人工作区「我的文件 > 人力资源」文件夹列表按 02、01、05、04、03 显示，询问个人模块内部 `certificate` 是否导致 Agent/MCP 错解，以及个人工作区能否默认名称升序（可在界面等价默认点击升序），本轮要求先分析。核对 `WS_CATS.personal` 使用 `certificate→人力资源`、`WS_CATS.company` 使用 `certificate→企业资质`，而 DB `ResourceSchemaV2.cs` 用 `workspace+section` 区分，MCP `McpLocalArchive.cs`、`McpLocalExtras.cs` 虽强制 workspace/section 但工具描述未清晰提供中文业务映射，Agent 的语义误判风险成立但不等同于后端会串库。其它相同键也具语义差异（achievement、general、project）。建议保留已被 DB/API/UI 广泛使用的内部 section，集中为 Agent/MCP 的 section 字段、工具描述、AgentGuidance/index 及 MCP_CODEX 增加 workspace-qualified 中文名称映射，并验证 `personal/certificate` 正确创建、列出、搜索、上传与 UI 对应，若要改底层为 hr 须一并变更 schema/HTTP/MCP/Excel/转移/测试而非简单改名。
+
+排序代码根因：`Drive.resetSort()` 默认所有工作区普通目录 `ctime desc`，project/ip `_year desc`；`Drive.sortedItems` 中 `sortBy=name` 还会在两个对象均有 `order` 时优先比较持久 position，导致仅把默认改成 `name asc` 可能仍不能按名称显示；`position asc` 是另一个独立显式排序选项。建议个人工作区默认 `name asc`，公司仍按现行（项目/知识产权年度降序、普通目录创建时间降序），并修正 `name` 比较器仅走 `cmpName`，自定义 `position` 另行使用；已存在的排序按钮/箭头 UI 自然响应状态。覆盖工作区进入、目录切换、返回、清除搜索，避免 DOM 模拟点击。现有 `cmpName` 仅显式映射首字拼音且字符串按 numeric localeCompare 比较，数字 01—05 可直接排序，但 2 与 10 由于首字符预判可能不符合自然数字排序，应加入用例核查。更新 `explorer-p1-regression-smoke.cjs` 覆盖公司原默认、个人全模块默认、name vs position、01—05/2—10、跨工作区和手动切换。分析建议：个人“名称升序”按用户字面覆盖个人普通目录和个人业务列表；若想项目/IP 仍按年份需与该范围区分。**本轮尚未修改任何产品业务代码或运行新的 Windows CI。** 最近会话 `memory/sessions/2026-11-06-细节优化前仓库梳理.md` 第三轮。
+
+
+
 > **2026-11-06 第二轮提交核验补记**：现行文档与项目记忆单次原子提交 [`b2b0d023`](https://github.com/zy19970/IPSys/commit/b2b0d023808bea25f98992fc9b185523726158f4) 已进入 main；提交 compare 确认 **34 个文件**（32 个现行文档含新索引，另有 MEMORY.md 与本会话记录），全部是 Markdown，没有改动产品 C#/JS/YAML。Wiki 自动同步 [Publish IPSys Wiki #42139890617](https://github.com/zy19970/IPSys/actions/runs/42139890617) 与同一 SHA 对齐，`completed/success`；由 `src/IPSys.Web/wwwroot/README.md` 触发的独立 [Windows CI #42139890396](https://github.com/zy19970/IPSys/actions/runs/42139890396) 在本次核查时仍为 `in_progress`，不得声称其已通过或失败。已发布的 `v0.9.3-rc.1` 未更动，手动 Publish 未重跑。会话 `memory/sessions/2026-11-06-细节优化前仓库梳理.md` 第二轮，当前阶段继续依实际截图和复现进入细节优化。
 
 
