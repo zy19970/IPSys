@@ -1,5 +1,9 @@
 # IPSys 项目持续记忆
 
+> **2026-11-06 第九轮：500 GB 硬盘与数据库空间回收讨论（仅设计，不改业务代码）**：用户表示“我现在有些后悔用这个数据库了，这样的话我500G的硬盘也就存储250G的内容”。直接澄清：现行数据库容量不固定减半；现有 `VaultCompactStore.Inspect()` 只有在手动 `VACUUM` 前要求每个相关磁盘可用 `fileBytes*2+128MiB`，并非正常上传、日常存储、删除后内部页面复用的上限。若 500 GB 全空同盘且要求能按当前门槛立即完整压缩，必须约 `DB+2×DB≤500GB`，即 DB 最大约 166 GB（还需另扣 128 MiB、日志和系统实际空间），问题比“只存250GB”更严格，但正常存放超过该值不等于不可用。SQLite 官方 VACUUM 文档证实临时副本与 rollback journal 最坏可能需要额外两倍文件空间（https://www.sqlite.org/lang_vacuum.html）；`PRAGMA auto_vacuum=INCREMENTAL` 可回收自由页而不每次全库重建，但不能压实所有碎片，新库需在建表前启用，旧库需先一次完整 VACUUM 改变模式（https://www.sqlite.org/pragma.html）。建议先评估在 SQLCipher+现有 BLOB/版本/链接结构下增量回收及不同磁盘临时压缩路径的正确性、加密安全与长期性能；无需因当前 VACUUM 策略立即更换数据库。此轮只作解释和设计建议，未经用户批准不改底层结构、压缩门槛、功能源代码，未跑新测试。此轮查询到先前 [Windows CI #42170725819](https://github.com/zy19970/IPSys/actions/runs/42170725819) 已 `completed/success`，但该成功与本轮未改代码的容量讨论无关。最近会话 `memory/sessions/2026-11-06-细节优化前仓库梳理.md` 第九轮。
+
+
+
 > **2026-11-06 第八轮第二次 Windows CI 失败与修复**：第 2 次提交 [`0577f234`](https://github.com/zy19970/IPSys/commit/0577f234a844b36f3db2480acff6475f64143c85) 修复 AgentGuidance 根入口后，Windows [#42170134373](https://github.com/zy19970/IPSys/actions/runs/42170134373) 冷双 Release 和 Debug 编译已成功（0 warning/0 error），但 Debug `WebSmoke` 在 `VaultIntegrityHttpSmoke.cs:45` 收到 **409 Conflict**。原因经日志证实：新增 HTTP 测试先启动具有 FileTaskActive 锁的真实后台完整性扫描，又调用有意拒绝并发任务的 `GET /api/vault/storage`；服务器正确返回 409，属于 **测试读取顺序错误**，并非权限/数据库完整性坏。解决方案把测试 DB 容量与超时预算读取移到 POST 启动扫描**之前**；服务端锁与 DB 安全不改。同时前端收到检查终态后短延迟刷新压缩按钮状态，避免此前同时读取容量被 409 拒绝后按钮保持不可用。失败通知 [#2339](https://github.com/office-renderer/wechat-webhook/issues/2339)，重新开始通知 [#2340](https://github.com/office-renderer/wechat-webhook/issues/2340)。本修复尚未产生新 CI 的成功结果，不得冒称验收已完成。会话 `memory/sessions/2026-11-06-细节优化前仓库梳理.md` 第八轮。
 
 
