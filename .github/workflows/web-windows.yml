@@ -24,6 +24,11 @@ on:
         type: boolean
         required: false
         default: false
+      incremental_vacuum_lab:
+        description: 'Run separate disposable 64 MiB SQLCipher NONE vs INCREMENTAL comparison (no user DB)'
+        type: boolean
+        required: false
+        default: false
 
 jobs:
   smoke:
@@ -94,6 +99,36 @@ jobs:
           if (-not (Test-Path $report)) { throw "Debug smoke report missing" }
           if ((Get-Content $report -Raw) -notmatch 'WEB SMOKE PASS') { throw "Debug smoke assertions incomplete" }
           Write-Host 'Visual Studio Debug embedded HTML CSS JS and HTTP smoke: PASS'
+      - name: Run isolated 64 MiB SQLCipher incremental-vacuum lab (opt-in)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.incremental_vacuum_lab }}
+        shell: pwsh
+        env:
+          IPSYS_VACUUM_LAB_MIB: '64'
+          IPSYS_VACUUM_LAB_REPORT: ${{ runner.temp }}/ipsys-incremental-lab-evidence.json
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $exe = Join-Path $PWD 'src/IPSys.Web/bin/Debug/net8.0-windows/IPSys.Web.exe'
+          $proc = Start-Process -FilePath $exe -ArgumentList '--vacuum-lab' -PassThru -Wait
+          if ($proc.ExitCode -ne 0) { throw "Isolated incremental-vacuum lab failed: $($proc.ExitCode)" }
+          if (-not (Test-Path -LiteralPath $env:IPSYS_VACUUM_LAB_REPORT)) {
+            throw 'Incremental vacuum lab did not write JSON evidence'
+          }
+          $report = Get-Content -LiteralPath $env:IPSYS_VACUUM_LAB_REPORT -Raw | ConvertFrom-Json
+          if ($report.status -ne 'PASS' -or
+              [long]$report.recoveredBytes -le 0 -or
+              $report.none.Mode -ne 'NONE' -or
+              $report.incremental.Mode -ne 'INCREMENTAL') {
+            throw 'Incremental-vacuum lab metrics are incomplete'
+          }
+          Write-Host "Encrypted INCREMENTAL recovered $($report.recoveredBytes) bytes"
+      - name: Upload incremental-vacuum lab JSON metrics only
+        if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.incremental_vacuum_lab }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: IPSys-Incremental-Vacuum-Lab-${{ github.run_id }}
+          path: ${{ runner.temp }}/ipsys-incremental-lab-evidence.json
+          if-no-files-found: warn
+          retention-days: 30
       - name: Publish Windows x64 portable web app
         shell: pwsh
         run: dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/IPSys-Web-win-x64

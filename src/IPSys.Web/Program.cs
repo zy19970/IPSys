@@ -14,6 +14,14 @@ if(args.Contains("--mcp"))
     await McpLocal.RunStdioAsync();
     return;
 }
+// Isolated, opt-in SQLCipher VACUUM experiment. Generates random temp DBs
+// only; never opens an existing user vault or starts the WinForms launcher.
+if(args.Contains("--vacuum-lab"))
+{
+    SQLitePCL.Batteries_V2.Init();
+    IncrementalVacuumLabSmoke.RunFromEnvironment();
+    return;
+}
 var smoke = args.Contains("--smoke");
 using var agentGuidanceSmokeScope=smoke?
     AgentGuidanceStore.UseTemporaryForSmoke():null;
@@ -149,6 +157,7 @@ if (smoke)
         NativeFileStoreSmoke.Run();
         RecyclePurgeSmoke.Run();
         VaultCompactSmoke.Run();
+        IncrementalVacuumLabSmoke.Run(4);
         NativeFileLinkStoreSmoke.Run();
         NativeFileCopyStoreSmoke.Run();
         NativeFileChoiceStoreSmoke.Run();

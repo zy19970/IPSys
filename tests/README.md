@@ -10,6 +10,7 @@
 | 目录/文件 | 内容 |
 | --- | --- |
 | [TEST_EVIDENCE_INDEX.md](./TEST_EVIDENCE_INDEX.md) | 综合索引，区分最新产品 CI、旧 Agent 实测、用户人工反馈与剩余验证范围 |
+| [SQLCipher 增量回收实验方案](../docs/INCREMENTAL_VACUUM_IMPLEMENTATION_PLAN_20261106.md) | NONE/INCREMENTAL 独立加密库、版本与共享保护、空间/哈希/完整性对照、分阶段准入 |
 | [Excel 导出范围回归](../src/IPSys.Web/tests/excel-scope-smoke.cjs) | 现行 Node 回归：`all/filtered`、不同工作区、党团资料与合同无独立 Excel 接口 |
 | [agent-validation/](./agent-validation/) | 四轮 Agent 原始资料，共 413 个文件；报告、结果、截图、运行日志均完整保留 |
 | [retest-v2-2026-10-22/](./retest-v2-2026-10-22/) | Explorer V2 复测：原始报告、证据及 **Windows CI 仍使用的脚本** |
