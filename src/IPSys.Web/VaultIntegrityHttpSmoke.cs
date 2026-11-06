@@ -22,6 +22,13 @@ static class VaultIntegrityHttpSmoke
                 "Status and scan initiation must require the active SQLCipher session");
         }
 
+        // Read the fixture size BEFORE acquiring the exclusive integrity
+        // file-task lock. /api/vault/storage intentionally returns 409 while
+        // any database file task is active.
+        var size=await client.GetFromJsonAsync<JsonElement>("/api/vault/storage");
+        long bytes=size.GetProperty("totalBytes").GetInt64();
+        var budget=bytes>=512L*1024*1024
+            ? TimeSpan.FromMinutes(12):TimeSpan.FromSeconds(60);
         using var started=await client.PostAsync("/api/vault/integrity",null);
         Check(started.StatusCode==HttpStatusCode.Accepted,
             "Integrity check must start asynchronously and immediately return task ID");
@@ -42,10 +49,6 @@ static class VaultIntegrityHttpSmoke
         }
 
         // Large encrypted test fixtures can take much longer than a tiny vault.
-        var size=await client.GetFromJsonAsync<JsonElement>("/api/vault/storage");
-        long bytes=size.GetProperty("totalBytes").GetInt64();
-        var budget=bytes>=512L*1024*1024
-            ? TimeSpan.FromMinutes(12):TimeSpan.FromSeconds(60);
         var clock=Stopwatch.StartNew();
         bool complete=false;
         while(clock.Elapsed<budget)

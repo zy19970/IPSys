@@ -796,6 +796,9 @@ async function pollIntegrityCheck() {
     paintIntegrityProgress("检查未完成：" + (status.error || status.stage || "未知错误"), false);
     if (msg) msg.className = "is-bad";
   }
+  // The backend completes its exclusive file-task cleanup immediately after
+  // publishing the terminal state. Refresh the compact button once unlocked.
+  setTimeout(() => { if (VaultStore.token) void paintCompactRow(); }, 500);
 }
 
 async function startCompact() {

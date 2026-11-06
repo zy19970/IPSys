@@ -1,5 +1,9 @@
 # IPSys 项目持续记忆
 
+> **2026-11-06 第八轮第二次 Windows CI 失败与修复**：第 2 次提交 [`0577f234`](https://github.com/zy19970/IPSys/commit/0577f234a844b36f3db2480acff6475f64143c85) 修复 AgentGuidance 根入口后，Windows [#42170134373](https://github.com/zy19970/IPSys/actions/runs/42170134373) 冷双 Release 和 Debug 编译已成功（0 warning/0 error），但 Debug `WebSmoke` 在 `VaultIntegrityHttpSmoke.cs:45` 收到 **409 Conflict**。原因经日志证实：新增 HTTP 测试先启动具有 FileTaskActive 锁的真实后台完整性扫描，又调用有意拒绝并发任务的 `GET /api/vault/storage`；服务器正确返回 409，属于 **测试读取顺序错误**，并非权限/数据库完整性坏。解决方案把测试 DB 容量与超时预算读取移到 POST 启动扫描**之前**；服务端锁与 DB 安全不改。同时前端收到检查终态后短延迟刷新压缩按钮状态，避免此前同时读取容量被 409 拒绝后按钮保持不可用。失败通知 [#2339](https://github.com/office-renderer/wechat-webhook/issues/2339)，重新开始通知 [#2340](https://github.com/office-renderer/wechat-webhook/issues/2340)。本修复尚未产生新 CI 的成功结果，不得冒称验收已完成。会话 `memory/sessions/2026-11-06-细节优化前仓库梳理.md` 第八轮。
+
+
+
 > **2026-11-06 第八轮首轮 Windows CI 失败与最小修复**：产品提交 [`14ae600e`](https://github.com/zy19970/IPSys/commit/14ae600e4b6cc5f665988a84c0cdf202f3fd4c2f) 已 push main，23 文件 compare 已核验。Wiki [#42169708057](https://github.com/zy19970/IPSys/actions/runs/42169708057) completed/success。Windows [#42169708058](https://github.com/zy19970/IPSys/actions/runs/42169708058) `completed/failure`，冷双 Release 编译成功（0 error），但 Debug `--smoke` 失败于 `AgentGuidanceStoreSmoke.cs:125`：不可覆盖内置 index 缺少现有“**MCP 授权**”安全术语（我们把字面描述改成了“MCP 默认开启”），导致 `import cannot overwrite root safety instructions` 断言失败。定位为纯提示词回归，而非异步完整性检查业务校验失败。修复为 index 的“**MCP 授权默认开启**”，仍保留用户要求的默认开放行为与安全含义，入口总长度 433 字（既有烟测阈值 ≤512）。失败通知 [#2337](https://github.com/office-renderer/wechat-webhook/issues/2337)、重新开始通知 [#2338](https://github.com/office-renderer/wechat-webhook/issues/2338)。该修复提交前尚无新 CI 终态，须按新提交独立核验。最新会话 `memory/sessions/2026-11-06-细节优化前仓库梳理.md` 第八轮。
 
 
