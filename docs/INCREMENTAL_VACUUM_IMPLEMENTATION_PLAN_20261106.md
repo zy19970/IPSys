@@ -64,6 +64,10 @@ SQLite 官方文档：[`auto_vacuum` / `incremental_vacuum`](https://www.sqlite.
 4. 开始任何生产迁移前，必须事先有可验证备份及完整的失败回退方式，确认实际磁盘空间和数据库版本条件。
 5. 本阶段只实施实验与计划；A 的成功是“验证机制在独立测试库工作”，**不等于已证明 500 GB 数据库性能或断电恢复已经满足**。
 
+## 阶段 A 结果记录
+
+第一组 4 MiB 级合成数据的 NONE/INCREMENTAL Windows SQLCipher 对照已经形成 [阶段 A 实测报告](./INCREMENTAL_VACUUM_STAGE_A_RESULTS_20261106.md)，同时原始 JSON 保存在对应 GitHub Actions 工件。该结果说明当前构建中的增量语句可真实释放页，不代表阶段 B/C 的大库与故障恢复已经验证。
+
 ## 六、执行与输出
 
 优先将轻量验证接入现有 `Windows build and smoke` 的 Debug smoke，生成明确的 NONE/INCREMENTAL JSON 指标。后续大样本只在显式 opt-in 下执行，不扩大普通 CI 耗时。完成后根据实际跑出的数据单独补充结果与剩余风险，不直接宣布启用新库默认模式。

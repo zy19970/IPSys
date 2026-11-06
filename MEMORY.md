@@ -1,5 +1,9 @@
 # IPSys 项目持续记忆
 
+> **2026-11-06 第十一轮阶段 A 真实 SQLCipher 小样本实验指标与报告**：首版隔离实验提交 [`8933511e`](https://github.com/zy19970/IPSys/commit/8933511e3c44652f0494558ecd03728404749028) 的 [Windows CI #42180923684](https://github.com/zy19970/IPSys/actions/runs/42180923684) **completed/success，27 steps success**。指标留存补充提交 [`c4decd96`](https://github.com/zy19970/IPSys/commit/c4decd9698772f162ca8482c6b57078d96e4607e) 已在 Windows [#42181743548](https://github.com/zy19970/IPSys/actions/runs/42181743548) 的 Debug smoke **执行成功并上传** artifact `IPSys-Vacuum-Small-Lab-42181743548`（artifact ID `13485856185`），该 CI 在本轮取证时整体仍 in_progress，不能夸大为全链通过。下载并读取 JSON 确认 `status=PASS`：4 MiB 实验 NONE 组执行后 DB 7,618,560→7,618,560B、freelist 1,570→1,570；INCREMENTAL 组自动模式实际 `2`，DB 7,630,848→1,191,936B，**真实释放 6,438,912B ≈ 6.14MiB**、page_count 1,863→291、freelist 1,570→0，7×256 页批量命令耗时 150ms。该结果通过实际业务版本/共享/最后 LinkId 永久删除与 SHA256、外键、完整性、错密及加密重开；只说明独立合成小样本机制可用，不足以推断 500GB/断电/长期性能。新建详细结果报告 `docs/INCREMENTAL_VACUUM_STAGE_A_RESULTS_20261106.md` 并从实施方案互链。仍未修改 `Vault.Connect/CreateSchema` 生产模式、旧 DB 或正式 `VaultCompactStore`。用户原话“你做一个方案，然后就开始准备做这个”；最新会话 `memory/sessions/2026-11-06-细节优化前仓库梳理.md` 第十一轮。
+
+
+
 > **2026-11-06 第十一轮阶段 A 证据留存补充**：首次实验提交 [`8933511e`](https://github.com/zy19970/IPSys/commit/8933511e3c44652f0494558ecd03728404749028) 已核实进入 main（8 个文件），触发 [Windows CI #42180923684](https://github.com/zy19970/IPSys/actions/runs/42180923684)。截至本补充时，冷双 Release 编译及 Debug `--smoke`（包含新增 `IncrementalVacuumLabSmoke.Run(4)`）均通过，原有 HTTP/Edge 亦通过，但**CI 仍在进行单 EXE 部署等后续检查，整体未宣称成功**。为使 NONE/INCREMENTAL 实验的数据可检查，增补 Windows CI Debug smoke 的 `IPSYS_VACUUM_LAB_REPORT` JSON 输出与回收字节断言，并将小样本 JSON 作为 `IPSys-Vacuum-Small-Lab-<run_id>` 工件上传；同时将证据入口写进 TESTING.md。此补充会触发第二轮完整 CI；不可将第一轮某一步通过冒充后续提交完整通过，后续应读取最新 CI 和 JSON 实际数值。所有操作仍仅作用于临时加密实验库，不启用生产增量模式。会话 `memory/sessions/2026-11-06-细节优化前仓库梳理.md` 第十一轮。
 
 
