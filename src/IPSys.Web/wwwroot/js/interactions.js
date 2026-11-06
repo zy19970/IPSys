@@ -30,6 +30,68 @@ function toast(msg, { action, onAction, ms = 3400, tone = "" } = {}) {
   }, ms);
 }
 
+/* Lightweight, opt-in release navigation. No binary download or installation. */
+let _autoUpdateChecked = false;
+let _currentExeVersion = "";
+let _updateCheckBusy = false;
+function showInstalledVersion(version) {
+  if (version) _currentExeVersion = version;
+  const shown = _currentExeVersion ? "v" + _currentExeVersion.replace(/^v/, "") : "正在读取…";
+  const label = $("#setUpdateMsg");
+  if (label && !_updateCheckBusy) label.textContent = "当前版本：" + shown;
+  const meta = $("#setFootMeta");
+  if (meta) {
+    const scope = VaultStore.ws === "company" ? "企业工作区" : "个人工作区";
+    meta.textContent = scope + " · 版本 " + shown;
+  }
+}
+function openOfficialRelease(url) {
+  const target = String(url || "");
+  // Only this repository's exact, validated tag pages may be opened.
+  if (!/^https:\/\/github\.com\/zy19970\/IPSys\/releases\/tag\/v[0-9A-Za-z.-]+$/.test(target))
+    return;
+  window.open(target, "_blank", "noopener,noreferrer");
+}
+async function checkForUpdates(manual = false) {
+  if (_updateCheckBusy || !VaultStore.token) return;
+  _updateCheckBusy = true;
+  const button = $("#setUpdate");
+  if (button) button.disabled = true;
+  if (manual && $("#setUpdateMsg")) $("#setUpdateMsg").textContent = "正在检查更新…";
+  const token = VaultStore.token;
+  try {
+    const response = await VaultStore.api("/api/update/check" + (manual ? "?force=1" : ""));
+    const info = await response.json();
+    if (VaultStore.token !== token) return;
+    if (info.currentVersion) _currentExeVersion = String(info.currentVersion);
+    if (info.supported === false) {
+      if (manual) toast(info.message || "当前为开发构建，暂无发行版本号");
+      return;
+    }
+    if (!info.ok) {
+      if (manual) toast(info.message || "检查更新失败，请检查网络", { tone: "error", ms: 6000 });
+      return;
+    }
+    if (info.updateAvailable && (manual || info.notify)) {
+      const url = String(info.releaseUrl || "");
+      if (!/^https:\/\/github\.com\/zy19970\/IPSys\/releases\/tag\/v[0-9A-Za-z.-]+$/.test(url))
+        return;
+      toast("发现新版本 " + info.latestVersion + "（当前 " + info.currentVersion + "）", {
+        action: "查看版本", onAction: () => openOfficialRelease(url), ms: 12000,
+      });
+    } else if (manual) {
+      toast(info.message || "当前已是最新版本");
+    }
+  } catch (error) {
+    if (manual && VaultStore.token === token)
+      toast("检查更新失败：" + (error.message || "本地服务无法访问"), { tone: "error", ms: 6000 });
+  } finally {
+    _updateCheckBusy = false;
+    if (button) button.disabled = false;
+    showInstalledVersion();
+  }
+}
+
 let _resolveConfirm = null;
 function askConfirm({ title = "确认", text = "", okText = "确定", danger = false } = {}) {
   $("#confirmTitle").textContent = title;
@@ -251,6 +313,11 @@ async function enterWorkspace(ws) {
     void notifyPendingUpload();
     /* 上次关页面时可能还有一个彻底删除任务在跑,接回来继续看进度 */
     void resumePurge();
+    // Release lookup is optional and never blocks login or workspace loading.
+    if (!_autoUpdateChecked) {
+      _autoUpdateChecked = true;
+      void checkForUpdates(false);
+    }
   } catch (e) {
     Drive.state.ready = false;
     Drive.state.loadError = e.message;
@@ -497,7 +564,7 @@ function paintSettings() {
   /* 工作区与版本压到底栏一行:它们只读、只用于确认"我在哪",不值得占一整组 */
   const meta = $("#setFootMeta");
   if (meta) {
-    meta.textContent = `${VaultStore.ws === "company" ? "企业工作区" : "个人工作区"} · 资料库 Web 0.9`;
+    showInstalledVersion();
   }
 
   /* 数据库块的三项状态都要现拉:MCP 开关是服务端状态,压缩信息每次都变,
@@ -889,6 +956,7 @@ function bindSettings() {
   });
 
   $("#setCheck").addEventListener("click", (e) => runIntegrityCheck(e.currentTarget));
+  $("#setUpdate")?.addEventListener("click", () => void checkForUpdates(true));
   $("#setCompact").addEventListener("click", () => startCompact());
   $("#setPendingUploadCancel")?.addEventListener("click", () => void cancelPendingUpload());
   $("#setLock").addEventListener("click", () => lockVault());

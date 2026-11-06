@@ -18,6 +18,8 @@
     <Copyright>Copyright (C) Joey@BGRIMM $(IPSysCopyrightDate)</Copyright>
     <!-- .NET 8 otherwise appends +GitSHA to the Windows Product version. -->
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <!-- Unversioned local/CI builds must not masquerade as a tagged release. -->
+    <Version Condition="'$(Version)' == ''">0.0.0-dev</Version>
     <!-- The Windows PE executable and WinForms launcher share this application icon. -->
     <ApplicationIcon>assets\IPSys.ico</ApplicationIcon>
     <!-- Web SDK's default Content includes wwwroot/** and copies generated

@@ -101,6 +101,35 @@ static class WebSmoke
             if(SessionEndpoints.SuggestDatabasePath(policyDir)!=
                 Path.Combine(policyDir,"IPSys.db"))
                 throw new IOException("多个现有资料库不能任意选取其中一个。");
+            // Offline-only update-check tests: never make a GitHub request in smoke.
+            using (var lockedUpdate = await client.GetAsync("/api/update/check"))
+                if (lockedUpdate.StatusCode != HttpStatusCode.Unauthorized)
+                    throw new IOException("更新检查接口必须受资料库当前会话授权保护。");
+            if (!UpdateCheck.TryParseVersion("v0.9.3-rc0", out var updateRc0) ||
+                !UpdateCheck.TryParseVersion("v0.9.3-rc.1", out var updateRc1) ||
+                !UpdateCheck.TryParseVersion("v0.9.3", out var updateFinal) ||
+                !UpdateCheck.TryParseVersion("v0.9.10", out var updatePatch10) ||
+                !UpdateCheck.TryParseVersion("v0.9.2", out var updatePatch2) ||
+                UpdateCheck.TryParseVersion("v0.9.3-extra/invalid", out _) ||
+                UpdateCheck.Compare(updateRc1, updateRc0) <= 0 ||
+                UpdateCheck.Compare(updateFinal, updateRc1) <= 0 ||
+                UpdateCheck.Compare(updatePatch10, updatePatch2) <= 0 ||
+                UpdateCheck.Compare(updateRc1, updateRc1) != 0)
+                throw new IOException("更新版本比较（含历史 rc0/rc.1、正式版及数字）错误。");
+            const string updateFixture = """
+                [
+                  {"tag_name":"v0.9.3-rc0","draft":false,"prerelease":false,"assets":[{"name":"IPSys-win-x64-FrameworkDependent.exe"},{"name":"IPSys-win-x64-SelfContained.exe"}]},
+                  {"tag_name":"v0.9.4","draft":true,"assets":[{"name":"IPSys-win-x64-FrameworkDependent.exe"},{"name":"IPSys-win-x64-SelfContained.exe"}]},
+                  {"tag_name":"v0.9.5","draft":false,"assets":[{"name":"README.txt"}]},
+                  {"tag_name":"v0.9.3-rc.1","draft":false,"prerelease":false,"assets":[{"name":"IPSys-win-x64-FrameworkDependent.exe"},{"name":"IPSys-win-x64-SelfContained.exe"}]},
+                  {"tag_name":"v0.9.6-bad/path","draft":false,"assets":[{"name":"IPSys-win-x64-FrameworkDependent.exe"},{"name":"IPSys-win-x64-SelfContained.exe"}]},
+                  {"tag_name":"v0.9.3-rc1","draft":false,"assets":[{"name":"IPSys-win-x64-FrameworkDependent.exe"}]}
+                ]
+                """;
+            using (var releases = JsonDocument.Parse(updateFixture))
+                if (UpdateCheck.SelectLatestRelease(releases.RootElement) != "v0.9.3-rc.1")
+                    throw new IOException("更新检查必须比较有效 Release 版本而非列表首项、发布时间或 prerelease 标志。");
+
             string css=await client.GetStringAsync("/style.css");
             string app=await client.GetStringAsync("/app.js");
             if(!css.Contains(".db-path-picker") ||

@@ -21,6 +21,10 @@
 
 自动测试已纳入 [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 并随完整工作流成功；第三方真实 Codex 的智能上传和元数据补录仍需独立本机报告，不操作用户唯一资料库。
 
+## 更新提示回归（离线）
+
+`WebSmoke.cs` 使用伪造的 GitHub Release JSON 测试版本优先级、旧版 `rc0` 与 `rc.1`、正式版优先、草稿/缺少 Windows EXE 的过滤及未授权 API 拒绝，**不访问真实 GitHub 网络**。`src/IPSys.Web/tests/update-check-ui-smoke.cjs` 在模拟浏览器中验证自动检查无新版静默、设置中手动检查、非模态跳转白名单、开发构建、网络异常及按钮状态。现行 Windows CI 已将该 Node 用例纳入 UI 测试列表。真实 GitHub 可达性和系统浏览器打开行为仍应在用户本机按需要验证。
+
 ## 主分支 Windows CI
 
 当前最近完整验证为 [Windows CI #558](https://github.com/zy19970/IPSys/actions/runs/42048982231)，对产品提交 `47b8fa3` completed/success（26 个成功步骤、0 失败、2 个可选 ZIP64 跳过），包含干净 checkout 直接 Release 的双单 EXE 包结构与版本资源验证、原有 Debug/Node/Edge/HTTP/SQLCipher/MCP 测试。新发布 [v0.9.3-rc.1](https://github.com/zy19970/IPSys/releases/tag/v0.9.3-rc.1) 的 [Publish #6](https://github.com/zy19970/IPSys/actions/runs/42053785425) validate、build 和 publish 三项均成功，但 Publish 不重跑 smoke。人工验收仍须在独立 schema 4 测试库执行并填写 [清单](./tests/MANUAL_ACCEPTANCE_20261105.md)。
