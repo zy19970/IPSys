@@ -786,10 +786,6 @@ const Drive = {
     const sc = $("#selCount");
     if (sc) sc.textContent = `已选择 ${n} 项`;
     const selected = this.selectedItems;
-    const downloadCount = typeof selectionActionTargets === "function"
-      ? selectionActionTargets(selected).length : selected.length;
-    const deleteCount = typeof selectionActionTargets === "function"
-      ? selectionActionTargets(selected, true).length : selected.length;
     const selectedFiles = !locked && selected.length > 1 &&
       selected.every(n => n.type === "file");
     const selectedFolders = !locked && selected.length > 1 &&
@@ -799,19 +795,16 @@ const Drive = {
       const btn = $(id);
       if (btn) {
         btn.classList.toggle("hidden", !(selectedFiles || selectedFolders));
-        btn.textContent = (move ? "移动 " : "共享 ") + selected.length +
-          (selectedFolders ? " 个文件夹" : " 个附件");
+        btn.textContent = move ? "移动" : "共享";
       }
     }
     const sdDownload = $("#selDownload");
     if (sdDownload) {
       sdDownload.classList.toggle("hidden", locked);
-      sdDownload.innerHTML = `${icon("download", 18)}<span>${n > 1 ? "打包下载选中的 " + downloadCount + " 项" : "下载"}</span>`;
+      sdDownload.innerHTML = `${icon("download", 18)}<span>${n > 1 ? "打包下载" : "下载"}</span>`;
     }
     const sd = $("#selDelete");
-    if (sd) sd.innerHTML = `${icon(locked ? "trashForever" : "trash", 18)}<span>${locked
-      ? n > 1 ? "彻底删除选中的 " + deleteCount + " 项" : "彻底删除"
-      : n > 1 ? "删除选中的 " + deleteCount + " 项" : "删除"}</span>`;
+    if (sd) sd.innerHTML = `${icon(locked ? "trashForever" : "trash", 18)}<span>${locked ? "彻底删除" : "删除"}</span>`;
 
     const allIds = this.sortedItems.map((i) => i.id);
     const total = allIds.length;
@@ -1276,10 +1269,6 @@ const Drive = {
 
     /* 多选 */
     if (items.length > 1) {
-      const downloadCount = typeof selectionActionTargets === "function"
-        ? selectionActionTargets(items).length : items.length;
-      const deleteCount = typeof selectionActionTargets === "function"
-        ? selectionActionTargets(items, true).length : items.length;
       const canAssociateMultiple = !locked && items.every(n => n.type === "file");
       const canTransferFolders = !locked && items.every(n => n.type === "folder" &&
         !n.synthetic && n.biz?.kind === "archive_folder");
@@ -1291,12 +1280,12 @@ const Drive = {
           <div class="detail-sub">${total ? `共 ${fmtSize(total)}` : "均为记录"}</div>
         </div>
         <div class="detail-actions">
-          ${locked ? "" : `<button class="btn" data-detail-act="download">${icon("download", 16)}打包下载选中的 ${downloadCount} 项</button>`}
-          ${canAssociateMultiple ? `<button class="btn" data-detail-act="assoc-batch">${icon("copy", 16)}共享 ${items.length} 个附件</button>
-          <button class="btn" data-detail-act="assoc-move-batch">${icon("move", 16)}移动 ${items.length} 个附件</button>` : ""}
-          ${canTransferFolders ? `<button class="btn" data-detail-act="share-folder-batch">${icon("copy", 16)}共享 ${items.length} 个文件夹</button>
-          <button class="btn" data-detail-act="move-folder-batch">${icon("move", 16)}移动 ${items.length} 个文件夹</button>` : ""}
-          <button class="btn" data-detail-act="delete">${icon(locked ? "trashForever" : "trash", 16)}${locked ? "彻底删除选中的 " : "删除选中的 "}${deleteCount} 项</button>
+          ${locked ? "" : `<button class="btn" data-detail-act="download">${icon("download", 16)}打包下载</button>`}
+          ${canAssociateMultiple ? `<button class="btn" data-detail-act="assoc-batch">${icon("copy", 16)}共享</button>
+          <button class="btn" data-detail-act="assoc-move-batch">${icon("move", 16)}移动</button>` : ""}
+          ${canTransferFolders ? `<button class="btn" data-detail-act="share-folder-batch">${icon("copy", 16)}共享</button>
+          <button class="btn" data-detail-act="move-folder-batch">${icon("move", 16)}移动</button>` : ""}
+          <button class="btn" data-detail-act="delete">${icon(locked ? "trashForever" : "trash", 16)}${locked ? "彻底删除" : "删除"}</button>
         </div>
         <div class="detail-section" style="border-bottom:0">
           <h4>包含</h4>
@@ -1341,7 +1330,7 @@ const Drive = {
           locked
             ? `<button class="btn" data-detail-act="restore">${icon("restore", 16)}还原</button>
                <button class="btn" data-detail-act="delete">${icon("trashForever", 16)}彻底删除</button>`
-            : `<button class="btn" data-detail-act="download">${icon("download", 16)}下载</button>
+            : `<button class="btn" data-detail-act="download">${icon("download", 16)}${isFolder ? "打包下载" : "下载"}</button>
                ${isFolder && b.kind==="archive_folder"
                  ? `<button class="btn" data-detail-act="share-folder">${icon("copy", 16)}共享文件夹</button>
                     <button class="btn" data-detail-act="move-folder">${icon("move", 16)}移动文件夹</button>`

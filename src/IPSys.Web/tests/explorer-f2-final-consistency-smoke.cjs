@@ -113,11 +113,11 @@ const act=cmd=>vm.runInContext(cmd,sandbox);
  act("showItemMenu('f:13:1',10,20)");
  let menu=menus.at(-1);
  assert.deepEqual([...drive.state.selection],["f:12:1","f:13:1"]);
- assert.match(menu.markup,/打包下载选中的 2 项/);
- assert.match(menu.markup,/删除选中的 2 项/);
+ assert.match(menu.markup,/data-act="download">打包下载<\/button>/);
+ assert.match(menu.markup,/data-act="delete">删除<\/button>/);
  assert.doesNotMatch(menu.markup,/data-act="(?:open|props|newver|assoc|assoc-move|rename|copy-record|transfer-record|move-archive|sort-up|sort-down|newcontract)"/);
- assert.match(menu.markup,/共享选中的 2 个附件/);
- assert.match(menu.markup,/移动选中的 2 个附件/);
+ assert.match(menu.markup,/data-act="assoc-batch">共享<\/button>/);
+ assert.match(menu.markup,/data-act="assoc-move-batch">移动<\/button>/);
  assert.deepEqual(Object.keys(menu.handlers).sort(),
   ["assoc-batch","assoc-move-batch","delete","download"]);
  menu.handlers["assoc-batch"]();
@@ -136,7 +136,7 @@ const act=cmd=>vm.runInContext(cmd,sandbox);
  menu=menus.at(-1);
  assert.deepEqual([...drive.state.selection],["p:1","p:2"]);
  assert.doesNotMatch(menu.markup,/data-act="(?:open|props|rename|copy-record|transfer-record|newcontract)"/);
- assert.match(menu.markup,/打包下载选中的 2 项/);
+ assert.match(menu.markup,/data-act="download">打包下载<\/button>/);
  menu.handlers.delete();
  assert.deepEqual(deleted.at(-1),["p:1","p:2"]);
  // Two checked ordinary folders support full-selection share and move;
@@ -144,8 +144,8 @@ const act=cmd=>vm.runInContext(cmd,sandbox);
  drive.state.selection=new Set(["af:31","af:32"]);
  act("showItemMenu('af:31',10,20)");
  menu=menus.at(-1);
- assert.match(menu.markup,/共享选中的 2 个文件夹/);
- assert.match(menu.markup,/移动选中的 2 个文件夹/);
+ assert.match(menu.markup,/data-act="share-folder-batch">共享<\/button>/);
+ assert.match(menu.markup,/data-act="move-folder-batch">移动<\/button>/);
  assert.doesNotMatch(menu.markup,/data-act="(?:rename|share-folder|move-folder|copy-record|transfer-record)"/);
  assert.deepEqual(Object.keys(menu.handlers).sort(),
   ["delete","download","move-folder-batch","share-folder-batch"]);
@@ -168,12 +168,12 @@ const act=cmd=>vm.runInContext(cmd,sandbox);
  menu=menus.at(-1);
  assert.deepEqual(Object.keys(menu.handlers).sort(),["delete","download"],
   "Mixed folder and attachment selection cannot share or move in one action");
- assert.doesNotMatch(menu.markup,/共享选中的|移动选中的/);
+ assert.doesNotMatch(menu.markup,/data-act="(?:assoc-batch|assoc-move-batch|share-folder-batch|move-folder-batch)"/);
   drive.state.selection=new Set(["p:2","f:12:1"]);
  act("showItemMenu('f:12:1',10,20)");
  menu=menus.at(-1);
  assert.deepEqual(Object.keys(menu.handlers).sort(),["delete","download"]);
- assert.doesNotMatch(menu.markup,/共享选中的|移动选中的/);
+ assert.doesNotMatch(menu.markup,/data-act="(?:assoc-batch|assoc-move-batch|share-folder-batch|move-folder-batch)"/);
  menu.handlers.delete();
  assert.deepEqual(deleted.at(-1),["p:2","f:12:1"]);
 
@@ -182,14 +182,14 @@ const act=cmd=>vm.runInContext(cmd,sandbox);
  drive.state.selection=new Set(["p:1","f:12:1"]);
  act("showItemMenu('f:12:1',10,20)");
  menu=menus.at(-1);
- assert.match(menu.markup,/删除选中的 1 项/);
+ assert.match(menu.markup,/data-act="delete">删除<\/button>/);
  menu.handlers.delete();
  assert.deepEqual(deleted.at(-1),["p:1"]);
  drive.state.selection=new Set(["f:99:1","f:99:2"]);
  act("showItemMenu('f:99:2',10,20)");
  menu=menus.at(-1);
- assert.match(menu.markup,/打包下载选中的 2 项/);
- assert.match(menu.markup,/删除选中的 1 项/);
+ assert.match(menu.markup,/data-act="download">打包下载<\/button>/);
+ assert.match(menu.markup,/data-act="delete">删除<\/button>/);
  menu.handlers.delete();
  assert.deepEqual(deleted.at(-1),["f:99:1"]);
 
@@ -210,8 +210,8 @@ const act=cmd=>vm.runInContext(cmd,sandbox);
  drive.state.selection=new Set(["t:8","t:9"]);
  drive.state.view="recycle";
  act("showItemMenu('t:8',10,20)");
- assert.match(menus.at(-1).markup,/还原选中的 2 项/);
- assert.match(menus.at(-1).markup,/彻底删除选中的 2 项/);
+ assert.match(menus.at(-1).markup,/data-act="restore">还原<\/button>/);
+ assert.match(menus.at(-1).markup,/data-act="purge">彻底删除<\/button>/);
  assert.deepEqual(Object.keys(menus.at(-1).handlers).sort(),["purge","restore"]);
  menus.at(-1).handlers.purge();
  assert.deepEqual(recycled.at(-1),{ids:["t:8","t:9"],op:"purge"});
@@ -252,6 +252,68 @@ const act=cmd=>vm.runInContext(cmd,sandbox);
  assert.equal(ui.get("#btnNew").disabled,false);
  runChrome.call({currentFolder:nodes[0]},drive.state,true);
  assert.equal(ui.get("#btnUpload").disabled,true);
+
+
+ // The real command bar and detail pane must label actions by verb, not
+ // repeat the selected count. Count remains in the selection summary.
+ const actionSlice=part(app,"    const n = s.selection.size;","    const allIds = this.sortedItems.map");
+ const barElements=new Map(["selbar","selCount","selShare","selMove","selDownload","selDelete"]
+  .map(id=>["#"+id,{innerHTML:"",textContent:"",
+   classList:{hidden:false,toggle(name,on){if(name==="hidden")this.hidden=on;}}}]));
+ const renderActions=vm.runInNewContext("(function(s,locked){const $=id=>ui.get(id);"+
+  actionSlice+"})",{ui:barElements,icon:()=>"<svg/>"});
+ const renderBar=(items,locked=false)=>{
+  renderActions.call({selectedItems:items},
+   {selection:new Set(items.map(i=>i.id))},locked);
+  return {
+   count:barElements.get("#selCount").textContent,
+   download:barElements.get("#selDownload").innerHTML,
+   share:barElements.get("#selShare").textContent,
+   move:barElements.get("#selMove").textContent,
+   delete:barElements.get("#selDelete").innerHTML,
+   shareHidden:barElements.get("#selShare").classList.hidden,
+  };
+ };
+ let labels=renderBar([found.get("f:12:1"),found.get("f:13:1")]);
+ assert.equal(labels.count,"已选择 2 项");
+ assert.match(labels.download,/<span>打包下载<\\/span>/);
+ assert.equal(labels.share,"共享");assert.equal(labels.move,"移动");
+ assert.match(labels.delete,/<span>删除<\\/span>/);
+ assert.equal(labels.shareHidden,false);
+ labels=renderBar([found.get("af:31"),found.get("af:32")]);
+ assert.equal(labels.share,"共享");assert.equal(labels.move,"移动");
+ assert.equal(labels.shareHidden,false);
+ labels=renderBar([found.get("f:12:1")]);
+ assert.match(labels.download,/<span>下载<\\/span>/);
+ assert.equal(labels.shareHidden,true);
+ labels=renderBar([found.get("t:8"),found.get("t:9")],true);
+ assert.match(labels.delete,/<span>彻底删除<\\/span>/);
+ const detailStart=app.indexOf("  renderDetail() {");
+ const detailEnd=app.indexOf("\\n  },\\n};",detailStart);
+ assert.ok(detailStart>=0&&detailEnd>detailStart,"Detail method exists");
+ const detailPanel={classList:{toggle(){}}},detailBody={innerHTML:""};
+ const detailMethod=vm.runInNewContext("({"+
+  app.slice(detailStart,detailEnd)+"\\n  }})",{
+   $:id=>id==="#detail"?detailPanel:detailBody,
+   icon:()=>"<svg/>",fmtSize:()=>"-",esc:x=>x,
+  }).renderDetail;
+ const renderSelectedDetail=(items,view="files")=>{
+  detailMethod.call({state:{detailOpen:true,view},selectedItems:items});
+  return detailBody.innerHTML;
+ };
+ let detailHtml=renderSelectedDetail([found.get("f:12:1"),found.get("f:13:1")]);
+ assert.match(detailHtml,/已选择 2 项/);
+ for(const [action,label] of [["download","打包下载"],["assoc-batch","共享"],
+   ["assoc-move-batch","移动"],["delete","删除"]])
+  assert.match(detailHtml,new RegExp('data-detail-act="'+action+'">[^<]*<svg\\/>'
+   +label+'<\\/button>'));
+ detailHtml=renderSelectedDetail([found.get("af:31"),found.get("af:32")]);
+ for(const [action,label] of [["share-folder-batch","共享"],["move-folder-batch","移动"]])
+  assert.match(detailHtml,new RegExp('data-detail-act="'+action+'">[^<]*<svg\\/>'
+   +label+'<\\/button>'));
+ detailHtml=renderSelectedDetail([found.get("t:8"),found.get("t:9")],"recycle");
+ assert.match(detailHtml,/data-detail-act="delete"><svg\\/>彻底删除<\\/button>/);
+ assert.doesNotMatch(detailHtml,/data-detail-act="download"/);
 
  // Reload never changes home into a files view and prunes deleted selections.
  const refreshRange=part(inter,"async function refreshCurrent() {","/* ---------------- 文件下载");

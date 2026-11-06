@@ -227,10 +227,10 @@ const fn=name=>vm.runInContext(name,context);
   "function showBlankMenu(x, y) {"),context);
  fn("showItemMenu")(parent.id,45,50);
  const multiMenu=menus.at(-1);
- assert.match(multiMenu.html,/删除选中的 2 项/);
+ assert.match(multiMenu.html,/data-act="delete">删除<\/button>/);
  assert.doesNotMatch(multiMenu.html,/data-act="(?:open|props|newver|assoc|assoc-move|rename|move-archive|copy-record|transfer-record|sort-up|sort-down)"/,
   "Multi-selection must not expose single-folder actions");
- assert.match(multiMenu.html,/打包下载选中的 2 项/);
+ assert.match(multiMenu.html,/data-act="download">打包下载<\/button>/);
  multiMenu.handlers.delete();
  assert.deepEqual(deleteBatches.at(-1),[parent.id,other.id],
   "Right-click selected folder deletes every checked folder");

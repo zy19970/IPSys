@@ -2030,9 +2030,9 @@ function showItemMenu(id, x, y) {
   if (trash) {
     /* 回收站批量还原和永久删除共用同一规范化目标集。 */
     showCtx(x, y, [
-      MI("restore", "restore", multiple ? "还原选中的 " + deletions.length + " 项" : "还原"),
+      MI("restore", "restore", "还原"),
       MI("purge", "trashForever",
-        multiple ? "彻底删除选中的 " + deletions.length + " 项" : "彻底删除", "", true),
+        "彻底删除", "", true),
     ].join(""), {
       restore: inWorkspace(() => recycleAction(deletions, "restore")),
       purge: inWorkspace(() => recycleAction(deletions, "purge")),
@@ -2046,13 +2046,13 @@ function showItemMenu(id, x, y) {
     const allOrdinaryFolders = selected.every(n => n.type === "folder" &&
       !n.synthetic && n.biz?.kind === "archive_folder");
     showCtx(x, y, [
-      MI("download", "download", "打包下载选中的 " + downloads.length + " 项"),
-      allFiles ? MI("assoc-batch", "copy", "共享选中的 " + selected.length + " 个附件") : "",
-      allFiles ? MI("assoc-move-batch", "move", "移动选中的 " + selected.length + " 个附件") : "",
-      allOrdinaryFolders ? MI("share-folder-batch", "copy", "共享选中的 " + selected.length + " 个文件夹") : "",
-      allOrdinaryFolders ? MI("move-folder-batch", "move", "移动选中的 " + selected.length + " 个文件夹") : "",
+      MI("download", "download", "打包下载"),
+      allFiles ? MI("assoc-batch", "copy", "共享") : "",
+      allFiles ? MI("assoc-move-batch", "move", "移动") : "",
+      allOrdinaryFolders ? MI("share-folder-batch", "copy", "共享") : "",
+      allOrdinaryFolders ? MI("move-folder-batch", "move", "移动") : "",
       '<div class="ctx-sep"></div>',
-      MI("delete", "trash", "删除选中的 " + deletions.length + " 项", "", true),
+      MI("delete", "trash", "删除", "", true),
     ].filter(Boolean).join(""), {
       download: inWorkspace(() => downloadNodes(downloads)),
       ...(allFiles ? {
