@@ -1,6 +1,6 @@
 # IPSys — 资料管理系统
 
-> 现行状态见 [docs/CURRENT_BASELINE.md](docs/CURRENT_BASELINE.md)：版本、schema、Excel 列数、空间策略与验收口径全部以该文件为准（MCP 工具数不写死，以 `tools/list` 为准）。本文只写不随版本变化的规则；文内若出现具体数字、提交号或 CI 编号，均为当时记录，不构成现行约定。
+> IPSys 的产品定位、安装、使用及构建发布入口。版本、源码实现范围、数据模型和验收状态统一查阅 [现行基线](docs/CURRENT_BASELINE.md)；MCP 的实时接口以已连接程序的 `tools/list` 为准。
 
 ## 普通用户先看：这个软件究竟怎么运行？
 
@@ -61,11 +61,8 @@ D:\资料管理系统\
 
 本软件目前是**本机离线资料库**：采用 OneDrive 风格的操作界面，不代表已接入 OneDrive 云端，也不具备自动云同步。EXE 分为自包含版和依赖环境版：自包含版不需要另装 .NET 8；依赖环境版需要安装对应的 .NET 8 Windows Desktop Runtime 和 ASP.NET Core Runtime（x64）。普通用户优先使用与需求匹配、经过验证的自包含版，具体以[发布说明](#手动发布-github-release)为准。
 
----
 
-> **历史执行基线（2026-11-02，已由本页 2026-11-06 口径覆盖）**：已核验产品/测试提交 `4567ae96b7` 的 Windows [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 为 completed/success（26 步成功、0 失败，两项可选 ZIP64 步骤跳过）。目前正式 Release 仍为 `v0.9.1-rc1`；自动 CI 不等于全部本地 GUI/第三方 Agent 验收。 系统已转向操作细节精修：普通资料文件夹既可递归嵌套也可直接存附件，只有一种“新建”操作时直接打开文件夹表单。Agent 分层提示词、Prompts、缺项查询与设置管理已纳入产品/自动回归；真实 Codex 的智能入库仍需另验。
-
-## 产品及技术现状
+## 产品架构与资料组织
 
 IPSys 是离线、单用户的 Windows 资料管理系统。一个 SQLCipher schema 4 加密库内区分**个人资料与公司资料**工作区。使用 WinForms 窗口控制进程生命周期，ASP.NET Core 服务只监听 `127.0.0.1`，用户在 Edge/Chrome 访问 Explorer 界面。网页“关闭数据库”锁库并返回登录页；WinForms 标题栏“×”会隐藏窗口到 Windows 系统托盘（通知区域），不占用任务栏窗口按钮；双击托盘图标恢复窗口，右键可打开主窗口或选择“退出程序”进行安全关闭。点击桌面窗口的“退出程序”同样终止宿主。资料库登录页默认使用 EXE 所在目录的数据库路径，并可通过文件夹按钮调用 Windows 原生文件选择器（已存在数据库使用“打开”，新建数据库使用“保存”）；选择成功后启动器自动隐藏到系统托盘，网页登录页保持可见。
 
@@ -73,7 +70,7 @@ IPSys 是离线、单用户的 Windows 资料管理系统。一个 SQLCipher sch
 
 项目、知识产权与普通资料文件夹以 **Folder** 表示（Folder 无版本），真实附件以 **File / FileVersion** 表示，`folder_file_links` 保存归属，同工作区可按明确操作共享 FileId 或复用 FileObject 内容；跨公司/个人工作区**不得共享物理 FileObject**，须独立复制。项目可以单独存在；合同资料只是项目下的普通文件夹，不再是独立业务对象。原件和文件版本存储于加密 SQLCipher 库；不维护磁盘明文镜像。
 
-**当前业务细节**：知识产权分十种类型，以三个可选编号字段（统一编号、公开号、授权公告号）表示；固定 XLSX 模板为 19 列。适用业务模块的 Excel 导出可选择**当前筛选结果**或**本模块全部记录**，筛选在服务端覆盖完整匹配记录，不受搜索页每组 60 条展示上限限制；**合同不提供独立的 Excel 导入或导出**，仅在所属项目中管理。公司业务档案七个预置目录创建后就是普通目录；公司还具有独立党团建设分类。MCP 对外工具不带 `v2_*` 历史别名，清单以连接时的 `tools/list` 为准。普通资料文件夹既能直接放附件，又能继续创建子文件夹，名称必填而其他属性选填。PDF 预览支持多页连续滚动和按需渲染，启动器显示本程序/整机 CPU 占用。
+知识产权、项目及普通资料共用资料管理与附件版本体系；普通文件夹可直接存放附件并继续嵌套。公司业务档案的初始目录建立后按普通文件夹管理，合同材料也是项目内普通子目录。业务字段、固定 Excel 模板和数据身份约束见 [字段字典](./M0_DATA_DICTIONARY.md)；目录、选择、搜索及交互见 [UI 基线](./UI_BASELINE.md) 和 [用户指南](./USER_GUIDE.md)；Agent 工具的英文标识与参数见 [MCP 手册](./MCP_CODEX.md)。
 
 > **软件版本提醒**：已解锁资料库时可通过「设置 → 软件更新」手动检查，启动后也会静默检查 GitHub 官方 Windows Release。检测到新版仅提醒并打开官方页面供用户自行下载；不自动安装，离线功能不受影响。开发版与正式发布版按 EXE 编译版本识别。
 
@@ -86,7 +83,7 @@ dotnet build src/IPSys.Web/IPSys.Web.csproj -c Debug
 dotnet publish src/IPSys.Web/IPSys.Web.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
 ```
 
-上述本机默认 Release 命令构建的是单 EXE **依赖环境版**，目标机器需要 .NET 8 Windows Desktop Runtime 与 ASP.NET Core Runtime（x64）。GitHub 手动 Release 则同时构建自包含版和依赖环境版，见下文发布说明。前端打包需要 Node 22；`dist/` 是构建产物，不以手工编辑构建结果代替修改源码。CI 在 Windows 执行 Debug/Release、单 EXE、Explorer Node、Edge/HTTP、SQLCipher/HTTP 和 MCP 检查。
+上述本机默认 Release 命令构建的是单 EXE **依赖环境版**，目标机器需要 .NET 8 Windows Desktop Runtime 与 ASP.NET Core Runtime（x64）。GitHub 手动 Release 则同时构建自包含版和依赖环境版，见下文发布说明。前端打包需要 Node 22；`dist/` 是构建产物，不以手工编辑构建结果代替修改源码。Windows CI 工作流定义了 Debug/Release、单 EXE、Explorer Node、Edge/HTTP、SQLCipher/HTTP 和 MCP 等检查；某次运行是否实际执行并通过，须以该次 Actions 日志和结果为准。
 
 Windows EXE 应用图标为 [`src/IPSys.Web/assets/IPSys.ico`](./src/IPSys.Web/assets/IPSys.ico)，在 Visual Studio Debug、依赖环境版以及自包含版中均由同一个图标资源生成。WinForms 标题栏与任务栏也使用此图标。
 
@@ -96,21 +93,12 @@ IPSys 的正式发布由 [Publish IPSys Release](https://github.com/zy19970/IPSy
 
 手动发布工作流**不再重复运行** `.github/workflows/web-windows.yml` 的 smoke/Edge/HTTP/SQLCipher 验收。发布者应先在独立的日常 Windows CI 和本机确认选定版本无误，然后手动触发发布。发布工作流只针对选中的 `main` 提交构建两份 Windows x64 单 EXE，检查两份产物的文件数量、体积关系、Windows EXE 文件版本资源及 SHA-256，并使用相同的提交 SHA 创建 GitHub Release；构建或产物校验失败、标签重复、发布前 `main` 更新都会阻止发布。**发布成功只代表构建与上传成功，不代表这次发布重新测试了软件功能。** 构建产物继续严格要求每个目录仅有一份 EXE；若直接 Release 构建产生没有任何资源文件的空 `wwwroot` 目录，会在校验时安全清理；如其中存在文件或符号链接，则立即失败并提示排查打包配置。普通 Windows CI 增加从干净工作区直接 Release 的纯构建回归，以避免日常 CI 先 Debug、手动发布直接 Release 的路径不一致。 Windows「属性 → 详细信息」中，文件说明和产品名称统一为「IPSys 资料管理系统」，公司/权利标识为 `Joey@BGRIMM`，版权日期使用该次编译的北京时间完整日期 `YYYY-MM-DD`；例如输入 `v0.9.2-rc.1`，文件版本自动为 `0.9.2.0`，产品版本为 `0.9.2-rc.1`（不再附加 Git SHA）。两份 EXE 均在发布构建阶段读取 Windows VERSIONINFO 验证一致性，不执行 smoke。内部程序集 `IPSys.Web` 及 PE 原始文件名保持原样。每个 Release 同时包含 `IPSys-win-x64-SelfContained.exe`（自包含 .NET 8 运行时，电脑无需额外安装 .NET 8，体积较大）与 `IPSys-win-x64-FrameworkDependent.exe`（不打包 .NET 运行时，体积较小，需安装 .NET 8 Windows Desktop Runtime 和 ASP.NET Core Runtime），另有 `SHA256SUMS.txt` 对两份文件提供 SHA-256 校验。自包含版需 Windows x64，但无需单独安装 .NET 8；该版随 EXE 固定携带发布时的运行时，日后更新 .NET 安全补丁需重新发布 EXE。依赖环境版则使用电脑上安装的 .NET 8 运行时。完整验收方法见 [TESTING.md](./TESTING.md)。
 
-## 当前验收状态
+## 版本、构建及验收记录
 
-最新产品代码独立验证：[Windows CI #558](https://github.com/zy19970/IPSys/actions/runs/42048982231) 完成成功；手动 [Publish #6](https://github.com/zy19970/IPSys/actions/runs/42053785425) 完成成功，但发布流程不运行 smoke。下表中的较早 CI 是对应功能的历史验收证据，不等于当前版本的全部用户本机人工验收。
+获取可下载程序请查看 [GitHub Releases](https://github.com/zy19970/IPSys/releases)；自动构建与发布执行情况请查看 [GitHub Actions](https://github.com/zy19970/IPSys/actions)。**发布成功仅说明对应发布任务按其检查项完成，不能代替本机 GUI、MCP 或真实资料库的操作验收**。
 
-| 验证范围 | 当前结论与证据 |
-| --- | --- |
-| S0—S4 与 S5-1 统一业务阶段 | [CI #521](https://github.com/zy19970/IPSys/actions/runs/41793618031)、[#526](https://github.com/zy19970/IPSys/actions/runs/41802424444)、[#529](https://github.com/zy19970/IPSys/actions/runs/41816669123)、[#532](https://github.com/zy19970/IPSys/actions/runs/41822426599)、[#533](https://github.com/zy19970/IPSys/actions/runs/41831428604) 分别通过对应提交自动验收；跨入口闭环已由后续 S5-E2E 回归核验 |
-| Explorer F2-01～F2-06 核心业务、三批缺陷修复 | 功能与对应自动回归已完成，历史合并 CI [#39947975625](https://github.com/zy19970/IPSys/actions/runs/39947975625) 成功 |
-| Excel、知识产权、启动器与 MCP | 现行固定 Excel：项目 11 列、知识产权 19 列，所有普通资料模块（档案、资质、党团、综合资料）统一六列；本机 MCP 工具数量以 `tools/list` 为准，普通文件夹操作统一使用 archive_folder 与 section |
-| 统一文件夹、新建直达与操作细节 | [统一文件夹 CI](https://github.com/zy19970/IPSys/actions/runs/41406914227) 和 [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 成功，本机 GUI 仍需实测 |
-| 运行期 401 重新登录、拖放与待确认上传、跨工作区关联/物理隔离 | 已修复；专项 Node/HTTP 回归见 [tests/README](./tests/README.md) |
-| 超过 2 GiB SQLCipher/HTTP 原件及大库 VACUUM | 专项 [#39943364663](https://github.com/zy19970/IPSys/actions/runs/39943364663) 通过（未跳过压缩或完整性检查） |
-| 超过 4 GiB ZIP64 真实物理生成 | 专项 [#39944440866](https://github.com/zy19970/IPSys/actions/runs/39944440866) 通过 `PASS_GENERATION_ONLY`，并不代表 CI 做了第三方解包 |
-| 真实 Windows 原生保存/大文件交互 | 用户已反馈在本人电脑上完成手工验收；无公开上传的逐字节手工操作日志 |
-| 软件发布 | [v0.9.3-rc.1](https://github.com/zy19970/IPSys/releases/tag/v0.9.3-rc.1) 已于 2026-11-05 手动发布（[Publish #6 成功](https://github.com/zy19970/IPSys/actions/runs/42053785425)，目标 `1c2642b6e8`）；含双单 EXE 与 SHA256SUMS。仍为预发布，尚未发布 GA；发布不重跑 smoke |
+当前代码与最近运行状态集中维护在 [CURRENT_BASELINE.md](./docs/CURRENT_BASELINE.md)，测试入口及独立的源码、CI、本机 Agent、人工验收证据见 [TESTING.md](./TESTING.md) 和 [tests/README.md](./tests/README.md)。旧版本或阶段验证结论通过对应 Git 历史、Actions 运行编号与 Release 页面追溯，README 不复制可能过期的结果表。
+
 
 ## 文档入口（统一口径）
 
@@ -126,5 +114,6 @@ IPSys 的正式发布由 [Publish IPSys Release](https://github.com/zy19970/IPSy
 | [USER_GUIDE.md](./USER_GUIDE.md) | Excel、搜索、附件/ZIP 与用户操作 |
 | [TESTING.md](./TESTING.md) 与 [tests/README](./tests/README.md) | 测试分层与怎么跑；历史证据已移出仓库 |
 | [正式前端源码说明](./src/IPSys.Web/wwwroot/README.md) | Explorer 前端源码、打包和代码契约 |
+| [Wiki 使用说明](./docs/wiki/Home.md) 与 [Wiki 维护说明](./docs/WIKI_PUBLISHING.md) | 正式用户帮助页面及其独立发布流程 |
 
-历史计划、旧任务书与各轮验证报告已于 2026-11-07 移出仓库，Git 历史完整保留（`git log -- <路径>` 可查）。开发前遵循 [AIGT-templates](https://github.com/zy19970/AIGT-templates) 的 `AGENTS.md` 和 `AI_RULES/GIT_OPERATIONS.md`。
+历史任务书和验证资料可用 `git log -- <路径>`、`git show <sha>:<路径>` 从 Git 历史查阅。开发与仓库操作前遵循 [AIGT-templates](https://github.com/zy19970/AIGT-templates) 的 `AGENTS.md`、`AI_RULES/GIT_OPERATIONS.md` 与 `AI_RULES/MEMORY_PROTOCOL.md`。

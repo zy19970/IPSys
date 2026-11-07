@@ -1,8 +1,8 @@
 # IPSys 本机 Codex MCP
 
-> 现行状态见 [docs/CURRENT_BASELINE.md](docs/CURRENT_BASELINE.md)：版本、schema、Excel 列数、空间策略与验收口径全部以该文件为准（MCP 工具数不写死，以 `tools/list` 为准）。本文只写不随版本变化的规则；文内若出现具体数字、提交号或 CI 编号，均为当时记录，不构成现行约定。
+> 本手册负责 MCP 接入、对象身份、参数语义、Agent 规范与安全操作。项目版本、当前验收与发布状态只在 [CURRENT_BASELINE](docs/CURRENT_BASELINE.md) 维护；工具的实际名称、数量及参数以运行中的 `tools/list` 为准。
 
-## MCP 模块语义映射（2026-11-06）
+## 工作区、模块与资源身份
 
 MCP 的 `workspace` 和 `section` 是**组合业务标识**；`certificate` 不能脱离工作区直接翻译为“证书/资质”。下表同时对应现行 Explorer `WS_CATS`、数据库的 `archive_folder.section` 和 MCP 英文参数：
 
@@ -23,9 +23,9 @@ MCP 的 `workspace` 和 `section` 是**组合业务标识**；`certificate` 不�
 
 **MCP 对象与操作约定：** `FolderId` 是项目/知识产权/目录对象；`FileId` 是含版本的逻辑文件；`LinkId` 是它在某位置的一条关联。`kind` 表示资源或回收站种类，与 `section` 不同；搜索结果 `file` 不等于回收站 `v2_file/v2_ip_file`，恢复/永久删除前先用 `list_trash` 获取原始参数。写操作应提供 `request_id` 并在重试时复用原编号；状态 `done` 仍需核对实际业务成功字段。目录排序的 `list_folder_entries/reorder_entries` 操作的是**持久 position**，并非 Explorer 的临时“名称升序”；不要为改变界面显示调用重排接口。
 
-工具对外数量、名称、参数字段和 `section` 英文 ID 保持不变；新的解释同步放入 `tools/list` 参数描述、内嵌 Agent 指南及本手册。示例：个人“人力资源”须使用 `list_folders(workspace="personal",section="certificate")`；公司“企业资质”使用 `list_folders(workspace="company",section="certificate")`。本次变更不涉及数据库 schema 与旧库迁移。
+业务身份的解释须与程序的 `tools/list` 参数描述、内嵌 Agent 指南一致。示例：个人“人力资源”使用 `list_folders(workspace="personal",section="certificate")`；公司“企业资质”使用 `list_folders(workspace="company",section="certificate")`。不得将中文栏目名直接代入 `section`。
 
-## MCP 文件重命名契约（2026-11-05）
+## 文件重命名与共享名称
 
 **现有 MCP 已支持修改附件名称，不需要增加新工具。** 使用 `update_file_metadata`，传入 `workspace`（`company` 或 `personal`）、实际 **FileId** 的 `file_id` 和新文件名称 `name`。例如：
 
@@ -37,17 +37,17 @@ update_file_metadata(workspace="company",file_id=实际FileId,name="新的附件
 
 Explorer 的单附件右键“重命名”和 F2 与此 `update_file_metadata` 操作使用同一文件本体命名语义。批量选择不提供单独的统一改名操作。
 
-## 当前有效的项目／普通目录 MCP 契约（2026-11-04，S4）
+## 项目与普通目录的操作契约
 
-当前 `tools/list` 的注册数量以连接时的返回为准，本文不写死。已完全退出独立的 `contract` 业务类型。原 `list_contracts`、`create_contract`、`update_contract`、`delete_contract`、`copy_contract`、`list_contract_files`、`delete_contract_file` 均不可调用；旧 `tools/call` 直接调用也会返回未知工具。项目下的合同资料只是一层或多层普通文件夹，不再单独维护合同对象或专有属性。
+当前没有独立的 `contract` 业务类型。原 `list_contracts`、`create_contract`、`update_contract`、`delete_contract`、`copy_contract`、`list_contract_files`、`delete_contract_file` 均不可调用；旧 `tools/call` 直接调用也会返回未知工具。项目下的合同资料只是一层或多层普通文件夹，不再单独维护合同对象或专有属性。
 
 业务记录类型为 `project`、`ip`，普通目录类型为 `archive_folder`。业务模块由 `section` 标识；公司支持 `certificate/achievement/party/general/project`，个人支持 `certificate/achievement/academic/general/project`。创建项目子目录须设置 `section="project"` 且提供 `parent_id`，该 ID 必须指向工作区内真实存在的项目或项目子目录。例如先调用 `create_project(workspace="company",name="项目A",project_type="科研项目")` 获得项目 FolderId=123（示例），再调用 `create_folder(workspace="company",section="project",parent_id=123,name="合同资料")`，实际调用以返回 ID 为准。目录可继续嵌套，不能将虚拟模块根视为项目父级。
 
 普通目录使用 `list_folders/create_folder/update_folder/delete_folder/move_folder/transfer_folder` 及 `list_files_page/upload_files/list_file_links/associate_file` 等共享能力。上传项目目录附件时使用 `upload_files(workspace="company",kind="archive_folder",section="project",owner_id=实际目录FolderId,paths=[...])`。项目直属附件仍使用 `kind="project"`。统一搜索仅接受 `project/ip/archive_folder/file`；回收站记录类型使用 `list_trash` 实际返回的 `project/ip/v2_archive_folder/v2_file/v2_ip_file`。文件共享保持 FileId，不同位置拥有 LinkId；追加版本属于 FileId；跨工作区的项目整树复制含全部版本且物理 FileObject 隔离。
 
-新建加密资料库的资源结构版本固定为 **4**，旧 v2、缺失版本表或结构不完整的库在打开阶段拒绝，不作自动迁移和写入修补。HTTP 保留 `/api/v2` 路由命名：HTTP 路由版本与数据库 schema 版本不是同一个概念。请用新的空白资料库测试，旧测试库需自行保留或独立备份；不要以重新输入旧密码方式触发重建。更换 EXE 后重新连接 MCP 客户端，刷新 `tools/list`。
+新建加密资料库使用 SQLCipher schema 4；旧 schema 2/3 和结构不完整的库不能由现行版本自动迁移或修补。HTTP `/api/v2` 是路由命名，不代表数据库 schema 版本。数据库试验须使用独立可丢弃的新库；更换 EXE 后重新连接 MCP 客户端并刷新 `tools/list`。
 
-## S4 普通目录同层排序：现行 MCP 契约（Windows CI #532 已通过）
+## 普通目录同层排序
 
 **普通目录列表与排序统一为两个工具**：
 
@@ -62,11 +62,11 @@ Explorer 的单附件右键“重命名”和 F2 与此 `update_file_metadata` �
 {"workspace":"company","section":"project","parent_id":101,"items":[{"kind":"folder","id":303},{"kind":"folder","id":301},{"kind":"folder","id":302}],"request_id":"s4-project-siblings-001"}
 ```
 
-**退出接口**：原 `reorder_folders` 已从注册与调度删除；旧模块级 HTTP `/api/v2/ui/folders/{workspace}/{section}/order` 不再注册。不能继续发送旧 URL 或使用旧参数 `ids` 代替 items。 `reorder_records(workspace,kind=project,ids)` 仍是**项目台账**“所选项目占用原有槽位”排序，不是普通目录全量同层排序；知识产权台账排序不在本阶段调整范围。
+**接口区分**：旧 `reorder_folders` 和 `/api/v2/ui/folders/{workspace}/{section}/order` 已退出，不能再发送旧参数 `ids` 代替 `items`。`reorder_records(workspace,kind=project,ids)` 是项目台账排序，不是普通目录同层全量排序；名称升序是 Explorer 显示排序，不应通过 `reorder_entries` 改写持久 position。
 
-MCP stdio `tools/list` 的数量与名称以当前程序返回为准，本文不记录具体数字。`reorder_folders`、`kind=record` 等旧接口示例不代表现行契约。
+`reorder_folders` 和 `kind=record` 均为旧接口示例，不得用于当前请求。
 
-## S3 目录复制、共享与原位移动：现行工具参数（Windows CI #529 已通过）
+## 目录移动、独立复制与共享
 
 `move_folder(workspace,section,folder_id,parent_id?,target_section?,request_id?)` 仅在**同一工作区**移动普通目录，`target_section` 未传等于来源 `section`；非 project 模块可省略 `parent_id`，也可使用 `null/0` 表示目标模块根。目标为 project 时 `parent_id` **必须**是同工作区真实项目或普通子目录的正整数 FolderId，不能用虚拟根。移动后返回 `id` 就是原 FolderId，关联 LinkId、FileId 和历史版本不变；如果跨模块成功，之后查询必须使用**新的来源 section**。
 
@@ -94,13 +94,7 @@ MCP stdio `tools/list` 的数量与名称以当前程序返回为准，本文不
 
 以上 101/201 都是示意数字，不得未经查询对用户库执行。每个不同写操作使用不同 `request_id`；**同一操作断线重试必须重用原编号及完全相同参数**。若状态为 `pending/uncertain`，先查询 `get_operation_result` 并核对资料，不能自动换号重做。用户现有数据库不需要也不允许因为新接口被自动迁移。
 
-S3 证据：[最终产品提交 `e040afb`](https://github.com/zy19970/IPSys/commit/e040afbf1cc557fac858a4f96ae8f7849332b351)、[Windows CI #529](https://github.com/zy19970/IPSys/actions/runs/41816669123)（`completed/success`，26 success/0 failed/2 可选 ZIP64 skipped）。以下原有章节按日期保留历史接口背景，若与本节不一致以实际 `tools/list`、本节和当前程序代码为准；S4 统一排序及 S5 全手册清理仍待执行。
-
-**阅读优先级：**本节、程序返回的 `tools/list` 和实际源码代表当前接口；后文按日期保留的工具数量和合同业务教程仅作为开发历史，不可作为当前操作指令。
-
----
-
-## 第三阶段：设置中的 Agent 规范管理（自动 CI 已通过，第三方实机另验）
+## Agent 工作规范管理
 
 在 IPSys 的「设置 → Agent 工作规范」中可按 index、search、upload、metadata 浏览。index 是不可编辑的轻量目录；其余三篇允许编辑内容、预览当前有效文本、单篇恢复内置默认、导出或导入用户覆盖配置。默认规范与 upload/metadata 共用的文件读取和权限安全规则仍随 EXE 内嵌且不能被覆盖。
 
@@ -110,9 +104,7 @@ S3 证据：[最终产品提交 `e040afb`](https://github.com/zy19970/IPSys/comm
 
 默认完整导出格式为 schemaVersion=1、exportMode="effective"、index（只读目录）及 topics 映射：每篇包含 source、content（可恢复的可编辑正文）、effectiveContent（实际运行正文，含不可修改的安全附录）和 version。即使 Windows 用户从未保存覆盖，也有三篇正文。导入全量格式时，只恢复 topics 中允许编辑的 content，不把 effectiveContent 的内置共用规则重复写入；相同 EXE 内置内容保留 source=builtin，换版本后内置正文不同则使用用户覆盖保留备份的内容快照。旧格式仍为 schemaVersion=1 和 overrides（仅用户自定义正文），由 ?mode=overrides 导出，导入时整体替换用户覆盖。index 与内置共享安全附录无法导入覆盖。正在运行的 MCP tools/call、prompts/get 每次读取当前有效内容并返回内容派生版本；initialize.instructions 保持短内置总入口，已有 Agent 若持有旧正文，需要重新调用或重连。
 
-本阶段已提交自动化测试：独立用户配置持久化/版本冲突/坏文件拒绝、授权 HTTP 管理 API、MCP 与 Prompts 同源读取、并发一致性、浏览器交互，以及扩展 SQLCipher 缺项筛选压力样本。**相关自动回归已在 [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 通过；第三方真实 Codex 与 Windows 用户工作流须另行实测。**
-
-## Agent 分层规范读取（第二阶段源码和 Windows CI 已通过，第三方实机另验）
+## Agent Prompts 与缺项筛选
 
 **标准 MCP Prompts：** 在协议 `2025-06-18` 的 initialize.capabilities 声明 `prompts: { listChanged: false }`；`prompts/list` 列出内置 `index/search/upload/metadata` 四个名称和简短摘要，不含全文。客户端 `prompts/get(name="search")` 等按需获得一条 role=user / type=text 的规范消息；正文与 `get_agent_guidance` 共用内置资源。目录 metadata 可在未授权时列出，但 prompts/get 的正文必须通过同用户命名管道、已解锁数据库和手动启用的 MCP 授权。Prompts 是可选择的模板，不能保证每款 Agent 自动加载。
 
@@ -121,13 +113,11 @@ S3 证据：[最终产品提交 `e040afb`](https://github.com/zy19970/IPSys/comm
 **真实 Agent 任务的界限：** 智能扩词、PDF/Word/Excel 内容提取及补录由 Agent 在真实本地路径和用户授权下执行。工具可供 Agent 调用，不代表服务器已自动为每次上传提取属性。无法阅读或缺少可靠证据时必须允许属性继续为空；出现 uncertain 先查询操作结果，不能盲目重传。正式 Windows CI 和实机验证结果必须独立记录。
 
 
+调用 `get_agent_guidance()` 或 `get_agent_guidance(topic="index")` 只返回 search/upload/metadata 专项的标识、标题、摘要和版本；调用对应 topic 才返回正文。读取规范不会触发任何文件上传、下载、修改或删除。
 
-S2 前历史记录曾为 **51 项**（含 **get_agent_guidance**），普通文件夹工具已统一；其余后续历史工具数量仅对应当时版本。调用 `get_agent_guidance()` 或 `get_agent_guidance(topic="index")` 只返回 search/upload/metadata 专项的 ID、标题、摘要、版本；分别调用 `topic="search"`、`topic="upload"`、`topic="metadata"` 才返回单篇正文。未知 topic 明确拒绝。用户仅要求读取规范时不会上传、下载原件、修改属性或删除资料。
+`initialize.instructions` 只包含来自内嵌 `index.md` 的简短入口，规范正文统一由 `src/IPSys.Web/AgentGuidance/` 和 `AgentGuidance.cs` 管理，其中 upload/metadata 共享 `file-reading.md` 安全规则。读取正文需要当前同用户受限命名管道、解锁资料库及 MCP 授权；换 Agent 或更新 EXE 后应刷新客户端工具与 Prompts。**真实智能入库和内容提取必须由本地 Agent 在用户授权下执行，并独立核验。**
 
-MCP initialize.instructions 只输出来自内嵌 index.md 的短入口，资料库必须已解锁且 MCP 当前处于允许状态（默认开启，可手动关闭）；规范读取通过现行受限命名管道及宿主授权门禁，不依赖外网或额外本地服务。内嵌规范文件统一位于 src/IPSys.Web/AgentGuidance/，由 AgentGuidance.cs 注册并读取，upload/metadata 共享 file-reading.md 内容。用户换 Agent 或刷新工具清单时需重启或重新连接客户端。当前第二阶段源码已提供标准 MCP Prompts、通用缺失属性筛选；**真实智能入库和补录仍需本地 Agent 实测**，设置编辑/覆盖界面属于第三阶段。新增规范工具后的 [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 已成功；早期 63 工具 CI 仍只是历史证据，第三方 Agent 自动读取和批量补录继续独立验收。
-
-
-## Agent 轻量搜索（2026-10-25）
+## Agent 检索与分页
 
 IPSys 只提供工作区内结构化关键词检索及原件版本下载，不解析 PDF/Word 正文、不做 OCR 或模型推理。Agent 自主选择同义词进行多轮检索，再使用 `get_file_details`、`list_file_links` 和 `download_file_version` 获取原件并分析。
 
@@ -138,18 +128,14 @@ IPSys 只提供工作区内结构化关键词检索及原件版本下载，不�
 项目、普通目录、知识产权及文件属性中的 `tags` 均支持中英文分号（`；`、`;`）分隔，服务端规范化为英文分号、去前后空格、空项与重复项。标签、说明、编号均参与统一检索；MCP 的 `create_*`、`update_*`、`update_file_metadata` 自动执行同一规则，所有属性选填，文件内容及版本不受元数据编辑影响。
 
 
+## 知识产权编号与类型
 
-> 本手册现行操作规则以 S2 开头章节及实际 tools/list 为准；下文按日期保留的旧工具数量与合同业务 API 均是历史记录，不代表当前可执行命令。
-
-## 知识产权 MCP：十类型、统一三个编号（2026-10-25）
-
-开发测试阶段采用最新 V2 数据结构，**不做旧数据库迁移或旧字段兼容**。更新 EXE 后刷新客户端 MCP `tools/list`。现行 `create_ip` / `update_ip` 使用 `workspace`、`name`、`ip_type`、可选 `number`、`publication_no`、`grant_notice_no`；其它非编号字段（日期、人员、权利人、状态、标签等）按工具声明填写。名称与类型必填，其余均可空。旧 `application_no` / `registration_no` 参数已移除，不应发送；本次工具总数不变。
+知识产权的编号与类型以当前运行 EXE 的 `create_ip`、`update_ip` 参数契约为准：`workspace`、`name`、`ip_type` 为主要标识，编号使用可选 `number`、`publication_no`、`grant_notice_no`。其它日期、人员、权利人、状态与标签字段按 `tools/list` 声明填写。名称及类型必填，旧 `application_no` / `registration_no` 参数不再使用。
 
 固定类型：发明专利、实用新型专利、外观设计专利、软件著作权、其他著作权、商标、集成电路布图设计、国家标准、行业标准、企业标准。发明/实用新型/外观设计专利的 `number` 填申请号，确有公开号或授权公告号时使用后两个编号字段；软件/其他著作权的 `number` 填登记号；商标填申请号或注册号；三种标准填标准号。非专利只需填 `number`，不要伪造或补齐另两个编号。
 
 示例：`create_ip(workspace="company",name="示例国家标准",ip_type="国家标准",number="GB/T XXXXX—2026",status="已发布")`；`create_ip(workspace="company",name="示例专利",ip_type="发明专利",number="202610000001.1",publication_no="CNXXXXXXXXXA",grant_notice_no="CNXXXXXXXXXB")`。以上仅为格式示例。
 
-> **历史已验证接口口径（2026-10-25，8c1ca9a）**：`8c1ca9a` 对应 [Windows CI #40162144248](https://github.com/zy19970/IPSys/actions/runs/40162144248) 的 MCP stdio `tools/list` 验证通过。工具由旧 59 个扩展为 **63 个无版本前缀的工具**，新增 `list_party_archives`、`create_party_archive`、`update_party_archive`、`delete_party_archive`，专用于公司工作区“党团建设”。既有通用 `list_archives/create_archive/update_archive/delete_archive` 仍支持 `workspace=company, section=party`。以下此前的“59 工具”描述属于旧提交验收历史，不能再当作当前清单。更新 EXE 后需重启本机 MCP 客户端，使 Agent 刷新 `tools/list`。
 
 ## 使用步骤
 
@@ -171,10 +157,10 @@ IPSys 只提供工作区内结构化关键词检索及原件版本下载，不�
 
 ## 工具与参数口径
 
-工具总数、名称和参数一律以 `tools/list` 为准——数量随版本变化，写死在文档里必然失准。不随版本变化的约定如下：
+工具的精确名称、参数、必填字段与返回结构由当前运行程序的 `tools/list` 和每次调用结果决定。下列是跨版本仍需注意的业务语义：
 
 - 业务工具必须显式传 `workspace`（`company` / `personal`）。
-- 写操作带幂等 `request_id`（8–128 字符）；重试必须复用原编号，否则会产生重复记录。
+- 支持幂等编号的业务写工具带 `request_id`（8–128 字符）；同一操作重试必须复用原编号及参数。库级回收工具不使用此编号，按 `taskId` 查询执行进度。
 - `upload_files` 的 `owner_id` 是 FolderId，`paths` 为 1–20 条本机绝对路径；`kind=archive_folder` 时必须同时给出正确的 `section`。
 - 同一 `FileId` 可有多个 `LinkId`。`delete_file` 必须同时给出 `owner_id`、`file_id`、`link_id` 三重身份，只解除其中一处关联。
 - 单个文件上限 8 GiB，分块 1 MiB。
@@ -182,7 +168,7 @@ IPSys 只提供工作区内结构化关键词检索及原件版本下载，不�
 
 ## 现行 MCP 安全操作示例
 
-所有命令必须在 IPSys 宿主已解锁、MCP 当前开启（默认开启、可手动关闭）且客户端刷新工具列表后执行。每项写操作使用独立 UUID 作为 `request_id`，重试相同请求时必须保留原编号与参数。只有 `get_operation_result` 返回 `done` 才算确认落库；`pending` / `uncertain` 必须人工核对。
+调用前必须已解锁 IPSys 宿主、开启 MCP（默认开启，可手动关闭）并刷新工具列表。对支持 `request_id` 的业务写入，使用唯一的 8–128 字符操作编号；同一请求重试须保留编号及全部参数。出现 `pending` / `uncertain` 时先通过 `get_operation_result` 核对状态和实际业务结果；`done` 仍须确认对应操作的成功字段，不得把成功提交请求直接等同于成功落库。
 
 文件归档：`list_files_page` 按 `kind`、`owner_id`、`name` 筛选；上传后检查 `upload_files` 返回的 `status`、`succeeded`、`failed` 和逐文件信息。需要取消某处关联时，从同一条结果取得 FolderId（`owner_id`）、FileId（`file_id`）和 LinkId（`link_id`），再调用 `delete_file`，不可把 LinkId 当 FileId。
 
@@ -190,7 +176,7 @@ IPSys 只提供工作区内结构化关键词检索及原件版本下载，不�
 
 回收站恢复：`list_trash` 后从目标条目原样取 `kind`、`id`、`section`，交给 `restore_trash`。跨工作区转移用 `transfer_*` 加 `target_workspace`。
 
-空间回收：先 `get_vault_storage` 看 `reusableBytes` 是否值得做，再 `reclaim_vault_space`，用 `get_vault_reclaim_status` 轮询到终态。回收是原地分批进行的，不需要预留两倍库大小的空间；取消后已回收的部分保留，不回滚。
+空间回收：先 `get_vault_storage` 看 `reclaimableBytes` 是否值得做，再 `reclaim_vault_space`，用 `get_vault_reclaim_status` 轮询到终态。回收是原地分批进行的，不需要预留两倍库大小的空间；取消后已回收的部分保留，不回滚。
 
 ## Codex 提示词示例
 

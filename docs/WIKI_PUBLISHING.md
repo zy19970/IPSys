@@ -8,9 +8,9 @@
 
 ## 推荐：自动发布
 
-工作流：`.github/workflows/publish-wiki.yml`，名称为 “Publish IPSys Wiki”。推送 `docs/wiki/**` 到 `main` 时自动触发，也可通过 Actions 页面手动运行。
+工作流为 [`.github/workflows/publish-wiki.yml`](../.github/workflows/publish-wiki.yml)，名称“Publish IPSys Wiki”。推送 `docs/wiki/**` 或修改该工作流本身到 `main` 时自动触发，也可在 Actions 页面手动运行。**仅修改本维护说明或 README 不会触发 Wiki 发布**。
 
-工作流先检查 Markdown 页面和内部链接，再使用本仓库 Actions 临时令牌克隆该项目的 **Wiki Git 仓库**，复制当前页面并非强制 push。如果已一致，不创建空提交。
+工作流先检查 `docs/wiki/*.md` 是否为空、Wiki 内链目标是否存在及表格中不合适的 Wiki 管道链接，再用本仓库 Actions 临时令牌克隆该项目的**独立 Wiki Git 仓库**，复制当前页面后普通非强制推送；内容一致时跳过空提交。工作流权限与账户状态仍可能影响发布。
 
 第一次覆盖 `Home.md` 时，若 Wiki 原首页已有不同内容，自动保存为 `Home-original-before-IPSys-sync.md`，后续更新不会重复覆盖这份原始备份；其他不在 `docs/wiki/` 中同名的 Wiki 页面不会被删除。
 
@@ -38,8 +38,5 @@ git -C .wiki-local push
 2. CI、人工验证、Release 三种状态分别陈述，不将“源码已实现”视作用户实机全部验收。
 3. Wiki 的正式正文只写用户真正需要的介绍、操作方法、安全提示和可核实事实，不存放对话过程、Agent 内部讨论与未确认猜测。
 4. 更新原有页面优先延续稳定页面文件名，不轻易重命名以免破坏外部链接。
-5. Wiki 与当前版本之间存在差异时，应明确版本范围，并同步最新的正式页面。
-
-## 本次 Wiki 基线
-
-截至 2026-11-06，本轮统一以 SQLCipher schema 4、普通资料 Excel 6 列（MCP 工具数不写死，以 `tools/list` 为准）及 [v0.9.3-rc.1](https://github.com/zy19970/IPSys/releases/tag/v0.9.3-rc.1) 为准；[Windows CI #558](https://github.com/zy19970/IPSys/actions/runs/42048982231) 是现行产品代码自动验证，[手动 Publish #6](https://github.com/zy19970/IPSys/actions/runs/42053785425) 是独立 Release 成功记录。当前 `docs/wiki/` 修改仍须在提交后核对 `Publish IPSys Wiki` 的实际成功状态及线上页面，不得将源码已更新直接当作 Wiki 已发布。
+5. `docs/wiki/` 是受版本控制的正式源，GitHub Wiki 站点是独立发布结果。更新前应根据 [现行基线](CURRENT_BASELINE.md) 和对应程序核对功能；改变 Wiki 源后必须分别确认本仓库提交与 Publish IPSys Wiki 的实际运行及线上页面。
+6. Wiki 首页、发布说明与截图不要写入会自动过期的“最新 CI / 最新 Release / 当前阶段”静态结论；需要说明版本时优先引用 [Releases](https://github.com/zy19970/IPSys/releases)、[Actions](https://github.com/zy19970/IPSys/actions) 和 [CURRENT_BASELINE.md](CURRENT_BASELINE.md)。历史版本事实应明确注明当时版本及日期，而不是冒充当前状态。
