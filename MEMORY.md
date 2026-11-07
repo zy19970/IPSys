@@ -1,5 +1,7 @@
 # IPSys 项目持续记忆
 
+> **2026-11-07 文档清理第一批：现行业务规则与数据字典纠错（本轮）**：用户批准按前轮方案开始第一批。核对 AIGT 规范、main `3d480c3`、现行基线、`FolderModel.cs` / `ResourceSchemaV2.cs` / `BusinessRules.cs` / `ExcelLedger.cs` / `Vault.cs` / `VaultCompactEndpoints.cs` / `McpLocalVault.cs`，仅修订 `REQUIREMENTS.md`、`M0_DATA_DICTIONARY.md`、`docs/INCREMENTAL_VACUUM_ROLLOUT_PLAN_20261106.md`。将独立合同业务及 `ProjectContract` 实体、专属字段/状态/Excel/回收/跨项目禁止移动旧规则替换为项目下普通 `archive_folder/section=project` 子目录；将旧 schema 双向兼容/部分升级约定退出现行规则；保留并核对知识产权三编号、项目类型/状态及 11/19/6 列 Excel。INCREMENTAL 文档由未实施方案收敛为已接入源码的维护设计，区分源码实现和 CI/实机未验、旧库 NONE、预检、回收取消和实际测试规模。文档对象与本地链接静态检查通过（修改文档 3 份、内部 Markdown 引用均存在、无旧独立合同类型），未执行软件编译或新 CI。后续仍需第二批清理 README、MCP_CODEX 与 Wiki 的历史状态污染；不能删除测试依赖。会话记录：`memory/sessions/2026-11-07-IPSys文档资料清理审计.md` 第二轮。
+
 > **2026-11-07：文档资料清理审计（只归档分析，不改业务资料）**：核对 main `99b356e` 的完整 Git 提交历史 917 次（2026-10-13 至 11-07），清理前 `18d7f1c` 804 个跟踪文件，清理后 241；历史移出 564 个文件，Markdown 140→60。现行基线 `docs/CURRENT_BASELINE.md` 正确承担产品现状入口，但 `REQUIREMENTS.md`、`M0_DATA_DICTIONARY.md` 残留独立合同模型，`docs/INCREMENTAL_VACUUM_ROLLOUT_PLAN_20261106.md` 仍写“待实施”而源码已完成第一阶段接入，`MCP_CODEX.md`、README 和 Wiki 维护文档仍混有阶段史；`MEMORY.md` 已过大。建议分批修正文档、核验一致性，保留 CI 测试源码和历史 Git 证据，不因文件名像测试而删除。详细依据见 `memory/sessions/2026-11-07-IPSys文档资料清理审计.md` 第一轮；本次未执行软件测试、未修改业务代码或正式说明文档。
 
 > 现行状态见 [docs/CURRENT_BASELINE.md](docs/CURRENT_BASELINE.md)——那是仓库里**唯一**的现状声明。
