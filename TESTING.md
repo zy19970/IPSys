@@ -6,11 +6,11 @@
 
 将“源码已实现”“自动 Windows CI 通过”“本地 Agent 实际执行”“用户人工反馈通过”“未执行/阻塞/失败”分别标记，并给出对应 SHA。任何一次旧报告中的 FAIL/BLOCKED 都是当时的真实记录，后续修复不得改写其原文；旧版本失败也不等于当前产品未修复。人工验证无截图、SHA 或独立解包日志的，不虚构证据。
 
-## Agent 分层规范第三阶段自动回归（CI 已通过，真实 Agent 另验）
+## Agent 工作规范自动回归与真实 Agent 验收
 
 宿主 --smoke 对 AgentGuidanceStore 使用独立临时配置文件，不修改当前用户正式 LocalAppData 配置；执行 AgentGuidanceStoreSmoke 覆盖默认、覆盖持久化、导入导出、版本冲突、根规则不可编辑、共享文件阅读规则保持等。WebSmoke 中的 AgentGuidanceHttpSmoke 验证浏览器会话鉴权、HTTP 编辑/恢复/导入与 MCP/Prompts 实时同源、并行读取一致性；Node agent-guidance-ui-smoke 检查设置控件和真实 JS 交互。NativeMcpFileQuerySmoke 追加 350 条缺项元数据并报告按 FileId 去重和分页查询耗时。
 
-自动测试已纳入 [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 并随完整工作流成功；第三方真实 Codex 的智能上传和元数据补录仍需独立本机报告，不操作用户唯一资料库。
+这些用例属于 Windows 工作流可执行的自动检查项目；某次实际是否通过需读取与代码 SHA 对应的 GitHub Actions 运行结果。第三方真实 Codex 的智能上传和元数据补录另需本机报告，不操作用户唯一资料库。
 
 ## 更新提示回归（离线）
 
@@ -22,26 +22,23 @@
 
 资料库首次打开与每次重新打开后本机 MCP 默认为开启；用户可以手动关闭并再次开启，关库/改密撤销授权。原 `NativeMcpSmoke` 的手动禁用/重新开启能力保留，`WebSmoke` 新增默认状态及重新打开断言。MCP 仍限当前 Windows 用户的本机受限管道，不修改底层 ID、工具表或数据库结构。
 
-## 主分支 Windows CI
+## 主分支 Windows CI 与测试依赖
 
-当前最近完整验证为 [Windows CI #558](https://github.com/zy19970/IPSys/actions/runs/42048982231)，对产品提交 `47b8fa3` completed/success（26 个成功步骤、0 失败、2 个可选 ZIP64 跳过），包含干净 checkout 直接 Release 的双单 EXE 包结构与版本资源验证、原有 Debug/Node/Edge/HTTP/SQLCipher/MCP 测试。新发布 [v0.9.3-rc.1](https://github.com/zy19970/IPSys/releases/tag/v0.9.3-rc.1) 的 [Publish #6](https://github.com/zy19970/IPSys/actions/runs/42053785425) validate、build 和 publish 三项均成功，但 Publish 不重跑 smoke。人工验收仍须在独立 schema 4 测试库执行并单独记录结果；CI 通过不代表用户本机可用。
+Windows 工作流 [IPSys Windows build and smoke](https://github.com/zy19970/IPSys/actions/workflows/web-windows.yml) 定义 Debug/Release 编译、内嵌 Web 资源、双单 EXE 结构、MCP stdio、Node/Explorer、Edge/HTTP、SQLCipher/HTTP 等检查。工作流声明检查项目不代表每一次运行都实际执行完毕；需记录对应提交 SHA、运行 ID、Job steps、终态、日志和产物。账户限制导致 Job `steps=[]` 的运行应记为基础设施阻断，不能当作代码测试失败或成功。
 
-
-主工作流 `.github/workflows/web-windows.yml` 由 Windows runner 执行 Debug/Release、内嵌 Web、现行 MCP 工具清单（数量以 `tools/list` 为准）、Node/Explorer、真实 Edge/HTTP、SQLCipher/HTTP 与两种单文件 EXE 启动。[CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 为 26 success、0 failure、2 项可选 ZIP64 skipped；旧合并 CI 只作历史记录。
-
-`tests/retest-v2-2026-10-22/scripts/` 和相应 fixture **仍被 CI 调用**，即使路径包含历史日期，也不是可随意删除的废弃文件。测试实际入口以工作流和 `src/IPSys.Web/tests/` 中的现行引用为准。
+`tests/retest-v2-2026-10-22/scripts/` 与其 `evidence/fixture.json` 仍被工作流使用；`src/IPSys.Web/tests/` 的 Node 冒烟脚本以及 `tests/tools/Verify-ExplorerExports.ps1` 同样是测试依赖，不能因目录名带历史日期就删除。执行方式见 [tests/README](./tests/README.md)。历次 CI 与已发布版本的验证边界集中见 [现行基线](./docs/CURRENT_BASELINE.md)，需要复现某次旧结果时查对应历史提交和 Actions。
 
 ## Excel 和知识产权现行回归
 
-当前固定 XLSX：项目 **11 列**、知识产权 **19 列**、资料档案/资质/党团 **6 列**、综合资料 **6 列**（同名称/类别/备注/标签/年度/所属目录六列）；旧 4 列档案与旧 1/2/3 列综合资料不再作为兼容输入。合同资料作为普通项目目录，无独立合同 Excel。`excel-scope-smoke.cjs` 与 `NativeIpExcelHttpSmoke.cs` 检查完整服务端筛选、三编号和工作区，不能沿用交互搜索 60 条上限。最新 [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 已通过相关自动回归。
+当前固定 XLSX：项目 **11 列**、知识产权 **19 列**、资料档案/资质/党团 **6 列**、综合资料 **6 列**（同名称/类别/备注/标签/年度/所属目录六列）；旧 4 列档案与旧 1/2/3 列综合资料不再作为兼容输入。合同资料作为普通项目目录，无独立合同 Excel。`excel-scope-smoke.cjs` 与 `NativeIpExcelHttpSmoke.cs` 检查完整服务端筛选、三编号和工作区，不能沿用交互搜索 60 条上限；每次核验需要记录与源码提交对应的测试实际执行结果。
 
 ## 普通文件夹和操作细节专项
 
-普通 `archive_folder` 必须同时支持子目录和直接附件、可选属性、F2、版本、共享、移动和整树回收。单一“新建”动作直接打开表单，右键打包遵循选中范围；成功的永久删除进度面板约 4 秒自动隐藏。普通列表显示数据库实际更新时间，不以申请/签约日期代替。[统一文件夹 CI](https://github.com/zy19970/IPSys/actions/runs/41406914227) 与 [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 已通过，用户本机视觉和完整 GUI 操作另验。
+普通 `archive_folder` 必须支持子目录、直接附件、可选属性、F2、版本、共享、移动和整树回收。单一“新建”动作直接打开表单，右键打包遵循选中范围；成功的永久删除进度面板约四秒自动隐藏。普通列表更新时间来自数据库有效变更，不以申请/签约日期代替。Node/HTTP 自动断言与用户本机视觉、拖拽和完整 GUI 操作应分别留证；不能拿历史 CI 成功替代当前 EXE 验收。
 
 ## 默认排序回归
 
-分别检查知识产权申请年与授权年的冲突、项目起止年度、缺失年份沉底、同年份稳定次序，以及普通资料目录的真实创建时间与随后修改时间分离。旧 V2 文件夹缺失创建时间时不能凭空写入历史日期；可按 FolderId 次序近似排序。必须验证进入不同分类后的默认排序和手动切换“自定义顺序”后仍可查看持久化位置。有关 Node 回归见 `src/IPSys.Web/tests/explorer-p1-regression-smoke.cjs`，创建时间建库/升级验证见 `ResourceSchemaV2Smoke.cs`。
+必须按工作区分开验证：**个人工作区**的项目、知识产权、普通目录和附件默认按名称自然升序（例如 2 在 10 前），重进目录/切换工作区/清空搜索后恢复个人默认显示顺序，不改写 `position`；**公司工作区**项目和知识产权按业务年份降序（知识产权年份取申请日，缺失年份排最后），其它普通目录及附件按创建时间降序。验证修改时间与创建时间分离，并验证选择“自定义顺序”后仍读取持久 `position`；若早期测试记录缺少创建时刻，只能按明确回退规则处理，不能伪造历史日期。Node 入口 `src/IPSys.Web/tests/explorer-p1-regression-smoke.cjs`，建库字段和触发器断言见 `ResourceSchemaV2Smoke.cs`。
 
 ## 空间回收（SQLCipher INCREMENTAL）
 
@@ -49,7 +46,7 @@
 
 回收由 `POST /api/vault/compact` 触发，默认走 `VaultCompactStore.Reclaim()`：每批 256 页 `incremental_vacuum`，每批重新读取 `freelist_count`，一批下来没有进展就立即报错，不把“循环结束”当成“回收完成”；前后各做一次 `integrity_check` 与 `writing` 状态检查。取消在批次之间生效，已回收部分保留。`full:true` 保留完整 `VACUUM` 作为应急通道，设置页不提供入口。
 
-批次 256 页来自实测：2 GiB 库回收 3.07 GiB 时，4096 页/批比 256 页/批慢 3.3 倍且耗时波动大三倍。原地回收的额外空间约为单批回滚日志（1 MiB），不再要求两倍库大小。
+批次选择依据既有合成样本：4096 页/批在该实验中较 256 页/批更慢、波动更大。**启动预检**按 `256 × page_size + 64 MiB` 评估数据库所在磁盘空间（常见 4 KiB 页约 65 MiB），不能将约 1 MiB 的单批回滚日志规模误当作全部预留门槛；完整 `VACUUM` 应急路径才适用 `库文件大小 × 2 + 128 MiB` 的空间预算。回收后需要核查空闲页数、最终文件大小、状态和完整性。
 
 `VaultCompactSmoke`（回收与完整 VACUUM 两条路径、模式字段、旧库拒绝）与 `VaultCompactHttpSmoke` 已接入 `--smoke`。`IncrementalVacuumLabSmoke` 保留为隔离实验：`IPSys.Web.exe --vacuum-lab` 用独立临时库比较 NONE 与 INCREMENTAL，记录 `page_count/freelist_count`、物理字节、SHA-256、外键与完整性、重开与错误口令拒绝。CI 只跑 4 MiB 小样本守住回归；更大样本用 `IPSYS_VACUUM_LAB_MIB`（1～4096）显式触发，报告路径由 `IPSYS_VACUUM_LAB_REPORT` 指定。
 
@@ -57,13 +54,13 @@
 
 ## 大文件与 ZIP64 专项
 
-单 File 最大 8 GiB，传输/下载须流式进行，核查大小、SHA-256、数据库完整性和实际任务终态。工作流 `workflow_dispatch` 的 `large_file_smoke=true` 会运行超过 2 GiB 的 SQLCipher/HTTP 上传下载及大库 VACUUM；[专项 #39943364663](https://github.com/zy19970/IPSys/actions/runs/39943364663) 已通过 22/22 步，包括成功压缩与 `integrity_check`。不能通过延迟失败检查或跳过压缩制造成功。
+单 File 最大 8 GiB，传输/下载须流式进行，核查大小、SHA-256、数据库完整性和实际任务终态。工作流 `workflow_dispatch` 的 `large_file_smoke=true` 用于超过 2 GiB 的 SQLCipher/HTTP 上传下载及大库维护路径专项。是否真正运行与通过，以该次 Actions 日志和输出为准；旧版的完整 VACUUM 专项结果不能替代新建 INCREMENTAL 库的原地回收验证，不得通过跳过失败项制造成功。
 
-`zip64_file_smoke=true` 使用产品 `src/IPSys.Web/wwwroot/export.js` 流式写真实超过 4 GiB 的 ZIP64，校验 EOCD、locator、中央目录、长度及完整文件 SHA；[专项 #39944440866](https://github.com/zy19970/IPSys/actions/runs/39944440866) 已通过 24/24 步。其结论为 **PASS_GENERATION_ONLY**：数据源为可重复模拟流、保存句柄为程序化适配，不等同于真实 Edge 文件选择器或第三方解包器。用户后续确认本机人工检验已完成；不能把未上传的手动日志算作自动化证明。可在空闲空间足够的测试机设置 `IPSYS_ZIP64_OUTPUT_DIR` 并运行 `node src/IPSys.Web/tests/zip64-real-generate.cjs` 保留本地 ZIP，不要把大 ZIP 提交仓库。
+`zip64_file_smoke=true` 使用产品 `src/IPSys.Web/wwwroot/export.js` 流式生成超过 4 GiB 的 ZIP64，校验 EOCD、locator、中央目录、长度和 SHA。专项默认验证**真实文件生成及结构**，数据源与保存句柄可由程序化适配层模拟，因此不能声称已验证真实 Edge 文件选择器或第三方解包器；人工解包验收单独记录。可在空间足够的隔离测试机设置 `IPSYS_ZIP64_OUTPUT_DIR` 并运行 `node src/IPSys.Web/tests/zip64-real-generate.cjs` 保留本地 ZIP，不能将大文件提交仓库。
 
 ## 必须核对的业务与安全边界
 
-一项目多合同，合同必须附属于项目；业务 Folder 无版本，附件 FileVersion 永久保留；同区可共享 FileId 或独立 FileId 复用 FileObject，但跨区不能共用物理 FileObject。应同时验证前端反馈和真实 SQLCipher 表约束、事务回滚、SHA 与关联关系。
+项目有独立业务属性，合同材料在该项目下的普通 `archive_folder/section=project` 目录中管理，可以继续嵌套；**不存在独立合同对象、合同状态和合同 Excel 台账**。Folder 无版本，FileVersion 保留附件历史；同工作区可共享 FileId 或由独立 FileId 复用 FileObject，跨工作区不能共享物理 FileObject。应同时验证前端反馈、真实 SQLCipher 表约束、事务回滚、SHA 和关联关系。
 
 401 会话过期应清旧状态并引导重新登录；403/409/500 不是同一种错误。后台上传、跨工作区切换、悬挂原件取消、外部文件拖放与内部附件拖动、回收站大文件删除、数据库压缩、关闭程序都须保持原始工作区、任务锁与可观察的成功/失败状态。
 
@@ -71,6 +68,6 @@
 
 ## Agent 本地测试
 
-本机实机用隔离 SQLCipher QA 数据库、专用 Edge profile、独立输入/导出目录；记录版本、运行时间、源码与 EXE SHA、环境、用例状态、可复验的结果与证据路径。旧 132 项/16 项补测/第三批实机报告分别保留。若旧脚本直接派发 `drop` 而没有产生真实 `dragstart`，不能把脚本前置缺失当作已证实的用户拖放缺陷。测试误报、环境阻塞、需求差异、真实 BUG 必须分类报告。
+本机实机用隔离 SQLCipher QA 数据库、专用 Edge profile、独立输入/导出目录；记录版本、运行时间、源码与 EXE SHA、环境、用例状态、可复验的结果与证据路径。旧测试报告应从 Git 历史取回并按原 SHA 追溯；不得以旧测试脚本直接派发 `drop` 却未实际产生 `dragstart` 的情况推断用户拖拽操作有缺陷。测试误报、环境阻塞、需求差异和真实 BUG 必须分别记录。
 
 测试怎么跑见 [tests/README](./tests/README.md)；最新业务范围见 [REQUIREMENTS](./REQUIREMENTS.md)，技术约束见 [DESIGN](./DESIGN.md)。

@@ -1,4 +1,4 @@
-# IPSys 开发计划与当前执行状态
+# IPSys 开发推进与交付准则
 
 > 现行状态见 [docs/CURRENT_BASELINE.md](docs/CURRENT_BASELINE.md)：版本、schema、Excel 列数、空间策略与验收口径全部以该文件为准（MCP 工具数不写死，以 `tools/list` 为准）。本文只写不随版本变化的规则；文内若出现具体数字、提交号或 CI 编号，均为当时记录，不构成现行约定。
 
@@ -10,7 +10,7 @@ IPSys 是 WinForms 启动器、仅本机访问的 Web Explorer、单 SQLCipher s
 
 ## 2 已完成的能力范围
 
-具体版本、列数与验证状态见 [CURRENT_BASELINE](docs/CURRENT_BASELINE.md)，运行方式与通过记录见 [tests/README](tests/README.md)。
+具体版本、列数和当前验证状态见 [CURRENT_BASELINE](docs/CURRENT_BASELINE.md)，运行方式见 [tests/README](tests/README.md)，测试范围与证据分层见 [TESTING.md](TESTING.md)。不要将历史测试通过记录当作最新代码的验收结果。
 
 - 资源模型：`project` / `ip` / `archive_folder`，附件多版本、同区共享、回收站与永久清理。
 - 跨模块整树移动：包含已软删除后代，保持 FolderId / LinkId / FileId 与版本。

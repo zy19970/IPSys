@@ -1,4 +1,4 @@
-# IPSys 现行技术设计（SQLCipher V2 + Explorer）
+# IPSys 技术设计（SQLCipher schema 4 + Explorer）
 
 > 现行状态见 [docs/CURRENT_BASELINE.md](docs/CURRENT_BASELINE.md)：版本、schema、Excel 列数、空间策略与验收口径全部以该文件为准（MCP 工具数不写死，以 `tools/list` 为准）。本文只写不随版本变化的规则；文内若出现具体数字、提交号或 CI 编号，均为当时记录，不构成现行约定。
 
@@ -32,9 +32,9 @@
 
 正式业务网页、MCP、固定 Excel、统一搜索、回收站、PDF 预览与导出统一 V2 Folder/File/Link/Version 身份。已有历史 `--smoke` 兼容断言不表示正式程序继续开放旧 V1 业务接口。MCP 的工具清单、同用户授权和会话撤销规则独立于 Explorer 外观。
 
-Agent 工作规范配置位于当前 Windows 用户的 LocalApplicationData/IPSys/agent-guidance.json，独立于数据库与前端 localStorage；内置资源 + 用户覆盖由 AgentGuidance/AgentGuidanceStore 为同一权威来源。GET/PUT/POST 管理接口必须通过现有浏览器会话授权，MCP 工具读取还需本机授权；配置版本与正文哈希供客户端识别旧内容。第三阶段已通过标准 Windows 自动化回归，真实第三方 Agent 的端到端任务仍需另验。
+Agent 工作规范配置位于当前 Windows 用户的 LocalApplicationData/IPSys/agent-guidance.json，独立于数据库与前端 localStorage；内置资源 + 用户覆盖由 AgentGuidance/AgentGuidanceStore 为同一权威来源。GET/PUT/POST 管理接口必须通过现有浏览器会话授权，MCP 工具读取还需本机授权；配置版本与正文哈希供客户端识别旧内容。这些规则对应的自动回归由当前 Windows 工作流检查；第三方真实 Agent 端到端任务必须独立留存本机验证结果，不以旧版 CI 结果代替。
 
-上传/下载为流式，单原件代码容量保护为 **8 GiB**；包含同内容暂存、确认、取消、版本追加和跨区任务绑定。可恢复性、并发文件任务锁、真正的任务成功终态、失败可见以及删除事务回滚为硬约束。回收站永久删除按最后引用关系回收物理对象，删除后 SQLCipher 文件体积不保证立即缩小；设置中的压缩以 VACUUM 实际完成且 `integrity_check` 通过为判据，不能展示伪造的实时百分比。
+上传/下载为流式，单原件代码容量保护为 **8 GiB**；包含同内容暂存、确认、取消、版本追加和跨区任务绑定。可恢复性、并发文件任务锁、真正的任务成功终态、失败可见以及删除事务回滚为硬约束。回收站永久删除按最后引用关系回收物理对象，删除后 SQLCipher 文件体积不保证立即缩小；设置页默认执行 SQLCipher INCREMENTAL 原地回收：新库采用 `auto_vacuum=2`，每批 256 页，预检数据库磁盘剩余 `256 × page_size + 64 MiB`，前后执行 `integrity_check`，回收允许批次之间取消且不会回滚已完成批次。旧 NONE 模式库禁止原地回收。完整 `VACUUM` 仅由后端 `full:true` 作为应急路径提供，才要求库文件大小两倍加 128 MiB 的空间预算。回收进度及结果必须取自真实任务状态，不能展示伪造的百分比。
 
 ZIP 与文件夹式导出支持 ZIP64；正式 ZIP 生成代码在 `src/IPSys.Web/wwwroot/export.js`。产品 Node 生成器已写出真实超过 4 GiB 的 ZIP64 并验证物理结构；专项 CI 使用可重复流/写入适配层，**不等同于第三方解包器或系统保存窗口的自动端到端验证**。用户另行确认本机人工验收通过，详见 [TESTING.md](./TESTING.md)。
 
@@ -50,6 +50,6 @@ Excel 模板由 `ExcelLedger.cs` 统一维护：项目 **11 列**、知识产权
 
 现行 Windows 工作流 `.github/workflows/web-windows.yml` 对产品代码与脚本改动执行 Debug 嵌入资源检查、Release 单 EXE、MCP stdio、Node/UI、Edge/HTTP、SQLCipher/HTTP。超过 2 GiB 数据与真实 4 GiB ZIP64 为 opt-in 专项，不随每次文档提交强制复跑。
 
-最新 [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 成功；历史合并、大库 VACUUM、4 GiB ZIP64 生成专项仍保留原证据。GA 发布与 T01～T09 专项不能从本次自动构建推断已完成。
+自动回归、专项大文件与 ZIP64 生成、Windows GUI 人工操作以及 GA 发布分别需要与代码提交 SHA 对应的证据。历史 CI 的通过结论应按对应提交在 [GitHub Actions](https://github.com/zy19970/IPSys/actions) 查阅；最新运行及实际阻断状态统一见 [CURRENT_BASELINE](./docs/CURRENT_BASELINE.md)。GA 前的 T01～T09 风险验证不能由普通构建结果代替。
 
 历史技术路线与原因在 Git 提交历史（`git log -- docs/archive/`），现行任务以 [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md) 为准。

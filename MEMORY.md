@@ -1,10 +1,12 @@
 # IPSys 项目持续记忆（现行摘要）
 
+> **2026-11-07 第四批文档交叉一致性复核（本会话第五轮）**：用户指令“继续推进”，按 AIGT 三项基础规范、main `c6223303dc2d9678eed3713536dde40f554c2417` 及现行源码，对照 `USER_GUIDE.md`、`UI_BASELINE.md`、`DESIGN.md`、`DEVELOPMENT_PLAN.md`、`TESTING.md`、`tests/README.md`、`REQUIREMENTS.md`、`M0_DATA_DICTIONARY.md`、`MCP_CODEX.md` 和 Wiki/当前基线，核对真实 SQLCipher INCREMENTAL 预检（`256 × page_size + 64 MiB`，约 65 MiB）、个人名称自然升序/公司年份或创建时间降序、Markdown 渲染与源码双视图、项目下 `archive_folder/section=project` 以及无独立合同对象。已定向修订六份文档：`USER_GUIDE.md`、`UI_BASELINE.md`、`DESIGN.md`、`DEVELOPMENT_PLAN.md`、`TESTING.md`、`docs/CURRENT_BASELINE.md`，移除个人年份降序与全库 VACUUM 默认运行的错误、固定旧 CI 作为最新状态、单批 1 MiB 与 65 MiB 预检的混淆及旧合同测试对象。六份新文档相对 Markdown 链接与围栏全部静态验证通过，排序、空间、合同、测试 CI 口径对照通过；`tests/README.md` 中 34 个 .cjs 和保留 fixture 路径已核对实际仓库，不需修改。本轮未变更源码、测试用例、Wiki 页面、Actions 或用户资料库；近期 CI/Wiki 发布仍受前轮 Runner 启动阻断，未声称新自动测试通过。会话归档见 [本会话第五轮](memory/sessions/2026-11-07-IPSys文档资料清理审计.md)，详细旧记忆保留在 `memory/archive/MEMORY_BEFORE_INDEX_2026-11-07.md`。
+>
 > 最后维护：2026-11-07。本文件用于新会话快速恢复项目当前决策和未完成事项。**详细会话、修改过程与旧阶段结论不在这里复制**，参见 [记忆索引](memory/INDEX.md)。
 >
 > 2026-11-07 整理前的完整 `MEMORY.md` 已按**相同 Git Blob** 无损归档至 [原始历史快照](memory/archive/MEMORY_BEFORE_INDEX_2026-11-07.md)，其内容哈希为 `8b7cbcb353edfd43ecadeed13773686bf4114a5d`。未重写 Git 历史、未删除任何 `memory/sessions/` 会话。
 >
-> 上一轮会话：[2026-11-07 文档清理审计](memory/sessions/2026-11-07-IPSys文档资料清理审计.md)；最新归档轮次为**第四轮：Wiki 正式页面与 Memory 索引治理**。如果本摘要与实际源码或现行基线冲突，先核查源码，不以旧 Memory 条目覆盖已确认的新规则。
+> 上一轮会话：[2026-11-07 文档清理审计](memory/sessions/2026-11-07-IPSys文档资料清理审计.md)；最新归档轮次为**第五轮：文档交叉一致性核验**。如果本摘要与实际源码或现行基线冲突，先核查源码，不以旧 Memory 条目覆盖已确认的新规则。
 
 ## 一、项目目的和运行架构
 
@@ -38,7 +40,8 @@ Agent 用同一个 EXE 的 `--mcp` 模式连接，业务操作必须按 `workspa
 3. **第三批**：审查并修订 Wiki 用户页面的固定版本/CI、合同语义、磁盘回收与 MCP 相关文字；将根目录 Memory 调整为摘要，将历史原文无损归档，建立 [逐会话索引](memory/INDEX.md)。Wiki 源码提交、独立 Wiki 发布 workflow、线上页面要分别核验；**只有实际核验成功时才称线上同步完成**。
 4. **Wiki 发布阻断（第三批后续核验）**：第三批源码提交 `7479013a4e364907e1f1186a9379c1348d7560ea` 已推送 main、11 篇修订 Wiki 源文档链接静态检查通过，但自动触发 [Publish IPSys Wiki #42332456228](https://github.com/zy19970/IPSys/actions/runs/42332456228) `completed/failure`，运行约 4 秒且发布 Job `steps=[]`；**未执行 Wiki 内容检查或独立 Wiki Git 推送，不能称线上已更新**。与先前账户 billing lock 症状相符，但本轮未取得新的明确 annotation，根因需以 GitHub Support/后续日志为准。账户恢复后须重试 Wiki 发布并核对站点；不得先前宣称已发布。
 5. **未验边界**：真实 20–50 GB 库长期性能、断电/磁盘紧张、移动 SSD 等极端情况；近期推送需在 Actions 真正运行后复核 CI；用户机 GUI 与真实 Agent 工作流须各自验收。所有故障注入使用独立测试库，不接触正式 DB。
-6. **后续**：文档交叉引用、与源码字段及工作区规则一致性进一步只读审核；Wiki 线上状态和 CI 状态追踪；日常使用继续按用户反馈进行小范围修复。
+6. **第四批交叉一致性核验**：已核对根目录现行需求、字段字典、用户手册、技术设计、UI、MCP、测试规则及现行源码，修订六份存在矛盾的说明；个人/公司默认排序、原地回收的预检空间与完整 VACUUM、Markdown 预览及合同普通目录模型相互一致。文档链接、围栏静态检查通过，但未运行 Windows CI 或用户 GUI 验收。
+7. **后续**：GitHub Actions 账户恢复后，按对应 SHA 重新运行 Windows CI 与独立 Wiki 发布并核对线上 Wiki；用户本机 GUI、Agent 和大库/断电验证需单独记录。日常使用继续根据真实复现反馈进行最小范围改动。
 
 ## 五、从新会话恢复工作
 
