@@ -34,7 +34,7 @@ IPSys.Web.exe
 | `src/IPSys.Web/wwwroot/export.js` | ZIP/ZIP64 导出 |
 | `.github/workflows/web-windows.yml` | Windows 构建与回归 |
 
-前端的 `dist/` 是打包生成结果，不应作为唯一修改源。Web SDK 默认 Content 外拷已通过 `EnableDefaultContentItems=false` 禁用，正式资源由显式 `EmbeddedResource` 嵌入 EXE；两种单 EXE 的干净 Release 输出检查已由 [Windows CI #558](https://github.com/zy19970/IPSys/actions/runs/42048982231) 验证。
+前端的 `dist/` 是打包生成结果，不应作为唯一修改源。Web SDK 通过 `EnableDefaultContentItems=false` 禁用默认 Content 外拷，正式资源由显式 `EmbeddedResource` 嵌入 EXE。构建产物是否满足单 EXE 要求，须以对应提交的 Windows CI 和实际发布检查结果判断。
 
 ## 核心数据身份
 
@@ -44,7 +44,7 @@ Folder 表达目录与业务记录；FileId 表达逻辑文件；LinkId 表达�
 
 ## 一致性原则
 
-同一工作区原位移动目录会将已删除后代和隐藏子目录的物理归属在单个事务内一并处理；跨工作区独立复制不得共用 FileObject。当前项目合同只作为 `section=project` 下的普通文件夹。外部可调用 MCP 工具以实际 `tools/list` 为准。最新 [v0.9.3-rc.1](https://github.com/zy19970/IPSys/releases/tag/v0.9.3-rc.1) 由手动 Publish（不重跑 smoke）生成，人工 GUI 验收另行记录。
+同一工作区原位移动目录会将已删除后代和隐藏子目录的物理归属在单个事务内一并处理；跨工作区独立复制不得共用 FileObject。合同材料作为 `section=project` 下的普通文件夹保存。MCP 工具以连接后的 `tools/list` 为准；每次构建与 GUI 验收均应与实际提交和 EXE 对应，不能通过历史 Release 推断当前源码已验收。
 
 
 1. 前端列表、详情表单、Excel、MCP 与搜索应使用一致的业务字段语义。

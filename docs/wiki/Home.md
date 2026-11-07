@@ -4,7 +4,7 @@ IPSys 是面向个人和公司资料的 Windows 本地管理软件。它使用�
 
 软件由 WinForms 启动器、本机 Web 服务和 Edge/Chrome 界面组成。浏览器负责显示与操作，数据库仍存放在本机，**不是云盘，也不会自动同步到 OneDrive**。
 
-> **项目状态**：当前处于实际使用细节精修阶段。已发布预发布版 [v0.9.3-rc.1](https://github.com/zy19970/IPSys/releases/tag/v0.9.3-rc.1)（2026-11-05，双 Windows 单 EXE）；对应 [手动 Publish #6](https://github.com/zy19970/IPSys/actions/runs/42053785425) 成功。普通 Windows CI 与手动发布分别验证，后者不重复运行 smoke；用户本机人工整体验收仍需独立记录。
+软件版本与下载请查看 [GitHub Releases](https://github.com/zy19970/IPSys/releases)，构建与自动测试结果请查看 [GitHub Actions](https://github.com/zy19970/IPSys/actions)。发布记录和 CI 检查相互独立；实际功能以所使用 EXE 对应的版本为准。
 
 ## 从这里开始
 

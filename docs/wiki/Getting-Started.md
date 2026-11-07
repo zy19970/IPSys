@@ -4,7 +4,7 @@
 
 IPSys 面向 Windows x64，使用本地 WinForms 窗口和 Edge/Chrome 浏览器。程序不需要自行部署网站或购买服务器；网页地址只绑定到本机回环接口。
 
-可从 [v0.9.3-rc.1](https://github.com/zy19970/IPSys/releases/tag/v0.9.3-rc.1) 获取已核验的预发布版本，也可从 [GitHub Releases](https://github.com/zy19970/IPSys/releases) 查询其他已发布版本，或从 [Actions](https://github.com/zy19970/IPSys/actions) 取得与指定源码提交对应的构建产物。下载前区分：
+从 [GitHub Releases](https://github.com/zy19970/IPSys/releases) 选择需要的已发布版本，或从 [Actions](https://github.com/zy19970/IPSys/actions) 获取与特定源码提交对应的构建工件。下载前确认版本、构建结果及是否为预发布，并区分：
 
 | 构建方式 | 使用条件 |
 | --- | --- |
