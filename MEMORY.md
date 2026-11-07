@@ -1,5 +1,7 @@
 # IPSys 项目持续记忆
 
+> **2026-11-07：文档资料清理审计（只归档分析，不改业务资料）**：核对 main `99b356e` 的完整 Git 提交历史 917 次（2026-10-13 至 11-07），清理前 `18d7f1c` 804 个跟踪文件，清理后 241；历史移出 564 个文件，Markdown 140→60。现行基线 `docs/CURRENT_BASELINE.md` 正确承担产品现状入口，但 `REQUIREMENTS.md`、`M0_DATA_DICTIONARY.md` 残留独立合同模型，`docs/INCREMENTAL_VACUUM_ROLLOUT_PLAN_20261106.md` 仍写“待实施”而源码已完成第一阶段接入，`MCP_CODEX.md`、README 和 Wiki 维护文档仍混有阶段史；`MEMORY.md` 已过大。建议分批修正文档、核验一致性，保留 CI 测试源码和历史 Git 证据，不因文件名像测试而删除。详细依据见 `memory/sessions/2026-11-07-IPSys文档资料清理审计.md` 第一轮；本次未执行软件测试、未修改业务代码或正式说明文档。
+
 > 现行状态见 [docs/CURRENT_BASELINE.md](docs/CURRENT_BASELINE.md)——那是仓库里**唯一**的现状声明。
 > 本文件是只追加的会话记录：历史条目保留原貌，不随代码更新；其中出现的阶段结论、工具数量与路径均为当时事实。
 > 2026-11-07 起，`docs/archive/`、`tests/agent-validation/`、`tests/mcp-results/`、`tests/archive/`、一次性任务书与旧验收报告已移出仓库，用 `git log -- <路径>` 取回。
