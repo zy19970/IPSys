@@ -36,8 +36,9 @@ Agent 用同一个 EXE 的 `--mcp` 模式连接，业务操作必须按 `workspa
 1. **2026-11-07 文档清理第一批**：已修订 `REQUIREMENTS.md`、`M0_DATA_DICTIONARY.md`、`docs/INCREMENTAL_VACUUM_ROLLOUT_PLAN_20261106.md`，清除旧独立合同实体、旧库双向兼容、空间回收“待实施”误标。
 2. **第二批**：已修订 `README.md`、`MCP_CODEX.md` 与 `docs/WIKI_PUBLISHING.md`，不再重复历史 CI/Release 静态结论；保留有效 MCP 参数契约并修正空间回收字段名。
 3. **第三批**：审查并修订 Wiki 用户页面的固定版本/CI、合同语义、磁盘回收与 MCP 相关文字；将根目录 Memory 调整为摘要，将历史原文无损归档，建立 [逐会话索引](memory/INDEX.md)。Wiki 源码提交、独立 Wiki 发布 workflow、线上页面要分别核验；**只有实际核验成功时才称线上同步完成**。
-4. **未验边界**：真实 20–50 GB 库长期性能、断电/磁盘紧张、移动 SSD 等极端情况；近期推送需在 Actions 真正运行后复核 CI；用户机 GUI 与真实 Agent 工作流须各自验收。所有故障注入使用独立测试库，不接触正式 DB。
-5. **后续**：文档交叉引用、与源码字段及工作区规则一致性进一步只读审核；Wiki 线上状态和 CI 状态追踪；日常使用继续按用户反馈进行小范围修复。
+4. **Wiki 发布阻断（第三批后续核验）**：第三批源码提交 `7479013a4e364907e1f1186a9379c1348d7560ea` 已推送 main、11 篇修订 Wiki 源文档链接静态检查通过，但自动触发 [Publish IPSys Wiki #42332456228](https://github.com/zy19970/IPSys/actions/runs/42332456228) `completed/failure`，运行约 4 秒且发布 Job `steps=[]`；**未执行 Wiki 内容检查或独立 Wiki Git 推送，不能称线上已更新**。与先前账户 billing lock 症状相符，但本轮未取得新的明确 annotation，根因需以 GitHub Support/后续日志为准。账户恢复后须重试 Wiki 发布并核对站点；不得先前宣称已发布。
+5. **未验边界**：真实 20–50 GB 库长期性能、断电/磁盘紧张、移动 SSD 等极端情况；近期推送需在 Actions 真正运行后复核 CI；用户机 GUI 与真实 Agent 工作流须各自验收。所有故障注入使用独立测试库，不接触正式 DB。
+6. **后续**：文档交叉引用、与源码字段及工作区规则一致性进一步只读审核；Wiki 线上状态和 CI 状态追踪；日常使用继续按用户反馈进行小范围修复。
 
 ## 五、从新会话恢复工作
 
