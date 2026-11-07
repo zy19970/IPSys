@@ -1,13 +1,6 @@
 # IPSys 现行技术设计（SQLCipher V2 + Explorer）
 
-> **现行统一基线（2026-11-06）**：新建 SQLCipher 数据库为 **schema 4**（旧 schema 2/3 不迁移）；项目子级与普通资料统一为可嵌套文件夹，合同不再是独立业务对象；项目/知识产权/普通资料 XLSX 分别 **11/19/6 列**；本机 MCP 为 **43 项工具**。已实现多选拖拽、附件 F2/右键重命名、Markdown/TXT 10 MiB 安全预览、数据库密码修改与回收站完成进度去重。产品提交 `47b8fa3` 对应 [Windows CI #558](https://github.com/zy19970/IPSys/actions/runs/42048982231) 完成成功；[手动 Publish #6](https://github.com/zy19970/IPSys/actions/runs/42053785425) 已发布 [v0.9.3-rc.1](https://github.com/zy19970/IPSys/releases/tag/v0.9.3-rc.1)（两种单 EXE + SHA256），发布流程不重跑 smoke。人工整体验收表仍未填报，不能据 CI 冒称已在用户本机全部通过。文内更早日期的结论为历史阶段记录，以本段及实际代码为现行准则。
-
-
-> **现行后续整改（2026-11-04）**：最新源码使用 SQLCipher schema **4**，普通文件夹支持跨模块原位移动完整物理子树（含已软删除后代及其隐藏子目录），并保持稳定的 FolderId/LinkId/FileId、删除状态和历史版本；新建库直接采用 schema 4，旧版本库明确拒绝，不迁移。产品实现 [`8a2780e`](https://github.com/zy19970/IPSys/commit/8a2780e7a8c18a5017e27e0e22c03aac1f078fae)，完整回归见 [Windows #541](https://github.com/zy19970/IPSys/actions/runs/41862168722)（以实际结束状态为准）。现行 MCP 43 项，普通资料 Excel 六列。早期下文关于 schema 3、S5/#538 的记载是当时的有效基线，不覆盖本段；用户本机 GUI 验收和正式 Release 尚未执行。
-
-> **历史 S5 自动化基线（2026-11-04，#538）**：SQLCipher schema **3**，Folder 仅 `project/ip/archive_folder`；项目合同资料是可嵌套普通目录；普通资料 Excel **6** 列、项目 **11** 列、知识产权 **19** 列，MCP **43** 项。提交 `cc7c1262eac0c2aaa36a0cd3107823320627e774` 的 [Windows CI #538](https://github.com/zy19970/IPSys/actions/runs/41839841405) 已 `completed/success`：26 成功、0 失败、2 可选 ZIP64 跳过；Edge **14 PASS**、HTTP **12 PASS/1 BLOCKED（小库 VACUUM 进度抓拍）**，MCP↔Explorer 同批 S5-E2E PASS，两类 EXE 启动成功。**本机用户人工 GUI 及正式 Release 未完成。** 详见 [S5 最终验收报告](tests/S5_FINAL_ACCEPTANCE_20261104.md)；以下历史日期的报告保持原始事实。
-
-> **现行技术基线（2026-11-02）**：已核验产品/测试提交 `4567ae96b7` 的 Windows [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 为 completed/success（26 步成功、0 失败，两项可选 ZIP64 步骤跳过）。目前正式 Release 仍为 `v0.9.1-rc1`；自动 CI 不等于全部本地 GUI/第三方 Agent 验收。 N1～N4、R0～R4 和早期 OneDrive 方案属于历史记录。
+> 现行状态见 [docs/CURRENT_BASELINE.md](docs/CURRENT_BASELINE.md)：版本、schema、Excel 列数、空间策略与验收口径全部以该文件为准（MCP 工具数不写死，以 `tools/list` 为准）。本文只写不随版本变化的规则；文内若出现具体数字、提交号或 CI 编号，均为当时记录，不构成现行约定。
 
 ## 1. 进程与界面架构
 
@@ -15,7 +8,7 @@
 
 正式前端全部位于 `src/IPSys.Web/wwwroot/`：页面源码 `index.html`、`css/app.css`、`js/*.js` 与上传、下载、ZIP64、PDF.js 等能力模块共享这一目录；`tools/bundle.cjs` 在构建时生成 `wwwroot/dist/index.html`、`style.css`、`app.js`，由 MSBuild 按固定逻辑资源名嵌入 EXE。运行时由 `EmbeddedWebAssets` 读取内嵌资源，不向外输出物理 `wwwroot` 文件夹。只修改前端源码，不在 Git 中维护生成的 `dist/`。
 
-本地默认 Windows Release 以 `win-x64` / `PublishSingleFile=true` / `SelfContained=false` 构建为依赖环境的单一 EXE，目标机需 .NET 8 Windows Desktop 与 ASP.NET Core 两种运行时；手动 GitHub Release 同时生成自包含版与依赖环境版。MCP 由同一个 EXE 的 `--mcp` stdio 模式、受授权的同用户命名管道和宿主会话运行，现行 stdio 清单为 **43 项无 `v2_*` 别名的工具**；详情见 [MCP_CODEX.md](./MCP_CODEX.md)。
+本地默认 Windows Release 以 `win-x64` / `PublishSingleFile=true` / `SelfContained=false` 构建为依赖环境的单一 EXE，目标机需 .NET 8 Windows Desktop 与 ASP.NET Core 两种运行时；手动 GitHub Release 同时生成自包含版与依赖环境版。MCP 由同一个 EXE 的 `--mcp` stdio 模式、受授权的同用户命名管道和宿主会话运行，现行 stdio 清单不带 `v2_*` 别名，数量以 `tools/list` 为准；详情见 [MCP_CODEX.md](./MCP_CODEX.md)。
 
 ## 2. SQLCipher schema 4 数据身份
 
@@ -37,7 +30,7 @@
 
 ## 3. 服务、接口与任务安全
 
-正式业务网页、MCP、固定 Excel、统一搜索、回收站、PDF 预览与导出统一 V2 Folder/File/Link/Version 身份。已有历史 `--smoke` 兼容断言不表示正式程序继续开放旧 V1 业务接口。MCP 的 43 个工具、同用户授权和会话撤销规则独立于 Explorer 外观。
+正式业务网页、MCP、固定 Excel、统一搜索、回收站、PDF 预览与导出统一 V2 Folder/File/Link/Version 身份。已有历史 `--smoke` 兼容断言不表示正式程序继续开放旧 V1 业务接口。MCP 的工具清单、同用户授权和会话撤销规则独立于 Explorer 外观。
 
 Agent 工作规范配置位于当前 Windows 用户的 LocalApplicationData/IPSys/agent-guidance.json，独立于数据库与前端 localStorage；内置资源 + 用户覆盖由 AgentGuidance/AgentGuidanceStore 为同一权威来源。GET/PUT/POST 管理接口必须通过现有浏览器会话授权，MCP 工具读取还需本机授权；配置版本与正文哈希供客户端识别旧内容。第三阶段已通过标准 Windows 自动化回归，真实第三方 Agent 的端到端任务仍需另验。
 
@@ -59,4 +52,4 @@ Excel 模板由 `ExcelLedger.cs` 统一维护：项目 **11 列**、知识产权
 
 最新 [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 成功；历史合并、大库 VACUUM、4 GiB ZIP64 生成专项仍保留原证据。GA 发布与 T01～T09 专项不能从本次自动构建推断已完成。
 
-历史技术路线与原因在 Git 提交历史及 `docs/archive/`，现行任务以 [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md) 为准。
+历史技术路线与原因在 Git 提交历史（`git log -- docs/archive/`），现行任务以 [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md) 为准。

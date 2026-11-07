@@ -356,6 +356,6 @@ cancel_vault_reclaim   → POST /api/vault/compact/cancel
 
 ## 附：与既有文档的关系
 
-- `docs/INCREMENTAL_VACUUM_IMPLEMENTATION_PLAN_20261106.md`（外部任务书）：其阶段 B–E 的合成实验**不再执行**。理由已由本轮实测覆盖：机制可用性、复用行为、批次差异、完整性均已验证，剩余缺口是"真实大库性能"，合成样本无法回答。
+- 原外部任务书（`docs/INCREMENTAL_VACUUM_IMPLEMENTATION_PLAN_20261106.md`）：其阶段 B–E 的合成实验**不再执行**，理由是本轮实测已覆盖机制可用性、复用行为、批次差异与完整性，剩余缺口是「真实大库性能」，合成样本无法回答。该文件已于 2026-11-07 移出仓库，需要时用 Git 历史取回。
 - `docs/INCREMENTAL_VACUUM_STAGE_A_RESULTS_20261106.md`：保留为历史证据，不改写。
-- 本方案通过后，两份文档各加一行指向本文件，避免读者按旧任务书继续执行。
+- 现行做法以本文件与 `docs/CURRENT_BASELINE.md` 为准。

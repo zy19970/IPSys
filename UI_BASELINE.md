@@ -1,16 +1,6 @@
 # IPSys 资料管理系统：现行 UI 与文件夹交互基线（2026-11-02）
 
-> **当前适用版本（2026-11-06）**：以 SQLCipher **schema 4**、项目/知识产权/普通资料 Excel **11/19/6 列**、MCP **43 项工具**、统一普通目录模型为准。11 月 5 日已实现文件重命名、多选拖拽、Markdown/TXT 10 MiB 预览、修改数据库密码和回收站进度去重；[Windows CI #558](https://github.com/zy19970/IPSys/actions/runs/42048982231) 自动化成功，[v0.9.3-rc.1](https://github.com/zy19970/IPSys/releases/tag/v0.9.3-rc.1) 经 [手动 Publish #6](https://github.com/zy19970/IPSys/actions/runs/42053785425) 成功发布（发布不重跑 smoke）。人工整体验收另行记录。后文注明旧日期的方案、提交和 CI 属历史证据，不代表最新现状。
-
-
-> **现行后续整改（2026-11-04）**：最新源码使用 SQLCipher schema **4**，普通文件夹支持跨模块原位移动完整物理子树（含已软删除后代及其隐藏子目录），并保持稳定的 FolderId/LinkId/FileId、删除状态和历史版本；新建库直接采用 schema 4，旧版本库明确拒绝，不迁移。产品实现 [`8a2780e`](https://github.com/zy19970/IPSys/commit/8a2780e7a8c18a5017e27e0e22c03aac1f078fae)，完整回归见 [Windows #541](https://github.com/zy19970/IPSys/actions/runs/41862168722)（以实际结束状态为准）。现行 MCP 43 项，普通资料 Excel 六列。早期下文关于 schema 3、S5/#538 的记载是当时的有效基线，不覆盖本段；用户本机 GUI 验收和正式 Release 尚未执行。
-
-> **历史 S5 自动化基线（2026-11-04，#538）**：SQLCipher schema **3**，Folder 仅 `project/ip/archive_folder`；项目合同资料是可嵌套普通目录；普通资料 Excel **6** 列、项目 **11** 列、知识产权 **19** 列，MCP **43** 项。提交 `cc7c1262eac0c2aaa36a0cd3107823320627e774` 的 [Windows CI #538](https://github.com/zy19970/IPSys/actions/runs/41839841405) 已 `completed/success`：26 成功、0 失败、2 可选 ZIP64 跳过；Edge **14 PASS**、HTTP **12 PASS/1 BLOCKED（小库 VACUUM 进度抓拍）**，MCP↔Explorer 同批 S5-E2E PASS，两类 EXE 启动成功。**本机用户人工 GUI 及正式 Release 未完成。** 详见 [S5 最终验收报告](tests/S5_FINAL_ACCEPTANCE_20261104.md)；以下历史日期的报告保持原始事实。
-
-> **现行 UI 基线（2026-11-02）**：正式前端在 [`src/IPSys.Web/wwwroot/`](./src/IPSys.Web/wwwroot/README.md)。已核验产品/测试提交 `4567ae96b7` 的 Windows [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 为 completed/success（26 步成功、0 失败，两项可选 ZIP64 步骤跳过）。目前正式 Release 仍为 `v0.9.1-rc1`；自动 CI 不等于全部本地 GUI/第三方 Agent 验收。
-
-
-> N4/MCP 早期阶段属于历史；现行 **43** 个 MCP 工具。自动回归不能替代多种显示缩放下的人工视觉验收。
+> 现行状态见 [docs/CURRENT_BASELINE.md](docs/CURRENT_BASELINE.md)：版本、schema、Excel 列数、空间策略与验收口径全部以该文件为准（MCP 工具数不写死，以 `tools/list` 为准）。本文只写不随版本变化的规则；文内若出现具体数字、提交号或 CI 编号，均为当时记录，不构成现行约定。
 
 ## 1. 产品交互模型
 
@@ -69,7 +59,7 @@ IPSys 是业务化文件夹式本地资料管理器。用户面对的是「加�
 
 9. **真实资料详情附件区统一布局**：项目、知识产权、资料档案及综合资料统一使用一套附件分区标题栏：附件名称、真实原件份数、全选、已选数量、导出已选文件夹/ZIP、上传附件。禁止在分区内容上方重复显示“原件附件 n 份/上传原件”工具栏，或在附件列表底部单独显示第二组导出按钮。知识产权的材料类别选择保留在标题栏；资料档案不再常驻“同内容复用存储”复选框，所有业务原件统一在内容查重后自动独立保存或对重复内容弹出共享/复用/独立保存选择。所有附件行仍支持左键预览、右键操作、最新版本批量选择以及单独勾选历史版本；未选中文件时导出按钮禁用。项目内普通文件夹使用统一的新增、打开与附件操作；项目顶部整项目导出递归包含所有子目录及附件，附件标题栏的“导出已选”仅导出当前记录勾选附件。
 
-10. **UI 共用组件约束**：所有业务页面共享公共设计变量、列表工具栏、数据表格、详情标题/信息网格、附件行/版本分组、导航卡片、选择状态、导出菜单和弹窗基础样式。实际组件实现及事件由正式前端源码统一维护；各业务模块不得复制独立的“同功能另一套组件”。现行 Explorer 组件与回归以 [正式前端 README](./src/IPSys.Web/wwwroot/README.md) 与主分支 Windows CI 为准；旧矩阵只作 [历史追溯](./docs/archive/UI_COMPONENT_MATRIX.md)。真实浏览器视觉回归须另行实测，自动 DOM/源码检查不能替代。
+10. **UI 共用组件约束**：所有业务页面共享公共设计变量、列表工具栏、数据表格、详情标题/信息网格、附件行/版本分组、导航卡片、选择状态、导出菜单和弹窗基础样式。实际组件实现及事件由正式前端源码统一维护；各业务模块不得复制独立的“同功能另一套组件”。现行 Explorer 组件与回归以 [正式前端 README](./src/IPSys.Web/wwwroot/README.md) 与主分支 Windows CI 为准；旧矩阵 `docs/archive/UI_COMPONENT_MATRIX.md` 已移出仓库，需要时用 Git 历史取回。真实浏览器视觉回归须另行实测，自动 DOM/源码检查不能替代。
 
 ## 资料库手动压缩
 

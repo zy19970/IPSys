@@ -1,6 +1,6 @@
 # 开发者指南：结构与数据模型
 
-IPSys 主源码位于 [zy19970/IPSys](https://github.com/zy19970/IPSys)。项目采用 Windows WinForms 启动器、ASP.NET Core/Kestrel、本机 Web Explorer、SQLCipher **schema 4**（源码中 `ResourceSchemaV2.cs` 保留历史文件名）、43 个 MCP 工具与内嵌前端资源。
+IPSys 主源码位于 [zy19970/IPSys](https://github.com/zy19970/IPSys)。项目采用 Windows WinForms 启动器、ASP.NET Core/Kestrel、本机 Web Explorer、SQLCipher **schema 4**（源码中 `ResourceSchemaV2.cs` 保留历史文件名）、MCP 工具（清单以 `tools/list` 为准）与内嵌前端资源。
 
 ## 应用组成
 
@@ -44,7 +44,7 @@ Folder 表达目录与业务记录；FileId 表达逻辑文件；LinkId 表达�
 
 ## 一致性原则
 
-同一工作区原位移动目录会将已删除后代和隐藏子目录的物理归属在单个事务内一并处理；跨工作区独立复制不得共用 FileObject。当前项目合同只作为 `section=project` 下的普通文件夹。外部可调用 MCP 工具以实际 `tools/list` 的 43 项为准。最新 [v0.9.3-rc.1](https://github.com/zy19970/IPSys/releases/tag/v0.9.3-rc.1) 由手动 Publish（不重跑 smoke）生成，人工 GUI 验收另行记录。
+同一工作区原位移动目录会将已删除后代和隐藏子目录的物理归属在单个事务内一并处理；跨工作区独立复制不得共用 FileObject。当前项目合同只作为 `section=project` 下的普通文件夹。外部可调用 MCP 工具以实际 `tools/list` 为准。最新 [v0.9.3-rc.1](https://github.com/zy19970/IPSys/releases/tag/v0.9.3-rc.1) 由手动 Publish（不重跑 smoke）生成，人工 GUI 验收另行记录。
 
 
 1. 前端列表、详情表单、Excel、MCP 与搜索应使用一致的业务字段语义。

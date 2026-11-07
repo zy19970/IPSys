@@ -38,4 +38,4 @@ Windows CI 工作流是 [IPSys Windows build and smoke](https://github.com/zy199
 4. 使用独立测试 DB 验证上传、跨工作区隔离、共享与恢复、永久删除、异常取消。
 5. 版本发布和下载后核查实际构建提交及启动表现。
 
-历史测试材料、单文件大体积与 ZIP64 的验证边界见仓库 [测试证据索引](https://github.com/zy19970/IPSys/blob/main/tests/TEST_EVIDENCE_INDEX.md)。
+测试怎么跑见仓库 [tests/README](https://github.com/zy19970/IPSys/blob/main/tests/README.md)；历史证据已移出仓库，可用 Git 历史取回。

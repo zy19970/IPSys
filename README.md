@@ -1,13 +1,6 @@
 # IPSys — 资料管理系统
 
-> **现行统一基线（2026-11-06）**：新建 SQLCipher 数据库为 **schema 4**（旧 schema 2/3 不迁移）；项目子级与普通资料统一为可嵌套文件夹，合同不再是独立业务对象；项目/知识产权/普通资料 XLSX 分别 **11/19/6 列**；本机 MCP 为 **43 项工具**。已实现多选拖拽、附件 F2/右键重命名、Markdown/TXT 10 MiB 安全预览、数据库密码修改与回收站完成进度去重。产品提交 `47b8fa3` 对应 [Windows CI #558](https://github.com/zy19970/IPSys/actions/runs/42048982231) 完成成功；[手动 Publish #6](https://github.com/zy19970/IPSys/actions/runs/42053785425) 已发布 [v0.9.3-rc.1](https://github.com/zy19970/IPSys/releases/tag/v0.9.3-rc.1)（两种单 EXE + SHA256），发布流程不重跑 smoke。人工整体验收表仍未填报，不能据 CI 冒称已在用户本机全部通过。文内更早日期的结论为历史阶段记录，以本段及实际代码为现行准则。
-
-
-> **历史专项进展（2026-11-05 R1）**：最新产品/测试基线 [`8a2780e`](https://github.com/zy19970/IPSys/commit/8a2780e7a8c18a5017e27e0e22c03aac1f078fae) 已在 [Windows CI #541](https://github.com/zy19970/IPSys/actions/runs/41862168722) 完成全部实际测试步骤：26 success / 0 failure / 2 可选 ZIP64 skipped，HTTP **14 PASS / T-P1-07 1 BLOCKED**、Edge **14 PASS**，新增 `R1-HTTP` 与 `R1-PURGE` 均 PASS，SQLCipher/HTTP 与双单 EXE 构建验证通过。最新复核 Actions 总状态已为 `completed/success`，本次 Windows 自动化验收通过。**当前新建资料库 schema 4**，支持同工作区带回收站后代的跨模块完整树移动（事务、关联与版本保持），旧 schema 2/3 不迁移。本机人工 GUI 及 Release 未执行；此前 #538/#539 为历史不同 SHA。详情见 [实施后复核及验证记录](tests/REFACTOR_CLEANUP_REVIEW_20261104.md)。
-
-> **现行代码基线（2026-11-04）**：SQLCipher **schema 4**（`ResourceSchemaV2.cs` 文件名沿用；旧 schema 2/3 资料库拒绝打开，不迁移）。同工作区跨模块原位移动将已删除目录和隐藏的物理后代连同有效目录按父先子后在单一事务中更新 section，保留 FolderId/FileId/LinkId、文件版本与 deleted 状态；恢复后目录仍在目标模块，永久清理不会因旧 section 受阻。现行 MCP **43** 工具，普通资料 Excel **6** 列。产品实现见 [`8a2780e`](https://github.com/zy19970/IPSys/commit/8a2780e7a8c18a5017e27e0e22c03aac1f078fae)，对应 [Windows CI #541](https://github.com/zy19970/IPSys/actions/runs/41862168722) 的最终验收状态须以运行结果为准；上一基线 [#539](https://github.com/zy19970/IPSys/actions/runs/41856540366) 曾完成成功但仅验证了 R1 临时拒绝防护。用户本机人工验收与正式 Release 仍未执行。详见 [R1 修复核查](tests/REFACTOR_CLEANUP_REVIEW_20261104.md)，下方先前 S5 和较早 CI 叙述作为历史记录。
-
-> **历史 S5 自动化基线（2026-11-04，#538）**：SQLCipher 新库 schema **3**，Folder 仅 `project`、`ip`、`archive_folder`；项目可包含多层普通目录，合同资料不再是独立对象。普通资料模块（含综合资料）Excel **6 列**，项目 11 列，知识产权 19 列；MCP **43** 工具。最终代码/测试提交 `cc7c1262eac0c2aaa36a0cd3107823320627e774` 的 [Windows CI #538](https://github.com/zy19970/IPSys/actions/runs/41839841405) `completed/success`（26 success、0 failure、2 optional ZIP64 skipped），Edge **14 PASS**、HTTP **12 PASS + T-P1-07 1 BLOCKED**（小库 VACUUM 进度抓拍）。第16.4节同批 MCP↔GUI 跨入口闭环 S5-E2E PASS；两类单 EXE 启动通过。**用户本机 GUI 人工复验及正式 Release 未进行**。详见 [S5 结案报告](tests/S5_FINAL_ACCEPTANCE_20261104.md)；下文较早日期的 CI 与历史决策原文仅用于追溯。
+> 现行状态见 [docs/CURRENT_BASELINE.md](docs/CURRENT_BASELINE.md)：版本、schema、Excel 列数、空间策略与验收口径全部以该文件为准（MCP 工具数不写死，以 `tools/list` 为准）。本文只写不随版本变化的规则；文内若出现具体数字、提交号或 CI 编号，均为当时记录，不构成现行约定。
 
 ## 普通用户先看：这个软件究竟怎么运行？
 
@@ -80,7 +73,7 @@ IPSys 是离线、单用户的 Windows 资料管理系统。一个 SQLCipher sch
 
 项目、知识产权与普通资料文件夹以 **Folder** 表示（Folder 无版本），真实附件以 **File / FileVersion** 表示，`folder_file_links` 保存归属，同工作区可按明确操作共享 FileId 或复用 FileObject 内容；跨公司/个人工作区**不得共享物理 FileObject**，须独立复制。项目可以单独存在；合同资料只是项目下的普通文件夹，不再是独立业务对象。原件和文件版本存储于加密 SQLCipher 库；不维护磁盘明文镜像。
 
-**当前业务细节**：知识产权分十种类型，以三个可选编号字段（统一编号、公开号、授权公告号）表示；固定 XLSX 模板为 19 列。适用业务模块的 Excel 导出可选择**当前筛选结果**或**本模块全部记录**，筛选在服务端覆盖完整匹配记录，不受搜索页每组 60 条展示上限限制；**合同不提供独立的 Excel 导入或导出**，仅在所属项目中管理。公司业务档案七个预置目录创建后就是普通目录；公司还具有独立党团建设分类。MCP 在现行源码对外为 **43 个无 `v2_*` 别名的工具**。普通资料文件夹既能直接放附件，又能继续创建子文件夹，名称必填而其他属性选填。PDF 预览支持多页连续滚动和按需渲染，启动器显示本程序/整机 CPU 占用。
+**当前业务细节**：知识产权分十种类型，以三个可选编号字段（统一编号、公开号、授权公告号）表示；固定 XLSX 模板为 19 列。适用业务模块的 Excel 导出可选择**当前筛选结果**或**本模块全部记录**，筛选在服务端覆盖完整匹配记录，不受搜索页每组 60 条展示上限限制；**合同不提供独立的 Excel 导入或导出**，仅在所属项目中管理。公司业务档案七个预置目录创建后就是普通目录；公司还具有独立党团建设分类。MCP 对外工具不带 `v2_*` 历史别名，清单以连接时的 `tools/list` 为准。普通资料文件夹既能直接放附件，又能继续创建子文件夹，名称必填而其他属性选填。PDF 预览支持多页连续滚动和按需渲染，启动器显示本程序/整机 CPU 占用。
 
 > **软件版本提醒**：已解锁资料库时可通过「设置 → 软件更新」手动检查，启动后也会静默检查 GitHub 官方 Windows Release。检测到新版仅提醒并打开官方页面供用户自行下载；不自动安装，离线功能不受影响。开发版与正式发布版按 EXE 编译版本识别。
 
@@ -111,9 +104,9 @@ IPSys 的正式发布由 [Publish IPSys Release](https://github.com/zy19970/IPSy
 | --- | --- |
 | S0—S4 与 S5-1 统一业务阶段 | [CI #521](https://github.com/zy19970/IPSys/actions/runs/41793618031)、[#526](https://github.com/zy19970/IPSys/actions/runs/41802424444)、[#529](https://github.com/zy19970/IPSys/actions/runs/41816669123)、[#532](https://github.com/zy19970/IPSys/actions/runs/41822426599)、[#533](https://github.com/zy19970/IPSys/actions/runs/41831428604) 分别通过对应提交自动验收；跨入口闭环已由后续 S5-E2E 回归核验 |
 | Explorer F2-01～F2-06 核心业务、三批缺陷修复 | 功能与对应自动回归已完成，历史合并 CI [#39947975625](https://github.com/zy19970/IPSys/actions/runs/39947975625) 成功 |
-| Excel、知识产权、启动器与 MCP | 现行固定 Excel：项目 11 列、知识产权 19 列，所有普通资料模块（档案、资质、党团、综合资料）统一六列；本机 MCP 为 43 个工具，普通文件夹操作统一使用 archive_folder 与 section；[CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 仅为旧接口历史证据 |
+| Excel、知识产权、启动器与 MCP | 现行固定 Excel：项目 11 列、知识产权 19 列，所有普通资料模块（档案、资质、党团、综合资料）统一六列；本机 MCP 工具数量以 `tools/list` 为准，普通文件夹操作统一使用 archive_folder 与 section |
 | 统一文件夹、新建直达与操作细节 | [统一文件夹 CI](https://github.com/zy19970/IPSys/actions/runs/41406914227) 和 [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 成功，本机 GUI 仍需实测 |
-| 运行期 401 重新登录、拖放与待确认上传、跨工作区关联/物理隔离 | 已修复；专项 Node/HTTP 与 Agent 取证见 [验收证据索引](./tests/TEST_EVIDENCE_INDEX.md) |
+| 运行期 401 重新登录、拖放与待确认上传、跨工作区关联/物理隔离 | 已修复；专项 Node/HTTP 回归见 [tests/README](./tests/README.md) |
 | 超过 2 GiB SQLCipher/HTTP 原件及大库 VACUUM | 专项 [#39943364663](https://github.com/zy19970/IPSys/actions/runs/39943364663) 通过（未跳过压缩或完整性检查） |
 | 超过 4 GiB ZIP64 真实物理生成 | 专项 [#39944440866](https://github.com/zy19970/IPSys/actions/runs/39944440866) 通过 `PASS_GENERATION_ONLY`，并不代表 CI 做了第三方解包 |
 | 真实 Windows 原生保存/大文件交互 | 用户已反馈在本人电脑上完成手工验收；无公开上传的逐字节手工操作日志 |
@@ -123,15 +116,15 @@ IPSys 的正式发布由 [Publish IPSys Release](https://github.com/zy19970/IPSy
 
 | 文档 | 唯一职责 |
 | --- | --- |
-| [现行文档基线](./docs/CURRENT_DOCUMENT_BASELINE_20261106.md) | 现行模型、功能、发布证据与历史文档适用范围的统一索引 |
-| [REQUIREMENTS.md](./REQUIREMENTS.md) | 当前有效业务需求及历史覆盖决策 |
+| [现行基线](./docs/CURRENT_BASELINE.md) | **唯一现状声明**：模型、功能、空间策略、发布与验收口径 |
+| [REQUIREMENTS.md](./REQUIREMENTS.md) | 当前有效业务规则与范围 |
 | [M0_DATA_DICTIONARY.md](./M0_DATA_DICTIONARY.md) | 已确认的业务字段、字典及 Excel 字段逻辑 |
 | [DESIGN.md](./DESIGN.md) | 现行系统架构、SQLCipher schema 4 资源与安全边界 |
 | [UI_BASELINE.md](./UI_BASELINE.md) | 当前业务导航和交互原则；实际 Explorer 入口以源码为准 |
 | [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md) | 当前完成状态、可继续开发的事项和验收门槛 |
-| [MCP_CODEX.md](./MCP_CODEX.md) | 本机 MCP 接入、43 个工具（含统一的普通文件夹操作）与安全规则 |
+| [MCP_CODEX.md](./MCP_CODEX.md) | 本机 MCP 接入、工具与参数口径、安全规则 |
 | [USER_GUIDE.md](./USER_GUIDE.md) | Excel、搜索、附件/ZIP 与用户操作 |
-| [TESTING.md](./TESTING.md) 与 [测试证据索引](./tests/TEST_EVIDENCE_INDEX.md) | 现行验证方法与各次独立原始证据 |
+| [TESTING.md](./TESTING.md) 与 [tests/README](./tests/README.md) | 测试分层与怎么跑；历史证据已移出仓库 |
 | [正式前端源码说明](./src/IPSys.Web/wwwroot/README.md) | Explorer 前端源码、打包和代码契约 |
 
-历史计划、旧测试任务书与报告保留在 `docs/archive/`、`tests/agent-validation/`、`tests/retest-v2-2026-10-22/`、`tests/mcp-results/`，其日期状态不覆盖本页。开发前遵循 [AIGT-templates](https://github.com/zy19970/AIGT-templates) 的 `AGENTS.md` 和 `AI_RULES/GIT_OPERATIONS.md`。
+历史计划、旧任务书与各轮验证报告已于 2026-11-07 移出仓库，Git 历史完整保留（`git log -- <路径>` 可查）。开发前遵循 [AIGT-templates](https://github.com/zy19970/AIGT-templates) 的 `AGENTS.md` 和 `AI_RULES/GIT_OPERATIONS.md`。

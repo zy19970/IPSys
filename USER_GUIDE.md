@@ -1,13 +1,6 @@
 # IPSys 用户操作手册（Explorer / SQLCipher V2）
 
-> **现行版本（2026-11-06）**：新库 SQLCipher schema 4，项目子项与普通资料统一多层目录；Excel 固定 11/19/6 列，MCP 43 项。现行预发布 [v0.9.3-rc.1](https://github.com/zy19970/IPSys/releases/tag/v0.9.3-rc.1) 已由 [手动 Publish #6](https://github.com/zy19970/IPSys/actions/runs/42053785425) 成功构建发布；[Windows CI #558](https://github.com/zy19970/IPSys/actions/runs/42048982231) 自动测试通过，用户本机人工验收独立进行。旧日期的测试与版本说明仅作历史参考。
-
-
-> **现行后续整改（2026-11-04）**：资料库新建结构改为 SQLCipher **schema 4**（源码 `ResourceSchemaV2.cs` 沿用历史名称），不迁移旧 schema 2/3 测试库；完整物理子目录含回收站已删除后代可跨模块原位移动，FolderId/FileId/LinkId/版本和 deleted 状态保持稳定，恢复与永久清理按照新 section 执行。Excel 当前仍为项目 11 列、知产 19 列、普通资料 6 列；MCP 43 项。源代码 [`8a2780e`](https://github.com/zy19970/IPSys/commit/8a2780e7a8c18a5017e27e0e22c03aac1f078fae)，[Windows CI #541](https://github.com/zy19970/IPSys/actions/runs/41862168722) 为本轮验收入口（结果以实际状态为准）。旧版本的记录保留历史属性，正式 Release 和用户本机人工验收待做。
-
-> **历史 S5 自动化基线（2026-11-04，#538）**：SQLCipher schema **3**，Folder 仅 `project/ip/archive_folder`；项目合同资料是可嵌套普通目录；普通资料 Excel **6** 列、项目 **11** 列、知识产权 **19** 列，MCP **43** 项。提交 `cc7c1262eac0c2aaa36a0cd3107823320627e774` 的 [Windows CI #538](https://github.com/zy19970/IPSys/actions/runs/41839841405) 已 `completed/success`：26 成功、0 失败、2 可选 ZIP64 跳过；Edge **14 PASS**、HTTP **12 PASS/1 BLOCKED（小库 VACUUM 进度抓拍）**，MCP↔Explorer 同批 S5-E2E PASS，两类 EXE 启动成功。**本机用户人工 GUI 及正式 Release 未完成。** 详见 [S5 最终验收报告](tests/S5_FINAL_ACCEPTANCE_20261104.md)；以下历史日期的报告保持原始事实。
-
-> **历史功能说明（2026-11-02 Explorer/SQLCipher V2）**：已核验产品/测试提交 `4567ae96b7` 的 Windows [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 为 completed/success（26 步成功、0 失败，两项可选 ZIP64 步骤跳过）。目前正式 Release 仍为 `v0.9.1-rc1`；自动 CI 不等于全部本地 GUI/第三方 Agent 验收。
+> 现行状态见 [docs/CURRENT_BASELINE.md](docs/CURRENT_BASELINE.md)：版本、schema、Excel 列数、空间策略与验收口径全部以该文件为准（MCP 工具数不写死，以 `tools/list` 为准）。本文只写不随版本变化的规则；文内若出现具体数字、提交号或 CI 编号，均为当时记录，不构成现行约定。
 
 ## 个人工作区默认排序
 
@@ -63,7 +56,7 @@ IPSys 使用 Windows WinForms 启动器和本地 Edge/Chrome 前端，个人、�
 4. **拒绝危险目标**：不能移到自身或后代、原目录、非法目标、其它工作区、任务繁忙状态；确认期间对象变化会取消操作。数据库仍独立验证目标、同名冲突、重复关联、权限、工作区和原子回滚。
 5. **从 Windows 拖入多个新文件**：仍走文件上传任务，与浏览器内已有记录拖拽的关联移动严格分开。
 
-具体人工回归见 [D08–D13 多选拖拽专项](tests/MANUAL_ACCEPTANCE_20261105.md)。只用同一提交对应的最新成功 Windows CI 自包含 EXE 进行验证。
+多选拖拽等本机回归需在独立 schema 4 测试库逐项确认并单独记录结果。只用同一提交对应的最新成功 Windows CI 自包含 EXE 进行验证。
 
 ## 附件重命名与 MCP 命名范围（2026-11-05）
 

@@ -45,7 +45,7 @@ MCP 参数 `section` 必须结合 `workspace` 使用，同一个英文值在个�
 | 回收站 | `list_trash`、`restore_trash`、`purge_trash` |
 | 读取 Agent 规范 | `get_agent_guidance` |
 
-普通文件夹统一为 `archive_folder`，必须明确工作区与 `section`（公司支持 certificate/achievement/party/general/project，个人支持 certificate/achievement/academic/general/project）。其中 `section=project` 时，`parent_id` **必须是具体项目 FolderId 或项目内另一文件夹 FolderId**，不能直接创建在虚拟“公司项目”分类根目录；跨模块共享/移动到项目也必须选择真实的项目或其子目录；当前 MCP 注册 43 项工具。附件的全局名称可使用 `update_file_metadata(workspace,file_id,name)` 修改；这会更新同一 FileId 的全局名称而保留各 LinkId 的独立显示别名、文件原件与版本。实际工具名称、参数和授权条件应通过连接后的 `tools/list` 与仓库 [MCP_CODEX.md](https://github.com/zy19970/IPSys/blob/main/MCP_CODEX.md) 核对，不建议使用早期已下线的 `v2_*` 历史别名。
+普通文件夹统一为 `archive_folder`，必须明确工作区与 `section`（公司支持 certificate/achievement/party/general/project，个人支持 certificate/achievement/academic/general/project）。其中 `section=project` 时，`parent_id` **必须是具体项目 FolderId 或项目内另一文件夹 FolderId**，不能直接创建在虚拟“公司项目”分类根目录；跨模块共享/移动到项目也必须选择真实的项目或其子目录；MCP 的工具数量与名称以客户端刷新后的 `tools/list` 为准；除了业务工具，还有四个资料库级工具（`get_vault_storage`、`reclaim_vault_space`、`get_vault_reclaim_status`、`cancel_vault_reclaim`），它们不接收 `workspace`。附件的全局名称可使用 `update_file_metadata(workspace,file_id,name)` 修改；这会更新同一 FileId 的全局名称而保留各 LinkId 的独立显示别名、文件原件与版本。实际工具名称、参数和授权条件应通过连接后的 `tools/list` 与仓库 [MCP_CODEX.md](https://github.com/zy19970/IPSys/blob/main/MCP_CODEX.md) 核对，不建议使用早期已下线的 `v2_*` 历史别名。
 
 ## 示例任务
 

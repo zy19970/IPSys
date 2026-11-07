@@ -19,7 +19,7 @@
 | 含回收站目录的跨模块移动 | 在同一工作区移动普通文件夹时，已软删除的后代及被其隐藏的子目录仍随完整物理树改变模块归属，保留原有 FolderId、FileId、LinkId 和删除状态；可在目标模块恢复 |
 | 永久删除 | 从回收站彻底清理，并按引用关系释放物理内容 |
 | ZIP64 | 用于支持大于传统 ZIP 限制的打包格式 |
-| MCP | Model Context Protocol，当前通过本机授权向 Agent 提供 43 项工具 |
+| MCP | Model Context Protocol，通过本机授权向 Agent 提供工具；具体清单以连接时的 `tools/list` 为准 |
 | 附件重命名 | 右键或 F2 更新 FileId 全局名称；既有 LinkId 位置别名与原历史版本名不被覆盖 |
 | Markdown 预览 | `.md/.markdown/.txt` 的本机只读预览，文本上限 10 MiB，Markdown 具有源码切换与安全净化 |
 | Agent 工作规范 | 为 Agent 的搜索、上传、元数据补录提供的分层操作指引 |

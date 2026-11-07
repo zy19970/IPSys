@@ -6,7 +6,7 @@
 > 源码：[`c4decd9698`](https://github.com/zy19970/IPSys/commit/c4decd9698772f162ca8482c6b57078d96e4607e)  
 > 运行：[Windows CI #42181743548](https://github.com/zy19970/IPSys/actions/runs/42181743548)（Debug `--smoke` 中实验与 JSON 工件生成成功，整套 CI 状态另以 Actions 为准）  
 > 原始证据：Actions Artifact `IPSys-Vacuum-Small-Lab-42181743548`，仅含 JSON 指标，不含 DB、附件或测试口令。  
-> 实施范围：[专项方案](./INCREMENTAL_VACUUM_IMPLEMENTATION_PLAN_20261106.md) 阶段 A；不是最终用户库的模式变更验收。
+> 实施范围：原专项方案的阶段 A（该任务书已被取代并移出仓库）；不是最终用户库的模式变更验收。
 
 ## 实验设置
 

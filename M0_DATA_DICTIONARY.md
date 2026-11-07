@@ -1,19 +1,6 @@
 # IPSys M0 统一字段、状态与实体字典（设计定稿 V1.0）
 
-> **现行统一基线（2026-11-06）**：新建 SQLCipher 数据库为 **schema 4**（旧 schema 2/3 不迁移）；项目子级与普通资料统一为可嵌套文件夹，合同不再是独立业务对象；项目/知识产权/普通资料 XLSX 分别 **11/19/6 列**；本机 MCP 为 **43 项工具**。已实现多选拖拽、附件 F2/右键重命名、Markdown/TXT 10 MiB 安全预览、数据库密码修改与回收站完成进度去重。产品提交 `47b8fa3` 对应 [Windows CI #558](https://github.com/zy19970/IPSys/actions/runs/42048982231) 完成成功；[手动 Publish #6](https://github.com/zy19970/IPSys/actions/runs/42053785425) 已发布 [v0.9.3-rc.1](https://github.com/zy19970/IPSys/releases/tag/v0.9.3-rc.1)（两种单 EXE + SHA256），发布流程不重跑 smoke。人工整体验收表仍未填报，不能据 CI 冒称已在用户本机全部通过。文内更早日期的结论为历史阶段记录，以本段及实际代码为现行准则。
-
-
-> **现行后续整改（2026-11-04）**：资料库新建结构改为 SQLCipher **schema 4**（源码 `ResourceSchemaV2.cs` 沿用历史名称），不迁移旧 schema 2/3 测试库；完整物理子目录含回收站已删除后代可跨模块原位移动，FolderId/FileId/LinkId/版本和 deleted 状态保持稳定，恢复与永久清理按照新 section 执行。Excel 当前仍为项目 11 列、知产 19 列、普通资料 6 列；MCP 43 项。源代码 [`8a2780e`](https://github.com/zy19970/IPSys/commit/8a2780e7a8c18a5017e27e0e22c03aac1f078fae)，[Windows CI #541](https://github.com/zy19970/IPSys/actions/runs/41862168722) 为本轮验收入口（结果以实际状态为准）。旧版本的记录保留历史属性，正式 Release 和用户本机人工验收待做。
-
-> **历史 S5 口径（2026-11-04，#538）**：SQLCipher schema 3，Folder 类型为 project、ip、archive_folder；合同资料是普通项目目录。现行固定 Excel：项目 11 列、知识产权 19 列、所有普通资料 6 列。MCP 共 43 工具。S5 同 SHA [CI #538](https://github.com/zy19970/IPSys/actions/runs/41839841405) 已成功（Edge 14 PASS，HTTP 12 PASS/1 压缩进度观察 BLOCKED）；用户人工验证及 Release 未执行。参见 [S5 结案报告](tests/S5_FINAL_ACCEPTANCE_20261104.md)，其余较早记录保留历史属性。
-
-> **历史适用口径（2026-11-02，已由页首 2026-11-04 覆盖）**：本文件保留 M0 字段来源，物理模型以 `ResourceSchemaV2.cs`、运行时 Excel 以 `ExcelLedger.cs` 为准。项目 11 列、知识产权 19 列、档案/资质/党团 6 列、综合资料 3 列；合同无独立 Excel。普通资料 UI 新建统一文件夹，可直接存附件和子目录。现行 [Windows CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 已通过，历史旧测试建议不应替代最新接口。
-
-
-> 阶段：M0 设计输入准备，2026-10-13  
-> 依据：[REQUIREMENTS.md](./REQUIREMENTS.md) V1.0 冻结范围与 [FREEZE_AUDIT.md](./docs/archive/FREEZE_AUDIT.md)  
-> **历史说明**：此处记录 2026-10-13 的 M0 交付状态。当时的 N4 待办和旧接口建议已由现行源码及页首更新口径覆盖，不代表当前仍须从该阶段重新实施。
-> 状态：**M0 完成：用户确认 R1–R3 使用本文件默认方案；R4 金额为人民币（CNY）且采用 `0.00`。** 本文件为获确认的数据设计，物理 Schema 与运行验证仍属 M1/M2。
+> 现行状态见 [docs/CURRENT_BASELINE.md](docs/CURRENT_BASELINE.md)：版本、schema、Excel 列数、空间策略与验收口径全部以该文件为准（MCP 工具数不写死，以 `tools/list` 为准）。本文只写不随版本变化的规则；文内若出现具体数字、提交号或 CI 编号，均为当时记录，不构成现行约定。
 
 ## 1. 使用方式、标记与类型约定
 

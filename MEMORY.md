@@ -1,5 +1,10 @@
 # IPSys 项目持续记忆
 
+> 现行状态见 [docs/CURRENT_BASELINE.md](docs/CURRENT_BASELINE.md)——那是仓库里**唯一**的现状声明。
+> 本文件是只追加的会话记录：历史条目保留原貌，不随代码更新；其中出现的阶段结论、工具数量与路径均为当时事实。
+> 2026-11-07 起，`docs/archive/`、`tests/agent-validation/`、`tests/mcp-results/`、`tests/archive/`、一次性任务书与旧验收报告已移出仓库，用 `git log -- <路径>` 取回。
+
+
 > **2026-11-07 第十九轮：GitHub Support 工单 12 小时未回复的时间预期**：用户询问为何账户 billing lock 的 GitHub Support 工单 #4962958 已等待约 12 小时还没有处理。依据 GitHub 官方支持政策 `https://docs.github.com/en/support/learning-about-github-support/about-github-support` 与工单文档 `https://docs.github.com/en/support/contacting-github-support/viewing-and-updating-support-tickets`，GitHub Free 账户能就账户问题联系支持，但不享有企业级 Premium SLA，官方无“12/24 小时内必须答复”的普遍保证。12 小时未答并不异常；账单锁定涉及人工复核，提交时接近周末，具体队列不可查看。建议暂保留 Open 工单、检查 Portal/My Tickets 和邮件；可补充新优惠券过期截图；2–3 个工作日无响应时在原工单一次礼貌跟进，避免重复建单。此次仅说明等待预期，不变更产品/账单、不代用户联络。最近会话 `memory/sessions/2026-11-06-细节优化前仓库梳理.md` 第十九轮。
 
 > **2026-11-07 第十八轮：GitHub 优惠券到期邮件与账户 billing lock 的关系**：用户收到 GitHub 官方样式的 “Your coupon has expired” 邮件，正文称“your coupon for GitHub Free has expired”，询问为何发信、是否与 IPSys GitHub Actions 账户计费锁定属于同一问题。通过 GitHub 官方说明 `https://docs.github.com/en/billing/how-tos/set-up-payment/redeem-coupon` 确认：个人账户优惠券到期且未绑定付款方式时，按规定应正常降级 GitHub Free，而非必须付费或锁定公开仓库免费 Actions；`https://docs.github.com/en/billing/how-tos/troubleshooting/locked-account` 说明单独的支付授权/预授权失败可能导致 GitHub Free 无余额账户的 Actions 被锁。此次新邮件提供“账户存在历史优惠券、近期到期”的线索，与此前 Free+Copilot Free/实际应付 $0/红字跨月收款失败/Actions #569、#570~#573 无 steps 的情形时间相近；**相关性较强但同源因果尚未经 GitHub 人工确认**。推荐在既有 GitHub Support 工单 #4962958 中追加邮件截图、询问优惠券类型/到期日期/关联账单记录以及是否导致 billing lock；不主动升级或输入支付方式以解决免费 Actions。此次仅做资料解释与记忆归档，不修改产品或 Workflows，尚未替用户回复 Support。记录见 `memory/sessions/2026-11-06-细节优化前仓库梳理.md` 第十八轮。

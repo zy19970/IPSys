@@ -1,15 +1,6 @@
 # IPSys 现行测试与验收规则
 
-> **当前适用版本（2026-11-06）**：以 SQLCipher **schema 4**、项目/知识产权/普通资料 Excel **11/19/6 列**、MCP **43 项工具**、统一普通目录模型为准。11 月 5 日已实现文件重命名、多选拖拽、Markdown/TXT 10 MiB 预览、修改数据库密码和回收站进度去重；[Windows CI #558](https://github.com/zy19970/IPSys/actions/runs/42048982231) 自动化成功，[v0.9.3-rc.1](https://github.com/zy19970/IPSys/releases/tag/v0.9.3-rc.1) 经 [手动 Publish #6](https://github.com/zy19970/IPSys/actions/runs/42053785425) 成功发布（发布不重跑 smoke）。人工整体验收另行记录。后文注明旧日期的方案、提交和 CI 属历史证据，不代表最新现状。
-
-
-> **2026-11-05 当前 R1 跨模块墓碑目录专项验收**：产品/测试 SHA [`8a2780e`](https://github.com/zy19970/IPSys/commit/8a2780e7a8c18a5017e27e0e22c03aac1f078fae)，[Windows #541](https://github.com/zy19970/IPSys/actions/runs/41862168722) 日志确认 26 success、0 fail、2 optional ZIP64 skipped；`R1-HTTP PASS`（移动、恢复、两版文件原始字节一致）和 `R1-PURGE PASS`（移动后永久清理），C# SQLCipher/WebSmoke、Edge S5-E2E、全部 HTTP 15 项与 Edge 14 项门禁均通过，其中 T-P1-07 是经批准的短时进度观察 BLOCKED。随后 Actions 顶层已更新为 `completed/success`，本次自动化验收通过。R1 的故障注入回滚通过加密库 `ResourceSchemaV2Smoke.Run` 在 `--smoke` 运行链中覆盖。新库 schema 4，旧 schema 2/3 不迁移；本机用户人工 GUI 验收另行进行。
-
-> **现行代码基线（2026-11-04）**：SQLCipher **schema 4**（`ResourceSchemaV2.cs` 文件名沿用；旧 schema 2/3 资料库拒绝打开，不迁移）。同工作区跨模块原位移动将已删除目录和隐藏的物理后代连同有效目录按父先子后在单一事务中更新 section，保留 FolderId/FileId/LinkId、文件版本与 deleted 状态；恢复后目录仍在目标模块，永久清理不会因旧 section 受阻。现行 MCP **43** 工具，普通资料 Excel **6** 列。产品实现见 [`8a2780e`](https://github.com/zy19970/IPSys/commit/8a2780e7a8c18a5017e27e0e22c03aac1f078fae)，对应 [Windows CI #541](https://github.com/zy19970/IPSys/actions/runs/41862168722) 的最终验收状态须以运行结果为准；上一基线 [#539](https://github.com/zy19970/IPSys/actions/runs/41856540366) 曾完成成功但仅验证了 R1 临时拒绝防护。用户本机人工验收与正式 Release 仍未执行。详见 [R1 修复核查](tests/REFACTOR_CLEANUP_REVIEW_20261104.md)，下方先前 S5 和较早 CI 叙述作为历史记录。
-
-> **历史 S5 自动化基线（2026-11-04，#538）**：SQLCipher 新库 schema **3**，Folder 仅 `project`、`ip`、`archive_folder`；项目可包含多层普通目录，合同资料不再是独立对象。普通资料模块（含综合资料）Excel **6 列**，项目 11 列，知识产权 19 列；MCP **43** 工具。最终代码/测试提交 `cc7c1262eac0c2aaa36a0cd3107823320627e774` 的 [Windows CI #538](https://github.com/zy19970/IPSys/actions/runs/41839841405) `completed/success`（26 success、0 failure、2 optional ZIP64 skipped），Edge **14 PASS**、HTTP **12 PASS + T-P1-07 1 BLOCKED**（小库 VACUUM 进度抓拍）。第16.4节同批 MCP↔GUI 跨入口闭环 S5-E2E PASS；两类单 EXE 启动通过。**用户本机 GUI 人工复验及正式 Release 未进行**。详见 [S5 结案报告](tests/S5_FINAL_ACCEPTANCE_20261104.md)；下文较早日期的 CI 与历史决策原文仅用于追溯。
-
-> **历史更新（2026-11-02）**：已核验产品/测试提交 `4567ae96b7` 的 Windows [CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 为 completed/success（26 步成功、0 失败，两项可选 ZIP64 步骤跳过）。目前正式 Release 仍为 `v0.9.1-rc1`；自动 CI 不等于全部本地 GUI/第三方 Agent 验收。 原始测试报告与此前 FAIL/BLOCKED 事实保留原文，后续修复另列证据。
+> 现行状态见 [docs/CURRENT_BASELINE.md](docs/CURRENT_BASELINE.md)：版本、schema、Excel 列数、空间策略与验收口径全部以该文件为准（MCP 工具数不写死，以 `tools/list` 为准）。本文只写不随版本变化的规则；文内若出现具体数字、提交号或 CI 编号，均为当时记录，不构成现行约定。
 
 ## 测试结果必须分层
 
@@ -33,10 +24,10 @@
 
 ## 主分支 Windows CI
 
-当前最近完整验证为 [Windows CI #558](https://github.com/zy19970/IPSys/actions/runs/42048982231)，对产品提交 `47b8fa3` completed/success（26 个成功步骤、0 失败、2 个可选 ZIP64 跳过），包含干净 checkout 直接 Release 的双单 EXE 包结构与版本资源验证、原有 Debug/Node/Edge/HTTP/SQLCipher/MCP 测试。新发布 [v0.9.3-rc.1](https://github.com/zy19970/IPSys/releases/tag/v0.9.3-rc.1) 的 [Publish #6](https://github.com/zy19970/IPSys/actions/runs/42053785425) validate、build 和 publish 三项均成功，但 Publish 不重跑 smoke。人工验收仍须在独立 schema 4 测试库执行并填写 [清单](./tests/MANUAL_ACCEPTANCE_20261105.md)。
+当前最近完整验证为 [Windows CI #558](https://github.com/zy19970/IPSys/actions/runs/42048982231)，对产品提交 `47b8fa3` completed/success（26 个成功步骤、0 失败、2 个可选 ZIP64 跳过），包含干净 checkout 直接 Release 的双单 EXE 包结构与版本资源验证、原有 Debug/Node/Edge/HTTP/SQLCipher/MCP 测试。新发布 [v0.9.3-rc.1](https://github.com/zy19970/IPSys/releases/tag/v0.9.3-rc.1) 的 [Publish #6](https://github.com/zy19970/IPSys/actions/runs/42053785425) validate、build 和 publish 三项均成功，但 Publish 不重跑 smoke。人工验收仍须在独立 schema 4 测试库执行并单独记录结果；CI 通过不代表用户本机可用。
 
 
-主工作流 `.github/workflows/web-windows.yml` 由 Windows runner 执行 Debug/Release、内嵌 Web、现行 **43 项 MCP**、Node/Explorer、真实 Edge/HTTP、SQLCipher/HTTP 与两种单文件 EXE 启动。[CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 为 26 success、0 failure、2 项可选 ZIP64 skipped；旧合并 CI 只作历史记录。
+主工作流 `.github/workflows/web-windows.yml` 由 Windows runner 执行 Debug/Release、内嵌 Web、现行 MCP 工具清单（数量以 `tools/list` 为准）、Node/Explorer、真实 Edge/HTTP、SQLCipher/HTTP 与两种单文件 EXE 启动。[CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 为 26 success、0 failure、2 项可选 ZIP64 skipped；旧合并 CI 只作历史记录。
 
 `tests/retest-v2-2026-10-22/scripts/` 和相应 fixture **仍被 CI 调用**，即使路径包含历史日期，也不是可随意删除的废弃文件。测试实际入口以工作流和 `src/IPSys.Web/tests/` 中的现行引用为准。
 
@@ -52,13 +43,17 @@
 
 分别检查知识产权申请年与授权年的冲突、项目起止年度、缺失年份沉底、同年份稳定次序，以及普通资料目录的真实创建时间与随后修改时间分离。旧 V2 文件夹缺失创建时间时不能凭空写入历史日期；可按 FolderId 次序近似排序。必须验证进入不同分类后的默认排序和手动切换“自定义顺序”后仍可查看持久化位置。有关 Node 回归见 `src/IPSys.Web/tests/explorer-p1-regression-smoke.cjs`，创建时间建库/升级验证见 `ResourceSchemaV2Smoke.cs`。
 
-## SQLCipher INCREMENTAL 空间回收隔离实验（阶段 A）
+## 空间回收（SQLCipher INCREMENTAL）
 
-实施方案：[INCREMENTAL_VACUUM_IMPLEMENTATION_PLAN_20261106](docs/INCREMENTAL_VACUUM_IMPLEMENTATION_PLAN_20261106.md)。本阶段仅用**独立随机临时 SQLCipher DB**比较 `auto_vacuum=NONE` 与 `INCREMENTAL`，**不修改**正式新建资料库默认模式或用户正在使用的数据库，也不替换手动全库 VACUUM。
+新建资料库在建表前写入 `auto_vacuum=INCREMENTAL` 并回读断言；读不回 2 就拒绝建库，因为这个库将永远无法原地回收，而用户不会察觉。旧库（`auto_vacuum=0`）不迁移，设置页的回收入口直接置灰说明原因。
 
-`IncrementalVacuumLabSmoke.Run(4)` 已接入现行 `--smoke` 小样本，CI 会验证该实验结果并上传 `IPSys-Vacuum-Small-Lab-<run id>` JSON 工件供检查真实物理回收量。使用 `NativeFileStore` 上传、添加历史版本、两个目录共享相同 FileId、先删一个 LinkId 验证保护，最后永久清理第二个 LinkId；记录 `page_count/freelist_count`、物理文件大小、迭代批次、读取的 SHA-256、外键与完整性、重开加密库及错误密码拒绝。对 INC 按每次 256 页调用，NONE 对照执行相同语句但不回收。
+回收由 `POST /api/vault/compact` 触发，默认走 `VaultCompactStore.Reclaim()`：每批 256 页 `incremental_vacuum`，每批重新读取 `freelist_count`，一批下来没有进展就立即报错，不把“循环结束”当成“回收完成”；前后各做一次 `integrity_check` 与 `writing` 状态检查。取消在批次之间生效，已回收部分保留。`full:true` 保留完整 `VACUUM` 作为应急通道，设置页不提供入口。
 
-需要更大的 **64 MiB** 独立实验时，通过 GitHub Actions **IPSys Windows build and smoke → Run workflow → incremental_vacuum_lab=true** 显式触发；产生仅含统计的 JSON 工件。也可以在 Windows 终端使用 `IPSYS_VACUUM_LAB_MIB=32` 与 `IPSys.Web.exe --vacuum-lab`（1～128 MiB）进行隔离测试。环境变量 `IPSYS_VACUUM_LAB_REPORT` 可指定 JSON 输出文件。**本地真实大库、模拟断电和 500 GB 性能尚待另行专项实验**，不能因小样本通过即判断全部阶段通过。
+批次 256 页来自实测：2 GiB 库回收 3.07 GiB 时，4096 页/批比 256 页/批慢 3.3 倍且耗时波动大三倍。原地回收的额外空间约为单批回滚日志（1 MiB），不再要求两倍库大小。
+
+`VaultCompactSmoke`（回收与完整 VACUUM 两条路径、模式字段、旧库拒绝）与 `VaultCompactHttpSmoke` 已接入 `--smoke`。`IncrementalVacuumLabSmoke` 保留为隔离实验：`IPSys.Web.exe --vacuum-lab` 用独立临时库比较 NONE 与 INCREMENTAL，记录 `page_count/freelist_count`、物理字节、SHA-256、外键与完整性、重开与错误口令拒绝。CI 只跑 4 MiB 小样本守住回归；更大样本用 `IPSYS_VACUUM_LAB_MIB`（1～4096）显式触发，报告路径由 `IPSYS_VACUUM_LAB_REPORT` 指定。
+
+**未测范围**：真实 20–50 GB 规模的回收速率、真实断电、磁盘满、长期碎片化。2 GiB 样本全程在页缓存内，测出的 200 MiB/s 是内存速度，不能外推到真实磁盘。
 
 ## 大文件与 ZIP64 专项
 
@@ -78,4 +73,4 @@
 
 本机实机用隔离 SQLCipher QA 数据库、专用 Edge profile、独立输入/导出目录；记录版本、运行时间、源码与 EXE SHA、环境、用例状态、可复验的结果与证据路径。旧 132 项/16 项补测/第三批实机报告分别保留。若旧脚本直接派发 `drop` 而没有产生真实 `dragstart`，不能把脚本前置缺失当作已证实的用户拖放缺陷。测试误报、环境阻塞、需求差异、真实 BUG 必须分类报告。
 
-原始阶段与完整证据见 [TEST_EVIDENCE_INDEX](./tests/TEST_EVIDENCE_INDEX.md)；最新业务范围见 [REQUIREMENTS](./REQUIREMENTS.md)，技术约束见 [DESIGN](./DESIGN.md)。
+测试怎么跑见 [tests/README](./tests/README.md)；最新业务范围见 [REQUIREMENTS](./REQUIREMENTS.md)，技术约束见 [DESIGN](./DESIGN.md)。

@@ -1,37 +1,42 @@
-# IPSys 测试资料与执行入口
+# IPSys 测试入口与证据约定
 
-> **现行版本（2026-11-06）**：新库 SQLCipher schema 4，项目子项与普通资料统一多层目录；Excel 固定 11/19/6 列，MCP 43 项。现行预发布 [v0.9.3-rc.1](https://github.com/zy19970/IPSys/releases/tag/v0.9.3-rc.1) 已由 [手动 Publish #6](https://github.com/zy19970/IPSys/actions/runs/42053785425) 成功构建发布；[Windows CI #558](https://github.com/zy19970/IPSys/actions/runs/42048982231) 自动测试通过，用户本机人工验收独立进行。旧日期的测试与版本说明仅作历史参考。
+> 现行状态见 [docs/CURRENT_BASELINE.md](../docs/CURRENT_BASELINE.md)。本文件只讲**怎么跑**，不记录某次运行的结果——那类内容会过期，历史证据已移出仓库（见文末）。
 
+## 四条执行入口
 
-> **统一测试资料目录（状态更新至 2026-11-02）**：本目录保存 Explorer/Agent/MCP 的原始方案、报告、证据和回归脚本，当前阶段主要处理操作细节。产品/测试提交 `4567ae96b7` 的 [Windows CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 成功，26 项通过、0 失败，2 项可选 ZIP64 步骤跳过。历史结果不得倒写；现行执行状态见 [开发计划](../DEVELOPMENT_PLAN.md) 和 [测试证据索引](./TEST_EVIDENCE_INDEX.md)。
+| 入口 | 命令 | 覆盖 |
+| --- | --- | --- |
+| 后端 smoke | `IPSys.Web.exe --smoke` | 业务链路 + `VaultCompactSmoke`（回收/完整 VACUUM 双路径）+ `NativeMcpSmoke` + `IncrementalVacuumLabSmoke.Run(4)` |
+| 隔离空间实验 | `IPSys.Web.exe --vacuum-lab` | NONE vs INCREMENTAL，独立随机临时库，`IPSYS_VACUUM_LAB_MIB` 控制规模 |
+| UI 源码冒烟 | `node src/IPSys.Web/tests/<name>.cjs` | 读真实前端源码做静态/行为断言，多数需在**仓库根目录**运行 |
+| Edge/HTTP 复测 | `tests/retest-v2-2026-10-22/scripts/` | 由 CI 调用，需先跑 `fixture.cjs` 生成 `evidence/fixture.json` |
 
-## 测试资料怎么找
+`tests/tools/Verify-ExplorerExports.ps1` 是导出文件核验工具，同样由 CI 调用。
 
-| 目录/文件 | 内容 |
+## 这个目录里还剩什么
+
+| 路径 | 保留原因 |
 | --- | --- |
-| [TEST_EVIDENCE_INDEX.md](./TEST_EVIDENCE_INDEX.md) | 综合索引，区分最新产品 CI、旧 Agent 实测、用户人工反馈与剩余验证范围 |
-| [SQLCipher 增量回收实验方案](../docs/INCREMENTAL_VACUUM_IMPLEMENTATION_PLAN_20261106.md) | NONE/INCREMENTAL 独立加密库、版本与共享保护、空间/哈希/完整性对照、分阶段准入 |
-| [Excel 导出范围回归](../src/IPSys.Web/tests/excel-scope-smoke.cjs) | 现行 Node 回归：`all/filtered`、不同工作区、党团资料与合同无独立 Excel 接口 |
-| [agent-validation/](./agent-validation/) | 四轮 Agent 原始资料，共 413 个文件；报告、结果、截图、运行日志均完整保留 |
-| [retest-v2-2026-10-22/](./retest-v2-2026-10-22/) | Explorer V2 复测：原始报告、证据及 **Windows CI 仍使用的脚本** |
-| [mcp-results/](./mcp-results/README.md) | MCP 2026-10-17 旧 70 工具版本黑盒报告和原始操作日志 |
-| [第二阶段 Agent 任务书](./IPSys_Explorer_Phase2_Agent_Complete_Retest.md) | 132 项实机验收任务书及同目录 CSV |
-| [第二阶段补测任务书](./IPSys_Explorer_Phase2_Supplement_Agent_Test_Plan.md) | 16 项补测方案及同目录 CSV |
-| [第三批实机任务书](./IPSys_Explorer_Phase3_Real_Windows_Agent_2026-10-23.md) | 大文件保存与跨区物理隔离 |
-| [ZIP64 物理生成验收](./IPSys_Explorer_ZIP64_Generation_Only_2026-10-23.md) | 已使用的 ZIP64 生成测试操作说明 |
+| `retest-v2-2026-10-22/scripts/` | `web-windows.yml` 逐条调用，删了整个复测流程断 |
+| `retest-v2-2026-10-22/evidence/fixture.json` | CI 的输入夹具 |
+| `tools/Verify-ExplorerExports.ps1` | CI 调用的核验工具 |
 
-历史执行过的测试方案还有 [归档测试说明](./archive/)，实际保存核验工具位于 [tools/](./tools/)。
+自动化测试的源码仍在 `src/IPSys.Web/tests/`（34 个 `.cjs`，全部被工作流调用）和 `src/IPSys.Web/*Smoke.cs`。它们属于构建验证，不为了目录整齐而挪动——挪动会改掉相对路径逻辑。
 
-正式前端源码现已统一放在 [src/IPSys.Web/wwwroot/](../src/IPSys.Web/wwwroot/README.md)，与上传、导出和 PDF 模块同目录，不存在第二套前端。
+## 写新测试的约定
 
-## 自动化源码为什么保留原位置
+1. 用**独立可丢弃**的库和随机临时目录；不在任何正式资料库上做破坏性测试。
+2. 记录来源 SHA、环境、方法、完整结果与终态；失败就记失败，不改断言让它变绿。
+3. 不提交大型数据库、真实原件、成堆截图；原始 JSON/日志放仓库外。
+4. 断言要能失败：`afterFree < beforeFree` 这种写法会在批次截断时误判通过，应断言 `freelist == 0` 或显式记录 `truncated`。
 
-`src/IPSys.Web/tests/` 包含直接读取 Explorer 源码、项目文件和内嵌资源的 Node 冒烟测试，和 `src/IPSys.Web/*Smoke.cs` 内建 C# smoke 属于源码构建验证，暂时**仍随产品代码存放**。统一测试入口在此，但不为了移动目录而改变业务测试的路径计算和项目自动编译规则。
+## 历史证据在哪
 
-`.github/workflows/web-windows.yml` 调用 `tests/retest-v2-2026-10-22/scripts/` 的 Edge/HTTP 复测脚本。移动后已经同步路径；原来 `src/IPSys.Web/tests/` 的相对读取逻辑不变。[tests/tools/Verify-ExplorerExports.ps1](./tools/Verify-ExplorerExports.ps1) 是真实保存核验工具，已集中并同步 Windows CI。
+四轮 Agent 验证、黑盒报告、一次性任务书与旧复测截图已于 2026-11-07 移出仓库，Git 历史完整保留：
 
-现行已验证产品/测试基线 `4567ae96b7` 对应 [Windows CI #473](https://github.com/zy19970/IPSys/actions/runs/41413434499) 全部必运行步骤成功，覆盖当前 64 项 MCP 工具、统一文件夹、新建直达、Node/Explorer、Edge/HTTP、SQLCipher/HTTP 及两种单文件 EXE；旧测试中的“待执行/未合并”是历史日期快照。
+```bash
+git log --oneline -- tests/agent-validation        # 找到最后存在的提交
+git show <sha>:<路径> > /tmp/x.md                  # 取出当时内容
+```
 
-## 使用约定
-
-对新的测试运行，在本目录按用例和日期另建独立证据目录，不覆盖以往 PASS、BUG、BLOCKED、NOT_RUN 记录；不提交大型数据库或真实原件，不在用户正式资料库开展不可逆测试。测试来源 SHA、构建哈希、环境、方法和完整结果应与证据一同记录。现行规则见 [TESTING.md](../TESTING.md)；旧需求审查和设计草案仍在 [docs/archive](../docs/archive/README.md)。
+移出清单与对应提交记录在仓库外：`_ops/tmp/removed-paths-20261107.txt`。

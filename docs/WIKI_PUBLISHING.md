@@ -42,4 +42,4 @@ git -C .wiki-local push
 
 ## 本次 Wiki 基线
 
-截至 2026-11-06，本轮统一以 SQLCipher schema 4、MCP 43 项、普通资料 Excel 6 列及 [v0.9.3-rc.1](https://github.com/zy19970/IPSys/releases/tag/v0.9.3-rc.1) 为准；[Windows CI #558](https://github.com/zy19970/IPSys/actions/runs/42048982231) 是现行产品代码自动验证，[手动 Publish #6](https://github.com/zy19970/IPSys/actions/runs/42053785425) 是独立 Release 成功记录。当前 `docs/wiki/` 修改仍须在提交后核对 `Publish IPSys Wiki` 的实际成功状态及线上页面，不得将源码已更新直接当作 Wiki 已发布。
+截至 2026-11-06，本轮统一以 SQLCipher schema 4、普通资料 Excel 6 列（MCP 工具数不写死，以 `tools/list` 为准）及 [v0.9.3-rc.1](https://github.com/zy19970/IPSys/releases/tag/v0.9.3-rc.1) 为准；[Windows CI #558](https://github.com/zy19970/IPSys/actions/runs/42048982231) 是现行产品代码自动验证，[手动 Publish #6](https://github.com/zy19970/IPSys/actions/runs/42053785425) 是独立 Release 成功记录。当前 `docs/wiki/` 修改仍须在提交后核对 `Publish IPSys Wiki` 的实际成功状态及线上页面，不得将源码已更新直接当作 Wiki 已发布。
