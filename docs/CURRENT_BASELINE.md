@@ -2,7 +2,7 @@
 
 > **本文件是仓库里唯一声明“现在是什么状态”的地方。** 其他文档不再叠加日期基线，只写不随版本变化的规则；需要历史状态时用 `git log -- <路径>` 取回。
 >
-> 最后更新：2026-11-07。实际行为以现行源码和对应版本 EXE 为准。
+> 最后更新：2026-11-18。实际行为以现行源码和对应版本 EXE 为准。
 
 ## 1 产品与资料模型
 
@@ -56,7 +56,9 @@ IPSys 是 Windows x64 本地资料管理系统：WinForms 启动器 + 仅本机�
 
 验收必须分层：源码已实现 / 自动 CI 通过 / 本机 Agent 实际执行 / 用户人工反馈通过 / 未执行或阻塞。**不能拿 CI 绿色冒充“已在本机验证”。**
 
-当前 CI 状态：2026-11-06 起的推送未能执行，GitHub 侧原因为账户计费锁定（job 3 秒内失败、steps 为空），不是代码或测试失败。恢复后需要重新触发，重点复核 `VaultCompactHttpSmoke` 的回收/完整 VACUUM 双路径与 `NativeMcpSmoke` 的工具断言。
+2026-11-18，[Windows build and smoke](https://github.com/zy19970/IPSys/actions/runs/44125120338) 对提交 `d4b075f` 执行通过。覆盖 SQLCipher 增量回收与完整 VACUUM、MCP 工具清单和本机桥接、前端烟测、Explorer HTTP/Edge 复测，以及两种单文件 EXE 的启动烟测和 PE 元数据。HTTP 复测 14 通过、1 条按门禁记录为 `BLOCKED`（`T-P1-07`，小型库无法稳定捕捉回收运行中的状态），Edge 复测 14 通过。两种 EXE 与复测证据可从该次运行的 Artifacts 下载。
+
+[Wiki 发布复跑](https://github.com/zy19970/IPSys/actions/runs/42332456228/attempts/2) 已完成，独立 Wiki 仓库提交 `5c69bb9` 的 21 份正式页面与 `main` 中的 Wiki 源一致。
 
 ## 6 文档入口
 
