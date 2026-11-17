@@ -6,7 +6,7 @@ const path=require("node:path");
 const vm=require("node:vm");
 const root=path.resolve(__dirname,"../wwwroot");
 const inter=fs.readFileSync(path.join(root,"js/interactions.js"),"utf8");
-const app=fs.readFileSync(path.join(root,"js/app.js"),"utf8");
+const app=fs.readFileSync(path.join(root,"js/app.js"),"utf8").replace(/\r\n/g,"\n");
 const css=fs.readFileSync(path.join(root,"css/app.css"),"utf8");
 // A fixed-width detail panel must not lay four action buttons in one line.
 assert.match(css,/\.detail-actions\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/s);
