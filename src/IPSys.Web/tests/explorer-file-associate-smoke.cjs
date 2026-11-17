@@ -37,7 +37,7 @@ assert.match(interactions,/MI\("assoc-move",\s*"move",\s*"移动附件到其它�
 assert.match(interactions,/MI\("move-folder",\s*"move",\s*"移动文件夹到其它目录"\)/);
 assert.ok(interactions.includes('MI("transfer-record","move",recordKind==="archive_folder" ? "跨工作区或类别转移" : "移动或跨区转移")'),
  "Record transfer must retain both folder-specific and business labels");
-assert.match(interactions,/MI\("move-folder-batch",\s*"move",\s*"移动选中的 "\s*\+/);
+assert.match(interactions,/MI\("move-folder-batch",\s*"move",\s*"移动"\)/);
 assert.doesNotMatch(interactions,/MI\("move-archive",/,"Retired move-archive action must remain absent");
 for(const [act,label] of moveActions){
  const html=vm.runInContext("MI("+JSON.stringify(act)+',"move",'+JSON.stringify(label)+")",iconVm);
