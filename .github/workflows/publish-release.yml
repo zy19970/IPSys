@@ -13,6 +13,10 @@ on:
         required: true
         type: boolean
         default: true
+      release_notes:
+        description: '本版更新（选填，填写用户可见的变化，可用 Markdown）'
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -175,6 +179,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_VERSION: ${{ inputs.version }}
           IS_PRERELEASE: ${{ inputs.prerelease }}
+          RELEASE_NOTES: ${{ inputs.release_notes }}
         run: |
           set -euo pipefail
           # 构建和发布期间有新提交就拒绝发布旧构建。
@@ -193,19 +198,31 @@ jobs:
             echo "无法确认 $RELEASE_VERSION 未被使用，中止发布。" >&2
             exit 1
           fi
+          repository_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
+          download_prefix="$repository_url/releases/download/$RELEASE_VERSION"
+
           cat > release-notes.md <<EOF
-          IPSys Windows x64 资料管理系统（正式前端 / SQLCipher V2）。
+          IPSys 是一款 Windows x64 本地资料管理软件，用于整理、搜索和备份个人与公司资料。资料保存在你指定的本地加密资料库中。
 
-          - 对应提交：$GITHUB_SHA
-          - 发布流程：手动触发，只构建两种 Windows EXE 并核验产物，不重复运行 smoke。
-          - 功能验收：发布人已在独立的 Windows CI 和本机确认；本次 Release 运行不重新执行测试。
-          - IPSys-win-x64-SelfContained.exe：自包含版，已打包 .NET 8 Windows Desktop 和 ASP.NET Core 运行时，目标 Windows x64 机器无需另外安装 .NET 8；文件体积较大。
-          - IPSys-win-x64-FrameworkDependent.exe：依赖环境版，体积较小，目标机器需自行安装 .NET 8 Windows Desktop Runtime (x64) 和 ASP.NET Core Runtime 8 (x64)。
-          - SHA256SUMS.txt：同时记录这两份 EXE 的 SHA-256，用于下载后检查完整性。
-          - 自包含版携带发布时的 .NET 运行时，更新 .NET 安全补丁需要重新构建发布新版 EXE。
-          - 说明：2 GiB / 4 GiB 大文件专项压测不属于普通发布门禁，参阅仓库测试文档。
+          ## 下载
 
-          本次构建与发布：https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+          | 版本 | 怎么选 | 下载 |
+          | --- | --- | --- |
+          | **自包含版（推荐）** | 已包含所需的 .NET 8 运行环境，下载后双击运行。 | [下载自包含版](${download_prefix}/IPSys-win-x64-SelfContained.exe) |
+          | **依赖环境版** | 文件更小，适合已安装 .NET 8 Windows Desktop Runtime 和 ASP.NET Core Runtime 8（均为 x64）的电脑。 | [下载依赖环境版](${download_prefix}/IPSys-win-x64-FrameworkDependent.exe) |
+
+          [下载校验文件 SHA256SUMS.txt](${download_prefix}/SHA256SUMS.txt)
+          EOF
+
+          if [[ -n "${RELEASE_NOTES//[[:space:]]/}" ]]; then
+            printf '\n## 本版更新\n\n%s\n' "$RELEASE_NOTES" >> release-notes.md
+          fi
+
+          cat >> release-notes.md <<EOF
+
+          ## 开始使用
+
+          双击下载的 EXE，点击「打开管理界面」。第一次使用请选择「创建新资料库」，已有资料库请选择原数据库文件。[使用指南](${repository_url}/blob/main/USER_GUIDE.md)
           EOF
           args=()
           if [[ "$IS_PRERELEASE" == 'true' ]]; then args+=(--prerelease); fi

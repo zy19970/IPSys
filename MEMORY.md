@@ -6,7 +6,7 @@
 >
 > 2026-11-07 整理前的完整 `MEMORY.md` 已按**相同 Git Blob** 无损归档至 [原始历史快照](memory/archive/MEMORY_BEFORE_INDEX_2026-11-07.md)，其内容哈希为 `8b7cbcb353edfd43ecadeed13773686bf4114a5d`。未重写 Git 历史、未删除任何 `memory/sessions/` 会话。
 >
-> 最近会话：[2026-11-19 恢复开发与细节优化梳理](memory/sessions/2026-11-19-IPSys恢复开发与细节优化梳理.md)，最新归档为**第七轮：GitHub Release 用户向文案调整方案（待确认）**。Actions 恢复过程详见 [2026-11-07 文档清理审计第六轮](memory/sessions/2026-11-07-IPSys文档资料清理审计.md#第六轮github-actions-恢复与验收)。如果本摘要与实际源码或现行基线冲突，先核查源码。
+> 最近会话：[2026-11-19 恢复开发与细节优化梳理](memory/sessions/2026-11-19-IPSys恢复开发与细节优化梳理.md)，最新归档为**第八轮：发布现版 Release 用户向正文并更新默认模板**。Actions 恢复过程详见 [2026-11-07 文档清理审计第六轮](memory/sessions/2026-11-07-IPSys文档资料清理审计.md#第六轮github-actions-恢复与验收)。如果本摘要与实际源码或现行基线冲突，先核查源码。
 
 ## 一、项目目的和运行架构
 
@@ -31,7 +31,7 @@ Agent 用同一个 EXE 的 `--mcp` 模式连接，业务操作必须按 `workspa
 
 [完整 MCP 操作契约](MCP_CODEX.md) · [内嵌 Agent 规范](src/IPSys.Web/AgentGuidance) · [源码与发布工作流](README.md)
 
-正式 Release 由 `publish-release` 手动发布两种单 EXE 与 SHA256SUMS，Publish 不重新运行业务 smoke。源码实现、Windows CI、本机 Agent 与用户 GUI 的最新验收证据见 [现行基线](docs/CURRENT_BASELINE.md)。
+正式 Release 由 `publish-release` 手动发布两种单 EXE 与 SHA256SUMS，Publish 不重新运行业务 smoke。发布正文面向用户，按下载、版本更新、开始使用排列。发布时可选填 `release_notes`（本版更新），空白时省略更新小节；构建与测试追溯留在 Actions 和仓库文档。源码实现、Windows CI、本机 Agent 与用户 GUI 的最新验收证据见 [现行基线](docs/CURRENT_BASELINE.md)。
 
 ## 四、当前治理与未完成验证
 
@@ -41,7 +41,7 @@ Agent 用同一个 EXE 的 `--mcp` 模式连接，业务操作必须按 `workspa
 4. **Wiki 发布**：2026-11-07 的 #42332456228 第一次执行在 Runner 启动前失败。2026-11-18 第二次执行完成页面校验和同步，独立 Wiki Git 远端 HEAD `5c69bb9e69be3d4bc94e0ee096f86e1117de032b` 的 21 份正式 Markdown 与主仓库 Wiki 源逐文件一致，原始首页备份保留。
 5. **未验边界**：真实 20–50 GB 库长期性能、断电/磁盘紧张、移动 SSD 等极端情况；HTTP `T-P1-07` 的运行中状态；用户本机 GUI、真实 Agent 工作流。故障注入使用独立测试库。
 6. **第四批交叉一致性核验**：已核对根目录现行需求、字段字典、用户手册、技术设计、UI、MCP、测试规则及现行源码，修订六份存在矛盾的说明；个人/公司默认排序、原地回收的预检空间与完整 VACUUM、Markdown 预览及合同普通目录模型相互一致。文档链接、围栏静态检查通过，但未运行 Windows CI 或用户 GUI 验收。
-7. **后续**：基于 2026-11-18 通过 Windows CI 的 `d4b075f` 构建工件起步进行细节精修。GitHub 标记最新的 Release 仍是 2026-11-05 的 `v0.9.3-rc.1`，早于排序、完整性检查进度、原地回收、批量操作等源码改动。复现优先核对实际 EXE；本机 GUI、Agent 和大库/断电分别留存证据。前端 README 仍引用历史 CI/Release，现状按产品基线核对。
+7. **后续**：当前可用的公开发布为 `v0.9.4-rc.0`，包含个人排序、完整性检查进度、增量原地回收及 Excel 导入入口移除。复现优先核对实际 EXE；本机 GUI、Agent 和大库/断电分别留存证据。前端 README 仍引用历史 CI/Release，现状按产品基线核对。
 
 8. **Excel 台账导入退出**：提交 `e394dec` 移除导入按钮，Windows CI #44436045933 通过，用户于 2026-11-19 在本机确认生效。现行界面仅提供筛选或全量导出。用户确认旧导入 UI 脚本、模板与接口、解析回填和专用测试随相关重构按需清理，无需保留兼容性。共享导出逻辑、正常业务记录与附件能力按现行契约维护。边界见 [技术设计](DESIGN.md#4-当前业务接口与导出一致性) 和 [测试说明](TESTING.md#excel-和知识产权现行回归)。
 
