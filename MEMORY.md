@@ -6,7 +6,7 @@
 >
 > 2026-11-07 整理前的完整 `MEMORY.md` 已按**相同 Git Blob** 无损归档至 [原始历史快照](memory/archive/MEMORY_BEFORE_INDEX_2026-11-07.md)，其内容哈希为 `8b7cbcb353edfd43ecadeed13773686bf4114a5d`。未重写 Git 历史、未删除任何 `memory/sessions/` 会话。
 >
-> 最近会话：[2026-11-19 恢复开发与细节优化梳理](memory/sessions/2026-11-19-IPSys恢复开发与细节优化梳理.md)，最新归档为**第八轮：发布现版 Release 用户向正文并更新默认模板**。Actions 恢复过程详见 [2026-11-07 文档清理审计第六轮](memory/sessions/2026-11-07-IPSys文档资料清理审计.md#第六轮github-actions-恢复与验收)。如果本摘要与实际源码或现行基线冲突，先核查源码。
+> 最近会话：[2026-11-19 恢复开发与细节优化梳理](memory/sessions/2026-11-19-IPSys恢复开发与细节优化梳理.md)，最新归档为**第九轮：核对新版 Release 下载链接**。Actions 恢复过程详见 [2026-11-07 文档清理审计第六轮](memory/sessions/2026-11-07-IPSys文档资料清理审计.md#第六轮github-actions-恢复与验收)。如果本摘要与实际源码或现行基线冲突，先核查源码。
 
 ## 一、项目目的和运行架构
 
