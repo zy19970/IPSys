@@ -2,11 +2,11 @@
 
 > **2026-11-18 GitHub Actions 恢复验收（本会话第六轮）**：补跑 Windows CI 与 Wiki 发布。Windows 日志确认批量移动文案断言陈旧、详情面板烟测只接受 LF，分别在 `e179c33`、`d4b075f` 修正测试。LF 与 CRLF 检出各通过 33 个 Node 烟测。最终 [Windows CI](https://github.com/zy19970/IPSys/actions/runs/44125120338) 对 `d4b075f` 执行通过，验证 SQLCipher 双路径、MCP、HTTP/Edge、两种单文件 EXE，并上传验证工件。[Wiki 发布](https://github.com/zy19970/IPSys/actions/runs/42332456228/attempts/2) 成功；独立 Wiki `5c69bb9` 的 21 个正式页面与 `main` 源一致。剩余实机任务见第四节。
 >
-> 最后维护：2026-11-18。本文件用于新会话快速恢复项目当前决策和未完成事项。**详细会话、修改过程与旧阶段结论不在这里复制**，参见 [记忆索引](memory/INDEX.md)。
+> 最后维护：2026-11-19。本文件用于新会话快速恢复项目当前决策和未完成事项。**详细会话、修改过程与旧阶段结论不在这里复制**，参见 [记忆索引](memory/INDEX.md)。
 >
 > 2026-11-07 整理前的完整 `MEMORY.md` 已按**相同 Git Blob** 无损归档至 [原始历史快照](memory/archive/MEMORY_BEFORE_INDEX_2026-11-07.md)，其内容哈希为 `8b7cbcb353edfd43ecadeed13773686bf4114a5d`。未重写 Git 历史、未删除任何 `memory/sessions/` 会话。
 >
-> 最近会话：[2026-11-07 文档清理审计](memory/sessions/2026-11-07-IPSys文档资料清理审计.md)，最新归档为**第六轮：GitHub Actions 恢复与验收**。如果本摘要与实际源码或现行基线冲突，先核查源码。
+> 最近会话：[2026-11-19 恢复开发与细节优化梳理](memory/sessions/2026-11-19-IPSys恢复开发与细节优化梳理.md)，最新归档为**第一轮：确认仓库现状和精修入口**。Actions 恢复过程详见 [2026-11-07 文档清理审计第六轮](memory/sessions/2026-11-07-IPSys文档资料清理审计.md#第六轮github-actions-恢复与验收)。如果本摘要与实际源码或现行基线冲突，先核查源码。
 
 ## 一、项目目的和运行架构
 
@@ -41,10 +41,10 @@ Agent 用同一个 EXE 的 `--mcp` 模式连接，业务操作必须按 `workspa
 4. **Wiki 发布**：2026-11-07 的 #42332456228 第一次执行在 Runner 启动前失败。2026-11-18 第二次执行完成页面校验和同步，独立 Wiki Git 远端 HEAD `5c69bb9e69be3d4bc94e0ee096f86e1117de032b` 的 21 份正式 Markdown 与主仓库 Wiki 源逐文件一致，原始首页备份保留。
 5. **未验边界**：真实 20–50 GB 库长期性能、断电/磁盘紧张、移动 SSD 等极端情况；HTTP `T-P1-07` 的运行中状态；用户本机 GUI、真实 Agent 工作流。故障注入使用独立测试库。
 6. **第四批交叉一致性核验**：已核对根目录现行需求、字段字典、用户手册、技术设计、UI、MCP、测试规则及现行源码，修订六份存在矛盾的说明；个人/公司默认排序、原地回收的预检空间与完整 VACUUM、Markdown 预览及合同普通目录模型相互一致。文档链接、围栏静态检查通过，但未运行 Windows CI 或用户 GUI 验收。
-7. **后续**：本机 GUI、Agent 和大库/断电验证分别留存证据。日常使用继续根据真实复现反馈进行最小范围改动。
+7. **后续**：基于 2026-11-18 通过 Windows CI 的 `d4b075f` 构建工件起步进行细节精修。GitHub 标记最新的 Release 仍是 2026-11-05 的 `v0.9.3-rc.1`，早于排序、完整性检查进度、原地回收、批量操作等源码改动。复现优先核对实际 EXE；本机 GUI、Agent 和大库/断电分别留存证据。前端 README 仍引用历史 CI/Release，现状按产品基线核对。
 
 ## 五、从新会话恢复工作
 
 1. 先读 [AIGT-templates 协作入口](https://github.com/zy19970/AIGT-templates/blob/main/AGENTS.md)、`AI_RULES/GIT_OPERATIONS.md` 和 `AI_RULES/MEMORY_PROTOCOL.md`。
-2. 读本文件和 [现行基线](docs/CURRENT_BASELINE.md)，再读 [最近会话](memory/sessions/2026-11-07-IPSys文档资料清理审计.md)。
+2. 读本文件和 [现行基线](docs/CURRENT_BASELINE.md)，再读 [最近会话](memory/sessions/2026-11-19-IPSys恢复开发与细节优化梳理.md)。
 3. 需要查特定历史修改时，从 [记忆索引](memory/INDEX.md) 进入对应 `memory/sessions/`；更早的记忆参照 [原始历史快照](memory/archive/MEMORY_BEFORE_INDEX_2026-11-07.md) 与 `git log`，不把当时结论认作当前源码。
