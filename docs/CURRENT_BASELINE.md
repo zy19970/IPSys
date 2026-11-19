@@ -60,7 +60,7 @@ IPSys 是 Windows x64 本地资料管理系统：WinForms 启动器 + 仅本机�
 
 2026-11-19，[Windows CI](https://github.com/zy19970/IPSys/actions/runs/44436045933) 对移除 Excel 导入按钮的提交 `e394dec` 执行通过。用户已在本机确认该界面改动生效。
 
-[Wiki 发布复跑](https://github.com/zy19970/IPSys/actions/runs/42332456228/attempts/2) 已完成，独立 Wiki 仓库提交 `5c69bb9` 的 21 份正式页面与 `main` 中的 Wiki 源一致。
+2026-11-19，[Wiki 发布](https://github.com/zy19970/IPSys/actions/runs/44437784775) 校验 21 份页面，更新「搜索与 Excel 台账」和「知识产权」两页，并将独立 Wiki 推送至 `202c6be`。
 
 ## 6 文档入口
 
