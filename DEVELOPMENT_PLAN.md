@@ -14,7 +14,7 @@ IPSys 是 WinForms 启动器、仅本机访问的 Web Explorer、单 SQLCipher s
 
 - 资源模型：`project` / `ip` / `archive_folder`，附件多版本、同区共享、回收站与永久清理。
 - 跨模块整树移动：包含已软删除后代，保持 FolderId / LinkId / FileId 与版本。
-- Excel 台账：项目、知识产权、普通资料三套固定模板；合同不再是独立业务对象。
+- Excel 台账导出：项目、知识产权、适用普通资料三套固定列，可按筛选结果或当前模块全量导出。
 - 本机 MCP 与分层 Agent 规范：管道隔离、只读/写入工具、幂等 `request_id`。
 - 资料库维护：密码修改、完整性检查、空闲空间原地分批回收（不需要两倍库大小）。
 
@@ -23,9 +23,11 @@ IPSys 是 WinForms 启动器、仅本机访问的 Web Explorer、单 SQLCipher s
 当前进入实际使用细节精修：优先核对单选/多选、右键/F2/拖拽操作范围，进度与状态提示、共用表格与 DPI、移动目标选择器及 Markdown 大文本预览的本机体验；只有查明并复现的缺陷才进入代码修改。
 
 1. 以真实使用截图、操作复现为入口，优先修改共用组件而非单个页面补丁；新建/上传/下载/移动/删除应检查顶部、侧栏、右键和详情之间的一致性。
-2. 按统一 `archive_folder + section` 契约复核普通文件夹的 Excel、MCP、搜索、ZIP、回收站与共享文件；旧 `archive/general` 对象和重复接口已经退出当前调用路径。
+2. 按统一 `archive_folder + section` 契约复核普通文件夹的 Excel 导出、MCP、搜索、ZIP、回收站与共享文件；旧 `archive/general` 对象和重复接口已经退出当前调用路径。
 3. 按风险范围运行 Node、Edge/HTTP、SQLCipher 和必要的实际 Windows GUI 用例，区别测试 mock 与真正产品缺陷，使用隔离数据库。
 4. 改动后同步本文与 [CURRENT_BASELINE](docs/CURRENT_BASELINE.md)；历史结论不再抄进各文档正文，需要时用 `git log` 取回。
+
+旧 Excel 台账导入随相关代码调整按需清理。可改写或移除遗留导入实现及专用断言，无需为历史模板和导入接口保留兼容层。实现边界见 [技术设计](./DESIGN.md#4-当前业务接口与导出一致性)，验证口径见 [测试说明](./TESTING.md#excel-和知识产权现行回归)。
 
 ## 4 最终交付条件
 
